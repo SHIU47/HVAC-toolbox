@@ -17,7 +17,7 @@
             font-family: 'Plus Jakarta Sans', 'Noto Sans TC', sans-serif;
             background: #f8fafc;
             color: #1e293b;
-            overflow: hidden;
+            overflow-x: hidden;
         }
 
         /* 藍白微動態背景 */
@@ -41,7 +41,7 @@
         .slider-container {
             display: flex;
             overflow-x: auto;
-            scroll-behavior: auto; /* 用 JS 控制順滑度 */
+            scroll-behavior: auto;
             gap: 24px;
             padding: 24px 0;
             scrollbar-width: none;
@@ -50,7 +50,7 @@
 
         .slider-container::-webkit-scrollbar { display: none; }
 
-        /* 專業工具卡片 */
+        /* 工具卡片 */
         .tool-card {
             flex: 0 0 320px;
             background: rgba(255, 255, 255, 0.9);
@@ -65,6 +65,7 @@
             flex-direction: column;
             justify-content: space-between;
             height: 280px;
+            user-select: none;
         }
 
         .tool-card:hover {
@@ -97,18 +98,26 @@
             background: var(--primary-blue);
             color: white;
             border-color: var(--primary-blue);
-            box-shadow: 0 8px 20px rgba(37, 99, 235, 0.3);
         }
 
         .nav-arrow.left { left: 10px; }
         .nav-arrow.right { right: 10px; }
 
-        /* Iframe 控制 */
-        #module-viewport {
+        /* Iframe 容器 */
+        #module-container {
+            position: fixed;
+            top: 72px;
+            left: 0;
             width: 100%;
             height: calc(100vh - 72px);
+            z-index: 100;
+            background: white;
+        }
+
+        #module-viewport {
+            width: 100%;
+            height: 100%;
             border: none;
-            background: #ffffff;
         }
 
         .status-dot {
@@ -124,10 +133,6 @@
             70% { box-shadow: 0 0 0 10px rgba(16, 185, 129, 0); }
             100% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
         }
-
-        /* 遮罩動畫 */
-        .slide-up { animation: slideUp 0.5s cubic-bezier(0.22, 1, 0.36, 1) forwards; }
-        @keyframes slideUp { from { transform: translateY(100%); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
     </style>
 </head>
 <body class="h-screen flex flex-col">
@@ -135,21 +140,21 @@
     <div class="mesh-bg"></div>
 
     <!-- 頂部導覽列 -->
-    <header class="h-[72px] bg-white/90 backdrop-blur-md border-b border-slate-200 px-8 flex items-center justify-between flex-shrink-0 z-50">
+    <header class="h-[72px] bg-white/90 backdrop-blur-md border-b border-slate-200 px-8 flex items-center justify-between flex-shrink-0 z-[110]">
         <div class="flex items-center gap-6">
             <div id="back-button" class="hidden">
                 <button onclick="closeModule()" class="flex items-center gap-2 px-5 py-2.5 rounded-full bg-blue-600 text-white font-bold text-sm shadow-lg shadow-blue-200 hover:bg-blue-700 transition-all group">
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 transform group-hover:-translate-x-1 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M15 19l-7-7 7-7" />
                     </svg>
-                    返回主控台
+                    返回工具箱
                 </button>
             </div>
             <div class="flex items-center gap-3">
                 <div class="w-10 h-10 bg-gradient-to-br from-blue-500 to-blue-700 rounded-2xl flex items-center justify-center text-white font-extrabold shadow-lg">H</div>
                 <div>
                     <h1 id="portal-title" class="text-xl font-extrabold text-slate-800 tracking-tight leading-none">HVAC <span class="text-blue-600">Pro-Suite</span></h1>
-                    <p id="portal-subtitle" class="text-[9px] text-slate-400 font-black uppercase tracking-[0.2em] mt-1.5">Engineering Hub v3.2</p>
+                    <p id="portal-subtitle" class="text-[9px] text-slate-400 font-black uppercase tracking-[0.2em] mt-1.5">Engineering Hub v3.3</p>
                 </div>
             </div>
         </div>
@@ -175,7 +180,7 @@
                     <h2 class="text-5xl font-black text-slate-900 mb-3 tracking-tight">
                         專業空調工程 <span class="text-blue-600">工具箱</span>
                     </h2>
-                    <p class="text-slate-500 font-semibold text-lg">請左右滑動並點擊工具卡片開始作業。</p>
+                    <p class="text-slate-500 font-semibold text-lg text-balance">請左右滑動並點擊卡片開啟計算模組。</p>
                 </div>
 
                 <!-- 分類 1: 基礎設計 -->
@@ -191,7 +196,6 @@
                         </button>
                         
                         <div id="general-slider" class="slider-container">
-                            <!-- 工具卡片 -->
                             <div onclick="loadModule('conversion', '工程專業換算工具')" class="tool-card group">
                                 <div class="w-16 h-16 bg-blue-50 rounded-3xl flex items-center justify-center text-4xl group-hover:scale-110 transition-transform">🔄</div>
                                 <div>
@@ -277,12 +281,12 @@
         </div>
 
         <!-- 外部模組視窗 (Iframe) -->
-        <div id="module-container" class="hidden h-full flex flex-col bg-white transition-all duration-500 opacity-0 transform translate-y-full">
-            <div id="loading-overlay" class="absolute inset-0 flex flex-col items-center justify-center bg-white z-50">
+        <div id="module-container" class="hidden h-full flex flex-col bg-white">
+            <div id="loading-overlay" class="absolute inset-0 flex flex-col items-center justify-center bg-white z-[105]">
                 <div class="w-16 h-16 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mb-4"></div>
                 <p class="text-xs font-black text-blue-600 uppercase tracking-widest animate-pulse">正在調研 GitHub 數據附件...</p>
             </div>
-            <iframe id="module-viewport" src="" class="flex-grow"></iframe>
+            <iframe id="module-viewport" src=""></iframe>
         </div>
 
     </main>
@@ -295,15 +299,15 @@
             'air-duct': './風管計算.html',
             'water-tower': './冷卻水塔補水量計算.html',
             'cr-master': './Clean room master.html',
-            'chilled-water': './chilled-water.html' // 尚未上傳的可預留
+            'chilled-water': './chilled-water.html' 
         };
 
-        // --- 無限循環滾動邏輯 ---
+        // --- 無限循環滾動邏輯 (修正版) ---
         function initInfiniteSlider(id) {
             const container = document.getElementById(id);
             const cards = Array.from(container.children);
             
-            // 克隆兩份內容以達成視覺循環
+            // 克隆三份以確保捲動時永遠有內容
             cards.forEach(card => {
                 const cloneBefore = card.cloneNode(true);
                 const cloneAfter = card.cloneNode(true);
@@ -311,33 +315,29 @@
                 container.insertBefore(cloneBefore, container.firstChild);
             });
 
-            // 初始滾動到中間那組的開頭
-            const cardWidth = 320 + 24; // 卡片寬度 + gap
+            const cardWidth = 320 + 24; 
             container.scrollLeft = cardWidth * cards.length;
 
             container.addEventListener('scroll', () => {
                 const totalWidth = container.scrollWidth / 3;
                 if (container.scrollLeft >= totalWidth * 2) {
-                    container.scrollLeft -= totalWidth;
+                    container.scrollLeft = totalWidth;
                 } else if (container.scrollLeft <= 0) {
-                    container.scrollLeft += totalWidth;
+                    container.scrollLeft = totalWidth;
                 }
             });
         }
 
         function sideScroll(id, direction) {
             const container = document.getElementById(id);
-            const scrollAmount = 344; // 一格的寬度
+            const scrollAmount = 344; 
             const target = direction === 'right' ? container.scrollLeft + scrollAmount : container.scrollLeft - scrollAmount;
-            
-            container.scrollTo({
-                left: target,
-                behavior: 'smooth'
-            });
+            container.scrollTo({ left: target, behavior: 'smooth' });
         }
 
         // --- 載入附件 HTML 檔案 ---
         function loadModule(tabId, toolName) {
+            const hub = document.getElementById('toolbox-hub');
             const container = document.getElementById('module-container');
             const iframe = document.getElementById('module-viewport');
             const backBtn = document.getElementById('back-button');
@@ -345,47 +345,42 @@
             const subtitle = document.getElementById('portal-subtitle');
             const loader = document.getElementById('loading-overlay');
 
-            // 顯示 Iframe 容器與動畫
+            // 重要：隱藏 Hub，顯示 Module
+            hub.classList.add('hidden');
             container.classList.remove('hidden');
-            setTimeout(() => {
-                container.classList.remove('translate-y-full', 'opacity-0');
-            }, 50);
-
             backBtn.classList.remove('hidden');
+            
             title.innerHTML = `HVAC <span class="text-blue-600">${toolName}</span>`;
             subtitle.innerText = 'Now Rendering GitHub Asset • Data Live';
 
-            // 載入路徑
             const filePath = moduleMapping[tabId];
             if (filePath) {
                 loader.classList.remove('hidden');
-                // 加上隨機參數避免 GitHub Pages 緩存問題
+                // 加上時間戳防止快取
                 iframe.src = filePath + '?v=' + Date.now();
                 
                 iframe.onload = () => {
-                    setTimeout(() => {
-                        loader.classList.add('hidden');
-                    }, 600);
+                    setTimeout(() => { loader.classList.add('hidden'); }, 600);
                 };
             }
         }
 
         function closeModule() {
+            const hub = document.getElementById('toolbox-hub');
             const container = document.getElementById('module-container');
             const backBtn = document.getElementById('back-button');
             const title = document.getElementById('portal-title');
             const subtitle = document.getElementById('portal-subtitle');
             const iframe = document.getElementById('module-viewport');
 
-            container.classList.add('translate-y-full', 'opacity-0');
-            setTimeout(() => {
-                container.classList.add('hidden');
-                iframe.src = 'about:blank';
-            }, 500);
-
+            // 重要：恢復 Hub
+            hub.classList.remove('hidden');
+            container.classList.add('hidden');
             backBtn.classList.add('hidden');
+            
             title.innerHTML = 'HVAC <span class="text-blue-600">Pro-Suite</span>';
             subtitle.innerText = 'Professional Engineering Hub';
+            iframe.src = '';
         }
 
         function updateTime() {
@@ -401,7 +396,7 @@
             initInfiniteSlider('advanced-slider');
             setInterval(updateTime, 1000);
             updateTime();
-            console.log("Enterprise Portal v3.2 Active. File System Ready.");
+            console.log("Portal v3.3: Hub navigation issues resolved.");
         };
     </script>
 </body>
