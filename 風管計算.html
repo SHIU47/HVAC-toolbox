@@ -1,0 +1,397 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Duct Master Pro - 專業級風管計算系統 v2.2</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet">
+    <style>
+        :root { --eng-dark: #0f172a; --eng-accent: #0284c7; }
+        body { font-family: 'Inter', 'Noto Sans TC', sans-serif; background-color: #f1f5f9; color: #1e293b; }
+        .section-card { background: white; border: 1px solid #e2e8f0; border-radius: 1.25rem; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+        .eng-input { width: 100%; border: 1px solid #cbd5e1; border-radius: 0.5rem; padding: 0.5rem; font-weight: 600; font-size: 0.9rem; transition: all 0.2s; }
+        .eng-input:focus { border-color: var(--eng-accent); ring: 3px; ring-color: rgba(2, 132, 199, 0.1); outline: none; }
+        .status-ok { color: #16a34a; background-color: #f0fdf4; border-color: #bbf7d0; }
+        .status-warn { color: #d97706; background-color: #fffbeb; border-color: #fef3c7; }
+        .status-crit { color: #dc2626; background-color: #fef2f2; border-color: #fee2e2; }
+        .rect-option-row { cursor: pointer; transition: all 0.2s; border-bottom: 1px solid #f1f5f9; }
+        .rect-option-row:hover { background-color: #f0f9ff; transform: scale(1.005); }
+        .rect-option-row.selected { background-color: #e0f2fe; border: 2px solid #0ea5e9; }
+        .noise-badge { padding: 0.2rem 0.5rem; border-radius: 0.5rem; font-size: 0.65rem; font-weight: 800; text-transform: uppercase; }
+        input::-webkit-outer-spin-button, input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+    </style>
+</head>
+<body class="py-8 px-4 md:px-6">
+
+<div class="max-w-7xl mx-auto">
+    <!-- Header -->
+    <header class="flex flex-col md:flex-row items-center justify-between mb-8 gap-6 bg-slate-900 p-8 rounded-[2.5rem] text-white shadow-2xl relative overflow-hidden">
+        <div class="absolute top-0 right-0 w-64 h-64 bg-sky-500/10 rounded-full blur-3xl -mr-20 -mt-20"></div>
+        <div class="flex items-center space-x-5 z-10">
+            <div class="w-14 h-14 bg-sky-600 rounded-2xl flex items-center justify-center shadow-lg">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16m-7 6h7" />
+                </svg>
+            </div>
+            <div>
+                <h1 class="text-2xl font-black tracking-tight uppercase text-white">Duct Master <span class="text-sky-400">Pro</span> <span class="text-xs bg-slate-800 px-2 py-1 rounded ml-2">v2.2</span></h1>
+                <p class="text-slate-400 text-[10px] font-bold uppercase tracking-[0.2em]">Engineering Design & Validation Suite (Cleanroom Optimized)</p>
+            </div>
+        </div>
+        <div class="z-10 flex gap-6 text-right">
+            <div>
+                <p class="text-[10px] text-slate-500 font-black uppercase">Fluid</p>
+                <p class="text-xs font-bold">Std. Air (1.2 kg/m³)</p>
+            </div>
+            <div class="h-8 w-px bg-slate-700"></div>
+            <div>
+                <p class="text-[10px] text-slate-500 font-black uppercase">Methodology</p>
+                <p class="text-xs font-bold uppercase">ASHRAE / MAU Specialized</p>
+            </div>
+        </div>
+    </header>
+
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-8">
+        
+        <!-- 1. 使用者輸入區 -->
+        <aside class="lg:col-span-4 space-y-6">
+            <section class="section-card p-6 md:p-8">
+                <h3 class="text-xs font-black text-slate-400 uppercase tracking-widest mb-6 flex items-center">
+                    <span class="w-1.5 h-4 bg-sky-500 mr-2 rounded-full"></span>
+                    設計參數設定 Inputs
+                </h3>
+                
+                <div class="space-y-5">
+                    <div>
+                        <label class="text-[10px] font-black text-slate-500 mb-1 block uppercase">設計風量 Airflow</label>
+                        <div class="flex gap-1">
+                            <input type="number" id="airflow" value="15000" class="eng-input text-lg" oninput="calculate()">
+                            <select id="airflowUnit" class="eng-input w-24 bg-slate-50" onchange="calculate()">
+                                <option value="CMH">CMH</option>
+                                <option value="CFM">CFM</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="text-[10px] font-black text-slate-500 mb-1 block uppercase">用途 Application</label>
+                            <select id="application" class="eng-input bg-amber-50 border-amber-200 text-amber-900" onchange="updateApplicationDefaults()">
+                                <option value="mau">MAU (外氣系統)</option>
+                                <option value="main">一般主幹線 (Main)</option>
+                                <option value="sub">次幹道 (Sub-main)</option>
+                                <option value="branch">分支管 (Branch)</option>
+                                <option value="return">回風管 (Return)</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="text-[10px] font-black text-slate-500 mb-1 block uppercase">材質 Material</label>
+                            <select id="material" class="eng-input bg-slate-50" onchange="calculate()">
+                                <option value="0.00009">鍍鋅鋼板 (Galv)</option>
+                                <option value="0.00015">不鏽鋼 (SS)</option>
+                                <option value="0.0003">保溫內襯 (Liner)</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="text-[10px] font-black text-slate-500 mb-1 block uppercase">設計法 Design Method</label>
+                        <select id="method" class="eng-input" onchange="toggleMethodFields()">
+                            <option value="friction">Equal Friction (等摩擦法)</option>
+                            <option value="velocity">Equal Velocity (等流速法)</option>
+                        </select>
+                    </div>
+
+                    <div id="frictionInputGroup">
+                        <label class="text-[10px] font-black text-slate-500 mb-1 block uppercase">摩擦損失限制 Friction Limit</label>
+                        <div class="flex gap-2">
+                            <input type="number" id="targetFriction" value="1.0" step="0.1" class="eng-input text-sky-600 font-bold" oninput="calculate()">
+                            <span class="eng-input w-20 bg-slate-100 text-center flex items-center justify-center text-[10px] font-bold">Pa/m</span>
+                        </div>
+                    </div>
+
+                    <div id="velocityInputGroup" class="hidden">
+                        <label class="text-[10px] font-black text-slate-500 mb-1 block uppercase">流速限制 Velocity Limit</label>
+                        <div class="flex gap-2">
+                            <input type="number" id="targetVelocity" value="12.0" step="0.5" class="eng-input text-sky-600 font-bold" oninput="calculate()">
+                            <span class="eng-input w-20 bg-slate-100 text-center flex items-center justify-center text-[10px] font-bold">m/s</span>
+                        </div>
+                    </div>
+
+                    <div class="pt-4 border-t">
+                        <label class="text-[10px] font-black text-slate-500 mb-3 block uppercase tracking-widest">風管形式 Duct Shape</label>
+                        <div class="grid grid-cols-2 gap-3">
+                            <button onclick="setShape('round')" id="btn-round" class="p-3 rounded-xl border-2 border-sky-600 bg-sky-50 text-sky-700 font-bold text-xs transition-all">圓形管 Round</button>
+                            <button onclick="setShape('rect')" id="btn-rect" class="p-3 rounded-xl border-2 border-slate-200 text-slate-400 font-bold text-xs transition-all">矩形管 Rect</button>
+                        </div>
+                    </div>
+
+                    <div id="preferredHeightGroup" class="hidden pt-2">
+                        <label class="text-[10px] font-black text-slate-500 mb-1 block uppercase">希望高度 Preferred Height</label>
+                        <div class="flex gap-2">
+                            <input type="number" id="preferredHeight" class="eng-input" placeholder="自動配置 (Auto)" oninput="calculate()">
+                            <span class="eng-input w-20 bg-slate-100 text-center flex items-center justify-center text-[10px] font-bold">mm</span>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </aside>
+
+        <!-- 2. 計算結果與工程候選方案 -->
+        <main class="lg:col-span-8 space-y-6">
+            
+            <section class="section-card overflow-hidden">
+                <div class="bg-slate-800 px-8 py-6 text-white flex justify-between items-center">
+                    <div>
+                        <h3 class="text-sm font-black uppercase tracking-widest text-sky-400">主要計算結果 Main Result</h3>
+                    </div>
+                    <div id="noiseLevel" class="noise-badge bg-emerald-500 text-white">🔇 低噪音</div>
+                </div>
+                
+                <div class="p-8 grid grid-cols-1 md:grid-cols-3 gap-8 items-center border-b border-slate-50">
+                    <div class="space-y-1">
+                        <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest">選定尺寸 Size</p>
+                        <div class="flex items-baseline gap-2">
+                            <span id="res-mainSize" class="text-4xl font-black text-slate-800">--</span>
+                            <span class="text-lg font-bold text-slate-300">mm</span>
+                        </div>
+                    </div>
+                    <div class="space-y-1 border-l pl-8">
+                        <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest">實際流速 Velocity</p>
+                        <div class="flex items-baseline gap-2">
+                            <span id="res-velocity" class="text-3xl font-black text-slate-700">--</span>
+                            <span class="text-sm font-bold text-slate-300">m/s</span>
+                        </div>
+                    </div>
+                    <div class="space-y-1 border-l pl-8">
+                        <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest">實際壓損 Friction</p>
+                        <div class="flex items-baseline gap-2">
+                            <span id="res-friction" class="text-3xl font-black text-slate-700">--</span>
+                            <span class="text-sm font-bold text-slate-300">Pa/m</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="rectTableContainer" class="p-8 bg-slate-50 hidden">
+                    <div class="flex items-center justify-between mb-4">
+                        <h4 class="text-xs font-black text-slate-600 uppercase tracking-tight" id="listTitle">矩形風管候選清單</h4>
+                    </div>
+                    <div class="overflow-hidden rounded-xl border border-slate-200 bg-white">
+                        <table class="w-full text-left text-xs">
+                            <thead class="bg-slate-100 text-slate-500 uppercase text-[9px] font-black">
+                                <tr>
+                                    <th class="px-4 py-3">尺寸 (W x H)</th>
+                                    <th class="px-4 py-3 text-center">寬高比 (AR)</th>
+                                    <th class="px-4 py-3 text-center">流速 (v)</th>
+                                    <th class="px-4 py-3 text-center">壓損 (ΔP)</th>
+                                    <th class="px-4 py-3 text-right">評估</th>
+                                </tr>
+                            </thead>
+                            <tbody id="rectOptionBody"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+
+            <section id="engAdviseCard" class="p-6 rounded-3xl border-l-8 flex items-start gap-5 section-card transition-colors duration-300">
+                <div id="adviseIcon" class="text-2xl mt-1"></div>
+                <div>
+                    <h4 id="adviseTitle" class="font-black text-sm uppercase mb-1"></h4>
+                    <p id="adviseContent" class="text-xs font-medium leading-relaxed text-slate-500"></p>
+                </div>
+            </section>
+        </div>
+    </div>
+
+    <!-- MAU 設計專區說明 -->
+    <section class="mt-8 bg-sky-900 p-8 rounded-[2rem] text-white shadow-xl">
+        <div class="flex items-center gap-3 mb-6">
+            <div class="w-1.5 h-6 bg-sky-400 rounded-full"></div>
+            <h3 class="text-lg font-bold tracking-tight uppercase">MAU 設計專業提示 (Cleanroom Design Tips)</h3>
+        </div>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-8 text-xs leading-relaxed text-sky-100">
+            <div class="space-y-4">
+                <p>● <b class="text-sky-300">高風速應用：</b> 在無塵室 MAU 系統中，主幹線風速設定在 $12 \sim 15\text{ m/s}$ 是常見的。這能顯著縮減風管佔用的空間，但必須確保機房與風管具備足夠的消音與減振措施。</p>
+                <p>● <b class="text-sky-300">等摩擦法建議：</b> MAU 的總壓力損失通常較大。建議將等摩擦損控制在 $1.2 \sim 1.5\text{ Pa/m}$ 之間以優化風機功率需求。</p>
+            </div>
+            <div class="space-y-4">
+                <p>● <b class="text-sky-300">不鏽鋼管校核：</b> MAU 送風側若為 Class 100 等級，常使用不鏽鋼管 (SS304)。請將「材質」切換至不鏽鋼，系統會自動考量較高的壁面摩擦力。</p>
+                <p>● <b class="text-sky-300">大風量考慮：</b> 當風量超過 $20,000\text{ CMH}$ 時，務必注意風管加強肋 (Stiffener) 的佈置，以防止高壓下的風管震動（Booming Effect）。</p>
+            </div>
+        </div>
+    </section>
+</div>
+
+<script>
+    let currentShape = 'round';
+    let candidates = [];
+
+    // 針對 MAU 與一般應用的判斷基準
+    const APP_LIMITS = {
+        mau: { v_max: 15.0, f_max: 1.8, name: "MAU 系統", noise_offset: 4.0 },
+        main: { v_max: 9.0, f_max: 1.2, name: "主幹線", noise_offset: 0 },
+        sub: { v_max: 7.0, f_max: 1.0, name: "次幹道", noise_offset: 0 },
+        branch: { v_max: 5.0, f_max: 0.8, name: "分支管", noise_offset: 0 },
+        return: { v_max: 6.0, f_max: 0.8, name: "回風管", noise_offset: 0 }
+    };
+
+    function updateApplicationDefaults() {
+        const app = document.getElementById('application').value;
+        const limits = APP_LIMITS[app];
+        const method = document.getElementById('method').value;
+        if (method === 'friction') document.getElementById('targetFriction').value = limits.f_max;
+        else document.getElementById('targetVelocity').value = limits.v_max;
+        calculate();
+    }
+
+    function toggleMethodFields() {
+        const method = document.getElementById('method').value;
+        document.getElementById('frictionInputGroup').classList.toggle('hidden', method === 'velocity');
+        document.getElementById('velocityInputGroup').classList.toggle('hidden', method === 'friction');
+        updateApplicationDefaults();
+    }
+
+    function setShape(shape) {
+        currentShape = shape;
+        document.getElementById('btn-round').className = `p-3 rounded-xl border-2 font-bold text-xs transition-all ${shape === 'round' ? 'border-sky-600 bg-sky-50 text-sky-700 shadow-inner' : 'border-slate-200 text-slate-400 bg-white'}`;
+        document.getElementById('btn-rect').className = `p-3 rounded-xl border-2 font-bold text-xs transition-all ${shape === 'rect' ? 'border-sky-600 bg-sky-50 text-sky-700 shadow-inner' : 'border-slate-200 text-slate-400 bg-white'}`;
+        document.getElementById('preferredHeightGroup').classList.toggle('hidden', shape !== 'rect');
+        document.getElementById('rectTableContainer').classList.toggle('hidden', shape !== 'rect');
+        calculate();
+    }
+
+    function calculate() {
+        const airflowVal = parseFloat(document.getElementById('airflow').value) || 0;
+        const Q = (document.getElementById('airflowUnit').value === 'CMH') ? airflowVal / 3600 : (airflowVal * 1.699) / 3600;
+        if (Q <= 0) return;
+
+        const method = document.getElementById('method').value;
+        let De_theoretical = 0;
+
+        if (method === 'friction') {
+            const Pf = parseFloat(document.getElementById('targetFriction').value);
+            De_theoretical = 0.245 * Math.pow(Q, 0.38) / Math.pow(Pf, 0.21);
+        } else {
+            const V = parseFloat(document.getElementById('targetVelocity').value);
+            De_theoretical = Math.sqrt((4 * Q) / (Math.PI * V));
+        }
+
+        if (currentShape === 'round') {
+            const suggestedD_mm = Math.ceil((De_theoretical * 1000) / 25) * 25;
+            const realD = suggestedD_mm / 1000;
+            const v = Q / (Math.PI * Math.pow(realD, 2) / 4);
+            const pf = (0.002268 * Math.pow(v, 1.85)) / Math.pow(realD, 1.265);
+            document.getElementById('res-mainSize').innerText = `Ø ${suggestedD_mm}`;
+            updateMainDisplay(v, pf);
+        } else {
+            generateRectOptions(Q, De_theoretical);
+        }
+    }
+
+    function generateRectOptions(Q, De_target) {
+        const preferredH_mm = parseFloat(document.getElementById('preferredHeight').value);
+        const hasFixedHeight = !isNaN(preferredH_mm) && preferredH_mm > 0;
+        const body = document.getElementById('rectOptionBody');
+        body.innerHTML = '';
+        candidates = [];
+
+        if (hasFixedHeight) {
+            const H = preferredH_mm / 1000;
+            const A_target = Math.PI * Math.pow(De_target, 2) / 4;
+            const baseW_mm = Math.ceil((A_target / H) * 1000 / 25) * 25;
+            [baseW_mm - 50, baseW_mm - 25, baseW_mm, baseW_mm + 25, baseW_mm + 50].forEach(w_mm => {
+                if (w_mm > 0) addCandidate(Q, w_mm / 1000, H);
+            });
+            document.getElementById('listTitle').innerText = `MAU 固定高度方案 (H=${preferredH_mm}mm)`;
+        } else {
+            const standardWidths = [300, 400, 500, 600, 750, 900, 1000, 1200, 1500, 1800, 2100];
+            standardWidths.forEach(w_mm => {
+                const W = w_mm / 1000;
+                let H = (Math.PI * Math.pow(De_target, 2) / 4) / W;
+                H = Math.ceil(H * 1000 / 25) * 25 / 1000;
+                addCandidate(Q, W, H);
+            });
+            document.getElementById('listTitle').innerText = "MAU 自動建議尺寸矩陣";
+        }
+
+        const finalOptions = candidates.filter(c => c.AR <= 4.5).sort((a,b) => a.AR - b.AR).slice(0, 5);
+        finalOptions.forEach((opt, idx) => {
+            const isGood = opt.V <= APP_LIMITS[document.getElementById('application').value].v_max && opt.AR <= 3.5;
+            const row = document.createElement('tr');
+            row.className = `rect-option-row ${idx === 0 ? 'selected' : ''}`;
+            row.innerHTML = `
+                <td class="px-4 py-3 font-bold text-slate-700">${opt.w_mm} x ${opt.h_mm}</td>
+                <td class="px-4 py-3 text-center text-slate-500">${opt.AR.toFixed(1)} : 1</td>
+                <td class="px-4 py-3 text-center font-mono font-bold">${opt.V.toFixed(2)}</td>
+                <td class="px-4 py-3 text-center font-mono">${opt.Pf.toFixed(2)}</td>
+                <td class="px-4 py-3 text-right">
+                    <span class="text-[9px] font-black uppercase ${isGood ? 'text-emerald-500' : 'text-amber-500'}">
+                        ${isGood ? '✔ 推介' : '⚠ 警告'}
+                    </span>
+                </td>
+            `;
+            row.onclick = () => {
+                document.querySelectorAll('.rect-option-row').forEach(r => r.classList.remove('selected'));
+                row.classList.add('selected');
+                applyOption(opt);
+            };
+            body.appendChild(row);
+        });
+        if (finalOptions.length > 0) applyOption(finalOptions[0]);
+    }
+
+    function addCandidate(Q, W, H) {
+        const De = 1.3 * Math.pow(W * H, 0.625) / Math.pow(W + H, 0.25);
+        const V = Q / (W * H);
+        const material = parseFloat(document.getElementById('material').value);
+        // 使用考慮材質係數的壓損公式 (簡化擬合)
+        const frictionFactor = (material === 0.00009) ? 1.0 : (material === 0.00015 ? 1.15 : 1.35);
+        const Pf = frictionFactor * (0.002268 * Math.pow(V, 1.85)) / Math.pow(De, 1.265);
+        const AR = Math.max(W/H, H/W);
+        candidates.push({ w_mm: Math.round(W*1000), h_mm: Math.round(H*1000), AR, V, Pf });
+    }
+
+    function applyOption(opt) {
+        document.getElementById('res-mainSize').innerText = `${opt.w_mm} x ${opt.h_mm}`;
+        updateMainDisplay(opt.V, opt.Pf);
+    }
+
+    function updateMainDisplay(v, f) {
+        document.getElementById('res-velocity').innerText = v.toFixed(2);
+        document.getElementById('res-friction').innerText = f.toFixed(2);
+
+        const app = document.getElementById('application').value;
+        const limits = APP_LIMITS[app];
+        
+        // 修正噪音評估邏輯：MAU 模式自動偏移閾值
+        const v_eff = v - (limits.noise_offset || 0);
+        const noiseBadge = document.getElementById('noiseLevel');
+        if (v_eff < 6.5) { noiseBadge.innerText = "🔇 低噪音"; noiseBadge.className = "noise-badge bg-emerald-500 text-white"; }
+        else if (v_eff <= 10.0) { noiseBadge.innerText = "🔈 一般噪音 (機房級)"; noiseBadge.className = "noise-badge bg-amber-500 text-white"; }
+        else { noiseBadge.innerText = "🔊 高噪音 (需消音)"; noiseBadge.className = "noise-badge bg-red-600 text-white"; }
+
+        const adviseCard = document.getElementById('engAdviseCard');
+        const icon = document.getElementById('adviseIcon');
+        const title = document.getElementById('adviseTitle');
+        const content = document.getElementById('adviseContent');
+
+        if (v <= limits.v_max && f <= limits.f_max) {
+            adviseCard.className = "p-6 rounded-3xl border-l-8 flex items-start gap-5 status-ok section-card";
+            icon.innerText = "✅";
+            title.innerText = `設計評估：${limits.name} 合理`;
+            content.innerText = `此配置在 ${limits.name} 規範內運作。雖然風速較高，但完全符合無塵室外氣系統的空間節約原則與能效平衡。`;
+        } else {
+            adviseCard.className = "p-6 rounded-3xl border-l-8 flex items-start gap-5 status-crit section-card";
+            icon.innerText = "🛑";
+            title.innerText = `設計評估：超出 ${limits.name} 限制`;
+            content.innerText = `警告：流速(${v.toFixed(1)})或壓損(${f.toFixed(1)})已超過 MAU 設計建議上限。將導致劇烈的氣流噪音與風機靜壓不足，建議加大尺寸。`;
+        }
+    }
+
+    // 初始化
+    toggleMethodFields();
+</script>
+
+</body>
+</html>

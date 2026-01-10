@@ -1,0 +1,399 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HVAC Pro - 空調工程專業換算器</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --brand-color: #0284c7;
+            --bg-color: #f8fafc;
+        }
+        body {
+            font-family: 'Inter', 'Noto Sans TC', sans-serif;
+            background-color: var(--bg-color);
+            color: #334155;
+            -webkit-font-smoothing: antialiased;
+        }
+        .app-container {
+            max-width: 1000px;
+            margin: 0 auto;
+        }
+        /* 輕量級玻璃擬態 */
+        .glass-card {
+            background: #ffffff;
+            border: 1px solid #e2e8f0;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
+        }
+        /* 類別按鈕設計 */
+        .category-card {
+            transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+            background: #ffffff;
+            border: 1px solid #e2e8f0;
+        }
+        .category-card:hover {
+            border-color: #bae6fd;
+            background-color: #f0f9ff;
+        }
+        .category-card.active {
+            background-color: #f0f9ff;
+            border-color: var(--brand-color);
+            box-shadow: 0 0 0 1px var(--brand-color), 0 10px 15px -3px rgba(2, 132, 199, 0.1);
+        }
+        .category-card.active .icon-box {
+            color: var(--brand-color);
+            transform: scale(1.1);
+        }
+        .category-card.active .label-text {
+            color: var(--brand-color);
+        }
+        /* 數字輸入框動畫 */
+        .input-focus-effect {
+            transition: border-color 0.3s, box-shadow 0.3s;
+        }
+        .input-focus-effect:focus {
+            border-color: var(--brand-color);
+            box-shadow: 0 4px 0 -2px var(--brand-color);
+        }
+        /* 隱藏 Chrome/Safari/Edge 的數字箭頭 */
+        input::-webkit-outer-spin-button,
+        input::-webkit-inner-spin-button {
+            -webkit-appearance: none;
+            margin: 0;
+        }
+    </style>
+</head>
+<body class="py-10 px-4 md:px-6">
+
+<div class="app-container">
+    <!-- Header -->
+    <header class="text-center mb-12">
+        <div class="inline-flex items-center justify-center space-x-3 mb-4">
+            <div class="w-12 h-12 bg-sky-600 rounded-2xl flex items-center justify-center text-white shadow-lg shadow-sky-200">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-7 w-7" viewBox="0 0 20 20" fill="currentColor">
+                    <path fill-rule="evenodd" d="M11.3 1.046A1 1 0 0112 2v5h4a1 1 0 01.82 1.573l-7 10A1 1 0 018 18v-5H4a1 1 0 01-.82-1.573l7-10a1 1 0 011.12-.38z" clip-rule="evenodd" />
+                </svg>
+            </div>
+            <h1 class="text-3xl font-extrabold text-slate-800 tracking-tight">HVAC <span class="text-sky-600">Pro</span></h1>
+        </div>
+        <p class="text-slate-500 font-medium">空調工程專業換算工具</p>
+    </header>
+
+    <!-- 類別選單 (Grid) -->
+    <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4 mb-10" id="categoryGrid">
+        <!-- JS 動態插入 -->
+    </div>
+
+    <!-- 主換算面板 -->
+    <main class="glass-card rounded-[2rem] p-8 md:p-12 mb-8">
+        <div class="grid grid-cols-1 lg:grid-cols-[1fr_auto_1fr] items-center gap-12">
+            
+            <!-- 左側：輸入 -->
+            <div class="flex flex-col space-y-6">
+                <div class="flex items-center justify-between px-1">
+                    <span class="text-xs font-bold text-slate-400 uppercase tracking-widest">原始數值</span>
+                    <span class="text-[10px] bg-slate-100 text-slate-500 px-2 py-0.5 rounded">FROM</span>
+                </div>
+                <input type="number" id="fromInput" value="1" step="any"
+                    class="input-focus-effect w-full bg-transparent text-5xl font-bold text-slate-800 border-b-2 border-slate-100 py-4 outline-none">
+                <select id="fromUnit" class="w-full bg-slate-50 border border-slate-200 rounded-2xl p-4 text-slate-700 font-semibold focus:ring-2 focus:ring-sky-100 outline-none cursor-pointer hover:bg-slate-100 transition-colors">
+                </select>
+            </div>
+
+            <!-- 中間：交換按鈕 -->
+            <div class="flex justify-center">
+                <button id="swapBtn" class="bg-white border border-slate-100 shadow-md hover:shadow-lg hover:border-sky-200 text-sky-600 p-5 rounded-full transition-all group">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 group-hover:rotate-180 transition-transform duration-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
+                    </svg>
+                </button>
+            </div>
+
+            <!-- 右側：結果 -->
+            <div class="flex flex-col space-y-6">
+                <div class="flex items-center justify-between px-1">
+                    <span class="text-xs font-bold text-slate-400 uppercase tracking-widest">換算結果</span>
+                    <span class="text-[10px] bg-sky-100 text-sky-600 px-2 py-0.5 rounded font-bold">TO</span>
+                </div>
+                <input type="text" id="toInput" readonly
+                    class="w-full bg-transparent text-5xl font-bold text-sky-600 border-b-2 border-sky-50 py-4 outline-none select-all">
+                <select id="toUnit" class="w-full bg-slate-50 border border-slate-200 rounded-2xl p-4 text-slate-700 font-semibold focus:ring-2 focus:ring-sky-100 outline-none cursor-pointer hover:bg-slate-100 transition-colors">
+                </select>
+            </div>
+        </div>
+
+        <!-- 負載計算專用溫差設定 (僅在 load_flow 類別顯示) -->
+        <div id="loadSettings" class="mt-12 pt-8 border-t border-slate-100 hidden">
+            <h4 class="text-xs font-black text-slate-400 uppercase tracking-widest mb-6 px-1">設計溫差設定 (Design ΔT Settings)</h4>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                <div class="bg-slate-50 p-4 rounded-2xl flex items-center justify-between">
+                    <div>
+                        <span class="block text-xs font-bold text-slate-500">空氣溫差 ΔT Air</span>
+                        <span class="text-[10px] text-slate-400">用於 CMH/CFM 換算</span>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <input type="number" id="dtAir" value="10" step="0.5" class="w-16 bg-white border border-slate-200 rounded-lg p-2 font-bold text-sky-600 text-center">
+                        <span class="text-sm font-bold text-slate-500">°C</span>
+                    </div>
+                </div>
+                <div class="bg-slate-50 p-4 rounded-2xl flex items-center justify-between">
+                    <div>
+                        <span class="block text-xs font-bold text-slate-500">冰水溫差 ΔT Water</span>
+                        <span class="text-[10px] text-slate-400">用於 LPM/GPM 換算</span>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <input type="number" id="dtWater" value="5" step="0.5" class="w-16 bg-white border border-slate-200 rounded-lg p-2 font-bold text-sky-600 text-center">
+                        <span class="text-sm font-bold text-slate-500">°C</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- 設計參考區 -->
+    <section class="bg-white rounded-3xl border border-slate-200 p-8 shadow-sm">
+        <div class="flex items-center space-x-3 mb-6">
+            <div class="w-1 h-6 bg-sky-500 rounded-full"></div>
+            <h3 class="text-slate-800 font-bold text-lg">工程設計參考 (Rule of Thumb)</h3>
+        </div>
+        <div id="formulaContainer" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        </div>
+    </section>
+
+    <footer class="mt-16 text-center text-slate-400 text-sm">
+        <p>© 2026 HVAC Pro Engineering Toolkit</p>
+    </footer>
+</div>
+
+<script>
+    const unitData = {
+        load_flow: {
+            name: "負荷/流量換算",
+            icon: "🧊",
+            special: true,
+            units: {
+                "美制冷凍噸 (US RT)": "RT",
+                "千瓦 (kW)": "kW",
+                "BTU/hr": "BTU",
+                "風量 CMH (Air)": "CMH",
+                "風量 CFM (Air)": "CFM",
+                "流量 LPM (Water)": "LPM",
+                "流量 GPM (Water)": "GPM"
+            },
+            formula: ["Air: Q = CMH * 1.2 * 1.005 * ΔT / 3600", "Water: Q = LPM * 4.186 * ΔT / 60", "轉換基準會隨上方溫差設定變動"]
+        },
+        capacity: {
+            name: "冷凍噸/功率",
+            icon: "❄️",
+            units: {
+                "美制冷凍噸 (US RT)": 3516.85,
+                "日本冷凍噸 (JP RT)": 3861,
+                "瓦特 (W)": 1,
+                "千瓦 (kW)": 1000,
+                "BTU/hr": 0.29307,
+                "kcal/hr": 1.16222,
+                "馬力 (HP)": 745.7,
+                "鍋爐馬力 (BHP)": 9809.5
+            },
+            formula: ["1 US RT = 12,000 BTU/hr", "1 kW = 860 kcal/hr", "1 HP ≈ 0.746 kW"]
+        },
+        airflow: {
+            name: "風量/流量",
+            icon: "💨",
+            units: {
+                "CMH (m³/h)": 1,
+                "CMM (m³/min)": 60,
+                "CFM (ft³/min)": 1.69901,
+                "公升/秒 (l/s)": 3.6,
+                "公升/分 (LPM)": 0.06,
+                "美制加侖/分 (GPM)": 0.22712,
+                "英制加侖/分 (UK GPM)": 0.27276
+            },
+            formula: ["1 CMM = 60 CMH", "1 CFM ≈ 1.7 CMH", "1 GPM ≈ 3.785 LPM"]
+        },
+        area: {
+            name: "面積",
+            icon: "🔳",
+            units: {
+                "平方公尺 (m²)": 1,
+                "坪 (Taiwan)": 3.30579,
+                "平方英呎 (ft²)": 0.092903,
+                "平方英吋 (in²)": 0.00064516
+            },
+            formula: ["1 坪 ≈ 3.306 m²", "1 m² ≈ 10.76 ft²", "1 坪 ≈ 35.58 ft²"]
+        },
+        temperature: {
+            name: "溫度",
+            icon: "🌡️",
+            special: true,
+            units: {
+                "攝氏 (°C)": "C",
+                "華氏 (°F)": "F",
+                "絕對溫度 (K)": "K"
+            },
+            formula: ["F = C * 1.8 + 32", "K = C + 273.15", "冷卻水標準溫差 5°C"]
+        }
+    };
+
+    let currentCategory = 'load_flow';
+
+    const categoryGrid = document.getElementById('categoryGrid');
+    const fromUnit = document.getElementById('fromUnit');
+    const toUnit = document.getElementById('toUnit');
+    const fromInput = document.getElementById('fromInput');
+    const toInput = document.getElementById('toInput');
+    const formulaContainer = document.getElementById('formulaContainer');
+    const swapBtn = document.getElementById('swapBtn');
+    const loadSettings = document.getElementById('loadSettings');
+    const dtAir = document.getElementById('dtAir');
+    const dtWater = document.getElementById('dtWater');
+
+    function initCategories() {
+        categoryGrid.innerHTML = '';
+        Object.keys(unitData).forEach(key => {
+            const cat = unitData[key];
+            const btn = document.createElement('div');
+            btn.className = `category-card p-5 rounded-2xl cursor-pointer text-center flex flex-col items-center justify-center space-y-2 ${key === currentCategory ? 'active' : ''}`;
+            btn.innerHTML = `
+                <div class="icon-box text-2xl transition-transform duration-300">${cat.icon}</div>
+                <div class="label-text font-bold text-xs tracking-tight text-slate-600 transition-colors">${cat.name}</div>
+            `;
+            btn.onclick = () => selectCategory(key);
+            btn.id = `cat-${key}`;
+            categoryGrid.appendChild(btn);
+        });
+        updateDropdowns();
+    }
+
+    function selectCategory(key) {
+        document.querySelectorAll('.category-card').forEach(el => el.classList.remove('active'));
+        document.getElementById(`cat-${key}`).classList.add('active');
+        currentCategory = key;
+        
+        if (currentCategory === 'load_flow') {
+            loadSettings.classList.remove('hidden');
+        } else {
+            loadSettings.classList.add('hidden');
+        }
+        
+        updateDropdowns();
+        convert();
+    }
+
+    function updateDropdowns() {
+        const units = unitData[currentCategory].units;
+        const keys = Object.keys(units);
+        const options = keys.map(unit => `<option value="${unit}">${unit}</option>`).join('');
+        fromUnit.innerHTML = options;
+        toUnit.innerHTML = options;
+        
+        if (toUnit.options.length > 1) {
+            // 預設切換 logic
+            if (currentCategory === 'load_flow') toUnit.selectedIndex = 3; 
+            else toUnit.selectedIndex = 1;
+        }
+
+        formulaContainer.innerHTML = unitData[currentCategory].formula.map(f => `
+            <div class="bg-slate-50 p-4 rounded-2xl border border-slate-100 text-slate-600 text-sm font-medium flex items-center">
+                <div class="w-1.5 h-1.5 bg-sky-400 rounded-full mr-3"></div>
+                ${f}
+            </div>
+        `).join('');
+    }
+
+    function getLoadFlowKw(unitType, value) {
+        const dAir = parseFloat(dtAir.value) || 0;
+        const dWater = parseFloat(dtWater.value) || 0;
+        
+        switch(unitType) {
+            case 'RT': return value * 3.51685;
+            case 'kW': return value;
+            case 'BTU': return value * 0.00029307;
+            case 'CMH': return value * (1.2 * 1.005 * dAir / 3600);
+            case 'CFM': return (value * 1.699) * (1.2 * 1.005 * dAir / 3600);
+            case 'LPM': return value * (4.186 * dWater / 60);
+            case 'GPM': return (value * 3.785) * (4.186 * dWater / 60);
+            default: return value;
+        }
+    }
+
+    function fromKwToTarget(kw, targetType) {
+        const dAir = parseFloat(dtAir.value) || 0;
+        const dWater = parseFloat(dtWater.value) || 0;
+        
+        if (kw === 0) return 0;
+        
+        switch(targetType) {
+            case 'RT': return kw / 3.51685;
+            case 'kW': return kw;
+            case 'BTU': return kw / 0.00029307;
+            case 'CMH': return dAir === 0 ? 0 : (kw * 3600) / (1.2 * 1.005 * dAir);
+            case 'CFM': return dAir === 0 ? 0 : ((kw * 3600) / (1.2 * 1.005 * dAir)) / 1.699;
+            case 'LPM': return dWater === 0 ? 0 : (kw * 60) / (4.186 * dWater);
+            case 'GPM': return dWater === 0 ? 0 : ((kw * 60) / (4.186 * dWater)) / 3.785;
+            default: return kw;
+        }
+    }
+
+    function convert() {
+        const val = parseFloat(fromInput.value);
+        if (isNaN(val)) {
+            toInput.value = "";
+            return;
+        }
+
+        const category = unitData[currentCategory];
+        const fUnit = fromUnit.value;
+        const tUnit = toUnit.value;
+        let result;
+
+        if (currentCategory === 'temperature') {
+            let celsius;
+            const fType = category.units[fUnit];
+            const tType = category.units[tUnit];
+            if (fType === "C") celsius = val;
+            else if (fType === "F") celsius = (val - 32) / 1.8;
+            else if (fType === "K") celsius = val - 273.15;
+
+            if (tType === "C") result = celsius;
+            else if (tType === "F") result = (celsius * 1.8) + 32;
+            else if (tType === "K") result = celsius + 273.15;
+        } else if (currentCategory === 'load_flow') {
+            const kwBase = getLoadFlowKw(category.units[fUnit], val);
+            result = fromKwToTarget(kwBase, category.units[tUnit]);
+        } else {
+            const fromRatio = category.units[fUnit];
+            const toRatio = category.units[tUnit];
+            result = (val * fromRatio) / toRatio;
+        }
+
+        if (result === 0) {
+            toInput.value = "0";
+        } else if (Math.abs(result) < 0.0001 || Math.abs(result) > 10000000) {
+            toInput.value = result.toExponential(4);
+        } else {
+            toInput.value = parseFloat(result.toFixed(6)).toString();
+        }
+    }
+
+    swapBtn.onclick = () => {
+        const tempUnit = fromUnit.value;
+        fromUnit.value = toUnit.value;
+        toUnit.value = tempUnit;
+        convert();
+    };
+
+    fromInput.oninput = convert;
+    fromUnit.onchange = convert;
+    toUnit.onchange = convert;
+    dtAir.oninput = convert;
+    dtWater.oninput = convert;
+
+    initCategories();
+    selectCategory('load_flow');
+</script>
+
+</body>
+</html>
