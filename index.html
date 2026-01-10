@@ -3,206 +3,294 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>HVAC Toolbox | 空調工程師工具箱</title>
+    <title>東旭的HVAC Pro-Suite | 專業空調設計門戶</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet">
     <style>
+        :root {
+            --primary-blue: #2563eb;
+            --soft-blue: #eff6ff;
+            --border-light: rgba(226, 232, 240, 0.8);
+        }
+
         body {
-            font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-            background-color: #f1f5f9; /* 淺灰藍背景 */
+            font-family: 'Plus Jakarta Sans', 'Noto Sans TC', sans-serif;
+            background: #f8fafc;
             color: #1e293b;
+            overflow: hidden;
         }
-        .sidebar-link.active {
-            background-color: #eff6ff;
-            color: #2563eb;
-            border-right: 4px solid #2563eb;
-            font-weight: 600;
+
+        /* 藍白動態背景 */
+        .mesh-bg {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            z-index: -1;
+            background: 
+                radial-gradient(at 0% 0%, rgba(59, 130, 246, 0.08) 0px, transparent 50%),
+                radial-gradient(at 100% 0%, rgba(37, 99, 235, 0.05) 0px, transparent 50%),
+                radial-gradient(at 50% 100%, rgba(186, 230, 253, 0.15) 0px, transparent 50%);
+            background-color: #f8fafc;
         }
-        .main-card {
+
+        /* 淺色玻璃卡片 */
+        .tool-card {
+            background: rgba(255, 255, 255, 0.8);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            border: 1px solid var(--border-light);
+            transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+
+        .tool-card:hover {
             background: #ffffff;
-            border: 1px solid #e2e8f0;
-            box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.05), 0 2px 4px -2px rgb(0 0 0 / 0.05);
-        }
-        /* 自定義滾動條 */
-        ::-webkit-scrollbar {
-            width: 6px;
-        }
-        ::-webkit-scrollbar-track {
-            background: #f1f5f9;
-        }
-        ::-webkit-scrollbar-thumb {
-            background: #cbd5e1;
-            border-radius: 10px;
-        }
-        
-        /* 輸入框通用樣式 */
-        input, select {
-            background: #ffffff;
-            border: 1px solid #cbd5e1;
-            color: #1e293b;
-            padding: 0.5rem;
-            border-radius: 0.375rem;
-            transition: all 0.2s;
-        }
-        input:focus {
-            outline: none;
             border-color: #3b82f6;
-            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+            transform: translateY(-10px);
+            box-shadow: 0 25px 50px -12px rgba(59, 130, 246, 0.12);
         }
+
+        /* 進場動畫 */
+        @keyframes slideUp {
+            from { opacity: 0; transform: translateY(40px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .animate-slide-up {
+            opacity: 0;
+            animation: slideUp 0.7s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+        }
+
+        #module-viewport {
+            width: 100%;
+            height: calc(100vh - 72px);
+            border: none;
+            background: white;
+        }
+
+        /* 標題裝飾 */
+        .category-header::before {
+            content: '';
+            width: 4px;
+            height: 18px;
+            background: #2563eb;
+            display: inline-block;
+            margin-right: 12px;
+            border-radius: 2px;
+            vertical-align: middle;
+        }
+
+        .no-scrollbar::-webkit-scrollbar { display: none; }
     </style>
 </head>
-<body class="h-screen overflow-hidden flex flex-col md:flex-row">
+<body class="h-screen flex flex-col">
 
-    <!-- 側邊導覽列 -->
-    <aside class="w-full md:w-64 bg-white flex-shrink-0 flex flex-col border-b md:border-b-0 md:border-r border-slate-200">
-        <div class="p-6">
-            <h1 class="text-xl font-bold text-blue-600 flex items-center gap-2">
-                <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z" />
-                </svg>
-                HVAC Toolbox
-            </h1>
-            <p class="text-[10px] text-slate-400 mt-1 uppercase tracking-widest font-semibold">Engineering Suite</p>
-        </div>
+    <div class="mesh-bg"></div>
 
-        <nav class="flex-grow overflow-y-auto py-4">
-            <ul class="space-y-1">
-                <li>
-                    <button onclick="switchTab('dashboard')" id="btn-dashboard" class="sidebar-link active w-full text-left px-6 py-3 flex items-center gap-3 hover:bg-slate-50 transition-all">
-                        <span class="text-lg">🏠</span>
-                        <span>首頁儀表板</span>
-                    </button>
-                </li>
-                <li>
-                    <button onclick="switchTab('water-pipe')" id="btn-water-pipe" class="sidebar-link w-full text-left px-6 py-3 flex items-center gap-3 hover:bg-slate-50 transition-all text-slate-600">
-                        <span class="text-lg text-blue-500">💧</span>
-                        <span>水管管徑計算</span>
-                    </button>
-                </li>
-                <li>
-                    <button onclick="switchTab('air-duct')" id="btn-air-duct" class="sidebar-link w-full text-left px-6 py-3 flex items-center gap-3 hover:bg-slate-50 transition-all text-slate-600">
-                        <span class="text-lg text-cyan-500">💨</span>
-                        <span>風管尺寸估算</span>
-                    </button>
-                </li>
-                <li>
-                    <button onclick="switchTab('load-calc')" id="btn-load-calc" class="sidebar-link w-full text-left px-6 py-3 flex items-center gap-3 hover:bg-slate-50 transition-all text-slate-600">
-                        <span class="text-lg text-sky-500">❄️</span>
-                        <span>負荷噸數計算</span>
-                    </button>
-                </li>
-                <li>
-                    <button onclick="switchTab('notes')" id="btn-notes" class="sidebar-link w-full text-left px-6 py-3 flex items-center gap-3 hover:bg-slate-50 transition-all text-slate-600">
-                        <span class="text-lg text-amber-500">📄</span>
-                        <span>工程規範筆記</span>
-                    </button>
-                </li>
-            </ul>
-        </nav>
-
-        <div class="p-6 border-t border-slate-100 bg-slate-50/50">
-            <div class="rounded-lg text-[11px] text-slate-500 space-y-1">
-                <p class="flex justify-between"><span>狀態</span> <span class="text-green-600 font-bold">● 連線中</span></p>
-                <p class="flex justify-between"><span>版本</span> <span>v1.2.0</span></p>
+    <!-- 頂部導覽列 -->
+    <header class="h-[72px] bg-white/80 backdrop-blur-md border-b border-slate-200 px-8 flex items-center justify-between flex-shrink-0 z-50">
+        <div class="flex items-center gap-6">
+            <div id="back-button" class="hidden">
+                <button onclick="closeModule()" class="flex items-center gap-2 px-4 py-2 rounded-full bg-slate-100 hover:bg-blue-600 text-slate-600 hover:text-white font-bold text-sm transition-all group">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 transform group-hover:-translate-x-1 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+                    </svg>
+                    返回主工具箱
+                </button>
+            </div>
+            <div class="flex items-center gap-3">
+                <div class="w-9 h-9 bg-blue-600 rounded-lg flex items-center justify-center text-white font-extrabold shadow-md shadow-blue-200">H</div>
+                <div>
+                    <h1 id="portal-title" class="text-xl font-extrabold text-slate-800 tracking-tight">HVAC <span class="text-blue-600">Pro-Suite</span></h1>
+                    <p id="portal-subtitle" class="text-[9px] text-slate-400 font-black uppercase tracking-[0.2em]">Engineering Control Center</p>
+                </div>
             </div>
         </div>
-    </aside>
+        
+        <div class="flex items-center gap-6">
+            <div class="hidden lg:flex items-center gap-4 border-r border-slate-200 pr-6">
+                <div class="text-right">
+                    <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">系統連線</p>
+                    <p class="text-[10px] font-black text-blue-600 flex items-center gap-1.5 justify-end">
+                        <span class="w-1.5 h-1.5 bg-blue-600 rounded-full animate-pulse"></span>
+                        ACTIVE HUB
+                    </p>
+                </div>
+            </div>
+            <div id="current-time" class="text-sm font-bold text-slate-700 font-mono">--:--:--</div>
+        </div>
+    </header>
 
     <!-- 主要內容區 -->
-    <main class="flex-grow overflow-y-auto p-6 md:p-10">
+    <main class="flex-grow overflow-hidden relative">
         
-        <!-- Tab: Dashboard -->
-        <section id="tab-dashboard" class="tab-content">
-            <header class="mb-10">
-                <h2 class="text-3xl font-bold mb-2 text-slate-800">工程師工具箱</h2>
-                <p class="text-slate-500 text-lg">歡迎回來，這是您的專業空調設計助理。</p>
-            </header>
+        <!-- 工具儀表板 (Dashboard Hub) -->
+        <div id="toolbox-hub" class="h-full overflow-y-auto p-8 md:p-16 no-scrollbar relative z-10">
+            <div class="max-w-7xl mx-auto">
+                
+                <!-- 歡迎區域 -->
+                <div class="mb-16 animate-slide-up" style="animation-delay: 0.1s">
+                    <h2 class="text-4xl font-extrabold text-slate-900 mb-4 tracking-tight">
+                        專業空調工程 <span class="text-blue-600">工具箱</span>
+                    </h2>
+                    <p class="text-slate-500 text-lg max-w-2xl font-medium leading-relaxed">
+                        提供標準化的空調與無塵室計算模組。請選擇下方工具進行設計核算。
+                    </p>
+                </div>
 
-            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-                <div class="main-card p-6 rounded-xl border-t-4 border-blue-600">
-                    <h3 class="text-lg font-bold text-slate-800 mb-3 flex items-center gap-2">
-                        快速概覽
-                    </h3>
-                    <div class="space-y-3 text-sm text-slate-600">
-                        <p class="flex justify-between border-b pb-2"><span>今日計算次數</span> <span class="font-mono font-bold text-blue-600">12</span></p>
-                        <p class="flex justify-between border-b pb-2"><span>最後更新</span> <span class="text-slate-400">2024/05/20</span></p>
+                <!-- 工具網格 1: 基礎工具 -->
+                <div class="mb-16 animate-slide-up" style="animation-delay: 0.2s">
+                    <h3 class="category-header text-sm font-black text-slate-400 uppercase tracking-[0.2em] mb-8">基礎設計工具 General Suite</h3>
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                        
+                        <!-- 換算工具 -->
+                        <div onclick="loadModule('conversion', '工程單位換算器')" class="tool-card p-8 rounded-[2rem] cursor-pointer group">
+                            <div class="w-14 h-14 bg-blue-50 rounded-2xl flex items-center justify-center text-3xl mb-6 group-hover:scale-110 transition-transform">🔄</div>
+                            <h4 class="text-xl font-bold text-slate-800 mb-2 group-hover:text-blue-600 transition-colors">單位換算器</h4>
+                            <p class="text-sm text-slate-500 leading-relaxed">支援 RT, CMH, GPM 溫差連動換算，工程師最常用的基礎校核工具。</p>
+                        </div>
+
+                        <!-- 空氣性質 -->
+                        <div onclick="loadModule('psychrometric', '空氣性質分析器')" class="tool-card p-8 rounded-[2rem] cursor-pointer group">
+                            <div class="w-14 h-14 bg-sky-50 rounded-2xl flex items-center justify-center text-3xl mb-6 group-hover:scale-110 transition-transform">☁️</div>
+                            <h4 class="text-xl font-bold text-slate-800 mb-2 group-hover:text-blue-600 transition-colors">空氣性質分析</h4>
+                            <p class="text-sm text-slate-500 leading-relaxed">提供高精度比焓、含濕量與除濕性能分析，MAU 設計核心模組。</p>
+                        </div>
+
+                        <!-- 風管計算 -->
+                        <div onclick="loadModule('air-duct', '風管尺寸檢核器')" class="tool-card p-8 rounded-[2rem] cursor-pointer group">
+                            <div class="w-14 h-14 bg-indigo-50 rounded-2xl flex items-center justify-center text-3xl mb-6 group-hover:scale-110 transition-transform">💨</div>
+                            <h4 class="text-xl font-bold text-slate-800 mb-2 group-hover:text-blue-600 transition-colors">風管選徑檢核</h4>
+                            <p class="text-sm text-slate-500 leading-relaxed">支援等摩擦法與等流速法選徑，自動產出最優化矩形風管候選方案。</p>
+                        </div>
                     </div>
                 </div>
 
-                <div class="main-card p-6 rounded-xl border-t-4 border-cyan-500">
-                    <h3 class="text-lg font-bold text-slate-800 mb-3">常用工具</h3>
-                    <div class="flex flex-wrap gap-2">
-                        <span class="px-2 py-1 bg-blue-50 text-blue-600 rounded text-xs">水冷系統</span>
-                        <span class="px-2 py-1 bg-cyan-50 text-cyan-600 rounded text-xs">風側設計</span>
-                        <span class="px-2 py-1 bg-slate-50 text-slate-600 rounded text-xs">ASHRAE</span>
+                <!-- 工具網格 2: 進階系統 -->
+                <div class="mb-20 animate-slide-up" style="animation-delay: 0.3s">
+                    <h3 class="category-header text-sm font-black text-slate-400 uppercase tracking-[0.2em] mb-8">進階工程設施 Advanced Suite</h3>
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                        
+                        <!-- 水塔補水量 -->
+                        <div onclick="loadModule('water-tower', '水塔補水量核算')" class="tool-card p-8 rounded-[2rem] cursor-pointer group">
+                            <div class="w-14 h-14 bg-blue-100/50 rounded-2xl flex items-center justify-center text-3xl mb-6 group-hover:scale-110 transition-transform text-blue-600">🗼</div>
+                            <h4 class="text-xl font-bold text-slate-800 mb-2 group-hover:text-blue-600 transition-colors">水塔補水量計算</h4>
+                            <p class="text-sm text-slate-500 leading-relaxed">根據熱負荷與濃縮倍率估算蒸發與流洩損失，確保給排水系統平衡。</p>
+                        </div>
+
+                        <!-- 冰水管路 -->
+                        <div onclick="loadModule('chilled-water', '冰水管路選徑器')" class="tool-card p-8 rounded-[2rem] cursor-pointer group border-t-4 border-blue-500">
+                            <div class="w-14 h-14 bg-blue-600 rounded-2xl flex items-center justify-center text-3xl mb-6 group-hover:scale-110 transition-transform text-white shadow-lg">❄️</div>
+                            <h4 class="text-xl font-bold text-slate-800 mb-2 group-hover:text-blue-600 transition-colors">冰水管路計算</h4>
+                            <p class="text-sm text-slate-500 leading-relaxed">自動化選取建議管徑與壓損檢核，提供 Sch 40 與銅管標準規格參考。</p>
+                            <span class="mt-4 inline-block bg-blue-100 text-blue-700 text-[10px] font-black px-3 py-1 rounded-full">HEAVY-DUTY</span>
+                        </div>
+
+                        <!-- 無塵室大師 -->
+                        <div onclick="loadModule('cr-master', '無塵室大師 Pro')" class="tool-card p-8 rounded-[2rem] cursor-pointer group border-t-4 border-blue-800">
+                            <div class="w-14 h-14 bg-slate-900 rounded-2xl flex items-center justify-center text-3xl mb-6 group-hover:scale-110 transition-transform text-white shadow-lg">🏗️</div>
+                            <h4 class="text-xl font-bold text-slate-800 mb-2 group-hover:text-blue-600 transition-colors">無塵室大師 Pro</h4>
+                            <p class="text-sm text-slate-500 leading-relaxed">多空間換氣次數、FFU 佈置與熱平衡全案核算，高科技廠房設計必備。</p>
+                            <span class="mt-4 inline-block bg-slate-100 text-slate-600 text-[10px] font-black px-3 py-1 rounded-full">ENGINEERING PLUS</span>
+                        </div>
                     </div>
                 </div>
             </div>
-        </section>
 
-        <!-- Tab: Water Pipe -->
-        <section id="tab-water-pipe" class="tab-content hidden">
-            <div class="mb-6 flex items-center justify-between">
-                <h2 class="text-2xl font-bold text-slate-800 flex items-center gap-3">
-                    <span class="p-2 bg-blue-100 rounded-lg text-blue-600">💧</span> 水管管徑計算
-                </h2>
-                <span class="text-xs text-slate-400 bg-white px-3 py-1 rounded-full border">物理公式運算</span>
-            </div>
-            <div class="main-card p-8 rounded-2xl">
-                <!-- 在此處貼入您的 HTML 計算代碼 -->
-                <div class="text-center py-12">
-                    <p class="text-slate-400 mb-4">準備好開始計算了嗎？</p>
-                    <button class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg transition-colors">貼入計算模組</button>
-                </div>
-            </div>
-        </section>
+            <!-- Footer -->
+            <footer class="max-w-7xl mx-auto pb-12 border-t border-slate-200 pt-10 text-center">
+                <p class="text-[10px] text-slate-400 font-bold uppercase tracking-[0.2em] leading-loose">
+                    HVAC Professional Suite • Specialized for Cleanroom Design<br>
+                    © 2026 Developed for Senior HVAC Engineers
+                </p>
+            </footer>
+        </div>
 
-        <!-- 其他頁面比照辦理... -->
-        <section id="tab-air-duct" class="tab-content hidden">
-             <h2 class="text-2xl font-bold text-slate-800 mb-6 flex items-center gap-3">
-                <span class="p-2 bg-cyan-100 rounded-lg text-cyan-600">💨</span> 風管尺寸估算
-            </h2>
-            <div class="main-card p-8 rounded-2xl">
-                <p class="text-slate-400 italic text-center">風管模組預留位</p>
+        <!-- 外部模組視窗 (Iframe Container) -->
+        <div id="module-container" class="hidden h-full flex flex-col bg-white transition-all duration-500 opacity-0 transform translate-y-full">
+            <div id="loading-overlay" class="absolute inset-0 flex flex-col items-center justify-center bg-white z-50">
+                <div class="w-12 h-12 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mb-4"></div>
+                <p class="text-xs font-bold text-blue-600 uppercase tracking-widest animate-pulse">正在載入附件模組...</p>
             </div>
-        </section>
-
-        <section id="tab-load-calc" class="tab-content hidden">
-            <h2 class="text-2xl font-bold text-slate-800 mb-6 flex items-center gap-3">
-                <span class="p-2 bg-sky-100 rounded-lg text-sky-600">❄️</span> 負荷噸數計算
-            </h2>
-            <div class="main-card p-8 rounded-2xl">
-                <p class="text-slate-400 italic text-center">負荷模組預留位</p>
-            </div>
-        </section>
+            <iframe id="module-viewport" src="" class="flex-grow"></iframe>
+        </div>
 
     </main>
 
     <script>
-        function switchTab(tabName) {
-            // 1. 隱藏所有內容
-            const contents = document.querySelectorAll('.tab-content');
-            contents.forEach(content => {
-                content.classList.add('hidden');
-            });
+        // GitHub 附件對照表 (對應您上傳的檔名)
+        const moduleMapping = {
+            'conversion': './空調工程專業換算工具.html',
+            'psychrometric': './空氣性質分析.html',
+            'air-duct': './風管計算.html',
+            'water-tower': './冷卻水塔補水量計算.html',
+            'cr-master': './Clean room master.html',
+            'chilled-water': './chilled-water.html' // 尚未上傳的可作為預留
+        };
 
-            // 2. 顯示選擇的內容
-            const activeTab = document.getElementById('tab-' + tabName);
-            if (activeTab) activeTab.classList.remove('hidden');
+        function loadModule(tabId, toolName) {
+            const hub = document.getElementById('toolbox-hub');
+            const container = document.getElementById('module-container');
+            const iframe = document.getElementById('module-viewport');
+            const backBtn = document.getElementById('back-button');
+            const title = document.getElementById('portal-title');
+            const subtitle = document.getElementById('portal-subtitle');
+            const loader = document.getElementById('loading-overlay');
 
-            // 3. 更新側邊欄按鈕樣式
-            const buttons = document.querySelectorAll('.sidebar-link');
-            buttons.forEach(btn => {
-                btn.classList.remove('active');
-                btn.classList.add('text-slate-600');
-            });
+            // 1. 切換顯示
+            container.classList.remove('hidden');
+            setTimeout(() => {
+                container.classList.remove('translate-y-full', 'opacity-0');
+            }, 50);
 
-            const activeBtn = document.getElementById('btn-' + tabName);
-            if (activeBtn) {
-                activeBtn.classList.add('active');
-                activeBtn.classList.remove('text-slate-600');
+            backBtn.classList.remove('hidden');
+            title.innerHTML = `HVAC <span class="text-blue-600">${toolName}</span>`;
+            subtitle.innerText = 'Engine Running • Computing Results';
+
+            // 2. 載入檔案
+            const filePath = moduleMapping[tabId];
+            if (filePath) {
+                loader.classList.remove('hidden');
+                iframe.src = filePath;
+                
+                iframe.onload = () => {
+                    setTimeout(() => {
+                        loader.classList.add('hidden');
+                    }, 400);
+                };
             }
         }
+
+        function closeModule() {
+            const container = document.getElementById('module-container');
+            const backBtn = document.getElementById('back-button');
+            const title = document.getElementById('portal-title');
+            const subtitle = document.getElementById('portal-subtitle');
+            const iframe = document.getElementById('module-viewport');
+
+            container.classList.add('translate-y-full', 'opacity-0');
+            setTimeout(() => {
+                container.classList.add('hidden');
+                iframe.src = 'about:blank';
+            }, 500);
+
+            backBtn.classList.add('hidden');
+            title.innerHTML = 'HVAC <span class="text-blue-600">Pro-Suite</span>';
+            subtitle.innerText = 'Engineering Control Center';
+        }
+
+        // 更新時間
+        function updateTime() {
+            const timeEl = document.getElementById('current-time');
+            if (timeEl) {
+                const now = new Date();
+                timeEl.innerText = now.toLocaleTimeString('zh-TW', { hour12: false });
+            }
+        }
+        setInterval(updateTime, 1000);
+        updateTime();
+
+        window.onload = () => {
+            console.log("Professional Blue-White Portal v2.9.2 Initialized.");
+        };
     </script>
 </body>
 </html>
