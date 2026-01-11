@@ -21,6 +21,11 @@
             background-image: radial-gradient(#cbd5e1 1px, transparent 1px);
             background-size: 30px 30px;
         }
+        @keyframes pulse-warning {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+        .warning-pulse { animation: pulse-warning 1s infinite; }
     </style>
 </head>
 <body>
@@ -28,8 +33,7 @@
 
     <script type="text/babel">
         /**
-         * [STORAGE_MARKER] 
-         * 專案存檔資料核心：另存新檔時，INITIAL_PROJECT_DATA 會被注入
+         * [STORAGE_MARKER] 專案存檔資料核心
          */
         const INITIAL_PROJECT_DATA = null;
 
@@ -45,9 +49,10 @@
             ChevronDown: () => <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>,
             ChevronUp: () => <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="18 15 12 9 6 15"></polyline></svg>,
             X: () => <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>,
-            Layers: () => <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="12 2 2 7 12 12 22 7 12 2"></polygon><polyline points="2 17 12 22 22 17"></polyline></svg>,
+            AlertTriangle: () => <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>,
             Save: () => <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path><polyline points="17 21 17 13 7 13 7 21"></polyline><polyline points="7 3 7 8 15 8"></polyline></svg>,
-            Settings: () => <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+            Settings: () => <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>,
+            Share2: () => <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="18" cy="5" r="3"></circle><circle cx="6" cy="12" r="3"></circle><circle cx="18" cy="19" r="3"></circle><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"></line><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"></line></svg>
         };
 
         const CP = 4.186; 
@@ -64,24 +69,49 @@
             { mm: 150, maxLpm: 1594,  internal: 155.20 },
             { mm: 200, maxLpm: 2295,  internal: 204.70 },
             { mm: 250, maxLpm: 4080,  internal: 254.20 },
-            { mm: 300, maxLpm: 6375,  internal: 304.70 }
+            { mm: 300, maxLpm: 6375,  internal: 304.70 },
+            { mm: 350, maxLpm: 9180,  internal: 350.0 },
+            { mm: 400, maxLpm: 16064, internal: 400.0 },
+            { mm: 450, maxLpm: 20981, internal: 450.0 },
+            { mm: 500, maxLpm: 26554, internal: 500.0 },
+            { mm: 550, maxLpm: 32783, internal: 550.0 },
+            { mm: 600, maxLpm: 39667, internal: 600.0 },
+            { mm: 650, maxLpm: 47207, internal: 650.0 },
+            { mm: 700, maxLpm: 55403, internal: 700.0 },
+            { mm: 750, maxLpm: 64254, internal: 750.0 },
+            { mm: 800, maxLpm: 73761, internal: 800.0 },
+            { mm: 850, maxLpm: 83923, internal: 850.0 },
+            { mm: 900, maxLpm: 94742, internal: 900.0 },
+            { mm: 950, maxLpm: 106215, internal: 950.0 },
+            { mm: 1000, maxLpm: 118345, internal: 1000.0 },
+            { mm: 1050, maxLpm: 131130, internal: 1050.0 },
+            { mm: 1100, maxLpm: 160634, internal: 1100.0 },
+            { mm: 1150, maxLpm: 176297, internal: 1150.0 },
+            { mm: 1200, maxLpm: 192688, internal: 1200.0 },
+            { mm: 1250, maxLpm: 209808, internal: 1250.0 },
+            { mm: 1300, maxLpm: 227656, internal: 1300.0 }
         ];
 
         const HydraulicEngine = {
             calculateLps: (kw, qty, dt) => (kw * qty) / (CP * dt),
             getSizing: (totalLps) => {
                 const totalLpm = totalLps * 60;
+                // [修正: 確保選型與 LPM 匹配，支援 DN1300+]
                 const match = PIPE_SIZING_DATA.find(p => p.maxLpm >= totalLpm) || PIPE_SIZING_DATA[PIPE_SIZING_DATA.length - 1];
                 const area = Math.PI * Math.pow((match.internal / 2) / 1000, 2);
                 const velocity = (totalLps / 1000) / area;
-                return { dn: match.mm, velocity, lpm: totalLpm };
+                return { 
+                    dn: totalLpm > PIPE_SIZING_DATA[PIPE_SIZING_DATA.length-1].maxLpm ? `${match.mm}+` : match.mm, 
+                    velocity, 
+                    lpm: totalLpm,
+                    warning: velocity > 2.8 
+                };
             }
         };
 
         function App() {
             const [activeTab, setActiveTab] = useState('editor');
             
-            // 初始化狀態：如果有存檔資料則載入，否則預設
             const [library, setLibrary] = useState(INITIAL_PROJECT_DATA?.library || [
                 { id: 'lib-dcc-1', type: 'DCC', label: 'DCC 標準型', brand: 'TICA', model: 'TWC-050', kw: 49.7, dt: 5, pd: 35, pipeSize: 'DN32', color: 'bg-blue-500' },
                 { id: 'lib-dcc-2', type: 'DCC', label: 'DCC 高效型', brand: 'TICA', model: 'TWC-065', kw: 65.2, dt: 5, pd: 42, pipeSize: 'DN40', color: 'bg-indigo-600' },
@@ -92,32 +122,27 @@
                 { id: 'src-1', templateId: 'SOURCE', x: 100, y: 300, qty: 1 },
                 { id: 'inst-1', templateId: 'lib-dcc-1', x: 500, y: 200, qty: 6 },
                 { id: 'inst-2', templateId: 'lib-dcc-2', x: 500, y: 450, qty: 4 },
+                { id: 'inst-3', templateId: 'lib-mau-1', x: 750, y: 325, qty: 1 },
             ]);
 
             const [pipes, setPipes] = useState(INITIAL_PROJECT_DATA?.pipes || [
-                { id: 'p-1', fromId: 'src-1', toId: 'inst-1', fromPort: 'right', toPort: 'left' },
-                { id: 'p-2', fromId: 'inst-1', toId: 'inst-2', fromPort: 'bottom', toPort: 'top' }
+                { id: 'p-1', fromId: 'src-1', fromPort: 'right', toId: 'inst-1', toPort: 'left' },
+                { id: 'p-2', fromId: 'inst-1', fromPort: 'bottom', toId: 'inst-2', toPort: 'top' },
+                { id: 'p-3', fromId: 'inst-1', fromPort: 'right', toId: 'inst-3', toPort: 'left' }
             ]);
 
             const [scale, setScale] = useState(INITIAL_PROJECT_DATA?.viewState?.scale || 1);
             const [offset, setOffset] = useState(INITIAL_PROJECT_DATA?.viewState?.offset || { x: 150, y: 150 });
             const [results, setResults] = useState([]);
+            const [nodeCalculatedFlows, setNodeCalculatedFlows] = useState({});
 
-            // ==========================================
-            // 優化後的另存 HTML 邏輯
-            // ==========================================
             const handleExportHTML = () => {
                 const projectData = { library, nodes, pipes, viewState: { scale, offset } };
                 const docType = "<!DOCTYPE html>\n";
                 let currentHTML = document.documentElement.outerHTML;
-                
-                // 使用正則表達式尋找 INITIAL_PROJECT_DATA = null; 的位置
-                // \s* 代表匹配任何空白字元
                 const regex = /const\s+INITIAL_PROJECT_DATA\s*=\s*null\s*;/;
                 const dataString = `const INITIAL_PROJECT_DATA = ${JSON.stringify(projectData, null, 4)};`;
-                
                 const newHTML = currentHTML.replace(regex, dataString);
-                
                 const blob = new Blob([docType + newHTML], { type: 'text/html' });
                 const url = URL.createObjectURL(blob);
                 const a = document.createElement('a');
@@ -131,31 +156,55 @@
             };
 
             const solveHydraulics = useCallback(() => {
-                const nodeLpsMap = {};
+                // [修正: 定義節點基礎負載 Map]
+                const baseFlowLpsMap = {};
                 nodes.forEach(node => {
-                    if (node.templateId === 'SOURCE') {
-                        nodeLpsMap[node.id] = 0;
+                    if (node.templateId === 'SOURCE' || node.type === 'PIVOT') {
+                        baseFlowLpsMap[node.id] = 0;
                     } else {
                         const lib = library.find(l => l.id === node.templateId);
                         const effectiveKw = node.customKw !== undefined ? node.customKw : (lib ? lib.kw : 0);
                         const effectiveDt = lib ? lib.dt : 5;
-                        nodeLpsMap[node.id] = HydraulicEngine.calculateLps(effectiveKw, node.qty, effectiveDt);
+                        baseFlowLpsMap[node.id] = HydraulicEngine.calculateLps(effectiveKw, node.qty, effectiveDt);
                     }
                 });
 
-                const res = pipes.map(pipe => {
-                    const getDownstreamLps = (targetId, visited = new Set()) => {
-                        if (visited.has(targetId)) return 0;
-                        visited.add(targetId);
-                        let sum = nodeLpsMap[targetId] || 0;
-                        pipes.filter(p => p.fromId === targetId).forEach(cp => sum += getDownstreamLps(cp.toId, visited));
-                        return sum;
-                    };
-                    const flow = getDownstreamLps(pipe.toId);
-                    const sizing = HydraulicEngine.getSizing(flow);
-                    return { ...pipe, lps: flow, ...sizing };
+                // [修正: 遞迴下游需求總合函數 (Demand-side aggregation)]
+                const getDownstreamRequirement = (nodeId, visited = new Set()) => {
+                    if (visited.has(nodeId)) return 0;
+                    visited.add(nodeId);
+
+                    let sum = baseFlowLpsMap[nodeId] || 0;
+                    pipes.filter(p => p.fromId === nodeId).forEach(p => {
+                        sum += getDownstreamRequirement(p.toId, visited);
+                    });
+                    return sum;
+                };
+
+                // [修正: 遞迴上游供應流向分配 (Supply-side distribution)]
+                // 當前模型中，管路流量定義為：該管路下游端點能滿足的所有負載總和
+                const pipeResults = pipes.map(pipe => {
+                    const flowReq = getDownstreamRequirement(pipe.toId);
+                    const sizing = HydraulicEngine.getSizing(flowReq);
+                    
+                    // [修正: Debug Log]
+                    console.log(`[Flow Trace] Pipe ${pipe.id} (${pipe.fromId}->${pipe.toId}): Flow=${(flowReq*60).toFixed(0)} LPM, DN=${sizing.dn}, Vel=${sizing.velocity.toFixed(2)}m/s`);
+                    
+                    return { ...pipe, lps: flowReq, ...sizing };
                 });
-                setResults(res);
+
+                // [修正: 節點狀態更新]
+                const nodeAggregates = {};
+                nodes.forEach(node => {
+                    const totalLpm = getDownstreamRequirement(node.id) * 60;
+                    nodeAggregates[node.id] = totalLpm;
+                    
+                    // [修正: Debug Log]
+                    console.log(`[Node Sync] ${node.id}: Total Load=${totalLpm.toFixed(0)} LPM`);
+                });
+
+                setResults(pipeResults);
+                setNodeCalculatedFlows(nodeAggregates);
             }, [nodes, pipes, library]);
 
             useEffect(() => { solveHydraulics(); }, [solveHydraulics]);
@@ -190,7 +239,7 @@
                                 pipes={pipes} setPipes={setPipes}
                                 scale={scale} setScale={setScale}
                                 offset={offset} setOffset={setOffset}
-                                results={results}
+                                results={results} nodeFlows={nodeCalculatedFlows}
                             />
                         )}
                     </div>
@@ -251,7 +300,7 @@
             );
         }
 
-        function HydraulicEditor({ library, nodes, setNodes, pipes, setPipes, scale, setScale, offset, setOffset, results }) {
+        function HydraulicEditor({ library, nodes, setNodes, pipes, setPipes, scale, setScale, offset, setOffset, results, nodeFlows }) {
             const [sidebarOpen, setSidebarOpen] = useState(true);
             const [drawerOpen, setDrawerOpen] = useState(false);
             const [selectedNodes, setSelectedNodes] = useState(new Set());
@@ -279,16 +328,10 @@
                 return () => container.removeEventListener('wheel', handleWheel);
             }, [setScale]);
 
-            // ==========================================
-            // 精準定位：計算當前視窗正中心的畫布座標
-            // ==========================================
             const getSpawnPoint = useCallback(() => {
                 const canvas = containerRef.current;
                 if (!canvas) return { x: 200, y: 200 };
                 const rect = canvas.getBoundingClientRect();
-                
-                // 公式：(視窗中心 - 畫布偏移) / 縮放
-                // 減去元件尺寸的一半 (180/2=90, 120/2=60)
                 return {
                     x: (rect.width / 2 - offset.x) / scale - 90,
                     y: (rect.height / 2 - offset.y) / scale - 60
@@ -303,9 +346,8 @@
 
             const getNodeDimensions = (node) => {
                 if (!node) return { w: 180, h: 120 };
-                if (node.templateId === 'SOURCE') return { w: 180, h: 80 };
-                const compositionRows = node.isMerged && node.composition ? Object.keys(node.composition).length : 0;
-                return { w: 200 + (node.isMerged ? 20 : 0), h: node.isMerged ? 60 + (compositionRows * 24) + 40 : 120 };
+                if (node.templateId === 'SOURCE' || node.type === 'PIVOT') return { w: 180, h: 90 };
+                return { w: 180, h: 120 };
             };
 
             const getPortOffset = (portType, node) => {
@@ -391,8 +433,13 @@
                             <div onClick={() => {
                                 const pos = getSpawnPoint();
                                 setNodes([...nodes, { id: `src-${Date.now()}`, templateId: 'SOURCE', x: pos.x, y: pos.y, qty: 1 }]);
-                            }} className="p-4 bg-slate-800 text-white rounded-xl cursor-pointer hover:scale-[1.02] shadow-md flex items-center justify-between group"><div className="flex flex-col"><span className="text-xs font-black uppercase tracking-tighter">System Header</span><span className="text-[9px] opacity-50">水源入口端</span></div><Icons.Plus /></div>
+                            }} className="p-4 bg-slate-800 text-white rounded-xl cursor-pointer hover:scale-[1.02] shadow-md flex items-center justify-between group"><div className="flex flex-col"><span className="text-xs font-black uppercase tracking-tighter">System Header</span><span className="text-[9px] opacity-50">水源入口端 (SOURCE)</span></div><Icons.Plus /></div>
                             
+                            <div onClick={() => {
+                                const pos = getSpawnPoint();
+                                setNodes([...nodes, { id: `pvt-${Date.now()}`, type: 'PIVOT', label: '匯集支點', x: pos.x, y: pos.y, color: 'bg-emerald-600' }]);
+                            }} className="p-4 bg-emerald-700 text-white rounded-xl cursor-pointer hover:scale-[1.02] shadow-md flex items-center justify-between group"><div className="flex flex-col"><span className="text-xs font-black uppercase tracking-tighter">Regional Pivot</span><span className="text-[9px] opacity-50">區域匯集點 (PIVOT)</span></div><Icons.Share2 /></div>
+
                             <div className="h-px bg-slate-100 my-2" />
                             
                             {library.map(lib => (
@@ -423,11 +470,12 @@
                                     if (!from || !to) return null;
                                     const off1 = getPortOffset(p.fromPort, from), off2 = getPortOffset(p.toPort, to);
                                     const x1 = from.x + off1.x, y1 = from.y + off1.y, x2 = to.x + off2.x, y2 = to.y + off2.y;
+                                    // [修正: 流速視覺警報]
                                     const isCrit = p.velocity > 2.8; 
                                     return (
                                         <g key={p.id}>
-                                            <path ref={el => pathRefs.current[p.id] = el} d={getPathD(x1, y1, x2, y2, p.fromPort, p.toPort)} stroke={isCrit ? '#ef4444' : '#64748b'} strokeWidth={isCrit ? "5" : "3"} fill="none" strokeLinecap="round" />
-                                            <foreignObject ref={el => labelRefs.current[p.id] = el} x={(x1+x2)/2 - 55} y={(y1+y2)/2 - 20} width="130" height="50" className="pointer-events-auto"><div className={`flex flex-col items-center p-1.5 rounded-lg border shadow-lg bg-white/95 backdrop-blur ${isCrit ? 'text-red-600 border-red-400' : 'text-slate-600 border-slate-200'}`}><div className="text-[10px] font-black leading-tight">DN{p.dn} ({p.lpm.toFixed(0)} LPM)</div><div className="text-[8px] font-bold opacity-70">Velocity: {p.velocity.toFixed(2)} m/s</div><button onClick={() => setPipes(prev => prev.filter(pip => pip.id !== p.id))} className="absolute -top-2 -right-2 bg-white border shadow rounded-full p-1 opacity-0 hover:opacity-100"><Icons.X /></button></div></foreignObject>
+                                            <path ref={el => pathRefs.current[p.id] = el} d={getPathD(x1, y1, x2, y2, p.fromPort, p.toPort)} stroke={isCrit ? '#ef4444' : '#3b82f6'} strokeWidth={isCrit ? "6" : "3"} fill="none" strokeLinecap="round" className={isCrit ? "warning-pulse" : ""} />
+                                            <foreignObject ref={el => labelRefs.current[p.id] = el} x={(x1+x2)/2 - 55} y={(y1+y2)/2 - 20} width="130" height="60" className="pointer-events-auto"><div className={`flex flex-col items-center p-1.5 rounded-lg border shadow-lg bg-white/95 backdrop-blur ${isCrit ? 'text-red-600 border-red-400' : 'text-blue-600 border-blue-200'}`}><div className="text-[10px] font-black leading-tight">DN{p.dn} ({p.lpm.toFixed(0)} LPM)</div><div className="text-[8px] font-bold opacity-70">Vel: {p.velocity.toFixed(2)} m/s</div>{isCrit && <div className="text-[7px] font-black uppercase flex items-center gap-1 mt-1 bg-red-100 px-1 rounded"><Icons.AlertTriangle /> 管徑不足</div>}<button onClick={() => setPipes(prev => prev.filter(pip => pip.id !== p.id))} className="absolute -top-2 -right-2 bg-white border shadow rounded-full p-1 opacity-0 group-hover:opacity-100"><Icons.X /></button></div></foreignObject>
                                         </g>
                                     );
                                 })}
@@ -435,19 +483,56 @@
                             </svg>
 
                             {nodes.map(node => {
-                                const lib = node.templateId === 'SOURCE' ? { label: '水源總管', brand: 'System', model: 'Header', color: 'bg-slate-800' } : library.find(l => l.id === node.templateId);
+                                const isSource = node.templateId === 'SOURCE';
+                                const isPivot = node.type === 'PIVOT';
+                                const lib = isSource ? { label: '水源總管', brand: 'System', model: 'Header', color: 'bg-slate-900' } : 
+                                            isPivot ? { label: node.label || '匯流支點', brand: 'Regional', model: 'Pivot', color: node.color || 'bg-emerald-600' } :
+                                            library.find(l => l.id === node.templateId);
+                                
                                 const isSelected = selectedNodes.has(node.id);
                                 const { w, h } = getNodeDimensions(node);
+                                // [修正: 節點流量正確反映其承載的 LPM]
+                                const flowLpm = nodeFlows[node.id] || 0;
+                                const sizing = HydraulicEngine.getSizing(flowLpm / 60);
+                                const isActive = flowLpm > 0;
+
                                 return (
                                     <div key={node.id} ref={el => nodeRefs.current[node.id] = el} style={{ left: node.x, top: node.y, width: w, height: h, transform: 'translate3d(0,0,0)', outline: isSelected ? '3px dashed #3b82f6' : 'none', outlineOffset: '4px' }}
                                         onClick={(e) => { e.stopPropagation(); if (e.shiftKey || e.ctrlKey) { setSelectedNodes(prev => { const n = new Set(prev); if (n.has(node.id)) n.delete(node.id); else n.add(node.id); return n; }); } else setSelectedNodes(new Set([node.id])); }}
-                                        className={`absolute bg-white rounded-2xl shadow-xl border-2 z-10 flex flex-col overflow-visible select-none ${isSelected ? 'border-blue-400' : 'border-transparent'}`}>
+                                        className={`absolute bg-white rounded-2xl shadow-xl border-2 z-10 flex flex-col overflow-visible select-none transition-opacity ${isSelected ? 'border-blue-400' : 'border-transparent'} ${(isSource || isPivot) && !isActive ? 'opacity-40' : 'opacity-100'}`}>
+                                        
                                         <div className={`h-8 shrink-0 ${lib?.color || 'bg-slate-400'} flex items-center px-3 justify-between cursor-move text-white rounded-t-[14px] shadow-sm`}
-                                            onMouseDown={e => { dragInfo.current = { isDragging: true, id: node.id, startX: e.clientX, startY: e.clientY, initialX: node.x, initialY: node.y, currentX: node.x, currentY: node.y }; e.stopPropagation(); }}><div className="flex items-center gap-1.5 font-black text-[10px]">{node.isMerged ? <Icons.Layers /> : <Icons.Droplets />}<span className="uppercase tracking-widest">{node.id}</span></div><button onClick={() => setNodes(nodes.filter(n => n.id !== node.id))} className="opacity-50 hover:opacity-100 p-1"><Icons.Trash2 /></button></div>
-                                        <div className="p-3 flex-1 flex flex-col text-slate-800 pointer-events-none"><div className="text-[12px] font-black text-slate-800 truncate leading-none mb-0.5">{node.isMerged ? "系統合併區域" : lib?.label}</div>{!node.isMerged && <div className="text-[9px] text-slate-400 font-bold italic mb-2">{lib?.brand} / {lib?.model}</div>}
-                                            {node.isMerged && node.composition && (<div className="mt-1 border-t border-slate-100 pt-2 space-y-1 overflow-hidden flex-1">{Object.values(node.composition).map((info, idx) => (<div key={idx} className="text-[9px] leading-tight text-slate-500 flex justify-between items-center bg-slate-50 px-2 py-1 rounded border border-slate-100"><span className="truncate font-bold">{info.label}</span><span className="font-black text-blue-600 ml-2">x{info.qty}</span></div>))}</div>)}
-                                            <div className="mt-auto pt-2 flex items-center justify-between pointer-events-auto">{node.templateId !== 'SOURCE' ? (<div className="flex flex-col w-full"><div className="flex justify-between items-center">{node.isMerged ? <span className="text-blue-700 text-sm font-black tracking-tighter">{node.customKw?.toFixed(1)} <small>kW</small></span> : <div className="flex items-center gap-1"><span className="text-[10px] font-bold text-slate-400">QTY:</span><input type="number" className="w-10 border border-slate-200 rounded px-1 outline-none font-black text-xs text-center bg-slate-50" value={node.qty} onChange={e => setNodes(nodes.map(n => n.id === node.id ? { ...n, qty: parseInt(e.target.value)||0 } : n))} /></div>}{!node.isMerged && <span className="text-[9px] font-black text-slate-300 uppercase">{lib?.pipeSize}</span>}</div>{lib?.pd && !node.isMerged && <div className="text-[8px] text-blue-400 font-bold mt-1">選型壓降: {lib.pd} kPa</div>}</div>) : <span className="text-blue-500 uppercase tracking-widest text-[8px] font-black italic">Supply Inlet</span>}</div>
+                                            onMouseDown={e => { dragInfo.current = { isDragging: true, id: node.id, startX: e.clientX, startY: e.clientY, initialX: node.x, initialY: node.y, currentX: node.x, currentY: node.y }; e.stopPropagation(); }}><div className="flex items-center gap-1.5 font-black text-[10px]">{isSource ? <Icons.HardDrive /> : isPivot ? <Icons.Share2 /> : <Icons.Droplets />}<span className="uppercase tracking-widest">{node.id}</span></div><button onClick={() => setNodes(nodes.filter(n => n.id !== node.id))} className="opacity-50 hover:opacity-100 p-1"><Icons.Trash2 /></button></div>
+                                        
+                                        <div className="p-3 flex-1 flex flex-col text-slate-800 pointer-events-none">
+                                            <div className="text-[12px] font-black text-slate-800 truncate leading-none mb-0.5">{lib?.label}</div>
+                                            <div className="text-[9px] text-slate-400 font-bold italic mb-2">{lib?.brand} / {lib?.model}</div>
+                                            
+                                            {(isSource || isPivot) ? (
+                                                <div className="mt-auto flex flex-col border-t border-slate-100 pt-1">
+                                                    <div className="flex justify-between items-center">
+                                                        <span className="text-[9px] font-black text-blue-600">TOTAL FLOW:</span>
+                                                        <span className="text-[11px] font-black text-slate-900">{flowLpm.toFixed(0)} <small>LPM</small></span>
+                                                    </div>
+                                                    <div className="flex justify-between items-center">
+                                                        <span className="text-[9px] font-black text-slate-400">REC. SIZE:</span>
+                                                        <span className={`text-[11px] font-black ${sizing.warning ? 'text-red-500' : 'text-emerald-600'}`}>DN{sizing.dn}</span>
+                                                    </div>
+                                                </div>
+                                            ) : (
+                                                <div className="mt-auto pt-2 flex items-center justify-between pointer-events-auto">
+                                                    <div className="flex items-center gap-1">
+                                                        <span className="text-[10px] font-bold text-slate-400">QTY:</span>
+                                                        <input type="number" className="w-10 border border-slate-200 rounded px-1 outline-none font-black text-xs text-center bg-slate-50" value={node.qty} onChange={e => setNodes(nodes.map(n => n.id === node.id ? { ...n, qty: parseInt(e.target.value)||0 } : n))} />
+                                                    </div>
+                                                    <div className="flex flex-col items-end">
+                                                        <span className="text-[9px] font-black text-slate-300 uppercase">{lib?.pipeSize}</span>
+                                                        <span className="text-[8px] font-bold text-blue-500">{(flowLpm).toFixed(0)} LPM</span>
+                                                    </div>
+                                                </div>
+                                            )}
                                         </div>
+
                                         {['left', 'right', 'top', 'bottom'].map(port => {
                                             const isOutput = port === 'right' || port === 'bottom';
                                             const off = getPortOffset(port, node);
@@ -464,7 +549,7 @@
 
                     <div className={`absolute bottom-0 left-0 right-0 bg-white shadow-[0_-10px_40px_rgba(0,0,0,0.2)] z-[60] transition-all duration-500 ease-in-out ${drawerOpen ? 'h-[400px]' : 'h-12'}`}>
                         <button onClick={() => setDrawerOpen(!drawerOpen)} className="w-full h-12 flex items-center justify-center border-b hover:bg-slate-50 text-slate-800 transition-colors"><div className={`transition-transform duration-300 ${drawerOpen ? 'rotate-180' : ''}`}><Icons.ChevronUp /></div><span className="text-xs font-black uppercase tracking-widest ml-3">Engineering Sizing Report (工程選型報表)</span></button>
-                        {drawerOpen && (<div className="p-8 overflow-y-auto h-[352px] bg-white"><div className="max-w-6xl mx-auto"><table className="w-full text-left text-xs border-collapse"><thead><tr className="text-slate-400 border-b-2 border-slate-100 font-black uppercase tracking-tighter"><th className="pb-4 px-3">路徑</th><th className="pb-4 px-3 text-blue-600">流量 (LPM)</th><th className="pb-4 px-3">管徑 (DN)</th><th className="pb-4 px-3">流速 (m/s)</th><th className="pb-4 px-3">狀態</th><th className="pb-4 px-3 text-right">管理</th></tr></thead><tbody className="divide-y divide-slate-50 text-slate-700 font-bold">{results.map(p => (<tr key={p.id} className="hover:bg-blue-50 transition-colors group"><td className="py-4 px-3 font-mono text-slate-400">{p.fromId} → {p.toId}</td><td className="py-4 px-3 font-mono text-blue-600 text-sm">{p.lpm.toFixed(1)} <small>LPM</small></td><td className="py-4 px-3"><span className="bg-slate-800 text-white px-3 py-1 rounded-full text-[10px] font-black">DN{p.dn}</span></td><td className="py-4 px-3 font-mono">{p.velocity.toFixed(2)}</td><td className="py-4 px-3">{p.velocity > 2.8 ? <span className="text-red-500 bg-red-50 px-2 py-0.5 rounded text-[10px]">流速過高</span> : <span className="text-emerald-500 bg-emerald-50 px-2 py-0.5 rounded text-[10px]">正常</span>}</td><td className="py-4 px-3 text-right"><button onClick={() => setPipes(prev => prev.filter(pip => pip.id !== p.id))} className="text-red-300 hover:text-red-600 opacity-0 group-hover:opacity-100"><Icons.Trash2 /></button></td></tr>))}</tbody></table></div></div>)}
+                        {drawerOpen && (<div className="p-8 overflow-y-auto h-[352px] bg-white"><div className="max-w-6xl mx-auto"><table className="w-full text-left text-xs border-collapse"><thead><tr className="text-slate-400 border-b-2 border-slate-100 font-black uppercase tracking-tighter"><th className="pb-4 px-3">路徑</th><th className="pb-4 px-3 text-blue-600">彙整流量 (LPM)</th><th className="pb-4 px-3">建議管徑 (DN)</th><th className="pb-4 px-3">流速 (m/s)</th><th className="pb-4 px-3">狀態</th><th className="pb-4 px-3 text-right">管理</th></tr></thead><tbody className="divide-y divide-slate-50 text-slate-700 font-bold">{results.map(p => (<tr key={p.id} className="hover:bg-blue-50 transition-colors group"><td className="py-4 px-3 font-mono text-slate-400">{p.fromId} → {p.toId}</td><td className="py-4 px-3 font-mono text-blue-600 text-sm">{p.lpm.toFixed(1)} <small>LPM</small></td><td className="py-4 px-3"><span className="bg-slate-800 text-white px-3 py-1 rounded-full text-[10px] font-black">DN{p.dn}</span></td><td className="py-4 px-3 font-mono">{p.velocity.toFixed(2)}</td><td className="py-4 px-3">{p.velocity > 2.8 ? <span className="text-red-500 bg-red-50 px-2 py-0.5 rounded text-[10px]">流速過高</span> : <span className="text-emerald-500 bg-emerald-50 px-2 py-0.5 rounded text-[10px]">正常</span>}</td><td className="py-4 px-3 text-right"><button onClick={() => setPipes(prev => prev.filter(pip => pip.id !== p.id))} className="text-red-300 hover:text-red-600 opacity-0 group-hover:opacity-100"><Icons.Trash2 /></button></td></tr>))}</tbody></table></div></div>)}
                     </div>
                 </div>
             );
