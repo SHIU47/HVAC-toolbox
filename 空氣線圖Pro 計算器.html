@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>PsychroSolver Pro-V7.5 - 緊湊核算優化版</title>
+    <title>PsychroSolver Pro-V8.1 - 完整 AHU/MAU 交互版</title>
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- React & ReactDOM -->
@@ -26,7 +26,7 @@
 
         body { 
             font-family: var(--font-main); 
-            background-color: #f8fafc; 
+            background-color: #f1f5f9; 
             margin: 0; 
             color: #1e293b;
             -webkit-font-smoothing: antialiased;
@@ -36,27 +36,28 @@
         .font-data { font-family: 'JetBrains+Mono', monospace; }
         .font-mono { font-family: 'JetBrains+Mono', monospace; }
 
-        .custom-scrollbar::-webkit-scrollbar { width: 4px; height: 4px; }
+        .custom-scrollbar::-webkit-scrollbar { width: 3px; height: 3px; }
         .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
         .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
 
-        .card-hover { transition: all 0.3s ease; }
-        .card-hover:hover { transform: translateY(-2px); box-shadow: 0 8px 20px -10px rgba(0, 0, 0, 0.1); }
+        .card-hover { transition: all 0.2s ease; }
+        .card-hover:hover { transform: translateY(-1px); box-shadow: 0 4px 12px -5px rgba(0, 0, 0, 0.1); }
         
         select { appearance: none; }
         
         .process-line {
             stroke-dasharray: 1000;
             stroke-dashoffset: 1000;
-            animation: dash 2s ease-out forwards;
+            animation: dash 1.5s ease-out forwards;
         }
 
         @keyframes dash { to { stroke-dashoffset: 0; } }
 
-        .data-value {
-            font-family: 'JetBrains+Mono', monospace;
-            font-weight: 700;
-            letter-spacing: -0.04em;
+        /* Drag and Drop visual feedback */
+        .dragging {
+            opacity: 0.4;
+            transform: scale(0.98);
+            border: 2px dashed #4f46e5 !important;
         }
     </style>
 </head>
@@ -64,9 +65,9 @@
     <div id="root"></div>
 
     <script type="text/babel">
-        const { useState, useMemo, useEffect } = React;
+        const { useState, useMemo, useEffect, useRef } = React;
 
-        const Icon = ({ name, className = "w-4 h-4" }) => {
+        const Icon = ({ name, className = "w-3.5 h-3.5" }) => {
             useEffect(() => {
                 if (window.lucide) window.lucide.createIcons();
             }, [name]);
@@ -174,44 +175,51 @@
             const [oa, setOa] = useState({ db: 35, rh: 75 });
             const [ra, setRa] = useState({ db: 26, rh: 50 }); 
             const [room, setRoom] = useState({ db: 23, rh: 50 }); 
+            const [roomTol, setRoomTol] = useState({ db: 1, rh: 5 }); 
             const [mixRatio, setMixRatio] = useState(30); 
             const [waterConfig, setWaterConfig] = useState({
                 CHW_L: { in: 7, out: 12.5 },
                 CHW_M: { in: 15, out: 20.5 },
-                HW: { in: 60, out: 50 }
+                HW: { in: 60, out: 50 },
+                WW: { in: 25, out: 25 }
             });
             const [hoveredPoint, setHoveredPoint] = useState(null);
+            const [draggingIndex, setDraggingIndex] = useState(null);
             
             const [coils, setCoils] = useState([
-                { id: 1, energy: 'HW', label: '預熱 (Pre-Heat)', db: 35.1, rh: 74, active: true },
-                { id: 2, energy: 'CHW_M', label: '預冷 (Pre-Cool)', db: 18, rh: 95, active: true },
-                { id: 3, energy: 'CHW_L', label: '除濕 (Main Cool)', db: 11, rh: 98, active: true },
-                { id: 4, energy: 'HW', label: '再熱 (Re-Heat)', db: 22, rh: 45, active: true }
+                { id: 1, energy: 'HW', label: '1.預熱 (Pre-Heat)', db: 36, rh: 70, active: true },
+                { id: 2, energy: 'CHW_M', label: '2.預冷 (Pre-Cool)', db: 22, rh: 95, active: true },
+                { id: 3, energy: 'WW', label: '3.水洗 (Water Wash)', db: 18, rh: 98, active: true },
+                { id: 4, energy: 'CHW_L', label: '4.除濕 (Dehumidifier)', db: 11, rh: 98, active: true },
+                { id: 5, energy: 'HW', label: '5.再熱 (Re-Heat)', db: 22, rh: 45, active: true }
             ]);
 
             const VIEW = { dbMin: -1, dbMax: 51, wMin: -0.001, wMax: 0.036 };
+
+            const handleDragStart = (index) => setDraggingIndex(index);
+            const handleDragOver = (e) => e.preventDefault();
+            const handleDrop = (index) => {
+                if (draggingIndex === null || draggingIndex === index) return;
+                const newCoils = [...coils];
+                const draggedItem = newCoils[draggingIndex];
+                newCoils.splice(draggingIndex, 1);
+                newCoils.splice(index, 0, draggedItem);
+                setCoils(newCoils);
+                setDraggingIndex(null);
+            };
+
+            const handleAddCoil = () => {
+                setCoils([...coils, { id: Date.now(), energy: 'HW', label: `${coils.length + 1}.新階段`, db: 25, rh: 50, active: true }]);
+            };
+
+            const handleDeleteCoil = (id) => setCoils(coils.filter(c => c.id !== id));
 
             const calcResults = useMemo(() => {
                 const oaS = PsychroLib.calculateByDBRH(oa.db || 0, oa.rh || 0);
                 const raS = PsychroLib.calculateByDBRH(ra.db || 0, ra.rh || 0);
                 const roomS = PsychroLib.calculateByDBRH(room.db || 0, room.rh || 0);
-                
-                let startPoint;
-                let maS = null;
-                
-                if (mode === 'MAU') {
-                    startPoint = oaS;
-                } else {
-                    maS = PsychroLib.mix(oaS, raS, mixRatio);
-                    startPoint = maS;
-                }
-
-                const stages = [{ 
-                    label: mode === 'MAU' ? 'OA 外氣入口' : 'MA 混風狀態', 
-                    state: startPoint, 
-                    type: 'START' 
-                }];
-
+                let startPoint = mode === 'MAU' ? oaS : PsychroLib.mix(oaS, raS, mixRatio);
+                const stages = [{ label: mode === 'MAU' ? 'OA入口' : 'MA混風', state: startPoint, type: 'START' }];
                 const results = coils.map(coil => {
                     if (!coil.active) return null;
                     const start = stages[stages.length - 1].state;
@@ -220,40 +228,36 @@
                     const load = massFlow * (end.h - start.h); 
                     const rt = Math.abs(load) / 3.51685;
                     const wc = waterConfig[coil.energy] || { in: 7, out: 12 };
-                    const dt = Math.abs(wc.out - wc.in) || 5;
+                    const dt = Math.abs(wc.out - wc.in) || 1;
                     const lpm = (Math.abs(load) * 60) / (4.186 * dt);
                     const pipeSize = getPipeSize(lpm);
                     stages.push({ label: coil.label, state: end, energy: coil.energy });
                     return { ...coil, start, end, load, rt, lpm, pipeSize, dt };
                 }).filter(Boolean);
-
-                return { stages, results, oaState: oaS, raState: raS, maState: maS, roomState: roomS };
+                return { stages, results, oaState: oaS, raState: raS, roomState: roomS };
             }, [mode, oa, ra, room, mixRatio, coils, airFlow, waterConfig]);
 
             const handleExportExcel = () => {
                 const wb = XLSX.utils.book_new();
                 const systemSummary = [
-                    ["PsychroSolver Pro 工程核算報告 (V7.5)", ""],
-                    ["報告產出時間", new Date().toLocaleString()],
-                    ["運作模式", mode],
-                    ["設計風量 (CMH)", airFlow],
-                    ["外氣比 (OA %)", mode === 'MAU' ? 100 : mixRatio],
-                    ["外氣 (OA) DB/RH", `${oa.db}℃ / ${oa.rh}%`],
-                    ["回風 (RA) DB/RH", mode === 'AHU' ? `${ra.db}℃ / ${ra.rh}%` : "N/A"],
-                    ["目標 (Room) DB/RH", `${room.db}℃ / ${room.rh}%`],
+                    ["PsychroSolver Pro V8.1 工程核算報告", ""],
+                    ["目標設定", `${room.db}±${roomTol.db}℃ / ${room.rh}±${roomTol.rh}%`],
+                    ["運作風量 (CMH)", airFlow], ["目前模式", mode], ["報告時間", new Date().toLocaleString()]
                 ];
-                const ws = XLSX.utils.aoa_to_sheet([...systemSummary]);
-                XLSX.utils.book_append_sheet(wb, ws, "Audit Report");
-                XLSX.writeFile(wb, `PsychroAudit_${airFlow}CMH.xlsx`);
+                const coilHeader = [["盤管組件", "能源", "負荷(kW)", "負荷(RT)", "流量(LPM)", "管徑(A)"]];
+                const coilData = calcResults.results.map(r => [r.label, r.energy, Math.abs(r.load).toFixed(2), r.rt.toFixed(2), r.lpm.toFixed(2), r.pipeSize]);
+                const finalWS = XLSX.utils.aoa_to_sheet([...systemSummary, [""], ...coilHeader, ...coilData]);
+                XLSX.utils.book_append_sheet(wb, finalWS, "AuditReport");
+                XLSX.writeFile(wb, `PsychroSolver_V8_1_Export.xlsx`);
             };
 
-            const svgW = 1000, svgH = 500; 
-            const margin = { top: 30, right: 80, bottom: 40, left: 70 };
+            const svgW = 1000, svgH = 450; 
+            const margin = { top: 20, right: 60, bottom: 40, left: 60 };
             const xScale = (db) => ((db - VIEW.dbMin) / (VIEW.dbMax - VIEW.dbMin)) * (svgW - margin.left - margin.right) + margin.left;
             const yScale = (w) => svgH - margin.bottom - ((w - VIEW.wMin) / (VIEW.wMax - VIEW.wMin)) * (svgH - margin.top - margin.bottom);
 
             const chartAssets = useMemo(() => {
-                const step = 0.1; 
+                const step = 0.2; 
                 let satPath = "";
                 for (let t = VIEW.dbMin; t < VIEW.dbMax; t += step) {
                     const p1 = { db: t, w: PsychroLib.calculateByDBRH(t, 100).w };
@@ -271,271 +275,237 @@
                     }
                     return { path, rh };
                 });
-                return { satPath, rhLines };
-            }, [VIEW]);
+                let zonePath = "";
+                const dbMin = room.db - roomTol.db, dbMax = room.db + roomTol.db, rhMin = Math.max(1, room.rh - roomTol.rh), rhMax = Math.min(99, room.rh + roomTol.rh);
+                const points = [];
+                for(let t=dbMin; t<=dbMax; t+=0.5) points.push({db: t, w: Math.min(PsychroLib.calculateByDBRH(t, rhMin).w, PsychroLib.calculateByDBRH(t, 100).w)});
+                for(let t=dbMax; t>=dbMin; t-=0.5) points.push({db: t, w: Math.min(PsychroLib.calculateByDBRH(t, rhMax).w, PsychroLib.calculateByDBRH(t, 100).w)});
+                if (points.length > 0) {
+                    zonePath = `M ${xScale(points[0].db)} ${yScale(points[0].w)} `;
+                    points.slice(1).forEach(p => { zonePath += `L ${xScale(p.db)} ${yScale(p.w)} `; });
+                    zonePath += "Z";
+                }
+                return { satPath, rhLines, zonePath };
+            }, [VIEW, room, roomTol]);
 
             const processPaths = useMemo(() => {
-                const steps = 40; 
+                const steps = 60; 
                 return calcResults.stages.slice(1).map((s, i) => {
                     const prev = calcResults.stages[i].state;
-                    const isHeating = s.energy === 'HW';
+                    const isHeating = s.energy === 'HW', isWW = s.energy === 'WW';
                     let pathD = "";
                     for (let j = 0; j < steps; j++) {
                         const r1 = j / steps, r2 = (j + 1) / steps;
                         let db1 = prev.db + (s.state.db - prev.db) * r1, db2 = prev.db + (s.state.db - prev.db) * r2;
                         let w1, w2;
-                        if (!isHeating) {
-                            const w1_sat = PsychroLib.calculateByDBRH(db1, 100).w, w2_sat = PsychroLib.calculateByDBRH(db2, 100).w;
-                            w1 = Math.min(prev.w + (s.state.w - prev.w) * Math.pow(r1, 1.15), w1_sat);
-                            w2 = Math.min(prev.w + (s.state.w - prev.w) * Math.pow(r2, 1.15), w2_sat);
-                        } else {
-                            w1 = prev.w + (s.state.w - prev.w) * r1; w2 = prev.w + (s.state.w - prev.w) * r2;
-                        }
+                        if (isHeating) { w1 = prev.w + (s.state.w - prev.w) * r1; w2 = prev.w + (s.state.w - prev.w) * r2; }
+                        else { w1 = prev.w + (s.state.w - prev.w) * Math.pow(r1, isWW ? 1.0 : 1.1); w2 = prev.w + (s.state.w - prev.w) * Math.pow(r2, isWW ? 1.0 : 1.1); }
+                        w1 = Math.min(w1, PsychroLib.calculateByDBRH(db1, 100).w); w2 = Math.min(w2, PsychroLib.calculateByDBRH(db2, 100).w);
                         const clipped = clipLineToView({ db: db1, w: w1 }, { db: db2, w: w2 }, VIEW);
                         if (clipped) pathD += `M ${xScale(clipped.x1)} ${yScale(clipped.y1)} L ${xScale(clipped.x2)} ${yScale(clipped.y2)} `;
                     }
-                    return { d: pathD, isHeating };
+                    return { d: pathD, color: isHeating ? "#f43f5e" : isWW ? "#14b8a6" : "#2563eb" };
                 });
             }, [calcResults, VIEW]);
 
             return (
-                <div className="flex flex-col h-screen overflow-hidden antialiased text-sm">
-                    {/* Header - Compact */}
-                    <header className="px-6 py-3 bg-slate-950 border-b border-blue-900 flex justify-between items-center shadow-lg z-40 shrink-0">
-                        <div className="flex items-center gap-4">
-                            <div className="bg-blue-600 p-1.5 rounded-lg shadow-blue-500/20">
-                                <Icon name="Zap" className="w-6 h-6 text-white" />
-                            </div>
-                            <div>
-                                <h1 className="text-xl font-black font-heading tracking-tighter text-white uppercase italic leading-none">
-                                    Psychro<span className="text-blue-400">Solver</span> <span className="text-blue-200/40 font-light not-italic ml-1 tracking-widest text-sm">V7.5</span>
-                                </h1>
-                            </div>
+                <div className="flex flex-col h-screen overflow-hidden text-xs bg-[#f8fafc]">
+                    <header className="px-4 py-3 bg-gradient-to-r from-slate-800 to-slate-900 flex justify-between items-center z-40 shrink-0 shadow-md">
+                        <div className="flex items-center gap-3">
+                            <div className="bg-indigo-600 p-1.5 rounded-lg text-white shadow-[0_0_15px_rgba(79,70,229,0.4)]"><Icon name="Target" /></div>
+                            <h1 className="text-base font-black font-heading text-white uppercase italic tracking-tighter">PsychroSolver V8.1 <span className="font-light text-[10px] opacity-40 ml-2 uppercase tracking-widest">AHU/MAU Professional Suite</span></h1>
                         </div>
-                        <div className="flex gap-2 bg-white/5 p-1 rounded-xl">
+                        <div className="flex gap-1 bg-white/5 p-1 rounded-xl border border-white/10 backdrop-blur-sm">
                             {['MAU', 'AHU'].map(m => (
-                                <button key={m} onClick={() => setMode(m)} className={`px-6 py-1.5 rounded-lg text-[11px] font-black transition-all ${mode === m ? 'bg-white text-slate-900 shadow-lg scale-105' : 'text-white/40 hover:text-white'}`}>
-                                    {m}
-                                </button>
+                                <button key={m} onClick={() => setMode(m)} className={`px-6 py-1.5 rounded-lg text-[10px] font-black transition-all ${mode === m ? 'bg-white text-indigo-900 shadow-md transform scale-105' : 'text-white/40 hover:text-white'}`}>{m} 模式</button>
                             ))}
                         </div>
                     </header>
 
-                    <div className="flex flex-1 overflow-hidden bg-slate-100">
-                        {/* Sidebar - Compact Width (300px) */}
-                        <aside className="w-[300px] border-r border-slate-200 bg-white overflow-y-auto p-4 space-y-6 custom-scrollbar shrink-0 shadow-md z-30">
-                            <section className="space-y-4">
-                                <div className="bg-slate-900 p-5 rounded-3xl shadow-lg text-center">
-                                    <label className="text-[9px] font-black text-blue-400/60 uppercase block mb-1">Air Flow (CMH)</label>
-                                    <div className="flex items-center justify-center gap-2">
-                                        <input type="number" value={airFlow || ''} onChange={e => setAirFlow(Number(e.target.value))} className="bg-transparent text-3xl font-black text-white outline-none w-32 text-center font-heading" />
-                                        <span className="text-blue-500/40 font-black text-xs font-heading">m³/h</span>
+                    <div className="flex flex-1 overflow-hidden">
+                        <aside className="w-[280px] border-r border-slate-200 bg-white overflow-y-auto p-4 space-y-5 custom-scrollbar shrink-0 z-30 shadow-sm">
+                            {/* Air Flow - Indigo Section */}
+                            <div className="bg-gradient-to-br from-indigo-800 to-indigo-950 p-5 rounded-3xl text-center shadow-lg border border-indigo-400/20">
+                                <label className="text-[8px] font-black text-indigo-300/60 uppercase block mb-1">System Air Flow (CMH)</label>
+                                <input type="number" value={airFlow} onChange={e => setAirFlow(Number(e.target.value))} className="bg-transparent text-3xl font-black text-white outline-none w-28 text-center font-heading" />
+                            </div>
+
+                            <div className="space-y-3">
+                                {/* OA Condition Section */}
+                                <div className="p-4 bg-white rounded-2xl border border-slate-100 shadow-sm space-y-3 border-l-4 border-l-blue-500 card-hover">
+                                    <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">OA 外氣條件</p>
+                                    <div className="grid grid-cols-2 gap-3">
+                                        <div className="bg-slate-50 p-2 rounded-xl text-center"><span className="text-[7px] text-slate-400 block font-bold uppercase">DB ℃</span><input type="number" value={oa.db} onChange={e => setOa({...oa, db: Number(e.target.value)})} className="bg-transparent w-full text-center font-bold text-blue-600 outline-none text-xs font-data" /></div>
+                                        <div className="bg-slate-50 p-2 rounded-xl text-center"><span className="text-[7px] text-slate-400 block font-bold uppercase">RH %</span><input type="number" value={oa.rh} onChange={e => setOa({...oa, rh: Number(e.target.value)})} className="bg-transparent w-full text-center font-bold text-blue-600 outline-none text-xs font-data" /></div>
                                     </div>
                                 </div>
 
-                                <div className="space-y-3">
-                                    <div className="p-4 bg-white rounded-2xl border border-slate-100 shadow-sm space-y-3 card-hover">
-                                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2"><div className="w-1 h-4 bg-blue-500 rounded-full"/>OA 外氣規格</p>
-                                        <div className="grid grid-cols-2 gap-2">
-                                            <input type="number" value={oa.db} onChange={e => setOa({...oa, db: Number(e.target.value)})} className="bg-slate-50 text-center py-2 rounded-xl border border-slate-100 font-bold text-blue-700 outline-none text-xs font-data" />
-                                            <input type="number" value={oa.rh} onChange={e => setOa({...oa, rh: Number(e.target.value)})} className="bg-slate-50 text-center py-2 rounded-xl border border-slate-100 font-bold text-blue-700 outline-none text-xs font-data" />
+                                {/* RA Condition Section - ONLY SHOW IN AHU MODE */}
+                                {mode === 'AHU' && (
+                                    <div className="p-4 bg-white rounded-2xl border border-emerald-100 shadow-sm space-y-3 border-l-4 border-l-emerald-500 card-hover bg-emerald-50/20">
+                                        <p className="text-[9px] font-black text-emerald-800 uppercase tracking-widest flex items-center gap-2">RA 回風條件 & 混風比</p>
+                                        <div className="grid grid-cols-2 gap-3">
+                                            <div className="bg-white p-2 rounded-xl border border-emerald-100 text-center shadow-sm"><span className="text-[7px] text-emerald-400 block font-bold uppercase">RA DB ℃</span><input type="number" value={ra.db} onChange={e => setRa({...ra, db: Number(e.target.value)})} className="bg-transparent w-full text-center font-bold text-emerald-600 outline-none text-xs font-data" /></div>
+                                            <div className="bg-white p-2 rounded-xl border border-emerald-100 text-center shadow-sm"><span className="text-[7px] text-emerald-400 block font-bold uppercase">RA RH %</span><input type="number" value={ra.rh} onChange={e => setRa({...ra, rh: Number(e.target.value)})} className="bg-transparent w-full text-center font-bold text-emerald-600 outline-none text-xs font-data" /></div>
+                                        </div>
+                                        <div className="flex justify-between items-center px-2 bg-emerald-600 text-white p-2 rounded-xl shadow-lg mt-2">
+                                            <span className="text-[8px] font-black uppercase tracking-widest">外氣比 OA %</span>
+                                            <input type="number" value={mixRatio} onChange={e => setMixRatio(Number(e.target.value))} className="bg-emerald-800 w-12 text-center py-1 rounded-lg outline-none text-[12px] font-data font-black" />
                                         </div>
                                     </div>
+                                )}
 
-                                    {mode === 'AHU' && (
-                                        <div className="p-4 bg-emerald-50/50 rounded-2xl border border-emerald-100 space-y-3 card-hover">
-                                            <p className="text-[10px] font-black text-emerald-800 uppercase tracking-widest flex items-center gap-2"><div className="w-1 h-4 bg-emerald-500 rounded-full"/>RA 回風 & OA%</p>
-                                            <div className="grid grid-cols-2 gap-2">
-                                                <input type="number" value={ra.db} onChange={e => setRa({...ra, db: Number(e.target.value)})} className="bg-white text-center py-2 rounded-xl border border-emerald-100 font-bold text-emerald-600 outline-none text-xs font-data" />
-                                                <input type="number" value={ra.rh} onChange={e => setRa({...ra, rh: Number(e.target.value)})} className="bg-white text-center py-2 rounded-xl border border-emerald-100 font-bold text-emerald-600 outline-none text-xs font-data" />
-                                            </div>
-                                            <input type="number" value={mixRatio} onChange={e => setMixRatio(Number(e.target.value))} className="w-full bg-emerald-600 text-white py-2 rounded-xl font-black text-center outline-none text-xs font-data" />
+                                {/* Target Zone Section */}
+                                <div className="p-4 bg-slate-800 text-white rounded-2xl border border-slate-700 space-y-4 shadow-xl card-hover">
+                                    <p className="text-[9px] font-black text-indigo-300 uppercase tracking-widest flex items-center gap-2"><div className="w-1 h-3 bg-indigo-500 rounded-full animate-pulse"/>目標範圍設計</p>
+                                    <div className="space-y-3">
+                                        <div className="flex items-center gap-2">
+                                            <div className="flex-1 bg-white/5 p-2 rounded-xl text-center border border-white/5"><span className="text-[7px] text-slate-400 block uppercase">Target DB</span><input type="number" value={room.db} onChange={e => setRoom({...room, db: Number(e.target.value)})} className="bg-transparent w-full text-center font-bold text-white outline-none text-xs font-data" /></div>
+                                            <span className="text-indigo-500 font-black">±</span>
+                                            <input type="number" step="0.1" value={roomTol.db} onChange={e => setRoomTol({...roomTol, db: Number(e.target.value)})} className="w-14 bg-indigo-900/40 p-2 rounded-xl text-center font-black text-indigo-100 outline-none text-xs font-data border border-indigo-500/30" />
                                         </div>
-                                    )}
-
-                                    <div className="p-4 bg-white rounded-2xl border border-slate-100 shadow-sm space-y-3 card-hover">
-                                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2"><div className="w-1 h-4 bg-slate-900 rounded-full"/>目標控制點</p>
-                                        <div className="grid grid-cols-2 gap-2">
-                                            <input type="number" value={room.db} onChange={e => setRoom({...room, db: Number(e.target.value)})} className="bg-slate-50 text-center py-2 rounded-xl border border-slate-100 font-bold text-slate-700 outline-none text-xs font-data" />
-                                            <input type="number" value={room.rh} onChange={e => setRoom({...room, rh: Number(e.target.value)})} className="bg-slate-50 text-center py-2 rounded-xl border border-slate-100 font-bold text-slate-700 outline-none text-xs font-data" />
+                                        <div className="flex items-center gap-2">
+                                            <div className="flex-1 bg-white/5 p-2 rounded-xl text-center border border-white/5"><span className="text-[7px] text-slate-400 block uppercase">Target RH</span><input type="number" value={room.rh} onChange={e => setRoom({...room, rh: Number(e.target.value)})} className="bg-transparent w-full text-center font-bold text-white outline-none text-xs font-data" /></div>
+                                            <span className="text-indigo-500 font-black">±</span>
+                                            <input type="number" value={roomTol.rh} onChange={e => setRoomTol({...roomTol, rh: Number(e.target.value)})} className="w-14 bg-indigo-900/40 p-2 rounded-xl text-center font-black text-indigo-100 outline-none text-xs font-data border border-indigo-500/30" />
                                         </div>
                                     </div>
                                 </div>
-                            </section>
+                            </div>
 
-                            <section className="space-y-3 pb-10">
-                                <div className="flex justify-between items-center text-[10px] font-black text-slate-400 uppercase tracking-widest border-b border-slate-50 pb-2">
-                                    <span>Coil Stages</span>
-                                    <button onClick={() => setCoils([...coils, { id: Date.now(), energy: 'HW', label: '新增段位', db: 25, rh: 50, active: true }])} className="p-1 bg-blue-600 rounded-md text-white shadow-md scale-90"><Icon name="Plus"/></button>
+                            <section className="space-y-2 pb-10">
+                                <div className="flex justify-between items-center text-[9px] font-black text-slate-400 uppercase border-b border-slate-100 pb-2">
+                                    <span>盤管處理序列 (可拖拽排序)</span>
+                                    <button onClick={handleAddCoil} className="p-1 bg-indigo-600 text-white rounded active:scale-95 transition-all"><Icon name="Plus" /></button>
                                 </div>
                                 {coils.map((c, i) => (
-                                    <div key={c.id} className="p-4 bg-white border border-slate-100 rounded-2xl relative overflow-hidden shadow-sm transition-all hover:border-blue-300 group card-hover">
-                                        <div className={`absolute top-0 left-0 w-1 h-full ${c.energy === 'CHW_L' ? 'bg-blue-600' : c.energy === 'CHW_M' ? 'bg-sky-400' : 'bg-rose-500'}`} />
-                                        <div className="flex justify-between items-center mb-3">
+                                    <div key={c.id} draggable="true" onDragStart={() => handleDragStart(i)} onDragOver={(e) => handleDragOver(e)} onDrop={() => handleDrop(i)}
+                                        className={`p-3 bg-white border border-slate-100 rounded-2xl relative overflow-hidden shadow-sm cursor-move card-hover group ${draggingIndex === i ? 'dragging' : ''}`}>
+                                        <div className={`absolute top-0 left-0 w-1 h-full ${c.energy === 'CHW_L' ? 'bg-blue-600' : c.energy === 'CHW_M' ? 'bg-sky-400' : c.energy === 'WW' ? 'bg-teal-500' : 'bg-rose-500'}`} />
+                                        <div className="flex justify-between items-center mb-2 px-1">
                                             <div className="flex items-center gap-2">
-                                                <span className="w-5 h-5 flex items-center justify-center text-[9px] font-black text-white bg-slate-900 rounded-md">{i+1}</span>
-                                                <input type="text" value={c.label} onChange={e => setCoils(coils.map(item => item.id === c.id ? {...item, label: e.target.value} : item))} className="bg-transparent text-[11px] font-black text-slate-800 outline-none w-32" />
+                                                <div className="text-slate-300 group-hover:text-indigo-400"><Icon name="GripVertical" className="w-4 h-4" /></div>
+                                                <input type="text" value={c.label} onChange={e => setCoils(coils.map(item => item.id === c.id ? {...item, label: e.target.value} : item))} className="bg-transparent text-[11px] font-black text-slate-700 outline-none w-32 focus:text-indigo-600" />
                                             </div>
-                                            <button onClick={() => setCoils(coils.filter(item => item.id !== c.id))} className="text-slate-200 hover:text-rose-500 opacity-0 group-hover:opacity-100"><Icon name="Trash2" className="w-3 h-3"/></button>
+                                            <button onClick={() => handleDeleteCoil(c.id)} className="text-slate-200 hover:text-rose-500"><Icon name="Trash2" className="w-3.5 h-3.5" /></button>
                                         </div>
-                                        <select value={c.energy} onChange={e => setCoils(coils.map(item => item.id === c.id ? {...item, energy: e.target.value} : item))} className="w-full bg-slate-50 text-[10px] font-bold text-slate-600 p-1.5 rounded-lg border border-slate-100 outline-none mb-3">
-                                            <option value="HW">熱水 (HW)</option>
-                                            <option value="CHW_M">中溫 (M)</option>
-                                            <option value="CHW_L">低溫 (L)</option>
+                                        <select value={c.energy} onChange={e => setCoils(coils.map(item => item.id === c.id ? {...item, energy: e.target.value} : item))} className="w-full bg-slate-50 text-[10px] font-bold text-slate-500 p-1.5 rounded-lg border border-slate-100 mb-2 cursor-pointer">
+                                            <option value="HW">熱水系統 (HW)</option>
+                                            <option value="CHW_M">中溫冰水 (CHW-M)</option>
+                                            <option value="CHW_L">低溫冰水 (CHW-L)</option>
+                                            <option value="WW">水洗段 (Wash)</option>
                                         </select>
-                                        <div className="grid grid-cols-2 gap-2">
-                                            <div className="bg-slate-50 p-1.5 rounded-lg border border-slate-100 text-center"><label className="text-[8px] font-black text-slate-400 uppercase block">DB</label><input type="number" value={c.db} onChange={e => setCoils(coils.map(item => item.id === c.id ? {...item, db: Number(e.target.value)} : item))} className="bg-transparent w-full font-black text-blue-600 outline-none text-xs font-data" /></div>
-                                            <div className="bg-slate-50 p-1.5 rounded-lg border border-slate-100 text-center"><label className="text-[8px] font-black text-slate-400 uppercase block">RH</label><input type="number" value={c.rh} onChange={e => setCoils(coils.map(item => item.id === c.id ? {...item, rh: Number(e.target.value)} : item))} className="bg-transparent w-full font-black text-blue-600 outline-none text-xs font-data" /></div>
+                                        <div className="grid grid-cols-2 gap-2 mt-1">
+                                            <div className="bg-slate-50/50 p-2 rounded-xl border border-slate-100 text-center"><label className="text-[7px] font-black text-slate-400 block uppercase mb-1">Outlet DB</label><input type="number" step="0.1" value={c.db} onChange={e => setCoils(coils.map(item => item.id === c.id ? {...item, db: Number(e.target.value)} : item))} className="bg-transparent w-full font-black text-blue-600 text-center outline-none text-[11px] font-data" /></div>
+                                            <div className="bg-slate-50/50 p-2 rounded-xl border border-slate-100 text-center"><label className="text-[7px] font-black text-slate-400 block uppercase mb-1">Outlet RH</label><input type="number" value={c.rh} onChange={e => setCoils(coils.map(item => item.id === c.id ? {...item, rh: Number(e.target.value)} : item))} className="bg-transparent w-full font-black text-blue-600 text-center outline-none text-[11px] font-data" /></div>
                                         </div>
                                     </div>
                                 ))}
                             </section>
                         </aside>
 
-                        <main className="flex-1 overflow-y-auto bg-slate-50 custom-scrollbar p-6">
-                            {/* Chart Area - Compact Height (450px) */}
-                            <div className="bg-white rounded-[2rem] border border-slate-200 relative shadow-xl overflow-hidden flex flex-col h-[450px] shrink-0 mb-6">
-                                <div className="absolute top-6 left-8 z-20 flex items-center gap-4">
-                                    <div className="bg-slate-900 text-white px-4 py-1.5 rounded-full text-[9px] font-black uppercase tracking-widest shadow-lg flex items-center gap-2">
-                                        <span className="w-1.5 h-1.5 rounded-full bg-blue-400 animate-pulse"></span>Mapping Active
-                                    </div>
-                                </div>
-                                
+                        <main className="flex-1 overflow-y-auto bg-[#f1f5f9] custom-scrollbar p-6">
+                            <div className="bg-white rounded-[2.5rem] border border-slate-200 relative shadow-xl overflow-hidden flex flex-col h-[420px] shrink-0 mb-6">
                                 <svg width="100%" height="100%" viewBox={`0 0 ${svgW} ${svgH}`} preserveAspectRatio="xMidYMid meet">
-                                    <g stroke="#f1f5f9" strokeWidth="1">
+                                    <g stroke="#f8fafc" strokeWidth="1">
                                         {[0, 10, 20, 30, 40, 50].map(t => (
                                             <React.Fragment key={t}>
                                                 <line x1={xScale(t)} y1={margin.top} x2={xScale(t)} y2={svgH-margin.bottom} />
-                                                <text x={xScale(t)} y={svgH-margin.bottom + 20} textAnchor="middle" className="text-[10px] fill-slate-300 font-bold font-mono">{t}℃</text>
+                                                <text x={xScale(t)} y={svgH-margin.bottom + 20} textAnchor="middle" className="text-[11px] fill-slate-300 font-bold font-mono tracking-tighter">{t}℃</text>
                                             </React.Fragment>
                                         ))}
                                     </g>
                                     <path d={chartAssets.satPath} fill="none" stroke="#94a3b8" strokeWidth="2" strokeDasharray="6 3" opacity="0.15" />
-                                    {chartAssets.rhLines.map((rh) => (
-                                        <path key={rh.rh} d={rh.path} fill="none" stroke="#e2e8f0" strokeWidth="1" strokeDasharray="3 3" />
-                                    ))}
+                                    {chartAssets.rhLines.map((rh) => <path key={rh.rh} d={rh.path} fill="none" stroke="#e2e8f0" strokeWidth="1" strokeDasharray="4 4" />)}
+                                    {chartAssets.zonePath && <path d={chartAssets.zonePath} fill="#4f46e5" fillOpacity="0.05" stroke="#4f46e5" strokeWidth="1.5" strokeDasharray="6 4" />}
+                                    
                                     {mode === 'AHU' && (
                                         <g>
-                                            <line x1={xScale(calcResults.oaState.db)} y1={yScale(calcResults.oaState.w)} x2={xScale(calcResults.raState.db)} y2={yScale(calcResults.raState.w)} stroke="#cbd5e1" strokeWidth="1.5" strokeDasharray="8 4" />
-                                            <circle cx={xScale(calcResults.raState.db)} cy={yScale(calcResults.raState.w)} r="6" fill="white" stroke="#10b981" strokeWidth="2" />
-                                            <circle cx={xScale(calcResults.oaState.db)} cy={yScale(calcResults.oaState.w)} r="6" fill="white" stroke="#3b82f6" strokeWidth="2" />
+                                            <line x1={xScale(calcResults.oaState.db)} y1={yScale(calcResults.oaState.w)} x2={xScale(calcResults.raState.db)} y2={yScale(calcResults.raState.w)} stroke="#cbd5e1" strokeWidth="2" strokeDasharray="8 4" />
+                                            <circle cx={xScale(calcResults.raState.db)} cy={yScale(calcResults.raState.w)} r="8" fill="white" stroke="#10b981" strokeWidth="2" />
+                                            <circle cx={xScale(calcResults.oaState.db)} cy={yScale(calcResults.oaState.w)} r="8" fill="white" stroke="#3b82f6" strokeWidth="2" />
                                         </g>
                                     )}
-                                    {processPaths.map((p, i) => (
-                                        <path key={i} d={p.d} stroke={p.isHeating ? "#f43f5e" : "#2563eb"} strokeWidth="5" fill="none" strokeLinecap="round" className="process-line" />
-                                    ))}
+                                    
+                                    {processPaths.map((p, i) => <path key={i} d={p.d} stroke={p.color} strokeWidth="6" fill="none" strokeLinecap="round" className="process-line" />)}
                                     {calcResults.stages.map((s, i) => (
-                                        <g key={i} onMouseEnter={() => setHoveredPoint(s)} onMouseLeave={() => setHoveredPoint(null)} className="cursor-pointer">
-                                            <circle cx={xScale(s.state.db)} cy={yScale(s.state.w)} r="10" fill="white" stroke={i === 0 && mode === 'AHU' ? "#10b981" : "#1e293b"} strokeWidth="3" className="shadow-lg transition-all hover:r-12" />
-                                            <text x={xScale(s.state.db)} y={yScale(s.state.w)} dy="3.5" textAnchor="middle" className="text-[10px] font-black fill-slate-900 pointer-events-none font-heading">{i+1}</text>
+                                        <g key={i} onMouseEnter={() => setHoveredPoint(s)} onMouseLeave={() => setHoveredPoint(null)} className="cursor-crosshair group">
+                                            <circle cx={xScale(s.state.db)} cy={yScale(s.state.w)} r="11" fill="white" stroke={i === 0 && mode === 'AHU' ? "#10b981" : "#1e293b"} strokeWidth="3" className="shadow-2xl transition-all group-hover:r-14" />
+                                            <text x={xScale(s.state.db)} y={yScale(s.state.w)} dy="4" textAnchor="middle" className="text-[10px] font-black fill-slate-800 pointer-events-none font-heading">{i+1}</text>
                                         </g>
                                     ))}
                                 </svg>
                             </div>
 
-                            {/* Summary Table Area - Compact Padding */}
-                            <div className="bg-white border border-slate-200 rounded-[2rem] p-8 shadow-xl m-1 relative overflow-hidden">
-                                <div className="flex flex-col gap-6 mb-8">
+                            <div className="bg-white border border-slate-200 rounded-[2.5rem] p-8 shadow-2xl relative overflow-hidden mb-6">
+                                <div className="flex flex-col gap-8 mb-8 relative z-10">
                                     <div className="flex justify-between items-end">
-                                        <div className="flex items-center gap-5">
-                                            <div className="bg-slate-950 p-4 rounded-2xl shadow-xl text-white transform -rotate-2"><Icon name="ClipboardCheck" className="w-6 h-6" /></div>
+                                        <div className="flex items-center gap-6">
+                                            <div className="bg-gradient-to-br from-indigo-600 to-indigo-800 p-4 rounded-2xl shadow-xl text-white transform -rotate-3 border border-indigo-400/30 shadow-indigo-200"><Icon name="FileBarChart" className="w-7 h-7" /></div>
                                             <div>
-                                                <h3 className="text-xl font-black font-heading uppercase text-slate-900 tracking-tight leading-none">工程設計能源核算表</h3>
-                                                <p className="text-[9px] text-slate-400 font-black uppercase tracking-widest mt-2">{mode} Audit Report</p>
+                                                <h3 className="text-2xl font-black font-heading uppercase text-slate-800 tracking-tighter leading-none">工程設計能源核算總表</h3>
+                                                <p className="text-[10px] text-slate-400 font-black uppercase mt-3 tracking-[0.3em] font-mono italic">Audit Report Cycle: {mode} system active</p>
                                             </div>
                                         </div>
-                                        <button onClick={handleExportExcel} className="bg-emerald-600 hover:bg-emerald-700 px-8 py-3 rounded-2xl text-[10px] font-black text-white uppercase flex items-center gap-3 shadow-emerald-500/20 active:scale-95 transition-all">
-                                            <Icon name="DownloadCloud"/> 導出完整報表 (.XLSX)
+                                        <button onClick={handleExportExcel} className="bg-emerald-600 hover:bg-emerald-700 px-10 py-4 rounded-2xl text-[11px] font-black text-white uppercase flex items-center gap-3 shadow-[0_10px_30px_-5px_rgba(16,185,129,0.4)] active:scale-95 transition-all">
+                                            <Icon name="DownloadCloud"/> 輸出 EXCEL 技術報表
                                         </button>
                                     </div>
-
-                                    {/* Water Parameters - Compact Grid */}
-                                    <div className="grid grid-cols-3 gap-6 bg-slate-50 p-6 rounded-2xl border border-slate-100">
-                                        {['CHW_L', 'CHW_M', 'HW'].map(k => (
-                                            <div key={k} className="space-y-3">
-                                                <div className="text-[9px] font-black uppercase tracking-widest border-b border-slate-200 pb-2 flex items-center gap-2 text-slate-500">
-                                                    <div className={`w-1.5 h-1.5 rounded-full ${k === 'HW' ? 'bg-rose-500' : 'bg-blue-500'}`} />
-                                                    {k === 'CHW_L' ? '低溫冰水' : k === 'CHW_M' ? '中溫冰水' : '熱水系統'}
+                                    <div className="grid grid-cols-4 gap-4 bg-slate-50 p-6 rounded-[2rem] border border-slate-100 shadow-inner">
+                                        {['CHW_L', 'CHW_M', 'HW', 'WW'].map(k => (
+                                            <div key={k} className="space-y-4">
+                                                <div className="text-[9px] font-black uppercase tracking-[0.2em] border-b-2 border-slate-200/60 pb-3 flex items-center gap-2 text-slate-500">
+                                                    <div className={`w-2 h-2 rounded-full ${k==='HW'?'bg-rose-500':k==='WW'?'bg-teal-500':'bg-blue-500'}`} /> {k === 'WW' ? '水洗循環' : k === 'HW' ? '熱水系統' : k === 'CHW_L' ? '低溫冰水' : '中溫冰水'}
                                                 </div>
-                                                <div className="grid grid-cols-2 gap-3 font-mono text-xs">
-                                                    <div className="flex flex-col">
-                                                        <span className="text-[7px] text-slate-400 font-black uppercase mb-1">Tin</span>
-                                                        <input type="number" value={waterConfig[k].in} onChange={e => setWaterConfig({...waterConfig, [k]: {...waterConfig[k], in: Number(e.target.value)}})} className="bg-white border border-slate-200 p-2 rounded-xl font-bold text-center outline-none" />
-                                                    </div>
-                                                    <div className="flex flex-col">
-                                                        <span className="text-[7px] text-slate-400 font-black uppercase mb-1">Tout</span>
-                                                        <input type="number" value={waterConfig[k].out} onChange={e => setWaterConfig({...waterConfig, [k]: {...waterConfig[k], out: Number(e.target.value)}})} className="bg-white border border-slate-200 p-2 rounded-xl font-bold text-center outline-none" />
-                                                    </div>
+                                                <div className="grid grid-cols-2 gap-3">
+                                                    <input type="number" value={waterConfig[k].in} onChange={e=>setWaterConfig({...waterConfig,[k]:{...waterConfig[k],in:Number(e.target.value)}})} className="bg-white border border-slate-200 rounded-xl p-2.5 text-center font-black text-indigo-700 outline-none text-sm font-data shadow-sm" />
+                                                    <input type="number" value={waterConfig[k].out} onChange={e=>setWaterConfig({...waterConfig,[k]:{...waterConfig[k],out:Number(e.target.value)}})} className="bg-white border border-slate-200 rounded-xl p-2.5 text-center font-black text-indigo-700 outline-none text-sm font-data shadow-sm" />
                                                 </div>
                                             </div>
                                         ))}
                                     </div>
                                 </div>
-
-                                {/* Table - Reduced Cell Padding & Font Scaling */}
-                                <div className="w-full border border-slate-100 rounded-3xl overflow-hidden shadow-sm bg-white">
+                                <div className="w-full border border-slate-100 rounded-[2.5rem] overflow-hidden shadow-sm bg-white relative z-10">
                                     <table className="w-full text-left border-collapse">
                                         <thead>
-                                            <tr className="bg-slate-950 text-white uppercase tracking-widest text-[8px] font-black font-heading">
-                                                <th className="p-5 px-8">System Component</th>
-                                                <th className="p-5 text-center border-l border-white/5 bg-slate-900">負荷 (kW)</th>
-                                                <th className="p-5 text-center border-l border-white/5 bg-slate-900">負荷 (RT)</th>
-                                                <th className="p-5 text-center border-l border-white/5 bg-slate-900">水量 (LPM)</th>
-                                                <th className="p-5 text-center border-l border-white/5 bg-blue-800 text-blue-100">管徑 (A)</th>
+                                            <tr className="bg-slate-800 text-white uppercase text-[9px] font-black font-heading tracking-[0.2em]">
+                                                <th className="p-6 px-10">盤管組件 (處理序列)</th>
+                                                <th className="p-6 text-center bg-slate-700 border-l border-white/5">負荷 (kW)</th>
+                                                <th className="p-6 text-center bg-slate-700 border-l border-white/5 uppercase">RT</th>
+                                                <th className="p-6 text-center bg-slate-700 border-l border-white/5">水量 (LPM)</th>
+                                                <th className="p-6 text-center bg-indigo-700 border-l border-white/5 shadow-2xl">管徑 (A)</th>
                                             </tr>
                                         </thead>
-                                        <tbody>
-                                            {['CHW_L', 'CHW_M', 'HW'].map(type => {
-                                                const group = calcResults.results.filter(r => r.energy === type);
-                                                if (group.length === 0) return null;
-                                                const dotColor = type === 'CHW_L' ? 'bg-blue-600' : type === 'CHW_M' ? 'bg-sky-400' : 'bg-rose-500';
-                                                return (
-                                                    <React.Fragment key={type}>
-                                                        <tr className="bg-slate-50/50">
-                                                            <td colSpan="5" className="p-3 px-8 text-[8px] font-black text-slate-400 uppercase border-y border-slate-100 tracking-widest">
-                                                                {type} Section (ΔT: {(group[0]?.dt || 5).toFixed(1)}℃)
-                                                            </td>
-                                                        </tr>
-                                                        {group.map((res) => (
-                                                            <tr key={res.id} className="border-b border-slate-50 hover:bg-blue-50/20 transition-all group">
-                                                                <td className="p-5 px-8 font-black flex items-center gap-4 italic group-hover:text-blue-700">
-                                                                    <div className={`w-2 h-2 rounded-full ${dotColor}`} />
-                                                                    <span className="text-sm font-heading">{res.label}</span>
-                                                                </td>
-                                                                <td className="p-5 text-slate-900 text-2xl font-bold text-center border-l border-slate-50 font-data tracking-tighter">
-                                                                    {Math.abs(res.load).toFixed(2)}
-                                                                </td>
-                                                                <td className="p-5 text-slate-900 text-2xl font-bold text-center border-l border-slate-50 font-data tracking-tighter">
-                                                                    {(Math.abs(res.load)/3.51685).toFixed(2)}
-                                                                </td>
-                                                                <td className="p-5 text-slate-900 text-2xl font-bold text-center border-l border-slate-50 font-data tracking-tighter">
-                                                                    {res.lpm.toFixed(2)}
-                                                                </td>
-                                                                <td className="p-5 text-emerald-600 text-3xl font-black text-center border-l border-slate-50 bg-emerald-50/5 font-heading italic tracking-tighter">
-                                                                    {res.pipeSize}
-                                                                </td>
-                                                            </tr>
-                                                        ))}
-                                                    </React.Fragment>
-                                                );
-                                            })}
+                                        <tbody className="text-[11px]">
+                                            {calcResults.results.map((res, i) => (
+                                                <tr key={res.id} className="border-b border-slate-50 hover:bg-slate-50 transition-all group">
+                                                    <td className="p-6 px-10 font-black flex items-center gap-5 italic text-slate-700">
+                                                        <div className={`w-3.5 h-3.5 rounded-full ${res.energy==='HW'?'bg-rose-500':res.energy==='WW'?'bg-teal-500':res.energy==='CHW_M'?'bg-sky-400':'bg-blue-600'} shadow-md`} />
+                                                        <span className="text-sm font-heading group-hover:text-indigo-600">{res.label}</span>
+                                                    </td>
+                                                    <td className="p-6 text-center font-data font-black text-slate-800 text-xl tracking-tighter border-l border-slate-50">{Math.abs(res.load).toFixed(1)}</td>
+                                                    <td className="p-6 text-center font-data font-black text-slate-800 text-xl tracking-tighter border-l border-slate-50">{res.rt.toFixed(1)}</td>
+                                                    <td className="p-6 text-center font-data font-black text-slate-800 text-xl tracking-tighter border-l border-slate-50">{res.lpm.toFixed(1)}</td>
+                                                    <td className="p-6 text-center font-heading font-black text-emerald-600 italic text-3xl bg-emerald-50/10 tracking-tighter border-l border-slate-50">{res.pipeSize}</td>
+                                                </tr>
+                                            ))}
                                         </tbody>
                                     </table>
                                 </div>
                             </div>
-                            <div className="h-20 shrink-0" />
+                            <div className="h-10 shrink-0" />
                         </main>
                     </div>
 
-                    {/* Tooltip - Compact */}
                     {hoveredPoint && (
                         <div className="fixed pointer-events-none z-50 transition-all duration-300" style={{ left: xScale(hoveredPoint.state.db) + 320 + 'px', top: yScale(hoveredPoint.state.w) + 100 + 'px' }}>
-                            <div className="bg-slate-950/95 text-white p-5 rounded-3xl shadow-2xl w-[220px] backdrop-blur-xl border border-white/5">
-                                <h4 className="text-[12px] font-black uppercase text-blue-400 italic mb-3 font-heading">{hoveredPoint.label}</h4>
+                            <div className="bg-slate-800/95 text-white p-6 rounded-[2rem] shadow-2xl w-[200px] backdrop-blur-xl border border-white/10 shadow-indigo-900/30">
+                                <h4 className="text-[12px] font-black uppercase text-indigo-400 italic mb-4 border-b border-white/5 pb-2 font-heading tracking-widest">{hoveredPoint.label}</h4>
                                 <div className="space-y-2 text-[10px] font-mono">
-                                    <div className="flex justify-between"><span>DB/WB</span><span>{hoveredPoint.state.db.toFixed(1)}/{hoveredPoint.state.wb.toFixed(1)}℃</span></div>
-                                    <div className="flex justify-between border-t border-white/10 pt-2"><span className="text-slate-500 uppercase">h</span><span className="text-emerald-400 font-bold">{hoveredPoint.state.h.toFixed(2)} kJ/kg</span></div>
-                                    <div className="flex justify-between"><span className="text-slate-500 uppercase">w</span><span className="text-blue-400 font-bold">{(hoveredPoint.state.w * 1000).toFixed(2)} g/kg</span></div>
+                                    <div className="flex justify-between text-slate-400 uppercase"><span>DB/WB</span><span className="text-white font-bold">{hoveredPoint.state.db.toFixed(1)}/{hoveredPoint.state.wb.toFixed(1)}℃</span></div>
+                                    <div className="flex justify-between text-slate-400 uppercase"><span>RH/DP</span><span className="text-white font-bold">{hoveredPoint.state.rh.toFixed(0)}%/{hoveredPoint.state.dp.toFixed(1)}℃</span></div>
+                                    <div className="flex justify-between border-t border-white/10 pt-3"><span>Enthalpy (h)</span><span className="text-teal-400 font-black">{hoveredPoint.state.h.toFixed(1)} kJ</span></div>
+                                    <div className="flex justify-between"><span>Absolute W</span><span className="text-indigo-400 font-black">{(hoveredPoint.state.w * 1000).toFixed(1)} g</span></div>
                                 </div>
                             </div>
                         </div>
