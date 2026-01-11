@@ -29,17 +29,15 @@
         .color-dot { cursor: pointer; transition: all 0.2s; }
         .color-dot:hover { transform: scale(1.25); }
         .picker-shadow { box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.3), 0 8px 10px -6px rgba(0, 0, 0, 0.3); }
+        /* 增加主總管獨有的光暈效果 */
+        .source-glow { box-shadow: 0 0 30px rgba(234, 179, 8, 0.3), 0 10px 25px -5px rgba(0, 0, 0, 0.3); }
     </style>
 </head>
 <body>
     <div id="root"></div>
 
     <script type="text/babel">
-        /**
-         * [STORAGE_MARKER] 專案存檔資料核心
-         */
         const INITIAL_PROJECT_DATA = null;
-
         const { useState, useMemo, useCallback, useRef, useEffect } = React;
 
         const Icons = {
@@ -48,7 +46,7 @@
             Database: () => <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><ellipse cx="12" cy="5" rx="9" ry="3"></ellipse><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"></path><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"></path></svg>,
             Layout: () => <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><line x1="3" y1="9" x2="21" y2="9"></line><line x1="9" y1="21" x2="9" y2="9"></line></svg>,
             Droplets: () => <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M7 16.3c2.2 0 4-1.8 4-4 0-3.3-4-6.3-4-6.3S3 9 3 12.3c0 2.2 1.8 4 4 4z"></path></svg>,
-            HardDrive: () => <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="22" y1="12" x2="2" y2="12"></line><path d="M5.45 5.11L2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"></path></svg>,
+            HardDrive: () => <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="22" y1="12" x2="2" y2="12"></line><path d="M5.45 5.11L2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"></path></svg>,
             ChevronUp: () => <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="18 15 12 9 6 15"></polyline></svg>,
             X: () => <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>,
             AlertTriangle: () => <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>,
@@ -122,8 +120,8 @@
             ]);
             const [nodes, setNodes] = useState(INITIAL_PROJECT_DATA?.nodes || [
                 { id: 'src-1', templateId: 'SOURCE', label: '主總管機房', x: 10000, y: 10000, qty: 1 },
-                { id: 'pvt-1', type: 'PIVOT', label: '區域分區 A', x: 10300, y: 9850, color: 'bg-red-500' },
-                { id: 'inst-1', templateId: 'lib-dcc-1', x: 10600, y: 9850, qty: 6 },
+                { id: 'pvt-1', type: 'PIVOT', label: '區域分區 A', x: 10350, y: 9850, color: 'bg-red-500' },
+                { id: 'inst-1', templateId: 'lib-dcc-1', x: 10650, y: 9850, qty: 6 },
             ]);
             const [pipes, setPipes] = useState(INITIAL_PROJECT_DATA?.pipes || [
                 { id: 'p-1', fromId: 'src-1', fromPort: 'right', toId: 'pvt-1', toPort: 'left' },
@@ -137,18 +135,13 @@
             const [results, setResults] = useState([]);
             const [nodeCalculatedFlows, setNodeCalculatedFlows] = useState({});
 
-            // ==========================================
-            // [關鍵核心修正]：全自動彙整引擎
-            // ==========================================
             const solveHydraulics = useCallback(() => {
-                // 1. 定義層級權重：SOURCE(0) > PIVOT(1) > LOAD(2)
                 const getWeight = (node) => {
                     if (node.templateId === 'SOURCE') return 0;
                     if (node.type === 'PIVOT') return 1;
                     return 2;
                 };
 
-                // 2. 獲取單體負載 LPM Map
                 const baseFlowLpsMap = {};
                 nodes.forEach(node => {
                     const weight = getWeight(node);
@@ -162,7 +155,6 @@
                     }
                 });
 
-                // 3. 標準化管路方向 (自動校正拉線順序)
                 const normalizedPipes = pipes.map(p => {
                     const fromNode = nodes.find(n => n.id === p.fromId);
                     const toNode = nodes.find(n => n.id === p.toId);
@@ -172,7 +164,6 @@
                     return { ...p, fromId: p.toId, toId: p.fromId };
                 });
 
-                // 4. 遞迴加總函數
                 const getAggregatedFlow = (nodeId, visited = new Set()) => {
                     if (visited.has(nodeId)) return 0;
                     visited.add(nodeId);
@@ -183,7 +174,6 @@
                     return sum;
                 };
 
-                // 5. 計算每條管路的彙整流速與建議管徑
                 const pipeResults = pipes.map(pipe => {
                     const fromN = nodes.find(n => n.id === pipe.fromId);
                     const toN = nodes.find(n => n.id === pipe.toId);
@@ -194,7 +184,6 @@
                     return { ...pipe, lpm: flowReq * 60, ...sizing };
                 });
 
-                // 6. 更新節點數據
                 const nodeAggregates = {};
                 nodes.forEach(node => {
                     nodeAggregates[node.id] = getAggregatedFlow(node.id) * 60;
@@ -308,13 +297,21 @@
             };
 
             const nodeMap = useMemo(() => { const map = {}; nodes.forEach(n => map[n.id] = n); return map; }, [nodes]);
-            const getNodeDimensions = (node) => (node?.templateId === 'SOURCE' || node?.type === 'PIVOT') ? { w: 220, h: 100 } : { w: 180, h: 120 };
+            
+            // [修正點]：將 SOURCE 節點做得更大 (280x140)
+            const getNodeDimensions = (node) => {
+                if (node?.templateId === 'SOURCE') return { w: 280, h: 140 };
+                if (node?.type === 'PIVOT') return { w: 220, h: 100 };
+                return { w: 180, h: 120 };
+            };
+
             const getPortOffset = (pT, node) => {
                 const { w, h } = getNodeDimensions(node);
                 if (pT === 'left') return { x: 0, y: h/2 }; if (pT === 'right') return { x: w, y: h/2 };
                 if (pT === 'top') return { x: w/2, y: 0 }; if (pT === 'bottom') return { x: w/2, y: h };
                 return { x: 0, y: 0 };
             };
+            
             const getPathD = (x1, y1, x2, y2, fP, tP) => {
                 const mX = (x1+x2)/2, mY = (y1+y2)/2;
                 return (fP==='bottom'||fP==='top'||tP==='bottom'||tP==='top') ? `M ${x1} ${y1} C ${x1} ${mY}, ${x2} ${mY}, ${x2} ${y2}` : `M ${x1} ${y1} C ${mX} ${y1}, ${mX} ${y2}, ${x2} ${y2}`;
@@ -361,7 +358,7 @@
                     <div className={`absolute left-4 top-4 bottom-4 w-64 bg-white shadow-2xl rounded-2xl z-[150] transition-transform duration-300 flex flex-col border ${sidebarOpen ? 'translate-x-0' : '-translate-x-[280px]'}`}>
                         <div className="p-4 border-b flex justify-between items-center font-black text-[11px] uppercase text-slate-400"><span>Library</span><button onClick={() => setSidebarOpen(false)}><Icons.X /></button></div>
                         <div className="flex-1 p-3 space-y-3 overflow-y-auto">
-                            <div onClick={() => { const p = getSpawnPoint(); setNodes([...nodes, { id: `src-${Date.now()}`, templateId: 'SOURCE', label: '主總管機房', x: p.x, y: p.y, qty: 1 }])}} className="p-4 bg-yellow-400 text-slate-900 rounded-xl cursor-pointer hover:scale-[1.02] shadow flex items-center justify-between border-2 border-yellow-500 transition-transform"><div className="flex flex-col font-black font-black uppercase text-xs"><span>System Header</span><span className="text-[9px]">總流量彙整 (黃色)</span></div><Icons.Plus /></div>
+                            <div onClick={() => { const p = getSpawnPoint(); setNodes([...nodes, { id: `src-${Date.now()}`, templateId: 'SOURCE', label: '主總管機房', x: p.x, y: p.y, qty: 1 }])}} className="p-4 bg-yellow-400 text-slate-900 rounded-xl cursor-pointer hover:scale-[1.02] shadow flex items-center justify-between border-2 border-yellow-500 transition-transform"><div className="flex flex-col font-black uppercase text-xs"><span>System Header</span><span className="text-[9px]">總流量彙整 (黃色)</span></div><Icons.Plus /></div>
                             <div onClick={() => { const p = getSpawnPoint(); setNodes([...nodes, { id: `pvt-${Date.now()}`, type: 'PIVOT', label: '區域支點', x: p.x, y: p.y, color: 'bg-slate-600' }])}} className="p-4 bg-slate-700 text-white rounded-xl cursor-pointer hover:scale-[1.02] shadow flex items-center justify-between border-2 border-slate-800 transition-transform"><div className="flex flex-col font-black uppercase text-xs"><span>Regional Pivot</span><span className="text-[9px] opacity-70">分區彙整點 (可換色)</span></div><Icons.Share2 /></div>
                             <div className="h-px bg-slate-100 my-2" />
                             {library.map(lib => (
@@ -403,24 +400,37 @@
                                 return (
                                     <div key={node.id} ref={el => nodeRefs.current[node.id] = el} style={{ left: node.x, top: node.y, width: w, height: h, transform: 'translate3d(0,0,0)', outline: isSelected ? '3px dashed #3b82f6' : 'none', outlineOffset: '4px' }}
                                         onClick={(e) => { e.stopPropagation(); if (e.shiftKey) setSelectedNodes(p => { const n=new Set(p); n.has(node.id)?n.delete(node.id):n.add(node.id); return n; }); else setSelectedNodes(new Set([node.id])); }}
-                                        className={`absolute bg-white rounded-2xl shadow-xl border-2 z-10 flex flex-col overflow-visible select-none transition-all duration-300 ${isSelected ? 'border-blue-400' : 'border-transparent'} ${(isSource||isPivot)&&flowLpm<=0?'opacity-40 grayscale':'opacity-100'}`}>
-                                        <div className={`h-8 shrink-0 ${node.color || (isSource ? 'bg-yellow-400 text-slate-900' : (isPivot ? 'bg-slate-600 text-white' : (lib?.color || 'bg-slate-400 text-white')))} flex items-center px-3 justify-between cursor-move rounded-t-[14px] shadow-sm`}
+                                        className={`absolute bg-white rounded-2xl border-2 z-10 flex flex-col overflow-visible select-none transition-all duration-300 
+                                            ${isSelected ? 'border-blue-400' : (isSource ? 'border-yellow-600 source-glow' : 'border-transparent')} 
+                                            ${isSource ? 'ring-4 ring-yellow-400/20 shadow-2xl' : 'shadow-xl'}
+                                            ${(isSource||isPivot)&&flowLpm<=0?'opacity-40 grayscale':'opacity-100'}`}>
+                                        
+                                        {/* 節點標題列 - 主總管加高 */}
+                                        <div className={`h-8 shrink-0 ${isSource ? 'h-11' : ''} ${node.color || (isSource ? 'bg-yellow-400 text-slate-900' : (isPivot ? 'bg-slate-600 text-white' : (lib?.color || 'bg-slate-400 text-white')))} flex items-center px-4 justify-between cursor-move rounded-t-[14px] shadow-sm` }
                                             onMouseDown={e => { dragInfo.current = { isDragging: true, id: node.id, startX: e.clientX, startY: e.clientY, initialX: node.x, initialY: node.y, currentX: node.x, currentY: node.y }; e.stopPropagation(); }}>
-                                            <div className="flex items-center gap-1.5 font-black text-[10px] uppercase tracking-widest">{isSource ? <Icons.HardDrive /> : isPivot ? <Icons.Share2 /> : <Icons.Droplets />}{node.id.split('-')[0]}</div>
+                                            <div className={`flex items-center gap-2 font-black uppercase tracking-widest ${isSource ? 'text-[12px]' : 'text-[10px]'}`}>
+                                                {isSource ? <Icons.HardDrive /> : isPivot ? <Icons.Share2 /> : <Icons.Droplets />}{node.id.split('-')[0]}
+                                            </div>
                                             <button onClick={() => setNodes(nodes.filter(n => n.id !== node.id))} className="opacity-50 hover:opacity-100 p-1"><Icons.Trash2 /></button>
                                         </div>
+
                                         <div className="p-3 flex-1 flex flex-col text-slate-800 pointer-events-none">
-                                            <div className="flex items-center gap-1 mb-0.5">
-                                                {/* [修正：標籤名稱回退機制] */}
-                                                <input className="flex-1 text-[12px] font-black text-slate-800 truncate bg-transparent border-b border-transparent focus:border-blue-400 outline-none pointer-events-auto" 
+                                            <div className="flex items-center gap-1 mb-1">
+                                                <input className={`${isSource ? 'text-[14px]' : 'text-[12px]'} flex-1 font-black text-slate-800 truncate bg-transparent border-b border-transparent focus:border-blue-400 outline-none pointer-events-auto`} 
                                                     value={node.label || lib?.label || ''} 
                                                     onChange={e => setNodes(nodes.map(n => n.id === node.id ? { ...n, label: e.target.value } : n))} />
                                                 {isPivot && <button className="pointer-events-auto p-1 text-slate-400 hover:text-slate-800" onClick={(e) => { e.stopPropagation(); setActiveColorPickerId(activeColorPickerId === node.id ? null : node.id); }}><Icons.Palette /></button>}
                                             </div>
                                             {(isSource || isPivot) ? (
-                                                <div className="mt-auto flex flex-col border-t border-slate-100 pt-1">
-                                                    <div className="flex justify-between items-center"><span className="text-[9px] font-black opacity-50 uppercase text-blue-600">匯總流量:</span><span className="text-[11px] font-black text-slate-900">{flowLpm.toFixed(0)} <small>LPM</small></span></div>
-                                                    <div className="flex justify-between items-center"><span className="text-[9px] font-black opacity-50 uppercase">建議主管:</span><span className={`text-[11px] font-black px-1.5 rounded ${sizing.warning ? 'bg-red-100 text-red-600' : 'bg-emerald-100 text-emerald-600'}`}>DN{sizing.dn}</span></div>
+                                                <div className="mt-auto flex flex-col border-t border-slate-100 pt-2 space-y-1">
+                                                    <div className="flex justify-between items-center">
+                                                        <span className={`${isSource ? 'text-[10px]' : 'text-[9px]'} font-black opacity-50 uppercase text-blue-600`}>匯總流量:</span>
+                                                        <span className={`${isSource ? 'text-[14px]' : 'text-[11px]'} font-black text-slate-900`}>{flowLpm.toFixed(0)} <small className="text-[10px]">LPM</small></span>
+                                                    </div>
+                                                    <div className="flex justify-between items-center">
+                                                        <span className={`${isSource ? 'text-[10px]' : 'text-[9px]'} font-black opacity-50 uppercase`}>建議匹配:</span>
+                                                        <span className={`${isSource ? 'text-[14px]' : 'text-[11px]'} font-black px-2 py-0.5 rounded ${sizing.warning ? 'bg-red-100 text-red-600' : 'bg-emerald-100 text-emerald-600'}`}>DN{sizing.dn}</span>
+                                                    </div>
                                                     {isPivot && activeColorPickerId === node.id && (
                                                         <div className="absolute top-[35px] right-[-40px] bg-white border p-1.5 rounded-xl picker-shadow z-[300] flex flex-col gap-1 pointer-events-auto animate-in fade-in">
                                                             {COLOR_PALETTE.map(c => ( <div key={c} onClick={() => { setNodes(nodes.map(n => n.id === node.id ? { ...n, color: c } : n)); setActiveColorPickerId(null); }} className={`w-4 h-4 rounded-full ${c} color-dot ${node.color === c ? 'ring-2 ring-slate-800 ring-offset-1' : ''}`} /> ))}
@@ -434,6 +444,7 @@
                                                 </div>
                                             )}
                                         </div>
+
                                         {['left', 'right', 'top', 'bottom'].map(port => {
                                             const isOut = port==='right'||port==='bottom'; const off = getPortOffset(port, node);
                                             return (<div key={port} style={{ left: off.x-7, top: off.y-7 }} className={`absolute w-3.5 h-3.5 rounded-full border-2 z-20 cursor-crosshair ${isOut?'bg-slate-800 border-white':'bg-white border-slate-300'} hover:scale-150 hover:bg-blue-500 transition-transform`}
