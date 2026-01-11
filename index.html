@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>東旭的 HVAC Pro-Suite | 專業空調設計網</title>
+    <title>東旭的 HVAC Pro-Suite | 專業空調設計門戶</title>
     
     <!-- 網站圖示 (Favicon): 藍色背景白色 H -->
     <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='25' fill='%232563eb'/><text x='50%' y='54%' dominant-baseline='central' text-anchor='middle' font-family='system-ui, sans-serif' font-size='65' font-weight='900' fill='white'>H</text></svg>">
@@ -188,7 +188,7 @@
     <header class="h-[64px] md:h-[72px] bg-white/90 backdrop-blur-md border-b border-slate-200 px-4 md:px-12 flex items-center justify-between flex-shrink-0 z-[110]">
         <div class="flex items-center gap-4 md:gap-10">
             <div id="back-button" class="hidden">
-                <button onclick="closeModule()" class="flex items-center gap-2 px-4 py-2 rounded-full bg-slate-900 text-white font-bold text-xs shadow-xl hover:bg-blue-600 transition-all group">
+                <button onclick="closeModule()" class="flex items-center gap-2 px-4 py-2 rounded-full bg-slate-900 text-white font-bold text-sm shadow-xl hover:bg-blue-600 transition-all group">
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 transform group-hover:-translate-x-1 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3">
                         <path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7" />
                     </svg>
@@ -229,7 +229,7 @@
                         專業空調 <span class="text-blue-600 italic font-medium">工具箱</span>
                     </h2>
                     <p class="text-slate-500 font-bold text-lg md:text-3xl max-w-4xl leading-relaxed text-balance">
-                      提供高精度設計核算與圖形化模擬。
+                        提供空調設計核算與圖形化模擬。
                     </p>
                 </div>
 
@@ -246,6 +246,18 @@
                         </button>
                         
                         <div id="general-slider" class="slider-container">
+                            <!-- 新增：冰機換算水泵 -->
+                            <div onclick="loadModule('pump-conv', '冰機水泵換算')" class="tool-card group">
+                                <div class="flex justify-between items-start">
+                                    <div class="icon-box">⚡</div>
+                                    <span class="tag bg-emerald-100 text-emerald-700">Pump</span>
+                                </div>
+                                <div class="mt-8">
+                                    <h4 class="text-2xl md:text-4xl font-black text-slate-800 mb-2 md:mb-4 group-hover:text-blue-600 transition-colors">冰機水泵換算</h4>
+                                    <p class="text-base md:text-xl text-slate-400 font-bold leading-tight text-balance">輸入 RT 同步推算 CHW & CW 流量與耗電。</p>
+                                </div>
+                            </div>
+
                             <div onclick="loadModule('conversion', '單位換算器')" class="tool-card group">
                                 <div class="flex justify-between items-start">
                                     <div class="icon-box">🔄</div>
@@ -253,7 +265,7 @@
                                 </div>
                                 <div class="mt-8">
                                     <h4 class="text-2xl md:text-4xl font-black text-slate-800 mb-2 md:mb-4 group-hover:text-blue-600 transition-colors">單位換算器</h4>
-                                    <p class="text-base md:text-xl text-slate-400 font-bold leading-tight">RT, KW, GPM 連動計算。</p>
+                                    <p class="text-base md:text-xl text-slate-400 font-bold leading-tight text-balance">RT, kW, GPM 連動計算。</p>
                                 </div>
                             </div>
 
@@ -263,8 +275,8 @@
                                     <span class="tag bg-sky-100 text-sky-700">Analysis</span>
                                 </div>
                                 <div class="mt-8">
-                                    <h4 class="text-2xl md:text-4xl font-black text-slate-800 mb-2 md:mb-4 group-hover:text-blue-600 transition-colors">空氣性質分析</h4>
-                                    <p class="text-base md:text-xl text-slate-400 font-bold leading-tight">比焓、除濕、高精度核算。</p>
+                                    <h4 class="text-2xl md:text-4xl font-black text-slate-800 mb-2 md:mb-4 group-hover:text-blue-600 transition-colors text-balance">空氣性質分析</h4>
+                                    <p class="text-base md:text-xl text-slate-400 font-bold leading-tight text-balance">比焓、除濕、高精度核算。</p>
                                 </div>
                             </div>
 
@@ -274,14 +286,14 @@
                                     <span class="tag bg-indigo-100 text-indigo-700">Sizing</span>
                                 </div>
                                 <div class="mt-8">
-                                    <h4 class="text-2xl md:text-4xl font-black text-slate-800 mb-2 md:mb-4 group-hover:text-blue-600 transition-colors">風管尺寸檢核</h4>
-                                    <p class="text-base md:text-xl text-slate-400 font-bold leading-tight">等摩擦與等流速設計方案。</p>
+                                    <h4 class="text-2xl md:text-4xl font-black text-slate-800 mb-2 md:mb-4 group-hover:text-blue-600 transition-colors text-balance">風管尺寸檢核</h4>
+                                    <p class="text-base md:text-xl text-slate-400 font-bold leading-tight text-balance">等摩擦與等流速設計方案。</p>
                                 </div>
                             </div>
                         </div>
 
                         <button class="nav-arrow right" onclick="sideScroll('general-slider', 'right')">
-                            <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="3"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" /></svg>
+                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="3"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" /></svg>
                         </button>
                     </div>
                 </section>
@@ -299,7 +311,6 @@
                         </button>
 
                         <div id="advanced-slider" class="slider-container">
-                            <!-- 新增：空氣線圖 Pro -->
                             <div onclick="loadModule('psychro-pro', '空氣線圖 Pro')" class="tool-card group border-t-8 border-sky-400 shadow-2xl">
                                 <div class="flex justify-between items-start">
                                     <div class="icon-box">📊</div>
@@ -307,7 +318,7 @@
                                 </div>
                                 <div class="mt-8">
                                     <h4 class="text-2xl md:text-4xl font-black text-slate-800 mb-2 md:mb-4 group-hover:text-blue-600 transition-colors text-balance">空氣線圖 Pro</h4>
-                                    <p class="text-base md:text-xl text-slate-400 font-bold leading-tight">MAU & AHU 設計規劃。</p>
+                                    <p class="text-base md:text-xl text-slate-400 font-bold leading-tight">混風系統與盤管負荷 Mapping。</p>
                                 </div>
                             </div>
 
@@ -317,8 +328,8 @@
                                     <span class="tag bg-slate-900 text-white font-black">Fab</span>
                                 </div>
                                 <div class="mt-8">
-                                    <h4 class="text-2xl md:text-4xl font-black text-slate-800 mb-2 md:mb-4 group-hover:text-blue-600 transition-colors">無塵室大師 Pro</h4>
-                                    <p class="text-base md:text-xl text-slate-400 font-bold leading-tight">MAU、FFU 與熱平衡全案。</p>
+                                    <h4 class="text-2xl md:text-4xl font-black text-slate-800 mb-2 md:mb-4 group-hover:text-blue-600 transition-colors text-balance">無塵室大師 Pro</h4>
+                                    <p class="text-base md:text-xl text-slate-400 font-bold leading-tight text-balance">MAU、FFU 與熱平衡全案。</p>
                                 </div>
                             </div>
 
@@ -328,8 +339,8 @@
                                     <span class="tag bg-blue-600 text-white font-black">Pipe</span>
                                 </div>
                                 <div class="mt-8">
-                                    <h4 class="text-2xl md:text-4xl font-black text-slate-800 mb-2 md:mb-4 group-hover:text-blue-600 transition-colors">冰水管路計算</h4>
-                                    <p class="text-base md:text-xl text-slate-400 font-bold leading-tight">拼圖建模與管徑選型。</p>
+                                    <h4 class="text-2xl md:text-4xl font-black text-slate-800 mb-2 md:mb-4 group-hover:text-blue-600 transition-colors text-balance">冰水管路計算</h4>
+                                    <p class="text-base md:text-xl text-slate-400 font-bold leading-tight text-balance">拼圖建模與管徑選型。</p>
                                 </div>
                             </div>
 
@@ -339,8 +350,8 @@
                                     <span class="tag bg-blue-600 text-white px-3 py-1 rounded-lg uppercase tracking-widest">Water</span>
                                 </div>
                                 <div class="mt-8">
-                                    <h4 class="text-2xl md:text-4xl font-black text-slate-800 mb-2 md:mb-4 group-hover:text-blue-600 transition-colors">水塔補水量</h4>
-                                    <p class="text-base md:text-xl text-slate-400 font-bold leading-tight">蒸發、流洩與補水平衡。</p>
+                                    <h4 class="text-2xl md:text-4xl font-black text-slate-800 mb-2 md:mb-4 group-hover:text-blue-600 transition-colors text-balance">水塔補水量</h4>
+                                    <p class="text-base md:text-xl text-slate-400 font-bold leading-tight text-balance">蒸發、流洩與補水平衡。</p>
                                 </div>
                             </div>
                         </div>
@@ -351,8 +362,8 @@
                     </div>
                 </section>
 
-                <footer class="mt-40 pb-20 border-t border-slate-200 pt-16 text-center">
-                    <p class="text-[11px] text-slate-400 font-bold uppercase tracking-[0.4em] leading-loose text-balance">
+                <footer class="mt-40 pb-20 border-t border-slate-200 pt-16 text-center text-balance">
+                    <p class="text-[11px] text-slate-400 font-bold uppercase tracking-[0.4em] leading-loose">
                         Professional HVAC Engineering Design Suite • Enterprise Edition<br>
                         © 2026 Developed for Advanced Engineering Operations
                     </p>
@@ -373,13 +384,14 @@
 
     <script>
         const moduleMapping = {
+            'pump-conv': '冰機換算水泵.html', // 新增對應
             'conversion': '空調工程專業換算工具.html',
             'psychrometric': '空氣性質分析.html',
             'air-duct': '風管計算.html',
             'water-tower': '冷卻水塔補水量計算.html',
             'cr-master': 'Clean room master.html',
             'chilled-water': '冰水管路計算.html',
-            'psychro-pro': '空氣線圖Pro 計算器.html' // 新增對應
+            'psychro-pro': '空氣線圖Pro 計算器.html'
         };
 
         function initInfiniteSlider(id) {
@@ -495,5 +507,3 @@
     </script>
 </body>
 </html>
-
-
