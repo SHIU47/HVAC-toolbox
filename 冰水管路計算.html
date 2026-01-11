@@ -71,11 +71,11 @@
             { mm: 150, maxLpm: 1594,  internal: 155.20 },
             { mm: 200, maxLpm: 4080,  internal: 204.70 },
             { mm: 250, maxLpm: 6375,  internal: 304.70 },
-            { mm: 300, maxLpm: 9180,  internal: 350.0 },
-            { mm: 350, maxLpm: 16064, internal: 400.0 },
-            { mm: 400, maxLpm: 20981, internal: 450.0 },
-            { mm: 450, maxLpm: 26554, internal: 500.0 },
-            { mm: 500, maxLpm: 32783, internal: 550.0 },
+            { mm: 300, maxLpm: 9180,  internal: 304.70 },
+            { mm: 350, maxLpm: 16064, internal: 350.0 },
+            { mm: 400, maxLpm: 20981, internal: 400.0 },
+            { mm: 450, maxLpm: 26554, internal: 450.0 },
+            { mm: 500, maxLpm: 32783, internal: 500.0 },
             { mm: 600, maxLpm: 39667, internal: 600.0 },
             { mm: 650, maxLpm: 47207, internal: 650.0 },
             { mm: 700, maxLpm: 55403, internal: 700.0 },
@@ -116,67 +116,88 @@
 
         function App() {
             const [activeTab, setActiveTab] = useState('editor');
-            
             const [library, setLibrary] = useState(INITIAL_PROJECT_DATA?.library || [
                 { id: 'lib-dcc-1', type: 'DCC', label: 'DCC 標準型', brand: 'TICA', model: 'TWC-050', kw: 49.7, dt: 5, pd: 35, pipeSize: 'DN32', color: 'bg-blue-500' },
                 { id: 'lib-mau-1', type: 'MAU', label: 'MAU 大風量', brand: 'TRANE', model: 'CLCP-08', kw: 200, dt: 7, pd: 55, pipeSize: 'DN65', color: 'bg-emerald-500' },
             ]);
-
             const [nodes, setNodes] = useState(INITIAL_PROJECT_DATA?.nodes || [
-                { id: 'src-1', templateId: 'SOURCE', label: '主總管機房 (最終彙整)', x: 10000, y: 10000, qty: 1 },
+                { id: 'src-1', templateId: 'SOURCE', label: '主總管機房', x: 10000, y: 10000, qty: 1 },
                 { id: 'pvt-1', type: 'PIVOT', label: '區域分區 A', x: 10300, y: 9850, color: 'bg-red-500' },
                 { id: 'inst-1', templateId: 'lib-dcc-1', x: 10600, y: 9850, qty: 6 },
             ]);
-
             const [pipes, setPipes] = useState(INITIAL_PROJECT_DATA?.pipes || [
                 { id: 'p-1', fromId: 'src-1', fromPort: 'right', toId: 'pvt-1', toPort: 'left' },
                 { id: 'p-2', fromId: 'pvt-1', fromPort: 'right', toId: 'inst-1', toPort: 'left' },
             ]);
-
-            const [scale, setScale] = useState(INITIAL_PROJECT_DATA?.viewState?.scale || 1);
-            // 改進初始化 offset：根據螢幕寬高，讓 10000, 10000 出現在正中央
+            const [scale, setScale] = useState(INITIAL_PROJECT_DATA?.viewState?.scale || 0.7);
             const [offset, setOffset] = useState(() => {
                 if (INITIAL_PROJECT_DATA?.viewState?.offset) return INITIAL_PROJECT_DATA.viewState.offset;
-                const winW = window.innerWidth;
-                const winH = window.innerHeight;
-                return { x: winW / 2 - 10000, y: winH / 2 - 10000 };
+                return { x: window.innerWidth / 2 - 10000 * 0.7, y: window.innerHeight / 2 - 10000 * 0.7 };
             });
-
             const [results, setResults] = useState([]);
             const [nodeCalculatedFlows, setNodeCalculatedFlows] = useState({});
 
+            // ==========================================
+            // [關鍵核心修正]：全自動彙整引擎
+            // ==========================================
             const solveHydraulics = useCallback(() => {
+                // 1. 定義層級權重：SOURCE(0) > PIVOT(1) > LOAD(2)
+                const getWeight = (node) => {
+                    if (node.templateId === 'SOURCE') return 0;
+                    if (node.type === 'PIVOT') return 1;
+                    return 2;
+                };
+
+                // 2. 獲取單體負載 LPM Map
                 const baseFlowLpsMap = {};
                 nodes.forEach(node => {
-                    if (node.templateId === 'SOURCE' || node.type === 'PIVOT') {
+                    const weight = getWeight(node);
+                    if (weight < 2) {
                         baseFlowLpsMap[node.id] = 0;
                     } else {
                         const lib = library.find(l => l.id === node.templateId);
                         const kw = node.customKw !== undefined ? node.customKw : (lib ? lib.kw : 0);
                         const dt = lib ? lib.dt : 5;
-                        baseFlowLpsMap[node.id] = HydraulicEngine.calculateLps(kw, node.qty, dt);
+                        baseFlowLpsMap[node.id] = HydraulicEngine.calculateLps(kw, node.qty || 1, dt);
                     }
                 });
 
-                const getDownstreamFlow = (nodeId, visited = new Set()) => {
+                // 3. 標準化管路方向 (自動校正拉線順序)
+                const normalizedPipes = pipes.map(p => {
+                    const fromNode = nodes.find(n => n.id === p.fromId);
+                    const toNode = nodes.find(n => n.id === p.toId);
+                    if (!fromNode || !toNode) return p;
+                    const wFrom = getWeight(fromNode), wTo = getWeight(toNode);
+                    if (wFrom <= wTo) return p;
+                    return { ...p, fromId: p.toId, toId: p.fromId };
+                });
+
+                // 4. 遞迴加總函數
+                const getAggregatedFlow = (nodeId, visited = new Set()) => {
                     if (visited.has(nodeId)) return 0;
                     visited.add(nodeId);
                     let sum = baseFlowLpsMap[nodeId] || 0;
-                    pipes.filter(p => p.fromId === nodeId).forEach(p => {
-                        sum += getDownstreamFlow(p.toId, visited);
+                    normalizedPipes.filter(p => p.fromId === nodeId).forEach(p => {
+                        sum += getAggregatedFlow(p.toId, visited);
                     });
                     return sum;
                 };
 
+                // 5. 計算每條管路的彙整流速與建議管徑
                 const pipeResults = pipes.map(pipe => {
-                    const flowReq = getDownstreamFlow(pipe.toId);
+                    const fromN = nodes.find(n => n.id === pipe.fromId);
+                    const toN = nodes.find(n => n.id === pipe.toId);
+                    if (!fromN || !toN) return pipe;
+                    const downstreamId = (getWeight(fromN) <= getWeight(toN)) ? pipe.toId : pipe.fromId;
+                    const flowReq = getAggregatedFlow(downstreamId);
                     const sizing = HydraulicEngine.getSizing(flowReq);
                     return { ...pipe, lpm: flowReq * 60, ...sizing };
                 });
 
+                // 6. 更新節點數據
                 const nodeAggregates = {};
                 nodes.forEach(node => {
-                    nodeAggregates[node.id] = getDownstreamFlow(node.id) * 60;
+                    nodeAggregates[node.id] = getAggregatedFlow(node.id) * 60;
                 });
 
                 setResults(pipeResults);
@@ -187,21 +208,8 @@
 
             const handleExportHTML = () => {
                 const projectData = { library, nodes, pipes, viewState: { scale, offset } };
-                const docType = "<!DOCTYPE html>\n";
-                let currentHTML = document.documentElement.outerHTML;
-                const regex = /const\s+INITIAL_PROJECT_DATA\s*=\s*null\s*;/;
-                const dataString = `const INITIAL_PROJECT_DATA = ${JSON.stringify(projectData, null, 4)};`;
-                const newHTML = currentHTML.replace(regex, dataString);
-                const blob = new Blob([docType + newHTML], { type: 'text/html' });
-                const url = URL.createObjectURL(blob);
-                const a = document.createElement('a');
-                a.href = url;
-                const dateStr = new Date().toISOString().split('T')[0];
-                a.download = `HydroProject_${dateStr}.html`;
-                document.body.appendChild(a);
-                a.click();
-                document.body.removeChild(a);
-                URL.revokeObjectURL(url);
+                const blob = new Blob(["<!DOCTYPE html>\n" + document.documentElement.outerHTML.replace(/const\s+INITIAL_PROJECT_DATA\s*=\s*null\s*;/, `const INITIAL_PROJECT_DATA = ${JSON.stringify(projectData, null, 4)};`)], { type: 'text/html' });
+                const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `HydroProject_${new Date().toISOString().split('T')[0]}.html`; a.click();
             };
 
             return (
@@ -214,29 +222,14 @@
                                 <span className="text-[10px] text-blue-400 font-bold tracking-widest uppercase">Professional</span>
                             </div>
                         </div>
-                        <button onClick={() => setActiveTab('setup')} className={`px-6 h-full flex items-center gap-2 text-xs font-bold transition-all ${activeTab === 'setup' ? 'bg-white/10 border-b-2 border-blue-400 text-blue-400' : 'opacity-50 hover:opacity-100'}`}>
-                            <Icons.Database /> 設備定義庫
-                        </button>
-                        <button onClick={() => setActiveTab('editor')} className={`px-6 h-full flex items-center gap-2 text-xs font-bold transition-all ${activeTab === 'editor' ? 'bg-white/10 border-b-2 border-blue-400 text-blue-400' : 'opacity-50 hover:opacity-100'}`}>
-                            <Icons.Layout /> 系統拼圖製圖
-                        </button>
+                        <button onClick={() => setActiveTab('setup')} className={`px-6 h-full flex items-center gap-2 text-xs font-bold transition-all ${activeTab === 'setup' ? 'bg-white/10 border-b-2 border-blue-400 text-blue-400' : 'opacity-50 hover:opacity-100'}`}><Icons.Database /> 設備定義庫</button>
+                        <button onClick={() => setActiveTab('editor')} className={`px-6 h-full flex items-center gap-2 text-xs font-bold transition-all ${activeTab === 'editor' ? 'bg-white/10 border-b-2 border-blue-400 text-blue-400' : 'opacity-50 hover:opacity-100'}`}><Icons.Layout /> 系統拼圖製圖</button>
                         <div className="ml-auto flex items-center gap-3">
                             <button onClick={handleExportHTML} className="bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-2 rounded-lg text-xs font-black flex items-center gap-2 shadow-lg transition-all active:scale-95"><Icons.Save /> 另存專案 HTML</button>
                         </div>
                     </div>
-
                     <div className="flex-1 relative overflow-hidden">
-                        {activeTab === 'setup' ? (
-                            <EquipmentSetup library={library} setLibrary={setLibrary} />
-                        ) : (
-                            <HydraulicEditor 
-                                library={library} nodes={nodes} setNodes={setNodes} 
-                                pipes={pipes} setPipes={setPipes}
-                                scale={scale} setScale={setScale}
-                                offset={offset} setOffset={setOffset}
-                                results={results} nodeFlows={nodeCalculatedFlows}
-                            />
-                        )}
+                        {activeTab === 'setup' ? <EquipmentSetup library={library} setLibrary={setLibrary} /> : <HydraulicEditor library={library} nodes={nodes} setNodes={setNodes} pipes={pipes} setPipes={setPipes} scale={scale} setScale={setScale} offset={offset} setOffset={setOffset} results={results} nodeFlows={nodeCalculatedFlows} />}
                     </div>
                 </div>
             );
@@ -244,60 +237,34 @@
 
         function EquipmentSetup({ library, setLibrary }) {
             const [activePickerId, setActivePickerId] = useState(null);
-            const update = (id, field, val) => {
-                setLibrary(prev => prev.map(item => item.id === id ? { ...item, [field]: val } : item));
-            };
-            const calculateLpm = (kw, dt) => (kw && dt) ? (kw / (CP * dt)) * 60 : 0;
-            
+            const update = (id, field, val) => setLibrary(prev => prev.map(item => item.id === id ? { ...item, [field]: val } : item));
             return (
                 <div className="p-8 h-full overflow-y-auto bg-slate-50" onClick={() => setActivePickerId(null)}>
                     <div className="max-w-7xl mx-auto">
                         <div className="flex justify-between items-center mb-8">
-                            <div>
-                                <h2 className="text-2xl font-black text-slate-800 uppercase tracking-tight">Equipment Spec</h2>
-                                <p className="text-slate-500 text-sm font-medium">定義機組參數，並可在此自定義圖塊顏色</p>
-                            </div>
-                            <button onClick={(e) => { e.stopPropagation(); setLibrary([...library, { id: `lib-${Date.now()}`, type: 'DCC', label: '新設備', brand: '-', model: '-', kw: 50, dt: 5, pd: 30, pipeSize: 'DN32', color: 'bg-blue-500' }])}}
-                                className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-xl font-bold text-sm flex items-center gap-2 shadow-lg transition-all active:scale-95">
-                                <Icons.Plus /> 新增設備模板
-                            </button>
+                            <div><h2 className="text-2xl font-black text-slate-800 uppercase tracking-tight">Equipment Spec</h2><p className="text-slate-500 text-sm font-medium">定義機組參數與顯示顏色</p></div>
+                            <button onClick={(e) => { e.stopPropagation(); setLibrary([...library, { id: `lib-${Date.now()}`, type: 'DCC', label: '新設備', brand: '-', model: '-', kw: 50, dt: 5, pd: 30, pipeSize: 'DN32', color: 'bg-blue-500' }])}} className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-xl font-bold text-sm flex items-center gap-2 shadow-lg"><Icons.Plus /> 新增設備模板</button>
                         </div>
-                        <div className="bg-white rounded-2xl shadow-xl border border-slate-200 overflow-hidden">
+                        <div className="bg-white rounded-2xl shadow-xl border overflow-hidden">
                             <table className="w-full text-left text-sm border-collapse">
                                 <thead className="bg-slate-900 text-[10px] font-black text-slate-300 uppercase tracking-widest">
-                                    <tr>
-                                        <th className="px-4 py-5">機型名稱</th>
-                                        <th className="px-4 py-5 text-center">顏色設定</th>
-                                        <th className="px-4 py-5 text-center bg-slate-800 text-blue-300">容量 (kW)</th>
-                                        <th className="px-4 py-5 text-center bg-slate-800 text-blue-300">溫差 (K)</th>
-                                        <th className="px-4 py-5 text-center text-emerald-400 font-black">流量 (LPM)</th>
-                                        <th className="px-4 py-5 text-right pr-8">操作</th>
-                                    </tr>
+                                    <tr><th className="px-4 py-5">機型名稱</th><th className="px-4 py-5 text-center">顏色設定</th><th className="px-4 py-5 text-center bg-slate-800 text-blue-300">容量 (kW)</th><th className="px-4 py-5 text-center bg-slate-800 text-blue-300">溫差 (K)</th><th className="px-4 py-5 text-center text-emerald-400 font-black">單台流量 (LPM)</th><th className="px-4 py-5 text-right pr-8">操作</th></tr>
                                 </thead>
                                 <tbody className="divide-y divide-slate-100 text-slate-700">
                                     {library.map(item => (
                                         <tr key={item.id} className="hover:bg-blue-50/30 transition-colors">
-                                            <td className="px-4 py-4 font-bold text-slate-900">{item.label}</td>
+                                            <td className="px-4 py-4 font-bold"><input className="bg-transparent border-b border-transparent focus:border-blue-500 outline-none w-full" value={item.label} onChange={e => update(item.id, 'label', e.target.value)} /></td>
                                             <td className="px-4 py-4 text-center relative">
-                                                <div 
-                                                    className={`w-8 h-8 rounded-lg mx-auto border-2 border-white shadow-sm cursor-pointer ${item.color}`}
-                                                    onClick={(e) => { e.stopPropagation(); setActivePickerId(activePickerId === item.id ? null : item.id); }}
-                                                />
+                                                <div className={`w-8 h-8 rounded-lg mx-auto border-2 border-white shadow-sm cursor-pointer ${item.color}`} onClick={(e) => { e.stopPropagation(); setActivePickerId(activePickerId === item.id ? null : item.id); }} />
                                                 {activePickerId === item.id && (
-                                                    <div className="absolute top-full left-1/2 -translate-x-1/2 mt-2 bg-white p-2 rounded-xl shadow-2xl border border-slate-200 z-[300] flex gap-2 picker-shadow">
-                                                        {COLOR_PALETTE.map(c => (
-                                                            <div 
-                                                                key={c} 
-                                                                className={`w-6 h-6 rounded-full ${c} color-dot ${item.color === c ? 'ring-2 ring-slate-800 ring-offset-1' : ''}`}
-                                                                onClick={() => { update(item.id, 'color', c); setActivePickerId(null); }}
-                                                            />
-                                                        ))}
+                                                    <div className="absolute top-full left-1/2 -translate-x-1/2 mt-2 bg-white p-2 rounded-xl shadow-2xl border z-[300] flex gap-2 picker-shadow">
+                                                        {COLOR_PALETTE.map(c => (<div key={c} className={`w-6 h-6 rounded-full ${c} color-dot ${item.color === c ? 'ring-2 ring-slate-800 ring-offset-1' : ''}`} onClick={() => { update(item.id, 'color', c); setActivePickerId(null); }} />))}
                                                     </div>
                                                 )}
                                             </td>
-                                            <td className="px-4 py-4 text-center bg-blue-50/30 font-black text-blue-600">{item.kw}</td>
-                                            <td className="px-4 py-4 text-center bg-blue-50/30 font-black text-blue-600">{item.dt}</td>
-                                            <td className="px-4 py-4 text-center font-mono font-black text-emerald-600">{calculateLpm(item.kw, item.dt).toFixed(2)}</td>
+                                            <td className="px-4 py-4 text-center bg-blue-50/30 font-black"><input type="number" className="w-20 text-center bg-transparent" value={item.kw} onChange={e => update(item.id, 'kw', parseFloat(e.target.value)||0)} /></td>
+                                            <td className="px-4 py-4 text-center bg-blue-50/30 font-black"><input type="number" className="w-16 text-center bg-transparent" value={item.dt} onChange={e => update(item.id, 'dt', parseFloat(e.target.value)||0)} /></td>
+                                            <td className="px-4 py-4 text-center font-mono font-black text-emerald-600">{(item.kw/(CP*item.dt)*60).toFixed(2)}</td>
                                             <td className="px-4 py-4 text-right pr-8"><button onClick={() => setLibrary(library.filter(l => l.id !== item.id))} className="text-slate-300 hover:text-red-500 p-2"><Icons.Trash2 /></button></td>
                                         </tr>
                                     ))}
@@ -315,93 +282,46 @@
             const [selectedNodes, setSelectedNodes] = useState(new Set());
             const [activeConn, setActiveConn] = useState(null); 
             const [activeColorPickerId, setActiveColorPickerId] = useState(null);
-            
             const containerRef = useRef(null);
-            const dragInfo = useRef({ isDragging: false, isPanning: false, id: null, startX: 0, startY: 0, initialX: 0, initialY: 0, currentX: 0, currentY: 0 });
-            const nodeRefs = useRef({});
-            const pathRefs = useRef({});
-            const labelRefs = useRef({}); 
-            const ghostPathRef = useRef(null);
+            const dragInfo = useRef({ isDragging: false, id: null, startX: 0, startY: 0, initialX: 0, initialY: 0, currentX: 0, currentY: 0 });
+            const nodeRefs = useRef({}); const pathRefs = useRef({}); const labelRefs = useRef({}); const ghostPathRef = useRef(null);
 
-            // [核心修正：以滑鼠為中心的縮放]
             useEffect(() => {
-                const container = containerRef.current;
-                if (!container) return;
-
+                const container = containerRef.current; if (!container) return;
                 const handleWheel = (e) => {
                     if (e.ctrlKey || e.metaKey) {
                         e.preventDefault();
-                        
                         const rect = container.getBoundingClientRect();
-                        const mouseX = e.clientX - rect.left;
-                        const mouseY = e.clientY - rect.top;
-
-                        // 找到目前滑鼠指向的畫布座標點 (Plane Coordinate)
-                        // 公式：螢幕座標 = (畫布座標 * 縮放) + 偏移
-                        // 所以：畫布座標 = (螢幕座標 - 偏移) / 縮放
-                        const planeX = (mouseX - offset.x) / scale;
-                        const planeY = (mouseY - offset.y) / scale;
-
-                        const zoomSensitivity = 0.0015;
-                        const factor = Math.exp(-e.deltaY * zoomSensitivity);
-                        const newScale = Math.min(Math.max(scale * factor, 0.02), 4);
-
-                        // 計算新的偏移量，使得同一個 Plane Point 在新的縮放比例下，依然對準同一個螢幕座標
-                        // 公式：新偏移 = 螢幕座標 - (畫布座標 * 新縮放)
-                        const newOffsetX = mouseX - planeX * newScale;
-                        const newOffsetY = mouseY - planeY * newScale;
-
-                        setScale(newScale);
-                        setOffset({ x: newOffsetX, y: newOffsetY });
+                        const mouseX = e.clientX - rect.left, mouseY = e.clientY - rect.top;
+                        const planeX = (mouseX - offset.x) / scale, planeY = (mouseY - offset.y) / scale;
+                        const factor = Math.exp(-e.deltaY * 0.001); const newScale = Math.min(Math.max(scale * factor, 0.02), 4);
+                        setOffset({ x: mouseX - planeX * newScale, y: mouseY - planeY * newScale }); setScale(newScale);
                     }
                 };
                 container.addEventListener('wheel', handleWheel, { passive: false });
                 return () => container.removeEventListener('wheel', handleWheel);
             }, [scale, offset, setScale, setOffset]);
 
-            const getSpawnPoint = useCallback(() => {
-                const canvas = containerRef.current;
-                if (!canvas) return { x: 10000, y: 10000 };
-                const rect = canvas.getBoundingClientRect();
-                return {
-                    x: (rect.width / 2 - offset.x) / scale - 110,
-                    y: (rect.height / 2 - offset.y) / scale - 50
-                };
-            }, [offset, scale]);
-
-            const nodeMap = useMemo(() => {
-                const map = {};
-                nodes.forEach(n => map[n.id] = n);
-                return map;
-            }, [nodes]);
-
-            const getNodeDimensions = (node) => {
-                if (node?.templateId === 'SOURCE' || node?.type === 'PIVOT') return { w: 220, h: 100 };
-                return { w: 180, h: 120 };
+            const getSpawnPoint = () => {
+                const rect = containerRef.current.getBoundingClientRect();
+                return { x: (rect.width/2-offset.x)/scale-110, y: (rect.height/2-offset.y)/scale-50 };
             };
 
-            const getPortOffset = (portType, node) => {
+            const nodeMap = useMemo(() => { const map = {}; nodes.forEach(n => map[n.id] = n); return map; }, [nodes]);
+            const getNodeDimensions = (node) => (node?.templateId === 'SOURCE' || node?.type === 'PIVOT') ? { w: 220, h: 100 } : { w: 180, h: 120 };
+            const getPortOffset = (pT, node) => {
                 const { w, h } = getNodeDimensions(node);
-                switch (portType) {
-                    case 'left': return { x: 0, y: h / 2 };
-                    case 'right': return { x: w, y: h / 2 };
-                    case 'top': return { x: w / 2, y: 0 };
-                    case 'bottom': return { x: w / 2, y: h };
-                    default: return { x: 0, y: 0 };
-                }
+                if (pT === 'left') return { x: 0, y: h/2 }; if (pT === 'right') return { x: w, y: h/2 };
+                if (pT === 'top') return { x: w/2, y: 0 }; if (pT === 'bottom') return { x: w/2, y: h };
+                return { x: 0, y: 0 };
             };
-
-            const getPathD = (x1, y1, x2, y2, fromPort, toPort) => {
-                const midX = (x1 + x2) / 2, midY = (y1 + y2) / 2;
-                if (fromPort === 'bottom' || fromPort === 'top' || toPort === 'bottom' || toPort === 'top') return `M ${x1} ${y1} C ${x1} ${midY}, ${x2} ${midY}, ${x2} ${y2}`;
-                return `M ${x1} ${y1} C ${midX} ${y1}, ${midX} ${y2}, ${x2} ${y2}`;
+            const getPathD = (x1, y1, x2, y2, fP, tP) => {
+                const mX = (x1+x2)/2, mY = (y1+y2)/2;
+                return (fP==='bottom'||fP==='top'||tP==='bottom'||tP==='top') ? `M ${x1} ${y1} C ${x1} ${mY}, ${x2} ${mY}, ${x2} ${y2}` : `M ${x1} ${y1} C ${mX} ${y1}, ${mX} ${y2}, ${x2} ${y2}`;
             };
 
             const onMouseMove = useCallback((e) => {
-                if (dragInfo.current.isPanning) { 
-                    setOffset({ x: e.clientX - dragInfo.current.startX, y: e.clientY - dragInfo.current.startY }); 
-                    return; 
-                }
+                if (dragInfo.current.isPanning) { setOffset({ x: e.clientX - dragInfo.current.startX, y: e.clientY - dragInfo.current.startY }); return; }
                 if (activeConn && ghostPathRef.current) {
                     const tx = (e.clientX - offset.x) / scale, ty = (e.clientY - offset.y) / scale;
                     ghostPathRef.current.setAttribute('d', getPathD(activeConn.startX, activeConn.startY, tx, ty, activeConn.fromPort, 'left'));
@@ -412,9 +332,7 @@
                 const dx = (e.clientX - startX) / scale, dy = (e.clientY - startY) / scale;
                 const curX = initialX + dx, curY = initialY + dy;
                 if (nodeRefs.current[id]) nodeRefs.current[id].style.transform = `translate3d(${dx}px, ${dy}px, 0)`;
-                
-                const affectedPipes = pipes.filter(p => p.fromId === id || p.toId === id);
-                affectedPipes.forEach(p => {
+                pipes.filter(p => p.fromId === id || p.toId === id).forEach(p => {
                     const pathEl = pathRefs.current[p.id], labelEl = labelRefs.current[p.id];
                     if (!pathEl) return;
                     const fD = id === p.fromId ? { ...nodeMap[p.fromId], x: curX, y: curY } : nodeMap[p.fromId];
@@ -438,76 +356,37 @@
                 if (activeConn) { setActiveConn(null); if (ghostPathRef.current) ghostPathRef.current.setAttribute('d', ''); }
             };
 
-            const resetCamera = () => {
-                const winW = window.innerWidth;
-                const winH = window.innerHeight;
-                setScale(1);
-                setOffset({ x: winW / 2 - 10000, y: winH / 2 - 10000 });
-            };
-
             return (
-                <div ref={containerRef} className="flex h-full w-full bg-slate-200 relative overflow-hidden" 
-                    onMouseDown={(e) => { 
-                        if(e.button===1||(e.button===0&&e.shiftKey)) { 
-                            dragInfo.current.isPanning=true; 
-                            dragInfo.current.startX=e.clientX-offset.x; 
-                            dragInfo.current.startY=e.clientY-offset.y; 
-                            document.body.style.cursor='grabbing'; 
-                        } else if (e.target.tagName === 'svg' || e.target.classList.contains('canvas-grid')) {
-                            setActiveColorPickerId(null);
-                        }
-                    }}
-                    onMouseMove={onMouseMove} onMouseUp={onMouseUp}>
-                    
-                    <div className={`absolute left-4 top-4 bottom-4 w-64 bg-white shadow-2xl rounded-2xl z-[150] transition-transform duration-300 flex flex-col border border-slate-200 ${sidebarOpen ? 'translate-x-0' : '-translate-x-[280px]'}`}>
-                        <div className="p-4 border-b flex justify-between items-center"><span className="text-[11px] font-black text-slate-500 uppercase tracking-widest italic">Library</span><button onClick={() => setSidebarOpen(false)} className="text-slate-300 hover:text-slate-600"><Icons.X /></button></div>
+                <div ref={containerRef} className="flex h-full w-full bg-slate-200 relative overflow-hidden" onMouseDown={(e) => { if(e.button===1||(e.button===0&&e.shiftKey)) { dragInfo.current.isPanning=true; dragInfo.current.startX=e.clientX-offset.x; dragInfo.current.startY=e.clientY-offset.y; document.body.style.cursor='grabbing'; } else if (e.target.tagName === 'svg' || e.target.classList.contains('canvas-grid')) setActiveColorPickerId(null); }} onMouseMove={onMouseMove} onMouseUp={onMouseUp}>
+                    <div className={`absolute left-4 top-4 bottom-4 w-64 bg-white shadow-2xl rounded-2xl z-[150] transition-transform duration-300 flex flex-col border ${sidebarOpen ? 'translate-x-0' : '-translate-x-[280px]'}`}>
+                        <div className="p-4 border-b flex justify-between items-center font-black text-[11px] uppercase text-slate-400"><span>Library</span><button onClick={() => setSidebarOpen(false)}><Icons.X /></button></div>
                         <div className="flex-1 p-3 space-y-3 overflow-y-auto">
-                            <div onClick={() => {
-                                const pos = getSpawnPoint();
-                                setNodes([...nodes, { id: `src-${Date.now()}`, templateId: 'SOURCE', label: '主總管機房 (最終彙整)', x: pos.x, y: pos.y, qty: 1 }]);
-                            }} className="p-4 bg-yellow-400 text-slate-900 rounded-xl cursor-pointer hover:scale-[1.02] shadow flex items-center justify-between group border-2 border-yellow-500 transition-transform"><div className="flex flex-col font-black"><span className="text-xs uppercase">Add System Header</span><span className="text-[9px]">主總管 (黃色)</span></div><Icons.Plus /></div>
-                            
-                            <div onClick={() => {
-                                const pos = getSpawnPoint();
-                                setNodes([...nodes, { id: `pvt-${Date.now()}`, type: 'PIVOT', label: '區域/樓層支點', x: pos.x, y: pos.y, color: 'bg-emerald-500' }]);
-                            }} className="p-4 bg-slate-700 text-white rounded-xl cursor-pointer hover:scale-[1.02] shadow flex items-center justify-between group border-2 border-slate-800 transition-transform"><div className="flex flex-col font-black"><span className="text-xs uppercase">Add Regional Pivot</span><span className="text-[9px] opacity-70">分區支點 (可換色)</span></div><Icons.Share2 /></div>
-
+                            <div onClick={() => { const p = getSpawnPoint(); setNodes([...nodes, { id: `src-${Date.now()}`, templateId: 'SOURCE', label: '主總管機房', x: p.x, y: p.y, qty: 1 }])}} className="p-4 bg-yellow-400 text-slate-900 rounded-xl cursor-pointer hover:scale-[1.02] shadow flex items-center justify-between border-2 border-yellow-500 transition-transform"><div className="flex flex-col font-black font-black uppercase text-xs"><span>System Header</span><span className="text-[9px]">總流量彙整 (黃色)</span></div><Icons.Plus /></div>
+                            <div onClick={() => { const p = getSpawnPoint(); setNodes([...nodes, { id: `pvt-${Date.now()}`, type: 'PIVOT', label: '區域支點', x: p.x, y: p.y, color: 'bg-slate-600' }])}} className="p-4 bg-slate-700 text-white rounded-xl cursor-pointer hover:scale-[1.02] shadow flex items-center justify-between border-2 border-slate-800 transition-transform"><div className="flex flex-col font-black uppercase text-xs"><span>Regional Pivot</span><span className="text-[9px] opacity-70">分區彙整點 (可換色)</span></div><Icons.Share2 /></div>
                             <div className="h-px bg-slate-100 my-2" />
-                            
                             {library.map(lib => (
-                                <div key={lib.id} onClick={() => {
-                                    const pos = getSpawnPoint();
-                                    setNodes([...nodes, { id: `inst-${Date.now()}`, templateId: lib.id, x: pos.x, y: pos.y, qty: 1 }]);
-                                }} className="p-3 bg-white border border-slate-100 rounded-xl cursor-pointer hover:border-blue-500 shadow flex items-center gap-3 active:scale-95 transition-all">
-                                    <div className={`w-2 h-10 rounded-full ${lib.color}`} />
-                                    <div className="flex-1 overflow-hidden">
-                                        <div className="text-xs font-black text-slate-800 truncate">{lib.label}</div>
-                                        <div className="text-[9px] text-slate-400 font-bold italic truncate">{lib.brand} | {lib.model}</div>
-                                        <div className="text-[10px] font-black text-blue-600">{lib.kw} kW</div>
-                                    </div>
+                                <div key={lib.id} onClick={() => { const p = getSpawnPoint(); setNodes([...nodes, { id: `inst-${Date.now()}`, templateId: lib.id, label: lib.label, x: p.x, y: p.y, qty: 1, color: lib.color }])}} className="p-3 bg-white border border-slate-100 rounded-xl cursor-pointer hover:border-blue-500 shadow flex items-center gap-3 active:scale-95 transition-all">
+                                    <div className={`w-2 h-10 rounded-full ${lib.color}`} /><div className="flex-1 overflow-hidden"><div className="text-xs font-black text-slate-800 truncate">{lib.label}</div><div className="text-[10px] font-black text-blue-600">{lib.kw} kW</div></div>
                                 </div>
                             ))}
                         </div>
                     </div>
-                    {!sidebarOpen && (<button onClick={() => setSidebarOpen(true)} className="absolute left-4 top-4 bg-white p-3 rounded-xl shadow-lg z-[150] border border-slate-200"><Icons.Settings /></button>)}
-
+                    {!sidebarOpen && (<button onClick={() => setSidebarOpen(true)} className="absolute left-4 top-4 bg-white p-3 rounded-xl shadow-lg z-[150] border"><Icons.Settings /></button>)}
                     <main className="flex-1 relative overflow-hidden canvas-grid">
                         <div className="absolute inset-0 origin-top-left" style={{ transform: `translate3d(${offset.x}px, ${offset.y}px, 0) scale(${scale})` }}>
                             <svg className="absolute inset-0 w-[20000px] h-[20000px] pointer-events-none z-0">
                                 {results.map(p => {
-                                    const from = nodeMap[p.fromId], to = nodeMap[p.toId];
-                                    if (!from || !to) return null;
+                                    const from = nodeMap[p.fromId], to = nodeMap[p.toId]; if (!from || !to) return null;
                                     const off1 = getPortOffset(p.fromPort, from), off2 = getPortOffset(p.toPort, to);
                                     const x1 = from.x + off1.x, y1 = from.y + off1.y, x2 = to.x + off2.x, y2 = to.y + off2.y;
                                     const isCrit = p.velocity > 2.8; 
                                     return (
                                         <g key={p.id}>
-                                            <path ref={el => pathRefs.current[p.id] = el} d={getPathD(x1, y1, x2, y2, p.fromPort, p.toPort)} stroke={isCrit ? '#ef4444' : '#3b82f6'} strokeWidth={isCrit ? "6" : "3"} fill="none" strokeLinecap="round" className={isCrit ? "warning-pulse" : ""} />
+                                            <path ref={el => pathRefs.current[p.id] = el} d={getPathD(x1, y1, x2, y2, p.fromPort, p.toPort)} stroke={isCrit ? '#ef4444' : '#3b82f6'} strokeWidth="6" fill="none" strokeLinecap="round" className={isCrit ? "warning-pulse" : ""} />
                                             <foreignObject ref={el => labelRefs.current[p.id] = el} x={(x1+x2)/2 - 55} y={(y1+y2)/2 - 35} width="130" height="75" className="pointer-events-auto">
                                                 <div className={`group relative flex flex-col items-center p-1.5 rounded-lg border shadow-lg bg-white/95 backdrop-blur ${isCrit ? 'text-red-600 border-red-400' : 'text-blue-600 border-blue-200'}`}>
-                                                    <div className="text-[10px] font-black leading-tight">DN{p.dn} ({p.lpm.toFixed(0)} LPM)</div>
-                                                    <div className="text-[8px] font-bold opacity-70">Vel: {p.velocity.toFixed(2)} m/s</div>
-                                                    <button onClick={() => setPipes(prev => prev.filter(pip => pip.id !== p.id))} className="absolute -top-2 -right-2 bg-white border shadow rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity hover:text-red-600 pointer-events-auto"><Icons.X /></button>
+                                                    <div className="text-[10px] font-black leading-tight">DN{p.dn} ({p.lpm.toFixed(0)} LPM)</div><div className="text-[8px] font-bold opacity-70">Vel: {p.velocity.toFixed(2)} m/s</div>
+                                                    <button onClick={() => setPipes(prev => prev.filter(pip => pip.id !== p.id))} className="absolute -top-2 -right-2 bg-white border shadow rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity hover:text-red-600"><Icons.X /></button>
                                                 </div>
                                             </foreignObject>
                                         </g>
@@ -515,126 +394,62 @@
                                 })}
                                 <path ref={ghostPathRef} d="" stroke="#3b82f6" strokeWidth="2" strokeDasharray="5,5" fill="none" />
                             </svg>
-
                             {nodes.map(node => {
-                                const isSource = node.templateId === 'SOURCE';
-                                const isPivot = node.type === 'PIVOT';
-                                const lib = isSource ? { label: node.label || '主總管機房', color: 'bg-yellow-400 text-slate-900' } : 
-                                            isPivot ? { label: node.label || '區域匯流支點', color: node.color || 'bg-slate-600 text-white' } :
-                                            library.find(l => l.id === node.templateId);
-                                
-                                const isSelected = selectedNodes.has(node.id);
-                                const { w, h } = getNodeDimensions(node);
-                                const flowLpm = nodeFlows[node.id] || 0;
-                                const sizing = HydraulicEngine.getSizing(flowLpm / 60);
+                                const isSource = node.templateId === 'SOURCE'; const isPivot = node.type === 'PIVOT';
+                                const lib = library.find(l => l.id === node.templateId);
+                                const isSelected = selectedNodes.has(node.id); const { w, h } = getNodeDimensions(node);
+                                const flowLpm = nodeFlows[node.id] || 0; const sizing = HydraulicEngine.getSizing(flowLpm / 60);
 
                                 return (
                                     <div key={node.id} ref={el => nodeRefs.current[node.id] = el} style={{ left: node.x, top: node.y, width: w, height: h, transform: 'translate3d(0,0,0)', outline: isSelected ? '3px dashed #3b82f6' : 'none', outlineOffset: '4px' }}
-                                        onClick={(e) => { e.stopPropagation(); if (e.shiftKey) { setSelectedNodes(p => { const n=new Set(p); n.has(node.id)?n.delete(node.id):n.add(node.id); return n; }); } else setSelectedNodes(new Set([node.id])); }}
+                                        onClick={(e) => { e.stopPropagation(); if (e.shiftKey) setSelectedNodes(p => { const n=new Set(p); n.has(node.id)?n.delete(node.id):n.add(node.id); return n; }); else setSelectedNodes(new Set([node.id])); }}
                                         className={`absolute bg-white rounded-2xl shadow-xl border-2 z-10 flex flex-col overflow-visible select-none transition-all duration-300 ${isSelected ? 'border-blue-400' : 'border-transparent'} ${(isSource||isPivot)&&flowLpm<=0?'opacity-40 grayscale':'opacity-100'}`}>
-                                        
-                                        <div className={`h-8 shrink-0 ${lib?.color || 'bg-slate-400 text-white'} flex items-center px-3 justify-between cursor-move rounded-t-[14px] shadow-sm`}
-                                            onMouseDown={e => { 
-                                                dragInfo.current = { isDragging: true, id: node.id, startX: e.clientX, startY: e.clientY, initialX: node.x, initialY: node.y, currentX: node.x, currentY: node.y }; 
-                                                e.stopPropagation(); 
-                                            }}>
-                                            <div className="flex items-center gap-1.5 font-black text-[10px]">{isSource ? <Icons.HardDrive /> : isPivot ? <Icons.Share2 /> : <Icons.Droplets />}<span className="uppercase tracking-widest">{node.id}</span></div>
+                                        <div className={`h-8 shrink-0 ${node.color || (isSource ? 'bg-yellow-400 text-slate-900' : (isPivot ? 'bg-slate-600 text-white' : (lib?.color || 'bg-slate-400 text-white')))} flex items-center px-3 justify-between cursor-move rounded-t-[14px] shadow-sm`}
+                                            onMouseDown={e => { dragInfo.current = { isDragging: true, id: node.id, startX: e.clientX, startY: e.clientY, initialX: node.x, initialY: node.y, currentX: node.x, currentY: node.y }; e.stopPropagation(); }}>
+                                            <div className="flex items-center gap-1.5 font-black text-[10px] uppercase tracking-widest">{isSource ? <Icons.HardDrive /> : isPivot ? <Icons.Share2 /> : <Icons.Droplets />}{node.id.split('-')[0]}</div>
                                             <button onClick={() => setNodes(nodes.filter(n => n.id !== node.id))} className="opacity-50 hover:opacity-100 p-1"><Icons.Trash2 /></button>
                                         </div>
-                                        
                                         <div className="p-3 flex-1 flex flex-col text-slate-800 pointer-events-none">
                                             <div className="flex items-center gap-1 mb-0.5">
-                                                <input className="flex-1 text-[12px] font-black text-slate-800 truncate bg-transparent border-b border-transparent focus:border-blue-400 outline-none pointer-events-auto" value={node.label || lib?.label} onChange={e => setNodes(nodes.map(n => n.id === node.id ? { ...n, label: e.target.value } : n))} />
-                                                {isPivot && (
-                                                    <button className="pointer-events-auto p-1 text-slate-400 hover:text-slate-800 transition-colors" onClick={(e) => { e.stopPropagation(); setActiveColorPickerId(activeColorPickerId === node.id ? null : node.id); }}><Icons.Palette /></button>
-                                                )}
+                                                {/* [修正：標籤名稱回退機制] */}
+                                                <input className="flex-1 text-[12px] font-black text-slate-800 truncate bg-transparent border-b border-transparent focus:border-blue-400 outline-none pointer-events-auto" 
+                                                    value={node.label || lib?.label || ''} 
+                                                    onChange={e => setNodes(nodes.map(n => n.id === node.id ? { ...n, label: e.target.value } : n))} />
+                                                {isPivot && <button className="pointer-events-auto p-1 text-slate-400 hover:text-slate-800" onClick={(e) => { e.stopPropagation(); setActiveColorPickerId(activeColorPickerId === node.id ? null : node.id); }}><Icons.Palette /></button>}
                                             </div>
-                                            
                                             {(isSource || isPivot) ? (
                                                 <div className="mt-auto flex flex-col border-t border-slate-100 pt-1">
-                                                    <div className="flex justify-between items-center"><span className="text-[9px] font-black opacity-50 uppercase">總需求量:</span><span className="text-[11px] font-black text-slate-900">{flowLpm.toFixed(0)} <small>LPM</small></span></div>
+                                                    <div className="flex justify-between items-center"><span className="text-[9px] font-black opacity-50 uppercase text-blue-600">匯總流量:</span><span className="text-[11px] font-black text-slate-900">{flowLpm.toFixed(0)} <small>LPM</small></span></div>
                                                     <div className="flex justify-between items-center"><span className="text-[9px] font-black opacity-50 uppercase">建議主管:</span><span className={`text-[11px] font-black px-1.5 rounded ${sizing.warning ? 'bg-red-100 text-red-600' : 'bg-emerald-100 text-emerald-600'}`}>DN{sizing.dn}</span></div>
                                                     {isPivot && activeColorPickerId === node.id && (
-                                                        <div className="absolute top-[35px] right-[-40px] bg-white border border-slate-200 p-1.5 rounded-xl picker-shadow z-[300] flex flex-col gap-1 pointer-events-auto animate-in fade-in slide-in-from-top-1">
-                                                            {COLOR_PALETTE.map(c => (
-                                                                <div key={c} onClick={() => { setNodes(nodes.map(n => n.id === node.id ? { ...n, color: c } : n)); setActiveColorPickerId(null); }} className={`w-4 h-4 rounded-full ${c} color-dot ${node.color === c ? 'ring-2 ring-slate-800 ring-offset-1' : ''}`} />
-                                                            ))}
+                                                        <div className="absolute top-[35px] right-[-40px] bg-white border p-1.5 rounded-xl picker-shadow z-[300] flex flex-col gap-1 pointer-events-auto animate-in fade-in">
+                                                            {COLOR_PALETTE.map(c => ( <div key={c} onClick={() => { setNodes(nodes.map(n => n.id === node.id ? { ...n, color: c } : n)); setActiveColorPickerId(null); }} className={`w-4 h-4 rounded-full ${c} color-dot ${node.color === c ? 'ring-2 ring-slate-800 ring-offset-1' : ''}`} /> ))}
                                                         </div>
                                                     )}
                                                 </div>
                                             ) : (
                                                 <div className="mt-auto pt-2 flex items-center justify-between pointer-events-auto">
                                                     <div className="flex items-center gap-1"><span className="text-[10px] font-bold opacity-40">QTY:</span><input type="number" className="w-10 border rounded px-1 font-black text-xs text-center bg-slate-50" value={node.qty} onChange={e => setNodes(nodes.map(n => n.id === node.id ? { ...n, qty: parseInt(e.target.value)||0 } : n))} /></div>
-                                                    <div className="flex flex-col items-end leading-none">
-                                                        <span className="text-[9px] font-black text-slate-300 uppercase leading-tight">Spec: {lib?.pipeSize}</span>
-                                                        <span className="text-[10px] font-black text-blue-500">{(flowLpm).toFixed(0)} LPM</span>
-                                                    </div>
+                                                    <div className="flex flex-col items-end leading-none"><span className="text-[9px] font-black text-slate-400 uppercase leading-tight">LOAD</span><span className="text-[10px] font-black text-blue-500">{(flowLpm).toFixed(0)} LPM</span></div>
                                                 </div>
                                             )}
                                         </div>
-
                                         {['left', 'right', 'top', 'bottom'].map(port => {
                                             const isOut = port==='right'||port==='bottom'; const off = getPortOffset(port, node);
                                             return (<div key={port} style={{ left: off.x-7, top: off.y-7 }} className={`absolute w-3.5 h-3.5 rounded-full border-2 z-20 cursor-crosshair ${isOut?'bg-slate-800 border-white':'bg-white border-slate-300'} hover:scale-150 hover:bg-blue-500 transition-transform`}
-                                                    onMouseDown={(e) => { e.stopPropagation(); const o=getPortOffset(port, node); setActiveConn({ fromId: node.id, fromPort: port, startX: node.x+o.x, startY: node.y+o.y }); }}
+                                                    onMouseDown={(e) => { e.stopPropagation(); setActiveConn({ fromId: node.id, fromPort: port, startX: node.x+getPortOffset(port,node).x, startY: node.y+getPortOffset(port,node).y }); }}
                                                     onMouseUp={(e) => { e.stopPropagation(); if (activeConn && activeConn.fromId !== node.id) setPipes(prev => [...prev, { id: `p-${Date.now()}`, fromId: activeConn.fromId, fromPort: activeConn.fromPort, toId: node.id, toPort: port }]); }}><div className="absolute inset-[-10px] rounded-full" /></div>);
                                         })}
                                     </div>
                                 );
                             })}
                         </div>
-                        <div className="absolute top-6 right-6 bg-slate-900 text-white p-4 rounded-2xl shadow-xl min-w-[180px] z-50 flex flex-col gap-2">
-                            <div className="flex justify-between items-center text-[10px] font-black uppercase opacity-50">
-                                <span>Zoom Scale</span>
-                                <span>{(scale * 100).toFixed(0)}%</span>
-                            </div>
-                            <button onClick={resetCamera} className="bg-blue-600 text-white py-2 rounded-lg font-black text-[10px] uppercase transition-colors hover:bg-blue-500">Reset View (1:1)</button>
-                            <p className="text-[9px] text-slate-400 font-bold text-center mt-1 uppercase tracking-tighter">Ctrl + Wheel to Zoom</p>
-                        </div>
+                        <div className="absolute top-6 right-6 bg-slate-900 text-white p-4 rounded-2xl shadow-xl min-w-[180px] z-50 flex flex-col gap-2"><div className="flex justify-between items-center text-[10px] font-black uppercase opacity-50"><span>Zoom</span><span>{(scale * 100).toFixed(0)}%</span></div><button onClick={() => { setScale(0.7); setOffset({ x: window.innerWidth/2-10000*0.7, y: window.innerHeight/2-10000*0.7 }); }} className="bg-blue-600 text-white py-2 rounded-lg font-black text-[10px] uppercase transition-colors hover:bg-blue-500">Reset View</button></div>
                     </main>
-
                     <div className={`absolute bottom-0 left-0 right-0 bg-white shadow-2xl z-[160] transition-all duration-500 ${drawerOpen ? 'h-[400px]' : 'h-12'}`}>
                         <button onClick={() => setDrawerOpen(!drawerOpen)} className="w-full h-12 flex items-center justify-center border-b font-black text-xs uppercase tracking-widest text-slate-600 hover:bg-slate-50 transition-colors"><div className={`transition-transform duration-300 ${drawerOpen ? 'rotate-180' : ''}`}><Icons.ChevronUp /></div><span className="ml-2">System Sizing Report (工程選型報表)</span></button>
                         {drawerOpen && (
-                            <div className="p-8 overflow-y-auto h-[352px]">
-                                <div className="max-w-6xl mx-auto">
-                                    <table className="w-full text-left text-xs border-collapse">
-                                        <thead>
-                                            <tr className="text-slate-400 border-b-2 border-slate-100 font-black uppercase">
-                                                <th className="pb-4 px-3">Path</th>
-                                                <th className="pb-4 px-3 text-blue-600">Flow (LPM)</th>
-                                                <th className="pb-4 px-3">Size (DN)</th>
-                                                <th className="pb-4 px-3">Vel (m/s)</th>
-                                                <th className="pb-4 px-3">Status</th>
-                                                <th className="pb-4 px-3 text-right">Action</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody className="divide-y divide-slate-50">
-                                            {results.map(p => (
-                                                <tr key={p.id} className="hover:bg-slate-50 transition-colors group">
-                                                    <td className="py-4 px-3 font-mono opacity-40">{p.fromId} → {p.toId}</td>
-                                                    <td className="py-4 px-3 font-mono text-blue-600 text-sm font-black">{p.lpm.toFixed(1)}</td>
-                                                    <td className="py-4 px-3">
-                                                        <span className={`px-2 py-0.5 rounded-full font-black text-[10px] ${p.warning?'bg-red-500 text-white':'bg-slate-800 text-white'}`}>DN{p.dn}</span>
-                                                    </td>
-                                                    <td className="py-4 px-3 font-mono">{p.velocity.toFixed(2)}</td>
-                                                    <td className="py-4 px-3">
-                                                        {p.velocity > 2.8 ? 
-                                                            <span className="text-red-500 font-black uppercase flex items-center gap-1"><Icons.AlertTriangle /> Overload</span> : 
-                                                            <span className="text-emerald-500 font-black uppercase">Normal</span>
-                                                        }
-                                                    </td>
-                                                    <td className="py-4 px-3 text-right">
-                                                        <button onClick={() => setPipes(prev => prev.filter(pip => pip.id !== p.id))} className="text-slate-300 hover:text-red-500 p-2 transition-colors">
-                                                            <Icons.Trash2 />
-                                                        </button>
-                                                    </td>
-                                                </tr>
-                                            ))}
-                                        </tbody>
-                                    </table>
-                                </div>
-                            </div>
+                            <div className="p-8 overflow-y-auto h-[352px]"><div className="max-w-6xl mx-auto"><table className="w-full text-left text-xs border-collapse"><thead><tr className="text-slate-400 border-b-2 border-slate-100 font-black uppercase"><th className="pb-4 px-3">Upstream → Downstream</th><th className="pb-4 px-3 text-blue-600">Flow (LPM)</th><th className="pb-4 px-3">Rec. DN</th><th className="pb-4 px-3">Velocity (m/s)</th><th className="pb-4 px-3 text-right">Delete</th></tr></thead><tbody className="divide-y divide-slate-50">{results.map(p => (<tr key={p.id} className="hover:bg-blue-50 transition-colors group"><td className="py-4 px-3 font-mono opacity-60 font-black">{p.fromId} → {p.toId}</td><td className="py-4 px-3 font-mono text-blue-600 text-sm font-black">{p.lpm.toFixed(1)}</td><td className="py-4 px-3"><span className={`px-2 py-0.5 rounded-full font-black text-[10px] ${p.warning?'bg-red-500 text-white':'bg-slate-800 text-white'}`}>DN{p.dn}</span></td><td className="py-4 px-3 font-mono">{p.velocity.toFixed(2)}</td><td className="py-4 px-3 text-right"><button onClick={() => setPipes(prev => prev.filter(pip => pip.id !== p.id))} className="text-slate-300 hover:text-red-500 p-2"><Icons.Trash2 /></button></td></tr>))}</tbody></table></div></div>
                         )}
                     </div>
                 </div>
