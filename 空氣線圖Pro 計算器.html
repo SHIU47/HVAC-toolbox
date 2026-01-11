@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>PsychroSolver Pro-V7.1 - 混風系統核算版</title>
+    <title>PsychroSolver Pro-V7.4 - MAU 專業配置版</title>
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- React & ReactDOM -->
@@ -13,12 +13,15 @@
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
     <!-- Lucide Icons -->
     <script src="https://unpkg.com/lucide@latest"></script>
+    <!-- SheetJS for Excel Export -->
+    <script src="https://cdn.sheetjs.com/xlsx-0.20.0/package/dist/xlsx.full.min.js"></script>
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Montserrat:wght@700;800;900&family=Noto+Sans+TC:wght@400;500;700;900&family=JetBrains+Mono:wght@500&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Montserrat:ital,wght@0,700;0,800;0,900;1,800&family=Noto+Sans+TC:wght@400;500;700;900&family=JetBrains+Mono:wght@400;500;600;700;800&display=swap');
         
         :root {
-            --font-main: 'Inter', 'Noto Sans TC', sans-serif;
+            --font-main: 'Inter', 'Noto Sans TC', system-ui, sans-serif;
             --font-heading: 'Montserrat', 'Noto Sans TC', sans-serif;
+            --font-mono: 'JetBrains+Mono', monospace;
         }
 
         body { 
@@ -26,28 +29,40 @@
             background-color: #f8fafc; 
             margin: 0; 
             color: #1e293b;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
         }
         
-        .font-heading { font-family: var(--font-heading); }
+        .font-heading { font-family: var(--font-heading); letter-spacing: -0.02em; }
+        .font-data { font-family: 'JetBrains+Mono', monospace; }
         .font-mono { font-family: 'JetBrains+Mono', monospace; }
 
+        /* Custom Scrollbar */
         .custom-scrollbar::-webkit-scrollbar { width: 5px; height: 5px; }
         .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
         .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
         .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
 
-        .card-hover { transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
-        .card-hover:hover { transform: translateY(-2px); box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.05); }
+        /* Animation & Hover */
+        .card-hover { transition: all 0.4s cubic-bezier(0.165, 0.84, 0.44, 1); }
+        .card-hover:hover { transform: translateY(-3px); box-shadow: 0 12px 30px -10px rgba(0, 0, 0, 0.08); }
         
         select { appearance: none; }
         
         .process-line {
             stroke-dasharray: 1000;
             stroke-dashoffset: 1000;
-            animation: dash 2s ease-out forwards;
+            animation: dash 2.5s ease-out forwards;
         }
 
         @keyframes dash { to { stroke-dashoffset: 0; } }
+
+        /* Data aesthetics */
+        .data-value {
+            font-family: 'JetBrains+Mono', monospace;
+            font-weight: 700;
+            letter-spacing: -0.05em;
+        }
     </style>
 </head>
 <body>
@@ -103,7 +118,6 @@
             },
             mix: (oa, ra, oa_ratio_percent) => {
                 const ratio = (oa_ratio_percent || 0) / 100;
-                // 使用質量平衡概念進行混風
                 const hMix = (oa?.h || 0) * ratio + (ra?.h || 0) * (1 - ratio);
                 const wMix = (oa?.w || 0) * ratio + (ra?.w || 0) * (1 - ratio);
                 const dbMix = (hMix - 2501 * wMix) / (1.006 + 1.86 * wMix);
@@ -163,7 +177,7 @@
             const [mode, setMode] = useState('MAU'); 
             const [airFlow, setAirFlow] = useState(35000); 
             const [oa, setOa] = useState({ db: 35, rh: 75 });
-            const [ra, setRa] = useState({ db: 26, rh: 50 }); // 新增回風狀態
+            const [ra, setRa] = useState({ db: 26, rh: 50 }); 
             const [room, setRoom] = useState({ db: 23, rh: 50 }); 
             const [mixRatio, setMixRatio] = useState(30); 
             const [waterConfig, setWaterConfig] = useState({
@@ -172,10 +186,13 @@
                 HW: { in: 60, out: 50 }
             });
             const [hoveredPoint, setHoveredPoint] = useState(null);
+            
+            // --- MAU 盤管更新為：熱、冷、冷、熱 ---
             const [coils, setCoils] = useState([
-                { id: 1, energy: 'CHW_M', label: '1st Pre-Cooling', db: 18, rh: 95, active: true },
-                { id: 2, energy: 'CHW_L', label: 'Main Dehumidification', db: 11, rh: 98, active: true },
-                { id: 3, energy: 'HW', label: 'Reheating Coil', db: 22, rh: 55, active: true }
+                { id: 1, energy: 'HW', label: '預熱盤管 (Pre-Heat)', db: 35.1, rh: 74, active: true },
+                { id: 2, energy: 'CHW_M', label: '預冷盤管 (Pre-Cool)', db: 18, rh: 95, active: true },
+                { id: 3, energy: 'CHW_L', label: '除濕盤管 (Main Cool)', db: 11, rh: 98, active: true },
+                { id: 4, energy: 'HW', label: '再熱盤管 (Re-Heat)', db: 22, rh: 45, active: true }
             ]);
 
             const VIEW = { dbMin: -1, dbMax: 51, wMin: -0.001, wMax: 0.036 };
@@ -196,7 +213,7 @@
                 }
 
                 const stages = [{ 
-                    label: mode === 'MAU' ? 'OA Entrance' : 'Mixed Air (MA)', 
+                    label: mode === 'MAU' ? 'OA 外氣入口' : 'MA 混風狀態', 
                     state: startPoint, 
                     type: 'START' 
                 }];
@@ -219,8 +236,72 @@
                 return { stages, results, oaState: oaS, raState: raS, maState: maS, roomState: roomS };
             }, [mode, oa, ra, room, mixRatio, coils, airFlow, waterConfig]);
 
+            const handleExportExcel = () => {
+                const wb = XLSX.utils.book_new();
+                
+                const systemSummary = [
+                    ["PsychroSolver Pro 工程核算報告 (V7.4)", ""],
+                    ["報告產出時間", new Date().toLocaleString()],
+                    ["", ""],
+                    ["系統基本參數", ""],
+                    ["運作模式", mode],
+                    ["設計風量 (CMH)", airFlow],
+                    ["外氣比 (OA %)", mode === 'MAU' ? 100 : mixRatio],
+                    ["", ""],
+                    ["環境條件設定", ""],
+                    ["外氣 (OA) DB/RH", `${oa.db}℃ / ${oa.rh}%`],
+                    ["回風 (RA) DB/RH", mode === 'AHU' ? `${ra.db}℃ / ${ra.rh}%` : "N/A"],
+                    ["目標 (Room) DB/RH", `${room.db}℃ / ${room.rh}%`],
+                    ["", ""],
+                    ["能源進出水溫配置", ""],
+                    ["低溫冰水 (CHW-L)", `In: ${waterConfig.CHW_L.in}℃ / Out: ${waterConfig.CHW_L.out}℃`],
+                    ["中溫冰水 (CHW-M)", `In: ${waterConfig.CHW_M.in}℃ / Out: ${waterConfig.CHW_M.out}℃`],
+                    ["熱水系統 (HW)", `In: ${waterConfig.HW.in}℃ / Out: ${waterConfig.HW.out}℃`],
+                ];
+
+                const coilHeader = [["盤管核算明細表", "", "", "", "", ""]];
+                const coilTableLabels = [["名稱", "能源類型", "負荷 (kW)", "負荷 (RT)", "流量 (LPM)", "建議管徑"]];
+                const coilRows = calcResults.results.map(r => [
+                    r.label,
+                    r.energy === 'CHW_L' ? '低溫冰水' : r.energy === 'CHW_M' ? '中溫冰水' : '熱水',
+                    Math.abs(r.load).toFixed(2),
+                    (Math.abs(r.load)/3.51685).toFixed(2),
+                    r.lpm.toFixed(2),
+                    r.pipeSize
+                ]);
+
+                const stateHeader = [["", ""], ["空氣處理過程狀態點明細", "", "", "", "", "", ""]];
+                const stateLabels = [["點序", "位置名稱", "乾球 (℃)", "相對濕度 (%)", "濕球 (℃)", "露點 (℃)", "焓值 (kJ/kg)", "含濕量 (g/kg)"]];
+                const stateRows = calcResults.stages.map((s, idx) => [
+                    idx + 1,
+                    s.label,
+                    s.state.db.toFixed(1),
+                    s.state.rh.toFixed(1),
+                    s.state.wb.toFixed(1),
+                    s.state.dp.toFixed(1),
+                    s.state.h.toFixed(2),
+                    (s.state.w * 1000).toFixed(2)
+                ]);
+
+                const finalData = [
+                    ...systemSummary,
+                    ["", ""],
+                    ...coilHeader,
+                    ...coilTableLabels,
+                    ...coilRows,
+                    ...stateHeader,
+                    ...stateLabels,
+                    ...stateRows
+                ];
+
+                const ws = XLSX.utils.aoa_to_sheet(finalData);
+                ws['!cols'] = [{ wch: 25 }, { wch: 20 }, { wch: 15 }, { wch: 15 }, { wch: 15 }, { wch: 15 }, { wch: 15 }, { wch: 15 }];
+                XLSX.utils.book_append_sheet(wb, ws, "Audit Report");
+                XLSX.writeFile(wb, `PsychroAudit_${mode}_${airFlow}CMH.xlsx`);
+            };
+
             const svgW = 1000, svgH = 500; 
-            const margin = { top: 30, right: 80, bottom: 40, left: 70 };
+            const margin = { top: 40, right: 90, bottom: 50, left: 80 };
             const xScale = (db) => ((db - VIEW.dbMin) / (VIEW.dbMax - VIEW.dbMin)) * (svgW - margin.left - margin.right) + margin.left;
             const yScale = (w) => svgH - margin.bottom - ((w - VIEW.wMin) / (VIEW.wMax - VIEW.wMin)) * (svgH - margin.top - margin.bottom);
 
@@ -276,295 +357,254 @@
             }, [calcResults, VIEW]);
 
             return (
-                <div className="flex flex-col h-screen overflow-hidden">
-                    <header className="px-8 py-5 bg-gradient-to-r from-slate-900 via-blue-900 to-slate-900 border-b border-blue-800 flex justify-between items-center shadow-2xl z-30 shrink-0">
-                        <div className="flex items-center gap-5">
-                            <div className="bg-white/10 p-2.5 rounded-2xl backdrop-blur-lg border border-white/20 shadow-inner">
-                                <Icon name="Compass" className="w-8 h-8 text-blue-300" />
+                <div className="flex flex-col h-screen overflow-hidden antialiased">
+                    <header className="px-10 py-6 bg-gradient-to-r from-slate-950 via-blue-950 to-slate-950 border-b border-blue-900 flex justify-between items-center shadow-2xl z-40 shrink-0">
+                        <div className="flex items-center gap-6">
+                            <div className="bg-gradient-to-br from-blue-500 to-indigo-600 p-2.5 rounded-2xl shadow-[0_0_20px_rgba(59,130,246,0.5)]">
+                                <Icon name="Zap" className="w-8 h-8 text-white" />
                             </div>
                             <div>
-                                <h1 className="text-2xl font-black font-heading tracking-tight text-white italic leading-none">
-                                    Psychro<span className="text-blue-400">Solver</span> <span className="text-blue-100 font-light ml-1 text-lg">PRO v7.1</span>
+                                <h1 className="text-3xl font-black font-heading tracking-tighter text-white uppercase italic leading-none">
+                                    Psychro<span className="text-blue-400">Solver</span> <span className="text-blue-200/40 font-light not-italic ml-2 tracking-widest text-xl">V7.4</span>
                                 </h1>
-                                <p className="text-[10px] text-blue-200/60 font-black uppercase tracking-[0.2em] mt-1.5 flex items-center gap-2">
-                                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
-                                    High-Precision HVAC Engineering Audit Terminal
+                                <p className="text-[10px] text-blue-300/40 font-bold uppercase tracking-[0.4em] mt-2 flex items-center gap-3">
+                                    <span className="w-2 h-2 rounded-full bg-blue-500 animate-ping"></span>
+                                    Advanced HVAC Performance Auditor
                                 </p>
                             </div>
                         </div>
-                        <div className="flex gap-2.5 bg-black/30 p-1.5 rounded-2xl border border-white/10">
+                        <div className="flex gap-3 bg-white/5 p-1.5 rounded-2xl border border-white/10 backdrop-blur-md">
                             {['MAU', 'AHU'].map(m => (
-                                <button key={m} onClick={() => setMode(m)} className={`px-10 py-2.5 rounded-xl text-xs font-black transition-all ${mode === m ? 'bg-white text-blue-900 shadow-xl transform scale-105' : 'text-blue-100/50 hover:text-white'}`}>
+                                <button key={m} onClick={() => setMode(m)} className={`px-12 py-3 rounded-xl text-xs font-black transition-all tracking-widest ${mode === m ? 'bg-white text-slate-900 shadow-[0_8px_20px_rgba(0,0,0,0.3)] transform scale-105' : 'text-white/40 hover:text-white hover:bg-white/5'}`}>
                                     {m} MODE
                                 </button>
                             ))}
                         </div>
                     </header>
 
-                    <div className="flex flex-1 overflow-hidden bg-slate-50">
-                        <aside className="w-[380px] border-r border-slate-200 bg-white overflow-y-auto p-5 space-y-7 custom-scrollbar shrink-0 shadow-lg z-20">
-                            <section className="space-y-5">
-                                <div className="flex items-center gap-2.5 font-black text-blue-900 uppercase text-[11px] tracking-widest border-b-2 border-slate-50 pb-3">
-                                    <Icon name="Activity" className="w-4 h-4 text-blue-500" /> 系統原始數據
+                    <div className="flex flex-1 overflow-hidden bg-[#f1f5f9]">
+                        <aside className="w-[400px] border-r border-slate-200 bg-white overflow-y-auto p-6 space-y-8 custom-scrollbar shrink-0 shadow-xl z-30">
+                            <section className="space-y-6">
+                                <div className="flex items-center gap-3 font-black text-slate-400 uppercase text-[10px] tracking-[0.3em] border-b border-slate-100 pb-4">
+                                    <Icon name="Sliders" className="w-4 h-4 text-blue-500" /> System Parameters
                                 </div>
-                                <div className="bg-gradient-to-br from-blue-50 to-indigo-50/30 p-6 rounded-[2rem] border border-blue-100 shadow-inner text-center">
-                                    <label className="text-[10px] font-black text-slate-400 uppercase block mb-1 tracking-[0.1em]">設計風量 (CMH)</label>
-                                    <div className="flex items-center justify-center gap-2">
-                                        <input type="number" value={airFlow || ''} onChange={e => setAirFlow(Number(e.target.value))} className="bg-transparent text-4xl font-black text-blue-700 outline-none w-40 text-center font-heading" />
-                                        <span className="text-slate-400 font-black text-sm">m³/h</span>
+                                <div className="bg-slate-950 p-8 rounded-[2.5rem] shadow-2xl border border-blue-900/20 text-center group">
+                                    <label className="text-[9px] font-black text-blue-400/60 uppercase block mb-2 tracking-[0.2em]">Design Air Flow</label>
+                                    <div className="flex items-center justify-center gap-3">
+                                        <input type="number" value={airFlow || ''} onChange={e => setAirFlow(Number(e.target.value))} className="bg-transparent text-5xl font-black text-white outline-none w-44 text-center font-heading data-value" />
+                                        <span className="text-blue-500/40 font-black text-sm italic font-heading">CMH</span>
                                     </div>
                                 </div>
 
-                                <div className="grid grid-cols-1 gap-4">
-                                    {/* OA 外氣 */}
-                                    <div className="p-5 bg-white rounded-3xl border border-slate-100 shadow-sm space-y-4 card-hover">
-                                        <div className="flex items-center gap-3">
-                                            <div className="bg-blue-600 w-1.5 h-6 rounded-full" />
-                                            <p className="text-[12px] font-black text-slate-700 uppercase tracking-widest">OA 外氣規格</p>
+                                <div className="space-y-4">
+                                    <div className="p-6 bg-white rounded-[2rem] border border-slate-100 shadow-sm card-hover">
+                                        <div className="flex items-center gap-3 mb-5">
+                                            <div className="w-2 h-7 bg-blue-600 rounded-full shadow-lg shadow-blue-200" />
+                                            <h4 className="text-[12px] font-black text-slate-800 uppercase tracking-widest">OA 外氣規格</h4>
                                         </div>
-                                        <div className="flex justify-between items-center text-xs font-bold px-1">
-                                            <span className="text-slate-400">乾球溫度 DB ℃</span>
-                                            <input type="number" value={oa?.db || ''} onChange={e => setOa({...oa, db: Number(e.target.value)})} className="bg-slate-50 w-16 text-center py-2 rounded-xl border border-slate-200 font-black text-blue-600 outline-none focus:border-blue-400" />
-                                        </div>
-                                        <div className="flex justify-between items-center text-xs font-bold px-1">
-                                            <span className="text-slate-400">相對濕度 RH %</span>
-                                            <input type="number" value={oa?.rh || ''} onChange={e => setOa({...oa, rh: Number(e.target.value)})} className="bg-slate-50 w-16 text-center py-2 rounded-xl border border-slate-200 font-black text-blue-600 outline-none focus:border-blue-400" />
+                                        <div className="grid grid-cols-2 gap-4">
+                                            <div className="space-y-1.5"><span className="text-[10px] font-bold text-slate-400 ml-1">DB (℃)</span><input type="number" value={oa.db} onChange={e => setOa({...oa, db: Number(e.target.value)})} className="bg-slate-50 w-full text-center py-3 rounded-2xl border border-slate-100 font-bold text-blue-700 outline-none focus:ring-2 ring-blue-100 transition-all font-data" /></div>
+                                            <div className="space-y-1.5"><span className="text-[10px] font-bold text-slate-400 ml-1">RH (%)</span><input type="number" value={oa.rh} onChange={e => setOa({...oa, rh: Number(e.target.value)})} className="bg-slate-50 w-full text-center py-3 rounded-2xl border border-slate-100 font-bold text-blue-700 outline-none focus:ring-2 ring-blue-100 transition-all font-data" /></div>
                                         </div>
                                     </div>
 
-                                    {/* AHU 模式特有：RA 回風與混風比 */}
                                     {mode === 'AHU' && (
-                                        <div className="p-5 bg-gradient-to-br from-emerald-50 to-teal-50/30 rounded-3xl border border-emerald-100 shadow-sm space-y-4 card-hover">
-                                            <div className="flex items-center gap-3">
-                                                <div className="bg-emerald-500 w-1.5 h-6 rounded-full" />
-                                                <p className="text-[12px] font-black text-emerald-800 uppercase tracking-widest">RA 回風與混風設定</p>
+                                        <div className="p-6 bg-emerald-50/50 rounded-[2rem] border border-emerald-100 shadow-sm card-hover">
+                                            <div className="flex items-center gap-3 mb-5">
+                                                <div className="w-2 h-7 bg-emerald-500 rounded-full shadow-lg shadow-emerald-200" />
+                                                <h4 className="text-[12px] font-black text-emerald-800 uppercase tracking-widest">RA 回風與混合設定</h4>
                                             </div>
-                                            <div className="flex justify-between items-center text-xs font-bold px-1">
-                                                <span className="text-emerald-600/60 font-black">回風溫度 DB ℃</span>
-                                                <input type="number" value={ra?.db || ''} onChange={e => setRa({...ra, db: Number(e.target.value)})} className="bg-white w-16 text-center py-2 rounded-xl border border-emerald-100 font-black text-emerald-600 outline-none focus:border-emerald-400 shadow-sm" />
+                                            <div className="grid grid-cols-2 gap-4 mb-4">
+                                                <div className="space-y-1.5"><span className="text-[10px] font-bold text-emerald-600/40 ml-1">RA DB (℃)</span><input type="number" value={ra.db} onChange={e => setRa({...ra, db: Number(e.target.value)})} className="bg-white w-full text-center py-3 rounded-2xl border border-emerald-100 font-bold text-emerald-600 outline-none font-data" /></div>
+                                                <div className="space-y-1.5"><span className="text-[10px] font-bold text-emerald-600/40 ml-1">RA RH (%)</span><input type="number" value={ra.rh} onChange={e => setRa({...ra, rh: Number(e.target.value)})} className="bg-white w-full text-center py-3 rounded-2xl border border-emerald-100 font-bold text-emerald-600 outline-none font-data" /></div>
                                             </div>
-                                            <div className="flex justify-between items-center text-xs font-bold px-1">
-                                                <span className="text-emerald-600/60 font-black">回風濕度 RH %</span>
-                                                <input type="number" value={ra?.rh || ''} onChange={e => setRa({...ra, rh: Number(e.target.value)})} className="bg-white w-16 text-center py-2 rounded-xl border border-emerald-100 font-black text-emerald-600 outline-none focus:border-emerald-400 shadow-sm" />
-                                            </div>
-                                            <div className="pt-2 border-t border-emerald-100">
-                                                <div className="flex justify-between items-center text-xs font-bold px-1">
-                                                    <span className="text-emerald-800 font-black">外氣比 OA %</span>
-                                                    <div className="flex items-center gap-2">
-                                                        <input type="number" value={mixRatio || ''} onChange={e => setMixRatio(Number(e.target.value))} className="bg-emerald-600 w-16 text-center py-2 rounded-xl font-black text-white outline-none shadow-md" />
-                                                        <span className="text-emerald-600">%</span>
-                                                    </div>
-                                                </div>
+                                            <div className="bg-emerald-600 p-4 rounded-2xl flex justify-between items-center shadow-lg">
+                                                <span className="text-[11px] font-black text-emerald-100 uppercase tracking-widest">外氣比 OA %</span>
+                                                <input type="number" value={mixRatio} onChange={e => setMixRatio(Number(e.target.value))} className="bg-emerald-800 text-white w-20 text-center py-1.5 rounded-xl font-black font-data text-lg outline-none" />
                                             </div>
                                         </div>
                                     )}
 
-                                    <div className="p-5 bg-white rounded-3xl border border-blue-100 shadow-sm space-y-4 card-hover">
-                                        <div className="flex items-center gap-3">
-                                            <div className="bg-slate-900 w-1.5 h-6 rounded-full" />
-                                            <p className="text-[12px] font-black text-slate-700 uppercase tracking-widest">房內控制目標</p>
+                                    <div className="p-6 bg-white rounded-[2rem] border border-slate-100 shadow-sm card-hover">
+                                        <div className="flex items-center gap-3 mb-5">
+                                            <div className="w-2 h-7 bg-slate-900 rounded-full" />
+                                            <h4 className="text-[12px] font-black text-slate-800 uppercase tracking-widest">目標控制點</h4>
                                         </div>
-                                        <div className="flex justify-between items-center text-xs font-bold px-1">
-                                            <span className="text-slate-400">目標 DB ℃</span>
-                                            <input type="number" value={room?.db || ''} onChange={e => setRoom({...room, db: Number(e.target.value)})} className="bg-blue-50/30 w-16 text-center py-2 rounded-xl border border-blue-100 font-black text-blue-600 outline-none focus:border-blue-400" />
-                                        </div>
-                                        <div className="flex justify-between items-center text-xs font-bold px-1">
-                                            <span className="text-slate-400">目標 RH %</span>
-                                            <input type="number" value={room?.rh || ''} onChange={e => setRoom({...room, rh: Number(e.target.value)})} className="bg-blue-50/30 w-16 text-center py-2 rounded-xl border border-blue-100 font-black text-blue-600 outline-none focus:border-blue-400" />
+                                        <div className="grid grid-cols-2 gap-4">
+                                            <div className="space-y-1.5"><span className="text-[10px] font-bold text-slate-400 ml-1">Target DB</span><input type="number" value={room.db} onChange={e => setRoom({...room, db: Number(e.target.value)})} className="bg-slate-50 w-full text-center py-3 rounded-2xl border border-slate-100 font-bold text-slate-700 outline-none font-data" /></div>
+                                            <div className="space-y-1.5"><span className="text-[10px] font-bold text-slate-400 ml-1">Target RH</span><input type="number" value={room.rh} onChange={e => setRoom({...room, rh: Number(e.target.value)})} className="bg-slate-50 w-full text-center py-3 rounded-2xl border border-slate-100 font-bold text-slate-700 outline-none font-data" /></div>
                                         </div>
                                     </div>
                                 </div>
                             </section>
 
-                            <section className="space-y-4 pb-12">
-                                <div className="flex justify-between items-center text-[11px] font-black text-slate-500 uppercase border-b border-slate-100 pb-3">
-                                    <div className="flex items-center gap-2.5">
-                                        <Icon name="Layers" className="w-4 h-4 text-blue-500" /> 盤管段出口定義
-                                    </div>
-                                    <button onClick={() => setCoils([...coils, { id: Date.now(), energy: 'CHW_L', label: 'New Coil Section', db: 20, rh: 50, active: true }])} className="p-1.5 bg-blue-600 hover:bg-blue-700 rounded-lg text-white shadow-lg active:scale-95 transition-all">
-                                        <Icon name="Plus" className="w-4 h-4"/>
-                                    </button>
+                            <section className="space-y-5 pb-16">
+                                <div className="flex justify-between items-center text-[10px] font-black text-slate-400 uppercase tracking-[0.3em] border-b border-slate-100 pb-4">
+                                    <div className="flex items-center gap-3"><Icon name="Boxes" className="w-4 h-4 text-blue-500" /> Coil Stages (熱→冷→冷→熱)</div>
+                                    <button onClick={() => setCoils([...coils, { id: Date.now(), energy: 'HW', label: '新增段位', db: 25, rh: 50, active: true }])} className="p-2 bg-blue-600 hover:bg-blue-700 rounded-xl text-white shadow-xl transition-all active:scale-90"><Icon name="Plus" className="w-4 h-4"/></button>
                                 </div>
                                 {coils.map((c, i) => (
-                                    <div key={c.id} className="p-5 bg-white border border-slate-100 rounded-3xl relative overflow-hidden shadow-sm transition-all hover:border-blue-300 group">
-                                        <div className={`absolute top-0 left-0 w-1.5 h-full ${c.energy === 'CHW_L' ? 'bg-blue-600' : c.energy === 'CHW_M' ? 'bg-sky-400' : 'bg-rose-500'}`} />
-                                        <div className="flex justify-between items-center mb-4">
+                                    <div key={c.id} className="p-6 bg-white border border-slate-100 rounded-[2.5rem] relative overflow-hidden shadow-sm transition-all hover:border-blue-300 group card-hover">
+                                        <div className={`absolute top-0 left-0 w-2 h-full ${c.energy === 'CHW_L' ? 'bg-blue-600' : c.energy === 'CHW_M' ? 'bg-sky-400' : 'bg-rose-500'}`} />
+                                        <div className="flex justify-between items-center mb-5">
                                             <div className="flex items-center gap-3">
-                                                <span className="w-6 h-6 flex items-center justify-center text-[10px] font-black text-white bg-slate-900 rounded-lg">{i+1}</span>
-                                                <input type="text" value={c.label} onChange={e => setCoils(coils.map(item => item.id === c.id ? {...item, label: e.target.value} : item))} className="bg-transparent text-[13px] font-black text-slate-800 outline-none w-44 focus:text-blue-600" />
+                                                <span className="w-7 h-7 flex items-center justify-center text-[11px] font-black text-white bg-slate-900 rounded-xl shadow-md">{i+1}</span>
+                                                <input type="text" value={c.label} onChange={e => setCoils(coils.map(item => item.id === c.id ? {...item, label: e.target.value} : item))} className="bg-transparent text-[14px] font-black text-slate-800 outline-none w-48 focus:text-blue-600" />
                                             </div>
-                                            <button onClick={() => setCoils(coils.filter(item => item.id !== c.id))} className="text-slate-200 hover:text-rose-500 transition-colors opacity-0 group-hover:opacity-100">
-                                                <Icon name="XCircle" className="w-4 h-4"/>
-                                            </button>
+                                            <button onClick={() => setCoils(coils.filter(item => item.id !== c.id))} className="text-slate-200 hover:text-rose-500 opacity-0 group-hover:opacity-100 transition-all"><Icon name="Trash2" className="w-4 h-4"/></button>
                                         </div>
-                                        <div className="relative mb-3">
-                                            <select value={c.energy} onChange={e => setCoils(coils.map(item => item.id === c.id ? {...item, energy: e.target.value} : item))} className="w-full bg-slate-50 text-[11px] font-bold text-slate-600 p-2.5 rounded-xl border border-slate-100 outline-none focus:border-blue-300">
-                                                <option value="CHW_L">低溫冰水 (CHW-L)</option>
-                                                <option value="CHW_M">中溫冰水 (CHW-M)</option>
-                                                <option value="HW">熱水系統 (HW)</option>
-                                            </select>
-                                            <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-slate-300"><Icon name="ChevronDown" className="w-3.5 h-3.5" /></div>
-                                        </div>
-                                        <div className="grid grid-cols-2 gap-3">
-                                            <div className="bg-slate-50/50 p-2.5 rounded-2xl border border-slate-100">
-                                                <label className="text-[9px] font-black text-slate-400 uppercase block mb-1">Outlet DB</label>
-                                                <input type="number" value={c?.db ?? ''} onChange={e => setCoils(coils.map(item => item.id === c.id ? {...item, db: Number(e.target.value)} : item))} className="bg-transparent w-full font-black text-blue-600 outline-none text-sm text-center" />
-                                            </div>
-                                            <div className="bg-slate-50/50 p-2.5 rounded-2xl border border-slate-100">
-                                                <label className="text-[9px] font-black text-slate-400 uppercase block mb-1">Outlet RH%</label>
-                                                <input type="number" value={c?.rh ?? ''} onChange={e => setCoils(coils.map(item => item.id === c.id ? {...item, rh: Number(e.target.value)} : item))} className="bg-transparent w-full font-black text-blue-600 outline-none text-sm text-center" />
-                                            </div>
+                                        <select value={c.energy} onChange={e => setCoils(coils.map(item => item.id === c.id ? {...item, energy: e.target.value} : item))} className="w-full bg-slate-50 text-[11px] font-bold text-slate-600 p-3 rounded-2xl border border-slate-100 outline-none mb-4 cursor-pointer">
+                                            <option value="HW">熱水系統 (HW)</option>
+                                            <option value="CHW_M">中溫冰水 (CHW-M)</option>
+                                            <option value="CHW_L">低溫冰水 (CHW-L)</option>
+                                        </select>
+                                        <div className="grid grid-cols-2 gap-4">
+                                            <div className="bg-slate-50 p-3 rounded-2xl border border-slate-100 text-center"><label className="text-[9px] font-black text-slate-400 uppercase block mb-1">Outlet DB</label><input type="number" value={c.db} onChange={e => setCoils(coils.map(item => item.id === c.id ? {...item, db: Number(e.target.value)} : item))} className="bg-transparent w-full font-black text-blue-600 outline-none text-md font-data" /></div>
+                                            <div className="bg-slate-50 p-3 rounded-2xl border border-slate-100 text-center"><label className="text-[9px] font-black text-slate-400 uppercase block mb-1">Outlet RH</label><input type="number" value={c.rh} onChange={e => setCoils(coils.map(item => item.id === c.id ? {...item, rh: Number(e.target.value)} : item))} className="bg-transparent w-full font-black text-blue-600 outline-none text-md font-data" /></div>
                                         </div>
                                     </div>
                                 ))}
                             </section>
                         </aside>
 
-                        <main className="flex-1 overflow-y-auto bg-slate-50 custom-scrollbar p-6">
-                            {/* Psychrometric Chart */}
-                            <div className="bg-white rounded-[3rem] border border-slate-200 relative shadow-2xl overflow-hidden flex flex-col m-2 h-[550px] shrink-0">
-                                <div className="absolute top-8 left-10 z-10 flex items-center gap-4">
-                                    <div className="bg-blue-600 text-white px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest shadow-lg">Live Psychro-Mapping</div>
-                                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">LOGIC ENABLED</span>
+                        <main className="flex-1 overflow-y-auto bg-[#f8fafc] custom-scrollbar p-10">
+                            <div className="bg-white rounded-[3.5rem] border border-slate-200 relative shadow-2xl overflow-hidden flex flex-col h-[580px] shrink-0 transform transition-all duration-700">
+                                <div className="absolute top-10 left-12 z-20 flex items-center gap-6">
+                                    <div className="bg-slate-950 text-white px-6 py-2.5 rounded-full text-[10px] font-black uppercase tracking-[0.3em] shadow-[0_10px_30px_rgba(0,0,0,0.2)] flex items-center gap-3">
+                                        <span className="w-2 h-2 rounded-full bg-blue-400 animate-pulse"></span>
+                                        Interactive Mapping
+                                    </div>
+                                    <div className="text-[11px] font-bold text-slate-400 uppercase tracking-widest hidden md:block">Process Trajectory: {mode} System (熱冷冷熱)</div>
                                 </div>
                                 
-                                <svg width="100%" height="100%" viewBox={`0 0 ${svgW} ${svgH}`} preserveAspectRatio="xMidYMid meet" className="drop-shadow-sm">
+                                <svg width="100%" height="100%" viewBox={`0 0 ${svgW} ${svgH}`} preserveAspectRatio="xMidYMid meet" className="drop-shadow-2xl">
                                     <g stroke="#f1f5f9" strokeWidth="1">
                                         {[0, 10, 20, 30, 40, 50].map(t => (
                                             <React.Fragment key={t}>
                                                 <line x1={xScale(t)} y1={margin.top} x2={xScale(t)} y2={svgH-margin.bottom} vectorEffect="non-scaling-stroke" />
-                                                <text x={xScale(t)} y={svgH-margin.bottom + 22} textAnchor="middle" className="text-[11px] fill-slate-400 font-black font-mono">{t}℃</text>
+                                                <text x={xScale(t)} y={svgH-margin.bottom + 28} textAnchor="middle" className="text-[12px] fill-slate-300 font-bold font-mono tracking-tighter">{t}℃</text>
                                             </React.Fragment>
                                         ))}
                                         {[0, 0.005, 0.01, 0.015, 0.02, 0.025, 0.03, 0.035].map(w => (
                                             <React.Fragment key={w}>
                                                 <line x1={margin.left} y1={yScale(w)} x2={svgW-margin.right} y2={yScale(w)} vectorEffect="non-scaling-stroke" />
-                                                <text x={margin.left - 15} y={yScale(w) + 4} textAnchor="end" className="text-[11px] fill-slate-300 font-black">{(w*1000).toFixed(0)}</text>
+                                                <text x={margin.left - 20} y={yScale(w) + 4} textAnchor="end" className="text-[11px] fill-slate-200 font-black font-mono">{(w*1000).toFixed(0)}</text>
                                             </React.Fragment>
                                         ))}
                                     </g>
                                     
-                                    <path d={chartAssets.satPath} fill="none" stroke="#94a3b8" strokeWidth="2.5" strokeDasharray="6 3" opacity="0.3" />
+                                    <path d={chartAssets.satPath} fill="none" stroke="#94a3b8" strokeWidth="3" strokeDasharray="8 4" opacity="0.2" />
                                     {chartAssets.rhLines.map((rh) => (
-                                        <React.Fragment key={rh.rh}>
-                                            <path d={rh.path} fill="none" stroke="#e2e8f0" strokeWidth="1" strokeDasharray="3 3" />
-                                        </React.Fragment>
+                                        <path key={rh.rh} d={rh.path} fill="none" stroke="#e2e8f0" strokeWidth="1" strokeDasharray="4 4" />
                                     ))}
 
-                                    {/* AHU 模式：繪製 OA 到 RA 的混風連線 */}
                                     {mode === 'AHU' && (
                                         <g>
-                                            <line x1={xScale(calcResults.oaState.db)} y1={yScale(calcResults.oaState.oaW ?? calcResults.oaState.w)} x2={xScale(calcResults.raState.db)} y2={yScale(calcResults.raState.w)} stroke="#cbd5e1" strokeWidth="2" strokeDasharray="8 4" />
-                                            {/* 回風點 RA */}
-                                            <circle cx={xScale(calcResults.raState.db)} cy={yScale(calcResults.raState.w)} r="8" fill="white" stroke="#10b981" strokeWidth="2" />
-                                            <text x={xScale(calcResults.raState.db)} y={yScale(calcResults.raState.w) - 15} textAnchor="middle" className="text-[10px] font-black fill-emerald-600">RA</text>
-                                            
-                                            {/* 外氣點 OA */}
-                                            <circle cx={xScale(calcResults.oaState.db)} cy={yScale(calcResults.oaState.w)} r="8" fill="white" stroke="#3b82f6" strokeWidth="2" />
-                                            <text x={xScale(calcResults.oaState.db)} y={yScale(calcResults.oaState.w) - 15} textAnchor="middle" className="text-[10px] font-black fill-blue-600">OA</text>
+                                            <line x1={xScale(calcResults.oaState.db)} y1={yScale(calcResults.oaState.w)} x2={xScale(calcResults.raState.db)} y2={yScale(calcResults.raState.w)} stroke="#cbd5e1" strokeWidth="2.5" strokeDasharray="10 5" />
+                                            <circle cx={xScale(calcResults.raState.db)} cy={yScale(calcResults.raState.w)} r="10" fill="white" stroke="#10b981" strokeWidth="3" />
+                                            <text x={xScale(calcResults.raState.db)} y={yScale(calcResults.raState.w) - 18} textAnchor="middle" className="text-[11px] font-black fill-emerald-600 font-heading">RA 回風</text>
+                                            <circle cx={xScale(calcResults.oaState.db)} cy={yScale(calcResults.oaState.w)} r="10" fill="white" stroke="#3b82f6" strokeWidth="3" />
+                                            <text x={xScale(calcResults.oaState.db)} y={yScale(calcResults.oaState.w) - 18} textAnchor="middle" className="text-[11px] font-black fill-blue-600 font-heading">OA 外氣</text>
                                         </g>
                                     )}
 
                                     {processPaths.map((p, i) => (
-                                        <path key={i} d={p.d} stroke={p.isHeating ? "#f43f5e" : "#2563eb"} strokeWidth="6" fill="none" strokeLinecap="round" className="process-line" />
+                                        <path key={i} d={p.d} stroke={p.isHeating ? "#f43f5e" : "#2563eb"} strokeWidth="7" fill="none" strokeLinecap="round" className="process-line" />
                                     ))}
 
                                     <g>
-                                        <circle cx={xScale(calcResults.roomState.db)} cy={yScale(calcResults.roomState.w)} r="15" fill="none" stroke="#1e293b" strokeWidth="3" strokeDasharray="4 2" />
-                                        <text x={xScale(calcResults.roomState.db) + 20} y={yScale(calcResults.roomState.w) + 5} className="text-[11px] font-black fill-slate-400 italic uppercase">Room Target</text>
+                                        <circle cx={xScale(calcResults.roomState.db)} cy={yScale(calcResults.roomState.w)} r="18" fill="none" stroke="#1e293b" strokeWidth="4" strokeDasharray="6 3" />
                                     </g>
 
                                     {calcResults.stages.map((s, i) => (
-                                        <g key={i} onMouseEnter={() => setHoveredPoint(s)} onMouseLeave={() => setHoveredPoint(null)} className="cursor-crosshair">
-                                            <circle cx={xScale(s.state.db)} cy={yScale(s.state.w)} r="12" fill="white" stroke={i === 0 && mode === 'AHU' ? "#10b981" : "#1e293b"} strokeWidth="3" className="transition-all hover:r-15 shadow-xl" />
-                                            <text x={xScale(s.state.db)} y={yScale(s.state.w)} dy="4" textAnchor="middle" className="text-[11px] font-black fill-slate-900 pointer-events-none">{i+1}</text>
-                                            <text x={xScale(s.state.db)} y={yScale(s.state.w) + 32} textAnchor="middle" className="text-[10px] font-black fill-blue-700 bg-white/95 px-2 py-0.5 rounded-lg shadow-sm border border-blue-50">
-                                                {s.state.db.toFixed(1)}℃ / {s.state.rh.toFixed(0)}%
-                                            </text>
+                                        <g key={i} onMouseEnter={() => setHoveredPoint(s)} onMouseLeave={() => setHoveredPoint(null)} className="cursor-pointer group">
+                                            <circle cx={xScale(s.state.db)} cy={yScale(s.state.w)} r="14" fill="white" stroke={i === 0 && mode === 'AHU' ? "#10b981" : "#1e293b"} strokeWidth="4" className="transition-all hover:r-16 shadow-2xl" />
+                                            <text x={xScale(s.state.db)} y={yScale(s.state.w)} dy="4.5" textAnchor="middle" className="text-[12px] font-black fill-slate-900 pointer-events-none font-heading">{i+1}</text>
+                                            <g className="opacity-0 group-hover:opacity-100 transition-all pointer-events-none">
+                                                <rect x={xScale(s.state.db) - 45} y={yScale(s.state.w) + 30} width="90" height="24" rx="12" fill="white" stroke="#e2e8f0" />
+                                                <text x={xScale(s.state.db)} y={yScale(s.state.w) + 46} textAnchor="middle" className="text-[10px] font-black fill-blue-700 font-mono">
+                                                    {s.state.db.toFixed(1)}℃/{s.state.rh.toFixed(0)}%
+                                                </text>
+                                            </g>
                                         </g>
                                     ))}
                                 </svg>
                             </div>
 
-                            <div className="bg-white border border-slate-200 rounded-[3rem] p-10 shadow-2xl m-2 shrink-0">
-                                <div className="flex flex-col gap-8 mb-10">
+                            <div className="bg-white border border-slate-200 rounded-[3.5rem] p-12 shadow-2xl m-2 shrink-0 relative overflow-hidden">
+                                <div className="absolute top-0 right-0 p-12 opacity-[0.03] pointer-events-none">
+                                    <Icon name="Search" className="w-64 h-64 text-slate-900" />
+                                </div>
+                                <div className="flex flex-col gap-10 mb-12">
                                     <div className="flex justify-between items-end">
-                                        <div className="flex items-center gap-6">
-                                            <div className="bg-blue-600 p-4 rounded-3xl shadow-xl text-white transform -rotate-2"><Icon name="FileText" className="w-8 h-8" /></div>
+                                        <div className="flex items-center gap-8">
+                                            <div className="bg-slate-950 p-6 rounded-[2rem] shadow-2xl text-white transform -rotate-3 border border-blue-500/30"><Icon name="ClipboardCheck" className="w-10 h-10" /></div>
                                             <div>
-                                                <h3 className="text-2xl font-black font-heading uppercase text-slate-900 tracking-tight">空調設計核算表</h3>
-                                                <p className="text-xs text-slate-400 font-bold uppercase tracking-[0.2em] mt-2">{mode === 'AHU' ? `AHU MIXING AUDIT (OA ${mixRatio}% / RA ${100-mixRatio}%)` : 'MAU DIRECT AUDIT (100% OA)'}</p>
+                                                <h3 className="text-3xl font-black font-heading uppercase text-slate-900 tracking-tighter leading-none">工程設計能源核算摘要表</h3>
+                                                <p className="text-[11px] text-slate-400 font-black uppercase tracking-[0.4em] mt-3">MAU 配置分析: {mode === 'AHU' ? '混合風循環' : '100% 外氣直流'}</p>
                                             </div>
                                         </div>
-                                        <div className="flex gap-4">
-                                            <button className="bg-slate-900 hover:bg-black px-10 py-5 rounded-3xl text-xs font-black text-white uppercase flex items-center gap-3 shadow-2xl transition-all active:scale-95">
-                                                <Icon name="ExternalLink" className="w-5 h-5"/> 輸出技術報告
-                                            </button>
-                                        </div>
+                                        <button onClick={handleExportExcel} className="bg-emerald-600 hover:bg-emerald-700 px-12 py-5 rounded-[2rem] text-[11px] font-black text-white uppercase flex items-center gap-4 shadow-[0_15px_40px_-10px_rgba(16,185,129,0.5)] transition-all active:scale-95 group">
+                                            <Icon name="DownloadCloud" className="w-5 h-5 group-hover:animate-bounce"/> 導出完整技術審核報表 (.XLSX)
+                                        </button>
                                     </div>
 
-                                    <div className="grid grid-cols-3 gap-8 bg-slate-50/50 p-8 rounded-[2.5rem] border border-slate-100">
+                                    <div className="grid grid-cols-3 gap-10 bg-[#f8fafc] p-10 rounded-[3rem] border border-slate-100 shadow-inner">
                                         {['CHW_L', 'CHW_M', 'HW'].map(k => (
-                                            <div key={k} className="space-y-4">
-                                                <div className="text-[11px] font-black uppercase tracking-[0.2em] border-b border-slate-200 pb-3 flex items-center gap-3 text-slate-500">
-                                                    {k === 'HW' ? <Icon name="Flame" className="w-4 h-4 text-rose-500" /> : <Icon name="Droplets" className="w-4 h-4 text-blue-500" />}
-                                                    {k === 'CHW_L' ? '低溫冰水' : k === 'CHW_M' ? '中溫冰水' : '熱水系統'}
+                                            <div key={k} className="space-y-5">
+                                                <div className="text-[10px] font-black uppercase tracking-[0.3em] border-b-2 border-slate-200 pb-4 flex items-center gap-3 text-slate-500">
+                                                    <div className={`w-2 h-2 rounded-full ${k === 'HW' ? 'bg-rose-500' : 'bg-blue-500'}`} />
+                                                    {k === 'CHW_L' ? '低溫冰水能源' : k === 'CHW_M' ? '中溫冰水能源' : '熱水能源系統'}
                                                 </div>
-                                                <div className="grid grid-cols-2 gap-4">
-                                                    <div className="flex flex-col">
-                                                        <span className="text-[9px] font-black text-slate-400 uppercase mb-1.5 ml-1">進水 ℃</span>
-                                                        <input type="number" value={waterConfig[k]?.in ?? ''} onChange={e => setWaterConfig({...waterConfig, [k]: {...waterConfig[k], in: Number(e.target.value)}})} className="bg-white border border-slate-200 p-3 rounded-2xl font-black text-blue-700 text-center shadow-sm outline-none font-mono" />
-                                                    </div>
-                                                    <div className="flex flex-col">
-                                                        <span className="text-[9px] font-black text-slate-400 uppercase mb-1.5 ml-1">出水 ℃</span>
-                                                        <input type="number" value={waterConfig[k]?.out ?? ''} onChange={e => setWaterConfig({...waterConfig, [k]: {...waterConfig[k], out: Number(e.target.value)}})} className="bg-white border border-slate-200 p-3 rounded-2xl font-black text-blue-700 text-center shadow-sm outline-none font-mono" />
-                                                    </div>
+                                                <div className="grid grid-cols-2 gap-5">
+                                                    <div className="flex flex-col"><span className="text-[9px] font-black text-slate-400 uppercase mb-2 ml-1">進水 Tin</span><input type="number" value={waterConfig[k].in} onChange={e => setWaterConfig({...waterConfig, [k]: {...waterConfig[k], in: Number(e.target.value)}})} className="bg-white border border-slate-200 p-4 rounded-2xl font-black text-blue-800 text-center shadow-sm outline-none font-mono text-lg focus:ring-4 ring-blue-50" /></div>
+                                                    <div className="flex flex-col"><span className="text-[9px] font-black text-slate-400 uppercase mb-2 ml-1">出水 Tout</span><input type="number" value={waterConfig[k].out} onChange={e => setWaterConfig({...waterConfig, [k]: {...waterConfig[k], out: Number(e.target.value)}})} className="bg-white border border-slate-200 p-4 rounded-2xl font-black text-blue-800 text-center shadow-sm outline-none font-mono text-lg focus:ring-4 ring-blue-50" /></div>
                                                 </div>
                                             </div>
                                         ))}
                                     </div>
                                 </div>
 
-                                <div className="w-full border border-slate-100 rounded-[3rem] overflow-hidden shadow-inner bg-white">
+                                <div className="w-full border-2 border-slate-50 rounded-[3.5rem] overflow-hidden shadow-2xl bg-white">
                                     <table className="w-full text-left border-collapse">
                                         <thead>
-                                            <tr className="bg-slate-900 text-white uppercase tracking-[0.15em] text-[10px] font-black font-heading">
-                                                <th className="p-7 px-10">Energy System / Coil Components</th>
-                                                <th className="p-7 text-center border-l border-white/5 bg-slate-800">負荷 (kW)</th>
-                                                <th className="p-7 text-center border-l border-white/5 bg-slate-800">負荷 (RT)</th>
-                                                <th className="p-7 text-center border-l border-white/5 bg-slate-800">水量 (LPM)</th>
-                                                <th className="p-7 text-center border-l border-white/5 bg-blue-700 text-blue-50 shadow-xl">建議管徑 (A)</th>
+                                            <tr className="bg-slate-950 text-white uppercase tracking-[0.25em] text-[10px] font-black font-heading">
+                                                <th className="p-9 px-12">盤管組件 (熱→冷→冷→熱)</th>
+                                                <th className="p-9 text-center border-l border-white/5 bg-slate-900">負荷 (kW)</th>
+                                                <th className="p-9 text-center border-l border-white/5 bg-slate-900">負荷 (RT)</th>
+                                                <th className="p-9 text-center border-l border-white/5 bg-slate-900">流量 (LPM)</th>
+                                                <th className="p-9 text-center border-l border-white/5 bg-blue-800 text-blue-100 shadow-2xl">建議管徑 (A)</th>
                                             </tr>
                                         </thead>
                                         <tbody>
                                             {['CHW_L', 'CHW_M', 'HW'].map(type => {
                                                 const group = calcResults.results.filter(r => r.energy === type);
                                                 if (group.length === 0) return null;
-                                                const typeLabel = type === 'CHW_L' ? 'Low-Temp CHW' : type === 'CHW_M' ? 'Med-Temp CHW' : 'Hot Water';
+                                                const typeLabel = type === 'CHW_L' ? '低溫冰水能源段' : type === 'CHW_M' ? '中溫冰水能源段' : '熱水能源段';
                                                 const dotColor = type === 'CHW_L' ? 'bg-blue-600' : type === 'CHW_M' ? 'bg-sky-400' : 'bg-rose-500';
                                                 return (
                                                     <React.Fragment key={type}>
-                                                        <tr className="bg-slate-50/80">
-                                                            <td colSpan="5" className="p-4 px-10 text-[11px] font-black text-slate-400 uppercase border-y border-slate-100 tracking-[0.2em] font-heading">
-                                                                {typeLabel} Section (ΔT = {(group[0]?.dt || 5).toFixed(1)}℃)
+                                                        <tr className="bg-slate-50/50">
+                                                            <td colSpan="5" className="p-5 px-12 text-[10px] font-black text-slate-400 uppercase border-y border-slate-100 tracking-[0.3em] font-heading">
+                                                                {typeLabel} —— (ΔT: {(group[0]?.dt || 5).toFixed(1)}℃)
                                                             </td>
                                                         </tr>
                                                         {group.map((res) => (
                                                             <tr key={res.id} className="border-b border-slate-50 hover:bg-blue-50/30 transition-all group">
-                                                                <td className="p-7 px-10 font-black flex items-center gap-6 italic group-hover:text-blue-700 transition-all">
-                                                                    <div className={`w-3.5 h-3.5 rounded-full ${dotColor} shadow-lg ring-4 ring-slate-100`} />
-                                                                    <span className="text-lg tracking-tight uppercase">{res.label}</span>
+                                                                <td className="p-8 px-12 font-black flex items-center gap-8 italic group-hover:text-blue-700 transition-all">
+                                                                    <div className={`w-4 h-4 rounded-full ${dotColor} shadow-[0_0_15px_rgba(0,0,0,0.1)] ring-8 ring-slate-100/50`} />
+                                                                    <span className="text-xl tracking-tighter uppercase font-heading">{res.label}</span>
                                                                 </td>
-                                                                <td className="p-7 text-slate-900 text-3xl font-black text-center border-l border-slate-50 font-heading tracking-tighter">
-                                                                    {Math.abs(res.load || 0).toFixed(2)}
+                                                                <td className="p-8 text-slate-900 text-4xl font-bold text-center border-l border-slate-50 font-data tracking-tighter">
+                                                                    {Math.abs(res.load).toFixed(2)}
                                                                 </td>
-                                                                <td className="p-7 text-slate-900 text-3xl font-black text-center border-l border-slate-50 font-heading tracking-tighter">
-                                                                    {(Math.abs(res.load || 0)/3.51685).toFixed(2)}
+                                                                <td className="p-8 text-slate-900 text-4xl font-bold text-center border-l border-slate-50 font-data tracking-tighter">
+                                                                    {(Math.abs(res.load)/3.51685).toFixed(2)}
                                                                 </td>
-                                                                <td className="p-7 text-slate-900 text-3xl font-black text-center border-l border-slate-50 font-heading tracking-tighter">
-                                                                    {(res.lpm || 0).toFixed(2)}
+                                                                <td className="p-8 text-slate-900 text-4xl font-bold text-center border-l border-slate-50 font-data tracking-tighter">
+                                                                    {res.lpm.toFixed(2)}
                                                                 </td>
-                                                                <td className="p-7 text-emerald-600 text-4xl font-black text-center border-l border-slate-50 bg-emerald-50/10 font-heading italic">
+                                                                <td className="p-8 text-emerald-600 text-5xl font-black text-center border-l border-slate-50 bg-emerald-50/5 font-heading italic tracking-tighter">
                                                                     {res.pipeSize}
                                                                 </td>
                                                             </tr>
@@ -576,19 +616,19 @@
                                     </table>
                                 </div>
                             </div>
-                            <div className="h-20 shrink-0" />
+                            <div className="h-24 shrink-0" />
                         </main>
                     </div>
 
                     {hoveredPoint && (
-                        <div className="fixed pointer-events-none z-50 transition-all" style={{ left: xScale(hoveredPoint.state.db) + 400 + 'px', top: yScale(hoveredPoint.state.w) + 120 + 'px' }}>
-                            <div className="bg-slate-900/95 border border-blue-400 text-white p-6 rounded-[2rem] shadow-2xl w-[240px] backdrop-blur-xl">
-                                <h4 className="text-[14px] font-black uppercase tracking-widest text-blue-400 italic mb-3 border-b border-white/10 pb-3">{hoveredPoint.label}</h4>
-                                <div className="space-y-3 text-[11px] font-mono">
-                                    <div className="flex justify-between items-center"><span className="text-slate-500 font-sans font-bold">DB / WB</span><span>{hoveredPoint.state.db.toFixed(1)} / {hoveredPoint.state.wb.toFixed(1)}℃</span></div>
-                                    <div className="flex justify-between items-center"><span className="text-slate-500 font-sans font-bold">RH / DP</span><span>{hoveredPoint.state.rh.toFixed(0)}% / {hoveredPoint.state.dp.toFixed(1)}℃</span></div>
-                                    <div className="flex justify-between items-center border-t border-white/5 pt-3"><span className="text-slate-500 font-sans font-bold">ENTHALPY</span><span className="text-emerald-400">{hoveredPoint.state.h.toFixed(2)} kJ/kg</span></div>
-                                    <div className="flex justify-between items-center"><span className="text-slate-500 font-sans font-bold">HUMIDITY</span><span className="text-blue-400">{(hoveredPoint.state.w * 1000).toFixed(2)} g/kg</span></div>
+                        <div className="fixed pointer-events-none z-50 transition-all duration-300" style={{ left: xScale(hoveredPoint.state.db) + 420 + 'px', top: yScale(hoveredPoint.state.w) + 140 + 'px' }}>
+                            <div className="bg-slate-950/95 border border-blue-500/50 text-white p-8 rounded-[2.5rem] shadow-[0_30px_60px_-15px_rgba(0,0,0,0.5)] w-[280px] backdrop-blur-2xl">
+                                <h4 className="text-[15px] font-black uppercase tracking-[0.2em] text-blue-400 italic mb-5 border-b border-white/10 pb-4 font-heading">{hoveredPoint.label}</h4>
+                                <div className="space-y-4 text-[12px] font-mono">
+                                    <div className="flex justify-between items-center"><span className="text-slate-500 font-sans font-black uppercase tracking-widest text-[9px]">DB / WB</span><span className="font-bold">{hoveredPoint.state.db.toFixed(1)} / {hoveredPoint.state.wb.toFixed(1)} ℃</span></div>
+                                    <div className="flex justify-between items-center"><span className="text-slate-500 font-sans font-black uppercase tracking-widest text-[9px]">RH / DP</span><span className="font-bold">{hoveredPoint.state.rh.toFixed(0)} % / {hoveredPoint.state.dp.toFixed(1)} ℃</span></div>
+                                    <div className="flex justify-between items-center border-t border-white/10 pt-4"><span className="text-slate-500 font-sans font-black uppercase tracking-widest text-[9px]">ENTHALPY (h)</span><span className="text-emerald-400 font-bold">{hoveredPoint.state.h.toFixed(2)} kJ/kg</span></div>
+                                    <div className="flex justify-between items-center"><span className="text-slate-500 font-sans font-black uppercase tracking-widest text-[9px]">HUMIDITY (w)</span><span className="text-blue-400 font-bold">{(hoveredPoint.state.w * 1000).toFixed(2)} g/kg</span></div>
                                 </div>
                             </div>
                         </div>
@@ -601,5 +641,4 @@
         root.render(<App />);
     </script>
 </body>
-
 </html>
