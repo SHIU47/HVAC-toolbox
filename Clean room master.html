@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Cleanroom Master Pro v7.5 - 專業空調工程核算版</title>
+    <title>Cleanroom Master Pro v7.6 - 專業空調工程核算版</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet">
     <style>
@@ -169,15 +169,14 @@
 <!-- 頂部導覽列 -->
 <header class="bg-slate-900 text-white px-6 py-3 no-print border-b border-slate-800 sticky top-0 z-50 shadow-2xl">
     <div class="max-w-[1750px] mx-auto flex flex-col md:flex-row justify-between items-center gap-4">
-        <!-- 左側：標題與統計指標 -->
         <div class="flex flex-wrap items-center gap-4">
             <div class="flex items-center gap-3 mr-2">
                 <div class="bg-sky-600 p-1.5 rounded-lg shadow-lg"><svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-10V4m0 10V4m-4 6h4"></path></svg></div>
-                <h1 class="font-black text-lg italic tracking-tighter leading-none hidden sm:block uppercase">Master <span class="text-sky-400">Pro v7.5</span></h1>
+                <h1 class="font-black text-lg italic tracking-tight hidden sm:block uppercase">Master <span class="text-sky-400">Pro v7.6</span></h1>
             </div>
 
             <div class="flex flex-wrap gap-2 px-4 py-1.5 bg-slate-800/40 rounded-2xl border border-slate-700/50 shadow-inner items-center">
-                <!-- 1. 全場 MAU -->
+                <!-- 1. 全場所需 MAU -->
                 <div class="flex items-center gap-3 px-3 border-r border-slate-700/50">
                     <div class="text-center">
                         <p class="text-[8px] text-slate-500 font-black uppercase tracking-widest">全場 MAU 總量</p>
@@ -227,7 +226,7 @@
     </aside>
 
     <main class="flex-1 space-y-8 main-layout min-w-0">
-        <!-- 空間名稱標題 -->
+        <!-- 標題與基本設定 -->
         <div class="section-card border-l-[12px] border-slate-900 flex justify-between items-center bg-white shadow-lg">
             <div class="flex items-center gap-6 min-w-0 w-full">
                 <div class="p-5 bg-slate-100 rounded-[1.5rem] text-slate-500 shrink-0 shadow-inner"><svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"></path></svg></div>
@@ -241,53 +240,55 @@
             </button>
         </div>
 
-        <!-- 核心指標卡片 -->
+        <!-- 區域關鍵指標 -->
         <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <div class="summary-card border-b-8 border-sky-500 relative group">
-                <div class="absolute top-4 right-4 help-circle" title="工程公式：(面積 × 高度 × 區域係數) + 排氣量">?</div>
+            <div class="summary-card border-b-8 border-sky-500 relative">
+                <div class="absolute top-4 right-4 help-circle" title="工程公式：(面積 × 高度 × 新風係數) + 排氣量">?</div>
                 <span class="text-[12px] font-black opacity-40 uppercase tracking-[0.2em]">MAU 新風需求</span>
-                <div class="flex items-baseline gap-2 mt-4 font-mono">
-                    <span id="res_MAU_Room" class="text-5xl font-black text-sky-400 tracking-tighter font-mono">0</span>
-                    <span class="text-base font-black opacity-50 uppercase">CMH</span>
+                <div class="flex items-baseline gap-2 mt-4 font-mono font-black">
+                    <span id="res_MAU_Room" class="text-5xl text-sky-400 tracking-tighter">0</span>
+                    <span class="text-base opacity-50 uppercase">CMH</span>
                 </div>
-                <div class="mt-6"><span id="mau_room_status" class="badge-info uppercase tracking-widest">DESIGNED</span></div>
+                <div class="mt-6"><span id="mau_room_status" class="badge-info uppercase tracking-widest font-black">DESIGNED</span></div>
             </div>
             <div class="summary-card border-b-8 border-emerald-500 relative">
-                <div class="absolute top-4 right-4 help-circle" title="工程公式：(總循環風量 - 排氣量) / (面積 × 高度)">?</div>
+                <div class="absolute top-4 right-4 help-circle" title="工程公式：(總循環風量 - 排氣量) / 空間體積">?</div>
                 <span class="text-[12px] font-black opacity-40 uppercase tracking-[0.2em]">換氣次數 (ACH)</span>
-                <div class="flex items-baseline gap-2 mt-4 font-mono">
-                    <span id="res_ACH" class="text-5xl font-black text-emerald-400 tracking-tighter font-mono">0</span>
-                    <span class="text-base font-black opacity-50 uppercase">1/h</span>
+                <div class="flex items-baseline gap-2 mt-4 font-mono font-black">
+                    <span id="res_ACH" class="text-5xl text-emerald-400 tracking-tighter">0</span>
+                    <span class="text-base opacity-50 uppercase">1/h</span>
                 </div>
-                <div class="mt-6"><span id="ach_status" class="badge-pass uppercase tracking-widest">CALC</span></div>
+                <div class="mt-6"><span id="ach_status" class="badge-pass uppercase tracking-widest font-black">OPTIMAL</span></div>
             </div>
             <div class="summary-card border-b-8 border-amber-500 relative">
                 <div class="absolute top-4 right-4 help-circle" title="工程公式：DCC 實際總冷量 / (面積 × 單位熱負荷)">?</div>
                 <span class="text-[12px] font-black opacity-40 uppercase tracking-[0.2em]">熱平衡達成率</span>
-                <div class="flex items-baseline gap-2 mt-4 font-mono">
-                    <span id="res_Balance" class="text-5xl font-black text-amber-400 tracking-tighter font-mono">0</span>
-                    <span class="text-base font-black opacity-50 uppercase">%</span>
+                <div class="flex items-baseline gap-2 mt-4 font-mono font-black">
+                    <span id="res_Balance" class="text-5xl text-amber-400 tracking-tighter">0</span>
+                    <span class="text-base opacity-50 uppercase">%</span>
                 </div>
-                <div class="mt-6"><span id="balance_status" class="badge-info uppercase tracking-widest">STABLE</span></div>
+                <div class="mt-6"><span id="balance_status" class="badge-info uppercase tracking-widest font-black">STABLE</span></div>
             </div>
         </div>
 
         <div class="grid grid-cols-1 xl:grid-cols-2 gap-10">
             <!-- 左側列 -->
             <div class="space-y-10">
+                <!-- 1. 空間規格 -->
                 <section class="section-card border-l-[10px] border-slate-800">
                     <h3 class="text-base font-black text-slate-800 uppercase tracking-widest mb-6">1. 空間規格參數</h3>
                     <div class="grid grid-cols-2 gap-6">
                         <div><label class="unit-label">空間面積 (m²)</label><input type="number" id="roomArea" class="excel-input" oninput="updateActiveRoomData('area', this.value)"></div>
                         <div><label class="unit-label">空間高度 (m)</label><input type="number" id="roomHeight" class="excel-input" oninput="updateActiveRoomData('height', this.value)"></div>
                         <div><label class="unit-label">排氣量 (CMH)</label><input type="number" id="exhaustFlow" class="excel-input" oninput="updateActiveRoomData('exhaust', this.value)"></div>
-                        <div><label class="unit-label">區域新風係數</label><input type="number" id="mauTarget" step="0.1" class="excel-input" oninput="updateActiveRoomData('mauTarget', this.value)"></div>
+                        <div><label class="unit-label">換氣次數(ACH)</label><input type="number" id="mauTarget" step="0.1" class="excel-input" oninput="updateActiveRoomData('mauTarget', this.value)"></div>
                     </div>
                 </section>
 
-                <section class="section-card border-l-[10px] border-amber-500 bg-amber-50/30">
+                <!-- 2. 熱負荷環境 -->
+                <section class="section-card border-l-[10px] border-amber-500 bg-amber-50/30 font-bold text-slate-700">
                     <h3 class="text-base font-black text-amber-700 uppercase tracking-widest mb-6">2. 熱負荷環境參數</h3>
-                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-6 font-bold text-slate-700">
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-6">
                         <div class="col-span-1 sm:col-span-2">
                             <label class="unit-label text-amber-600">單位面積熱負荷 (kW/m²)</label>
                             <input type="number" id="unitHeat" step="0.01" class="excel-input border-amber-200 text-amber-800 bg-white" oninput="updateActiveRoomData('unitHeat', this.value)">
@@ -299,44 +300,44 @@
                     </div>
                 </section>
 
-                <!-- 第三項：回風道實務核算 -->
-                <section class="section-card border-l-[10px] border-slate-400 bg-slate-50 font-bold">
-                    <h3 class="text-base font-black text-slate-800 uppercase tracking-widest mb-6">3. 回風道實務核算</h3>
+                <!-- 3. FFU 送風帶熱核算 (正確位置：第三項) -->
+                <section class="section-card border-l-[10px] border-emerald-500 font-bold">
+                    <h3 class="text-base font-black text-emerald-600 uppercase tracking-widest mb-6 text-emerald-800">3. FFU 送風帶熱核算</h3>
+                    <div class="mb-6 p-6 bg-emerald-900 text-white rounded-[2rem] shadow-2xl border-b-8 border-emerald-950">
+                        <p class="text-[11px] font-black opacity-50 uppercase tracking-[0.2em] mb-2">建議 FFU 數量 (依熱量換算風量)</p>
+                        <p class="text-5xl font-black tracking-tighter font-mono"><span id="suggested_ffu_qty">0</span> <small class="text-sm font-black opacity-30 ml-2 uppercase">Units</small></p>
+                    </div>
+                    <div class="grid grid-cols-2 gap-6 mb-6">
+                        <div><label class="unit-label text-emerald-700">實際設置 FFU 台數</label><input type="number" id="ffuQty" class="excel-input border-emerald-200 text-emerald-700" oninput="updateActiveRoomData('ffuQty', this.value)"></div>
+                        <div><label class="unit-label text-emerald-700">平均風速 (m/s)</label><input type="number" id="ffuV" step="0.01" class="excel-input border-emerald-200 text-emerald-700" oninput="updateActiveRoomData('ffuV', this.value)"></div>
+                    </div>
+                    <div class="p-5 bg-emerald-50 rounded-3xl grid grid-cols-2 gap-6 border-2 border-emerald-100 shadow-inner">
+                        <div><p class="text-[11px] font-black text-emerald-700 uppercase opacity-60">FFU 覆蓋率</p><p id="disp_coverage" class="text-2xl font-black text-slate-800">0%</p></div>
+                        <div><p class="text-[11px] font-black text-emerald-700 uppercase opacity-60">實際總循環量</p><p id="disp_total_flow" class="text-2xl font-black text-slate-800 tracking-tighter font-mono">0 CMH</p></div>
+                    </div>
+                </section>
+            </div>
+
+            <!-- 右側列 -->
+            <div class="space-y-10 font-bold">
+                <!-- 4. 回風道實務核算 (正確位置：第四項) -->
+                <section class="section-card border-l-[10px] border-slate-400 bg-slate-50">
+                    <h3 class="text-base font-black text-slate-800 uppercase tracking-widest mb-6">4. 回風道實務核算</h3>
                     <div class="grid grid-cols-2 gap-6 items-end">
                         <div>
                             <label class="unit-label text-slate-500">建議回風面積 (於 2.5m/s)</label>
                             <div class="p-3 bg-slate-200/50 rounded-lg text-slate-600 font-mono text-xl mb-4 border border-slate-200">
                                 <span id="res_SuggestedReturnArea">0</span> <small class="text-xs font-black opacity-40 uppercase">m²</small>
                             </div>
-                            <label class="unit-label text-slate-700">實際設計回風面積 (m²)</label>
+                            <label class="unit-label text-slate-700 font-black uppercase">實際設計回風面積 (m²)</label>
                             <input type="number" id="actualReturnArea" step="0.1" class="excel-input" oninput="updateActiveRoomData('actualReturnArea', this.value)">
                         </div>
                         <div class="bg-white p-5 rounded-[1.5rem] border-2 border-slate-100 shadow-sm text-center flex flex-col justify-center h-full">
-                            <span class="unit-label text-sky-700 text-xs font-black uppercase">計算後流速</span>
-                            <p class="text-4xl font-black tracking-tighter font-mono"><span id="res_ReturnAirV">0</span> <small class="text-xs font-black opacity-30 uppercase">m/s</small></p>
+                            <span class="unit-label text-sky-700 text-xs font-black">計算後流速</span>
+                            <p class="text-4xl font-black tracking-tighter font-mono"><span id="res_ReturnAirV">0</span> <small class="text-xs font-black opacity-30 uppercase font-sans">m/s</small></p>
                         </div>
                     </div>
                     <p id="return_air_msg" class="text-[12px] mt-4 font-black uppercase tracking-wider"></p>
-                </section>
-            </div>
-
-            <!-- 右側列 -->
-            <div class="space-y-10 font-bold">
-                <!-- 第四項：FFU 送風帶熱核算 -->
-                <section class="section-card border-l-[10px] border-emerald-500">
-                    <h3 class="text-base font-black text-emerald-600 uppercase tracking-widest mb-6 text-emerald-800">4. FFU 送風帶熱核算</h3>
-                    <div class="mb-6 p-6 bg-emerald-900 text-white rounded-[2rem] shadow-2xl border-b-8 border-emerald-950">
-                        <p class="text-[11px] font-black opacity-50 uppercase tracking-[0.2em] mb-2">建議 FFU 數量 (依帶熱能力)</p>
-                        <p class="text-5xl font-black tracking-tighter font-mono"><span id="suggested_ffu_qty">0</span> <small class="text-sm font-black opacity-30 ml-2 uppercase">Units</small></p>
-                    </div>
-                    <div class="grid grid-cols-2 gap-6 mb-6">
-                        <div><label class="unit-label text-emerald-700 font-black">實際設置 FFU 台數</label><input type="number" id="ffuQty" class="excel-input border-emerald-200 text-emerald-700" oninput="updateActiveRoomData('ffuQty', this.value)"></div>
-                        <div><label class="unit-label text-emerald-700 font-black">平均風速 (m/s)</label><input type="number" id="ffuV" step="0.01" class="excel-input border-emerald-200 text-emerald-700" oninput="updateActiveRoomData('ffuV', this.value)"></div>
-                    </div>
-                    <div class="p-5 bg-emerald-50 rounded-3xl grid grid-cols-2 gap-6 border-2 border-emerald-100 shadow-inner font-black">
-                        <div><p class="text-[11px] font-black text-emerald-700 uppercase opacity-60">FFU 覆蓋率</p><p id="disp_coverage" class="text-2xl font-black text-slate-800">0%</p></div>
-                        <div><p class="text-[11px] font-black text-emerald-700 uppercase opacity-60">實際總循環量</p><p id="disp_total_flow" class="text-2xl font-black text-slate-800 tracking-tighter font-mono">0 CMH</p></div>
-                    </div>
                 </section>
 
                 <section class="section-card border-l-[10px] border-sky-500 bg-sky-50/20">
@@ -345,28 +346,28 @@
                             <h3 class="text-base font-black text-sky-800 uppercase tracking-widest">5. DCC 選型與配套建議</h3>
                             <p class="text-[11px] text-sky-600 font-black mt-1 uppercase font-mono">應配總冷量：<span id="suggested_dcc_cooling" class="text-sky-900">0</span> kW</p>
                         </div>
-                        <button onclick="addDCC()" class="bg-sky-900 text-white text-xs px-5 py-2.5 rounded-2xl font-black hover:bg-sky-800 shadow-lg tracking-widest transition-all active:scale-95">+ 新增 DCC</button>
+                        <button onclick="addDCC()" class="bg-sky-900 text-white text-xs px-5 py-2.5 rounded-2xl font-black hover:bg-sky-800 shadow-lg tracking-widest transition-all active:scale-95 font-sans">+ ADD DCC</button>
                     </div>
                     <div class="overflow-x-auto custom-scrollbar bg-white rounded-2xl border-2 border-sky-100 p-2 shadow-inner">
                         <table class="w-full text-[13px] font-bold min-w-[450px]">
-                            <thead class="text-slate-400 uppercase text-left border-b-2 border-sky-50">
-                                <tr><th class="p-4">尺寸 (m)</th><th class="p-4 text-center">風速</th><th class="p-4 text-center">數量</th><th class="p-4 text-right">kW</th><th class="p-4 w-12"></th></tr>
+                            <thead class="text-slate-400 uppercase text-left border-b-2 border-sky-50 font-black">
+                                <tr><th class="p-4">尺寸 (m)</th><th class="p-4 text-center">風速</th><th class="p-4 text-center">數量</th><th class="p-4 text-right pr-6">kW</th><th class="p-4 w-12"></th></tr>
                             </thead>
                             <tbody id="dccTableBody"></tbody>
                         </table>
                     </div>
                     <div class="mt-6 pt-6 border-t border-sky-100 flex justify-between items-center">
-                        <div class="text-[12px] text-slate-500 uppercase font-black">實際總冷量: <span id="total_dcc_cooling" class="text-sky-700 text-2xl ml-2 font-mono tracking-tighter font-mono">0</span> kW</div>
+                        <div class="text-[12px] text-slate-500 uppercase font-black">實際總冷量: <span id="total_dcc_cooling" class="text-sky-700 text-2xl ml-2 font-mono tracking-tighter">0</span> kW</div>
                         <span id="dcc_match_status" class="badge-info px-6 py-2 shadow-sm uppercase tracking-widest font-mono">CHECKING</span>
                     </div>
                 </section>
 
-                <section class="section-card bg-slate-900 text-slate-400 border-b-[10px] border-sky-600">
+                <section class="section-card bg-slate-900 text-slate-400 border-b-[10px] border-sky-600 font-bold">
                     <h3 class="text-[12px] font-black text-sky-400 uppercase tracking-[0.2em] mb-4 flex items-center gap-2">
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path></svg>
-                        工程師核算備忘錄
+                        工程師設計備忘錄
                     </h3>
-                    <textarea id="engineerNote" class="w-full h-28 bg-transparent outline-none text-sm font-mono resize-none leading-relaxed text-slate-300 font-bold" placeholder="在此輸入本區域的特殊設計參數或核算基準..." oninput="updateActiveRoomData('note', this.value)"></textarea>
+                    <textarea id="engineerNote" class="w-full h-28 bg-transparent outline-none text-sm font-mono resize-none leading-relaxed text-slate-300 font-bold" placeholder="輸入此區域的具體核算基準..." oninput="updateActiveRoomData('note', this.value)"></textarea>
                 </section>
             </div>
         </div>
@@ -374,14 +375,14 @@
 </div>
 
 <script>
-// --- 核心工程數據常數 ---
+// --- 全域常數 ---
 const FFU_SIZE_DEFAULT = 1.44; 
 
 let project = {
     rooms: [
         {
             id: 'room-' + Date.now(),
-            name: '輸入區域名稱',
+            name: '輸入設計區域名稱',
             area: 422,
             height: 3.5,
             exhaust: 12000,
@@ -426,8 +427,10 @@ function renderRoomList() {
         const item = document.createElement('div');
         item.className = `room-item p-5 rounded-[1.5rem] mb-3 ${room.id === project.activeRoomId ? 'active shadow-md border border-slate-200' : 'hover:bg-slate-50'}`;
         item.onclick = () => setActiveRoom(room.id);
-        const vol = room.area * room.height, flow = room.ffuQty * room.ffuV * FFU_SIZE_DEFAULT * 3600;
-        const ach = vol > 0 ? ((flow - room.exhaust) / vol).toFixed(0) : 0;
+        const vol = room.area * room.height;
+        const totalFlow = room.ffuQty * room.ffuV * FFU_SIZE_DEFAULT * 3600;
+        // ACH 公式校正：(總量 - 排氣) / 體積
+        const ach = vol > 0 ? ((totalFlow - room.exhaust) / vol).toFixed(0) : 0;
         item.innerHTML = `<div class="flex justify-between items-start gap-3"><span class="font-black text-lg text-slate-800 truncate">${room.name}</span><span class="text-[11px] font-black shrink-0 px-3 py-1 rounded-full ${ach < 70 ? 'bg-amber-100 text-amber-600' : 'bg-emerald-100 text-emerald-600'} font-mono">${ach} ACH</span></div><p class="text-[11px] text-slate-400 font-black uppercase mt-2 tracking-widest">${room.area} m² / ${room.ffuQty} FFU</p>`;
         listEl.appendChild(item);
     });
@@ -489,7 +492,7 @@ function calculateProject() {
         
         const totalFFUFlow = room.ffuQty * room.ffuV * FFU_SIZE_DEFAULT * 3600;
         
-        // MAU 公式：(面積 × 高度 × 係數) + 排氣量
+        // 1. ✅ MAU 公式校正：(面積 × 高度 × 係數) + 排氣量
         const roomMau = (room.area * room.height * room.mauTarget) + room.exhaust;
 
         let roomDccCooling = 0;
@@ -503,11 +506,11 @@ function calculateProject() {
             }
         });
 
-        // ACH 公式：(總循環量 - 排氣量) / 體積
+        // 2. ✅ ACH 公式校正：(循環風量 - 排氣量) / 體積
         const ach = volume > 0 ? ((totalFFUFlow - room.exhaust) / volume) : 0;
         const balance = totalHeatLoad > 0 ? (roomDccCooling / totalHeatLoad * 100) : 0;
 
-        // 計算建議 FFU 台數 (依帶熱需求)
+        // 建議 FFU (依帶熱需求)
         let suggestedFFU = 0;
         if (dT > 0 && room.ffuV > 0) {
             const reqFlow_CMH = (totalHeatLoad / (room.rho * room.cp * dT)) * 3600;
@@ -525,7 +528,7 @@ function calculateProject() {
             document.getElementById('suggested_dcc_cooling').innerText = totalHeatLoad.toFixed(1);
             document.getElementById('total_dcc_cooling').innerText = roomDccCooling.toFixed(1);
             
-            // 建議回風面積 (於 2.5 m/s)
+            // 建議回風面積 (2.5 m/s)
             const suggestedArea = totalFFUFlow / (2.5 * 3600);
             document.getElementById('res_SuggestedReturnArea').innerText = suggestedArea.toFixed(2);
 
@@ -535,11 +538,11 @@ function calculateProject() {
             retEl.innerText = retV.toFixed(2);
             if (retV > 2.5) {
                 retEl.className = "text-red-600 font-black text-3xl tracking-tighter font-mono";
-                retMsg.innerText = "⚠️ 回風道流速過高 (建議加大面積)";
+                retMsg.innerText = "⚠️ 流速過高 (建議加大面積)";
                 retMsg.className = "text-[12px] mt-2 text-red-500 font-black uppercase";
             } else {
                 retEl.className = "text-emerald-600 font-black text-3xl tracking-tighter font-mono";
-                retMsg.innerText = "✅ 回風流速符合設計標準";
+                retMsg.innerText = "✅ 回風流速正常";
                 retMsg.className = "text-[12px] mt-2 text-emerald-500 font-black uppercase";
             }
 
@@ -551,7 +554,7 @@ function calculateProject() {
             
             const matchS = document.getElementById('dcc_match_status');
             matchS.innerText = (balance >= 100) ? "MATCHED" : "UNSTABLE";
-            matchS.className = (balance >= 100) ? "badge-pass uppercase font-bold px-4" : "badge-warn uppercase font-bold px-4";
+            matchS.className = (balance >= 100) ? "badge-pass font-bold px-4" : "badge-warn font-bold px-4";
         }
         globalMAU += roomMau; 
         globalFFU += room.ffuQty;
@@ -561,11 +564,11 @@ function calculateProject() {
     document.getElementById('global_total_mau').innerText = Math.round(globalMAU * globalMauFactor).toLocaleString();
     document.getElementById('global_ffu_qty').innerText = globalFFU;
     document.getElementById('global_total_dcc_count').innerText = globalDCCCount;
-    // kW 轉 RT 公式: kW / 3.517
+    // kW 轉 RT: kW / 3.517
     document.getElementById('global_total_cooling_rt').innerText = (globalCooling / 3.517).toFixed(1);
 }
 
-// --- 密碼導出功能 ---
+// --- 功能函數 ---
 function openPasswordModal() {
     document.getElementById('passwordModal').style.display = 'flex';
     document.getElementById('pwdInput').value = '';
@@ -593,7 +596,7 @@ function executeHTMLSave() {
     if (regex.test(htmlContent)) {
         htmlContent = htmlContent.replace(regex, replacement);
         const blob = new Blob([htmlContent], { type: 'text/html' });
-        const fileName = prompt("請輸入報告檔案名稱", `無塵室核算報告_${new Date().toISOString().slice(0,10)}`);
+        const fileName = prompt("請輸入檔案名稱", `無塵室設計報告_${new Date().toISOString().slice(0,10)}`);
         if (!fileName) return;
         const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `${fileName}.html`; a.click();
         showMsg("報告已匯出下載");
@@ -613,7 +616,7 @@ function importProject(event) {
                 project = JSON.parse(jsonStr);
                 refreshUI(); showMsg("載入存檔成功");
             }
-        } catch (err) { showMsg("格式不支援"); }
+        } catch (err) { showMsg("格式不相容"); }
     };
     reader.readAsText(file);
 }
