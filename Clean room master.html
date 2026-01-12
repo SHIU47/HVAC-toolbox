@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Cleanroom Master Pro v6.2 - 多空間全廠設計核算</title>
+    <title>Cleanroom Master Pro v7.3 - 專業空調工程核算版</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet">
     <style>
@@ -18,64 +18,88 @@
             background-color: #f1f5f9; 
             color: #1e293b; 
             -webkit-font-smoothing: antialiased; 
+            font-size: 1.15rem; 
         }
 
         .excel-input { 
             background-color: #ffffff; 
-            border: 1px solid #cbd5e1; 
-            border-radius: 0.5rem; 
-            padding: 0.5rem 0.6rem; 
-            font-weight: 600; 
-            color: #1e293b; 
+            border: 2px solid #cbd5e1; 
+            border-radius: 0.6rem; 
+            padding: 0.7rem 0.9rem; 
+            font-weight: 700; 
+            color: #2563eb; 
             width: 100%; 
             transition: all 0.2s; 
-            font-size: 0.875rem; 
+            font-size: 1.1rem; 
         }
         .excel-input:focus { 
             border-color: var(--brand-primary); 
-            box-shadow: 0 0 0 3px rgba(2, 132, 199, 0.1); 
+            box-shadow: 0 0 0 4px rgba(2, 132, 199, 0.15); 
             outline: none; 
         }
 
         .section-card { 
             background: white; 
-            border-radius: 1.25rem; 
+            border-radius: 1.5rem; 
             border: 1px solid #e2e8f0; 
-            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05); 
-            padding: 1.5rem; 
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.05); 
+            padding: 2rem; 
         }
 
         .unit-label { 
-            font-size: 0.7rem; 
-            color: #64748b; 
+            font-size: 0.95rem; 
+            color: #334155; 
             font-weight: 800; 
             text-transform: uppercase; 
-            margin-bottom: 0.35rem; 
+            margin-bottom: 0.6rem; 
             display: block; 
-            letter-spacing: 0.025em;
+            letter-spacing: 0.05em;
         }
 
         .room-item {
             transition: all 0.2s;
             cursor: pointer;
-            border-left: 4px solid transparent;
+            border-left: 6px solid transparent;
         }
         .room-item.active {
             background: #f0f9ff;
             border-left-color: #0284c7;
+            box-shadow: inset 0 0 0 1px rgba(2, 132, 199, 0.1);
         }
 
         .summary-card {
             background: #1e293b;
             color: white;
-            border-radius: 1.25rem;
-            padding: 1.25rem;
+            border-radius: 1.5rem;
+            padding: 1.75rem;
             position: relative;
             overflow: hidden;
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
         }
 
-        .badge-pass { background: #dcfce7; color: #15803d; padding: 2px 8px; border-radius: 999px; font-size: 0.65rem; font-weight: 700; }
-        .badge-warn { background: #fef9c3; color: #a16207; padding: 2px 8px; border-radius: 999px; font-size: 0.65rem; font-weight: 700; }
+        /* 公式提示圓圈 */
+        .help-circle {
+            width: 22px;
+            height: 22px;
+            border: 1.5px solid rgba(255,255,255,0.3);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+            color: rgba(255,255,255,0.5);
+            cursor: help;
+            transition: all 0.2s;
+        }
+        .help-circle:hover {
+            border-color: white;
+            color: white;
+            background: rgba(255,255,255,0.15);
+        }
+
+        .badge-pass { background: #dcfce7; color: #15803d; padding: 6px 14px; border-radius: 999px; font-size: 0.85rem; font-weight: 800; }
+        .badge-warn { background: #fee2e2; color: #b91c1c; padding: 6px 14px; border-radius: 999px; font-size: 0.85rem; font-weight: 800; }
+        .badge-info { background: #e0f2fe; color: #0369a1; padding: 6px 14px; border-radius: 999px; font-size: 0.85rem; font-weight: 800; }
 
         @media print {
             .no-print { display: none !important; }
@@ -87,209 +111,278 @@
             position: fixed;
             top: 20px;
             right: 20px;
-            z-index: 1000;
-            padding: 12px 24px;
-            border-radius: 12px;
-            background: #1e293b;
+            z-index: 3000;
+            padding: 16px 32px;
+            border-radius: 1rem;
+            background: #0f172a;
             color: white;
-            box-shadow: 0 10px 15px -3px rgba(0,0,0,0.2);
+            box-shadow: 0 20px 25px -5px rgba(0,0,0,0.3);
             display: none;
+            font-weight: 800;
+            font-size: 1rem;
+        }
+
+        #passwordModal {
+            position: fixed;
+            inset: 0;
+            z-index: 2000;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            background: rgba(15, 23, 42, 0.7);
+            backdrop-filter: blur(8px);
+        }
+        .modal-content {
+            background: white;
+            width: 420px;
+            padding: 2.5rem;
+            border-radius: 2.5rem;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+            text-align: center;
+            border-top: 8px solid #0284c7;
         }
         
-        .custom-scrollbar::-webkit-scrollbar { width: 6px; height: 6px; }
+        .custom-scrollbar::-webkit-scrollbar { width: 8px; height: 8px; }
         .custom-scrollbar::-webkit-scrollbar-track { background: #f1f5f9; }
         .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
     </style>
 </head>
-<body class="bg-slate-50 min-h-screen">
+<body class="bg-slate-50 min-h-screen font-bold">
+
+<!-- 密碼輸入彈窗 -->
+<div id="passwordModal">
+    <div class="modal-content">
+        <div class="bg-sky-50 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-6 text-sky-600">
+            <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path></svg>
+        </div>
+        <h3 class="text-2xl font-black text-slate-800 mb-2">安全驗證</h3>
+        <p class="text-slate-400 font-bold mb-6 text-sm">請輸入授權密碼以另存專案數據</p>
+        <input type="password" id="pwdInput" class="w-full p-4 bg-slate-50 border-2 border-slate-100 rounded-2xl mb-6 text-center text-2xl tracking-[0.5em] font-black outline-none focus:border-sky-500 focus:bg-white transition-all" placeholder="••••••">
+        <div class="flex gap-4">
+            <button onclick="closePasswordModal()" class="flex-1 py-3 font-bold text-slate-400 hover:text-slate-600 transition-colors">取消</button>
+            <button onclick="verifyAndPasswordExport()" class="flex-1 py-3 bg-sky-600 text-white rounded-2xl font-black shadow-lg shadow-sky-200 hover:bg-sky-700 active:scale-95 transition-all">確認匯出</button>
+        </div>
+    </div>
+</div>
 
 <div id="toast" class="msg-toast">提示訊息</div>
 
-<header class="bg-slate-900 text-white p-4 no-print border-b border-slate-800 sticky top-0 z-50 shadow-xl">
-    <div class="max-w-[1600px] mx-auto flex flex-col md:flex-row justify-between items-center gap-4">
-        <div class="flex items-center gap-4">
-            <div class="bg-sky-600 p-2 rounded-lg"><svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-10V4m0 10V4m-4 6h4"></path></svg></div>
-            <div>
-                <h1 class="font-black text-lg">Cleanroom <span class="text-sky-400">Master Pro v6.2</span></h1>
-                <p class="text-[10px] text-slate-400 uppercase tracking-widest font-bold">Smart Electronic Report Tool</p>
+<!-- 頂部導覽列 -->
+<header class="bg-slate-900 text-white px-6 py-3 no-print border-b border-slate-800 sticky top-0 z-50 shadow-2xl">
+    <div class="max-w-[1750px] mx-auto flex flex-col md:flex-row justify-between items-center gap-4">
+        <div class="flex flex-wrap items-center gap-4">
+            <div class="flex items-center gap-3 mr-2">
+                <div class="bg-sky-600 p-1.5 rounded-lg shadow-lg"><svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-10V4m0 10V4m-4 6h4"></path></svg></div>
+                <h1 class="font-black text-lg italic tracking-tight hidden sm:block uppercase">Master <span class="text-sky-400">Pro v7.3</span></h1>
             </div>
-        </div>
 
-        <div class="hidden lg:flex gap-8 px-6 py-2 bg-slate-800/50 rounded-2xl border border-slate-700/50">
-            <div class="text-center">
-                <p class="text-[9px] text-slate-500 font-black uppercase">總房間數</p>
-                <p class="text-lg font-bold text-white" id="global_room_count">0</p>
-            </div>
-            <div class="text-center">
-                <p class="text-[9px] text-slate-500 font-black uppercase">全廠總 MAU (CMH)</p>
-                <p class="text-lg font-bold text-sky-400" id="global_total_mau">0</p>
-            </div>
-            <div class="text-center">
-                <p class="text-[9px] text-slate-500 font-black uppercase">全廠總冷量 (kW)</p>
-                <p class="text-lg font-bold text-amber-400" id="global_total_cooling">0</p>
+            <div class="flex flex-wrap gap-2 px-4 py-1.5 bg-slate-800/40 rounded-2xl border border-slate-700/50 shadow-inner items-center">
+                <div class="flex items-center gap-3 px-3 border-r border-slate-700/50">
+                    <div class="text-center">
+                        <p class="text-[8px] text-slate-500 font-black uppercase tracking-widest">全場 MAU 總量</p>
+                        <p class="text-lg font-black text-sky-400 leading-none font-mono" id="global_total_mau">0 <span class="text-[9px] font-normal uppercase">CMH</span></p>
+                    </div>
+                    <div class="flex flex-col items-center">
+                        <p class="text-[8px] text-slate-500 font-black mb-1 uppercase">全場係數</p>
+                        <input type="number" id="globalMauFactor" value="1.2" step="0.1" class="w-12 bg-slate-700 border border-slate-600 text-[10px] text-white rounded text-center font-bold p-0.5 outline-none focus:border-sky-500" oninput="calculateProject()">
+                    </div>
+                </div>
+                <div class="text-center px-4 border-r border-slate-700/50">
+                    <p class="text-[8px] text-slate-500 font-black uppercase tracking-widest">全場總冷量 (RT)</p>
+                    <p class="text-lg font-black text-amber-400 leading-none font-mono" id="global_total_cooling_rt">0 <span class="text-[9px] font-normal uppercase">RT</span></p>
+                </div>
+                <div class="text-center px-4 border-r border-slate-700/50">
+                    <p class="text-[8px] text-slate-500 font-black uppercase tracking-widest">FFU 總台數</p>
+                    <p class="text-lg font-black text-emerald-400 leading-none font-mono" id="global_ffu_qty">0 <span class="text-[9px] font-normal uppercase">U</span></p>
+                </div>
+                <div class="text-center px-4">
+                    <p class="text-[8px] text-slate-500 font-black uppercase tracking-widest">DCC 總台數</p>
+                    <p class="text-lg font-black text-indigo-400 leading-none font-mono" id="global_total_dcc_count">0 <span class="text-[9px] font-normal uppercase">U</span></p>
+                </div>
             </div>
         </div>
 
         <div class="flex gap-2">
-            <!-- 新功能：直接儲存成包含數據的 HTML -->
-            <button onclick="exportAsSelfContainedHTML()" class="bg-sky-600 hover:bg-sky-500 text-white text-xs font-black px-4 py-2 rounded-lg transition-all shadow-md">儲存為獨立 HTML</button>
-            <div class="w-px h-6 bg-slate-700 mx-1"></div>
-            <button onclick="exportProjectJSON()" class="bg-slate-800 hover:bg-slate-700 text-sky-400 text-xs font-black px-3 py-2 rounded-lg border border-slate-700">導出 Json</button>
-            <label class="bg-slate-800 hover:bg-slate-700 text-emerald-400 text-xs font-black px-3 py-2 rounded-lg border border-slate-700 transition-all cursor-pointer">
-                載入專案 (Json/Html) <input type="file" class="hidden" accept=".json,.html" onchange="importProject(event)">
+            <button onclick="openPasswordModal()" class="bg-sky-600 hover:bg-sky-500 text-white text-xs font-black px-4 py-2 rounded-xl transition-all shadow-xl active:scale-95">另存報告</button>
+            <label class="bg-slate-800 hover:bg-slate-700 text-emerald-400 text-xs font-black px-4 py-2 rounded-xl border border-slate-700 transition-all cursor-pointer">
+                載入專案 <input type="file" class="hidden" accept=".html" onchange="importProject(event)">
             </label>
         </div>
     </div>
 </header>
 
-<div class="max-w-[1600px] mx-auto flex flex-col lg:flex-row gap-6 p-4 md:p-8">
-    <aside class="w-full lg:w-72 space-y-4 no-print sidebar shrink-0">
-        <div class="bg-white rounded-2xl p-4 shadow-sm border border-slate-200">
-            <div class="flex justify-between items-center mb-4">
-                <h2 class="text-xs font-black text-slate-400 uppercase tracking-widest">空間導覽器</h2>
-                <button onclick="addNewRoom()" class="text-sky-600 hover:text-sky-700 font-bold text-xs uppercase">+ 新增</button>
+<div class="max-w-[1700px] mx-auto flex flex-col lg:flex-row gap-8 p-6 md:p-10">
+    <aside class="w-full lg:w-96 space-y-4 no-print sidebar shrink-0">
+        <div class="bg-white rounded-[2rem] p-6 shadow-sm border border-slate-200">
+            <div class="flex justify-between items-center mb-6">
+                <h2 class="text-[11px] font-black text-slate-400 uppercase tracking-[0.2em]">Room Navigator</h2>
+                <button onclick="addNewRoom()" class="text-sky-600 hover:text-sky-700 font-black text-base uppercase">+ 新增</button>
             </div>
-            <div id="roomList" class="space-y-1 max-h-[70vh] overflow-y-auto pr-2 custom-scrollbar"></div>
+            <div id="roomList" class="space-y-3 max-h-[70vh] overflow-y-auto pr-2 custom-scrollbar font-bold text-base"></div>
         </div>
     </aside>
 
-    <main class="flex-1 space-y-6 main-layout min-w-0">
-        <div class="section-card border-l-8 border-slate-900 flex justify-between items-center">
-            <div class="flex items-center gap-4 min-w-0">
-                <div class="p-3 bg-slate-100 rounded-xl text-slate-500 shrink-0"><svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"></path></svg></div>
-                <div class="min-w-0">
-                    <input type="text" id="activeRoomName" class="text-xl font-black text-slate-800 outline-none border-b-2 border-transparent hover:border-slate-200 focus:border-sky-500 bg-transparent transition-all w-full truncate" oninput="updateActiveRoomData('name', this.value)">
-                    <p class="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-1">正在編輯此空間數據</p>
+    <main class="flex-1 space-y-8 main-layout min-w-0">
+        <!-- 空間名稱輸入區 -->
+        <div class="section-card border-l-[12px] border-slate-900 flex justify-between items-center bg-white shadow-lg">
+            <div class="flex items-center gap-6 min-w-0 w-full">
+                <div class="p-5 bg-slate-100 rounded-[1.5rem] text-slate-500 shrink-0 shadow-inner"><svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"></path></svg></div>
+                <div class="min-w-0 w-full">
+                    <input type="text" id="activeRoomName" class="text-3xl font-black text-slate-800 outline-none border-b-4 border-transparent hover:border-slate-100 focus:border-sky-500 bg-transparent transition-all w-full truncate" oninput="updateActiveRoomData('name', this.value)">
+                    <p class="text-[12px] text-slate-400 font-black uppercase tracking-widest mt-1">Design Area Settings</p>
                 </div>
             </div>
-            <button onclick="deleteActiveRoom()" id="btnDeleteRoom" class="text-slate-300 hover:text-red-500 transition-colors p-2 shrink-0">
-                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+            <button onclick="deleteActiveRoom()" class="text-slate-200 hover:text-red-500 transition-colors p-4 shrink-0">
+                <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
             </button>
         </div>
 
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div class="summary-card bg-slate-800 border-b-4 border-sky-500 shadow-lg">
-                <span class="text-[10px] font-black opacity-50 uppercase tracking-tighter">新風需求 MAU</span>
-                <div class="flex items-baseline gap-2 mt-1"><span id="res_MAU" class="text-3xl font-black text-sky-400">0</span><span class="text-xs font-bold opacity-60">CMH</span></div>
-                <div class="mt-4"><span id="mau_status" class="badge-pass">符合標準</span></div>
+        <!-- 區域核心卡片 -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div class="summary-card border-b-8 border-sky-500 relative">
+                <div class="absolute top-4 right-4 help-circle" title="工程公式：(面積 × 高度 × 係數) + 排氣量">?</div>
+                <span class="text-[12px] font-black opacity-40 uppercase tracking-[0.2em]">MAU 新風需求</span>
+                <div class="flex items-baseline gap-2 mt-4 font-mono">
+                    <span id="res_MAU_Room" class="text-5xl font-black text-sky-400 tracking-tighter">0</span>
+                    <span class="text-base font-black opacity-50 uppercase">CMH</span>
+                </div>
+                <div class="mt-6"><span id="mau_room_status" class="badge-info uppercase">DESIGNED</span></div>
             </div>
-            <div class="summary-card bg-slate-800 border-b-4 border-emerald-500 shadow-lg">
-                <span class="text-[10px] font-black opacity-50 uppercase tracking-tighter">換氣次數 ACH</span>
-                <div class="flex items-baseline gap-2 mt-1"><span id="res_ACH" class="text-3xl font-black text-emerald-400">0</span><span class="text-xs font-bold opacity-60">1/h</span></div>
-                <div class="mt-4"><span id="ach_status" class="badge-pass">運作正常</span></div>
+            <div class="summary-card border-b-8 border-emerald-500 relative">
+                <div class="absolute top-4 right-4 help-circle" title="工程公式：(總循環風量 - 排氣量) / 空間體積">?</div>
+                <span class="text-[12px] font-black opacity-40 uppercase tracking-[0.2em]">換氣次數 (ACH)</span>
+                <div class="flex items-baseline gap-2 mt-4 font-mono">
+                    <span id="res_ACH" class="text-5xl font-black text-emerald-400 tracking-tighter">0</span>
+                    <span class="text-base font-black opacity-50 uppercase">1/h</span>
+                </div>
+                <div class="mt-6"><span id="ach_status" class="badge-pass uppercase">CALC</span></div>
             </div>
-            <div class="summary-card bg-slate-800 border-b-4 border-amber-500 shadow-lg">
-                <span class="text-[10px] font-black opacity-50 uppercase tracking-tighter">熱平衡 Balance</span>
-                <div class="flex items-baseline gap-2 mt-1"><span id="res_Balance" class="text-3xl font-black text-amber-400">0</span><span class="text-xs font-bold opacity-60">%</span></div>
-                <div class="mt-4"><span id="balance_status" class="badge-warn">計算中</span></div>
+            <div class="summary-card border-b-8 border-amber-500 relative">
+                <div class="absolute top-4 right-4 help-circle" title="工程公式：DCC 實際總冷量 / (面積 × 單位熱負荷)">?</div>
+                <span class="text-[12px] font-black opacity-40 uppercase tracking-[0.2em]">熱平衡達成率</span>
+                <div class="flex items-baseline gap-2 mt-4 font-mono">
+                    <span id="res_Balance" class="text-5xl font-black text-amber-400 tracking-tighter">0</span>
+                    <span class="text-base font-black opacity-50 uppercase">%</span>
+                </div>
+                <div class="mt-6"><span id="balance_status" class="badge-info uppercase">STABLE</span></div>
             </div>
         </div>
 
-        <div class="grid grid-cols-1 xl:grid-cols-2 gap-6">
-            <div class="space-y-6">
-                <section class="section-card border-l-8 border-sky-600">
-                    <h3 class="text-xs font-black text-slate-800 uppercase tracking-widest mb-4">1. 空間規格參數</h3>
-                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div class="grid grid-cols-1 xl:grid-cols-2 gap-10">
+            <!-- 左側列 -->
+            <div class="space-y-10">
+                <section class="section-card border-l-[10px] border-slate-800">
+                    <h3 class="text-base font-black text-slate-800 uppercase tracking-widest mb-6">1. 空間規格參數</h3>
+                    <div class="grid grid-cols-2 gap-6 font-bold text-slate-700">
                         <div><label class="unit-label">空間面積 (m²)</label><input type="number" id="roomArea" class="excel-input" oninput="updateActiveRoomData('area', this.value)"></div>
-                        <div><label class="unit-label">高度 (m)</label><input type="number" id="roomHeight" class="excel-input" oninput="updateActiveRoomData('height', this.value)"></div>
+                        <div><label class="unit-label">空間高度 (m)</label><input type="number" id="roomHeight" class="excel-input" oninput="updateActiveRoomData('height', this.value)"></div>
                         <div><label class="unit-label">排氣量 (CMH)</label><input type="number" id="exhaustFlow" class="excel-input" oninput="updateActiveRoomData('exhaust', this.value)"></div>
-                        <div><label class="unit-label">新風設計倍數</label><input type="number" id="mauTarget" step="0.05" class="excel-input" oninput="updateActiveRoomData('mauTarget', this.value)"></div>
+                        <div><label class="unit-label">區域新風係數</label><input type="number" id="mauTarget" step="0.1" class="excel-input" oninput="updateActiveRoomData('mauTarget', this.value)"></div>
                     </div>
                 </section>
 
-                <section class="section-card border-l-8 border-emerald-500">
-                    <h3 class="text-xs font-black text-slate-800 uppercase tracking-widest mb-4 text-emerald-600">2. FFU 送風系統</h3>
-                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                        <div><label class="unit-label">FFU 台數</label><input type="number" id="ffuQty" class="excel-input" oninput="updateActiveRoomData('ffuQty', this.value)"></div>
-                        <div><label class="unit-label">平均風速 (m/s)</label><input type="number" id="ffuV" step="0.01" class="excel-input" oninput="updateActiveRoomData('ffuV', this.value)"></div>
-                    </div>
-                    <div class="mt-4 p-3 bg-emerald-50 rounded-xl grid grid-cols-2 gap-4 border border-emerald-100">
-                        <div><p class="text-[10px] font-bold text-emerald-700 uppercase">FFU 覆蓋率</p><p id="disp_coverage" class="text-lg font-black text-slate-800">0%</p></div>
-                        <div><p class="text-[10px] font-bold text-emerald-700 uppercase">總循環風量</p><p id="disp_total_flow" class="text-lg font-black text-slate-800">0 CMH</p></div>
+                <section class="section-card border-l-[10px] border-amber-500 bg-amber-50/30">
+                    <h3 class="text-base font-black text-amber-700 uppercase tracking-widest mb-6">2. 熱負荷環境參數</h3>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                        <div class="col-span-1 sm:col-span-2">
+                            <label class="unit-label text-amber-600">單位面積熱負荷 (kW/m²)</label>
+                            <input type="number" id="unitHeat" step="0.01" class="excel-input border-amber-200 text-amber-800 bg-white" oninput="updateActiveRoomData('unitHeat', this.value)">
+                        </div>
+                        <div><label class="unit-label">進風溫度 (℃)</label><input type="number" id="tempIn" class="excel-input" oninput="updateActiveRoomData('tempIn', this.value)"></div>
+                        <div><label class="unit-label">離風溫度 (℃)</label><input type="number" id="tempOut" class="excel-input" oninput="updateActiveRoomData('tempOut', this.value)"></div>
+                        <div><label class="unit-label">空氣密度 (kg/m³)</label><input type="number" id="rho" step="0.1" class="excel-input" oninput="updateActiveRoomData('rho', this.value)"></div>
+                        <div><label class="unit-label">比熱 cp (kJ/kg·K)</label><input type="number" id="cp" step="0.001" class="excel-input" oninput="updateActiveRoomData('cp', this.value)"></div>
                     </div>
                 </section>
 
-                <section class="section-card border-l-8 border-slate-600 bg-slate-50">
-                    <h3 class="text-xs font-black text-slate-800 uppercase tracking-widest mb-4">4. 回風道核算</h3>
-                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 items-end">
-                        <div><label class="unit-label">回風設計風速 (m/s)</label><input type="number" id="returnAirV" step="0.1" class="excel-input" oninput="updateActiveRoomData('returnAirV', this.value)"></div>
-                        <div class="bg-white p-3 rounded-xl border border-slate-200"><span class="unit-label text-sky-700">所需回風總面積</span><p class="text-lg font-black"><span id="res_ReturnArea">0</span> <small class="text-xs">m²</small></p></div>
+                <section class="section-card border-l-[10px] border-slate-400 bg-slate-50 font-bold">
+                    <h3 class="text-base font-black text-slate-800 uppercase tracking-widest mb-6">3. 回風道實務核算</h3>
+                    <div class="grid grid-cols-2 gap-6 items-end">
+                        <div><label class="unit-label">設計回風總面積 (m²)</label><input type="number" id="actualReturnArea" step="0.1" class="excel-input" oninput="updateActiveRoomData('actualReturnArea', this.value)"></div>
+                        <div class="bg-white p-5 rounded-[1.5rem] border-2 border-slate-100 shadow-sm text-center">
+                            <span class="unit-label text-sky-700 text-xs font-black uppercase">實際流速</span>
+                            <p class="text-3xl font-black tracking-tighter font-mono"><span id="res_ReturnAirV">0</span> <small class="text-xs font-black opacity-30 uppercase">m/s</small></p>
+                        </div>
                     </div>
+                    <p id="return_air_msg" class="text-[12px] mt-4 font-black uppercase tracking-wider"></p>
                 </section>
             </div>
 
-            <div class="space-y-6">
-                <section class="section-card border-l-8 border-amber-500">
-                    <h3 class="text-xs font-black text-slate-800 uppercase tracking-widest mb-4 text-amber-600">3. 熱負荷與環境</h3>
-                    <div class="space-y-4">
-                        <div><label class="unit-label">單位面積熱負荷 (kW/m²)</label><input type="number" id="unitHeat" step="0.01" class="excel-input" oninput="updateActiveRoomData('unitHeat', this.value)"></div>
-                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                            <div class="space-y-4">
-                                <div><label class="unit-label">進風溫度 (℃)</label><input type="number" id="tempIn" class="excel-input" oninput="updateActiveRoomData('tempIn', this.value)"></div>
-                                <div><label class="unit-label">離風溫度 (℃)</label><input type="number" id="tempOut" class="excel-input" oninput="updateActiveRoomData('tempOut', this.value)"></div>
-                            </div>
-                            <div class="space-y-4">
-                                <div><label class="unit-label">空氣密度 (kg/m³)</label><input type="number" id="rho" step="0.1" class="excel-input" oninput="updateActiveRoomData('rho', this.value)"></div>
-                                <div><label class="unit-label">比熱 cp (kJ/kg·K)</label><input type="number" id="cp" step="0.001" class="excel-input" oninput="updateActiveRoomData('cp', this.value)"></div>
-                            </div>
-                        </div>
+            <!-- 右側列 -->
+            <div class="space-y-10 font-bold">
+                <section class="section-card border-l-[10px] border-emerald-500">
+                    <h3 class="text-base font-black text-emerald-600 uppercase tracking-widest mb-6 text-emerald-800">4. FFU 送風帶熱核算</h3>
+                    <div class="mb-6 p-6 bg-emerald-900 text-white rounded-[2rem] shadow-2xl border-b-8 border-emerald-950">
+                        <p class="text-[11px] font-black opacity-50 uppercase tracking-[0.2em] mb-2">建議 FFU 數量 (依帶熱能力)</p>
+                        <p class="text-5xl font-black tracking-tighter font-mono"><span id="suggested_ffu_qty">0</span> <small class="text-sm font-black opacity-30 ml-2 uppercase font-sans">Units</small></p>
+                    </div>
+                    <div class="grid grid-cols-2 gap-6 mb-6">
+                        <div><label class="unit-label text-emerald-700">設置 FFU 台數</label><input type="number" id="ffuQty" class="excel-input border-emerald-200 text-emerald-700" oninput="updateActiveRoomData('ffuQty', this.value)"></div>
+                        <div><label class="unit-label text-emerald-700">平均風速 (m/s)</label><input type="number" id="ffuV" step="0.01" class="excel-input border-emerald-200 text-emerald-700" oninput="updateActiveRoomData('ffuV', this.value)"></div>
+                    </div>
+                    <div class="p-5 bg-emerald-50 rounded-3xl grid grid-cols-2 gap-6 border-2 border-emerald-100 shadow-inner">
+                        <div><p class="text-[11px] font-black text-emerald-700 uppercase opacity-60">FFU 覆蓋率</p><p id="disp_coverage" class="text-2xl font-black text-slate-800">0%</p></div>
+                        <div><p class="text-[11px] font-black text-emerald-700 uppercase opacity-60">總循環量</p><p id="disp_total_flow" class="text-2xl font-black text-slate-800 tracking-tighter">0 CMH</p></div>
                     </div>
                 </section>
 
-                <section class="section-card bg-slate-50 overflow-hidden">
-                    <div class="flex justify-between items-center mb-4">
-                        <h3 class="text-xs font-black text-slate-800 uppercase tracking-widest">DCC 乾盤管管理</h3>
-                        <button onclick="addDCC()" class="bg-slate-900 text-white text-[10px] px-3 py-1.5 rounded-lg font-bold hover:bg-slate-800 transition-all shrink-0">+ 新增</button>
+                <section class="section-card border-l-[10px] border-sky-500 bg-sky-50/20">
+                    <div class="flex justify-between items-center mb-6">
+                        <div>
+                            <h3 class="text-base font-black text-sky-800 uppercase tracking-widest">5. DCC 選型與配套建議</h3>
+                            <p class="text-[11px] text-sky-600 font-black mt-1 uppercase">應配總冷量：<span id="suggested_dcc_cooling" class="text-sky-900 font-mono">0</span> kW</p>
+                        </div>
+                        <button onclick="addDCC()" class="bg-sky-900 text-white text-xs px-5 py-2.5 rounded-2xl font-black hover:bg-sky-800 shadow-lg tracking-widest">+ 新增 DCC</button>
                     </div>
-                    <div class="overflow-x-auto custom-scrollbar pb-2">
-                        <table class="w-full text-[11px] font-bold min-w-[360px]">
-                            <thead class="text-slate-400 uppercase text-left border-b border-slate-200">
-                                <tr><th class="pb-2 pl-1">長x寬 (m)</th><th class="pb-2 text-center">風速</th><th class="pb-2 text-center">數量</th><th class="pb-2 text-right pr-2">冷量(kW)</th><th class="pb-2 w-8"></th></tr>
+                    <div class="overflow-x-auto custom-scrollbar bg-white rounded-2xl border-2 border-sky-100 p-2 shadow-inner">
+                        <table class="w-full text-[13px] font-bold min-w-[450px]">
+                            <thead class="text-slate-400 uppercase text-left border-b-2 border-sky-50">
+                                <tr><th class="p-4">尺寸 (m)</th><th class="p-4 text-center">風速</th><th class="p-4 text-center">數量</th><th class="p-4 text-right">kW</th><th class="p-4 w-12"></th></tr>
                             </thead>
                             <tbody id="dccTableBody"></tbody>
                         </table>
                     </div>
-                    <div class="mt-4 pt-4 border-t border-slate-200 grid grid-cols-1 sm:grid-cols-2 gap-2 text-[11px]">
-                        <div class="text-slate-500 uppercase">總熱負荷: <span id="total_heat_load" class="text-slate-800 font-black">0</span> kW</div>
-                        <div class="text-slate-500 uppercase sm:text-right">DCC 總冷量: <span id="total_dcc_cooling" class="text-sky-600 font-black">0</span> kW</div>
+                    <div class="mt-6 pt-6 border-t border-sky-100 flex justify-between items-center">
+                        <div class="text-[12px] text-slate-500 uppercase font-black">實際總冷量: <span id="total_dcc_cooling" class="text-sky-700 text-2xl ml-2 font-mono tracking-tighter">0</span> kW</div>
+                        <span id="dcc_match_status" class="badge-info px-6 py-2 shadow-sm uppercase tracking-widest">CHECKING</span>
                     </div>
                 </section>
 
-                <section class="section-card bg-slate-900 text-slate-400">
-                    <h3 class="text-[10px] font-black text-sky-400 uppercase tracking-widest mb-2">工程師備忘錄</h3>
-                    <textarea id="engineerNote" class="w-full h-20 bg-transparent outline-none text-xs font-mono resize-none leading-relaxed" placeholder="輸入此空間的備註..." oninput="updateActiveRoomData('note', this.value)"></textarea>
+                <section class="section-card bg-slate-900 text-slate-400 border-b-[10px] border-sky-600">
+                    <h3 class="text-[12px] font-black text-sky-400 uppercase tracking-[0.2em] mb-4 flex items-center gap-2">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path></svg>
+                        工程師核算備忘錄
+                    </h3>
+                    <textarea id="engineerNote" class="w-full h-28 bg-transparent outline-none text-sm font-mono resize-none leading-relaxed text-slate-300 font-bold" placeholder="輸入本區域的核算備註或設計基準..." oninput="updateActiveRoomData('note', this.value)"></textarea>
                 </section>
             </div>
         </div>
     </main>
 </div>
 
-<script id="projectDataScript">
-// --- 關鍵邏輯：專案數據定義 ---
+<script>
+// --- 核心數據結構 ---
 const FFU_SIZE_DEFAULT = 1.44; 
-// 當匯出為 HTML 時，我們會用正則表達式替換下面這行變數
+
 let project = {
     rooms: [
         {
             id: 'room-' + Date.now(),
-            name: '預設空間範例',
-            area: 422.5,
+            name: '精密製造分區 ISO 5',
+            area: 422,
             height: 3.5,
-            exhaust: 11995,
-            mauTarget: 1.25,
-            ffuQty: 78,
-            ffuV: 0.4,
-            ffuEff: 1.0,
-            unitHeat: 0.75,
-            tempIn: 23,
-            tempOut: 19.5,
+            exhaust: 12000,
+            mauTarget: 1.2,
+            ffuQty: 80,
+            ffuV: 0.38,
+            unitHeat: 0.72,
+            tempIn: 22.5,
+            tempOut: 19.0,
             rho: 1.2,
             cp: 1.005,
-            returnAirV: 2.5,
-            dccList: [
-                { id: 'dcc-' + Date.now(), desc: '區塊 1', length: 1.25, width: 1.2, v: 2.5, count: 68 }
-            ],
-            note: '您可以修改此範例，或是新增更多房間。'
+            actualReturnArea: 15.5,
+            dccList: [{ id: 'dcc-1', length: 1.2, width: 1.2, v: 2.5, count: 65 }],
+            note: '標準設計參數。'
         }
     ],
     activeRoomId: null
@@ -302,23 +395,29 @@ window.onload = () => refreshUI();
 function refreshUI() { renderRoomList(); loadActiveRoomData(); calculateProject(); }
 
 function addNewRoom() {
-    const newRoom = { id: 'room-' + Date.now(), name: '新建空間 ' + (project.rooms.length + 1), area: 100, height: 3, exhaust: 1000, mauTarget: 1, ffuQty: 10, ffuV: 0.4, ffuEff: 1.0, unitHeat: 0.5, tempIn: 23, tempOut: 19, rho: 1.2, cp: 1.005, returnAirV: 2.5, dccList: [], note: '' };
-    project.rooms.push(newRoom); project.activeRoomId = newRoom.id; refreshUI(); showMsg("房間已新增");
+    const newRoom = { id: 'room-' + Date.now(), name: '新區域 ' + (project.rooms.length + 1), area: 100, height: 3, exhaust: 2000, mauTarget: 1, ffuQty: 10, ffuV: 0.4, unitHeat: 0.5, tempIn: 23, tempOut: 19, rho: 1.2, cp: 1.005, actualReturnArea: 5, dccList: [], note: '' };
+    project.rooms.push(newRoom); project.activeRoomId = newRoom.id; refreshUI(); showMsg("房間區域已建立");
 }
 
 function setActiveRoom(id) { project.activeRoomId = id; refreshUI(); }
 
-function deleteActiveRoom() { if (project.rooms.length <= 1) return showMsg("至少需保留一個空間"); project.rooms = project.rooms.filter(r => r.id !== project.activeRoomId); project.activeRoomId = project.rooms[0].id; refreshUI(); showMsg("空間已刪除"); }
+function deleteActiveRoom() { 
+    if (project.rooms.length <= 1) return showMsg("至少需保留一個區域"); 
+    project.rooms = project.rooms.filter(r => r.id !== project.activeRoomId); 
+    project.activeRoomId = project.rooms[0].id; refreshUI(); showMsg("空間已刪除"); 
+}
 
 function renderRoomList() {
     const listEl = document.getElementById('roomList'); listEl.innerHTML = '';
     project.rooms.forEach(room => {
         const item = document.createElement('div');
-        item.className = `room-item p-3 rounded-xl mb-2 ${room.id === project.activeRoomId ? 'active shadow-sm border border-slate-200' : 'hover:bg-slate-50'}`;
+        item.className = `room-item p-5 rounded-[1.5rem] mb-3 ${room.id === project.activeRoomId ? 'active shadow-md border border-slate-200' : 'hover:bg-slate-50'}`;
         item.onclick = () => setActiveRoom(room.id);
-        const vol = room.area * room.height, flow = room.ffuQty * room.ffuV * FFU_SIZE_DEFAULT * 3600;
-        const ach = vol > 0 ? (flow / vol).toFixed(0) : 0;
-        item.innerHTML = `<div class="flex justify-between items-start gap-2"><span class="font-black text-sm text-slate-800 truncate">${room.name}</span><span class="text-[9px] font-black shrink-0 ${ach < 70 ? 'text-amber-500' : 'text-emerald-500'}">${ach} ACH</span></div><p class="text-[9px] text-slate-400 font-bold uppercase mt-1">${room.area} m² / ${room.ffuQty} FFU</p>`;
+        const vol = room.area * room.height;
+        const totalFlow = room.ffuQty * room.ffuV * FFU_SIZE_DEFAULT * 3600;
+        // ✅ 修正側邊欄 ACH 公式
+        const ach = vol > 0 ? ((totalFlow - room.exhaust) / vol).toFixed(0) : 0;
+        item.innerHTML = `<div class="flex justify-between items-start gap-3"><span class="font-black text-lg text-slate-800 truncate">${room.name}</span><span class="text-[11px] font-black shrink-0 px-3 py-1 rounded-full ${ach < 70 ? 'bg-amber-100 text-amber-600' : 'bg-emerald-100 text-emerald-600'} font-mono">${ach} ACH</span></div><p class="text-[11px] text-slate-400 font-black uppercase mt-2 tracking-widest">${room.area} m² / ${room.ffuQty} FFU</p>`;
         listEl.appendChild(item);
     });
 }
@@ -327,7 +426,20 @@ function getActiveRoom() { return project.rooms.find(r => r.id === project.activ
 
 function loadActiveRoomData() {
     const r = getActiveRoom(); if (!r) return;
-    document.getElementById('activeRoomName').value = r.name; document.getElementById('roomArea').value = r.area; document.getElementById('roomHeight').value = r.height; document.getElementById('exhaustFlow').value = r.exhaust; document.getElementById('mauTarget').value = r.mauTarget; document.getElementById('ffuQty').value = r.ffuQty; document.getElementById('ffuV').value = r.ffuV; document.getElementById('unitHeat').value = r.unitHeat; document.getElementById('tempIn').value = r.tempIn; document.getElementById('tempOut').value = r.tempOut; document.getElementById('rho').value = r.rho; document.getElementById('cp').value = r.cp; document.getElementById('returnAirV').value = r.returnAirV; document.getElementById('engineerNote').value = r.note;
+    document.getElementById('activeRoomName').value = r.name; 
+    document.getElementById('roomArea').value = r.area; 
+    document.getElementById('roomHeight').value = r.height; 
+    document.getElementById('exhaustFlow').value = r.exhaust; 
+    document.getElementById('mauTarget').value = r.mauTarget; 
+    document.getElementById('ffuQty').value = r.ffuQty; 
+    document.getElementById('ffuV').value = r.ffuV; 
+    document.getElementById('unitHeat').value = r.unitHeat; 
+    document.getElementById('tempIn').value = r.tempIn; 
+    document.getElementById('tempOut').value = r.tempOut; 
+    document.getElementById('rho').value = r.rho; 
+    document.getElementById('cp').value = r.cp; 
+    document.getElementById('actualReturnArea').value = r.actualReturnArea; 
+    document.getElementById('engineerNote').value = r.note;
     renderDCC();
 }
 
@@ -338,124 +450,156 @@ function updateActiveRoomData(field, val) {
     calculateProject();
 }
 
-function addDCC() { const r = getActiveRoom(); r.dccList.push({ id: 'dcc-' + Date.now(), desc: '區塊', length: 1.25, width: 1.2, v: 2.5, count: 1 }); renderDCC(); calculateProject(); }
-
-function updateDCC(id, field, val) { const r = getActiveRoom(); const dcc = r.dccList.find(d => d.id === id); if (dcc) dcc[field] = (field === 'desc') ? val : parseFloat(val) || 0; calculateProject(); }
-
+function addDCC() { const r = getActiveRoom(); r.dccList.push({ id: 'dcc-' + Date.now(), length: 1.2, width: 1.2, v: 2.5, count: 1 }); renderDCC(); calculateProject(); }
+function updateDCC(id, field, val) { const r = getActiveRoom(); const dcc = r.dccList.find(d => d.id === id); if (dcc) dcc[field] = parseFloat(val) || 0; calculateProject(); }
 function deleteDCC(id) { const r = getActiveRoom(); r.dccList = r.dccList.filter(d => d.id !== id); renderDCC(); calculateProject(); }
 
 function renderDCC() {
     const r = getActiveRoom(); const tbody = document.getElementById('dccTableBody');
     tbody.innerHTML = r.dccList.map(item => `
-        <tr class="border-b border-slate-100">
-            <td class="py-2 pl-1"><div class="flex items-center gap-1"><input type="number" step="0.01" value="${item.length}" oninput="updateDCC('${item.id}', 'length', this.value)" class="w-16 border border-slate-200 rounded px-1 py-1 font-bold"><span class="text-slate-300">×</span><input type="number" step="0.01" value="${item.width}" oninput="updateDCC('${item.id}', 'width', this.value)" class="w-16 border border-slate-200 rounded px-1 py-1 font-bold"></div></td>
-            <td class="py-2 text-center"><input type="number" step="0.1" value="${item.v}" oninput="updateDCC('${item.id}', 'v', this.value)" class="w-12 border border-slate-200 rounded px-1 py-1 text-center font-bold"></td>
-            <td class="py-2 text-center"><input type="number" value="${item.count}" oninput="updateDCC('${item.id}', 'count', this.value)" class="w-12 border border-slate-200 rounded px-1 py-1 text-center font-bold"></td>
-            <td class="py-2 text-right pr-2"><span id="cc_${item.id}" class="text-sky-600 font-black">0</span></td>
-            <td class="py-2 text-right"><button onclick="deleteDCC('${item.id}')" class="text-slate-300 hover:text-red-400 p-1"><svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd" /></svg></button></td>
+        <tr class="border-b border-sky-50 hover:bg-sky-50/50 transition-colors">
+            <td class="p-4"><div class="flex items-center gap-2 font-black text-slate-700"><input type="number" step="0.1" value="${item.length}" oninput="updateDCC('${item.id}', 'length', this.value)" class="w-16 border-2 border-slate-100 rounded-lg px-2 py-1 font-bold"><span>×</span><input type="number" step="0.1" value="${item.width}" oninput="updateDCC('${item.id}', 'width', this.value)" class="w-16 border-2 border-slate-100 rounded-lg px-2 py-1 font-bold"></div></td>
+            <td class="p-4 text-center font-black text-slate-700"><input type="number" step="0.1" value="${item.v}" oninput="updateDCC('${item.id}', 'v', this.value)" class="w-14 border-2 border-slate-100 rounded-lg py-1 text-center"></td>
+            <td class="p-4 text-center font-black text-blue-600"><input type="number" value="${item.count}" oninput="updateDCC('${item.id}', 'count', this.value)" class="w-14 border-2 border-slate-100 rounded-lg py-1 text-center"></td>
+            <td class="p-4 text-right pr-6 font-black text-sky-600 text-lg font-mono"><span id="cc_${item.id}">0</span></td>
+            <td class="p-4 text-right"><button onclick="deleteDCC('${item.id}')" class="text-slate-300 hover:text-red-500 font-black text-2xl">×</button></td>
         </tr>
     `).join('');
 }
 
 function calculateProject() {
-    let globalMAU = 0, globalCooling = 0;
+    let globalMAU = 0, globalCooling = 0, globalFFU = 0, globalDCCCount = 0;
+    const globalMauFactor = parseFloat(document.getElementById('globalMauFactor').value) || 1.0;
+    
     project.rooms.forEach(room => {
-        const volume = room.area * room.height, totalFlow = room.ffuQty * room.ffuV * FFU_SIZE_DEFAULT * 3600;
-        const mauReq = Math.round(room.exhaust + (volume * room.mauTarget));
+        const volume = room.area * room.height;
+        const totalHeatLoad = room.area * room.unitHeat; 
+        const dT = Math.abs(room.tempIn - room.tempOut);
+        
+        const totalFFUFlow = room.ffuQty * room.ffuV * FFU_SIZE_DEFAULT * 3600;
+        
+        // 1. ✅ 修正後的 MAU 公式：(面積 × 高度 × 係數) + 排氣量
+        const roomMau = (room.area * room.height * room.mauTarget) + room.exhaust;
+
         let roomDccCooling = 0;
         room.dccList.forEach(dcc => {
-            const cooling = dcc.v * (dcc.length * dcc.width * dcc.count) * room.rho * room.cp * (room.tempIn - room.tempOut);
-            roomDccCooling += cooling; if (room.id === project.activeRoomId) { const el = document.getElementById(`cc_${dcc.id}`); if (el) el.innerText = cooling.toFixed(1); }
+            const cooling = dcc.v * (dcc.length * dcc.width * dcc.count) * room.rho * room.cp * dT;
+            roomDccCooling += cooling;
+            globalDCCCount += dcc.count; 
+            if (room.id === project.activeRoomId) {
+                const el = document.getElementById(`cc_${dcc.id}`);
+                if (el) el.innerText = cooling.toFixed(1);
+            }
         });
-        const heatLoad = room.area * room.unitHeat, ach = volume > 0 ? (totalFlow / volume) : 0, balance = heatLoad > 0 ? (roomDccCooling / heatLoad * 100) : 0;
-        if (room.id === project.activeRoomId) {
-            document.getElementById('res_MAU').innerText = mauReq.toLocaleString(); document.getElementById('res_ACH').innerText = ach.toFixed(1); document.getElementById('res_Balance').innerText = Math.round(balance);
-            document.getElementById('disp_coverage').innerText = (room.area > 0 ? (room.ffuQty * FFU_SIZE_DEFAULT / room.area * 100).toFixed(1) : 0) + "%";
-            document.getElementById('disp_total_flow').innerText = Math.round(totalFlow).toLocaleString() + " CMH";
-            document.getElementById('total_heat_load').innerText = heatLoad.toFixed(1); document.getElementById('total_dcc_cooling').innerText = roomDccCooling.toFixed(1);
-            const retArea = room.returnAirV > 0 ? (totalFlow / room.returnAirV / 3600) : 0; document.getElementById('res_ReturnArea').innerText = retArea.toFixed(2);
-            const achS = document.getElementById('ach_status'), balS = document.getElementById('balance_status');
-            achS.innerText = (ach < 70) ? "換氣不足" : (ach > 120 ? "能耗預警" : "運作正常"); achS.className = (ach < 70 || ach > 120) ? "badge-warn" : "badge-pass";
-            balS.innerText = (balance < 100) ? "冷量缺口" : "熱平衡達成"; balS.className = (balance < 100) ? "badge-warn text-red-600 bg-red-100" : "badge-pass";
+
+        // 2. ✅ 修正後的 ACH 公式：(總循環量 - 排氣量) / 空間體積
+        const ach = volume > 0 ? ((totalFFUFlow - room.exhaust) / volume) : 0;
+        const balance = totalHeatLoad > 0 ? (roomDccCooling / totalHeatLoad * 100) : 0;
+
+        // 計算建議 FFU
+        let suggestedFFU = 0;
+        if (dT > 0 && room.ffuV > 0) {
+            const reqFlow_CMH = (totalHeatLoad / (room.rho * room.cp * dT)) * 3600;
+            const singleFFU_CMH = room.ffuV * FFU_SIZE_DEFAULT * 3600;
+            suggestedFFU = Math.ceil(reqFlow_CMH / singleFFU_CMH);
         }
-        globalMAU += mauReq; globalCooling += roomDccCooling;
+
+        if (room.id === project.activeRoomId) {
+            document.getElementById('res_MAU_Room').innerText = Math.round(roomMau).toLocaleString();
+            document.getElementById('res_ACH').innerText = ach.toFixed(1);
+            document.getElementById('res_Balance').innerText = Math.round(balance);
+            document.getElementById('suggested_ffu_qty').innerText = suggestedFFU;
+            document.getElementById('disp_coverage').innerText = (room.area > 0 ? (room.ffuQty * FFU_SIZE_DEFAULT / room.area * 100).toFixed(1) : 0) + "%";
+            document.getElementById('disp_total_flow').innerText = Math.round(totalFFUFlow).toLocaleString() + " CMH";
+            document.getElementById('suggested_dcc_cooling').innerText = totalHeatLoad.toFixed(1);
+            document.getElementById('total_dcc_cooling').innerText = roomDccCooling.toFixed(1);
+            
+            const retV = room.actualReturnArea > 0 ? (totalFFUFlow / room.actualReturnArea / 3600) : 0;
+            const retEl = document.getElementById('res_ReturnAirV');
+            const retMsg = document.getElementById('return_air_msg');
+            retEl.innerText = retV.toFixed(2);
+            if (retV > 2.5) {
+                retEl.className = "text-red-600 font-black text-3xl tracking-tighter font-mono";
+                retMsg.innerText = "⚠️ 回風道流速過高 (建議加大面積)";
+                retMsg.className = "text-[12px] mt-2 text-red-500 font-black uppercase";
+            } else {
+                retEl.className = "text-emerald-600 font-black text-3xl tracking-tighter font-mono";
+                retMsg.innerText = "✅ 回風流速正常";
+                retMsg.className = "text-[12px] mt-2 text-emerald-500 font-black uppercase";
+            }
+
+            const achS = document.getElementById('ach_status'), balS = document.getElementById('balance_status');
+            achS.innerText = (ach < 70) ? "LOW FLOW" : "OPTIMAL";
+            achS.className = (ach < 70) ? "badge-warn" : "badge-pass";
+            balS.innerText = (balance < 100) ? "GAP" : "BALANCED";
+            balS.className = (balance < 100) ? "badge-warn" : "badge-pass";
+            
+            const matchS = document.getElementById('dcc_match_status');
+            matchS.innerText = (balance >= 100) ? "MATCHED" : "UNMATCHED";
+            matchS.className = (balance >= 100) ? "badge-pass" : "badge-warn";
+        }
+        globalMAU += roomMau; 
+        globalFFU += room.ffuQty;
+        globalCooling += roomDccCooling;
     });
-    document.getElementById('global_room_count').innerText = project.rooms.length; document.getElementById('global_total_mau').innerText = Math.round(globalMAU).toLocaleString(); document.getElementById('global_total_cooling').innerText = Math.round(globalCooling).toLocaleString();
+
+    document.getElementById('global_total_mau').innerText = Math.round(globalMAU * globalMauFactor).toLocaleString();
+    document.getElementById('global_ffu_qty').innerText = globalFFU;
+    document.getElementById('global_total_dcc_count').innerText = globalDCCCount;
+    document.getElementById('global_total_cooling_rt').innerText = (globalCooling / 3.517).toFixed(1);
 }
 
-// --- 匯出功能 ---
-
-function exportProjectJSON() {
-    const blob = new Blob([JSON.stringify(project, null, 2)], { type: 'application/json' });
-    const url = URL.createObjectURL(blob), a = document.createElement('a'); a.href = url; a.download = `Project_Data.json`; a.click(); showMsg("Json 數據已匯出");
+// --- 密碼導出功能 ---
+function openPasswordModal() {
+    document.getElementById('passwordModal').style.display = 'flex';
+    document.getElementById('pwdInput').value = '';
+    document.getElementById('pwdInput').focus();
 }
 
-/** 核心功能：將目前數據寫入 HTML 原始碼並下載 */
-function exportAsSelfContainedHTML() {
-    // 獲取目前整個網頁的 HTML 代碼
-    let htmlContent = document.documentElement.outerHTML;
-    
-    // 將當前的 project 物件轉化為字串
+function closePasswordModal() {
+    document.getElementById('passwordModal').style.display = 'none';
+}
+
+function verifyAndPasswordExport() {
+    if (document.getElementById('pwdInput').value === "900407") {
+        closePasswordModal();
+        executeHTMLSave();
+    } else {
+        showMsg("密碼錯誤！");
+        closePasswordModal();
+    }
+}
+
+function executeHTMLSave() {
     const projectString = JSON.stringify(project, null, 4);
-    
-    // 使用正則表達式尋找 let project = { ... }; 這段代碼並替換
-    // 我們匹配 project = { ... }; 結構，注意這裡需要小心處理巢狀括號，
-    // 在單一檔案環境下，我們可以簡單地定位關鍵字。
+    let htmlContent = document.documentElement.outerHTML;
     const regex = /let project = \{[\s\S]*?\n\s*\}\;/;
     const replacement = `let project = ${projectString};`;
     
     if (regex.test(htmlContent)) {
         htmlContent = htmlContent.replace(regex, replacement);
-        
         const blob = new Blob([htmlContent], { type: 'text/html' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        const fileName = prompt("請輸入報告檔案名稱", `無塵室設計報告_${new Date().toISOString().slice(0,10)}`);
+        const fileName = prompt("請輸入檔案名稱", `無塵室設計報告_${new Date().toISOString().slice(0,10)}`);
         if (!fileName) return;
-        a.href = url;
-        a.download = `${fileName}.html`;
-        a.click();
-        showMsg("已儲存為獨立 HTML 檔案");
-    } else {
-        alert("無法定位數據代碼區，儲存失敗。");
+        const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `${fileName}.html`; a.click();
+        showMsg("報告已下載");
     }
 }
-
-// --- 載入功能 ---
 
 function importProject(event) {
     const file = event.target.files[0]; if (!file) return;
     const reader = new FileReader();
-    const isHTML = file.name.toLowerCase().endsWith('.html');
-    
     reader.onload = (e) => {
         try {
-            let data;
-            if (isHTML) {
-                // 如果是 HTML，我們嘗試從中抓取 project 變數的定義
-                const content = e.target.result;
-                const regex = /let project = (\{[\s\S]*?\n\s*\}\;)/;
-                const match = content.match(regex);
-                if (match && match[1]) {
-                    // 移除結尾的分號並解析
-                    const jsonStr = match[1].replace(';', '').trim();
-                    data = JSON.parse(jsonStr);
-                } else {
-                    throw new Error("找不到有效的數據區塊");
-                }
-            } else {
-                // 如果是 JSON 直接解析
-                data = JSON.parse(e.target.result);
+            const content = e.target.result;
+            const regex = /let project = (\{[\s\S]*?\}\;)/;
+            const match = content.match(regex);
+            if (match) {
+                const jsonStr = match[1].replace(';', '').trim();
+                project = JSON.parse(jsonStr);
+                refreshUI(); showMsg("載入成功");
             }
-            
-            if (data.rooms && Array.isArray(data.rooms)) {
-                project = data; if (!project.activeRoomId && project.rooms.length > 0) project.activeRoomId = project.rooms[0].id;
-                refreshUI(); showMsg("載入成功 (" + (isHTML ? "HTML" : "JSON") + ")");
-            }
-        } catch (err) { 
-            console.error(err);
-            showMsg("載入失敗：不支援的檔案格式或數據毀損"); 
-        }
+        } catch (err) { showMsg("格式不支援"); }
     };
     reader.readAsText(file);
 }
