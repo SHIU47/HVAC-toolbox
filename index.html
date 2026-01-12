@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>東旭的 HVAC Pro-Suite | 專業空調設計門戶</title>
+    <title>東旭的 HVAC Pro-Suite | 專業空調設計網站</title>
     
     <!-- 網站圖示 (Favicon): 藍色背景白色 H -->
     <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='25' fill='%232563eb'/><text x='50%' y='54%' dominant-baseline='central' text-anchor='middle' font-family='system-ui, sans-serif' font-size='65' font-weight='900' fill='white'>H</text></svg>">
@@ -24,17 +24,18 @@
             color: #1e293b;
             overflow: hidden;
             margin: 0;
+            perspective: 2000px; /* 為 3D 動畫提供深度 */
             -webkit-tap-highlight-color: transparent;
         }
 
-        /* 強化版背景裝飾 */
+        /* 強化版背景 */
         .mesh-bg {
             position: fixed;
             top: 0; left: 0; width: 100%; height: 100%;
             z-index: -1;
             background: 
                 radial-gradient(at 0% 0%, rgba(37, 99, 235, 0.08) 0px, transparent 50%),
-                radial-gradient(at 100% 0%, rgba(59, 130, 246, 0.05) 0px, transparent 50%),
+                radial-gradient(at 100% 0%, rgba(100, 116, 139, 0.05) 0px, transparent 50%),
                 radial-gradient(at 100% 100%, rgba(186, 230, 253, 0.1) 0px, transparent 50%);
             background-color: #f8fafc;
         }
@@ -48,32 +49,31 @@
             opacity: 0.6;
         }
 
-        /* 滑軌導覽容器：響應式內距 */
+        /* 滑軌容器 */
         .slider-wrapper {
             position: relative;
             width: 100%;
             padding: 0 20px;
             overflow: visible;
+            transition: opacity 0.4s ease, transform 0.4s ease;
         }
         @media (min-width: 768px) { .slider-wrapper { padding: 0 80px; } }
 
         .slider-container {
             display: flex;
             overflow-x: auto;
-            scroll-behavior: smooth;
             gap: 20px;
-            padding: 40px 0;
+            padding: 70px 0;
             scrollbar-width: none;
             -ms-overflow-style: none;
             scroll-snap-type: x mandatory;
-            /* 響應式對齊點計算 */
             padding-left: calc(50% - 140px); 
             padding-right: calc(50% - 140px);
+            scroll-behavior: auto; 
         }
         @media (min-width: 768px) { 
             .slider-container { 
                 gap: 40px; 
-                padding: 60px 0;
                 padding-left: calc(50% - 190px); 
                 padding-right: calc(50% - 190px);
             } 
@@ -81,30 +81,31 @@
 
         .slider-container::-webkit-scrollbar { display: none; }
 
-        /* 工具卡片：寬度響應式 */
+        /* 工具卡片設計 */
         .tool-card {
-            flex: 0 0 280px; /* 手機版寬度 */
+            flex: 0 0 280px;
             background: rgba(255, 255, 255, 0.95);
             backdrop-filter: blur(12px);
             border: 1px solid var(--border-light);
-            border-radius: 2rem;
-            padding: 1.8rem;
+            border-radius: 2.5rem;
+            padding: 2.5rem;
             transition: all 0.6s cubic-bezier(0.23, 1, 0.32, 1);
             cursor: pointer;
             box-shadow: 0 10px 30px -15px rgba(0, 0, 0, 0.05);
             display: flex;
             flex-direction: column;
-            height: 300px;
+            height: 320px;
             position: relative;
             scroll-snap-align: center;
             opacity: 0.4;
-            transform: scale(0.9);
+            transform: scale(0.85);
+            user-select: none;
+            backface-visibility: hidden;
         }
         @media (min-width: 768px) { 
-            .tool-card { flex: 0 0 380px; height: 350px; padding: 2.8rem; border-radius: 3rem; } 
+            .tool-card { flex: 0 0 380px; height: 360px; border-radius: 3rem; } 
         }
 
-        /* 正中間浮起樣式 */
         .tool-card.active-center {
             opacity: 1;
             transform: scale(1.05) translateY(-15px);
@@ -115,12 +116,24 @@
         }
         @media (min-width: 768px) { 
             .tool-card.active-center { 
-                transform: scale(1.1) translateY(-30px);
-                box-shadow: 0 40px 80px -20px rgba(37, 99, 235, 0.25);
+                transform: scale(1.1) translateY(-35px);
+                box-shadow: 0 45px 80px -25px rgba(37, 99, 235, 0.25);
             } 
         }
 
-        /* 統一曜石黑 Icon 盒 */
+        /* --- 核心跳轉動畫 --- */
+        .card-opening {
+            position: fixed !important;
+            z-index: 200 !important;
+            transition: all 0.8s cubic-bezier(0.7, 0, 0.2, 1) !important;
+            pointer-events: none;
+            opacity: 1 !important;
+            transform: scale(4) rotateY(180deg) translateZ(500px) !important;
+            background: var(--primary-blue) !important;
+            border-radius: 0 !important;
+        }
+
+        /* 曜石黑 Icon 盒 */
         .icon-box {
             width: 60px; height: 60px;
             background-color: var(--obsidian-black) !important;
@@ -132,10 +145,19 @@
             box-shadow: 0 10px 20px rgba(0, 0, 0, 0.2);
         }
         @media (min-width: 768px) { 
-            .icon-box { width: 80px; height: 80px; border-radius: 26px; font-size: 2.6rem; } 
+            .icon-box { width: 85px; height: 85px; border-radius: 26px; font-size: 2.8rem; } 
         }
 
-        .active-center .icon-box { transform: scale(1.1) rotate(5deg); background-color: #000000 !important; }
+        .tool-card:hover .icon-box {
+            transform: scale(1.18) rotate(7deg);
+            background-color: #000000 !important;
+            box-shadow: 0 15px 30px rgba(37, 99, 235, 0.3);
+        }
+
+        .active-center .icon-box {
+            transform: scale(1.1) rotate(3deg);
+            background-color: #000000 !important;
+        }
 
         /* 導覽箭頭 */
         .nav-arrow {
@@ -147,35 +169,48 @@
             align-items: center; justify-content: center;
             z-index: 60; color: #1e293b;
             box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+            transition: all 0.3s;
         }
         @media (min-width: 1024px) { .nav-arrow { display: flex; } }
-        .nav-arrow.left { left: 0px; }
-        .nav-arrow.right { right: 0px; }
+        .nav-arrow:hover {
+            background: var(--primary-blue);
+            color: white;
+            border-color: var(--primary-blue);
+            transform: translateY(-50%) scale(1.15);
+        }
+        .nav-arrow.left { left: 5px; }
+        .nav-arrow.right { right: 5px; }
 
         /* Iframe 模組容器 */
         #module-container {
             position: fixed;
-            top: 64px; left: 0; width: 100%; height: calc(100vh - 64px);
-            z-index: 100; background: white; display: none; flex-direction: column;
+            top: 0; left: 0; width: 100%; height: 100vh;
+            z-index: 300; background: white; display: none; flex-direction: column;
+            animation: moduleEntrance 0.6s cubic-bezier(0.23, 1, 0.32, 1) forwards;
         }
-        @media (min-width: 768px) { #module-container { top: 72px; height: calc(100vh - 72px); } }
+        
+        @keyframes moduleEntrance {
+            from { opacity: 0; transform: scale(1.1); filter: blur(10px); }
+            to { opacity: 1; transform: scale(1); filter: blur(0); }
+        }
 
         #module-viewport { flex-grow: 1; width: 100%; height: 100%; border: none; }
 
         .tag {
-            font-size: 9px; font-weight: 800;
-            padding: 2px 10px; border-radius: 8px;
+            font-size: 10px; font-weight: 800;
+            padding: 3px 12px; border-radius: 8px;
             text-transform: uppercase; letter-spacing: 1px;
         }
 
-        .hero-bg-icon {
-            position: absolute;
-            top: -20px;
-            right: 0;
-            opacity: 0.03;
+        /* 轉場閃光特效 */
+        #transition-flash {
+            position: fixed;
+            inset: 0;
+            background: white;
+            z-index: 400;
+            opacity: 0;
             pointer-events: none;
-            z-index: -1;
-            transform: rotate(-15deg);
+            transition: opacity 0.3s ease;
         }
     </style>
 </head>
@@ -183,58 +218,40 @@
 
     <div class="mesh-bg"></div>
     <div class="bg-pattern"></div>
+    <div id="transition-flash"></div>
 
-    <!-- 頂部導覽列 -->
-    <header class="h-[64px] md:h-[72px] bg-white/90 backdrop-blur-md border-b border-slate-200 px-4 md:px-12 flex items-center justify-between flex-shrink-0 z-[110]">
+    <!-- 頂部導覽列 (模組模式下會隱藏或整合) -->
+    <header id="main-header" class="h-[64px] md:h-[72px] bg-white/90 backdrop-blur-md border-b border-slate-200 px-4 md:px-12 flex items-center justify-between flex-shrink-0 z-[110] transition-all duration-500">
         <div class="flex items-center gap-4 md:gap-10">
-            <div id="back-button" class="hidden">
-                <button onclick="closeModule()" class="flex items-center gap-2 px-4 py-2 rounded-full bg-slate-900 text-white font-bold text-sm shadow-xl hover:bg-blue-600 transition-all group">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 transform group-hover:-translate-x-1 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7" />
-                    </svg>
-                    <span class="hidden sm:inline">返回主頁</span>
-                </button>
-            </div>
             <div class="flex items-center gap-3 md:gap-5">
                 <div class="w-10 h-10 md:w-14 md:h-14 bg-gradient-to-br from-blue-600 to-indigo-700 rounded-xl md:rounded-2xl flex items-center justify-center text-white shadow-xl shadow-blue-500/20 text-xl md:text-2xl font-black">東旭</div>
                 <div>
-                    <!-- 標題：維持 tracking-[0.2em] 加寬效果 -->
                     <h1 id="portal-title" class="text-xl md:text-3xl font-black text-slate-800 tracking-[0.2em] leading-none uppercase">HVAC <span class="text-blue-600">Pro-Suite</span></h1>
                     <p id="portal-subtitle" class="hidden xs:block text-[8px] md:text-[10px] text-slate-400 font-black uppercase tracking-[0.4em] mt-1 md:mt-2">Engineering Operations Center</p>
                 </div>
             </div>
         </div>
-        
-        <div class="flex items-center gap-4 md:gap-12 text-right">
-            <div id="current-time" class="text-xs md:text-lg font-bold text-slate-800 font-mono bg-white px-3 md:px-6 py-1.5 md:py-2 rounded-xl border border-slate-200 shadow-sm">--:--</div>
-        </div>
+        <div id="current-time" class="text-xs md:text-lg font-bold text-slate-800 font-mono bg-white px-3 md:px-6 py-1.5 md:py-2 rounded-xl border border-slate-200 shadow-sm">--:--</div>
     </header>
 
     <!-- 主要內容區 -->
     <main class="flex-grow flex flex-col overflow-hidden relative">
         
-        <div id="toolbox-hub" class="flex-grow h-full overflow-y-auto p-6 md:p-16 lg:p-20 no-scrollbar relative z-10">
+        <div id="toolbox-hub" class="flex-grow h-full overflow-y-auto p-6 md:p-16 lg:p-20 no-scrollbar relative z-10 transition-all duration-500">
             <div class="max-w-[1600px] mx-auto relative">
                 
-                <div class="hero-bg-icon">
-                    <svg width="600" height="600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="0.5">
-                        <circle cx="12" cy="12" r="10" stroke-dasharray="2 2"/>
-                        <path d="M12 2V22M2 12H22M5 5L19 19M19 5L5 19"/>
-                    </svg>
-                </div>
-
-                <div class="mb-12 md:mb-24 text-center md:text-left">
-                    <div class="inline-block px-5 py-2 bg-blue-600 text-white text-[10px] md:text-[11px] font-black uppercase tracking-[0.5em] rounded-full mb-6 shadow-lg shadow-blue-200">System Connected • Founder Shiu_orz</div>
+                <div class="mb-12 md:mb-24 text-center md:text-left transition-all duration-500">
+                    <div class="inline-block px-5 py-2 bg-blue-600 text-white text-[10px] md:text-[11px] font-black uppercase tracking-[0.5em] rounded-full mb-6 shadow-lg shadow-blue-200">Portal Mode Enabled • v4.1</div>
                     <h2 class="text-5xl md:text-8xl font-black text-slate-900 mb-6 tracking-tighter leading-none">
                         專業空調 <span class="text-blue-600 italic font-medium">工具箱</span>
                     </h2>
-                    <p class="text-slate-500 font-bold text-lg md:text-3xl max-w-4xl leading-relaxed text-balance">
-                        提供空調設計核算與圖形化模擬。
+                    <p class="text-slate-500 font-bold text-lg md:text-3xl max-w-4xl leading-relaxed text-balance text-center md:text-left mx-auto md:mx-0">
+                        點選任一卡片以「進入」計算核心。
                     </p>
                 </div>
 
                 <!-- 分類 1: 基礎設計 -->
-                <section class="mb-24 md:mb-36">
+                <section class="mb-24 md:mb-36 section-container">
                     <h3 class="text-[10px] md:text-xs font-black text-slate-400 uppercase tracking-[0.5em] mb-8 md:mb-14 flex items-center gap-4 md:gap-10">
                         <span class="w-12 md:w-48 h-1 md:h-2 bg-blue-600 rounded-full"></span>
                         基礎設計工具 General
@@ -244,139 +261,55 @@
                         <button class="nav-arrow left" onclick="sideScroll('general-slider', 'left')">
                             <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="3"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7" /></svg>
                         </button>
-                        
-                        <div id="general-slider" class="slider-container">
-                            <!-- 新增：冰機換算水泵 -->
-                            <div onclick="loadModule('pump-conv', '冰機水泵換算')" class="tool-card group">
-                                <div class="flex justify-between items-start">
-                                    <div class="icon-box">⚡</div>
-                                    <span class="tag bg-emerald-100 text-emerald-700">Pump</span>
-                                </div>
-                                <div class="mt-8">
-                                    <h4 class="text-2xl md:text-4xl font-black text-slate-800 mb-2 md:mb-4 group-hover:text-blue-600 transition-colors">冰機水泵換算</h4>
-                                    <p class="text-base md:text-xl text-slate-400 font-bold leading-tight text-balance">輸入 RT 同步推算 CHW & CW 流量與耗電。</p>
-                                </div>
-                            </div>
-
-                            <div onclick="loadModule('conversion', '單位換算器')" class="tool-card group">
-                                <div class="flex justify-between items-start">
-                                    <div class="icon-box">🔄</div>
-                                    <span class="tag bg-blue-100 text-blue-700">Conv</span>
-                                </div>
-                                <div class="mt-8">
-                                    <h4 class="text-2xl md:text-4xl font-black text-slate-800 mb-2 md:mb-4 group-hover:text-blue-600 transition-colors">單位換算器</h4>
-                                    <p class="text-base md:text-xl text-slate-400 font-bold leading-tight text-balance">RT, kW, GPM 連動計算。</p>
-                                </div>
-                            </div>
-
-                            <div onclick="loadModule('psychrometric', '空氣性質分析')" class="tool-card group">
-                                <div class="flex justify-between items-start">
-                                    <div class="icon-box">☁️</div>
-                                    <span class="tag bg-sky-100 text-sky-700">Analysis</span>
-                                </div>
-                                <div class="mt-8">
-                                    <h4 class="text-2xl md:text-4xl font-black text-slate-800 mb-2 md:mb-4 group-hover:text-blue-600 transition-colors text-balance">空氣性質分析</h4>
-                                    <p class="text-base md:text-xl text-slate-400 font-bold leading-tight text-balance">比焓、除濕、高精度核算。</p>
-                                </div>
-                            </div>
-
-                            <div onclick="loadModule('air-duct', '風管尺寸檢核')" class="tool-card group">
-                                <div class="flex justify-between items-start">
-                                    <div class="icon-box">💨</div>
-                                    <span class="tag bg-indigo-100 text-indigo-700">Sizing</span>
-                                </div>
-                                <div class="mt-8">
-                                    <h4 class="text-2xl md:text-4xl font-black text-slate-800 mb-2 md:mb-4 group-hover:text-blue-600 transition-colors text-balance">風管尺寸檢核</h4>
-                                    <p class="text-base md:text-xl text-slate-400 font-bold leading-tight text-balance">等摩擦與等流速設計方案。</p>
-                                </div>
-                            </div>
-                        </div>
-
+                        <div id="general-slider" class="slider-container"></div>
                         <button class="nav-arrow right" onclick="sideScroll('general-slider', 'right')">
-                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="3"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" /></svg>
+                            <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="3"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" /></svg>
                         </button>
                     </div>
                 </section>
 
                 <!-- 分類 2: 進階系統 -->
-                <section class="mb-10">
+                <section class="mb-10 section-container">
                     <h3 class="text-[10px] md:text-xs font-black text-slate-400 uppercase tracking-[0.5em] mb-8 md:mb-14 flex items-center gap-4 md:gap-10">
                         <span class="w-12 md:w-48 h-1 md:h-2 bg-slate-900 rounded-full"></span>
-                        進階系統模組 Advanced Suite
+                        進階系統模組 Advanced
                     </h3>
 
                     <div class="slider-wrapper">
                         <button class="nav-arrow left" onclick="sideScroll('advanced-slider', 'left')">
                             <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="3"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7" /></svg>
                         </button>
-
-                        <div id="advanced-slider" class="slider-container">
-                            <div onclick="loadModule('psychro-pro', '空氣線圖 Pro')" class="tool-card group border-t-8 border-sky-400 shadow-2xl">
-                                <div class="flex justify-between items-start">
-                                    <div class="icon-box">📊</div>
-                                    <span class="tag bg-sky-500 text-white font-black px-3 py-1 rounded-lg uppercase tracking-widest">Logic</span>
-                                </div>
-                                <div class="mt-8">
-                                    <h4 class="text-2xl md:text-4xl font-black text-slate-800 mb-2 md:mb-4 group-hover:text-blue-600 transition-colors text-balance">空氣線圖 Pro</h4>
-                                    <p class="text-base md:text-xl text-slate-400 font-bold leading-tight">混風系統與盤管負荷 Mapping。</p>
-                                </div>
-                            </div>
-
-                            <div onclick="loadModule('cr-master', '無塵室大師 Pro')" class="tool-card group border-t-8 border-slate-900 shadow-2xl">
-                                <div class="flex justify-between items-start">
-                                    <div class="icon-box">🏗️</div>
-                                    <span class="tag bg-slate-900 text-white font-black">Fab</span>
-                                </div>
-                                <div class="mt-8">
-                                    <h4 class="text-2xl md:text-4xl font-black text-slate-800 mb-2 md:mb-4 group-hover:text-blue-600 transition-colors text-balance">無塵室大師 Pro</h4>
-                                    <p class="text-base md:text-xl text-slate-400 font-bold leading-tight text-balance">MAU、FFU 與熱平衡全案。</p>
-                                </div>
-                            </div>
-
-                            <div onclick="loadModule('chilled-water', '冰水管路計算')" class="tool-card group border-t-8 border-blue-600 shadow-2xl">
-                                <div class="flex justify-between items-start">
-                                    <div class="icon-box">❄️</div>
-                                    <span class="tag bg-blue-600 text-white font-black">Pipe</span>
-                                </div>
-                                <div class="mt-8">
-                                    <h4 class="text-2xl md:text-4xl font-black text-slate-800 mb-2 md:mb-4 group-hover:text-blue-600 transition-colors text-balance">冰水管路計算</h4>
-                                    <p class="text-base md:text-xl text-slate-400 font-bold leading-tight text-balance">拼圖建模與管徑選型。</p>
-                                </div>
-                            </div>
-
-                            <div onclick="loadModule('water-tower', '水塔補水量計算')" class="tool-card group">
-                                <div class="flex justify-between items-start">
-                                    <div class="icon-box">🗼</div>
-                                    <span class="tag bg-blue-600 text-white px-3 py-1 rounded-lg uppercase tracking-widest">Water</span>
-                                </div>
-                                <div class="mt-8">
-                                    <h4 class="text-2xl md:text-4xl font-black text-slate-800 mb-2 md:mb-4 group-hover:text-blue-600 transition-colors text-balance">水塔補水量</h4>
-                                    <p class="text-base md:text-xl text-slate-400 font-bold leading-tight text-balance">蒸發、流洩與補水平衡。</p>
-                                </div>
-                            </div>
-                        </div>
-
+                        <div id="advanced-slider" class="slider-container"></div>
                         <button class="nav-arrow right" onclick="sideScroll('advanced-slider', 'right')">
                             <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="3"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" /></svg>
                         </button>
                     </div>
                 </section>
 
-                <footer class="mt-40 pb-20 border-t border-slate-200 pt-16 text-center text-balance">
-                    <p class="text-[11px] text-slate-400 font-bold uppercase tracking-[0.4em] leading-loose">
+                <footer class="mt-40 pb-20 border-t border-slate-200 pt-16 text-center text-balance text-slate-400">
+                    <p class="text-[11px] font-bold uppercase tracking-[0.4em] leading-loose">
                         Professional HVAC Engineering Design Suite • Enterprise Edition<br>
                         © 2026 Developed for Advanced Engineering Operations
-                        Gmail: ss23083937@gmail.com  
+                        Gmail: ss23083937@gmail.com
                     </p>
                 </footer>
             </div>
         </div>
 
-        <!-- 外部模組視窗 -->
+        <!-- 外部模組視窗：現在包含了頂部返回導覽 -->
         <div id="module-container">
-            <div id="loading-overlay" class="absolute inset-0 flex flex-col items-center justify-center bg-white z-[120]">
-                <div class="w-16 md:w-24 h-16 md:h-24 border-8 border-blue-600 border-t-transparent rounded-full animate-spin mb-8"></div>
-                <p class="text-xs md:text-sm font-black text-blue-600 uppercase tracking-[0.4em] animate-pulse text-center px-4">正在同步數據中...</p>
+            <div class="h-[64px] md:h-[72px] bg-slate-900 text-white flex items-center px-4 md:px-12 justify-between shrink-0 shadow-2xl">
+                <button onclick="closeModule()" class="flex items-center gap-3 px-5 py-2 rounded-full bg-white/10 hover:bg-white/20 text-white font-bold text-sm transition-all group">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 transform group-hover:-translate-x-1 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7" />
+                    </svg>
+                    <span>退出程式</span>
+                </button>
+                <div class="flex flex-col items-center">
+                    <span id="active-tool-title" class="text-sm md:text-lg font-black tracking-widest uppercase">載入中...</span>
+                    <span class="text-[8px] opacity-40 font-bold uppercase tracking-[0.2em]">Live Computation Core</span>
+                </div>
+                <div class="w-20 md:w-32"></div> <!-- Spacer -->
             </div>
             <iframe id="module-viewport" src="about:blank"></iframe>
         </div>
@@ -384,46 +317,81 @@
     </main>
 
     <script>
-        const moduleMapping = {
-            'pump-conv': '冰機換算水泵.html', // 新增對應
-            'conversion': '空調工程專業換算工具.html',
-            'psychrometric': '空氣性質分析.html',
-            'air-duct': '風管計算.html',
-            'water-tower': '冷卻水塔補水量計算.html',
-            'cr-master': 'Clean room master.html',
-            'chilled-water': '冰水管路計算.html',
-            'psychro-pro': '空氣線圖Pro 計算器.html'
+        // --- 工具資料庫 ---
+        const toolsData = {
+            general: [
+                { id: 'pump-conv', name: '冰機水泵換算', desc: '輸入 RT 同步推算 CHW & CW 流量耗電。', icon: '⚡', tag: 'Pump', file: '冰機換算水泵.html', color: 'bg-emerald-100', text: 'text-emerald-700' },
+                { id: 'conversion', name: '單位換算器', desc: 'RT, KW, GPM 連動計算。', icon: '🔄', tag: 'Conv', file: '空調工程專業換算工具.html', color: 'bg-blue-100', text: 'text-blue-700' },
+                { id: 'psychrometric', name: '空氣性質分析', desc: '比焓、除濕、高精度核算。', icon: '☁️', tag: 'Analysis', file: '空氣性質分析.html', color: 'bg-sky-100', text: 'text-sky-700' },
+                { id: 'air-duct', name: '風管尺寸檢核', desc: '等摩擦與等流速設計方案。', icon: '💨', tag: 'Sizing', file: '風管計算.html', color: 'bg-indigo-100', text: 'text-indigo-700' }
+            ],
+            advanced: [
+                { id: 'psychro-pro', name: '空氣線圖 Pro', desc: '混風系統與盤管負荷 Mapping。', icon: '📊', tag: 'Logic', file: '空氣線圖Pro 計算器.html', color: 'bg-sky-500', text: 'text-white', isSpecial: true },
+                { id: 'cr-master', name: '無塵室大師 Pro', desc: 'MAU、FFU 與熱平衡全案。', icon: '🏗️', tag: 'Fab', file: 'Clean room master.html', color: 'bg-slate-900', text: 'text-white', isSpecial: true },
+                { id: 'chilled-water', name: '冰水管路計算', desc: '拼圖建模與管徑選型。', icon: '❄️', tag: 'Pipe', file: '冰水管路計算.html', color: 'bg-blue-600', text: 'text-white', isSpecial: true },
+                { id: 'water-tower', name: '水塔補水量計算', desc: '蒸發、流洩與補水平衡。', icon: '🗼', tag: 'Water', file: '冷卻水塔補水量計算.html', color: 'bg-blue-600', text: 'text-white', isSpecial: false }
+            ]
         };
 
-        function initInfiniteSlider(id) {
+        function shuffle(array) {
+            for (let i = array.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [array[i], array[j]] = [array[j], array[i]];
+            }
+            return array;
+        }
+
+        function createCardHTML(tool) {
+            return `
+                <div id="card-${tool.id}" onclick="loadModulePortal(event, '${tool.id}', '${tool.name}', '${tool.file}')" class="tool-card group">
+                    <div class="flex justify-between items-start">
+                        <div class="icon-box">${tool.icon}</div>
+                        <span class="tag ${tool.color} ${tool.text}">${tool.tag}</span>
+                    </div>
+                    <div class="mt-8">
+                        <h4 class="text-2xl md:text-3xl lg:text-4xl font-black text-slate-800 mb-2 md:mb-4 transition-colors text-balance">${tool.name}</h4>
+                        <p class="text-base md:text-xl text-slate-400 font-bold leading-tight text-balance">${tool.desc}</p>
+                    </div>
+                </div>
+            `;
+        }
+
+        function initDynamicSliders() {
+            const generalContainer = document.getElementById('general-slider');
+            const advancedContainer = document.getElementById('advanced-slider');
+            const shuffledGeneral = shuffle([...toolsData.general]);
+            const shuffledAdvanced = shuffle([...toolsData.advanced]);
+            generalContainer.innerHTML = shuffledGeneral.map(createCardHTML).join('');
+            advancedContainer.innerHTML = shuffledAdvanced.map(createCardHTML).join('');
+            initInfiniteSlider('general-slider', shuffledGeneral.length);
+            initInfiniteSlider('advanced-slider', shuffledAdvanced.length);
+        }
+
+        function initInfiniteSlider(id, originalCount) {
             const container = document.getElementById(id);
-            const cards = Array.from(container.children);
-            
-            cards.forEach(card => {
+            const originalCards = Array.from(container.children);
+            originalCards.forEach(card => {
                 const cloneBefore = card.cloneNode(true);
                 const cloneAfter = card.cloneNode(true);
                 container.appendChild(cloneAfter);
                 container.insertBefore(cloneBefore, container.firstChild);
             });
-
-            const updateScroll = () => {
+            const updateScrollPos = () => {
                 const card = container.querySelector('.tool-card');
                 if (!card) return;
-                const cardWidth = card.offsetWidth + parseInt(window.getComputedStyle(container).gap);
-                container.scrollLeft = cardWidth * cards.length;
+                const gap = parseInt(window.getComputedStyle(container).gap);
+                const cardWidth = card.offsetWidth + gap;
+                container.scrollLeft = cardWidth * originalCount;
             };
-            
-            window.addEventListener('resize', updateScroll);
-            setTimeout(updateScroll, 100);
-
+            window.addEventListener('resize', updateScrollPos);
+            setTimeout(updateScrollPos, 100);
             const handleScroll = () => {
                 const containerRect = container.getBoundingClientRect();
                 const centerX = containerRect.left + containerRect.width / 2;
-                const allCardsInContainer = Array.from(container.querySelectorAll('.tool-card'));
+                const allCards = Array.from(container.querySelectorAll('.tool-card'));
                 let closestCard = null;
                 let minDistance = Infinity;
-
-                allCardsInContainer.forEach(card => {
+                allCards.forEach(card => {
                     const cardRect = card.getBoundingClientRect();
                     const cardCenter = cardRect.left + cardRect.width / 2;
                     const distance = Math.abs(centerX - cardCenter);
@@ -431,12 +399,13 @@
                     card.classList.remove('active-center');
                 });
                 if (closestCard) closestCard.classList.add('active-center');
-
-                const totalWidth = container.scrollWidth / 3;
-                if (container.scrollLeft >= totalWidth * 2) { container.scrollLeft = totalWidth; }
-                else if (container.scrollLeft <= 0) { container.scrollLeft = totalWidth; }
+                const card = container.querySelector('.tool-card');
+                const gap = parseInt(window.getComputedStyle(container).gap);
+                const cardWidth = card.offsetWidth + gap;
+                const setWidth = cardWidth * originalCount;
+                if (container.scrollLeft >= setWidth * 2) { container.scrollLeft -= setWidth; }
+                else if (container.scrollLeft <= 0) { container.scrollLeft += setWidth; }
             };
-
             container.addEventListener('scroll', handleScroll);
             setTimeout(handleScroll, 200);
         }
@@ -445,49 +414,82 @@
             const container = document.getElementById(id);
             const card = container.querySelector('.tool-card');
             if (!card) return;
-            const scrollAmount = card.offsetWidth + parseInt(window.getComputedStyle(container).gap);
-            const target = direction === 'right' ? container.scrollLeft + scrollAmount : container.scrollLeft - scrollAmount;
+            const gap = parseInt(window.getComputedStyle(container).gap);
+            const cardWidth = card.offsetWidth + gap;
+            const originalCount = container.children.length / 3;
+            const setWidth = cardWidth * originalCount;
+            if (direction === 'right' && container.scrollLeft >= setWidth * 2 - cardWidth) { container.scrollLeft -= setWidth; }
+            if (direction === 'left' && container.scrollLeft <= cardWidth) { container.scrollLeft += setWidth; }
+            const target = direction === 'right' ? container.scrollLeft + cardWidth : container.scrollLeft - cardWidth;
             container.scrollTo({ left: target, behavior: 'smooth' });
         }
 
-        function loadModule(tabId, toolName) {
+        // --- 翻轉進入核心函數 ---
+        function loadModulePortal(event, id, toolName, fileName) {
+            const card = event.currentTarget;
             const hub = document.getElementById('toolbox-hub');
+            const header = document.getElementById('main-header');
+            const flash = document.getElementById('transition-flash');
             const container = document.getElementById('module-container');
             const iframe = document.getElementById('module-viewport');
-            const backBtn = document.getElementById('back-button');
-            const title = document.getElementById('portal-title');
-            const subtitle = document.getElementById('portal-subtitle');
-            const loader = document.getElementById('loading-overlay');
-
-            hub.style.display = 'none';
-            container.style.display = 'flex';
-            backBtn.classList.remove('hidden');
+            const activeTitle = document.getElementById('active-tool-title');
             
-            title.innerHTML = toolName;
-            if (subtitle) subtitle.style.display = 'none';
+            // 1. 取得卡片當前絕對位置並鎖定它
+            const rect = card.getBoundingClientRect();
+            const clone = card.cloneNode(true);
+            
+            // 設定複製出的卡片位置
+            clone.style.position = 'fixed';
+            clone.style.top = rect.top + 'px';
+            clone.style.left = rect.left + 'px';
+            clone.style.width = rect.width + 'px';
+            clone.style.height = rect.height + 'px';
+            clone.style.margin = '0';
+            clone.style.transition = 'none';
+            clone.classList.add('active-center');
+            document.body.appendChild(clone);
 
-            const fileName = moduleMapping[tabId];
-            if (fileName) {
-                loader.classList.remove('hidden');
-                iframe.src = fileName + '?v=' + Date.now();
-                iframe.onload = () => { setTimeout(() => { loader.classList.add('hidden'); }, 500); };
-            }
+            // 2. 啟動轉場動畫
+            requestAnimationFrame(() => {
+                // 隱藏原始 UI
+                hub.style.opacity = '0';
+                hub.style.transform = 'scale(0.95)';
+                header.style.transform = 'translateY(-100%)';
+                
+                // 啟動卡片翻轉放大
+                clone.classList.add('card-opening');
+                
+                // 3. 轉場中閃光與 Iframe 載入
+                setTimeout(() => {
+                    flash.style.opacity = '1';
+                    setTimeout(() => {
+                        // 準備 Iframe
+                        activeTitle.innerText = toolName;
+                        container.style.display = 'flex';
+                        iframe.src = fileName + '?v=' + Date.now();
+                        
+                        iframe.onload = () => {
+                            flash.style.opacity = '0';
+                            document.body.removeChild(clone);
+                        };
+                    }, 300);
+                }, 400);
+            });
         }
 
         function closeModule() {
             const hub = document.getElementById('toolbox-hub');
+            const header = document.getElementById('main-header');
             const container = document.getElementById('module-container');
-            const backBtn = document.getElementById('back-button');
-            const title = document.getElementById('portal-title');
-            const subtitle = document.getElementById('portal-subtitle');
             const iframe = document.getElementById('module-viewport');
 
-            hub.style.display = 'block';
+            container.style.animation = 'none'; // 停止進入動畫
             container.style.display = 'none';
-            backBtn.classList.add('hidden');
             
-            title.innerHTML = 'HVAC <span class="text-blue-600">Pro-Suite</span>';
-            if (subtitle) subtitle.style.display = 'block';
+            // 恢復主畫面
+            hub.style.opacity = '1';
+            hub.style.transform = 'scale(1)';
+            header.style.transform = 'translateY(0)';
             iframe.src = 'about:blank';
         }
 
@@ -500,12 +502,10 @@
         }
 
         window.onload = () => {
-            initInfiniteSlider('general-slider');
-            initInfiniteSlider('advanced-slider');
+            initDynamicSliders();
             setInterval(updateTime, 1000);
             updateTime();
         };
     </script>
 </body>
 </html>
-
