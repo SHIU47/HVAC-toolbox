@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>HydroPuzzle Pro - 專業水力工程選型版</title>
+    <title>HydroPuzzle Pro - 工業級效能優化版</title>
     <!-- 載入 React 與 Babel -->
     <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
@@ -29,32 +29,25 @@
         .color-dot { cursor: pointer; transition: all 0.2s; }
         .color-dot:hover { transform: scale(1.25); }
         .picker-shadow { box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.3), 0 8px 10px -6px rgba(0, 0, 0, 0.3); }
-        /* 增加主總管獨有的光暈效果 */
-        .source-glow { box-shadow: 0 0 30px rgba(234, 179, 8, 0.3), 0 10px 25px -5px rgba(0, 0, 0, 0.3); }
+        .source-glow { box-shadow: 0 0 45px rgba(234, 179, 8, 0.5), 0 10px 30px -5px rgba(0, 0, 0, 0.4); border: 2px solid #ca8a04 !important; }
+        .snap-guide { stroke: #f97316; stroke-width: 2; stroke-dasharray: 4; animation: dash 1s linear infinite; }
+        @keyframes dash { to { stroke-dashoffset: -20; } }
+        
+        /* 效能優化：防止拖拽時選取文字 */
+        .dragging-active, .dragging-active * { user-select: none !important; -webkit-user-select: none !important; }
+        .node-layer { will-change: transform; transition: outline 0.2s, box-shadow 0.2s; }
+        .is-dragging { transition: none !important; z-index: 1000 !important; }
     </style>
 </head>
 <body>
     <div id="root"></div>
 
     <script type="text/babel">
-        const INITIAL_PROJECT_DATA = null;
         const { useState, useMemo, useCallback, useRef, useEffect } = React;
 
-        const Icons = {
-            Plus: () => <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>,
-            Trash2: () => <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>,
-            Database: () => <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><ellipse cx="12" cy="5" rx="9" ry="3"></ellipse><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"></path><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"></path></svg>,
-            Layout: () => <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><line x1="3" y1="9" x2="21" y2="9"></line><line x1="9" y1="21" x2="9" y2="9"></line></svg>,
-            Droplets: () => <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M7 16.3c2.2 0 4-1.8 4-4 0-3.3-4-6.3-4-6.3S3 9 3 12.3c0 2.2 1.8 4 4 4z"></path></svg>,
-            HardDrive: () => <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="22" y1="12" x2="2" y2="12"></line><path d="M5.45 5.11L2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"></path></svg>,
-            ChevronUp: () => <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="18 15 12 9 6 15"></polyline></svg>,
-            X: () => <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>,
-            AlertTriangle: () => <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>,
-            Save: () => <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path><polyline points="17 21 17 13 7 13 7 21"></polyline><polyline points="7 3 7 8 15 8"></polyline></svg>,
-            Share2: () => <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="18" cy="5" r="3"></circle><circle cx="6" cy="12" r="3"></circle><circle cx="18" cy="19" r="3"></circle><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"></line><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"></line></svg>,
-            Palette: () => <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2a10 10 0 0 0-10 10 10 10 0 0 0 10 10 10.38 10.38 0 0 0 7-2.82 4 4 0 0 0-1-6.66l-1-.2A2 2 0 0 1 15.5 11a2 2 0 0 1 2 2v1a2 2 0 0 0 4 0v-2A10 10 0 0 0 12 2z"></path><circle cx="8" cy="9" r="1"></circle><circle cx="12" cy="7" r="1"></circle><circle cx="16" cy="9" r="1"></circle></svg>
-        };
-
+        /**
+         * [工業級水力計算引擎]
+         */
         const CP = 4.186; 
         const PIPE_SIZING_DATA = [
             { mm: 20, maxLpm: 19.5,  internal: 20.93 },
@@ -67,42 +60,22 @@
             { mm: 100, maxLpm: 560.0, internal: 105.30 },
             { mm: 125, maxLpm: 1020,  internal: 130.80 },
             { mm: 150, maxLpm: 1594,  internal: 155.20 },
-            { mm: 200, maxLpm: 4080,  internal: 204.70 },
-            { mm: 250, maxLpm: 6375,  internal: 304.70 },
-            { mm: 300, maxLpm: 9180,  internal: 304.70 },
-            { mm: 350, maxLpm: 16064, internal: 350.0 },
-            { mm: 400, maxLpm: 20981, internal: 400.0 },
-            { mm: 450, maxLpm: 26554, internal: 450.0 },
+            { mm: 200, maxLpm: 2295,  internal: 204.70 },
+            { mm: 250, maxLpm: 4080,  internal: 254.20 },
+            { mm: 300, maxLpm: 6375,  internal: 304.70 },
+            { mm: 400, maxLpm: 16064, internal: 400.0 },
             { mm: 500, maxLpm: 32783, internal: 500.0 },
-            { mm: 600, maxLpm: 39667, internal: 600.0 },
-            { mm: 650, maxLpm: 47207, internal: 650.0 },
-            { mm: 700, maxLpm: 55403, internal: 700.0 },
-            { mm: 750, maxLpm: 64254, internal: 750.0 },
-            { mm: 800, maxLpm: 73761, internal: 800.0 },
-            { mm: 850, maxLpm: 83923, internal: 850.0 },
-            { mm: 900, maxLpm: 94742, internal: 900.0 },
-            { mm: 950, maxLpm: 106215, internal: 950.0 },
             { mm: 1000, maxLpm: 118345, internal: 1000.0 },
-            { mm: 1050, maxLpm: 131130, internal: 1050.0 },
-            { mm: 1100, maxLpm: 160634, internal: 1100.0 },
-            { mm: 1150, maxLpm: 176297, internal: 1150.0 },
-            { mm: 1200, maxLpm: 192688, internal: 1200.0 },
-            { mm: 1250, maxLpm: 209808, internal: 1250.0 },
             { mm: 1300, maxLpm: 227656, internal: 1300.0 }
         ];
 
-        const COLOR_PALETTE = [
-            'bg-blue-500', 'bg-emerald-500', 'bg-indigo-500', 'bg-red-500', 
-            'bg-orange-500', 'bg-purple-500', 'bg-pink-500', 'bg-cyan-500', 'bg-slate-500'
-        ];
-
         const HydraulicEngine = {
-            calculateLps: (kw, qty, dt) => (kw * qty) / (CP * dt),
+            calculateLps: (kw, qty, dt) => (Number(kw) * Number(qty || 0)) / (CP * (Number(dt) || 5)),
             getSizing: (totalLps) => {
                 const totalLpm = totalLps * 60;
                 const match = PIPE_SIZING_DATA.find(p => p.maxLpm >= totalLpm) || PIPE_SIZING_DATA[PIPE_SIZING_DATA.length - 1];
                 const area = Math.PI * Math.pow((match.internal / 2) / 1000, 2);
-                const velocity = (totalLps / 1000) / area;
+                const velocity = totalLps > 0 ? (totalLps / 1000) / area : 0;
                 return { 
                     dn: totalLpm > PIPE_SIZING_DATA[PIPE_SIZING_DATA.length-1].maxLpm ? `${match.mm}+` : match.mm, 
                     velocity, 
@@ -112,42 +85,62 @@
             }
         };
 
+        const COLOR_PALETTE = ['bg-blue-500', 'bg-emerald-500', 'bg-indigo-500', 'bg-red-500', 'bg-orange-500', 'bg-purple-500', 'bg-pink-500', 'bg-cyan-500', 'bg-slate-500'];
+
+        const Icons = {
+            Plus: (p) => <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...p}><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>,
+            Trash2: (p) => <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...p}><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>,
+            Database: (p) => <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...p}><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/></svg>,
+            Layout: (p) => <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...p}><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="9" y1="21" x2="9" y2="9"/></svg>,
+            HardDrive: (p) => <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" {...p}><line x1="22" y1="12" x2="2" y2="12"/><path d="M5.45 5.11L2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/></svg>,
+            ChevronUp: (p) => <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...p}><polyline points="18 15 12 9 6 15"/></svg>,
+            X: (p) => <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" {...p}><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>,
+            Palette: (p) => <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" {...p}><path d="M12 2a10 10 0 0 0-10 10 10 10 0 0 0 10 10 10.38 10.38 0 0 0 7-2.82 4 4 0 0 0-1-6.66l-1-.2A2 2 0 0 1 15.5 11a2 2 0 0 1 2 2v1a2 2 0 0 0 4 0v-2A10 10 0 0 0 12 2z"/><circle cx="8" cy="9" r="1"/><circle cx="12" cy="7" r="1"/><circle cx="16" cy="9" r="1"/></svg>,
+            Layers: (p) => <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...p}><polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/></svg>,
+            Share2: (p) => <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...p}><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>,
+            Save: (p) => <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...p}><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>,
+            Settings: (p) => <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...p}><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1-2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>,
+            AlertCircle: (p) => <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...p}><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+        };
+
         function App() {
             const [activeTab, setActiveTab] = useState('editor');
-            const [library, setLibrary] = useState(INITIAL_PROJECT_DATA?.library || [
-                { id: 'lib-dcc-1', type: 'DCC', label: 'DCC 標準型', brand: 'TICA', model: 'TWC-050', kw: 49.7, dt: 5, pd: 35, pipeSize: 'DN32', color: 'bg-blue-500' },
-                { id: 'lib-mau-1', type: 'MAU', label: 'MAU 大風量', brand: 'TRANE', model: 'CLCP-08', kw: 200, dt: 7, pd: 55, pipeSize: 'DN65', color: 'bg-emerald-500' },
+            
+            // ✅ 記憶設定：目前的設備規格定義
+            const [library, setLibrary] = useState([
+                { id: 'lib-dcc-1', type: 'DCC', label: 'DCC 標準型', kw: 49.7, dt: 5, color: 'bg-blue-500' },
+                { id: 'lib-mau-1', type: 'MAU', label: 'MAU 大風量', kw: 200, dt: 7, color: 'bg-emerald-500' },
             ]);
-            const [nodes, setNodes] = useState(INITIAL_PROJECT_DATA?.nodes || [
+
+            // ✅ 記憶設定：初始畫布節點
+            const [nodes, setNodes] = useState([
                 { id: 'src-1', templateId: 'SOURCE', label: '主總管機房', x: 10000, y: 10000, qty: 1 },
-                { id: 'pvt-1', type: 'PIVOT', label: '區域分區 A', x: 10350, y: 9850, color: 'bg-red-500' },
-                { id: 'inst-1', templateId: 'lib-dcc-1', x: 10650, y: 9850, qty: 6 },
+                { id: 'pvt-1', type: 'PIVOT', label: '區域分區 A', x: 10450, y: 9850, color: 'bg-red-500' },
+                { id: 'inst-1', templateId: 'lib-dcc-1', x: 10850, y: 9850, qty: 6 },
             ]);
-            const [pipes, setPipes] = useState(INITIAL_PROJECT_DATA?.pipes || [
+
+            // ✅ 記憶設定：初始管線連線
+            const [pipes, setPipes] = useState([
                 { id: 'p-1', fromId: 'src-1', fromPort: 'right', toId: 'pvt-1', toPort: 'left' },
                 { id: 'p-2', fromId: 'pvt-1', fromPort: 'right', toId: 'inst-1', toPort: 'left' },
             ]);
-            const [scale, setScale] = useState(INITIAL_PROJECT_DATA?.viewState?.scale || 0.7);
-            const [offset, setOffset] = useState(() => {
-                if (INITIAL_PROJECT_DATA?.viewState?.offset) return INITIAL_PROJECT_DATA.viewState.offset;
-                return { x: window.innerWidth / 2 - 10000 * 0.7, y: window.innerHeight / 2 - 10000 * 0.7 };
-            });
+
+            const [scale, setScale] = useState(0.6);
+            const [offset, setOffset] = useState({ x: window.innerWidth / 2 - 10000 * 0.6, y: window.innerHeight / 2 - 10000 * 0.6 });
             const [results, setResults] = useState([]);
             const [nodeCalculatedFlows, setNodeCalculatedFlows] = useState({});
+            const [message, setMessage] = useState(null);
+
+            const isDraggingRef = useRef(false);
 
             const solveHydraulics = useCallback(() => {
-                const getWeight = (node) => {
-                    if (node.templateId === 'SOURCE') return 0;
-                    if (node.type === 'PIVOT') return 1;
-                    return 2;
-                };
-
+                const getWeight = (n) => n.templateId === 'SOURCE' ? 0 : n.type === 'PIVOT' ? 1 : 2;
                 const baseFlowLpsMap = {};
                 nodes.forEach(node => {
                     const weight = getWeight(node);
-                    if (weight < 2) {
-                        baseFlowLpsMap[node.id] = 0;
-                    } else {
+                    if (weight < 2) { baseFlowLpsMap[node.id] = 0; } 
+                    else if (node.isMerged) { baseFlowLpsMap[node.id] = HydraulicEngine.calculateLps(node.customKw || 0, 1, 5); } 
+                    else {
                         const lib = library.find(l => l.id === node.templateId);
                         const kw = node.customKw !== undefined ? node.customKw : (lib ? lib.kw : 0);
                         const dt = lib ? lib.dt : 5;
@@ -155,57 +148,62 @@
                     }
                 });
 
-                const normalizedPipes = pipes.map(p => {
-                    const fromNode = nodes.find(n => n.id === p.fromId);
-                    const toNode = nodes.find(n => n.id === p.toId);
-                    if (!fromNode || !toNode) return p;
-                    const wFrom = getWeight(fromNode), wTo = getWeight(toNode);
-                    if (wFrom <= wTo) return p;
-                    return { ...p, fromId: p.toId, toId: p.fromId };
-                });
+                const adj = {};
+                nodes.forEach(n => adj[n.id] = []);
+                pipes.forEach(p => { if (adj[p.fromId] && adj[p.toId]) { adj[p.fromId].push(p.toId); adj[p.toId].push(p.fromId); } });
 
-                const getAggregatedFlow = (nodeId, visited = new Set()) => {
-                    if (visited.has(nodeId)) return 0;
-                    visited.add(nodeId);
-                    let sum = baseFlowLpsMap[nodeId] || 0;
-                    normalizedPipes.filter(p => p.fromId === nodeId).forEach(p => {
-                        sum += getAggregatedFlow(p.toId, visited);
-                    });
+                const dists = {};
+                const sources = nodes.filter(n => n.templateId === 'SOURCE');
+                const queue = [...sources.map(s => s.id)];
+                sources.forEach(s => dists[s.id] = 0);
+                while (queue.length > 0) {
+                    const curr = queue.shift();
+                    adj[curr]?.forEach(neighbor => { if (dists[neighbor] === undefined) { dists[neighbor] = dists[curr] + 1; queue.push(neighbor); } });
+                }
+
+                const memo = {};
+                const getSubtreeLpm = (nodeId, parentId = null) => {
+                    const cacheKey = `${nodeId}-${parentId}`;
+                    if (memo[cacheKey] !== undefined) return memo[cacheKey];
+                    let sum = (baseFlowLpsMap[nodeId] || 0) * 60;
+                    adj[nodeId]?.forEach(neighbor => { if (neighbor !== parentId && dists[neighbor] > dists[nodeId]) sum += getSubtreeLpm(neighbor, nodeId); });
+                    memo[cacheKey] = sum;
                     return sum;
                 };
 
-                const pipeResults = pipes.map(pipe => {
-                    const fromN = nodes.find(n => n.id === pipe.fromId);
-                    const toN = nodes.find(n => n.id === pipe.toId);
-                    if (!fromN || !toN) return pipe;
-                    const downstreamId = (getWeight(fromN) <= getWeight(toN)) ? pipe.toId : pipe.fromId;
-                    const flowReq = getAggregatedFlow(downstreamId);
-                    const sizing = HydraulicEngine.getSizing(flowReq);
-                    return { ...pipe, lpm: flowReq * 60, ...sizing };
-                });
-
                 const nodeAggregates = {};
-                nodes.forEach(node => {
-                    nodeAggregates[node.id] = getAggregatedFlow(node.id) * 60;
+                nodes.forEach(node => { nodeAggregates[node.id] = getSubtreeLpm(node.id); });
+
+                const pipeResults = pipes.map(p => {
+                    const downstreamId = (dists[p.fromId] < dists[p.toId]) ? p.toId : p.fromId;
+                    const totalLpm = getSubtreeLpm(downstreamId, (dists[p.fromId] < dists[p.toId]) ? p.fromId : p.toId);
+                    return { ...p, lpm: totalLpm, ...HydraulicEngine.getSizing(totalLpm / 60) };
                 });
 
                 setResults(pipeResults);
                 setNodeCalculatedFlows(nodeAggregates);
             }, [nodes, pipes, library]);
 
-            useEffect(() => { solveHydraulics(); }, [solveHydraulics]);
+            useEffect(() => { if (!isDraggingRef.current) solveHydraulics(); }, [nodes, pipes, library, solveHydraulics]);
+
+            const showToast = (txt) => { setMessage(txt); setTimeout(() => setMessage(null), 3000); };
 
             const handleExportHTML = () => {
-                const projectData = { library, nodes, pipes, viewState: { scale, offset } };
-                const blob = new Blob(["<!DOCTYPE html>\n" + document.documentElement.outerHTML.replace(/const\s+INITIAL_PROJECT_DATA\s*=\s*null\s*;/, `const INITIAL_PROJECT_DATA = ${JSON.stringify(projectData, null, 4)};`)], { type: 'text/html' });
-                const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `HydroProject_${new Date().toISOString().split('T')[0]}.html`; a.click();
+                const blob = new Blob(["<!DOCTYPE html>\n" + document.documentElement.outerHTML], { type: 'text/html' });
+                const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `HydroProject_Pro.html`; a.click();
             };
 
             return (
                 <div className="w-full h-screen bg-slate-100 flex flex-col overflow-hidden text-slate-900">
+                    {message && (
+                        <div className="fixed top-20 left-1/2 -translate-x-1/2 bg-slate-800 text-white px-6 py-3 rounded-full z-[1000] shadow-2xl flex items-center gap-3 animate-bounce">
+                            <Icons.AlertCircle className="text-yellow-400" />
+                            <span className="text-sm font-bold">{message}</span>
+                        </div>
+                    )}
                     <div className="h-14 bg-slate-900 text-white flex items-center px-4 gap-2 shrink-0 z-[200] shadow-xl">
                         <div className="flex items-center gap-2 mr-6 border-r border-slate-700 pr-6">
-                            <div className="bg-blue-500 p-1.5 rounded-lg"><Icons.Droplets /></div>
+                            <div className="bg-blue-500 p-1.5 rounded-lg"><Icons.HardDrive /></div>
                             <div className="flex flex-col leading-none">
                                 <span className="font-black tracking-tighter text-sm uppercase italic">HydroPuzzle</span>
                                 <span className="text-[10px] text-blue-400 font-bold tracking-widest uppercase">Professional</span>
@@ -218,43 +216,60 @@
                         </div>
                     </div>
                     <div className="flex-1 relative overflow-hidden">
-                        {activeTab === 'setup' ? <EquipmentSetup library={library} setLibrary={setLibrary} /> : <HydraulicEditor library={library} nodes={nodes} setNodes={setNodes} pipes={pipes} setPipes={setPipes} scale={scale} setScale={setScale} offset={offset} setOffset={setOffset} results={results} nodeFlows={nodeCalculatedFlows} />}
+                        {activeTab === 'setup' ? (
+                            <EquipmentSetup library={library} setLibrary={setLibrary} nodes={nodes} showToast={showToast} />
+                        ) : (
+                            <HydraulicEditor 
+                                library={library} nodes={nodes} setNodes={setNodes} 
+                                pipes={pipes} setPipes={setPipes}
+                                scale={scale} setScale={setScale}
+                                offset={offset} setOffset={setOffset}
+                                results={results} nodeFlows={nodeCalculatedFlows}
+                                isDraggingRef={isDraggingRef}
+                                solveHydraulics={solveHydraulics}
+                                showToast={showToast}
+                            />
+                        )}
                     </div>
                 </div>
             );
         }
 
-        function EquipmentSetup({ library, setLibrary }) {
+        function EquipmentSetup({ library, setLibrary, nodes, showToast }) {
             const [activePickerId, setActivePickerId] = useState(null);
             const update = (id, field, val) => setLibrary(prev => prev.map(item => item.id === id ? { ...item, [field]: val } : item));
+            const handleDelete = (id) => {
+                if (nodes.some(n => n.templateId === id)) { showToast("此設備模板正在被畫布使用，無法刪除！"); return; }
+                setLibrary(library.filter(l => l.id !== id));
+            };
             return (
                 <div className="p-8 h-full overflow-y-auto bg-slate-50" onClick={() => setActivePickerId(null)}>
                     <div className="max-w-7xl mx-auto">
                         <div className="flex justify-between items-center mb-8">
-                            <div><h2 className="text-2xl font-black text-slate-800 uppercase tracking-tight">Equipment Spec</h2><p className="text-slate-500 text-sm font-medium">定義機組參數與顯示顏色</p></div>
-                            <button onClick={(e) => { e.stopPropagation(); setLibrary([...library, { id: `lib-${Date.now()}`, type: 'DCC', label: '新設備', brand: '-', model: '-', kw: 50, dt: 5, pd: 30, pipeSize: 'DN32', color: 'bg-blue-500' }])}} className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-xl font-bold text-sm flex items-center gap-2 shadow-lg"><Icons.Plus /> 新增設備模板</button>
+                            <h2 className="text-2xl font-black text-slate-800 uppercase tracking-tight">Equipment Spec</h2>
+                            <button onClick={(e) => { e.stopPropagation(); setLibrary([...library, { id: `lib-${Date.now()}`, type: 'DCC', label: '新設備', kw: 50, dt: 5, color: 'bg-blue-500' }])}} className="bg-blue-600 text-white px-6 py-3 rounded-xl font-bold text-sm flex items-center gap-2 shadow-lg"><Icons.Plus /> 新增設備模板</button>
                         </div>
                         <div className="bg-white rounded-2xl shadow-xl border overflow-hidden">
-                            <table className="w-full text-left text-sm border-collapse">
-                                <thead className="bg-slate-900 text-[10px] font-black text-slate-300 uppercase tracking-widest">
-                                    <tr><th className="px-4 py-5">機型名稱</th><th className="px-4 py-5 text-center">顏色設定</th><th className="px-4 py-5 text-center bg-slate-800 text-blue-300">容量 (kW)</th><th className="px-4 py-5 text-center bg-slate-800 text-blue-300">溫差 (K)</th><th className="px-4 py-5 text-center text-emerald-400 font-black">單台流量 (LPM)</th><th className="px-4 py-5 text-right pr-8">操作</th></tr>
+                            <table className="w-full text-left text-sm">
+                                <thead className="bg-slate-900 text-slate-300 uppercase">
+                                    <tr><th className="px-4 py-5">機型名稱</th><th className="px-4 py-5 text-center">顏色</th><th className="px-4 py-5 text-center bg-slate-800 text-blue-300">kW</th><th className="px-4 py-5 text-center bg-slate-800 text-blue-300">DT (K)</th><th className="px-4 py-5 text-center text-emerald-400 font-black">LPM (100%)</th><th className="px-4 py-5 text-right pr-8">操作</th></tr>
                                 </thead>
-                                <tbody className="divide-y divide-slate-100 text-slate-700">
+                                <tbody>
                                     {library.map(item => (
-                                        <tr key={item.id} className="hover:bg-blue-50/30 transition-colors">
-                                            <td className="px-4 py-4 font-bold"><input className="bg-transparent border-b border-transparent focus:border-blue-500 outline-none w-full" value={item.label} onChange={e => update(item.id, 'label', e.target.value)} /></td>
+                                        <tr key={item.id} className="hover:bg-blue-50/30 border-b">
+                                            <td className="px-4 py-4 font-bold"><input className="bg-transparent outline-none w-full border-b border-transparent focus:border-blue-500" value={item.label} onChange={e => update(item.id, 'label', e.target.value)} /></td>
                                             <td className="px-4 py-4 text-center relative">
                                                 <div className={`w-8 h-8 rounded-lg mx-auto border-2 border-white shadow-sm cursor-pointer ${item.color}`} onClick={(e) => { e.stopPropagation(); setActivePickerId(activePickerId === item.id ? null : item.id); }} />
                                                 {activePickerId === item.id && (
                                                     <div className="absolute top-full left-1/2 -translate-x-1/2 mt-2 bg-white p-2 rounded-xl shadow-2xl border z-[300] flex gap-2 picker-shadow">
-                                                        {COLOR_PALETTE.map(c => (<div key={c} className={`w-6 h-6 rounded-full ${c} color-dot ${item.color === c ? 'ring-2 ring-slate-800 ring-offset-1' : ''}`} onClick={() => { update(item.id, 'color', c); setActivePickerId(null); }} />))}
+                                                        {COLOR_PALETTE.map(c => (<div key={c} className={`w-6 h-6 rounded-full ${c} color-dot`} onClick={() => { update(item.id, 'color', c); setActivePickerId(null); }} />))}
                                                     </div>
                                                 )}
                                             </td>
                                             <td className="px-4 py-4 text-center bg-blue-50/30 font-black"><input type="number" className="w-20 text-center bg-transparent" value={item.kw} onChange={e => update(item.id, 'kw', parseFloat(e.target.value)||0)} /></td>
                                             <td className="px-4 py-4 text-center bg-blue-50/30 font-black"><input type="number" className="w-16 text-center bg-transparent" value={item.dt} onChange={e => update(item.id, 'dt', parseFloat(e.target.value)||0)} /></td>
                                             <td className="px-4 py-4 text-center font-mono font-black text-emerald-600">{(item.kw/(CP*item.dt)*60).toFixed(2)}</td>
-                                            <td className="px-4 py-4 text-right pr-8"><button onClick={() => setLibrary(library.filter(l => l.id !== item.id))} className="text-slate-300 hover:text-red-500 p-2"><Icons.Trash2 /></button></td>
+                                            <td className="px-4 py-4 text-right pr-8"><button onClick={() => handleDelete(item.id)} className="text-slate-300 hover:text-red-500 p-2"><Icons.Trash2 /></button></td>
                                         </tr>
                                     ))}
                                 </tbody>
@@ -265,202 +280,354 @@
             );
         }
 
-        function HydraulicEditor({ library, nodes, setNodes, pipes, setPipes, scale, setScale, offset, setOffset, results, nodeFlows }) {
-            const [sidebarOpen, setSidebarOpen] = useState(true);
-            const [drawerOpen, setDrawerOpen] = useState(false);
+        function HydraulicEditor({ library, nodes, setNodes, pipes, setPipes, scale, setScale, offset, setOffset, results, nodeFlows, isDraggingRef, solveHydraulics, showToast }) {
             const [selectedNodes, setSelectedNodes] = useState(new Set());
             const [activeConn, setActiveConn] = useState(null); 
             const [activeColorPickerId, setActiveColorPickerId] = useState(null);
+            const [sidebarOpen, setSidebarOpen] = useState(true);
+            const [drawerOpen, setDrawerOpen] = useState(false);
+            const [snapPort, setSnapPort] = useState(null);
+
             const containerRef = useRef(null);
-            const dragInfo = useRef({ isDragging: false, id: null, startX: 0, startY: 0, initialX: 0, initialY: 0, currentX: 0, currentY: 0 });
-            const nodeRefs = useRef({}); const pathRefs = useRef({}); const labelRefs = useRef({}); const ghostPathRef = useRef(null);
-
-            useEffect(() => {
-                const container = containerRef.current; if (!container) return;
-                const handleWheel = (e) => {
-                    if (e.ctrlKey || e.metaKey) {
-                        e.preventDefault();
-                        const rect = container.getBoundingClientRect();
-                        const mouseX = e.clientX - rect.left, mouseY = e.clientY - rect.top;
-                        const planeX = (mouseX - offset.x) / scale, planeY = (mouseY - offset.y) / scale;
-                        const factor = Math.exp(-e.deltaY * 0.001); const newScale = Math.min(Math.max(scale * factor, 0.02), 4);
-                        setOffset({ x: mouseX - planeX * newScale, y: mouseY - planeY * newScale }); setScale(newScale);
-                    }
-                };
-                container.addEventListener('wheel', handleWheel, { passive: false });
-                return () => container.removeEventListener('wheel', handleWheel);
-            }, [scale, offset, setScale, setOffset]);
-
-            const getSpawnPoint = () => {
-                const rect = containerRef.current.getBoundingClientRect();
-                return { x: (rect.width/2-offset.x)/scale-110, y: (rect.height/2-offset.y)/scale-50 };
-            };
-
-            const nodeMap = useMemo(() => { const map = {}; nodes.forEach(n => map[n.id] = n); return map; }, [nodes]);
+            const nodesRef = useRef(nodes);
+            const pipesRef = useRef(pipes);
+            const nodeMapRef = useRef({});
             
-            // [修正點]：將 SOURCE 節點做得更大 (280x140)
-            const getNodeDimensions = (node) => {
-                if (node?.templateId === 'SOURCE') return { w: 280, h: 140 };
-                if (node?.type === 'PIVOT') return { w: 220, h: 100 };
-                return { w: 180, h: 120 };
-            };
+            useEffect(() => { 
+                nodesRef.current = nodes; 
+                const map = {}; nodes.forEach(n => map[n.id] = n);
+                nodeMapRef.current = map;
+            }, [nodes]);
+            useEffect(() => { pipesRef.current = pipes; }, [pipes]);
+
+            const dragInfo = useRef({ isDragging: false, id: null, startX: 0, startY: 0, initialPositions: {}, connectedPipeIds: [], isPanning: false, dx: 0, dy: 0 });
+            const nodeRefs = useRef({}); const pathRefs = useRef({}); const labelRefs = useRef({}); const ghostPathRef = useRef(null);
+            const rafId = useRef(null);
+
+            const NODE_W = 240; const NODE_H = 160;
+            const SRC_W = 380; const SRC_H = 200;
+            const PVT_W = 320; const PVT_H = 180;
 
             const getPortOffset = (pT, node) => {
-                const { w, h } = getNodeDimensions(node);
-                if (pT === 'left') return { x: 0, y: h/2 }; if (pT === 'right') return { x: w, y: h/2 };
-                if (pT === 'top') return { x: w/2, y: 0 }; if (pT === 'bottom') return { x: w/2, y: h };
+                const isS = node?.templateId === 'SOURCE';
+                const isP = node?.type === 'PIVOT';
+                const isM = node?.isMerged;
+                let w = 240, h = 160;
+                if (isS) { w = 380; h = 200; } 
+                else if (isP) { w = 320; h = 180; } 
+                else if (isM) { w = 240; h = 80 + (node.composition ? Object.keys(node.composition).length * 28 : 0) + 40; }
+                if (pT === 'left') return { x: 0, y: h/2 }; 
+                if (pT === 'right') return { x: w, y: h/2 };
+                if (pT === 'top') return { x: w/2, y: 0 }; 
+                if (pT === 'bottom') return { x: w/2, y: h };
                 return { x: 0, y: 0 };
             };
-            
+
             const getPathD = (x1, y1, x2, y2, fP, tP) => {
                 const mX = (x1+x2)/2, mY = (y1+y2)/2;
                 return (fP==='bottom'||fP==='top'||tP==='bottom'||tP==='top') ? `M ${x1} ${y1} C ${x1} ${mY}, ${x2} ${mY}, ${x2} ${y2}` : `M ${x1} ${y1} C ${mX} ${y1}, ${mX} ${y2}, ${x2} ${y2}`;
             };
 
             const onMouseMove = useCallback((e) => {
-                if (dragInfo.current.isPanning) { setOffset({ x: e.clientX - dragInfo.current.startX, y: e.clientY - dragInfo.current.startY }); return; }
+                if (dragInfo.current.isPanning) { 
+                    setOffset({ x: e.clientX - dragInfo.current.startX, y: e.clientY - dragInfo.current.startY }); 
+                    return; 
+                }
                 if (activeConn && ghostPathRef.current) {
-                    const tx = (e.clientX - offset.x) / scale, ty = (e.clientY - offset.y) / scale;
-                    ghostPathRef.current.setAttribute('d', getPathD(activeConn.startX, activeConn.startY, tx, ty, activeConn.fromPort, 'left'));
+                    const tx_raw = (e.clientX - offset.x) / scale, ty_raw = (e.clientY - offset.y) / scale;
+                    let targetX = tx_raw, targetY = ty_raw, foundSnap = null;
+                    for (const node of nodesRef.current) {
+                        if (node.id === activeConn.fromId) continue;
+                        ['left', 'right', 'top', 'bottom'].forEach(pKey => {
+                            const off = getPortOffset(pKey, node);
+                            const px = node.x + off.x, py = node.y + off.y;
+                            const dist = Math.sqrt(Math.pow(tx_raw - px, 2) + Math.pow(ty_raw - py, 2));
+                            if (dist < 30 / scale) { foundSnap = { nodeId: node.id, port: pKey, x: px, y: py }; }
+                        });
+                    }
+                    if (foundSnap) { targetX = foundSnap.x; targetY = foundSnap.y; }
+                    setSnapPort(foundSnap);
+                    ghostPathRef.current.setAttribute('d', getPathD(activeConn.startX, activeConn.startY, targetX, targetY, activeConn.fromPort, foundSnap ? foundSnap.port : 'left'));
                     return;
                 }
                 if (!dragInfo.current.isDragging) return;
-                const { id, startX, startY, initialX, initialY } = dragInfo.current;
-                const dx = (e.clientX - startX) / scale, dy = (e.clientY - startY) / scale;
-                const curX = initialX + dx, curY = initialY + dy;
-                if (nodeRefs.current[id]) nodeRefs.current[id].style.transform = `translate3d(${dx}px, ${dy}px, 0)`;
-                pipes.filter(p => p.fromId === id || p.toId === id).forEach(p => {
-                    const pathEl = pathRefs.current[p.id], labelEl = labelRefs.current[p.id];
-                    if (!pathEl) return;
-                    const fD = id === p.fromId ? { ...nodeMap[p.fromId], x: curX, y: curY } : nodeMap[p.fromId];
-                    const tD = id === p.toId ? { ...nodeMap[p.toId], x: curX, y: curY } : nodeMap[p.toId];
-                    const off1 = getPortOffset(p.fromPort, fD), off2 = getPortOffset(p.toPort, tD);
-                    const x1 = fD.x + off1.x, y1 = fD.y + off1.y, x2 = tD.x + off2.x, y2 = tD.y + off2.y;
-                    pathEl.setAttribute('d', getPathD(x1, y1, x2, y2, p.fromPort, p.toPort));
-                    if (labelEl) { labelEl.setAttribute('x', (x1+x2)/2 - 55); labelEl.setAttribute('y', (y1+y2)/2 - 30); }
-                });
-                dragInfo.current.currentX = curX; dragInfo.current.currentY = curY;
-            }, [nodes, pipes, scale, offset, activeConn, nodeMap, setOffset]);
+                if (rafId.current) return;
+                rafId.current = window.requestAnimationFrame(() => {
+                    rafId.current = null;
+                    const { id, startX, startY } = dragInfo.current;
+                    const dx = (e.clientX - startX) / scale;
+                    const dy = (e.clientY - startY) / scale;
+                    dragInfo.current.dx = dx;
+                    dragInfo.current.dy = dy;
 
-            const onMouseUp = () => {
-                if (dragInfo.current.isPanning) { dragInfo.current.isPanning = false; document.body.style.cursor = 'default'; }
-                if (dragInfo.current.isDragging) {
-                    const { id, currentX, currentY } = dragInfo.current;
-                    setNodes(prev => prev.map(n => n.id === id ? { ...n, x: currentX, y: currentY } : n));
-                    if (nodeRefs.current[id]) nodeRefs.current[id].style.transform = 'translate3d(0,0,0)';
-                    dragInfo.current.isDragging = false;
-                }
-                if (activeConn) { setActiveConn(null); if (ghostPathRef.current) ghostPathRef.current.setAttribute('d', ''); }
+                    const movingNodes = selectedNodes.has(id) ? Array.from(selectedNodes) : [id];
+                    movingNodes.forEach(mId => { 
+                        if (nodeRefs.current[mId]) {
+                            nodeRefs.current[mId].style.transform = `translate3d(${dx}px, ${dy}px, 0)`; 
+                        }
+                    });
+                });
+            }, [scale, offset, activeConn, selectedNodes]); 
+
+            useEffect(() => {
+                const onUp = (e) => {
+                    document.body.classList.remove('dragging-active');
+                    if (dragInfo.current.isDragging) {
+                        const { id, dx, dy } = dragInfo.current;
+                        const movingNodes = selectedNodes.has(id) ? Array.from(selectedNodes) : [id];
+                        
+                        setNodes(prev => prev.map(n => {
+                            if (movingNodes.includes(n.id)) {
+                                return { ...n, x: n.x + dx, y: n.y + dy };
+                            }
+                            return n;
+                        }));
+                        
+                        movingNodes.forEach(mId => { 
+                            if (nodeRefs.current[mId]) {
+                                nodeRefs.current[mId].style.transform = 'translate3d(0,0,0)'; 
+                                nodeRefs.current[mId].classList.remove('is-dragging');
+                            }
+                        });
+                        dragInfo.current.isDragging = false;
+                        isDraggingRef.current = false;
+                    }
+                    if (activeConn && snapPort) {
+                        const isDup = pipesRef.current.some(p => (p.fromId === activeConn.fromId && p.toId === snapPort.nodeId && p.fromPort === activeConn.fromPort && p.toPort === snapPort.port));
+                        if (!isDup) {
+                            setPipes(prev => [...prev, { id: `p-${Date.now()}`, fromId: activeConn.fromId, fromPort: activeConn.fromPort, toId: snapPort.nodeId, toPort: snapPort.port }]);
+                        } else { showToast("連線已存在"); }
+                    }
+                    dragInfo.current.isPanning = false; setActiveConn(null); setSnapPort(null);
+                    if (ghostPathRef.current) ghostPathRef.current.setAttribute('d', '');
+                    document.body.style.cursor = 'default';
+                };
+                window.addEventListener('mousemove', onMouseMove);
+                window.addEventListener('mouseup', onUp);
+                return () => { window.removeEventListener('mousemove', onMouseMove); window.removeEventListener('mouseup', onUp); };
+            }, [onMouseMove, activeConn, snapPort, setNodes, setPipes, selectedNodes, scale, showToast]);
+
+            useEffect(() => {
+                const container = containerRef.current;
+                const handleWheel = (e) => {
+                    e.preventDefault();
+                    const factor = Math.pow(1.1, -e.deltaY / 100);
+                    const newScale = Math.min(Math.max(scale * factor, 0.15), 3);
+                    const rect = container.getBoundingClientRect();
+                    const mouseX = e.clientX - rect.left, mouseY = e.clientY - rect.top;
+                    setOffset({ x: mouseX - (mouseX - offset.x) * (newScale / scale), y: mouseY - (mouseY - offset.y) * (newScale / scale) });
+                    setScale(newScale);
+                };
+                if (container) container.addEventListener('wheel', handleWheel, { passive: false });
+                return () => container?.removeEventListener('wheel', handleWheel);
+            }, [scale, offset]);
+
+            const handleMergeSelection = () => {
+                if (selectedNodes.size < 2) return;
+                const selectedList = nodes.filter(n => selectedNodes.has(n.id) && n.templateId !== 'SOURCE');
+                if (selectedList.length < 2) return;
+                const avgX = selectedList.reduce((s, n) => s + n.x, 0) / selectedList.length;
+                const avgY = selectedList.reduce((s, n) => s + n.y, 0) / selectedList.length;
+                const composition = {}; let totalKw = 0;
+                selectedList.forEach(n => {
+                    const lib = library.find(l => l.id === n.templateId);
+                    if (!composition[n.templateId]) composition[n.templateId] = { label: n.label || lib?.label || "設備", qty: 0 };
+                    composition[n.templateId].qty += (n.qty || 1);
+                    totalKw += (n.customKw !== undefined ? n.customKw : (lib?.kw || 0)) * (n.qty || 1);
+                });
+                const newId = `merged-${Date.now()}`;
+                const newPipes = pipes.map(p => {
+                    const fS = selectedNodes.has(p.fromId), tS = selectedNodes.has(p.toId);
+                    if (fS && tS) return null; if (fS) return { ...p, fromId: newId }; if (tS) return { ...p, toId: newId };
+                    return p;
+                }).filter(p => p !== null);
+                setNodes([...nodes.filter(n => !selectedNodes.has(n.id)), { id: newId, isMerged: true, label: "系統合併區域", x: avgX, y: avgY, customKw: totalKw, composition, color: 'bg-indigo-600' }]);
+                setPipes(newPipes); setSelectedNodes(new Set([newId]));
             };
 
+            const handleUnmerge = (nodeId) => {
+                const node = nodeMapRef.current[nodeId]; if (!node || !node.isMerged) return;
+                const restoredNodes = []; let oY = 0;
+                Object.keys(node.composition).forEach(libId => {
+                    const c = node.composition[libId];
+                    restoredNodes.push({ id: `inst-${Date.now()}-${libId}`, templateId: libId, label: c.label, x: node.x + 300, y: node.y + oY, qty: c.qty });
+                    oY += 180;
+                });
+                const fId = restoredNodes[0].id;
+                setPipes(pipes.map(p => (p.fromId===nodeId?{...p,fromId:fId}:(p.toId===nodeId?{...p,toId:fId}:p))));
+                setNodes([...nodes.filter(n => n.id !== nodeId), ...restoredNodes]); setSelectedNodes(new Set());
+            };
+
+            const renderNodeMap = useMemo(() => { const m = {}; nodes.forEach(n => m[n.id] = n); return m; }, [nodes]);
+
+            const getSpawnPoint = useCallback(() => {
+                const rect = containerRef.current?.getBoundingClientRect() || { width: window.innerWidth, height: window.innerHeight };
+                return { x: (rect.width / 2 - offset.x) / scale, y: (rect.height / 2 - offset.y) / scale };
+            }, [offset, scale]);
+
             return (
-                <div ref={containerRef} className="flex h-full w-full bg-slate-200 relative overflow-hidden" onMouseDown={(e) => { if(e.button===1||(e.button===0&&e.shiftKey)) { dragInfo.current.isPanning=true; dragInfo.current.startX=e.clientX-offset.x; dragInfo.current.startY=e.clientY-offset.y; document.body.style.cursor='grabbing'; } else if (e.target.tagName === 'svg' || e.target.classList.contains('canvas-grid')) setActiveColorPickerId(null); }} onMouseMove={onMouseMove} onMouseUp={onMouseUp}>
+                <div ref={containerRef} className="flex h-full w-full bg-slate-200 relative overflow-hidden" 
+                    onContextMenu={e => e.preventDefault()}
+                    onMouseDown={e => { 
+                        if(e.button===1 || e.button===2 || (e.button===0&&e.shiftKey)) { 
+                            e.preventDefault(); document.body.classList.add('dragging-active');
+                            dragInfo.current.isPanning=true; dragInfo.current.startX=e.clientX-offset.x; dragInfo.current.startY=e.clientY-offset.y;
+                        } else if (e.target.tagName === 'svg' || e.target.classList.contains('canvas-grid')) { 
+                            setSelectedNodes(new Set()); setActiveColorPickerId(null);
+                        }
+                    }}>
+                    
+                    {selectedNodes.size > 1 && (
+                        <div className="absolute top-6 left-1/2 -translate-x-1/2 bg-white px-6 py-3 rounded-2xl shadow-2xl border-2 border-blue-500 z-[200] flex items-center gap-4 animate-in fade-in slide-in-from-top-4">
+                            <div className="flex flex-col"><span className="text-[10px] font-black text-blue-500 uppercase italic">Multi-Select Mode</span><span className="text-xs font-bold">已選擇 {selectedNodes.size} 個設備</span></div>
+                            <button onClick={handleMergeSelection} className="bg-blue-600 text-white px-4 py-2 rounded-xl font-black text-xs uppercase flex items-center gap-2 hover:bg-blue-500 shadow-md"><Icons.Layers /> 合併選中設備</button>
+                        </div>
+                    )}
+
                     <div className={`absolute left-4 top-4 bottom-4 w-64 bg-white shadow-2xl rounded-2xl z-[150] transition-transform duration-300 flex flex-col border ${sidebarOpen ? 'translate-x-0' : '-translate-x-[280px]'}`}>
-                        <div className="p-4 border-b flex justify-between items-center font-black text-[11px] uppercase text-slate-400"><span>Library</span><button onClick={() => setSidebarOpen(false)}><Icons.X /></button></div>
+                        <div className="p-4 border-b flex justify-between items-center font-black text-[11px] uppercase text-slate-400"><span>Equipment Library</span><button onClick={() => setSidebarOpen(false)}><Icons.X /></button></div>
                         <div className="flex-1 p-3 space-y-3 overflow-y-auto">
-                            <div onClick={() => { const p = getSpawnPoint(); setNodes([...nodes, { id: `src-${Date.now()}`, templateId: 'SOURCE', label: '主總管機房', x: p.x, y: p.y, qty: 1 }])}} className="p-4 bg-yellow-400 text-slate-900 rounded-xl cursor-pointer hover:scale-[1.02] shadow flex items-center justify-between border-2 border-yellow-500 transition-transform"><div className="flex flex-col font-black uppercase text-xs"><span>System Header</span><span className="text-[9px]">總流量彙整 (黃色)</span></div><Icons.Plus /></div>
-                            <div onClick={() => { const p = getSpawnPoint(); setNodes([...nodes, { id: `pvt-${Date.now()}`, type: 'PIVOT', label: '區域支點', x: p.x, y: p.y, color: 'bg-slate-600' }])}} className="p-4 bg-slate-700 text-white rounded-xl cursor-pointer hover:scale-[1.02] shadow flex items-center justify-between border-2 border-slate-800 transition-transform"><div className="flex flex-col font-black uppercase text-xs"><span>Regional Pivot</span><span className="text-[9px] opacity-70">分區彙整點 (可換色)</span></div><Icons.Share2 /></div>
+                            <div onClick={() => { const p = getSpawnPoint(); setNodes(prev => [...prev, { id: `src-${Date.now()}`, templateId: 'SOURCE', label: '主總管機房', x: p.x, y: p.y, qty: 1 }])}} className="p-4 bg-yellow-400 rounded-xl cursor-pointer hover:scale-[1.02] shadow flex items-center justify-between border-2 border-yellow-500 transition-transform font-black uppercase text-xs"><span>System Header</span><Icons.Plus /></div>
+                            
+                            <div onClick={() => { const p = getSpawnPoint(); setNodes(prev => [...prev, { id: `pvt-${Date.now()}`, type: 'PIVOT', label: '區域支點', x: p.x, y: p.y, color: 'bg-slate-600' }])}} className="p-4 bg-slate-700 text-white rounded-xl cursor-pointer hover:scale-[1.02] shadow flex items-center justify-between border-2 border-slate-800 transition-transform font-black uppercase text-xs">
+                                <span>Add Pivot</span><Icons.Plus />
+                            </div>
+
                             <div className="h-px bg-slate-100 my-2" />
                             {library.map(lib => (
-                                <div key={lib.id} onClick={() => { const p = getSpawnPoint(); setNodes([...nodes, { id: `inst-${Date.now()}`, templateId: lib.id, label: lib.label, x: p.x, y: p.y, qty: 1, color: lib.color }])}} className="p-3 bg-white border border-slate-100 rounded-xl cursor-pointer hover:border-blue-500 shadow flex items-center gap-3 active:scale-95 transition-all">
+                                <div key={lib.id} onClick={() => { const p = getSpawnPoint(); setNodes(prev => [...prev, { id: `inst-${Date.now()}`, templateId: lib.id, label: lib.label, x: p.x, y: p.y, qty: 1, color: lib.color }])}} className="p-3 bg-white border border-slate-100 rounded-xl cursor-pointer hover:border-blue-500 shadow flex items-center gap-3 active:scale-95 transition-all">
                                     <div className={`w-2 h-10 rounded-full ${lib.color}`} /><div className="flex-1 overflow-hidden"><div className="text-xs font-black text-slate-800 truncate">{lib.label}</div><div className="text-[10px] font-black text-blue-600">{lib.kw} kW</div></div>
                                 </div>
                             ))}
                         </div>
                     </div>
-                    {!sidebarOpen && (<button onClick={() => setSidebarOpen(true)} className="absolute left-4 top-4 bg-white p-3 rounded-xl shadow-lg z-[150] border"><Icons.Settings /></button>)}
+                    {!sidebarOpen && (<button onClick={() => setSidebarOpen(true)} className="absolute left-4 top-4 bg-white p-3 rounded-xl shadow-lg z-[150] border transition-transform hover:scale-110"><Icons.Settings /></button>)}
+
                     <main className="flex-1 relative overflow-hidden canvas-grid">
                         <div className="absolute inset-0 origin-top-left" style={{ transform: `translate3d(${offset.x}px, ${offset.y}px, 0) scale(${scale})` }}>
                             <svg className="absolute inset-0 w-[20000px] h-[20000px] pointer-events-none z-0">
                                 {results.map(p => {
-                                    const from = nodeMap[p.fromId], to = nodeMap[p.toId]; if (!from || !to) return null;
+                                    const from = renderNodeMap[p.fromId], to = renderNodeMap[p.toId]; if (!from || !to) return null;
                                     const off1 = getPortOffset(p.fromPort, from), off2 = getPortOffset(p.toPort, to);
                                     const x1 = from.x + off1.x, y1 = from.y + off1.y, x2 = to.x + off2.x, y2 = to.y + off2.y;
-                                    const isCrit = p.velocity > 2.8; 
+                                    const isCrit = p.warning; 
                                     return (
                                         <g key={p.id}>
-                                            <path ref={el => pathRefs.current[p.id] = el} d={getPathD(x1, y1, x2, y2, p.fromPort, p.toPort)} stroke={isCrit ? '#ef4444' : '#3b82f6'} strokeWidth="6" fill="none" strokeLinecap="round" className={isCrit ? "warning-pulse" : ""} />
-                                            <foreignObject ref={el => labelRefs.current[p.id] = el} x={(x1+x2)/2 - 55} y={(y1+y2)/2 - 35} width="130" height="75" className="pointer-events-auto">
-                                                <div className={`group relative flex flex-col items-center p-1.5 rounded-lg border shadow-lg bg-white/95 backdrop-blur ${isCrit ? 'text-red-600 border-red-400' : 'text-blue-600 border-blue-200'}`}>
-                                                    <div className="text-[10px] font-black leading-tight">DN{p.dn} ({p.lpm.toFixed(0)} LPM)</div><div className="text-[8px] font-bold opacity-70">Vel: {p.velocity.toFixed(2)} m/s</div>
-                                                    <button onClick={() => setPipes(prev => prev.filter(pip => pip.id !== p.id))} className="absolute -top-2 -right-2 bg-white border shadow rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity hover:text-red-600"><Icons.X /></button>
+                                            <path ref={el => pathRefs.current[p.id] = el} d={getPathD(x1, y1, x2, y2, p.fromPort, p.toPort)} stroke={isCrit ? "#facc15" : "#2563eb"} strokeWidth={isCrit ? 6 : 4} fill="none" strokeLinecap="round" className={isCrit ? "warning-pulse" : ""} />
+                                            <foreignObject ref={el => labelRefs.current[p.id] = el} x={(x1 + x2)/2 - 65} y={(y1 + y2)/2 - 45} width="130" height="90" className="pointer-events-auto">
+                                                <div className="group relative flex flex-col items-center justify-center p-1 bg-white/95 rounded-lg border border-slate-200 shadow-xl backdrop-blur-sm transition-transform hover:scale-110">
+                                                    <div className="text-[10px] font-black text-blue-600 leading-tight">DN{p.dn}</div>
+                                                    <div className="text-[9px] font-black text-emerald-600">{p.lpm.toFixed(0)} LPM</div>
+                                                    <div className="text-[8px] font-bold text-slate-400">{p.velocity.toFixed(2)} m/s</div>
+                                                    <button onClick={() => setPipes(prev => prev.filter(pip => pip.id !== p.id))} className="absolute -top-2 -right-2 bg-white border border-slate-200 rounded-full shadow-md text-red-500 p-1 opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-50 active:scale-90"><Icons.X /></button>
                                                 </div>
                                             </foreignObject>
                                         </g>
                                     );
                                 })}
-                                <path ref={ghostPathRef} d="" stroke="#3b82f6" strokeWidth="2" strokeDasharray="5,5" fill="none" />
+                                {snapPort && <circle cx={snapPort.x} cy={snapPort.y} r={15} fill="none" className="snap-guide" />}
+                                {activeConn && <path ref={ghostPathRef} d="" stroke="#f97316" strokeWidth={4} fill="none" strokeDasharray="6,4" />}
                             </svg>
+
                             {nodes.map(node => {
-                                const isSource = node.templateId === 'SOURCE'; const isPivot = node.type === 'PIVOT';
+                                const isS = node.templateId === 'SOURCE'; const isP = node.type === 'PIVOT';
                                 const lib = library.find(l => l.id === node.templateId);
-                                const isSelected = selectedNodes.has(node.id); const { w, h } = getNodeDimensions(node);
+                                const isSel = selectedNodes.has(node.id);
                                 const flowLpm = nodeFlows[node.id] || 0; const sizing = HydraulicEngine.getSizing(flowLpm / 60);
+                                let w = 240, h = 160; if(isS){ w = 380; h = 200; } else if(isP){ w = 320; h = 180; } else if(node.isMerged){ w = 240; h = 80 + (Object.keys(node.composition || {}).length * 28) + 40; }
 
                                 return (
-                                    <div key={node.id} ref={el => nodeRefs.current[node.id] = el} style={{ left: node.x, top: node.y, width: w, height: h, transform: 'translate3d(0,0,0)', outline: isSelected ? '3px dashed #3b82f6' : 'none', outlineOffset: '4px' }}
-                                        onClick={(e) => { e.stopPropagation(); if (e.shiftKey) setSelectedNodes(p => { const n=new Set(p); n.has(node.id)?n.delete(node.id):n.add(node.id); return n; }); else setSelectedNodes(new Set([node.id])); }}
-                                        className={`absolute bg-white rounded-2xl border-2 z-10 flex flex-col overflow-visible select-none transition-all duration-300 
-                                            ${isSelected ? 'border-blue-400' : (isSource ? 'border-yellow-600 source-glow' : 'border-transparent')} 
-                                            ${isSource ? 'ring-4 ring-yellow-400/20 shadow-2xl' : 'shadow-xl'}
-                                            ${(isSource||isPivot)&&flowLpm<=0?'opacity-40 grayscale':'opacity-100'}`}>
-                                        
-                                        {/* 節點標題列 - 主總管加高 */}
-                                        <div className={`h-8 shrink-0 ${isSource ? 'h-11' : ''} ${node.color || (isSource ? 'bg-yellow-400 text-slate-900' : (isPivot ? 'bg-slate-600 text-white' : (lib?.color || 'bg-slate-400 text-white')))} flex items-center px-4 justify-between cursor-move rounded-t-[14px] shadow-sm` }
-                                            onMouseDown={e => { dragInfo.current = { isDragging: true, id: node.id, startX: e.clientX, startY: e.clientY, initialX: node.x, initialY: node.y, currentX: node.x, currentY: node.y }; e.stopPropagation(); }}>
-                                            <div className={`flex items-center gap-2 font-black uppercase tracking-widest ${isSource ? 'text-[12px]' : 'text-[10px]'}`}>
-                                                {isSource ? <Icons.HardDrive /> : isPivot ? <Icons.Share2 /> : <Icons.Droplets />}{node.id.split('-')[0]}
+                                    <div key={node.id} ref={el => nodeRefs.current[node.id] = el} 
+                                        style={{ left: node.x, top: node.y, width: w, height: h, transform: 'translate3d(0,0,0)', outline: isSel ? '4px dashed #3b82f6' : 'none', outlineOffset: '4px' }}
+                                        className={`absolute bg-white rounded-3xl border-2 z-10 flex flex-col transition-all duration-300 node-layer ${isS ? 'source-glow' : 'shadow-2xl'}`}>
+                                        <div className={`h-11 shrink-0 ${isS?'h-14':''} ${node.color || (isS ? 'bg-yellow-400 text-slate-900' : (isP ? 'bg-slate-600 text-white' : (node.isMerged ? 'bg-indigo-600 text-white' : (lib?.color || 'bg-slate-400 text-white'))))} flex items-center px-4 justify-between cursor-move rounded-t-[22px] shadow-sm` }
+                                            onMouseDown={e => { 
+                                                e.preventDefault(); e.stopPropagation(); document.body.classList.add('dragging-active');
+                                                isDraggingRef.current = true;
+                                                const movingSet = selectedNodes.has(node.id) ? selectedNodes : new Set([node.id]);
+                                                const initialPosMap = {}; movingSet.forEach(mId => { const n = renderNodeMap[mId]; if(n) initialPosMap[mId] = { x: n.x, y: n.y }; });
+                                                const connected = pipesRef.current.filter(p => movingSet.has(p.fromId) || movingSet.has(p.toId));
+                                                dragInfo.current = { isDragging: true, id: node.id, startX: e.clientX, startY: e.clientY, initialPositions: initialPosMap, connectedPipeIds: connected.map(p=>p.id), dx: 0, dy: 0 }; 
+                                                nodeRefs.current[node.id]?.classList.add('is-dragging');
+                                            }}>
+                                            <div className={`flex items-center gap-2 font-black uppercase tracking-widest ${isS ? 'text-sm' : 'text-[11px]'}`}>{isS ? <Icons.HardDrive /> : isP ? <Icons.Share2 /> : (node.isMerged ? <Icons.Layers /> : 'DEV')}{node.id.split('-')[0]}</div>
+                                            <div className="flex items-center gap-2">
+                                                {isP && <button onClick={(e) => { e.stopPropagation(); setActiveColorPickerId(activeColorPickerId === node.id ? null : node.id); }} className="opacity-60 hover:opacity-100 p-1"><Icons.Palette /></button>}
+                                                <button onClick={(e) => { e.stopPropagation(); setNodes(prev => prev.filter(n => n.id !== node.id)); setPipes(prev => prev.filter(p => p.fromId !== node.id && p.toId !== node.id)); }} className="opacity-40 hover:opacity-100 p-1"><Icons.Trash2 /></button>
                                             </div>
-                                            <button onClick={() => setNodes(nodes.filter(n => n.id !== node.id))} className="opacity-50 hover:opacity-100 p-1"><Icons.Trash2 /></button>
                                         </div>
-
-                                        <div className="p-3 flex-1 flex flex-col text-slate-800 pointer-events-none">
-                                            <div className="flex items-center gap-1 mb-1">
-                                                <input className={`${isSource ? 'text-[14px]' : 'text-[12px]'} flex-1 font-black text-slate-800 truncate bg-transparent border-b border-transparent focus:border-blue-400 outline-none pointer-events-auto`} 
-                                                    value={node.label || lib?.label || ''} 
-                                                    onChange={e => setNodes(nodes.map(n => n.id === node.id ? { ...n, label: e.target.value } : n))} />
-                                                {isPivot && <button className="pointer-events-auto p-1 text-slate-400 hover:text-slate-800" onClick={(e) => { e.stopPropagation(); setActiveColorPickerId(activeColorPickerId === node.id ? null : node.id); }}><Icons.Palette /></button>}
-                                            </div>
-                                            {(isSource || isPivot) ? (
-                                                <div className="mt-auto flex flex-col border-t border-slate-100 pt-2 space-y-1">
-                                                    <div className="flex justify-between items-center">
-                                                        <span className={`${isSource ? 'text-[10px]' : 'text-[9px]'} font-black opacity-50 uppercase text-blue-600`}>匯總流量:</span>
-                                                        <span className={`${isSource ? 'text-[14px]' : 'text-[11px]'} font-black text-slate-900`}>{flowLpm.toFixed(0)} <small className="text-[10px]">LPM</small></span>
-                                                    </div>
-                                                    <div className="flex justify-between items-center">
-                                                        <span className={`${isSource ? 'text-[10px]' : 'text-[9px]'} font-black opacity-50 uppercase`}>建議匹配:</span>
-                                                        <span className={`${isSource ? 'text-[14px]' : 'text-[11px]'} font-black px-2 py-0.5 rounded ${sizing.warning ? 'bg-red-100 text-red-600' : 'bg-emerald-100 text-emerald-600'}`}>DN{sizing.dn}</span>
-                                                    </div>
-                                                    {isPivot && activeColorPickerId === node.id && (
-                                                        <div className="absolute top-[35px] right-[-40px] bg-white border p-1.5 rounded-xl picker-shadow z-[300] flex flex-col gap-1 pointer-events-auto animate-in fade-in">
-                                                            {COLOR_PALETTE.map(c => ( <div key={c} onClick={() => { setNodes(nodes.map(n => n.id === node.id ? { ...n, color: c } : n)); setActiveColorPickerId(null); }} className={`w-4 h-4 rounded-full ${c} color-dot ${node.color === c ? 'ring-2 ring-slate-800 ring-offset-1' : ''}`} /> ))}
-                                                        </div>
-                                                    )}
-                                                </div>
-                                            ) : (
-                                                <div className="mt-auto pt-2 flex items-center justify-between pointer-events-auto">
-                                                    <div className="flex items-center gap-1"><span className="text-[10px] font-bold opacity-40">QTY:</span><input type="number" className="w-10 border rounded px-1 font-black text-xs text-center bg-slate-50" value={node.qty} onChange={e => setNodes(nodes.map(n => n.id === node.id ? { ...n, qty: parseInt(e.target.value)||0 } : n))} /></div>
-                                                    <div className="flex flex-col items-end leading-none"><span className="text-[9px] font-black text-slate-400 uppercase leading-tight">LOAD</span><span className="text-[10px] font-black text-blue-500">{(flowLpm).toFixed(0)} LPM</span></div>
+                                        <div className="p-4 flex-1 flex flex-col text-slate-800 overflow-hidden">
+                                            <input className={`font-black bg-transparent outline-none pointer-events-auto border-b border-transparent focus:border-blue-200 mb-2 ${isS ? 'text-xl' : (isP ? 'text-lg' : 'text-base')}`} value={node.label || ''} onChange={e => setNodes(prev => prev.map(n => n.id === node.id ? { ...n, label: e.target.value } : n))} />
+                                            {node.isMerged && node.composition && (
+                                                <div className="mt-1 border-t border-slate-100 pt-2 space-y-1 overflow-hidden">
+                                                    {Object.values(node.composition).map((info, idx) => (<div key={idx} className="text-[10px] leading-tight text-slate-500 flex justify-between items-center bg-slate-50 px-2 py-1.5 rounded-lg border border-slate-100"><span className="truncate font-bold">{info.label}</span><span className="font-black text-blue-600 ml-2">x{info.qty}</span></div>))}
+                                                    <button onClick={() => handleUnmerge(node.id)} className="text-[10px] text-blue-500 font-bold underline mt-1">取消合併恢復設備</button>
                                                 </div>
                                             )}
+                                            <div className="mt-auto flex flex-col border-t border-slate-100 pt-2 gap-1.5">
+                                                {!isS && !isP && !node.isMerged && (
+                                                    <div className="flex justify-between items-center mb-1">
+                                                        <span className="text-[11px] opacity-40 font-black uppercase">Quantity (Qty)</span>
+                                                        <div className="flex items-center gap-2">
+                                                            <button onClick={() => setNodes(prev => prev.map(n => n.id === node.id ? { ...n, qty: Math.max(1, (n.qty || 1) - 1) } : n))} className="w-5 h-5 flex items-center justify-center bg-slate-100 rounded hover:bg-slate-200 font-bold text-xs">-</button>
+                                                            <input type="number" className="w-10 text-center text-xs font-black bg-slate-50 border rounded outline-none" value={node.qty || 1} onChange={e => setNodes(prev => prev.map(n => n.id === node.id ? { ...n, qty: Math.max(1, parseInt(e.target.value) || 1) } : n))} />
+                                                            <button onClick={() => setNodes(prev => prev.map(n => n.id === node.id ? { ...n, qty: (n.qty || 1) + 1 } : n))} className="w-5 h-5 flex items-center justify-center bg-slate-100 rounded hover:bg-slate-200 font-bold text-xs">+</button>
+                                                        </div>
+                                                    </div>
+                                                )}
+                                                <div className="flex justify-between items-center"><span className="text-[11px] opacity-40 font-black uppercase">Calculated</span><span className={`font-black ${(isS || isP)?'text-lg':'text-sm'} text-blue-600`}>{flowLpm.toFixed(0)} LPM</span></div>
+                                                <div className="flex justify-between items-center"><span className="text-[11px] opacity-40 font-black uppercase">Suggested</span><span className={`font-black px-2 py-0.5 rounded ${sizing.warning ? 'bg-red-100 text-red-600 animate-pulse' : 'bg-emerald-100 text-emerald-600'}`}>DN{sizing.dn}</span></div>
+                                                {isP && activeColorPickerId === node.id && (
+                                                    <div className="absolute top-[50px] right-[-50px] bg-white border p-2 rounded-2xl shadow-2xl z-[300] grid grid-cols-2 gap-2 pointer-events-auto animate-in zoom-in" onMouseLeave={() => setActiveColorPickerId(null)}>
+                                                        {COLOR_PALETTE.map(c => ( <div key={c} onClick={() => { setNodes(prev => prev.map(n => n.id === node.id ? { ...n, color: c } : n)); setActiveColorPickerId(null); }} className={`w-6 h-6 rounded-full ${c} color-dot ${node.color === c ? 'ring-4 ring-slate-800 ring-offset-2' : ''}`} /> ))}
+                                                    </div>
+                                                )}
+                                            </div>
                                         </div>
-
                                         {['left', 'right', 'top', 'bottom'].map(port => {
-                                            const isOut = port==='right'||port==='bottom'; const off = getPortOffset(port, node);
-                                            return (<div key={port} style={{ left: off.x-7, top: off.y-7 }} className={`absolute w-3.5 h-3.5 rounded-full border-2 z-20 cursor-crosshair ${isOut?'bg-slate-800 border-white':'bg-white border-slate-300'} hover:scale-150 hover:bg-blue-500 transition-transform`}
-                                                    onMouseDown={(e) => { e.stopPropagation(); setActiveConn({ fromId: node.id, fromPort: port, startX: node.x+getPortOffset(port,node).x, startY: node.y+getPortOffset(port,node).y }); }}
-                                                    onMouseUp={(e) => { e.stopPropagation(); if (activeConn && activeConn.fromId !== node.id) setPipes(prev => [...prev, { id: `p-${Date.now()}`, fromId: activeConn.fromId, fromPort: activeConn.fromPort, toId: node.id, toPort: port }]); }}><div className="absolute inset-[-10px] rounded-full" /></div>);
+                                            const off = getPortOffset(port, node);
+                                            return (<div key={port} style={{ left: off.x-10, top: off.y-10 }} className={`absolute w-5 h-5 rounded-full border-2 z-20 cursor-crosshair bg-slate-800 border-white hover:scale-150 hover:bg-orange-500 transition-all shadow-md`}
+                                                    onMouseDown={(e) => { e.preventDefault(); e.stopPropagation(); document.body.classList.add('dragging-active'); const pOff = getPortOffset(port, node); setActiveConn({ fromId: node.id, fromPort: port, startX: node.x + pOff.x, startY: node.y + pOff.y }); }} /> );
                                         })}
                                     </div>
                                 );
                             })}
                         </div>
-                        <div className="absolute top-6 right-6 bg-slate-900 text-white p-4 rounded-2xl shadow-xl min-w-[180px] z-50 flex flex-col gap-2"><div className="flex justify-between items-center text-[10px] font-black uppercase opacity-50"><span>Zoom</span><span>{(scale * 100).toFixed(0)}%</span></div><button onClick={() => { setScale(0.7); setOffset({ x: window.innerWidth/2-10000*0.7, y: window.innerHeight/2-10000*0.7 }); }} className="bg-blue-600 text-white py-2 rounded-lg font-black text-[10px] uppercase transition-colors hover:bg-blue-500">Reset View</button></div>
+                        <div className="absolute top-6 right-6 bg-slate-900/90 backdrop-blur text-white p-4 rounded-3xl shadow-2xl min-w-[200px] z-[250] flex flex-col gap-3 border border-white/10">
+                            <div className="flex justify-between items-center text-[11px] font-black uppercase opacity-60 tracking-widest"><span>View Scale</span><span>{(scale * 100).toFixed(0)}%</span></div>
+                            <button onClick={() => { setScale(0.6); setOffset({ x: window.innerWidth/2-10000*0.6, y: window.innerHeight/2-10000*0.6 }); }} className="bg-blue-600 text-white py-3 rounded-2xl font-black text-xs uppercase tracking-widest transition-all hover:bg-blue-500 hover:scale-105 active:scale-95 shadow-lg shadow-blue-900/40">Reset View</button>
+                        </div>
                     </main>
-                    <div className={`absolute bottom-0 left-0 right-0 bg-white shadow-2xl z-[160] transition-all duration-500 ${drawerOpen ? 'h-[400px]' : 'h-12'}`}>
-                        <button onClick={() => setDrawerOpen(!drawerOpen)} className="w-full h-12 flex items-center justify-center border-b font-black text-xs uppercase tracking-widest text-slate-600 hover:bg-slate-50 transition-colors"><div className={`transition-transform duration-300 ${drawerOpen ? 'rotate-180' : ''}`}><Icons.ChevronUp /></div><span className="ml-2">System Sizing Report (工程選型報表)</span></button>
+
+                    <div className={`absolute left-0 right-0 bottom-0 bg-white shadow-[0_-20px_50px_-12px_rgba(0,0,0,0.2)] z-[180] transition-all duration-500 rounded-t-[40px] border-t overflow-hidden ${drawerOpen ? 'h-[480px]' : 'h-14'}`}>
+                        <div className="h-14 px-10 flex items-center justify-between bg-slate-900 text-white cursor-pointer select-none" onClick={() => setDrawerOpen(o => !o)}>
+                            <div className="flex items-center gap-3"><div className="bg-blue-500 w-2 h-2 rounded-full animate-pulse"/> <span className="font-black text-xs uppercase tracking-[0.2em]">Hydraulic System Summary Report</span></div>
+                            <div className="flex items-center gap-4">
+                                <span className="text-[10px] font-bold opacity-50 uppercase">Total Pipes: {results.length}</span>
+                                <Icons.ChevronUp className={`${drawerOpen ? 'rotate-180' : ''} transition-transform duration-500`} />
+                            </div>
+                        </div>
                         {drawerOpen && (
-                            <div className="p-8 overflow-y-auto h-[352px]"><div className="max-w-6xl mx-auto"><table className="w-full text-left text-xs border-collapse"><thead><tr className="text-slate-400 border-b-2 border-slate-100 font-black uppercase"><th className="pb-4 px-3">Upstream → Downstream</th><th className="pb-4 px-3 text-blue-600">Flow (LPM)</th><th className="pb-4 px-3">Rec. DN</th><th className="pb-4 px-3">Velocity (m/s)</th><th className="pb-4 px-3 text-right">Delete</th></tr></thead><tbody className="divide-y divide-slate-50">{results.map(p => (<tr key={p.id} className="hover:bg-blue-50 transition-colors group"><td className="py-4 px-3 font-mono opacity-60 font-black">{p.fromId} → {p.toId}</td><td className="py-4 px-3 font-mono text-blue-600 text-sm font-black">{p.lpm.toFixed(1)}</td><td className="py-4 px-3"><span className={`px-2 py-0.5 rounded-full font-black text-[10px] ${p.warning?'bg-red-500 text-white':'bg-slate-800 text-white'}`}>DN{p.dn}</span></td><td className="py-4 px-3 font-mono">{p.velocity.toFixed(2)}</td><td className="py-4 px-3 text-right"><button onClick={() => setPipes(prev => prev.filter(pip => pip.id !== p.id))} className="text-slate-300 hover:text-red-500 p-2"><Icons.Trash2 /></button></td></tr>))}</tbody></table></div></div>
+                            <div className="h-[426px] overflow-y-auto p-10 bg-slate-50">
+                                <table className="w-full text-sm border-collapse">
+                                    <thead className="sticky top-0 bg-slate-100 font-black text-slate-500 text-[10px] uppercase tracking-widest">
+                                        <tr><th className="px-6 py-4 text-left rounded-l-2xl">Pipe Track</th><th className="px-6 py-4 text-center">Flow (LPM)</th><th className="px-6 py-4 text-center">DN Size</th><th className="px-6 py-4 text-center">Velocity</th><th className="px-6 py-4 text-right rounded-r-2xl">Status</th></tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-slate-100">
+                                        {results.map(p => (
+                                            <tr key={p.id} className="hover:bg-blue-50/40 transition-colors group">
+                                                <td className="px-6 py-5 font-mono text-[11px] font-bold text-slate-400 group-hover:text-blue-600 transition-colors">{p.fromId} ➔ {p.toId}</td>
+                                                <td className="px-6 py-5 text-center font-black text-slate-700">{p.lpm.toFixed(0)}</td>
+                                                <td className="px-6 py-5 text-center font-black text-slate-900"><span className="bg-white px-3 py-1 rounded-lg border shadow-sm">DN{p.dn}</span></td>
+                                                <td className={`px-6 py-5 text-center font-black ${p.velocity > 2.8 ? 'text-red-600' : 'text-emerald-600'}`}>{p.velocity.toFixed(2)} m/s</td>
+                                                <td className="px-6 py-5 text-right">
+                                                    {p.velocity > 2.8 ? <span className="bg-red-500 text-white px-4 py-1.5 rounded-full text-[10px] font-black shadow-lg shadow-red-200">VELOCITY OVER</span> : <span className="bg-emerald-500 text-white px-4 py-1.5 rounded-full text-[10px] font-black shadow-lg shadow-emerald-200">NORMAL</span>}
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
                         )}
                     </div>
                 </div>
