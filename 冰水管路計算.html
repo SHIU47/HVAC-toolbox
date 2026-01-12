@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>HydroPuzzle Pro - 工業級效能優化版</title>
+    <title>HydroPuzzle Pro - 工程級參數定義版</title>
     <!-- 載入 React 與 Babel -->
     <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
@@ -11,40 +11,38 @@
     <!-- 載入 Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        body, html { margin: 0; padding: 0; height: 100%; overflow: hidden; font-family: -apple-system, "Segoe UI", Roboto, sans-serif; }
+        body, html { margin: 0; padding: 0; height: 100%; overflow: hidden; font-family: -apple-system, "Segoe UI", Roboto, "Microsoft JhengHei", sans-serif; }
         #root { height: 100vh; }
-        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar { width: 10px; height: 10px; }
         ::-webkit-scrollbar-track { background: transparent; }
-        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
-        ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+        ::-webkit-scrollbar-thumb { background: #94a3b8; border-radius: 10px; }
         .canvas-grid {
-            background-image: radial-gradient(#cbd5e1 1px, transparent 1px);
-            background-size: 30px 30px;
+            background-image: radial-gradient(#cbd5e1 3px, transparent 3px);
+            background-size: 80px 80px;
         }
         @keyframes pulse-warning {
             0%, 100% { opacity: 1; transform: scale(1); }
-            50% { opacity: 0.7; transform: scale(1.02); }
+            50% { opacity: 0.8; transform: scale(1.04); }
         }
-        .warning-pulse { animation: pulse-warning 1.5s infinite ease-in-out; }
-        .color-dot { cursor: pointer; transition: all 0.2s; }
-        .color-dot:hover { transform: scale(1.25); }
-        .picker-shadow { box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.3), 0 8px 10px -6px rgba(0, 0, 0, 0.3); }
-        .source-glow { box-shadow: 0 0 45px rgba(234, 179, 8, 0.5), 0 10px 30px -5px rgba(0, 0, 0, 0.4); border: 2px solid #ca8a04 !important; }
-        .snap-guide { stroke: #f97316; stroke-width: 2; stroke-dasharray: 4; animation: dash 1s linear infinite; }
-        @keyframes dash { to { stroke-dashoffset: -20; } }
+        .warning-pulse { animation: pulse-warning 1.2s infinite ease-in-out; }
+        /* 強化主總管視覺感 */
+        .source-glow { box-shadow: 0 0 100px rgba(234, 179, 8, 0.45), 0 40px 80px -20px rgba(0, 0, 0, 0.4); border: 8px solid #ca8a04 !important; }
         
-        /* 效能優化：防止拖拽時選取文字 */
         .dragging-active, .dragging-active * { user-select: none !important; -webkit-user-select: none !important; }
-        .node-layer { will-change: transform; transition: outline 0.2s, box-shadow 0.2s; }
-        .is-dragging { transition: none !important; z-index: 1000 !important; }
+        .node-layer { will-change: transform; transition: outline 0.2s, box-shadow 0.3s; pointer-events: auto !important; }
+        .is-dragging { z-index: 3000 !important; }
 
-        /* 密碼彈窗動畫 */
-        .modal-overlay { background: rgba(15, 23, 42, 0.6); backdrop-filter: blur(4px); }
-        .modal-content { animation: modal-in 0.3s cubic-bezier(0.34, 1.56, 0.64, 1); }
+        .modal-overlay { background: rgba(15, 23, 42, 0.85); backdrop-filter: blur(12px); }
+        .modal-content { animation: modal-in 0.4s cubic-bezier(0.34, 1.56, 0.64, 1); }
         @keyframes modal-in {
-            from { opacity: 0; transform: scale(0.9) translateY(20px); }
+            from { opacity: 0; transform: scale(0.8) translateY(50px); }
             to { opacity: 1; transform: scale(1) translateY(0); }
         }
+
+        /* 工業黑色感應連接點 */
+        .port-dot { transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1); cursor: crosshair; background-color: #0f172a; border: 4px solid white; box-shadow: 0 8px 20px rgba(0,0,0,0.5); z-index: 100; }
+        .port-dot.snap-active { transform: scale(2.8); background-color: #f97316; box-shadow: 0 0 40px #f97316; border-color: white; }
+        .port-dot:hover { transform: scale(2.2); background-color: #f97316; box-shadow: 0 0 25px #f97316; }
     </style>
 </head>
 <body>
@@ -54,8 +52,17 @@
         const { useState, useMemo, useCallback, useRef, useEffect } = React;
 
         /**
-         * [工業級水力計算引擎]
+         * [全域工具函數區]
          */
+        const INITIAL_PROJECT_DATA = window.INITIAL_PROJECT_DATA || null;
+
+        const getPathD = (x1, y1, x2, y2, fP, tP) => {
+            const mX = (x1 + x2) / 2, mY = (y1 + y2) / 2;
+            return (fP === 'bottom' || fP === 'top' || tP === 'bottom' || tP === 'top') 
+                ? `M ${x1} ${y1} C ${x1} ${mY}, ${x2} ${mY}, ${x2} ${y2}` 
+                : `M ${x1} ${y1} C ${mX} ${y1}, ${mX} ${y2}, ${x2} ${y2}`;
+        };
+
         const CP = 4.186; 
         const PIPE_SIZING_DATA = [
             { mm: 20, maxLpm: 19.5,  internal: 20.93 },
@@ -72,8 +79,6 @@
             { mm: 250, maxLpm: 4080,  internal: 254.20 },
             { mm: 300, maxLpm: 6375,  internal: 304.70 },
             { mm: 400, maxLpm: 16064, internal: 400.0 },
-            { mm: 500, maxLpm: 32783, internal: 500.0 },
-            { mm: 1000, maxLpm: 118345, internal: 1000.0 },
             { mm: 1300, maxLpm: 227656, internal: 1300.0 }
         ];
 
@@ -93,61 +98,61 @@
             }
         };
 
-        const COLOR_PALETTE = ['bg-blue-500', 'bg-emerald-500', 'bg-indigo-500', 'bg-red-500', 'bg-orange-500', 'bg-purple-500', 'bg-pink-500', 'bg-cyan-500', 'bg-slate-500'];
+        const COLOR_PALETTE = ['bg-blue-600', 'bg-emerald-600', 'bg-indigo-600', 'bg-red-600', 'bg-orange-600', 'bg-purple-600', 'bg-pink-600', 'bg-cyan-600', 'bg-slate-800'];
 
         const Icons = {
-            Plus: (p) => <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" {...p}><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>,
-            Trash2: (p) => <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...p}><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>,
-            Database: (p) => <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...p}><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/></svg>,
-            Layout: (p) => <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...p}><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="9" y1="21" x2="9" y2="9"/></svg>,
-            HardDrive: (p) => <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" {...p}><line x1="22" y1="12" x2="2" y2="12"/><path d="M5.45 5.11L2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/></svg>,
-            ChevronUp: (p) => <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...p}><polyline points="18 15 12 9 6 15"/></svg>,
-            X: (p) => <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" {...p}><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>,
-            Palette: (p) => <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" {...p}><path d="M12 2a10 10 0 0 0-10 10 10 10 0 0 0 10 10 10.38 10.38 0 0 0 7-2.82 4 4 0 0 0-1-6.66l-1-.2 A2 2 0 0 1 15.5 11a2 2 0 0 1 2 2v1a2 2 0 0 0 4 0v-2A10 10 0 0 0 12 2z"/><circle cx="8" cy="9" r="1"/><circle cx="12" cy="7" r="1"/><circle cx="16" cy="9" r="1"/></svg>,
-            Layers: (p) => <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...p}><polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/></svg>,
-            Share2: (p) => <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...p}><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>,
-            Save: (p) => <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...p}><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>,
-            Settings: (p) => <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...p}><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>,
-            AlertCircle: (p) => <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...p}><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>,
-            Lock: (p) => <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...p}><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+            Plus: (p) => <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" {...p}><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>,
+            Trash2: (p) => <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" {...p}><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>,
+            HardDrive: (p) => <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" {...p}><line x1="22" y1="12" x2="2" y2="12"/><path d="M5.45 5.11L2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/></svg>,
+            ChevronUp: (p) => <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" {...p}><polyline points="18 15 12 9 6 15"/></svg>,
+            X: (p) => <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" {...p}><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>,
+            Layers: (p) => <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" {...p}><polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/></svg>,
+            Upload: (p) => <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" {...p}><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>,
+            Save: (p) => <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" {...p}><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>,
+            Palette: (p) => <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" {...p}><path d="M12 2a10 10 0 0 0-10 10 10 10 0 0 0 10 10 10.38 10.38 0 0 0 7-2.82 4 4 0 0 0-1-6.66l-1-.2A2 2 0 0 1 15.5 11a2 2 0 0 1 2 2v1a2 2 0 0 0 4 0v-2A10 10 0 0 0 12 2z"/><circle cx="8" cy="9" r="1"/><circle cx="12" cy="7" r="1"/><circle cx="16" cy="9" r="1"/></svg>,
+            AlertCircle: (p) => <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" {...p}><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>,
+            Lock: (p) => <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" {...p}><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>,
+            Share2: (p) => <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" {...p}><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>,
+            AlertTriangle: (p) => <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" {...p}><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>,
         };
 
         function App() {
             const [activeTab, setActiveTab] = useState('editor');
-            
-            // ✅ 設備規格定義
-            const [library, setLibrary] = useState([
-                { id: 'lib-dcc-1', type: 'DCC', label: 'DCC 標準型', kw: 49.7, dt: 5, color: 'bg-blue-500' },
-                { id: 'lib-mau-1', type: 'MAU', label: 'MAU 大風量', kw: 200, dt: 7, color: 'bg-emerald-500' },
+            const [library, setLibrary] = useState(INITIAL_PROJECT_DATA?.library || [
+                { id: 'lib-dcc-1', label: 'DCC 標準型機組', kw: 49.7, dt: 5, color: 'bg-blue-600' },
+                { id: 'lib-mau-1', label: 'MAU 大風量機組', kw: 200, dt: 7, color: 'bg-emerald-600' },
             ]);
-
-            // ✅ 初始畫布節點
-            const [nodes, setNodes] = useState([
-                { id: 'src-1', templateId: 'SOURCE', label: '主總管機房', x: 10000, y: 10000, qty: 1 },
-                { id: 'pvt-1', type: 'PIVOT', label: '區域分區 A', x: 10450, y: 9850, color: 'bg-red-500' },
-                { id: 'inst-1', templateId: 'lib-dcc-1', x: 10850, y: 9850, qty: 6 },
+            const [nodes, setNodes] = useState(INITIAL_PROJECT_DATA?.nodes || [
+                { id: 'src-1', templateId: 'SOURCE', label: '主總管彙整中心', x: 10000, y: 10000, qty: 1 },
+                { id: 'pvt-1', type: 'PIVOT', label: '區域分區 A', x: 10700, y: 9850, color: 'bg-red-600' },
+                { id: 'inst-1', templateId: 'lib-dcc-1', x: 11400, y: 9850, qty: 6 },
             ]);
-
-            // ✅ 初始管線連線
-            const [pipes, setPipes] = useState([
+            const [pipes, setPipes] = useState(INITIAL_PROJECT_DATA?.pipes || [
                 { id: 'p-1', fromId: 'src-1', fromPort: 'right', toId: 'pvt-1', toPort: 'left' },
                 { id: 'p-2', fromId: 'pvt-1', fromPort: 'right', toId: 'inst-1', toPort: 'left' },
             ]);
 
-            const [scale, setScale] = useState(0.6);
-            const [offset, setOffset] = useState({ x: window.innerWidth / 2 - 10000 * 0.6, y: window.innerHeight / 2 - 10000 * 0.6 });
+            const [scale, setScale] = useState(INITIAL_PROJECT_DATA?.viewState?.scale || 0.6);
+            const [offset, setOffset] = useState(INITIAL_PROJECT_DATA?.viewState?.offset || { x: window.innerWidth / 2 - 10000 * 0.6, y: window.innerHeight / 2 - 10000 * 0.6 });
+            
             const [results, setResults] = useState([]);
             const [nodeCalculatedFlows, setNodeCalculatedFlows] = useState({});
             const [message, setMessage] = useState(null);
-
-            // 🔐 導出保護機制
             const [showExportModal, setShowExportModal] = useState(false);
             const [passwordInput, setPasswordInput] = useState("");
-
+            
             const isDraggingRef = useRef(false);
+            const fileInputRef = useRef(null);
 
+            const showToast = (txt) => { setMessage(txt); setTimeout(() => setMessage(null), 3000); };
+
+            /**
+             * [智慧階層加總引擎]
+             */
             const solveHydraulics = useCallback(() => {
                 const getWeight = (n) => n.templateId === 'SOURCE' ? 0 : n.type === 'PIVOT' ? 1 : 2;
+                const nodeMap = {}; nodes.forEach(n => nodeMap[n.id] = n);
+
                 const baseFlowLpsMap = {};
                 nodes.forEach(node => {
                     const weight = getWeight(node);
@@ -155,14 +160,11 @@
                     else if (node.isMerged) { baseFlowLpsMap[node.id] = HydraulicEngine.calculateLps(node.customKw || 0, 1, 5); } 
                     else {
                         const lib = library.find(l => l.id === node.templateId);
-                        const kw = node.customKw !== undefined ? node.customKw : (lib ? lib.kw : 0);
-                        const dt = lib ? lib.dt : 5;
-                        baseFlowLpsMap[node.id] = HydraulicEngine.calculateLps(kw, node.qty || 1, dt);
+                        baseFlowLpsMap[node.id] = HydraulicEngine.calculateLps(node.customKw || lib?.kw || 0, node.qty || 1, lib?.dt || 5);
                     }
                 });
 
-                const adj = {};
-                nodes.forEach(n => adj[n.id] = []);
+                const adj = {}; nodes.forEach(n => adj[n.id] = []);
                 pipes.forEach(p => { if (adj[p.fromId] && adj[p.toId]) { adj[p.fromId].push(p.toId); adj[p.toId].push(p.fromId); } });
 
                 const dists = {};
@@ -176,170 +178,136 @@
 
                 const memo = {};
                 const getSubtreeLpm = (nodeId, parentId = null) => {
-                    const cacheKey = `${nodeId}-${parentId}`;
-                    if (memo[cacheKey] !== undefined) return memo[cacheKey];
+                    const cacheKey = `${nodeId}-${parentId}`; if (memo[cacheKey] !== undefined) return memo[cacheKey];
                     let sum = (baseFlowLpsMap[nodeId] || 0) * 60;
-                    adj[nodeId]?.forEach(neighbor => { if (neighbor !== parentId && dists[neighbor] > dists[nodeId]) sum += getSubtreeLpm(neighbor, nodeId); });
-                    memo[cacheKey] = sum;
-                    return sum;
+                    adj[nodeId]?.forEach(neighbor => {
+                        const nNeighbor = nodeMap[neighbor];
+                        if (!nNeighbor) return;
+                        if (neighbor !== parentId && (getWeight(nNeighbor) > getWeight(nodeMap[nodeId]) || (getWeight(nNeighbor) === getWeight(nodeMap[nodeId]) && dists[neighbor] > dists[nodeId]))) {
+                            sum += getSubtreeLpm(neighbor, nodeId);
+                        }
+                    });
+                    memo[cacheKey] = sum; return sum;
                 };
 
-                const nodeAggregates = {};
-                nodes.forEach(node => { nodeAggregates[node.id] = getSubtreeLpm(node.id); });
-
+                const nodeAggregates = {}; nodes.forEach(node => { nodeAggregates[node.id] = getSubtreeLpm(node.id); });
                 const pipeResults = pipes.map(p => {
-                    const downstreamId = (dists[p.fromId] < dists[p.toId]) ? p.toId : p.fromId;
-                    const totalLpm = getSubtreeLpm(downstreamId, (dists[p.fromId] < dists[p.toId]) ? p.fromId : p.toId);
+                    const n1 = nodeMap[p.fromId], n2 = nodeMap[p.toId];
+                    if(!n1 || !n2) return p;
+                    const downstreamId = (getWeight(n1) < getWeight(n2) || dists[p.fromId] < dists[p.toId]) ? p.toId : p.fromId;
+                    const totalLpm = getSubtreeLpm(downstreamId, (downstreamId === p.toId ? p.fromId : p.toId));
                     return { ...p, lpm: totalLpm, ...HydraulicEngine.getSizing(totalLpm / 60) };
                 });
 
-                setResults(pipeResults);
-                setNodeCalculatedFlows(nodeAggregates);
+                setResults(pipeResults); setNodeCalculatedFlows(nodeAggregates);
             }, [nodes, pipes, library]);
 
             useEffect(() => { if (!isDraggingRef.current) solveHydraulics(); }, [nodes, pipes, library, solveHydraulics]);
 
-            const showToast = (txt) => { setMessage(txt); setTimeout(() => setMessage(null), 3000); };
-
-            /**
-             * ✅ 修正後功能：開啟自定義密碼視窗
-             */
-            const handleRequestExport = () => {
-                setPasswordInput("");
-                setShowExportModal(true);
-            };
-
             const confirmExport = () => {
                 if (passwordInput === "900407") {
                     const projectData = { library, nodes, pipes, viewState: { scale, offset } };
-                    const blob = new Blob(["<!DOCTYPE html>\n" + document.documentElement.outerHTML], { type: 'text/html' });
-                    const a = document.createElement('a'); 
-                    a.href = URL.createObjectURL(blob); 
-                    a.download = `HydroProject_Exported_${new Date().getTime()}.html`; 
-                    a.click();
-                    setShowExportModal(false);
-                    showToast("專案匯出成功！");
-                } else {
-                    showToast("密碼錯誤！無法儲存專案。");
-                }
+                    const updatedHtml = document.documentElement.outerHTML.replace(/const INITIAL_PROJECT_DATA = (null|{.*?});/, `const INITIAL_PROJECT_DATA = ${JSON.stringify(projectData)};`);
+                    const blob = new Blob(["<!DOCTYPE html>\n" + updatedHtml], { type: 'text/html' });
+                    const a = document.createElement('a'); a.href = URL.createObjectURL(blob); 
+                    a.download = `HydroPro_Export.html`; a.click();
+                    setShowExportModal(false); showToast("導出成功！數據已存入 HTML。");
+                } else { showToast("密碼錯誤。"); }
+            };
+
+            const handleImportHTML = (e) => {
+                const file = e.target.files[0]; if (!file) return;
+                const reader = new FileReader();
+                reader.onload = (event) => {
+                    const match = event.target.result.match(/const INITIAL_PROJECT_DATA = (\{.*?\});/);
+                    if (match) {
+                        try {
+                            const data = JSON.parse(match[1]);
+                            setLibrary(data.library || []); setNodes(data.nodes || []); setPipes(data.pipes || []);
+                            if (data.viewState) { setScale(data.viewState.scale || 0.6); setOffset(data.viewState.offset || { x: 0, y: 0 }); }
+                            showToast("專案成功還原！");
+                        } catch (err) { showToast("數據解析失敗。"); }
+                    } else { showToast("無效檔案格式。"); }
+                };
+                reader.readAsText(file); e.target.value = '';
             };
 
             return (
-                <div className="w-full h-screen bg-slate-100 flex flex-col overflow-hidden text-slate-900">
+                <div className="w-full h-screen bg-slate-100 flex flex-col overflow-hidden text-slate-900 leading-tight">
                     {message && (
-                        <div className="fixed top-20 left-1/2 -translate-x-1/2 bg-slate-800 text-white px-6 py-3 rounded-full z-[1000] shadow-2xl flex items-center gap-3 animate-bounce">
-                            <Icons.AlertCircle className="text-yellow-400" />
-                            <span className="text-sm font-bold">{message}</span>
+                        <div className="fixed top-20 left-1/2 -translate-x-1/2 bg-slate-900 text-white px-8 py-3 rounded-full z-[1000] shadow-2xl flex items-center gap-3 animate-bounce border border-slate-700 font-black">
+                            <Icons.AlertCircle className="text-yellow-400" /> <span>{message}</span>
                         </div>
                     )}
-
-                    {/* ✅ 自定義密碼輸入彈窗 */}
                     {showExportModal && (
                         <div className="fixed inset-0 z-[2000] flex items-center justify-center modal-overlay">
-                            <div className="bg-white w-96 rounded-[2.5rem] p-8 shadow-2xl modal-content border-t-8 border-blue-600">
-                                <div className="flex flex-col items-center text-center mb-6">
-                                    <div className="bg-blue-50 p-4 rounded-full text-blue-600 mb-4">
-                                        <Icons.Lock />
-                                    </div>
-                                    <h3 className="text-xl font-black text-slate-800">安全驗證</h3>
-                                    <p className="text-sm text-slate-400 font-medium">請輸入授權密碼以另存專案 HTML</p>
-                                </div>
-                                <input 
-                                    type="password" 
-                                    autoFocus
-                                    className="w-full p-4 bg-slate-50 border-2 border-slate-100 rounded-2xl mb-6 outline-none focus:border-blue-500 focus:bg-white transition-all text-center text-xl tracking-[0.5em] font-black"
-                                    placeholder="••••••"
-                                    value={passwordInput}
-                                    onChange={(e) => setPasswordInput(e.target.value)}
-                                    onKeyDown={(e) => e.key === 'Enter' && confirmExport()}
-                                />
-                                <div className="flex gap-3">
-                                    <button 
-                                        onClick={() => setShowExportModal(false)}
-                                        className="flex-1 py-3 rounded-xl font-bold text-slate-400 hover:bg-slate-100 transition-colors"
-                                    >
-                                        取消
-                                    </button>
-                                    <button 
-                                        onClick={confirmExport}
-                                        className="flex-1 py-3 bg-blue-600 text-white rounded-xl font-black hover:bg-blue-700 shadow-lg shadow-blue-200 transition-all active:scale-95"
-                                    >
-                                        確認匯出
-                                    </button>
+                            <div className="bg-white w-[400px] rounded-[3rem] p-10 shadow-2xl modal-content border-t-8 border-blue-600 text-center">
+                                <div className="bg-blue-50 p-6 rounded-full text-blue-600 mb-6 inline-block"><Icons.Lock /></div>
+                                <h3 className="text-xl font-black text-slate-800 mb-2">安全授權驗證</h3>
+                                <input type="password" autoFocus className="w-full p-4 bg-slate-50 border-2 rounded-2xl mb-8 text-center text-xl tracking-[0.5em] font-black outline-none focus:border-blue-500" value={passwordInput} onChange={(e) => setPasswordInput(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && confirmExport()} />
+                                <div className="flex gap-4">
+                                    <button onClick={() => setShowExportModal(false)} className="flex-1 py-4 rounded-2xl font-black text-slate-400 hover:bg-slate-100 transition-colors">取消</button>
+                                    <button onClick={confirmExport} className="flex-1 py-4 bg-blue-600 text-white rounded-xl font-black shadow-lg transition-all">確認匯出</button>
                                 </div>
                             </div>
                         </div>
                     )}
-
-                    <div className="h-14 bg-slate-900 text-white flex items-center px-4 gap-2 shrink-0 z-[200] shadow-xl">
-                        <div className="flex items-center gap-2 mr-6 border-r border-slate-700 pr-6">
-                            <div className="bg-blue-500 p-1.5 rounded-lg"><Icons.HardDrive /></div>
-                            <div className="flex flex-col leading-none">
-                                <span className="font-black tracking-tighter text-sm uppercase italic">HydroPuzzle</span>
-                                <span className="text-[10px] text-blue-400 font-bold tracking-widest uppercase">Professional</span>
-                            </div>
+                    <header className="h-14 bg-slate-900 text-white flex items-center px-4 shrink-0 z-[200] shadow-xl">
+                        <div className="flex items-center gap-2 mr-6 border-r border-slate-700 pr-6 font-black uppercase italic">
+                            <Icons.HardDrive className="text-blue-500" />
+                            <div className="flex flex-col leading-none tracking-tighter"><span className="text-sm">HydroPuzzle</span><span className="text-[10px] text-blue-400 font-bold">PRO-V3</span></div>
                         </div>
-                        <button onClick={() => setActiveTab('setup')} className={`px-6 h-full flex items-center gap-2 text-xs font-bold transition-all ${activeTab === 'setup' ? 'bg-white/10 border-b-2 border-blue-400 text-blue-400' : 'opacity-50 hover:opacity-100'}`}><Icons.Database /> 設備定義庫</button>
-                        <button onClick={() => setActiveTab('editor')} className={`px-6 h-full flex items-center gap-2 text-xs font-bold transition-all ${activeTab === 'editor' ? 'bg-white/10 border-b-2 border-blue-400 text-blue-400' : 'opacity-50 hover:opacity-100'}`}><Icons.Layout /> 系統拼圖製圖</button>
+                        <button onClick={() => setActiveTab('setup')} className={`px-4 h-full text-xs font-bold transition-all ${activeTab === 'setup' ? 'bg-white/10 border-b-2 border-blue-400 text-blue-400' : 'opacity-60'}`}>規格定義</button>
+                        <button onClick={() => setActiveTab('editor')} className={`px-4 h-full text-xs font-bold transition-all ${activeTab === 'editor' ? 'bg-white/10 border-b-2 border-blue-400 text-blue-400' : 'opacity-60'}`}>系統製圖</button>
                         <div className="ml-auto flex items-center gap-3">
-                            <button onClick={handleRequestExport} className="bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-2 rounded-lg text-xs font-black flex items-center gap-2 shadow-lg transition-all active:scale-95"><Icons.Save /> 另存專案 HTML</button>
+                            <input type="file" accept=".html" className="hidden" ref={fileInputRef} onChange={handleImportHTML} />
+                            <button onClick={() => fileInputRef.current.click()} className="bg-slate-700 hover:bg-slate-600 text-white px-3 py-1.5 rounded-lg text-[10px] font-black flex items-center gap-2 active:scale-95 transition-all"><Icons.Upload /> 匯入</button>
+                            <button onClick={() => {setPasswordInput(""); setShowExportModal(true);}} className="bg-emerald-600 hover:bg-emerald-500 text-white px-3 py-1.5 rounded-lg text-[10px] font-black flex items-center gap-2 active:scale-95 transition-all"><Icons.Save /> 儲存</button>
                         </div>
-                    </div>
+                    </header>
                     <div className="flex-1 relative overflow-hidden">
                         {activeTab === 'setup' ? (
-                            <EquipmentSetup library={library} setLibrary={setLibrary} nodes={nodes} showToast={showToast} />
+                            <EquipmentSetup library={library} setLibrary={setLibrary} showToast={showToast} />
                         ) : (
-                            <HydraulicEditor 
-                                library={library} nodes={nodes} setNodes={setNodes} 
-                                pipes={pipes} setPipes={setPipes}
-                                scale={scale} setScale={setScale}
-                                offset={offset} setOffset={setOffset}
-                                results={results} nodeFlows={nodeCalculatedFlows}
-                                isDraggingRef={isDraggingRef}
-                                solveHydraulics={solveHydraulics}
-                                showToast={showToast}
-                            />
+                            <HydraulicEditor library={library} nodes={nodes} setNodes={setNodes} pipes={pipes} setPipes={setPipes} scale={scale} setScale={setScale} offset={offset} setOffset={setOffset} results={results} nodeFlows={nodeCalculatedFlows} isDraggingRef={isDraggingRef} solveHydraulics={solveHydraulics} showToast={showToast} />
                         )}
                     </div>
                 </div>
             );
         }
 
-        function EquipmentSetup({ library, setLibrary, nodes, showToast }) {
+        function EquipmentSetup({ library, setLibrary, showToast }) {
             const [activePickerId, setActivePickerId] = useState(null);
             const update = (id, field, val) => setLibrary(prev => prev.map(item => item.id === id ? { ...item, [field]: val } : item));
-            const handleDelete = (id) => {
-                if (nodes.some(n => n.templateId === id)) { showToast("此設備模板正在被畫布使用，無法刪除！"); return; }
-                setLibrary(library.filter(l => l.id !== id));
-            };
             return (
-                <div className="p-8 h-full overflow-y-auto bg-slate-50" onClick={() => setActivePickerId(null)}>
-                    <div className="max-w-7xl mx-auto">
+                <div className="p-12 h-full overflow-y-auto bg-slate-50" onClick={() => setActivePickerId(null)}>
+                    <div className="max-w-[1000px] mx-auto text-left text-left">
                         <div className="flex justify-between items-center mb-8">
-                            <h2 className="text-2xl font-black text-slate-800 uppercase tracking-tight">Equipment Spec</h2>
-                            <button onClick={(e) => { e.stopPropagation(); setLibrary([...library, { id: `lib-${Date.now()}`, type: 'DCC', label: '新設備', kw: 50, dt: 5, color: 'bg-blue-500' }])}} className="bg-blue-600 text-white px-6 py-3 rounded-xl font-bold text-sm flex items-center gap-2 shadow-lg"><Icons.Plus /> 新增設備模板</button>
+                            <h2 className="text-3xl font-black text-slate-800 tracking-tight">標準組件規格定義庫</h2>
+                            <button onClick={(e) => { e.stopPropagation(); setLibrary([...library, { id: `lib-${Date.now()}`, label: '新負載組件', kw: 100, dt: 5, color: 'bg-blue-600' }])}} className="bg-blue-600 text-white px-6 py-3 rounded-xl font-black text-sm flex items-center gap-3 hover:bg-blue-700 transition-all"><Icons.Plus /> 新增模板</button>
                         </div>
-                        <div className="bg-white rounded-2xl shadow-xl border overflow-hidden">
-                            <table className="w-full text-left text-sm">
-                                <thead className="bg-slate-900 text-slate-300 uppercase">
-                                    <tr><th className="px-4 py-5">機型名稱</th><th className="px-4 py-5 text-center">顏色</th><th className="px-4 py-5 text-center bg-slate-800 text-blue-300">kW</th><th className="px-4 py-5 text-center bg-slate-800 text-blue-300">DT (K)</th><th className="px-4 py-5 text-center text-emerald-400 font-black">LPM (100%)</th><th className="px-4 py-5 text-right pr-8">操作</th></tr>
+                        <div className="bg-white rounded-[2.5rem] shadow-2xl border-2 border-slate-100 overflow-visible">
+                            <table className="w-full text-left text-base">
+                                <thead className="bg-slate-900 text-slate-400 uppercase font-black text-xs">
+                                    <tr><th className="px-8 py-6">設備名稱</th><th className="px-4 py-6 text-center">配色</th><th className="px-4 py-6 text-center">kW</th><th className="px-4 py-6 text-center">溫差 (K)</th><th className="px-4 py-6 text-center text-emerald-400 font-black">計算 LPM</th><th className="px-8 py-6 text-right">管理</th></tr>
                                 </thead>
-                                <tbody>
+                                <tbody className="divide-y divide-slate-100 font-bold text-slate-700">
                                     {library.map(item => (
-                                        <tr key={item.id} className="hover:bg-blue-50/30 border-b">
-                                            <td className="px-4 py-4 font-bold"><input className="bg-transparent outline-none w-full border-b border-transparent focus:border-blue-500" value={item.label} onChange={e => update(item.id, 'label', e.target.value)} /></td>
-                                            <td className="px-4 py-4 text-center relative">
-                                                <div className={`w-8 h-8 rounded-lg mx-auto border-2 border-white shadow-sm cursor-pointer ${item.color}`} onClick={(e) => { e.stopPropagation(); setActivePickerId(activePickerId === item.id ? null : item.id); }} />
+                                        <tr key={item.id} className="hover:bg-blue-50/40 transition-colors">
+                                            <td className="px-8 py-6 font-black text-xl text-slate-800"><input className="bg-transparent border-b-2 border-transparent focus:border-blue-500 outline-none w-full" value={item.label} onChange={e => update(item.id, 'label', e.target.value)} /></td>
+                                            <td className="px-4 py-6 text-center relative overflow-visible">
+                                                <div className={`w-10 h-10 rounded-2xl mx-auto border-4 border-white shadow-lg cursor-pointer ${item.color}`} onClick={(e) => { e.stopPropagation(); setActivePickerId(activePickerId === item.id ? null : item.id); }} />
                                                 {activePickerId === item.id && (
-                                                    <div className="absolute top-full left-1/2 -translate-x-1/2 mt-2 bg-white p-2 rounded-xl shadow-2xl border z-[300] flex gap-2 picker-shadow">
-                                                        {COLOR_PALETTE.map(c => (<div key={c} className={`w-6 h-6 rounded-full ${c} color-dot`} onClick={() => { update(item.id, 'color', c); setActivePickerId(null); }} />))}
+                                                    <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-3 bg-white p-4 rounded-3xl shadow-2xl border-2 z-[999] w-[180px] grid grid-cols-3 gap-3" onClick={e => e.stopPropagation()}>
+                                                        {COLOR_PALETTE.map(c => (<div key={c} className={`w-10 h-10 rounded-full cursor-pointer ${c} ${item.color === c ? 'ring-4 ring-slate-800 ring-offset-2' : ''}`} onClick={() => { update(item.id, 'color', c); setActivePickerId(null); }} />))}
                                                     </div>
                                                 )}
                                             </td>
-                                            <td className="px-4 py-4 text-center bg-blue-50/30 font-black"><input type="number" className="w-20 text-center bg-transparent" value={item.kw} onChange={e => update(item.id, 'kw', parseFloat(e.target.value)||0)} /></td>
-                                            <td className="px-4 py-4 text-center bg-blue-50/30 font-black"><input type="number" className="w-16 text-center bg-transparent" value={item.dt} onChange={e => update(item.id, 'dt', parseFloat(e.target.value)||0)} /></td>
-                                            <td className="px-4 py-4 text-center font-mono font-black text-emerald-600">{(item.kw/(CP*item.dt)*60).toFixed(2)}</td>
-                                            <td className="px-4 py-4 text-right pr-8"><button onClick={() => handleDelete(item.id)} className="text-slate-300 hover:text-red-500 p-2"><Icons.Trash2 /></button></td>
+                                            <td className="px-4 py-6 text-center text-xl font-black"><input type="number" className="w-24 text-center bg-slate-50 p-2 rounded-xl" value={item.kw} onChange={e => update(item.id, 'kw', parseFloat(e.target.value)||0)} /></td>
+                                            {/* ✅ 新增溫差填寫欄位 */}
+                                            <td className="px-4 py-6 text-center text-xl font-black"><input type="number" className="w-20 text-center bg-slate-100 p-2 rounded-xl" value={item.dt} onChange={e => update(item.id, 'dt', parseFloat(e.target.value)||0)} /></td>
+                                            <td className="px-4 py-6 text-center font-black text-2xl text-emerald-600">{(item.kw/(CP*item.dt)*60).toFixed(1)}</td>
+                                            <td className="px-8 py-6 text-right"><button onClick={() => setLibrary(library.filter(l => l.id !== item.id))} className="text-slate-300 hover:text-red-500 transition-all p-2 transform hover:scale-125"><Icons.Trash2 /></button></td>
                                         </tr>
                                     ))}
                                 </tbody>
@@ -353,35 +321,54 @@
         function HydraulicEditor({ library, nodes, setNodes, pipes, setPipes, scale, setScale, offset, setOffset, results, nodeFlows, isDraggingRef, solveHydraulics, showToast }) {
             const [selectedNodes, setSelectedNodes] = useState(new Set());
             const [activeConn, setActiveConn] = useState(null); 
-            const [activeColorPickerId, setActiveColorPickerId] = useState(null);
             const [sidebarOpen, setSidebarOpen] = useState(true);
-            const [drawerOpen, setDrawerOpen] = useState(false);
             const [snapPort, setSnapPort] = useState(null);
+            const [activeColorPickerId, setActiveColorPickerId] = useState(null);
 
             const containerRef = useRef(null);
-            const nodesRef = useRef(nodes);
-            const pipesRef = useRef(pipes);
-            const nodeMapRef = useRef({});
-            
-            useEffect(() => { 
-                nodesRef.current = nodes; 
-                const map = {}; nodes.forEach(n => map[n.id] = n);
-                nodeMapRef.current = map;
-            }, [nodes]);
-            useEffect(() => { pipesRef.current = pipes; }, [pipes]);
-
-            const dragInfo = useRef({ isDragging: false, id: null, startX: 0, startY: 0, initialPositions: {}, connectedPipeIds: [], isPanning: false, dx: 0, dy: 0 });
-            const nodeRefs = useRef({}); const pathRefs = useRef({}); const labelRefs = useRef({}); const ghostPathRef = useRef(null);
+            const nodesSnapshot = useRef(nodes);
+            const pipesSnapshot = useRef(pipes);
+            const nodeMapSnapshot = useRef({});
             const rafId = useRef(null);
+            
+            // ✅ 修正 renderNodeMap 定義順序，避免 ReferenceError
+            const renderNodeMap = useMemo(() => {
+                const m = {}; nodes.forEach(n => m[n.id] = n);
+                return m;
+            }, [nodes]);
 
+            useEffect(() => { 
+                nodesSnapshot.current = nodes; 
+                nodeMapSnapshot.current = renderNodeMap;
+            }, [nodes, renderNodeMap]);
+            useEffect(() => { pipesSnapshot.current = pipes; }, [pipes]);
+
+            const dragInfo = useRef({ isDragging: false, id: null, startX: 0, startY: 0, connectedPipeIds: [], dx: 0, dy: 0, isPanning: false });
+            const nodeRefs = useRef({}); const pathRefs = useRef({}); const labelRefs = useRef({}); const ghostPathRef = useRef(null);
+
+            // ✅ 修復滾輪縮放邏輯 (原生監聽)
+            useEffect(() => {
+                const container = containerRef.current; if (!container) return;
+                const handleWheelNative = (e) => {
+                    e.preventDefault();
+                    const factor = Math.pow(1.15, -e.deltaY / 120);
+                    const newScale = Math.min(Math.max(scale * factor, 0.1), 3.0);
+                    const rect = container.getBoundingClientRect();
+                    const mouseX = e.clientX - rect.left, mouseY = e.clientY - rect.top;
+                    setOffset(prev => ({ x: mouseX - (mouseX - prev.x) * (newScale / scale), y: mouseY - (mouseY - prev.y) * (newScale / scale) }));
+                    setScale(newScale);
+                };
+                container.addEventListener('wheel', handleWheelNative, { passive: false });
+                return () => container.removeEventListener('wheel', handleWheelNative);
+            }, [scale, offset]);
+
+            // ✅ 圖塊尺寸計算 (巨量化)
             const getPortOffset = (pT, node) => {
-                const isS = node?.templateId === 'SOURCE';
-                const isP = node?.type === 'PIVOT';
-                const isM = node?.isMerged;
-                let w = 240, h = 160;
-                if (isS) { w = 380; h = 200; } 
-                else if (isP) { w = 320; h = 180; } 
-                else if (isM) { w = 240; h = 80 + (node.composition ? Object.keys(node.composition).length * 28 : 0) + 40; }
+                const isS = node?.templateId === 'SOURCE'; const isP = node?.type === 'PIVOT'; const isM = node?.isMerged;
+                let w = 500, h = 320; 
+                if (isS) { w = 550; h = 350; } 
+                else if (isM) { w = 500; h = 120 + (Object.keys(node.composition || {}).length * 48) + 160; }
+                
                 if (pT === 'left') return { x: 0, y: h/2 }; 
                 if (pT === 'right') return { x: w, y: h/2 };
                 if (pT === 'top') return { x: w/2, y: 0 }; 
@@ -389,29 +376,19 @@
                 return { x: 0, y: 0 };
             };
 
-            const getPathD = (x1, y1, x2, y2, fP, tP) => {
-                const mX = (x1+x2)/2, mY = (y1+y2)/2;
-                return (fP==='bottom'||fP==='top'||tP==='bottom'||tP==='top') ? `M ${x1} ${y1} C ${x1} ${mY}, ${x2} ${mY}, ${x2} ${y2}` : `M ${x1} ${y1} C ${mX} ${y1}, ${mX} ${y2}, ${x2} ${y2}`;
-            };
-
             const onMouseMove = useCallback((e) => {
-                if (dragInfo.current.isPanning) { 
-                    setOffset({ x: e.clientX - dragInfo.current.startX, y: e.clientY - dragInfo.current.startY }); 
-                    return; 
-                }
+                if (dragInfo.current.isPanning) { setOffset({ x: e.clientX - dragInfo.current.startX, y: e.clientY - dragInfo.current.startY }); return; }
                 if (activeConn && ghostPathRef.current) {
-                    const tx_raw = (e.clientX - offset.x) / scale, ty_raw = (e.clientY - offset.y) / scale;
-                    let targetX = tx_raw, targetY = ty_raw, foundSnap = null;
-                    for (const node of nodesRef.current) {
+                    const tx = (e.clientX - offset.x) / scale, ty = (e.clientY - offset.y) / scale;
+                    let foundSnap = null;
+                    for (const node of nodesSnapshot.current) {
                         if (node.id === activeConn.fromId) continue;
                         ['left', 'right', 'top', 'bottom'].forEach(pKey => {
-                            const off = getPortOffset(pKey, node);
-                            const px = node.x + off.x, py = node.y + off.y;
-                            const dist = Math.sqrt(Math.pow(tx_raw - px, 2) + Math.pow(ty_raw - py, 2));
-                            if (dist < 30 / scale) { foundSnap = { nodeId: node.id, port: pKey, x: px, y: py }; }
+                            const off = getPortOffset(pKey, node); const px = node.x + off.x, py = node.y + off.y;
+                            if (Math.sqrt(Math.pow(tx - px, 2) + Math.pow(ty - py, 2)) < 60 / scale) foundSnap = { nodeId: node.id, port: pKey, x: px, y: py };
                         });
                     }
-                    if (foundSnap) { targetX = foundSnap.x; targetY = foundSnap.y; }
+                    const targetX = foundSnap ? foundSnap.x : tx, targetY = foundSnap ? foundSnap.y : ty;
                     setSnapPort(foundSnap);
                     ghostPathRef.current.setAttribute('d', getPathD(activeConn.startX, activeConn.startY, targetX, targetY, activeConn.fromPort, foundSnap ? foundSnap.port : 'left'));
                     return;
@@ -420,282 +397,227 @@
                 if (rafId.current) return;
                 rafId.current = window.requestAnimationFrame(() => {
                     rafId.current = null;
-                    const { id, startX, startY } = dragInfo.current;
-                    const dx = (e.clientX - startX) / scale;
-                    const dy = (e.clientY - startY) / scale;
-                    dragInfo.current.dx = dx;
-                    dragInfo.current.dy = dy;
-
-                    const movingNodes = selectedNodes.has(id) ? Array.from(selectedNodes) : [id];
-                    movingNodes.forEach(mId => { 
-                        if (nodeRefs.current[mId]) {
-                            nodeRefs.current[mId].style.transform = `translate3d(${dx}px, ${dy}px, 0)`; 
-                        }
+                    const { id, startX, startY, connectedPipeIds } = dragInfo.current;
+                    const dx = (e.clientX - startX) / scale, dy = (e.clientY - startY) / scale;
+                    dragInfo.current.dx = dx; dragInfo.current.dy = dy;
+                    const movingSet = selectedNodes.has(id) ? selectedNodes : new Set([id]);
+                    movingSet.forEach(mId => { if (nodeRefs.current[mId]) nodeRefs.current[mId].style.transform = `translate3d(${dx}px, ${dy}px, 0)`; });
+                    
+                    connectedPipeIds.forEach(pId => {
+                        const p = pipesSnapshot.current.find(pip => pip.id === pId); if (!p || !pathRefs.current[pId]) return;
+                        const fD = movingSet.has(p.fromId) ? { ...nodeMapSnapshot.current[p.fromId], x: nodeMapSnapshot.current[p.fromId].x + dx, y: nodeMapSnapshot.current[p.fromId].y + dy } : nodeMapSnapshot.current[p.fromId];
+                        const tD = movingSet.has(p.toId) ? { ...nodeMapSnapshot.current[p.toId], x: nodeMapSnapshot.current[p.toId].x + dx, y: nodeMapSnapshot.current[p.toId].y + dy } : nodeMapSnapshot.current[p.toId];
+                        const o1 = getPortOffset(p.fromPort, fD), o2 = getPortOffset(p.toPort, tD);
+                        const x1 = fD.x + o1.x, y1 = fD.y + o1.y, x2 = tD.x + o2.x, y2 = tD.y + o2.y;
+                        pathRefs.current[pId].setAttribute('d', getPathD(x1, y1, x2, y2, p.fromPort, p.toPort));
+                        if (labelRefs.current[pId]) { labelRefs.current[pId].setAttribute('x', (x1+x2)/2 - 120); labelRefs.current[pId].setAttribute('y', (y1+y2)/2 - 80); }
                     });
                 });
-            }, [scale, offset, activeConn, selectedNodes]); 
+            }, [scale, offset, activeConn, selectedNodes]);
+
+            const onMouseUp = useCallback(() => {
+                document.body.classList.remove('dragging-active');
+                if (dragInfo.current.isDragging) {
+                    const { dx, dy, id } = dragInfo.current;
+                    const movingSet = selectedNodes.has(id) ? selectedNodes : new Set([id]);
+                    setNodes(prev => prev.map(n => movingSet.has(n.id) ? { ...n, x: n.x + dx, y: n.y + dy } : n));
+                    movingSet.forEach(mId => { if (nodeRefs.current[mId]) nodeRefs.current[mId].style.transform = 'translate3d(0,0,0)'; });
+                    dragInfo.current.isDragging = false; isDraggingRef.current = false;
+                }
+                if (activeConn && snapPort) {
+                    const isDup = pipesSnapshot.current.some(p => p.fromId === activeConn.fromId && p.toId === snapPort.nodeId && p.fromPort === activeConn.fromPort && p.toPort === snapPort.port);
+                    if (!isDup) setPipes(prev => [...prev, { id: `p-${Date.now()}`, fromId: activeConn.fromId, fromPort: activeConn.fromPort, toId: snapPort.nodeId, toPort: snapPort.port }]);
+                }
+                dragInfo.current.isPanning = false; setActiveConn(null); setSnapPort(null);
+                if (ghostPathRef.current) ghostPathRef.current.setAttribute('d', '');
+            }, [activeConn, snapPort, selectedNodes, setNodes, setPipes]);
 
             useEffect(() => {
-                const onUp = (e) => {
-                    document.body.classList.remove('dragging-active');
-                    if (dragInfo.current.isDragging) {
-                        const { id, dx, dy } = dragInfo.current;
-                        const movingNodes = selectedNodes.has(id) ? Array.from(selectedNodes) : [id];
-                        
-                        setNodes(prev => prev.map(n => {
-                            if (movingNodes.includes(n.id)) {
-                                return { ...n, x: n.x + dx, y: n.y + dy };
-                            }
-                            return n;
-                        }));
-                        
-                        movingNodes.forEach(mId => { 
-                            if (nodeRefs.current[mId]) {
-                                nodeRefs.current[mId].style.transform = 'translate3d(0,0,0)'; 
-                                nodeRefs.current[mId].classList.remove('is-dragging');
-                            }
-                        });
-                        dragInfo.current.isDragging = false;
-                        isDraggingRef.current = false;
-                    }
-                    if (activeConn && snapPort) {
-                        const isDup = pipesRef.current.some(p => (p.fromId === activeConn.fromId && p.toId === snapPort.nodeId && p.fromPort === activeConn.fromPort && p.toPort === snapPort.port));
-                        if (!isDup) {
-                            setPipes(prev => [...prev, { id: `p-${Date.now()}`, fromId: activeConn.fromId, fromPort: activeConn.fromPort, toId: snapPort.nodeId, toPort: snapPort.port }]);
-                        } else { showToast("連線已存在"); }
-                    }
-                    dragInfo.current.isPanning = false; setActiveConn(null); setSnapPort(null);
-                    if (ghostPathRef.current) ghostPathRef.current.setAttribute('d', '');
-                    document.body.style.cursor = 'default';
-                };
-                window.addEventListener('mousemove', onMouseMove);
-                window.addEventListener('mouseup', onUp);
-                return () => { window.removeEventListener('mousemove', onMouseMove); window.removeEventListener('mouseup', onUp); };
-            }, [onMouseMove, activeConn, snapPort, setNodes, setPipes, selectedNodes, scale, showToast]);
+                window.addEventListener('mousemove', onMouseMove); window.addEventListener('mouseup', onMouseUp);
+                return () => { window.removeEventListener('mousemove', onMouseMove); window.removeEventListener('mouseup', onMouseUp); };
+            }, [onMouseMove, onMouseUp]);
 
-            useEffect(() => {
-                const container = containerRef.current;
-                const handleWheel = (e) => {
-                    e.preventDefault();
-                    const factor = Math.pow(1.1, -e.deltaY / 100);
-                    const newScale = Math.min(Math.max(scale * factor, 0.15), 3);
-                    const rect = container.getBoundingClientRect();
-                    const mouseX = e.clientX - rect.left, mouseY = e.clientY - rect.top;
-                    setOffset({ x: mouseX - (mouseX - offset.x) * (newScale / scale), y: mouseY - (mouseY - offset.y) * (newScale / scale) });
-                    setScale(newScale);
-                };
-                if (container) container.addEventListener('wheel', handleWheel, { passive: false });
-                return () => container?.removeEventListener('wheel', handleWheel);
-            }, [scale, offset]);
+            const getSpawnPoint = useCallback(() => {
+                const rect = containerRef.current?.getBoundingClientRect() || { width: window.innerWidth, height: window.innerHeight };
+                return { x: (rect.width/2 - offset.x)/scale - 250, y: (rect.height/2 - offset.y)/scale - 160 };
+            }, [offset, scale]);
 
-            const handleMergeSelection = () => {
+            const handleMergeAction = () => {
                 if (selectedNodes.size < 2) return;
-                const selectedList = nodes.filter(n => selectedNodes.has(n.id) && n.templateId !== 'SOURCE');
-                if (selectedList.length < 2) return;
-                const avgX = selectedList.reduce((s, n) => s + n.x, 0) / selectedList.length;
-                const avgY = selectedList.reduce((s, n) => s + n.y, 0) / selectedList.length;
+                const list = nodes.filter(n => selectedNodes.has(n.id) && n.templateId !== 'SOURCE');
+                if (list.length < 2) return;
+                const avgX = list.reduce((s,n)=>s+n.x,0)/list.length, avgY = list.reduce((s,n)=>s+n.y,0)/list.length;
                 const composition = {}; let totalKw = 0;
-                selectedList.forEach(n => {
+                list.forEach(n => {
                     const lib = library.find(l => l.id === n.templateId);
-                    if (!composition[n.templateId]) composition[n.templateId] = { label: n.label || lib?.label || "設備", qty: 0 };
+                    if(!composition[n.templateId]) composition[n.templateId] = { label: n.label || lib?.label || "設備", qty: 0 };
                     composition[n.templateId].qty += (n.qty || 1);
                     totalKw += (n.customKw !== undefined ? n.customKw : (lib?.kw || 0)) * (n.qty || 1);
                 });
                 const newId = `merged-${Date.now()}`;
                 const newPipes = pipes.map(p => {
-                    const fS = selectedNodes.has(p.fromId), tS = selectedNodes.has(p.toId);
-                    if (fS && tS) return null; if (fS) return { ...p, fromId: newId }; if (tS) return { ...p, toId: newId };
+                    const fromS = selectedNodes.has(p.fromId), toS = selectedNodes.has(p.toId);
+                    if (fromS && toS) return null;
+                    if (fromS) return { ...p, fromId: newId };
+                    if (toS) return { ...p, toId: newId };
                     return p;
-                }).filter(p => p !== null);
-                setNodes([...nodes.filter(n => !selectedNodes.has(n.id)), { id: newId, isMerged: true, label: "系統合併區域", x: avgX, y: avgY, customKw: totalKw, composition, color: 'bg-indigo-600' }]);
+                }).filter(p => p);
+                setNodes(prev => [...prev.filter(n => !selectedNodes.has(n.id)), { id: newId, isMerged: true, label: "多負載彙整區域", x: avgX, y: avgY, customKw: totalKw, composition, color: 'bg-indigo-700' }]);
                 setPipes(newPipes); setSelectedNodes(new Set([newId]));
             };
 
             const handleUnmerge = (nodeId) => {
-                const node = nodeMapRef.current[nodeId]; if (!node || !node.isMerged) return;
+                const node = renderNodeMap[nodeId]; if (!node || !node.isMerged) return;
                 const restoredNodes = []; let oY = 0;
                 Object.keys(node.composition).forEach(libId => {
                     const c = node.composition[libId];
-                    restoredNodes.push({ id: `inst-${Date.now()}-${libId}`, templateId: libId, label: c.label, x: node.x + 300, y: node.y + oY, qty: c.qty });
-                    oY += 180;
+                    restoredNodes.push({ id: `inst-${Date.now()}-${libId}`, templateId: libId, label: c.label, x: node.x + 550, y: node.y + oY, qty: c.qty });
+                    oY += 350;
                 });
-                const fId = restoredNodes[0].id;
-                setPipes(pipes.map(p => (p.fromId===nodeId?{...p,fromId:fId}:(p.toId===nodeId?{...p,toId:fId}:p))));
-                setNodes([...nodes.filter(n => n.id !== nodeId), ...restoredNodes]); setSelectedNodes(new Set());
+                const firstId = restoredNodes[0].id;
+                setPipes(prev => prev.map(p => (p.fromId===nodeId?{...p,fromId:firstId}:(p.toId===nodeId?{...p,toId:firstId}:p))));
+                setNodes(prev => [...prev.filter(n => n.id !== nodeId), ...restoredNodes]); setSelectedNodes(new Set());
             };
 
-            const renderNodeMap = useMemo(() => { const m = {}; nodes.forEach(n => m[n.id] = n); return m; }, [nodes]);
-
-            const getSpawnPoint = useCallback(() => {
-                const rect = containerRef.current?.getBoundingClientRect() || { width: window.innerWidth, height: window.innerHeight };
-                return { x: (rect.width / 2 - offset.x) / scale, y: (rect.height / 2 - offset.y) / scale };
-            }, [offset, scale]);
-
             return (
-                <div ref={containerRef} className="flex h-full w-full bg-slate-200 relative overflow-hidden" 
-                    onContextMenu={e => e.preventDefault()}
-                    onMouseDown={e => { 
-                        if(e.button===1 || e.button===2 || (e.button===0&&e.shiftKey)) { 
-                            e.preventDefault(); document.body.classList.add('dragging-active');
-                            dragInfo.current.isPanning=true; dragInfo.current.startX=e.clientX-offset.x; dragInfo.current.startY=e.clientY-offset.y;
-                        } else if (e.target.tagName === 'svg' || e.target.classList.contains('canvas-grid')) { 
-                            setSelectedNodes(new Set()); setActiveColorPickerId(null);
-                        }
-                    }}>
-                    
+                <div ref={containerRef} className="flex h-full w-full bg-slate-200 relative overflow-hidden canvas-grid" onMouseDown={e => { 
+                    if(e.button===1 || (e.button===0&&e.shiftKey)) { e.preventDefault(); dragInfo.current.isPanning=true; dragInfo.current.startX=e.clientX-offset.x; dragInfo.current.startY=e.clientY-offset.y; }
+                    else if (e.target.tagName === 'svg' || e.target.classList.contains('canvas-grid')) { setSelectedNodes(new Set()); setActiveColorPickerId(null); }
+                }}>
                     {selectedNodes.size > 1 && (
-                        <div className="absolute top-6 left-1/2 -translate-x-1/2 bg-white px-6 py-3 rounded-2xl shadow-2xl border-2 border-blue-500 z-[200] flex items-center gap-4 animate-in fade-in slide-in-from-top-4">
-                            <div className="flex flex-col"><span className="text-[10px] font-black text-blue-500 uppercase italic">Multi-Select Mode</span><span className="text-xs font-bold">已選擇 {selectedNodes.size} 個設備</span></div>
-                            <button onClick={handleMergeSelection} className="bg-blue-600 text-white px-4 py-2 rounded-xl font-black text-xs uppercase flex items-center gap-2 hover:bg-blue-500 shadow-md"><Icons.Layers /> 合併選中設備</button>
+                        <div className="absolute top-8 left-1/2 -translate-x-1/2 bg-white px-10 py-5 rounded-[2.5rem] shadow-2xl border-4 border-blue-600 z-[250] flex items-center gap-8 animate-in slide-in-from-top-6">
+                            <div className="flex flex-col font-black"><span className="text-xs text-blue-500 uppercase tracking-widest leading-none mb-1 text-left text-blue-500">工程合併管理</span><span className="text-2xl">已選中 {selectedNodes.size} 個圖塊組件</span></div>
+                            <button onClick={handleMergeAction} className="bg-blue-600 text-white px-10 py-4 rounded-3xl font-black text-lg uppercase flex items-center gap-4 hover:bg-blue-500 shadow-xl transition-all active:scale-95"><Icons.Layers /> 執行大總量合併</button>
                         </div>
                     )}
-
+                    
                     <div className={`absolute left-4 top-4 bottom-4 w-64 bg-white shadow-2xl rounded-2xl z-[150] transition-transform duration-300 flex flex-col border ${sidebarOpen ? 'translate-x-0' : '-translate-x-[280px]'}`}>
-                        <div className="p-4 border-b flex justify-between items-center font-black text-[11px] uppercase text-slate-400"><span>Equipment Library</span><button onClick={() => setSidebarOpen(false)}><Icons.X /></button></div>
-                        <div className="flex-1 p-3 space-y-3 overflow-y-auto">
-                            <div onClick={() => { const p = getSpawnPoint(); setNodes(prev => [...prev, { id: `src-${Date.now()}`, templateId: 'SOURCE', label: '主總管機房', x: p.x, y: p.y, qty: 1 }])}} className="p-4 bg-yellow-400 rounded-xl cursor-pointer hover:scale-[1.02] shadow flex items-center justify-between border-2 border-yellow-500 transition-transform font-black uppercase text-xs"><span>System Header</span><Icons.Plus /></div>
-                            
-                            <div onClick={() => { const p = getSpawnPoint(); setNodes(prev => [...prev, { id: `pvt-${Date.now()}`, type: 'PIVOT', label: '區域支點', x: p.x, y: p.y, color: 'bg-slate-600' }])}} className="p-4 bg-slate-700 text-white rounded-xl cursor-pointer hover:scale-[1.02] shadow flex items-center justify-between border-2 border-slate-800 transition-transform font-black uppercase text-xs">
-                                <span>Add Pivot</span><Icons.Plus />
-                            </div>
-
+                        <div className="p-4 border-b flex justify-between items-center font-black text-[11px] uppercase text-slate-400"><span>Library</span><button onClick={() => setSidebarOpen(false)}><Icons.X /></button></div>
+                        <div className="flex-1 p-3 space-y-3 overflow-y-auto text-center font-bold">
+                            <div onClick={() => { const p = getSpawnPoint(); setNodes(prev => [...prev, { id: `src-${Date.now()}`, templateId: 'SOURCE', label: '主總管彙整機房', x: p.x, y: p.y, qty: 1 }])}} className="p-4 bg-yellow-400 rounded-2xl cursor-pointer hover:scale-[1.02] shadow flex items-center justify-between border-2 border-yellow-500 transition-transform font-black uppercase text-[11px]"><span>System Header</span><Icons.Plus /></div>
+                            <div onClick={() => { const p = getSpawnPoint(); setNodes(prev => [...prev, { id: `pvt-${Date.now()}`, type: 'PIVOT', label: '區域彙整支點', x: p.x, y: p.y, color: 'bg-slate-800' }])}} className="p-4 bg-slate-800 text-white rounded-2xl cursor-pointer hover:scale-[1.02] shadow flex items-center justify-between border-2 border-slate-950 transition-transform font-black uppercase text-[11px]"><span>Branch Pivot</span><Icons.Share2 /></div>
                             <div className="h-px bg-slate-100 my-2" />
                             {library.map(lib => (
-                                <div key={lib.id} onClick={() => { const p = getSpawnPoint(); setNodes(prev => [...prev, { id: `inst-${Date.now()}`, templateId: lib.id, label: lib.label, x: p.x, y: p.y, qty: 1, color: lib.color }])}} className="p-3 bg-white border border-slate-100 rounded-xl cursor-pointer hover:border-blue-500 shadow flex items-center gap-3 active:scale-95 transition-all">
-                                    <div className={`w-2 h-10 rounded-full ${lib.color}`} /><div className="flex-1 overflow-hidden"><div className="text-xs font-black text-slate-800 truncate">{lib.label}</div><div className="text-[10px] font-black text-blue-600">{lib.kw} kW</div></div>
+                                <div key={lib.id} onClick={() => { const p = getSpawnPoint(); setNodes(prev => [...prev, { id: `inst-${Date.now()}`, templateId: lib.id, label: lib.label, x: p.x, y: p.y, qty: 1, color: lib.color }])}} className="p-4 bg-white border border-slate-100 rounded-xl cursor-pointer hover:border-blue-500 shadow-sm flex items-center gap-4 active:scale-95 transition-all text-left font-bold">
+                                    <div className={`w-2.5 h-10 rounded-full ${lib.color}`} /><div className="flex-1 overflow-hidden"><div className="text-xs font-black text-slate-800 truncate leading-tight">{lib.label}</div><div className="text-[10px] font-black text-blue-600 mt-1">{lib.kw} kW</div></div>
                                 </div>
                             ))}
                         </div>
                     </div>
-                    {!sidebarOpen && (<button onClick={() => setSidebarOpen(true)} className="absolute left-4 top-4 bg-white p-3 rounded-xl shadow-lg z-[150] border transition-transform hover:scale-110"><Icons.Settings /></button>)}
+                    {!sidebarOpen && (<button onClick={() => setSidebarOpen(true)} className="absolute left-4 top-4 bg-white p-4 rounded-xl shadow-lg z-[150] border transition-transform hover:scale-110"><Icons.Settings /></button>)}
 
-                    <main className="flex-1 relative overflow-hidden canvas-grid">
+                    <main className="flex-1 relative overflow-hidden">
                         <div className="absolute inset-0 origin-top-left" style={{ transform: `translate3d(${offset.x}px, ${offset.y}px, 0) scale(${scale})` }}>
                             <svg className="absolute inset-0 w-[20000px] h-[20000px] pointer-events-none z-0">
                                 {results.map(p => {
                                     const from = renderNodeMap[p.fromId], to = renderNodeMap[p.toId]; if (!from || !to) return null;
-                                    const off1 = getPortOffset(p.fromPort, from), off2 = getPortOffset(p.toPort, to);
-                                    const x1 = from.x + off1.x, y1 = from.y + off1.y, x2 = to.x + off2.x, y2 = to.y + off2.y;
-                                    const isCrit = p.warning; 
+                                    const o1 = getPortOffset(p.fromPort, from), o2 = getPortOffset(p.toPort, to);
+                                    const x1 = from.x + o1.x, y1 = from.y + o1.y, x2 = to.x + o2.x, y2 = to.y + o2.y;
                                     return (
                                         <g key={p.id}>
-                                            <path ref={el => pathRefs.current[p.id] = el} d={getPathD(x1, y1, x2, y2, p.fromPort, p.toPort)} stroke={isCrit ? "#facc15" : "#2563eb"} strokeWidth={isCrit ? 6 : 4} fill="none" strokeLinecap="round" className={isCrit ? "warning-pulse" : ""} />
-                                            <foreignObject ref={el => labelRefs.current[p.id] = el} x={(x1 + x2)/2 - 65} y={(y1 + y2)/2 - 45} width="130" height="90" className="pointer-events-auto">
-                                                <div className="group relative flex flex-col items-center justify-center p-1 bg-white/95 rounded-lg border border-slate-200 shadow-xl backdrop-blur-sm transition-transform hover:scale-110">
-                                                    <div className="text-[10px] font-black text-blue-600 leading-tight">DN{p.dn}</div>
-                                                    <div className="text-[9px] font-black text-emerald-600">{p.lpm.toFixed(0)} LPM</div>
-                                                    <div className="text-[8px] font-bold text-slate-400">{p.velocity.toFixed(2)} m/s</div>
-                                                    <button onClick={() => setPipes(prev => prev.filter(pip => pip.id !== p.id))} className="absolute -top-2 -right-2 bg-white border border-slate-200 rounded-full shadow-md text-red-500 p-1 opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-50 active:scale-90"><Icons.X /></button>
+                                            <path ref={el => pathRefs.current[p.id] = el} d={getPathD(x1, y1, x2, y2, p.fromPort, p.toPort)} stroke={p.warning ? "#f59e0b" : "#2563eb"} strokeWidth={p.warning ? 14 : 8} fill="none" strokeLinecap="round" className={p.warning ? "warning-pulse" : ""} />
+                                            <foreignObject ref={el => labelRefs.current[p.id] = el} x={(x1 + x2)/2 - 120} y={(y1 + y2)/2 - 80} width="240" height="160" className="pointer-events-auto">
+                                                <div className="group relative flex flex-col items-center justify-center p-6 bg-slate-900 rounded-[3rem] border-4 border-white shadow-2xl transition-all hover:scale-110">
+                                                    <div className="text-6xl font-black text-white leading-none mb-1 tracking-tighter italic">DN{p.dn}</div>
+                                                    <div className="text-2xl font-black text-blue-400 mb-2 leading-none">{p.lpm.toFixed(0)} <small className="text-xs font-bold">LPM</small></div>
+                                                    {p.warning && <div className="text-[12px] font-black uppercase text-red-500 mt-2 flex items-center gap-2 animate-pulse leading-none font-black"><Icons.AlertTriangle /> 流速過載</div>}
+                                                    <button onClick={() => setPipes(prev => prev.filter(pip => pip.id !== p.id))} className="absolute -top-4 -right-4 bg-white border-2 border-slate-100 rounded-full shadow-lg text-red-500 p-2 opacity-0 group-hover:opacity-100 hover:bg-red-50 transition-all active:scale-75"><Icons.X /></button>
                                                 </div>
                                             </foreignObject>
                                         </g>
                                     );
                                 })}
-                                {snapPort && <circle cx={snapPort.x} cy={snapPort.y} r={15} fill="none" className="snap-guide" />}
-                                {activeConn && <path ref={ghostPathRef} d="" stroke="#f97316" strokeWidth={4} fill="none" strokeDasharray="6,4" />}
+                                {snapPort && <circle cx={snapPort.x} cy={snapPort.y} r={40} fill="none" stroke="#f97316" strokeWidth={6} strokeDasharray="10" className="animate-pulse active-snap" />}
+                                {activeConn && <path ref={ghostPathRef} d="" stroke="#f97316" strokeWidth={6} fill="none" strokeDasharray="10,6" />}
                             </svg>
 
                             {nodes.map(node => {
-                                const isS = node.templateId === 'SOURCE'; const isP = node.type === 'PIVOT';
-                                const lib = library.find(l => l.id === node.templateId);
-                                const isSel = selectedNodes.has(node.id);
-                                const flowLpm = nodeFlows[node.id] || 0; const sizing = HydraulicEngine.getSizing(flowLpm / 60);
-                                let w = 240, h = 160; if(isS){ w = 380; h = 200; } else if(isP){ w = 320; h = 180; } else if(node.isMerged){ w = 240; h = 80 + (Object.keys(node.composition || {}).length * 28) + 40; }
+                                const isS = node.templateId === 'SOURCE'; const isP = node.type === 'PIVOT'; const lib = library.find(l => l.id === node.templateId);
+                                const isSel = selectedNodes.has(node.id); const flowLpm = nodeFlows[node.id] || 0; const sizing = HydraulicEngine.getSizing(flowLpm / 60);
+                                
+                                // ✅ 統一極大型尺寸排版
+                                let w=500, h=320; if(isS){ w=550; h=350; } else if(isP){ w=500; h=320; } else if(node.isMerged){ w=500; h=120+(Object.keys(node.composition||{}).length*48)+160; }
 
                                 return (
-                                    <div key={node.id} ref={el => nodeRefs.current[node.id] = el} 
-                                        style={{ left: node.x, top: node.y, width: w, height: h, transform: 'translate3d(0,0,0)', outline: isSel ? '4px dashed #3b82f6' : 'none', outlineOffset: '4px' }}
-                                        className={`absolute bg-white rounded-3xl border-2 z-10 flex flex-col transition-all duration-300 node-layer ${isS ? 'source-glow' : 'shadow-2xl'}`}>
-                                        <div className={`h-11 shrink-0 ${isS?'h-14':''} ${node.color || (isS ? 'bg-yellow-400 text-slate-900' : (isP ? 'bg-slate-600 text-white' : (node.isMerged ? 'bg-indigo-600 text-white' : (lib?.color || 'bg-slate-400 text-white'))))} flex items-center px-4 justify-between cursor-move rounded-t-[22px] shadow-sm` }
-                                            onMouseDown={e => { 
-                                                e.preventDefault(); e.stopPropagation(); document.body.classList.add('dragging-active');
-                                                isDraggingRef.current = true;
+                                    <div key={node.id} ref={el => nodeRefs.current[node.id] = el} 
+                                        style={{ left: node.x, top: node.y, width: w, height: h, transform: 'translate3d(0,0,0)', outline: isSel ? '12px dashed #3b82f6' : 'none', outlineOffset: '18px' }}
+                                        onClick={e => { e.stopPropagation(); if (e.shiftKey) setSelectedNodes(prev => { const n=new Set(prev); n.has(node.id)?n.delete(node.id):n.add(node.id); return n; }); else setSelectedNodes(new Set([node.id])); }}
+                                        className={`absolute bg-white rounded-[4.5rem] border-[8px] z-10 flex flex-col node-layer ${isS ? 'source-glow' : 'shadow-[0_40px_100px_-20px_rgba(0,0,0,0.4)]'}`}>
+                                        
+                                        {/* ✅ 標題顏色條 */}
+                                        <div className={`h-16 shrink-0 ${isS?'h-20':''} ${node.color || (isS ? 'bg-yellow-400 text-slate-900' : (isP ? 'bg-slate-800 text-white' : (node.isMerged ? 'bg-indigo-700 text-white' : (lib?.color || 'bg-slate-400 text-white'))))} flex items-center px-10 justify-between cursor-move rounded-t-[3.75rem] shadow-xl relative` }
+                                            onMouseDown={e => { 
+                                                e.stopPropagation(); document.body.classList.add('dragging-active'); isDraggingRef.current = true;
                                                 const movingSet = selectedNodes.has(node.id) ? selectedNodes : new Set([node.id]);
-                                                const initialPosMap = {}; movingSet.forEach(mId => { const n = renderNodeMap[mId]; if(n) initialPosMap[mId] = { x: n.x, y: n.y }; });
-                                                const connected = pipesRef.current.filter(p => movingSet.has(p.fromId) || movingSet.has(p.toId));
-                                                dragInfo.current = { isDragging: true, id: node.id, startX: e.clientX, startY: e.clientY, initialPositions: initialPosMap, connectedPipeIds: connected.map(p=>p.id), dx: 0, dy: 0 }; 
-                                                nodeRefs.current[node.id]?.classList.add('is-dragging');
+                                                const connected = pipesSnapshot.current.filter(p => movingSet.has(p.fromId) || movingSet.has(p.toId));
+                                                dragInfo.current = { isDragging: true, id: node.id, startX: e.clientX, startY: e.clientY, connectedPipeIds: connected.map(p=>p.id), dx: 0, dy: 0 }; 
                                             }}>
-                                            <div className={`flex items-center gap-2 font-black uppercase tracking-widest ${isS ? 'text-sm' : 'text-[11px]'}`}>{isS ? <Icons.HardDrive /> : isP ? <Icons.Share2 /> : (node.isMerged ? <Icons.Layers /> : 'DEV')}{node.id.split('-')[0]}</div>
-                                            <div className="flex items-center gap-2">
-                                                {isP && <button onClick={(e) => { e.stopPropagation(); setActiveColorPickerId(activeColorPickerId === node.id ? null : node.id); }} className="opacity-60 hover:opacity-100 p-1"><Icons.Palette /></button>}
-                                                <button onClick={(e) => { e.stopPropagation(); setNodes(prev => prev.filter(n => n.id !== node.id)); setPipes(prev => prev.filter(p => p.fromId !== node.id && p.toId !== node.id)); }} className="opacity-40 hover:opacity-100 p-1"><Icons.Trash2 /></button>
+                                            <input className={`font-black bg-transparent outline-none w-full border-b-4 border-transparent focus:border-white/50 tracking-tighter text-white ${isS ? 'text-4xl' : (isP ? 'text-3xl' : 'text-2xl')}`} value={node.label || lib?.label || ''} onChange={e => setNodes(prev => prev.map(n => n.id === node.id ? { ...n, label: e.target.value } : n))} />
+                                            <div className="flex items-center gap-3">
+                                                {isP && <button onClick={(e) => { e.stopPropagation(); setActiveColorPickerId(activeColorPickerId === node.id ? null : node.id); }} className="text-white opacity-60 hover:opacity-100 p-2 transform hover:scale-125 transition-all"><Icons.Palette /></button>}
+                                                <button onClick={e => { e.stopPropagation(); setNodes(prev => prev.filter(n => n.id !== node.id)); }} className="text-white opacity-40 hover:opacity-100 p-2 transform hover:scale-125 transition-all"><Icons.Trash2 /></button>
                                             </div>
-                                        </div>
-                                        <div className="p-4 flex-1 flex flex-col text-slate-800 overflow-hidden">
-                                            <input className={`font-black bg-transparent outline-none pointer-events-auto border-b border-transparent focus:border-blue-200 mb-2 ${isS ? 'text-xl' : (isP ? 'text-lg' : 'text-base')}`} value={node.label || ''} onChange={e => setNodes(prev => prev.map(n => n.id === node.id ? { ...n, label: e.target.value } : n))} />
-                                            {node.isMerged && node.composition && (
-                                                <div className="mt-1 border-t border-slate-100 pt-2 space-y-1 overflow-hidden">
-                                                    {Object.values(node.composition).map((info, idx) => (<div key={idx} className="text-[10px] leading-tight text-slate-500 flex justify-between items-center bg-slate-50 px-2 py-1.5 rounded-lg border border-slate-100"><span className="truncate font-bold">{info.label}</span><span className="font-black text-blue-600 ml-2">x{info.qty}</span></div>))}
-                                                    <button onClick={() => handleUnmerge(node.id)} className="text-[10px] text-blue-500 font-bold underline mt-1">取消合併恢復設備</button>
+                                            {/* 選色器彈窗 */}
+                                            {activeColorPickerId === node.id && (
+                                                <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-6 bg-white p-4 rounded-[2rem] shadow-2xl border-4 z-[999] w-[180px] grid grid-cols-3 gap-3" onMouseDown={e => e.stopPropagation()}>
+                                                    {COLOR_PALETTE.map(c => (<div key={c} className={`w-10 h-10 rounded-full cursor-pointer ${c} ${node.color === c ? 'ring-4 ring-slate-800 ring-offset-2' : ''}`} onClick={() => { setNodes(nodes.map(n => n.id === node.id ? { ...n, color: c } : n)); setActiveColorPickerId(null); }} />))}
                                                 </div>
                                             )}
-                                            <div className="mt-auto flex flex-col border-t border-slate-100 pt-2 gap-1.5">
+                                        </div>
+
+                                        <div className="p-10 flex-1 flex flex-col text-slate-800 overflow-hidden">
+                                            {/* ✅ 合併明細清單：一排一排顯示 */}
+                                            {node.isMerged && (
+                                                <div className="mt-2 border-b-4 pb-5 mb-5 overflow-hidden">
+                                                    {Object.values(node.composition).map((c,i)=>(
+                                                        <div key={i} className="text-2xl text-slate-500 flex justify-between font-black mb-3 italic tracking-tight">
+                                                            <span>{c.label}</span> <b className="text-blue-600">x{c.qty}</b>
+                                                        </div>
+                                                    ))}
+                                                    <button onClick={(e) => { e.stopPropagation(); handleUnmerge(node.id); }} className="text-xl text-blue-600 font-bold underline mt-4 pointer-events-auto">解除大區合併</button>
+                                                </div>
+                                            )}
+
+                                            <div className="mt-auto flex flex-col gap-5">
                                                 {!isS && !isP && !node.isMerged && (
-                                                    <div className="flex justify-between items-center mb-1">
-                                                        <span className="text-[11px] opacity-40 font-black uppercase">Quantity (Qty)</span>
-                                                        <div className="flex items-center gap-2">
-                                                            <button onClick={() => setNodes(prev => prev.map(n => n.id === node.id ? { ...n, qty: Math.max(1, (n.qty || 1) - 1) } : n))} className="w-5 h-5 flex items-center justify-center bg-slate-100 rounded hover:bg-slate-200 font-bold text-xs">-</button>
-                                                            <input type="number" className="w-10 text-center text-xs font-black bg-slate-50 border rounded outline-none" value={node.qty || 1} onChange={e => setNodes(prev => prev.map(n => n.id === node.id ? { ...n, qty: Math.max(1, parseInt(e.target.value) || 1) } : n))} />
-                                                            <button onClick={() => setNodes(prev => prev.map(n => n.id === node.id ? { ...n, qty: (n.qty || 1) + 1 } : n))} className="w-5 h-5 flex items-center justify-center bg-slate-100 rounded hover:bg-slate-200 font-bold text-xs">+</button>
+                                                    <div className="flex justify-between items-center bg-slate-50 p-5 rounded-[2.5rem] border-2 border-slate-200 mb-2">
+                                                        <span className="text-xs opacity-50 font-black tracking-widest uppercase leading-none">機組數量調配</span>
+                                                        <div className="flex items-center gap-8 pointer-events-auto">
+                                                            <button onClick={() => setNodes(prev => prev.map(n => n.id === node.id ? { ...n, qty: Math.max(1, (n.qty || 1) - 1) } : n))} className="w-14 h-14 flex items-center justify-center bg-white rounded-2xl border-4 shadow-md hover:bg-slate-50 font-black text-3xl">-</button>
+                                                            <input type="number" className="w-20 text-center text-3xl font-black bg-transparent outline-none" value={node.qty || 1} onChange={e => setNodes(prev => prev.map(n => n.id === node.id ? { ...n, qty: Math.max(1, parseInt(e.target.value) || 1) } : n))} />
+                                                            <button onClick={() => setNodes(prev => prev.map(n => n.id === node.id ? { ...n, qty: (n.qty || 1) + 1 } : n))} className="w-14 h-14 flex items-center justify-center bg-white rounded-2xl border-4 shadow-md hover:bg-slate-50 font-black text-3xl">+</button>
                                                         </div>
                                                     </div>
                                                 )}
-                                                <div className="flex justify-between items-center"><span className="text-[11px] opacity-40 font-black uppercase">Calculated</span><span className={`font-black ${(isS || isP)?'text-lg':'text-sm'} text-blue-600`}>{flowLpm.toFixed(0)} LPM</span></div>
-                                                <div className="flex justify-between items-center"><span className="text-[11px] opacity-40 font-black uppercase">Suggested</span><span className={`font-black px-2 py-0.5 rounded ${sizing.warning ? 'bg-red-100 text-red-600 animate-pulse' : 'bg-emerald-100 text-emerald-600'}`}>DN{sizing.dn}</span></div>
-                                                {isP && activeColorPickerId === node.id && (
-                                                    <div className="absolute top-[50px] right-[-50px] bg-white border p-2 rounded-2xl shadow-2xl z-[300] grid grid-cols-2 gap-2 pointer-events-auto animate-in zoom-in" onMouseLeave={() => setActiveColorPickerId(null)}>
-                                                        {COLOR_PALETTE.map(c => ( <div key={c} onClick={() => { setNodes(prev => prev.map(n => n.id === node.id ? { ...n, color: c } : n)); setActiveColorPickerId(null); }} className={`w-6 h-6 rounded-full ${c} color-dot ${node.color === c ? 'ring-4 ring-slate-800 ring-offset-2' : ''}`} /> ))}
-                                                    </div>
-                                                )}
+                                                
+                                                <div className="flex justify-between items-end px-2 leading-none">
+                                                    <span className="text-xs opacity-50 font-black tracking-widest uppercase mb-1">{isS ? 'SYSTEM SUM' : (isP ? 'BRANCH SUM' : 'UNIT LOAD')}</span>
+                                                    <span className={`font-black ${(isS || isP)?'text-7xl':'text-6xl'} text-blue-700 tracking-tighter`}>{flowLpm.toFixed(0)} <small className="text-xl font-bold opacity-40 leading-none">LPM</small></span>
+                                                </div>
+                                                <div className="flex justify-between items-center px-2 leading-none">
+                                                    <span className="text-xs opacity-50 font-black tracking-widest uppercase">MATCH PIPE</span>
+                                                    <span className={`font-black ${(isS || isP)?'text-7xl':'text-6xl'} px-8 py-2 rounded-[2.5rem] ${sizing.warning ? 'bg-red-100 text-red-600 animate-pulse' : 'bg-emerald-100 text-emerald-600'} transition-all shadow-inner leading-none`}>DN{sizing.dn}</span>
+                                                </div>
                                             </div>
                                         </div>
+                                        
+                                        {/* ✅ 連接點：動態鎖定在圖塊最邊緣 */}
                                         {['left', 'right', 'top', 'bottom'].map(port => {
                                             const off = getPortOffset(port, node);
-                                            return (<div key={port} style={{ left: off.x-10, top: off.y-10 }} className={`absolute w-5 h-5 rounded-full border-2 z-20 cursor-crosshair bg-slate-800 border-white hover:scale-150 hover:bg-orange-500 transition-all shadow-md`}
-                                                    onMouseDown={(e) => { e.preventDefault(); e.stopPropagation(); document.body.classList.add('dragging-active'); const pOff = getPortOffset(port, node); setActiveConn({ fromId: node.id, fromPort: port, startX: node.x + pOff.x, startY: node.y + pOff.y }); }} /> );
+                                            const isActive = snapPort?.nodeId === node.id && snapPort?.port === port;
+                                            return (<div key={port} style={{ left: off.x-22, top: off.y-22 }} className={`absolute w-12 h-12 rounded-full border-[8px] border-white z-20 port-dot shadow-2xl transition-all ${isActive ? 'snap-active' : ''}`}
+                                                    onMouseDown={e => { e.preventDefault(); e.stopPropagation(); const pO = getPortOffset(port, node); setActiveConn({ fromId: node.id, fromPort: port, startX: node.x + pO.x, startY: node.y + pO.y }); }} /> );
                                         })}
                                     </div>
                                 );
                             })}
                         </div>
-                        <div className="absolute top-6 right-6 bg-slate-900/90 backdrop-blur text-white p-4 rounded-3xl shadow-2xl min-w-[200px] z-[250] flex flex-col gap-3 border border-white/10">
-                            <div className="flex justify-between items-center text-[11px] font-black uppercase opacity-60 tracking-widest"><span>View Scale</span><span>{(scale * 100).toFixed(0)}%</span></div>
-                            <button onClick={() => { setScale(0.6); setOffset({ x: window.innerWidth/2-10000*0.6, y: window.innerHeight/2-10000*0.6 }); }} className="bg-blue-600 text-white py-3 rounded-2xl font-black text-xs uppercase tracking-widest transition-all hover:bg-blue-500 hover:scale-105 active:scale-95 shadow-lg shadow-blue-900/40">Reset View</button>
+                        {/* 視角與縮放控制面板 */}
+                        <div className="absolute top-6 right-6 bg-slate-900/95 backdrop-blur text-white p-5 rounded-[2rem] shadow-2xl min-w-[200px] z-[250] flex flex-col gap-4 border border-white/10 text-center">
+                            <div className="flex justify-between items-center text-xs font-black uppercase opacity-60 tracking-[0.2em]"><span>Zoom Scale</span><span>{(scale * 100).toFixed(0)}%</span></div>
+                            <button onClick={() => { setScale(0.6); setOffset({ x: window.innerWidth/2-10000*0.6, y: window.innerHeight/2-10000*0.6 }); }} className="bg-blue-600 text-white py-4 rounded-[1.5rem] font-black text-sm uppercase shadow-lg hover:bg-blue-500 active:scale-95 transition-all tracking-widest">Reset View 1:1</button>
                         </div>
                     </main>
-
-                    <div className={`absolute left-0 right-0 bottom-0 bg-white shadow-[0_-20px_50px_-12px_rgba(0,0,0,0.2)] z-[180] transition-all duration-500 rounded-t-[40px] border-t overflow-hidden ${drawerOpen ? 'h-[480px]' : 'h-14'}`}>
-                        <div className="h-14 px-10 flex items-center justify-between bg-slate-900 text-white cursor-pointer select-none" onClick={() => setDrawerOpen(o => !o)}>
-                            <div className="flex items-center gap-3"><div className="bg-blue-500 w-2 h-2 rounded-full animate-pulse"/> <span className="font-black text-xs uppercase tracking-[0.2em]">Hydraulic System Summary Report</span></div>
-                            <div className="flex items-center gap-4">
-                                <span className="text-[10px] font-bold opacity-50 uppercase">Total Pipes: {results.length}</span>
-                                <Icons.ChevronUp className={`${drawerOpen ? 'rotate-180' : ''} transition-transform duration-500`} />
-                            </div>
-                        </div>
-                        {drawerOpen && (
-                            <div className="h-[426px] overflow-y-auto p-10 bg-slate-50">
-                                <table className="w-full text-sm border-collapse">
-                                    <thead className="sticky top-0 bg-slate-100 font-black text-slate-500 text-[10px] uppercase tracking-widest">
-                                        <tr><th className="px-6 py-4 text-left rounded-l-2xl">Pipe Track</th><th className="px-6 py-4 text-center">Flow (LPM)</th><th className="px-6 py-4 text-center">DN Size</th><th className="px-6 py-4 text-center">Velocity</th><th className="px-6 py-4 text-right rounded-r-2xl">Status</th></tr>
-                                    </thead>
-                                    <tbody className="divide-y divide-slate-100">
-                                        {results.map(p => (
-                                            <tr key={p.id} className="hover:bg-blue-50/40 transition-colors group">
-                                                <td className="px-6 py-5 font-mono text-[11px] font-bold text-slate-400 group-hover:text-blue-600 transition-colors">{p.fromId} ➔ {p.toId}</td>
-                                                <td className="px-6 py-5 text-center font-black text-slate-700">{p.lpm.toFixed(0)}</td>
-                                                <td className="px-6 py-5 text-center font-black text-slate-900"><span className="bg-white px-3 py-1 rounded-lg border shadow-sm">DN{p.dn}</span></td>
-                                                <td className={`px-6 py-5 text-center font-black ${p.velocity > 2.8 ? 'text-red-600' : 'text-emerald-600'}`}>{p.velocity.toFixed(2)} m/s</td>
-                                                <td className="px-6 py-5 text-right">
-                                                    {p.velocity > 2.8 ? <span className="bg-red-500 text-white px-4 py-1.5 rounded-full text-[10px] font-black shadow-lg shadow-red-200">VELOCITY OVER</span> : <span className="bg-emerald-500 text-white px-4 py-1.5 rounded-full text-[10px] font-black shadow-lg shadow-emerald-200">NORMAL</span>}
-                                                </td>
-                                            </tr>
-                                        ))}
-                                    </tbody>
-                                </table>
-                            </div>
-                        )}
-                    </div>
                 </div>
             );
         }
