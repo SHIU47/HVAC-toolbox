@@ -61,24 +61,68 @@
                 : `M ${x1} ${y1} C ${mX} ${y1}, ${mX} ${y2}, ${x2} ${y2}`;
         };
 
-        const CP = 4.186; 
         const PIPE_SIZING_DATA = [
-            { mm: 20, maxLpm: 19.5,  internal: 20.93 },
-            { mm: 25, maxLpm: 31.0,  internal: 26.64 },
-            { mm: 32, maxLpm: 50.0,  internal: 35.04 },
-            { mm: 40, maxLpm: 90.0,  internal: 40.90 },
-            { mm: 50, maxLpm: 140.0, internal: 52.70 },
-            { mm: 65, maxLpm: 219.0, internal: 67.70 },
-            { mm: 80, maxLpm: 370.0, internal: 80.70 },
-            { mm: 100, maxLpm: 560.0, internal: 105.30 },
-            { mm: 125, maxLpm: 1020,  internal: 130.80 },
-            { mm: 150, maxLpm: 1594,  internal: 155.20 },
-            { mm: 200, maxLpm: 2295,  internal: 204.70 },
-            { mm: 250, maxLpm: 4080,  internal: 254.20 },
-            { mm: 300, maxLpm: 6375,  internal: 304.70 },
-            { mm: 400, maxLpm: 16064, internal: 400.0 },
-            { mm: 1300, maxLpm: 227656, internal: 1300.0 }
-        ];
+    // 小型管徑 (依據文件第 1 頁)
+    { mm: 20, maxLpm: 19.5, internal: 20.93 }, [cite: 2, 6]
+    { mm: 25, maxLpm: 31.0, internal: 26.64 }, [cite: 3, 7]
+    { mm: 32, maxLpm: 90.0, internal: 35.04 }, [cite: 4, 8]
+    { mm: 40, maxLpm: 140.0, internal: 40.90 }, [cite: 5, 9]
+    { mm: 50, maxLpm: 219.0, internal: 52.70 }, [cite: 10, 16]
+    { mm: 65, maxLpm: 370.0, internal: 67.70 }, [cite: 11, 13]
+    { mm: 80, maxLpm: 560.0, internal: 80.70 }, [cite: 12, 14]
+    { mm: 100, maxLpm: 1020, internal: 105.30 }, [cite: 38, 41]
+    { mm: 125, maxLpm: 1594, internal: 130.80 }, [cite: 39, 42]
+    { mm: 150, maxLpm: 2295, internal: 155.20 }, [cite: 31]
+    { mm: 200, maxLpm: 4080, internal: 204.70 }, [cite: 32]
+    { mm: 250, maxLpm: 6375, internal: 254.20 }, [cite: 33]
+    { mm: 300, maxLpm: 9180, internal: 304.70 }, [cite: 40, 33]
+
+    // 中大型管徑 (每 50mm 為單位，依據文件後續數據)
+    { mm: 350, maxLpm: 16064, internal: 350.0 }, [cite: 77, 83]
+    { mm: 400, maxLpm: 20981, internal: 400.0 }, [cite: 78, 84]
+    { mm: 450, maxLpm: 26554, internal: 450.0 }, [cite: 79, 85]
+    { mm: 500, maxLpm: 32783, internal: 500.0 }, [cite: 80, 86]
+    { mm: 550, maxLpm: 39667, internal: 550.0 }, [cite: 81, 87]
+    { mm: 600, maxLpm: 47207, internal: 600.0 }, [cite: 82, 98]
+    { mm: 650, maxLpm: 55403, internal: 650.0 }, [cite: 100]
+    { mm: 700, maxLpm: 64254, internal: 700.0 }, [cite: 101, 107]
+    { mm: 750, maxLpm: 73761, internal: 750.0 }, [cite: 102, 108]
+    { mm: 800, maxLpm: 83923, internal: 800.0 }, [cite: 103, 109]
+    { mm: 850, maxLpm: 94742, internal: 850.0 }, [cite: 104, 110]
+    { mm: 900, maxLpm: 106215, internal: 900.0 }, [cite: 105, 111]
+    { mm: 950, maxLpm: 118345, internal: 950.0 }, [cite: 106, 112]
+    { mm: 1000, maxLpm: 131130, internal: 1000.0 }, [cite: 113]
+    { mm: 1050, maxLpm: 160634, internal: 1050.0 }, [cite: 163, 176]
+    { mm: 1100, maxLpm: 176297, internal: 1100.0 }, [cite: 164, 177]
+    { mm: 1150, maxLpm: 192688, internal: 1150.0 }, [cite: 165, 178]
+    { mm: 1200, maxLpm: 209808, internal: 1200.0 }, [cite: 166, 179]
+    { mm: 1250, maxLpm: 227656, internal: 1250.0 }, [cite: 167, 180]
+    { mm: 1300, maxLpm: 246232, internal: 1300.0 }, [cite: 168, 181]
+    { mm: 1350, maxLpm: 265538, internal: 1350.0 }, [cite: 169, 182]
+    { mm: 1400, maxLpm: 285571, internal: 1400.0 }, [cite: 170, 183]
+    { mm: 1450, maxLpm: 306333, internal: 1450.0 }, [cite: 171, 184]
+    { mm: 1500, maxLpm: 327824, internal: 1500.0 }, [cite: 172, 185]
+    { mm: 1550, maxLpm: 350043, internal: 1550.0 }, [cite: 172, 186]
+    { mm: 1600, maxLpm: 372991, internal: 1600.0 }, [cite: 173, 187]
+    { mm: 1650, maxLpm: 396667, internal: 1650.0 }, [cite: 174, 188]
+    { mm: 1700, maxLpm: 421072, internal: 1700.0 }, [cite: 175, 189]
+
+    // 特大型管徑 (依據最後一頁數據)
+    { mm: 1750, maxLpm: 446205, internal: 1750.0 }, [cite: 253]
+    { mm: 1800, maxLpm: 472066, internal: 1800.0 }, [cite: 254]
+    { mm: 1850, maxLpm: 498657, internal: 1850.0 }, [cite: 255]
+    { mm: 1900, maxLpm: 525975, internal: 1900.0 }, [cite: 256]
+    { mm: 1950, maxLpm: 554022, internal: 1950.0 }, [cite: 257]
+    { mm: 2000, maxLpm: 582798, internal: 2000.0 }, [cite: 258, 263]
+    { mm: 2050, maxLpm: 612302, internal: 2050.0 }, [cite: 259, 264]
+    { mm: 2100, maxLpm: 642535, internal: 2100.0 }, [cite: 260, 265]
+    { mm: 2150, maxLpm: 673496, internal: 2150.0 }, [cite: 261, 266]
+    { mm: 2200, maxLpm: 705185, internal: 2200.0 }, [cite: 262, 267]
+    { mm: 2250, maxLpm: 737604, internal: 2250.0 }, [cite: 268]
+    { mm: 2300, maxLpm: 770750, internal: 2300.0 }, [cite: 269]
+    { mm: 2350, maxLpm: 804625, internal: 2350.0 }, [cite: 269]
+    { mm: 2400, maxLpm: 839229, internal: 2400.0 } [cite: 269]
+];
 
         const HydraulicEngine = {
             calculateLps: (kw, qty, dt) => (Number(kw) * Number(qty || 0)) / (CP * (Number(dt) || 5)),
@@ -660,3 +704,4 @@
     </script>
 </body>
 </html>
+
