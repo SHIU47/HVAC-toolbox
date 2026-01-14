@@ -2,8 +2,8 @@
 <html lang="zh-TW">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>HydroPuzzle Pro - 專業核心優化版</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>HydroPuzzle Pro - 專業核心觸控優化版</title>
     <!-- 載入 React 與 Babel -->
     <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
@@ -11,7 +11,11 @@
     <!-- 載入 Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        body, html { margin: 0; padding: 0; height: 100%; overflow: hidden; font-family: -apple-system, "Segoe UI", Roboto, "Microsoft JhengHei", sans-serif; }
+        body, html { 
+            margin: 0; padding: 0; height: 100%; overflow: hidden; 
+            font-family: -apple-system, "Segoe UI", Roboto, "Microsoft JhengHei", sans-serif;
+            touch-action: none; /* 停用瀏覽器預設手勢，交由程式控制 */
+        }
         #root { height: 100vh; }
         ::-webkit-scrollbar { width: 8px; height: 8px; }
         ::-webkit-scrollbar-track { background: transparent; }
@@ -35,7 +39,7 @@
         .node-layer { will-change: transform; transition: outline 0.2s, box-shadow 0.3s; pointer-events: auto !important; }
         .is-dragging { z-index: 5000 !important; cursor: grabbing !important; }
 
-        .modal-overlay { background: rgba(15, 23, 42, 0.85); backdrop-filter: blur(12px); }
+        .modal-overlay { background: rgba(15, 23, 42, 0.85); backdrop-filter: blur(12px); z-index: 2000; }
         .modal-content { animation: modal-in 0.4s cubic-bezier(0.34, 1.56, 0.64, 1); }
         @keyframes modal-in {
             from { opacity: 0; transform: scale(0.8) translateY(40px); }
@@ -67,7 +71,6 @@
             will-change: left, top;
         }
 
-        /* 浮動預覽組件 */
         .ghost-group {
             opacity: 0.5;
             pointer-events: none;
@@ -319,13 +322,13 @@
             return (
                 <div className="w-full h-screen bg-slate-100 flex flex-col overflow-hidden text-slate-900 leading-tight">
                     {message && (
-                        <div className="fixed top-20 left-1/2 -translate-x-1/2 bg-slate-900 text-white px-8 py-3 rounded-full z-[1000] shadow-2xl flex items-center gap-3 animate-bounce border border-slate-700 font-black">
+                        <div className="fixed top-20 left-1/2 -translate-x-1/2 bg-slate-900 text-white px-8 py-3 rounded-full z-[3000] shadow-2xl flex items-center gap-3 animate-bounce border border-slate-700 font-black">
                             <Icons.AlertCircle className="text-yellow-400" /> <span>{message}</span>
                         </div>
                     )}
                     {showExportModal && (
-                        <div className="fixed inset-0 z-[2000] flex items-center justify-center modal-overlay">
-                            <div className="bg-white w-[400px] rounded-[3rem] p-10 shadow-2xl modal-content border-t-8 border-blue-600 text-center">
+                        <div className="fixed inset-0 z-[4000] flex items-center justify-center modal-overlay">
+                            <div className="bg-white w-[90%] max-w-[400px] rounded-[3rem] p-8 md:p-10 shadow-2xl modal-content border-t-8 border-blue-600 text-center">
                                 <div className="bg-blue-50 p-6 rounded-full text-blue-600 mb-6 inline-block"><Icons.Lock /></div>
                                 <h3 className="text-xl font-black text-slate-800 mb-2 underline decoration-blue-200">安全授權驗證</h3>
                                 <input type="password" autoFocus className="w-full p-4 bg-slate-50 border-2 rounded-2xl mb-8 text-center text-xl tracking-[0.5em] font-black outline-none focus:border-blue-500" value={passwordInput} onChange={(e) => setPasswordInput(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && confirmExport()} />
@@ -338,57 +341,30 @@
                     )}
                     
                     {showHelpModal && (
-                        <div className="fixed inset-0 z-[3000] flex items-center justify-center modal-overlay" onClick={() => setShowHelpModal(false)}>
-                            <div className="bg-white w-[650px] max-h-[85vh] rounded-[3rem] p-10 shadow-2xl modal-content border-t-8 border-indigo-600 overflow-y-auto" onClick={e => e.stopPropagation()}>
+                        <div className="fixed inset-0 z-[5000] flex items-center justify-center modal-overlay" onClick={() => setShowHelpModal(false)}>
+                            <div className="bg-white w-[90%] max-w-[650px] max-h-[85vh] rounded-[3rem] p-8 md:p-10 shadow-2xl modal-content border-t-8 border-indigo-600 overflow-y-auto" onClick={e => e.stopPropagation()}>
                                 <div className="flex justify-between items-start mb-6">
                                     <div>
-                                        <h2 className="text-3xl font-black text-slate-800 tracking-tight leading-none mb-2">操作指南說明書</h2>
-                                        <p className="text-slate-400 text-sm font-bold uppercase tracking-widest">HydroPuzzle Pro User Manual</p>
+                                        <h2 className="text-2xl md:text-3xl font-black text-slate-800 tracking-tight leading-none mb-2">操作指南說明書</h2>
+                                        <p className="text-slate-400 text-xs font-bold uppercase tracking-widest">HydroPuzzle Pro User Manual</p>
                                     </div>
                                     <button onClick={() => setShowHelpModal(false)} className="bg-slate-100 p-3 rounded-full hover:bg-slate-200 transition-all"><Icons.X /></button>
                                 </div>
                                 <div className="space-y-8 text-slate-600">
                                     <section>
-                                        <h4 className="flex items-center gap-2 text-indigo-600 font-black text-lg mb-2"><div className="w-2 h-6 bg-indigo-600 rounded-full" /> 1. 規格定義 (Specifications)</h4>
-                                        <p className="font-bold pl-4">在「規格定義」分頁中，您可以定義系統內所有標準設備的模板（kW、DT 等）。修改模板會自動即時更新地圖上所有已部署的同型設備流量。</p>
+                                        <h4 className="flex items-center gap-2 text-indigo-600 font-black text-lg mb-2"><div className="w-2 h-6 bg-indigo-600 rounded-full" /> 1. 規格定義</h4>
+                                        <p className="font-bold pl-4">定義設備模板（kW、DT）。修改模板會自動即時更新地圖上所有已部署設備流量。</p>
                                     </section>
                                     <section>
-                                        <h4 className="flex items-center gap-2 text-indigo-600 font-black text-lg mb-2"><div className="w-2 h-6 bg-indigo-600 rounded-full" /> 2. 部署與連結 (Deployment)</h4>
-                                        <p className="font-bold pl-4 mb-2">從左側側邊欄拖拽或點擊加號新增設備：</p>
+                                        <h4 className="flex items-center gap-2 text-indigo-600 font-black text-lg mb-2"><div className="w-2 h-6 bg-indigo-600 rounded-full" /> 2. 部署與連結</h4>
+                                        <p className="font-bold pl-4 mb-2">從側邊欄點擊加號新增。拖拽設備上的深藍色圓點並連線。</p>
+                                    </section>
+                                    <section>
+                                        <h4 className="flex items-center gap-2 text-indigo-600 font-black text-lg mb-2"><div className="w-2 h-6 bg-indigo-600 rounded-full" /> 3. 觸控支援 (New)</h4>
                                         <ul className="list-disc pl-10 font-bold space-y-1">
-                                            <li><span className="text-yellow-600">Header</span>：系統總彙整管路。</li>
-                                            <li><span className="text-slate-800">Pivot</span>：中繼分區支點，用於邏輯分層。</li>
-                                            <li>點擊設備四周的 <span className="text-indigo-600">深藍色圓點</span> 並拖向其他設備即可建立管線連線。</li>
+                                            <li><span className="text-blue-600">單指</span>：移動設備、建立連線。</li>
+                                            <li><span className="text-emerald-600">雙指</span>：縮放畫布、平移視角。</li>
                                         </ul>
-                                    </section>
-                                    <section>
-                                        <h4 className="flex items-center gap-2 text-indigo-600 font-black text-lg mb-2"><div className="w-2 h-6 bg-indigo-600 rounded-full" /> 3. 大區合併功能 (Smart Merging)</h4>
-                                        <p className="font-bold pl-4">按住 <kbd className="bg-slate-100 px-2 rounded">Shift</kbd> 並點選多個設備，或使用「複製模式」框選設備，頂部會出現「執行大總量合併」。合併後會產生一個高負載彙整區域，方便管理複雜的大型案場。</p>
-                                    </section>
-                                    <section>
-                                        <h4 className="flex items-center gap-2 text-indigo-600 font-black text-lg mb-2"><div className="w-2 h-6 bg-indigo-600 rounded-full" /> 4. 捷徑與系統技巧 (Pro Tips)</h4>
-                                        <div className="grid grid-cols-2 gap-4 pl-4 font-black">
-                                            <div className="bg-indigo-50 p-4 rounded-2xl border-2 border-indigo-100">
-                                                <div className="text-indigo-600 text-xs mb-1">萬用取消鍵</div>
-                                                <div className="text-xl italic">ESC Key</div>
-                                                <div className="text-[10px] text-slate-400 mt-2">隨時取消當前預覽、框選或連線動作</div>
-                                            </div>
-                                            <div className="bg-emerald-50 p-4 rounded-2xl border-2 border-emerald-100">
-                                                <div className="text-emerald-600 text-xs mb-1">復原操作</div>
-                                                <div className="text-xl italic">Ctrl + Z</div>
-                                                <div className="text-[10px] text-slate-400 mt-2">支援最近 20 次操作回復 (包含移動、刪除、數值修改)</div>
-                                            </div>
-                                            <div className="bg-blue-50 p-4 rounded-2xl border-2 border-blue-100">
-                                                <div className="text-blue-600 text-xs mb-1">視角縮放</div>
-                                                <div className="text-xl italic">Scroll / Pan</div>
-                                                <div className="text-[10px] text-slate-400 mt-2">使用滾輪縮放，或滑鼠中鍵(或Shift+左鍵)平移畫布</div>
-                                            </div>
-                                            <div className="bg-slate-900 p-4 rounded-2xl text-white">
-                                                <div className="text-indigo-400 text-xs mb-1">導出功能</div>
-                                                <div className="text-xl italic">Save to HTML</div>
-                                                <div className="text-[10px] text-slate-400 mt-2">導出的檔案為獨立可運行的專案，點擊「匯入」可接續製作</div>
-                                            </div>
-                                        </div>
                                     </section>
                                 </div>
                                 <button onClick={() => setShowHelpModal(false)} className="w-full mt-10 bg-indigo-600 text-white py-4 rounded-2xl font-black text-xl hover:bg-indigo-700 shadow-xl transition-all">理解，開始製作！</button>
@@ -396,19 +372,18 @@
                         </div>
                     )}
 
-                    <header className="h-14 bg-slate-900 text-white flex items-center px-4 shrink-0 z-[200] shadow-xl">
-                        <div className="flex items-center gap-3 mr-8 border-r border-slate-700 pr-8 font-black uppercase italic">
+                    <header className="h-14 bg-slate-900 text-white flex items-center px-4 shrink-0 z-[1000] shadow-xl">
+                        <div className="flex items-center gap-3 mr-4 md:mr-8 border-r border-slate-700 pr-4 md:pr-8 font-black uppercase italic">
                             <div className="bg-blue-600 p-1.5 rounded-lg shadow-lg"><Icons.HardDrive /></div>
-                            <div className="flex flex-col leading-none tracking-tighter"><span className="text-sm">HydroPuzzle</span><span className="text-[10px] text-blue-400 font-bold">PRO-V4</span></div>
+                            <div className="hidden sm:flex flex-col leading-none tracking-tighter"><span className="text-sm">HydroPuzzle</span><span className="text-[10px] text-blue-400 font-bold">PRO-V4</span></div>
                         </div>
-                        <button onClick={() => setActiveTab('setup')} className={`px-4 h-full text-xs font-bold transition-all ${activeTab === 'setup' ? 'bg-white/10 border-b-2 border-blue-400 text-blue-400' : 'opacity-60'}`}>規格定義</button>
-                        <button onClick={() => setActiveTab('editor')} className={`px-4 h-full text-xs font-bold transition-all ${activeTab === 'editor' ? 'bg-white/10 border-b-2 border-blue-400 text-blue-400' : 'opacity-60'}`}>製圖空間</button>
+                        <button onClick={() => setActiveTab('setup')} className={`px-4 h-full text-xs font-bold transition-all ${activeTab === 'setup' ? 'bg-white/10 border-b-2 border-blue-400 text-blue-400' : 'opacity-60'}`}>規格</button>
+                        <button onClick={() => setActiveTab('editor')} className={`px-4 h-full text-xs font-bold transition-all ${activeTab === 'editor' ? 'bg-white/10 border-b-2 border-blue-400 text-blue-400' : 'opacity-60'}`}>製圖</button>
                         <div className="ml-auto flex items-center gap-2">
                             <button onClick={() => setShowHelpModal(true)} className="bg-indigo-600 hover:bg-indigo-500 text-white w-9 h-9 rounded-full flex items-center justify-center transition-all shadow-lg active:scale-90 border-2 border-white/20"><Icons.HelpCircle /></button>
-                            <div className="w-px h-6 bg-slate-700 mx-1" />
                             <input type="file" accept=".html" className="hidden" ref={fileInputRef} onChange={handleImportHTML} />
-                            <button onClick={() => fileInputRef.current.click()} className="bg-slate-700 hover:bg-slate-600 text-white px-3 py-1.5 rounded-lg text-[10px] font-black flex items-center gap-2 active:scale-95 transition-all shadow-lg"><Icons.Upload /> 匯入</button>
-                            <button onClick={() => {setPasswordInput(""); setShowExportModal(true);}} className="bg-emerald-600 hover:bg-emerald-500 text-white px-3 py-1.5 rounded-lg text-[10px] font-black flex items-center gap-2 active:scale-95 transition-all shadow-lg"><Icons.Save /> 導出</button>
+                            <button onClick={() => fileInputRef.current.click()} className="bg-slate-700 hover:bg-slate-600 text-white px-2 md:px-3 py-1.5 rounded-lg text-[10px] font-black flex items-center gap-2 active:scale-95 transition-all shadow-lg"><Icons.Upload /> <span className="hidden md:inline">匯入</span></button>
+                            <button onClick={() => {setPasswordInput(""); setShowExportModal(true);}} className="bg-emerald-600 hover:bg-emerald-500 text-white px-2 md:px-3 py-1.5 rounded-lg text-[10px] font-black flex items-center gap-2 active:scale-95 transition-all shadow-lg"><Icons.Save /> <span className="hidden md:inline">導出</span></button>
                         </div>
                     </header>
                     <div className="flex-1 relative overflow-hidden">
@@ -429,32 +404,32 @@
                 setLibrary(prev => prev.map(item => item.id === id ? { ...item, [field]: val } : item));
             };
             return (
-                <div className="p-12 h-full overflow-y-auto bg-slate-50" onClick={() => setActivePickerId(null)}>
+                <div className="p-4 md:p-12 h-full overflow-y-auto bg-slate-50" onClick={() => setActivePickerId(null)}>
                     <div className="max-w-[1000px] mx-auto text-left">
-                        <div className="flex justify-between items-center mb-8">
-                            <h2 className="text-3xl font-black text-slate-800 tracking-tight underline decoration-blue-400 decoration-8 underline-offset-8">標準參數庫</h2>
-                            <button onClick={(e) => { e.stopPropagation(); saveHistory(); setLibrary([...library, { id: `lib-${Date.now()}`, label: '新機組模板', kw: 100, dt: 5, color: 'bg-blue-600' }])}} className="bg-blue-600 text-white px-8 py-4 rounded-2xl font-black text-base flex items-center gap-3 shadow-xl hover:bg-blue-700 transition-all"><Icons.Plus /> 新增模板</button>
+                        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8">
+                            <h2 className="text-2xl md:text-3xl font-black text-slate-800 tracking-tight underline decoration-blue-400 decoration-8 underline-offset-8">標準參數庫</h2>
+                            <button onClick={(e) => { e.stopPropagation(); saveHistory(); setLibrary([...library, { id: `lib-${Date.now()}`, label: '新機組模板', kw: 100, dt: 5, color: 'bg-blue-600' }])}} className="w-full md:w-auto bg-blue-600 text-white px-8 py-4 rounded-2xl font-black text-base flex items-center justify-center gap-3 shadow-xl hover:bg-blue-700 transition-all"><Icons.Plus /> 新增模板</button>
                         </div>
-                        <div className="bg-white rounded-[2.5rem] shadow-2xl border-2 border-slate-100 overflow-visible text-left">
-                            <table className="w-full text-base">
-                                <thead className="bg-slate-900 text-slate-400 uppercase font-black text-xs">
-                                    <tr><th className="px-8 py-6">名稱</th><th className="px-4 py-6 text-center">配色</th><th className="px-4 py-6 text-center">kW</th><th className="px-4 py-6 text-center">DT (K)</th><th className="px-4 py-6 text-center text-emerald-400 font-black">計算 LPM</th><th className="px-8 py-6 text-right">管理</th></tr>
+                        <div className="bg-white rounded-[1.5rem] md:rounded-[2.5rem] shadow-2xl border-2 border-slate-100 overflow-x-auto">
+                            <table className="w-full text-sm md:text-base min-w-[600px]">
+                                <thead className="bg-slate-900 text-slate-400 uppercase font-black text-[10px]">
+                                    <tr><th className="px-8 py-6 text-left">名稱</th><th className="px-4 py-6 text-center">配色</th><th className="px-4 py-6 text-center">kW</th><th className="px-4 py-6 text-center">DT (K)</th><th className="px-4 py-6 text-center text-emerald-400 font-black">LPM</th><th className="px-8 py-6 text-right">管理</th></tr>
                                 </thead>
                                 <tbody className="divide-y divide-slate-100 font-bold text-slate-700">
                                     {library.map(item => (
                                         <tr key={item.id} className="hover:bg-blue-50/40 transition-colors">
-                                            <td className="px-8 py-6 font-black text-xl text-slate-800"><input className="bg-transparent border-b-2 border-transparent focus:border-blue-500 outline-none w-full" value={item.label} onChange={e => update(item.id, 'label', e.target.value)} /></td>
+                                            <td className="px-8 py-6 font-black text-lg md:text-xl text-slate-800"><input className="bg-transparent border-b-2 border-transparent focus:border-blue-500 outline-none w-full" value={item.label} onChange={e => update(item.id, 'label', e.target.value)} /></td>
                                             <td className="px-4 py-6 text-center relative overflow-visible">
-                                                <div className={`w-10 h-10 rounded-2xl mx-auto border-4 border-white shadow-lg cursor-pointer ${item.color}`} onClick={(e) => { e.stopPropagation(); setActivePickerId(activePickerId === item.id ? null : item.id); }} />
+                                                <div className={`w-8 h-8 md:w-10 md:h-10 rounded-xl md:rounded-2xl mx-auto border-4 border-white shadow-lg cursor-pointer ${item.color}`} onClick={(e) => { e.stopPropagation(); setActivePickerId(activePickerId === item.id ? null : item.id); }} />
                                                 {activePickerId === item.id && (
-                                                    <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-3 bg-white p-4 rounded-3xl shadow-2xl border-2 z-[999] w-[180px] grid grid-cols-3 gap-3" onClick={e => e.stopPropagation()}>
+                                                    <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-3 bg-white p-4 rounded-3xl shadow-2xl border-2 z-[2000] w-[180px] grid grid-cols-3 gap-3" onClick={e => e.stopPropagation()}>
                                                         {COLOR_PALETTE.map(c => (<div key={c} className={`w-10 h-10 rounded-full cursor-pointer ${c} ${item.color === c ? 'ring-4 ring-slate-800 ring-offset-2' : ''}`} onClick={() => { update(item.id, 'color', c); setActivePickerId(null); }} />))}
                                                     </div>
                                                 )}
                                             </td>
-                                            <td className="px-4 py-6 text-center text-xl font-black"><input type="number" className="w-24 text-center bg-slate-50 p-2 rounded-xl" value={item.kw} onChange={e => update(item.id, 'kw', parseFloat(e.target.value)||0)} /></td>
-                                            <td className="px-4 py-6 text-center text-xl font-black"><input type="number" className="w-20 text-center bg-slate-100 p-2 rounded-xl" value={item.dt} onChange={e => update(item.id, 'dt', parseFloat(e.target.value)||0)} /></td>
-                                            <td className="px-4 py-6 text-center font-black text-2xl text-emerald-600">{(item.kw/(CP*item.dt)*60).toFixed(1)}</td>
+                                            <td className="px-4 py-6 text-center text-lg md:text-xl font-black"><input type="number" className="w-20 md:w-24 text-center bg-slate-50 p-2 rounded-xl" value={item.kw} onChange={e => update(item.id, 'kw', parseFloat(e.target.value)||0)} /></td>
+                                            <td className="px-4 py-6 text-center text-lg md:text-xl font-black"><input type="number" className="w-16 md:w-20 text-center bg-slate-100 p-2 rounded-xl" value={item.dt} onChange={e => update(item.id, 'dt', parseFloat(e.target.value)||0)} /></td>
+                                            <td className="px-4 py-6 text-center font-black text-xl md:text-2xl text-emerald-600">{(item.kw/(CP*item.dt)*60).toFixed(1)}</td>
                                             <td className="px-8 py-6 text-right"><button onClick={() => { saveHistory(); setLibrary(library.filter(l => l.id !== item.id))}} className="text-slate-300 hover:text-red-500 transition-all p-2 transform hover:scale-125"><Icons.Trash2 /></button></td>
                                         </tr>
                                     ))}
@@ -469,7 +444,7 @@
         function HydraulicEditor({ library, nodes, setNodes, pipes, setPipes, scale, setScale, offset, setOffset, results, nodeFlows, isDraggingRef, solveHydraulics, showToast, saveHistory, undo }) {
             const [selectedNodes, setSelectedNodes] = useState(new Set());
             const [activeConn, setActiveConn] = useState(null); 
-            const [sidebarOpen, setSidebarOpen] = useState(true);
+            const [sidebarOpen, setSidebarOpen] = useState(window.innerWidth > 768);
             const [snapPort, setSnapPort] = useState(null);
             const [activeColorPickerId, setActiveColorPickerId] = useState(null);
             const [copyToolActive, setCopyToolActive] = useState(false);
@@ -483,6 +458,9 @@
             const lastMousePos = useRef({ x: 0, y: 0 });
             const rafId = useRef(null);
             
+            // 觸控平移與縮放暫存
+            const touchInfo = useRef({ lastDistance: 0, initialScale: 1, initialOffset: { x: 0, y: 0 } });
+
             const renderNodeMap = useMemo(() => {
                 const m = {}; nodes.forEach(n => m[n.id] = n);
                 return m;
@@ -520,24 +498,6 @@
                 y: (sy - offset.y) / scale
             }), [offset, scale]);
 
-            useEffect(() => {
-                const handleKeyDown = (e) => {
-                    if (e.key === "Escape") {
-                        setActiveConn(null);
-                        setPlacementGroup(null);
-                        setSelectionBox(null);
-                        setSelectedNodes(new Set());
-                        setCopyToolActive(false);
-                    }
-                    if (e.ctrlKey && e.key === "z") {
-                        e.preventDefault();
-                        undo();
-                    }
-                };
-                window.addEventListener("keydown", handleKeyDown);
-                return () => window.removeEventListener("keydown", handleKeyDown);
-            }, [undo]);
-
             const generatePlacementGroup = useCallback((selectedNodeIds) => {
                 if (selectedNodeIds.length === 0) return;
                 const idMap = {};
@@ -571,65 +531,36 @@
                 });
                 setPlacementGroup({ nodes: newNodesArr, pipes: newPipesArr });
                 setSelectedNodes(new Set());
-                showToast("請移動滑鼠選擇放置位置，點擊左鍵放下 (ESC 取消)");
+                showToast("請點擊畫布放置圖塊 (ESC 取消)");
             }, []);
 
-            useEffect(() => {
-                const container = containerRef.current; if (!container) return;
-                const handleWheelNative = (e) => {
-                    e.preventDefault();
-                    const factor = Math.pow(1.15, -e.deltaY / 120);
-                    const newScale = Math.min(Math.max(scale * factor, 0.08), 3.0);
-                    const rect = container.getBoundingClientRect();
-                    const mouseX = e.clientX - rect.left, mouseY = e.clientY - rect.top;
-                    setOffset(prev => ({ x: mouseX - (mouseX - prev.x) * (newScale / scale), y: mouseY - (mouseY - prev.y) * (newScale / scale) }));
-                    setScale(newScale);
-                };
-                container.addEventListener('wheel', handleWheelNative, { passive: false });
-                return () => container.removeEventListener('wheel', handleWheelNative);
-            }, [scale, offset]);
-
-            const handleResetView = () => {
-                if (nodes.length === 0) return;
-                let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
-                nodes.forEach(n => {
-                    const { w, h } = getNodeDimensions(n);
-                    minX = Math.min(minX, n.x); maxX = Math.max(maxX, n.x + w);
-                    minY = Math.min(minY, n.y); maxY = Math.max(maxY, n.y + h);
-                });
-                const contentW = maxX - minX, contentH = maxY - minY;
-                const rect = containerRef.current.getBoundingClientRect();
-                const padding = 150;
-                const newScale = Math.min((rect.width - padding) / contentW, (rect.height - padding) / contentH, 1.2);
-                setScale(newScale);
-                setOffset({ x: rect.width / 2 - (minX + contentW / 2) * newScale, y: rect.height / 2 - (minY + contentH / 2) * newScale });
+            // 整合觸控座標輔助函數
+            const getEventPos = (e) => {
+                if (e.touches && e.touches.length > 0) return { x: e.touches[0].clientX, y: e.touches[0].clientY };
+                return { x: e.clientX, y: e.clientY };
             };
 
-            const getSpawnPoint = useCallback(() => {
-                const rect = containerRef.current?.getBoundingClientRect() || { width: window.innerWidth, height: window.innerHeight };
-                return { x: (rect.width/2 - offset.x)/scale - 250, y: (rect.height/2 - offset.y)/scale - 160 };
-            }, [offset, scale]);
-
             const onMouseMove = useCallback((e) => {
-                lastMousePos.current = { x: e.clientX, y: e.clientY };
+                const pos = getEventPos(e);
+                lastMousePos.current = pos;
+
                 if (dragInfo.current.isPanning) { 
-                    setOffset({ x: e.clientX - dragInfo.current.startX, y: e.clientY - dragInfo.current.startY }); 
+                    setOffset({ x: pos.x - dragInfo.current.startX, y: pos.y - dragInfo.current.startY }); 
                     return; 
                 }
-                
+
                 if (dragInfo.current.isSelecting) {
-                    setSelectionBox(prev => ({ ...prev, endX: e.clientX, endY: e.clientY }));
+                    setSelectionBox(prev => ({ ...prev, endX: pos.x, endY: pos.y }));
                     return;
                 }
 
                 if (placementGroup) {
-                    // 強制重繪
                     setPlacementGroup(prev => ({...prev}));
                     return;
                 }
 
                 if (activeConn && ghostPathRef.current) {
-                    const tx = (e.clientX - offset.x) / scale, ty = (e.clientY - offset.y) / scale;
+                    const tx = (pos.x - offset.x) / scale, ty = (pos.y - offset.y) / scale;
                     let foundSnap = null;
                     for (const nodeItem of nodesSnapshot.current) {
                         if (nodeItem.id === activeConn.fromId) continue;
@@ -652,7 +583,7 @@
                     if (!dragInfo.current.isDragging) return;
                     
                     const { id, startX, startY, connectedPipeIds } = dragInfo.current;
-                    const dx = (e.clientX - startX) / scale, dy = (e.clientY - startY) / scale;
+                    const dx = (pos.x - startX) / scale, dy = (pos.y - startY) / scale;
                     dragInfo.current.dx = dx; dragInfo.current.dy = dy;
                     const movingSet = selectedNodes.has(id) ? selectedNodes : new Set([id]);
                     
@@ -736,9 +667,11 @@
             }, [activeConn, snapPort, selectedNodes, setNodes, setPipes, selectionBox, screenToWorld, generatePlacementGroup, saveHistory]);
 
             const onMouseDown = useCallback((e) => {
+                const pos = getEventPos(e);
+                
                 if (placementGroup) {
                     saveHistory();
-                    const worldPos = screenToWorld(e.clientX, e.clientY);
+                    const worldPos = screenToWorld(pos.x, pos.y);
                     const finalNodes = placementGroup.nodes.map(n => ({
                         ...n,
                         x: worldPos.x + n.relativeX,
@@ -754,28 +687,114 @@
                     return;
                 }
 
+                // 處理平移視角 (中鍵或 Shift+左鍵，或是觸控兩指)
                 if(e.button===1 || (e.button===0&&e.shiftKey)) { 
-                    e.preventDefault(); dragInfo.current.isPanning=true; dragInfo.current.startX=e.clientX-offset.x; dragInfo.current.startY=e.clientY-offset.y; 
+                    e.preventDefault(); dragInfo.current.isPanning=true; dragInfo.current.startX=pos.x-offset.x; dragInfo.current.startY=pos.y-offset.y; 
                 }
                 else if (copyToolActive && (e.target.tagName === 'svg' || e.target.classList.contains('canvas-grid') || e.target.closest('.canvas-grid'))) {
                     e.preventDefault(); 
                     document.body.classList.add('selecting-active');
                     dragInfo.current.isSelecting = true;
-                    setSelectionBox({ startX: e.clientX, startY: e.clientY, endX: e.clientX, endY: e.clientY });
+                    setSelectionBox({ startX: pos.x, startY: pos.y, endX: pos.x, endY: pos.y });
                 }
                 else if (e.target.tagName === 'svg' || e.target.classList.contains('canvas-grid')) { 
                     setSelectedNodes(new Set()); setActiveColorPickerId(null); 
                 }
             }, [placementGroup, screenToWorld, copyToolActive, offset, setNodes, setPipes, saveHistory]);
 
+            // 觸控專屬縮放與平移邏輯
+            const onTouchMove = useCallback((e) => {
+                if (e.touches.length === 2) {
+                    const t1 = e.touches[0], t2 = e.touches[1];
+                    const dist = Math.sqrt(Math.pow(t2.clientX - t1.clientX, 2) + Math.pow(t2.clientY - t1.clientY, 2));
+                    const midX = (t1.clientX + t2.clientX) / 2, midY = (t1.clientY + t2.clientY) / 2;
+
+                    if (touchInfo.current.lastDistance > 0) {
+                        const factor = dist / touchInfo.current.lastDistance;
+                        const newScale = Math.min(Math.max(scale * factor, 0.08), 3.0);
+                        
+                        // 計算新 Offset 以保持雙指中心點不變
+                        const dx = midX - touchInfo.current.initialMidX;
+                        const dy = midY - touchInfo.current.initialMidY;
+                        
+                        setOffset({
+                            x: midX - (midX - offset.x) * (newScale / scale) + dx * 0.5,
+                            y: midY - (midY - offset.y) * (newScale / scale) + dy * 0.5
+                        });
+                        setScale(newScale);
+                    }
+                    touchInfo.current.lastDistance = dist;
+                    touchInfo.current.initialMidX = midX;
+                    touchInfo.current.initialMidY = midY;
+                } else {
+                    onMouseMove(e);
+                }
+            }, [scale, offset, onMouseMove]);
+
+            const onTouchStart = useCallback((e) => {
+                if (e.touches.length === 2) {
+                    const t1 = e.touches[0], t2 = e.touches[1];
+                    touchInfo.current.lastDistance = Math.sqrt(Math.pow(t2.clientX - t1.clientX, 2) + Math.pow(t2.clientY - t1.clientY, 2));
+                    touchInfo.current.initialMidX = (t1.clientX + t2.clientX) / 2;
+                    touchInfo.current.initialMidY = (t1.clientY + t2.clientY) / 2;
+                } else {
+                    onMouseDown(e);
+                }
+            }, [onMouseDown]);
+
+            const onTouchEnd = useCallback(() => {
+                touchInfo.current.lastDistance = 0;
+                onMouseUp();
+            }, [onMouseUp]);
+
+            useEffect(() => {
+                const container = containerRef.current; if (!container) return;
+                const handleWheelNative = (e) => {
+                    e.preventDefault();
+                    const factor = Math.pow(1.15, -e.deltaY / 120);
+                    const newScale = Math.min(Math.max(scale * factor, 0.08), 3.0);
+                    const rect = container.getBoundingClientRect();
+                    const mouseX = e.clientX - rect.left, mouseY = e.clientY - rect.top;
+                    setOffset(prev => ({ x: mouseX - (mouseX - prev.x) * (newScale / scale), y: mouseY - (mouseY - prev.y) * (newScale / scale) }));
+                    setScale(newScale);
+                };
+                container.addEventListener('wheel', handleWheelNative, { passive: false });
+                return () => container.removeEventListener('wheel', handleWheelNative);
+            }, [scale, offset]);
+
             useEffect(() => {
                 window.addEventListener('mousemove', onMouseMove); 
                 window.addEventListener('mouseup', onMouseUp);
+                window.addEventListener('touchmove', onTouchMove, { passive: false });
+                window.addEventListener('touchend', onTouchEnd);
                 return () => { 
                     window.removeEventListener('mousemove', onMouseMove); 
                     window.removeEventListener('mouseup', onMouseUp); 
+                    window.removeEventListener('touchmove', onTouchMove);
+                    window.removeEventListener('touchend', onTouchEnd);
                 };
-            }, [onMouseMove, onMouseUp]);
+            }, [onMouseMove, onMouseUp, onTouchMove, onTouchEnd]);
+
+            const handleResetView = () => {
+                if (nodes.length === 0) return;
+                let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+                nodes.forEach(n => {
+                    const { w, h } = getNodeDimensions(n);
+                    minX = Math.min(minX, n.x); maxX = Math.max(maxX, n.x + w);
+                    minY = Math.min(minY, n.y); maxY = Math.max(maxY, n.y + h);
+                });
+                const contentW = maxX - minX, contentH = maxY - minY;
+                const rect = containerRef.current.getBoundingClientRect();
+                const padding = 150;
+                const newScale = Math.min((rect.width - padding) / contentW, (rect.height - padding) / contentH, 1.2);
+                setScale(newScale);
+                setOffset({ x: rect.width / 2 - (minX + contentW / 2) * newScale, y: rect.height / 2 - (minY + contentH / 2) * newScale });
+            };
+
+            const getSpawnPoint = useCallback(() => {
+                const rect = containerRef.current?.getBoundingClientRect() || { width: window.innerWidth, height: window.innerHeight };
+                return { x: (rect.width/2 - offset.x)/scale - 250, y: (rect.height/2 - offset.y)/scale - 160 };
+            }, [offset, scale]);
 
             const handleMergeAction = () => {
                 if (selectedNodes.size < 2) return;
@@ -819,7 +838,7 @@
             const mouseWorldPos = screenToWorld(lastMousePos.current.x, lastMousePos.current.y);
 
             return (
-                <div ref={containerRef} className={`flex h-full w-full bg-slate-200 relative overflow-hidden canvas-grid ${copyToolActive ? 'copy-mode-active' : ''} ${placementGroup ? 'placement-mode-active' : ''}`} onMouseDown={onMouseDown}>
+                <div ref={containerRef} className={`flex h-full w-full bg-slate-200 relative overflow-hidden canvas-grid ${copyToolActive ? 'copy-mode-active' : ''} ${placementGroup ? 'placement-mode-active' : ''}`} onMouseDown={onMouseDown} onTouchStart={onTouchStart}>
                     {selectionBox && (
                         <div className="selection-box" style={{
                             left: Math.min(selectionBox.startX, selectionBox.endX),
@@ -829,16 +848,16 @@
                         }} />
                     )}
 
-                    <div className={`absolute left-4 top-4 bottom-4 w-52 bg-white shadow-2xl rounded-3xl z-[150] transition-all duration-500 flex flex-col border-4 border-slate-100 ${sidebarOpen ? 'translate-x-0' : '-translate-x-[300px] opacity-0'}`}>
-                        <div className="p-4 border-b flex justify-between items-center font-black text-[10px] uppercase text-slate-400"><span>Library</span><button onClick={() => setSidebarOpen(false)} className="hover:text-slate-800 transition-all"><Icons.X /></button></div>
+                    <div className={`absolute left-0 top-0 bottom-0 md:left-4 md:top-4 md:bottom-4 w-52 bg-white shadow-2xl md:rounded-3xl z-[1500] transition-all duration-500 flex flex-col border-r md:border-4 border-slate-100 ${sidebarOpen ? 'translate-x-0' : '-translate-x-full opacity-0'}`}>
+                        <div className="p-4 border-b flex justify-between items-center font-black text-[10px] uppercase text-slate-400"><span>Library</span><button onClick={() => setSidebarOpen(false)} className="hover:text-slate-800 transition-all p-2"><Icons.X /></button></div>
                         <div className="flex-1 p-3 space-y-4 overflow-y-auto">
                             <button onClick={() => { setCopyToolActive(!copyToolActive); setSelectedNodes(new Set()); setPlacementGroup(null); }} className={`w-full p-4 rounded-2xl flex items-center justify-between border-4 transition-all font-black uppercase text-xs tracking-tighter ${copyToolActive ? 'bg-emerald-500 text-white border-emerald-600 scale-105 shadow-xl' : 'bg-slate-100 text-slate-500 border-slate-200 hover:bg-slate-200'}`}>
                                 <span>Copy Mode</span>
                                 <Icons.Copy />
                             </button>
                             <div className="h-px bg-slate-100 my-2" />
-                            <button onClick={() => { saveHistory(); const p = getSpawnPoint(); setNodes(prev => [...prev, { id: `src-${Date.now()}`, templateId: 'SOURCE', label: '主總管彙整中心', x: p.x, y: p.y, qty: 1 }])}} className="w-full p-5 bg-yellow-400 rounded-2xl hover:scale-[1.05] shadow-lg flex items-center justify-between border-4 border-yellow-500 transition-all font-black uppercase text-xs tracking-tighter pointer-events-auto"><span>Header</span><Icons.Plus /></button>
-                            <button onClick={() => { saveHistory(); const p = getSpawnPoint(); setNodes(prev => [...prev, { id: `pvt-${Date.now()}`, type: 'PIVOT', label: '區域分區支點', x: p.x, y: p.y, color: 'bg-slate-800' }])}} className="w-full p-5 bg-slate-800 text-white rounded-2xl hover:scale-[1.05] shadow-lg flex items-center justify-between border-4 border-slate-950 transition-all font-black uppercase text-xs tracking-tighter pointer-events-auto"><span>Pivot</span><Icons.Plus /></button>
+                            <button onClick={() => { saveHistory(); const p = getSpawnPoint(); setNodes(prev => [...prev, { id: `src-${Date.now()}`, templateId: 'SOURCE', label: '主總管彙整中心', x: p.x, y: p.y, qty: 1 }])}} className="w-full p-5 bg-yellow-400 rounded-2xl shadow-lg flex items-center justify-between border-4 border-yellow-500 transition-all font-black uppercase text-xs tracking-tighter"><span>Header</span><Icons.Plus /></button>
+                            <button onClick={() => { saveHistory(); const p = getSpawnPoint(); setNodes(prev => [...prev, { id: `pvt-${Date.now()}`, type: 'PIVOT', label: '區域分區支點', x: p.x, y: p.y, color: 'bg-slate-800' }])}} className="w-full p-5 bg-slate-800 text-white rounded-2xl shadow-lg flex items-center justify-between border-4 border-slate-950 transition-all font-black uppercase text-xs tracking-tighter"><span>Pivot</span><Icons.Plus /></button>
                             <div className="h-px bg-slate-100 my-2" />
                             {library.map(lib => (
                                 <button key={lib.id} onClick={() => { saveHistory(); const p = getSpawnPoint(); setNodes(prev => [...prev, { id: `inst-${Date.now()}`, templateId: lib.id, label: lib.label, x: p.x, y: p.y, qty: 1, color: lib.color }])}} className="w-full p-3 bg-white border-2 border-slate-50 rounded-[1.2rem] hover:border-blue-500 shadow-sm flex items-center gap-4 active:scale-95 transition-all text-left">
@@ -848,15 +867,15 @@
                         </div>
                     </div>
                     {!sidebarOpen && (
-                        <button onClick={() => setSidebarOpen(true)} className="absolute left-6 top-6 bg-slate-900 text-white p-5 rounded-3xl shadow-2xl z-[150] border-4 border-white transition-all hover:scale-110 animate-in fade-in zoom-in">
+                        <button onClick={() => setSidebarOpen(true)} className="absolute left-6 top-6 bg-slate-900 text-white p-4 rounded-2xl shadow-2xl z-[1500] border-2 border-white transition-all hover:scale-110 active:scale-95">
                             <Icons.Menu />
                         </button>
                     )}
 
                     {selectedNodes.size > 1 && !copyToolActive && !placementGroup && (
-                        <div className="absolute top-8 left-1/2 -translate-x-1/2 bg-white px-10 py-5 rounded-[2.5rem] shadow-2xl border-[6px] border-blue-600 z-[250] flex items-center gap-8 animate-in slide-in-from-top-10">
-                            <div className="flex flex-col font-black text-left leading-none"><span className="text-xs text-blue-500 uppercase tracking-widest mb-1">Group Management</span><span className="text-2xl font-black tracking-tighter italic">已選中 {selectedNodes.size} 個設備組件</span></div>
-                            <button onClick={handleMergeAction} className="bg-blue-600 text-white px-10 py-4 rounded-3xl font-black text-xl uppercase flex items-center gap-4 hover:bg-blue-500 shadow-xl transition-all active:scale-95"><Icons.Layers /> 執行大總量合併</button>
+                        <div className="absolute top-4 left-1/2 -translate-x-1/2 bg-white px-6 md:px-10 py-3 md:py-5 rounded-[1.5rem] md:rounded-[2.5rem] shadow-2xl border-[4px] md:border-[6px] border-blue-600 z-[2500] flex items-center gap-4 md:gap-8 animate-in slide-in-from-top-10">
+                            <div className="hidden sm:flex flex-col font-black text-left leading-none"><span className="text-xs text-blue-500 uppercase tracking-widest mb-1">Group</span><span className="text-xl font-black italic">已選中 {selectedNodes.size} 個設備</span></div>
+                            <button onClick={handleMergeAction} className="bg-blue-600 text-white px-6 py-3 md:px-10 md:py-4 rounded-xl md:rounded-3xl font-black text-base md:text-xl uppercase flex items-center gap-2 md:gap-4 hover:bg-blue-500 shadow-xl transition-all active:scale-95"><Icons.Layers /> 大總量合併</button>
                         </div>
                     )}
 
@@ -897,7 +916,7 @@
                                         <div className="group relative flex flex-col items-center justify-center p-6 bg-slate-900 rounded-[3rem] border-4 border-white shadow-2xl transition-all hover:scale-110">
                                             <div className="text-6xl font-black text-white leading-none mb-1 tracking-tighter italic">DN{p.dn}</div>
                                             <div className="text-2xl font-black text-blue-400 mb-2 leading-none">{p.lpm.toFixed(0)} <small className="text-xs font-bold font-black">LPM</small></div>
-                                            {p.warning && <div className="text-[12px] font-black uppercase text-red-500 mt-2 flex items-center gap-2 animate-pulse leading-none font-black"><Icons.AlertTriangle /> 流速過載</div>}
+                                            {p.warning && <div className="text-[12px] font-black uppercase text-red-500 mt-2 flex items-center gap-2 animate-pulse font-black"><Icons.AlertTriangle /> 流速過載</div>}
                                             <button onClick={() => { saveHistory(); setPipes(prev => prev.filter(pip => pip.id !== p.id))}} className="absolute -top-6 -right-6 bg-red-600 border-4 border-white rounded-full shadow-2xl text-white p-3 opacity-0 group-hover:opacity-100 hover:bg-red-700 transition-all active:scale-75 z-[200]">
                                                 <Icons.X />
                                             </button>
@@ -940,17 +959,28 @@
                                                 e.stopPropagation(); 
                                                 if (copyToolActive || placementGroup) return;
                                                 document.body.classList.add('dragging-active'); isDraggingRef.current = true;
+                                                const pos = getEventPos(e);
                                                 const movingSet = selectedNodes.has(nodeItem.id) ? selectedNodes : new Set([nodeItem.id]);
                                                 const connected = pipesSnapshot.current.filter(p => movingSet.has(p.fromId) || movingSet.has(p.toId));
-                                                dragInfo.current = { isDragging: true, id: nodeItem.id, startX: e.clientX, startY: e.clientY, connectedPipeIds: connected.map(p=>p.id), dx: 0, dy: 0 }; 
-                                            }}>
+                                                dragInfo.current = { isDragging: true, id: nodeItem.id, startX: pos.x, startY: pos.y, connectedPipeIds: connected.map(p=>p.id), dx: 0, dy: 0 }; 
+                                            }}
+                                            onTouchStart={e => {
+                                                e.stopPropagation();
+                                                if (e.touches.length > 1) return;
+                                                document.body.classList.add('dragging-active'); isDraggingRef.current = true;
+                                                const pos = getEventPos(e);
+                                                const movingSet = selectedNodes.has(nodeItem.id) ? selectedNodes : new Set([nodeItem.id]);
+                                                const connected = pipesSnapshot.current.filter(p => movingSet.has(p.fromId) || movingSet.has(p.toId));
+                                                dragInfo.current = { isDragging: true, id: nodeItem.id, startX: pos.x, startY: pos.y, connectedPipeIds: connected.map(p=>p.id), dx: 0, dy: 0 };
+                                            }}
+                                        >
                                             <input className={`font-black bg-transparent outline-none w-full border-b-2 border-transparent focus:border-white/30 tracking-tighter ${isS ? 'text-3xl text-slate-900' : (isP || nodeItem.isMerged ? 'text-2xl text-white' : 'text-xl text-white')}`} value={nodeItem.label || libItem?.label || ''} onChange={e => setNodes(prev => prev.map(n => n.id === nodeItem.id ? { ...n, label: e.target.value } : n))} placeholder="輸入名稱..." />
                                             <div className="flex items-center gap-3">
                                                 {isP && <button onClick={(e) => { e.stopPropagation(); setActiveColorPickerId(activeColorPickerId === nodeItem.id ? null : nodeItem.id); }} className="text-white opacity-60 hover:opacity-100 p-1.5 transform hover:scale-125 transition-all"><Icons.Palette /></button>}
                                                 <button onClick={e => { e.stopPropagation(); saveHistory(); setNodes(prev => prev.filter(n => n.id !== nodeItem.id)); }} className={`${isS ? 'text-slate-900 opacity-40' : 'text-white opacity-40'} hover:opacity-100 p-1.5 transform hover:scale-125 transition-all`}><Icons.Trash2 /></button>
                                             </div>
                                             {activeColorPickerId === nodeItem.id && (
-                                                <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-4 bg-white p-3 rounded-[1.5rem] shadow-2xl border-2 z-[999] w-[160px] grid grid-cols-3 gap-2 animate-in slide-in-from-bottom-2" onMouseDown={e => e.stopPropagation()}>
+                                                <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-4 bg-white p-3 rounded-[1.5rem] shadow-2xl border-2 z-[999] w-[160px] grid grid-cols-3 gap-2 animate-in slide-in-from-bottom-2" onMouseDown={e => e.stopPropagation()} onTouchStart={e => e.stopPropagation()}>
                                                     {COLOR_PALETTE.map(c => (<div key={c} className={`w-8 h-8 rounded-full cursor-pointer ${c} ${nodeItem.color === c ? 'ring-2 ring-slate-800 ring-offset-2' : ''}`} onClick={() => { saveHistory(); setNodes(nodes.map(n => n.id === nodeItem.id ? { ...n, color: c } : n)); setActiveColorPickerId(null); }} />))}
                                                 </div>
                                             )}
@@ -980,7 +1010,7 @@
                                                         </div>
                                                         <div className="bg-slate-50 p-4 px-6 rounded-[2rem] border-2 border-slate-100 shadow-sm flex justify-between items-center group">
                                                             <span className="text-[10px] opacity-50 font-black tracking-widest uppercase">MATCH DN</span>
-                                                            <span className={`font-black text-5xl px-8 py-2 rounded-[2.5rem] shadow-lg border-2 border-white transition-all transform group-hover:scale-105 leading-none ${sizing.warning ? 'bg-red-500 text-white animate-pulse' : 'bg-emerald-500 text-white'}`}>
+                                                            <span className={`font-black text-5xl px-8 py-2 rounded-[2.5rem] shadow-lg border-2 border-white transition-all transform leading-none ${sizing.warning ? 'bg-red-500 text-white animate-pulse' : 'bg-emerald-500 text-white'}`}>
                                                                 DN{sizing.dn}
                                                             </span>
                                                         </div>
@@ -990,9 +1020,9 @@
                                                         <div className="flex justify-between items-center bg-slate-50 p-3 px-6 rounded-[1.5rem] border-2 border-slate-100 shadow-sm">
                                                             <span className="text-[9px] opacity-60 font-black tracking-widest uppercase">QTY</span>
                                                             <div className="flex items-center gap-4 pointer-events-auto">
-                                                                <button onClick={() => { saveHistory(); setNodes(prev => prev.map(n => n.id === nodeItem.id ? { ...n, qty: Math.max(1, (n.qty || 1) - 1) } : n))}} className="w-8 h-8 flex items-center justify-center bg-white rounded-lg border-2 shadow-sm hover:bg-slate-100 font-black text-xl">-</button>
-                                                                <input type="number" className="w-10 text-center text-2xl font-black bg-transparent outline-none" value={nodeItem.qty || 1} onChange={e => { saveHistory(); setNodes(prev => prev.map(n => n.id === nodeItem.id ? { ...n, qty: Math.max(1, parseInt(e.target.value) || 1) } : n))}} />
-                                                                <button onClick={() => { saveHistory(); setNodes(prev => prev.map(n => n.id === nodeItem.id ? { ...n, qty: (n.qty || 1) + 1 } : n))}} className="w-8 h-8 flex items-center justify-center bg-white rounded-lg border-2 shadow-sm hover:bg-slate-100 font-black text-xl">+</button>
+                                                                <button onClick={() => { saveHistory(); setNodes(prev => prev.map(n => n.id === nodeItem.id ? { ...n, qty: Math.max(1, (n.qty || 1) - 1) } : n))}} className="w-8 h-8 flex items-center justify-center bg-white rounded-lg border-2 shadow-sm font-black text-xl">-</button>
+                                                                <span className="w-10 text-center text-2xl font-black">{nodeItem.qty || 1}</span>
+                                                                <button onClick={() => { saveHistory(); setNodes(prev => prev.map(n => n.id === nodeItem.id ? { ...n, qty: (n.qty || 1) + 1 } : n))}} className="w-8 h-8 flex items-center justify-center bg-white rounded-lg border-2 shadow-sm font-black text-xl">+</button>
                                                             </div>
                                                         </div>
                                                         <div className="flex justify-between items-center bg-slate-50 p-3 px-6 rounded-[1.5rem] border-2 border-slate-100 shadow-sm">
@@ -1011,16 +1041,17 @@
                                         {['left', 'right', 'top', 'bottom'].map(port => {
                                             const off = getPortOffset(port, nodeItem);
                                             const isActivePort = snapPort?.nodeId === nodeItem.id && snapPort?.port === port;
-                                            return (<div key={port} style={{ left: off.x-16, top: off.y-16 }} className={`absolute w-8 h-8 rounded-full border-[4px] border-white z-20 port-dot shadow-xl transition-all ${isActivePort ? 'snap-active' : ''}`}
-                                                    onMouseDown={e => { e.preventDefault(); e.stopPropagation(); const pO = getPortOffset(port, nodeItem); setActiveConn({ fromId: nodeItem.id, fromPort: port, startX: nodeItem.x + pO.x, startY: nodeItem.y + pO.y }); }} /> );
+                                            return (<div key={port} style={{ left: off.x-20, top: off.y-20 }} className={`absolute w-10 h-10 rounded-full border-[4px] border-white z-20 port-dot shadow-xl transition-all ${isActivePort ? 'snap-active' : ''}`}
+                                                    onMouseDown={e => { e.preventDefault(); e.stopPropagation(); const pO = getPortOffset(port, nodeItem); setActiveConn({ fromId: nodeItem.id, fromPort: port, startX: nodeItem.x + pO.x, startY: nodeItem.y + pO.y }); }} 
+                                                    onTouchStart={e => { e.stopPropagation(); const pO = getPortOffset(port, nodeItem); setActiveConn({ fromId: nodeItem.id, fromPort: port, startX: nodeItem.x + pO.x, startY: nodeItem.y + pO.y }); }} /> );
                                         })}
                                     </div>
                                 );
                             })}
                         </div>
-                        <div className="absolute top-6 right-6 bg-slate-900/95 backdrop-blur text-white p-3 rounded-[1.5rem] shadow-2xl min-w-[140px] z-[250] flex flex-col gap-3 border border-white/10 text-center">
+                        <div className="absolute top-6 right-6 bg-slate-900/95 backdrop-blur text-white p-3 rounded-[1.5rem] shadow-2xl min-w-[120px] md:min-w-[140px] z-[250] flex flex-col gap-3 border border-white/10 text-center">
                             <div className="flex justify-between items-center text-[10px] font-black uppercase opacity-60 px-2 tracking-widest"><span>Zoom</span><span>{(scale * 100).toFixed(0)}%</span></div>
-                            <button onClick={handleResetView} className="bg-blue-600 text-white py-3 rounded-xl font-black text-xs uppercase shadow-lg hover:bg-blue-500 active:scale-95 transition-all flex items-center justify-center gap-2 pointer-events-auto"><Icons.Maximize /> 全景對焦</button>
+                            <button onClick={handleResetView} className="bg-blue-600 text-white py-3 rounded-xl font-black text-xs uppercase shadow-lg hover:bg-blue-500 active:scale-95 transition-all flex items-center justify-center gap-2"><Icons.Maximize /> <span className="hidden md:inline">全景對焦</span></button>
                         </div>
                     </main>
                 </div>
