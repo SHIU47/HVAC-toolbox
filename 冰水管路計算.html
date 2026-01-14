@@ -2,8 +2,8 @@
 <html lang="zh-TW">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>HydroPuzzle Pro - 專業核心觸控優化版</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>HydroPuzzle Pro - 專業核心功能恢復版</title>
     <!-- 載入 React 與 Babel -->
     <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
@@ -14,9 +14,12 @@
         body, html { 
             margin: 0; padding: 0; height: 100%; overflow: hidden; 
             font-family: -apple-system, "Segoe UI", Roboto, "Microsoft JhengHei", sans-serif;
-            touch-action: none; /* 停用瀏覽器預設手勢，交由程式控制 */
+            touch-action: none; 
+            overscroll-behavior: none;
+            position: fixed; 
+            width: 100%;
         }
-        #root { height: 100vh; }
+        #root { height: 100vh; width: 100%; }
         ::-webkit-scrollbar { width: 8px; height: 8px; }
         ::-webkit-scrollbar-track { background: transparent; }
         ::-webkit-scrollbar-thumb { background: #94a3b8; border-radius: 10px; }
@@ -39,7 +42,7 @@
         .node-layer { will-change: transform; transition: outline 0.2s, box-shadow 0.3s; pointer-events: auto !important; }
         .is-dragging { z-index: 5000 !important; cursor: grabbing !important; }
 
-        .modal-overlay { background: rgba(15, 23, 42, 0.85); backdrop-filter: blur(12px); z-index: 2000; }
+        .modal-overlay { background: rgba(15, 23, 42, 0.85); backdrop-filter: blur(12px); z-index: 5000; }
         .modal-content { animation: modal-in 0.4s cubic-bezier(0.34, 1.56, 0.64, 1); }
         @keyframes modal-in {
             from { opacity: 0; transform: scale(0.8) translateY(40px); }
@@ -96,60 +99,33 @@
         
         const CP = 4.186; 
         const PIPE_SIZING_DATA = [
-            { mm: 20, maxLpm: 19.5, internal: 20.93 },
-            { mm: 25, maxLpm: 31.0, internal: 26.64 },
-            { mm: 32, maxLpm: 90.0, internal: 35.04 },
-            { mm: 40, maxLpm: 140.0, internal: 40.90 },
-            { mm: 50, maxLpm: 219.0, internal: 52.70 },
-            { mm: 65, maxLpm: 370.0, internal: 67.70 },
-            { mm: 80, maxLpm: 560.0, internal: 80.70 },
-            { mm: 100, maxLpm: 1020, internal: 105.30 },
-            { mm: 125, maxLpm: 1594, internal: 130.80 },
-            { mm: 150, maxLpm: 2295, internal: 155.20 },
-            { mm: 200, maxLpm: 4080, internal: 204.70 },
-            { mm: 250, maxLpm: 6375, internal: 254.20 },
-            { mm: 300, maxLpm: 9180, internal: 304.70 },
-            { mm: 350, maxLpm: 16064, internal: 350.0 },
-            { mm: 400, maxLpm: 20981, internal: 400.0 },
-            { mm: 450, maxLpm: 26554, internal: 450.0 },
-            { mm: 500, maxLpm: 32783, internal: 500.0 },
-            { mm: 550, maxLpm: 39667, internal: 550.0 },
-            { mm: 600, maxLpm: 47207, internal: 600.0 },
-            { mm: 650, maxLpm: 55403, internal: 650.0 },
-            { mm: 700, maxLpm: 64254, internal: 700.0 },
-            { mm: 750, maxLpm: 73761, internal: 750.0 },
-            { mm: 800, maxLpm: 83923, internal: 800.0 },
-            { mm: 850, maxLpm: 94742, internal: 850.0 },
-            { mm: 900, maxLpm: 106215, internal: 900.0 },
-            { mm: 950, maxLpm: 118345, internal: 950.0 },
-            { mm: 1000, maxLpm: 131130, internal: 1000.0 },
-            { mm: 1050, maxLpm: 160634, internal: 1050.0 },
-            { mm: 1100, maxLpm: 176297, internal: 1100.0 },
-            { mm: 1150, maxLpm: 192688, internal: 1150.0 },
-            { mm: 1200, maxLpm: 209808, internal: 1200.0 },
-            { mm: 1250, maxLpm: 227656, internal: 1250.0 },
-            { mm: 1300, maxLpm: 246232, internal: 1300.0 },
-            { mm: 1350, maxLpm: 265538, internal: 1350.0 },
-            { mm: 1400, maxLpm: 285571, internal: 1400.0 },
-            { mm: 1450, maxLpm: 306333, internal: 1450.0 },
-            { mm: 1500, maxLpm: 327824, internal: 1500.0 },
-            { mm: 1550, maxLpm: 350043, internal: 1550.0 },
-            { mm: 1600, maxLpm: 372991, internal: 1600.0 },
-            { mm: 1650, maxLpm: 396667, internal: 1650.0 },
-            { mm: 1700, maxLpm: 421072, internal: 1700.0 },
-            { mm: 1750, maxLpm: 446205, internal: 1750.0 },
-            { mm: 1800, maxLpm: 472066, internal: 1800.0 },
-            { mm: 1850, maxLpm: 498657, internal: 1850.0 },
-            { mm: 1900, maxLpm: 525975, internal: 1900.0 },
-            { mm: 1950, maxLpm: 554022, internal: 1950.0 },
-            { mm: 2000, maxLpm: 582798, internal: 2000.0 },
-            { mm: 2050, maxLpm: 612302, internal: 2050.0 },
-            { mm: 2100, maxLpm: 642535, internal: 2100.0 },
-            { mm: 2150, maxLpm: 673496, internal: 2150.0 },
-            { mm: 2200, maxLpm: 705185, internal: 2200.0 },
-            { mm: 2250, maxLpm: 737604, internal: 2250.0 },
-            { mm: 2300, maxLpm: 770750, internal: 2300.0 },
-            { mm: 2350, maxLpm: 804625, internal: 2350.0 },
+            { mm: 20, maxLpm: 19.5, internal: 20.93 }, { mm: 25, maxLpm: 31.0, internal: 26.64 },
+            { mm: 32, maxLpm: 90.0, internal: 35.04 }, { mm: 40, maxLpm: 140.0, internal: 40.90 },
+            { mm: 50, maxLpm: 219.0, internal: 52.70 }, { mm: 65, maxLpm: 370.0, internal: 67.70 },
+            { mm: 80, maxLpm: 560.0, internal: 80.70 }, { mm: 100, maxLpm: 1020, internal: 105.30 },
+            { mm: 125, maxLpm: 1594, internal: 130.80 }, { mm: 150, maxLpm: 2295, internal: 155.20 },
+            { mm: 200, maxLpm: 4080, internal: 204.70 }, { mm: 250, maxLpm: 6375, internal: 254.20 },
+            { mm: 300, maxLpm: 9180, internal: 304.70 }, { mm: 350, maxLpm: 16064, internal: 350.0 },
+            { mm: 400, maxLpm: 20981, internal: 400.0 }, { mm: 450, maxLpm: 26554, internal: 450.0 },
+            { mm: 500, maxLpm: 32783, internal: 500.0 }, { mm: 550, maxLpm: 39667, internal: 550.0 },
+            { mm: 600, maxLpm: 47207, internal: 600.0 }, { mm: 650, maxLpm: 55403, internal: 650.0 },
+            { mm: 700, maxLpm: 64254, internal: 700.0 }, { mm: 750, maxLpm: 73761, internal: 750.0 },
+            { mm: 800, maxLpm: 83923, internal: 800.0 }, { mm: 850, maxLpm: 94742, internal: 850.0 },
+            { mm: 900, maxLpm: 106215, internal: 900.0 }, { mm: 950, maxLpm: 118345, internal: 950.0 },
+            { mm: 1000, maxLpm: 131130, internal: 1000.0 }, { mm: 1050, maxLpm: 160634, internal: 1050.0 },
+            { mm: 1100, maxLpm: 176297, internal: 1100.0 }, { mm: 1150, maxLpm: 192688, internal: 1150.0 },
+            { mm: 1200, maxLpm: 209808, internal: 1200.0 }, { mm: 1250, maxLpm: 227656, internal: 1250.0 },
+            { mm: 1300, maxLpm: 246232, internal: 1300.0 }, { mm: 1350, maxLpm: 265538, internal: 1350.0 },
+            { mm: 1400, maxLpm: 285571, internal: 1400.0 }, { mm: 1450, maxLpm: 306333, internal: 1450.0 },
+            { mm: 1500, maxLpm: 327824, internal: 1500.0 }, { mm: 1550, maxLpm: 350043, internal: 1550.0 },
+            { mm: 1600, maxLpm: 372991, internal: 1600.0 }, { mm: 1650, maxLpm: 396667, internal: 1650.0 },
+            { mm: 1700, maxLpm: 421072, internal: 1700.0 }, { mm: 1750, maxLpm: 446205, internal: 1750.0 },
+            { mm: 1800, maxLpm: 472066, internal: 1800.0 }, { mm: 1850, maxLpm: 498657, internal: 1850.0 },
+            { mm: 1900, maxLpm: 525975, internal: 1900.0 }, { mm: 1950, maxLpm: 554022, internal: 1950.0 },
+            { mm: 2000, maxLpm: 582798, internal: 2000.0 }, { mm: 2050, maxLpm: 612302, internal: 2050.0 },
+            { mm: 2100, maxLpm: 642535, internal: 2100.0 }, { mm: 2150, maxLpm: 673496, internal: 2150.0 },
+            { mm: 2200, maxLpm: 705185, internal: 2200.0 }, { mm: 2250, maxLpm: 737604, internal: 2250.0 },
+            { mm: 2300, maxLpm: 770750, internal: 2300.0 }, { mm: 2350, maxLpm: 804625, internal: 2350.0 },
             { mm: 2400, maxLpm: 839229, internal: 2400.0 }
         ];
 
@@ -160,12 +136,7 @@
                 const match = PIPE_SIZING_DATA.find(p => p.maxLpm >= totalLpm) || PIPE_SIZING_DATA[PIPE_SIZING_DATA.length - 1];
                 const area = Math.PI * Math.pow((match.internal / 2) / 1000, 2);
                 const velocity = totalLps > 0 ? (totalLps / 1000) / area : 0;
-                return { 
-                    dn: totalLpm > PIPE_SIZING_DATA[PIPE_SIZING_DATA.length-1].maxLpm ? `${match.mm}+` : match.mm, 
-                    velocity, 
-                    lpm: totalLpm,
-                    warning: velocity > 2.8 
-                };
+                return { dn: totalLpm > PIPE_SIZING_DATA[PIPE_SIZING_DATA.length-1].maxLpm ? `${match.mm}+` : match.mm, velocity, lpm: totalLpm, warning: velocity > 2.8 };
             }
         };
 
@@ -186,7 +157,9 @@
             Maximize: (p) => <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" {...p}><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/></svg>,
             Palette: (p) => <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" {...p}><path d="M12 2a10 10 0 0 0-10 10 10 10 0 0 0 10 10 10.38 10.38 0 0 0 7-2.82 4 4 0 0 0-1-6.66l-1-.2A2 2 0 0 1 15.5 11a2 2 0 0 1 2 2v1a2 2 0 0 0 4 0v-2A10 10 0 0 0 12 2z"/><circle cx="8" cy="9" r="1"/><circle cx="12" cy="7" r="1"/><circle cx="16" cy="9" r="1"/></svg>,
             AlertTriangle: (p) => <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" {...p}><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>,
-            HelpCircle: (p) => <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" {...p}><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+            HelpCircle: (p) => <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" {...p}><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>,
+            Smartphone: (p) => <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" {...p}><rect x="5" y="2" width="14" height="20" rx="2" ry="2"/><line x1="12" y1="18" x2="12.01" y2="18"/></svg>,
+            Monitor: (p) => <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" {...p}><rect x="2" y="3" width="20" height="14" rx="2" ry="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
         };
 
         function App() {
@@ -207,54 +180,45 @@
 
             const [history, setHistory] = useState([]);
             const [showHelpModal, setShowHelpModal] = useState(false);
+            const [scale, setScale] = useState(INITIAL_PROJECT_DATA?.viewState?.scale || 0.6);
+            const [offset, setOffset] = useState(INITIAL_PROJECT_DATA?.viewState?.offset || { x: window.innerWidth / 2 - 10000 * 0.6, y: window.innerHeight / 2 - 10000 * 0.6 });
+            const [results, setResults] = useState([]);
+            const [nodeCalculatedFlows, setNodeCalculatedFlows] = useState({});
+            const [message, setMessage] = useState(null);
+            const [showExportModal, setShowExportModal] = useState(false);
+            const [passwordInput, setPasswordInput] = useState("");
+            const isDraggingRef = useRef(false);
+            const fileInputRef = useRef(null);
 
+            const showToast = (txt) => { setMessage(txt); setTimeout(() => setMessage(null), 3000); };
             const saveHistory = useCallback(() => {
                 const snapshot = JSON.stringify({ library, nodes, pipes });
                 setHistory(prev => [snapshot, ...prev].slice(0, 20));
             }, [library, nodes, pipes]);
 
             const undo = useCallback(() => {
-                if (history.length === 0) return;
+                if (history.length === 0) { showToast("無操作可復原"); return; }
                 const [lastState, ...rest] = history;
                 const data = JSON.parse(lastState);
-                setLibrary(data.library);
-                setNodes(data.nodes);
-                setPipes(data.pipes);
-                setHistory(rest);
+                setLibrary(data.library); setNodes(data.nodes); setPipes(data.pipes);
+                setHistory(rest); showToast("已復原上一步");
             }, [history]);
-
-            const [scale, setScale] = useState(INITIAL_PROJECT_DATA?.viewState?.scale || 0.6);
-            const [offset, setOffset] = useState(INITIAL_PROJECT_DATA?.viewState?.offset || { x: window.innerWidth / 2 - 10000 * 0.6, y: window.innerHeight / 2 - 10000 * 0.6 });
-            
-            const [results, setResults] = useState([]);
-            const [nodeCalculatedFlows, setNodeCalculatedFlows] = useState({});
-            const [message, setMessage] = useState(null);
-            const [showExportModal, setShowExportModal] = useState(false);
-            const [passwordInput, setPasswordInput] = useState("");
-            
-            const isDraggingRef = useRef(false);
-            const fileInputRef = useRef(null);
-
-            const showToast = (txt) => { setMessage(txt); setTimeout(() => setMessage(null), 3000); };
 
             const solveHydraulics = useCallback(() => {
                 const getWeight = (n) => n.templateId === 'SOURCE' ? 0 : n.type === 'PIVOT' ? 1 : 2;
                 const nodeMap = {}; nodes.forEach(n => nodeMap[n.id] = n);
-
                 const baseFlowLpsMap = {};
                 nodes.forEach(node => {
                     const weight = getWeight(node);
-                    if (weight < 2) { baseFlowLpsMap[node.id] = 0; } 
-                    else if (node.isMerged) { baseFlowLpsMap[node.id] = HydraulicEngine.calculateLps(node.customKw || 0, 1, 5); } 
+                    if (weight < 2) baseFlowLpsMap[node.id] = 0;
+                    else if (node.isMerged) baseFlowLpsMap[node.id] = HydraulicEngine.calculateLps(node.customKw || 0, 1, 5);
                     else {
                         const libItem = library.find(l => l.id === node.templateId);
                         baseFlowLpsMap[node.id] = HydraulicEngine.calculateLps(node.customKw || libItem?.kw || 0, node.qty || 1, libItem?.dt || 5);
                     }
                 });
-
                 const adj = {}; nodes.forEach(n => adj[n.id] = []);
                 pipes.forEach(p => { if (adj[p.fromId] && adj[p.toId]) { adj[p.fromId].push(p.toId); adj[p.toId].push(p.fromId); } });
-
                 const dists = {};
                 const sources = nodes.filter(n => n.templateId === 'SOURCE');
                 const queue = [...sources.map(s => s.id)];
@@ -263,30 +227,25 @@
                     const curr = queue.shift();
                     adj[curr]?.forEach(neighbor => { if (dists[neighbor] === undefined) { dists[neighbor] = dists[curr] + 1; queue.push(neighbor); } });
                 }
-
                 const memo = {};
                 const getSubtreeLpm = (nodeId, parentId = null) => {
                     const cacheKey = `${nodeId}-${parentId}`; if (memo[cacheKey] !== undefined) return memo[cacheKey];
                     let sum = (baseFlowLpsMap[nodeId] || 0) * 60;
                     adj[nodeId]?.forEach(neighbor => {
-                        const nNeighbor = nodeMap[neighbor];
-                        if (!nNeighbor) return;
+                        const nNeighbor = nodeMap[neighbor]; if (!nNeighbor) return;
                         if (neighbor !== parentId && (getWeight(nNeighbor) > getWeight(nodeMap[nodeId]) || (getWeight(nNeighbor) === getWeight(nodeMap[nodeId]) && dists[neighbor] > dists[nodeId]))) {
                             sum += getSubtreeLpm(neighbor, nodeId);
                         }
                     });
                     memo[cacheKey] = sum; return sum;
                 };
-
                 const nodeAggregates = {}; nodes.forEach(node => { nodeAggregates[node.id] = getSubtreeLpm(node.id); });
                 const pipeResults = pipes.map(p => {
-                    const n1 = nodeMap[p.fromId], n2 = nodeMap[p.toId];
-                    if(!n1 || !n2) return p;
+                    const n1 = nodeMap[p.fromId], n2 = nodeMap[p.toId]; if(!n1 || !n2) return p;
                     const downstreamId = (getWeight(n1) < getWeight(n2) || dists[p.fromId] < dists[p.toId]) ? p.toId : p.fromId;
                     const totalLpm = getSubtreeLpm(downstreamId, (downstreamId === p.toId ? p.fromId : p.toId));
                     return { ...p, lpm: totalLpm, ...HydraulicEngine.getSizing(totalLpm / 60) };
                 });
-
                 setResults(pipeResults); setNodeCalculatedFlows(nodeAggregates);
             }, [nodes, pipes, library]);
 
@@ -322,12 +281,12 @@
             return (
                 <div className="w-full h-screen bg-slate-100 flex flex-col overflow-hidden text-slate-900 leading-tight">
                     {message && (
-                        <div className="fixed top-20 left-1/2 -translate-x-1/2 bg-slate-900 text-white px-8 py-3 rounded-full z-[3000] shadow-2xl flex items-center gap-3 animate-bounce border border-slate-700 font-black">
+                        <div className="fixed top-20 left-1/2 -translate-x-1/2 bg-slate-900 text-white px-8 py-3 rounded-full z-[8000] shadow-2xl flex items-center gap-3 animate-bounce border border-slate-700 font-black">
                             <Icons.AlertCircle className="text-yellow-400" /> <span>{message}</span>
                         </div>
                     )}
                     {showExportModal && (
-                        <div className="fixed inset-0 z-[4000] flex items-center justify-center modal-overlay">
+                        <div className="fixed inset-0 z-[6000] flex items-center justify-center modal-overlay">
                             <div className="bg-white w-[90%] max-w-[400px] rounded-[3rem] p-8 md:p-10 shadow-2xl modal-content border-t-8 border-blue-600 text-center">
                                 <div className="bg-blue-50 p-6 rounded-full text-blue-600 mb-6 inline-block"><Icons.Lock /></div>
                                 <h3 className="text-xl font-black text-slate-800 mb-2 underline decoration-blue-200">安全授權驗證</h3>
@@ -341,31 +300,37 @@
                     )}
                     
                     {showHelpModal && (
-                        <div className="fixed inset-0 z-[5000] flex items-center justify-center modal-overlay" onClick={() => setShowHelpModal(false)}>
-                            <div className="bg-white w-[90%] max-w-[650px] max-h-[85vh] rounded-[3rem] p-8 md:p-10 shadow-2xl modal-content border-t-8 border-indigo-600 overflow-y-auto" onClick={e => e.stopPropagation()}>
+                        <div className="fixed inset-0 z-[7000] flex items-center justify-center modal-overlay" onClick={() => setShowHelpModal(false)}>
+                            <div className="bg-white w-[90%] max-w-[750px] max-h-[85vh] rounded-[3rem] p-8 md:p-10 shadow-2xl modal-content border-t-8 border-indigo-600 overflow-y-auto" onClick={e => e.stopPropagation()}>
                                 <div className="flex justify-between items-start mb-6">
                                     <div>
                                         <h2 className="text-2xl md:text-3xl font-black text-slate-800 tracking-tight leading-none mb-2">操作指南說明書</h2>
-                                        <p className="text-slate-400 text-xs font-bold uppercase tracking-widest">HydroPuzzle Pro User Manual</p>
+                                        <p className="text-slate-400 text-xs font-bold uppercase tracking-widest">HydroPuzzle Pro Control Manual</p>
                                     </div>
                                     <button onClick={() => setShowHelpModal(false)} className="bg-slate-100 p-3 rounded-full hover:bg-slate-200 transition-all"><Icons.X /></button>
                                 </div>
-                                <div className="space-y-8 text-slate-600">
-                                    <section>
-                                        <h4 className="flex items-center gap-2 text-indigo-600 font-black text-lg mb-2"><div className="w-2 h-6 bg-indigo-600 rounded-full" /> 1. 規格定義</h4>
-                                        <p className="font-bold pl-4">定義設備模板（kW、DT）。修改模板會自動即時更新地圖上所有已部署設備流量。</p>
-                                    </section>
-                                    <section>
-                                        <h4 className="flex items-center gap-2 text-indigo-600 font-black text-lg mb-2"><div className="w-2 h-6 bg-indigo-600 rounded-full" /> 2. 部署與連結</h4>
-                                        <p className="font-bold pl-4 mb-2">從側邊欄點擊加號新增。拖拽設備上的深藍色圓點並連線。</p>
-                                    </section>
-                                    <section>
-                                        <h4 className="flex items-center gap-2 text-indigo-600 font-black text-lg mb-2"><div className="w-2 h-6 bg-indigo-600 rounded-full" /> 3. 觸控支援 (New)</h4>
-                                        <ul className="list-disc pl-10 font-bold space-y-1">
-                                            <li><span className="text-blue-600">單指</span>：移動設備、建立連線。</li>
-                                            <li><span className="text-emerald-600">雙指</span>：縮放畫布、平移視角。</li>
+                                
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                    <div className="bg-blue-50 p-6 rounded-[2rem] border-2 border-blue-100">
+                                        <h4 className="flex items-center gap-2 text-blue-600 font-black text-lg mb-4"><Icons.Monitor /> 電腦模式 (PC)</h4>
+                                        <ul className="space-y-3 text-sm font-bold text-slate-700">
+                                            <li className="flex justify-between"><span>畫布縮放</span> <span className="bg-white px-2 rounded shadow-sm text-blue-500">滑鼠滾輪</span></li>
+                                            <li className="flex justify-between"><span>畫布平移</span> <span className="bg-white px-2 rounded shadow-sm text-blue-500">中鍵 / Shift + 左鍵</span></li>
+                                            <li className="flex justify-between"><span>取消預覽/連線</span> <span className="bg-white px-2 rounded shadow-sm text-blue-500">ESC 鍵</span></li>
+                                            <li className="flex justify-between"><span>復原上一步</span> <span className="bg-white px-2 rounded shadow-sm text-blue-500">Ctrl + Z</span></li>
+                                            <li className="flex justify-between"><span>多選設備</span> <span className="bg-white px-2 rounded shadow-sm text-blue-500">Shift + 點擊</span></li>
                                         </ul>
-                                    </section>
+                                    </div>
+                                    <div className="bg-emerald-50 p-6 rounded-[2rem] border-2 border-emerald-100">
+                                        <h4 className="flex items-center gap-2 text-emerald-600 font-black text-lg mb-4"><Icons.Smartphone /> 手機模式 (Mobile)</h4>
+                                        <ul className="space-y-3 text-sm font-bold text-slate-700">
+                                            <li className="flex justify-between"><span>畫布縮放</span> <span className="bg-white px-2 rounded shadow-sm text-emerald-500">雙指捏合</span></li>
+                                            <li className="flex justify-between"><span>畫布平移</span> <span className="bg-white px-2 rounded shadow-sm text-emerald-500">雙指拖拽</span></li>
+                                            <li className="flex justify-between"><span>移動設備</span> <span className="bg-white px-2 rounded shadow-sm text-emerald-500">單指長按拖動</span></li>
+                                            <li className="flex justify-between"><span>建立連線</span> <span className="bg-white px-2 rounded shadow-sm text-emerald-500">單指拖拽藍點</span></li>
+                                            <li className="flex justify-between"><span>防止誤觸</span> <span className="bg-white px-2 rounded shadow-sm text-emerald-500">已禁用下拉重新整理</span></li>
+                                        </ul>
+                                    </div>
                                 </div>
                                 <button onClick={() => setShowHelpModal(false)} className="w-full mt-10 bg-indigo-600 text-white py-4 rounded-2xl font-black text-xl hover:bg-indigo-700 shadow-xl transition-all">理解，開始製作！</button>
                             </div>
@@ -399,10 +364,7 @@
 
         function EquipmentSetup({ library, setLibrary, saveHistory }) {
             const [activePickerId, setActivePickerId] = useState(null);
-            const update = (id, field, val) => {
-                saveHistory();
-                setLibrary(prev => prev.map(item => item.id === id ? { ...item, [field]: val } : item));
-            };
+            const update = (id, field, val) => { saveHistory(); setLibrary(prev => prev.map(item => item.id === id ? { ...item, [field]: val } : item)); };
             return (
                 <div className="p-4 md:p-12 h-full overflow-y-auto bg-slate-50" onClick={() => setActivePickerId(null)}>
                     <div className="max-w-[1000px] mx-auto text-left">
@@ -450,27 +412,30 @@
             const [copyToolActive, setCopyToolActive] = useState(false);
             const [selectionBox, setSelectionBox] = useState(null);
             const [placementGroup, setPlacementGroup] = useState(null);
-
             const containerRef = useRef(null);
-            const nodesSnapshot = useRef(nodes);
-            const pipesSnapshot = useRef(pipes);
-            const nodeMapSnapshot = useRef({});
-            const lastMousePos = useRef({ x: 0, y: 0 });
-            const rafId = useRef(null);
-            
-            // 觸控平移與縮放暫存
+            const nodesSnapshot = useRef(nodes); const pipesSnapshot = useRef(pipes); const nodeMapSnapshot = useRef({});
+            const lastMousePos = useRef({ x: 0, y: 0 }); const rafId = useRef(null);
             const touchInfo = useRef({ lastDistance: 0, initialScale: 1, initialOffset: { x: 0, y: 0 } });
 
-            const renderNodeMap = useMemo(() => {
-                const m = {}; nodes.forEach(n => m[n.id] = n);
-                return m;
-            }, [nodes]);
-
-            useEffect(() => { 
-                nodesSnapshot.current = nodes; 
-                nodeMapSnapshot.current = renderNodeMap;
-            }, [nodes, renderNodeMap]);
+            const renderNodeMap = useMemo(() => { const m = {}; nodes.forEach(n => m[n.id] = n); return m; }, [nodes]);
+            useEffect(() => { nodesSnapshot.current = nodes; nodeMapSnapshot.current = renderNodeMap; }, [nodes, renderNodeMap]);
             useEffect(() => { pipesSnapshot.current = pipes; }, [pipes]);
+
+            // 快捷鍵邏輯回歸
+            useEffect(() => {
+                const handleGlobalKeyDown = (e) => {
+                    if (e.key === "Escape") {
+                        setActiveConn(null); setPlacementGroup(null); setSelectionBox(null);
+                        setSelectedNodes(new Set()); setCopyToolActive(false); setActiveColorPickerId(null);
+                        if (ghostPathRef.current) ghostPathRef.current.setAttribute('d', '');
+                    }
+                    if (e.ctrlKey && e.key.toLowerCase() === "z") {
+                        e.preventDefault(); undo();
+                    }
+                };
+                window.addEventListener("keydown", handleGlobalKeyDown);
+                return () => window.removeEventListener("keydown", handleGlobalKeyDown);
+            }, [undo]);
 
             const dragInfo = useRef({ isDragging: false, id: null, startX: 0, startY: 0, connectedPipeIds: [], dx: 0, dy: 0, isPanning: false, isSelecting: false });
             const nodeRefs = useRef({}); const pathRefs = useRef({}); const labelRefs = useRef({}); const ghostPathRef = useRef(null);
@@ -483,85 +448,39 @@
                 else if (isP) { w = 460; h = 320; }
                 return { w, h };
             };
-
             const getPortOffset = (pT, node) => {
                 const { w, h } = getNodeDimensions(node);
-                if (pT === 'left') return { x: 0, y: h/2 }; 
-                if (pT === 'right') return { x: w, y: h/2 };
-                if (pT === 'top') return { x: w/2, y: 0 }; 
-                if (pT === 'bottom') return { x: w/2, y: h };
+                if (pT === 'left') return { x: 0, y: h/2 }; if (pT === 'right') return { x: w, y: h/2 };
+                if (pT === 'top') return { x: w/2, y: 0 }; if (pT === 'bottom') return { x: w/2, y: h };
                 return { x: 0, y: 0 };
             };
-
-            const screenToWorld = useCallback((sx, sy) => ({
-                x: (sx - offset.x) / scale,
-                y: (sy - offset.y) / scale
-            }), [offset, scale]);
-
-            const generatePlacementGroup = useCallback((selectedNodeIds) => {
-                if (selectedNodeIds.length === 0) return;
-                const idMap = {};
-                const newNodesArr = [];
-                let minX = Infinity, minY = Infinity;
-                selectedNodeIds.forEach(id => {
-                    const original = nodeMapSnapshot.current[id];
-                    if (original) {
-                        minX = Math.min(minX, original.x);
-                        minY = Math.min(minY, original.y);
-                    }
-                });
-                selectedNodeIds.forEach(id => {
-                    const original = nodeMapSnapshot.current[id];
-                    if (original) {
-                        const newId = `${original.templateId === 'SOURCE' ? 'src' : (original.type === 'PIVOT' ? 'pvt' : 'inst')}-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`;
-                        idMap[id] = newId;
-                        newNodesArr.push({ ...original, id: newId, relativeX: original.x - minX, relativeY: original.y - minY });
-                    }
-                });
-                const newPipesArr = [];
-                pipesSnapshot.current.forEach(p => {
-                    if (idMap[p.fromId] && idMap[p.toId]) {
-                        newPipesArr.push({
-                            ...p,
-                            id: `p-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`,
-                            fromId: idMap[p.fromId],
-                            toId: idMap[p.toId]
-                        });
-                    }
-                });
-                setPlacementGroup({ nodes: newNodesArr, pipes: newPipesArr });
-                setSelectedNodes(new Set());
-                showToast("請點擊畫布放置圖塊 (ESC 取消)");
-            }, []);
-
-            // 整合觸控座標輔助函數
+            const screenToWorld = useCallback((sx, sy) => ({ x: (sx - offset.x) / scale, y: (sy - offset.y) / scale }), [offset, scale]);
             const getEventPos = (e) => {
                 if (e.touches && e.touches.length > 0) return { x: e.touches[0].clientX, y: e.touches[0].clientY };
                 return { x: e.clientX, y: e.clientY };
             };
 
+            const generatePlacementGroup = useCallback((selectedNodeIds) => {
+                if (selectedNodeIds.length === 0) return;
+                const idMap = {}; const newNodesArr = []; let minX = Infinity, minY = Infinity;
+                selectedNodeIds.forEach(id => { const original = nodeMapSnapshot.current[id]; if (original) { minX = Math.min(minX, original.x); minY = Math.min(minY, original.y); } });
+                selectedNodeIds.forEach(id => {
+                    const original = nodeMapSnapshot.current[id]; if (original) {
+                        const newId = `${original.templateId === 'SOURCE' ? 'src' : (original.type === 'PIVOT' ? 'pvt' : 'inst')}-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`;
+                        idMap[id] = newId; newNodesArr.push({ ...original, id: newId, relativeX: original.x - minX, relativeY: original.y - minY });
+                    }
+                });
+                const newPipesArr = []; pipesSnapshot.current.forEach(p => { if (idMap[p.fromId] && idMap[p.toId]) newPipesArr.push({ ...p, id: `p-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`, fromId: idMap[p.fromId], toId: idMap[p.toId] }); });
+                setPlacementGroup({ nodes: newNodesArr, pipes: newPipesArr }); setSelectedNodes(new Set()); showToast("圖塊已就緒，點擊畫布放置 (ESC 取消)");
+            }, []);
+
             const onMouseMove = useCallback((e) => {
-                const pos = getEventPos(e);
-                lastMousePos.current = pos;
-
-                if (dragInfo.current.isPanning) { 
-                    setOffset({ x: pos.x - dragInfo.current.startX, y: pos.y - dragInfo.current.startY }); 
-                    return; 
-                }
-
-                if (dragInfo.current.isSelecting) {
-                    setSelectionBox(prev => ({ ...prev, endX: pos.x, endY: pos.y }));
-                    return;
-                }
-
-                if (placementGroup) {
-                    setPlacementGroup(prev => ({...prev}));
-                    return;
-                }
-
+                const pos = getEventPos(e); lastMousePos.current = pos;
+                if (dragInfo.current.isPanning) { setOffset({ x: pos.x - dragInfo.current.startX, y: pos.y - dragInfo.current.startY }); return; }
+                if (dragInfo.current.isSelecting) { setSelectionBox(prev => ({ ...prev, endX: pos.x, endY: pos.y })); return; }
+                if (placementGroup) { setPlacementGroup(prev => ({...prev})); return; }
                 if (activeConn && ghostPathRef.current) {
-                    const tx = (pos.x - offset.x) / scale, ty = (pos.y - offset.y) / scale;
-                    let foundSnap = null;
+                    const tx = (pos.x - offset.x) / scale, ty = (pos.y - offset.y) / scale; let foundSnap = null;
                     for (const nodeItem of nodesSnapshot.current) {
                         if (nodeItem.id === activeConn.fromId) continue;
                         ['left', 'right', 'top', 'bottom'].forEach(pKey => {
@@ -569,192 +488,115 @@
                             if (Math.sqrt(Math.pow(tx - px, 2) + Math.pow(ty - py, 2)) < 65 / scale) foundSnap = { nodeId: nodeItem.id, port: pKey, x: px, y: py };
                         });
                     }
-                    const targetX = foundSnap ? foundSnap.x : tx, targetY = foundSnap ? foundSnap.y : ty;
-                    setSnapPort(foundSnap);
+                    const targetX = foundSnap ? foundSnap.x : tx, targetY = foundSnap ? foundSnap.y : ty; setSnapPort(foundSnap);
                     ghostPathRef.current.setAttribute('d', getPathD(activeConn.startX, activeConn.startY, targetX, targetY, activeConn.fromPort, foundSnap ? foundSnap.port : 'left'));
                     return;
                 }
-                
                 if (!dragInfo.current.isDragging) return;
-                
                 if (rafId.current) return;
                 rafId.current = window.requestAnimationFrame(() => {
-                    rafId.current = null;
-                    if (!dragInfo.current.isDragging) return;
-                    
+                    rafId.current = null; if (!dragInfo.current.isDragging) return;
                     const { id, startX, startY, connectedPipeIds } = dragInfo.current;
                     const dx = (pos.x - startX) / scale, dy = (pos.y - startY) / scale;
                     dragInfo.current.dx = dx; dragInfo.current.dy = dy;
                     const movingSet = selectedNodes.has(id) ? selectedNodes : new Set([id]);
-                    
                     movingSet.forEach(mId => { 
                         if (nodeRefs.current[mId]) {
                             nodeRefs.current[mId].style.transform = `translate3d(${dx}px, ${dy}px, 0)`; 
                             nodeRefs.current[mId].classList.add('is-dragging');
                         }
                     });
-                    
                     connectedPipeIds.forEach(pId => {
-                        const pItem = pipesSnapshot.current.find(pip => pip.id === pId); 
-                        if (!pItem || !pathRefs.current[pId]) return;
-                        
+                        const pItem = pipesSnapshot.current.find(pip => pip.id === pId); if (!pItem || !pathRefs.current[pId]) return;
                         const fN = movingSet.has(pItem.fromId) ? { ...nodeMapSnapshot.current[pItem.fromId], x: (nodeMapSnapshot.current[pItem.fromId]?.x || 0) + dx, y: (nodeMapSnapshot.current[pItem.fromId]?.y || 0) + dy } : nodeMapSnapshot.current[pItem.fromId];
                         const tN = movingSet.has(pItem.toId) ? { ...nodeMapSnapshot.current[pItem.toId], x: (nodeMapSnapshot.current[pItem.toId]?.x || 0) + dx, y: (nodeMapSnapshot.current[pItem.toId]?.y || 0) + dy } : nodeMapSnapshot.current[pItem.toId];
-                        
                         if (!fN || !tN) return;
-                        
                         const o1 = getPortOffset(pItem.fromPort, fN), o2 = getPortOffset(pItem.toPort, tN);
                         const x1 = fN.x + o1.x, y1 = fN.y + o1.y, x2 = tN.x + o2.x, y2 = tN.y + o2.y;
-                        
                         pathRefs.current[pId].setAttribute('d', getPathD(x1, y1, x2, y2, pItem.fromPort, pItem.toPort));
-                        if (labelRefs.current[pId]) {
-                            labelRefs.current[pId].style.left = `${(x1 + x2) / 2}px`;
-                            labelRefs.current[pId].style.top = `${(y1 + y2) / 2}px`;
-                        }
+                        if (labelRefs.current[pId]) { labelRefs.current[pId].style.left = `${(x1 + x2) / 2}px`; labelRefs.current[pId].style.top = `${(y1 + y2) / 2}px`; }
                     });
                 });
             }, [scale, offset, activeConn, selectedNodes, solveHydraulics, placementGroup]);
 
             const onMouseUp = useCallback(() => {
-                document.body.classList.remove('dragging-active');
-                document.body.classList.remove('selecting-active');
-                
+                document.body.classList.remove('dragging-active'); document.body.classList.remove('selecting-active');
                 if (dragInfo.current.isSelecting && selectionBox) {
-                    const wStart = screenToWorld(selectionBox.startX, selectionBox.startY);
-                    const wEnd = screenToWorld(selectionBox.endX, selectionBox.endY);
-                    const xMin = Math.min(wStart.x, wEnd.x), xMax = Math.max(wStart.x, wEnd.x);
-                    const yMin = Math.min(wStart.y, wEnd.y), yMax = Math.max(wStart.y, wEnd.y);
-                    const insideIds = nodesSnapshot.current.filter(n => {
-                        const { w, h } = getNodeDimensions(n);
-                        const centerX = n.x + w/2, centerY = n.y + h/2;
-                        return centerX >= xMin && centerX <= xMax && centerY >= yMin && centerY <= yMax;
-                    }).map(n => n.id);
+                    const wStart = screenToWorld(selectionBox.startX, selectionBox.startY); const wEnd = screenToWorld(selectionBox.endX, selectionBox.endY);
+                    const xMin = Math.min(wStart.x, wEnd.x), xMax = Math.max(wStart.x, wEnd.x), yMin = Math.min(wStart.y, wEnd.y), yMax = Math.max(wStart.y, wEnd.y);
+                    const insideIds = nodesSnapshot.current.filter(n => { const { w, h } = getNodeDimensions(n); const centerX = n.x + w/2, centerY = n.y + h/2; return centerX >= xMin && centerX <= xMax && centerY >= yMin && centerY <= yMax; }).map(n => n.id);
                     if (insideIds.length > 0) generatePlacementGroup(insideIds);
-                    setSelectionBox(null);
-                    dragInfo.current.isSelecting = false;
-                    return;
+                    setSelectionBox(null); dragInfo.current.isSelecting = false; return;
                 }
-
                 if (dragInfo.current.isDragging) {
-                    const { dx, dy, id } = dragInfo.current;
-                    const movingSet = selectedNodes.has(id) ? selectedNodes : new Set([id]);
-                    if (Math.abs(dx) > 1 || Math.abs(dy) > 1) {
-                        saveHistory();
-                        setNodes(prev => prev.map(n => movingSet.has(n.id) ? { ...n, x: n.x + dx, y: n.y + dy } : n));
-                    }
-                    movingSet.forEach(mId => { 
-                        if (nodeRefs.current[mId]) {
-                            nodeRefs.current[mId].style.transform = 'translate3d(0,0,0)'; 
-                            nodeRefs.current[mId].classList.remove('is-dragging');
-                        }
-                    });
-                    dragInfo.current.isDragging = false; 
-                    isDraggingRef.current = false;
+                    const { dx, dy, id } = dragInfo.current; const movingSet = selectedNodes.has(id) ? selectedNodes : new Set([id]);
+                    if (Math.abs(dx) > 1 || Math.abs(dy) > 1) { saveHistory(); setNodes(prev => prev.map(n => movingSet.has(n.id) ? { ...n, x: n.x + dx, y: n.y + dy } : n)); }
+                    movingSet.forEach(mId => { if (nodeRefs.current[mId]) { nodeRefs.current[mId].style.transform = 'translate3d(0,0,0)'; nodeRefs.current[mId].classList.remove('is-dragging'); } });
+                    dragInfo.current.isDragging = false; isDraggingRef.current = false;
                 }
-                
                 if (activeConn && snapPort) {
                     const isDup = pipesSnapshot.current.some(p => p.fromId === activeConn.fromId && p.toId === snapPort.nodeId && p.fromPort === activeConn.fromPort && p.toPort === snapPort.port);
-                    if (!isDup) {
-                        saveHistory();
-                        setPipes(prev => [...prev, { id: `p-${Date.now()}-${Math.random()}`, fromId: activeConn.fromId, fromPort: activeConn.fromPort, toId: snapPort.nodeId, toPort: snapPort.port }]);
-                    }
+                    if (!isDup) { saveHistory(); setPipes(prev => [...prev, { id: `p-${Date.now()}-${Math.random()}`, fromId: activeConn.fromId, fromPort: activeConn.fromPort, toId: snapPort.nodeId, toPort: snapPort.port }]); }
                 }
-                
-                dragInfo.current.isPanning = false; 
-                setActiveConn(null); 
-                setSnapPort(null);
-                if (ghostPathRef.current) ghostPathRef.current.setAttribute('d', '');
+                dragInfo.current.isPanning = false; setActiveConn(null); setSnapPort(null); if (ghostPathRef.current) ghostPathRef.current.setAttribute('d', '');
             }, [activeConn, snapPort, selectedNodes, setNodes, setPipes, selectionBox, screenToWorld, generatePlacementGroup, saveHistory]);
 
             const onMouseDown = useCallback((e) => {
                 const pos = getEventPos(e);
-                
                 if (placementGroup) {
-                    saveHistory();
-                    const worldPos = screenToWorld(pos.x, pos.y);
-                    const finalNodes = placementGroup.nodes.map(n => ({
-                        ...n,
-                        x: worldPos.x + n.relativeX,
-                        y: worldPos.y + n.relativeY,
-                        relativeX: undefined,
-                        relativeY: undefined
-                    }));
-                    setNodes(prev => [...prev, ...finalNodes]);
-                    setPipes(prev => [...prev, ...placementGroup.pipes]);
-                    setPlacementGroup(null);
-                    setCopyToolActive(false);
-                    showToast("圖塊已放置。");
-                    return;
+                    saveHistory(); const worldPos = screenToWorld(pos.x, pos.y);
+                    const finalNodes = placementGroup.nodes.map(n => ({ ...n, x: worldPos.x + n.relativeX, y: worldPos.y + n.relativeY, relativeX: undefined, relativeY: undefined }));
+                    setNodes(prev => [...prev, ...finalNodes]); setPipes(prev => [...prev, ...placementGroup.pipes]);
+                    setPlacementGroup(null); setCopyToolActive(false); showToast("圖塊已放置。"); return;
                 }
-
-                // 處理平移視角 (中鍵或 Shift+左鍵，或是觸控兩指)
                 if(e.button===1 || (e.button===0&&e.shiftKey)) { 
                     e.preventDefault(); dragInfo.current.isPanning=true; dragInfo.current.startX=pos.x-offset.x; dragInfo.current.startY=pos.y-offset.y; 
                 }
                 else if (copyToolActive && (e.target.tagName === 'svg' || e.target.classList.contains('canvas-grid') || e.target.closest('.canvas-grid'))) {
-                    e.preventDefault(); 
-                    document.body.classList.add('selecting-active');
-                    dragInfo.current.isSelecting = true;
+                    e.preventDefault(); document.body.classList.add('selecting-active'); dragInfo.current.isSelecting = true;
                     setSelectionBox({ startX: pos.x, startY: pos.y, endX: pos.x, endY: pos.y });
                 }
-                else if (e.target.tagName === 'svg' || e.target.classList.contains('canvas-grid')) { 
-                    setSelectedNodes(new Set()); setActiveColorPickerId(null); 
-                }
+                else if (e.target.tagName === 'svg' || e.target.classList.contains('canvas-grid')) { setSelectedNodes(new Set()); setActiveColorPickerId(null); }
             }, [placementGroup, screenToWorld, copyToolActive, offset, setNodes, setPipes, saveHistory]);
 
-            // 觸控專屬縮放與平移邏輯
             const onTouchMove = useCallback((e) => {
                 if (e.touches.length === 2) {
+                    e.preventDefault(); 
                     const t1 = e.touches[0], t2 = e.touches[1];
                     const dist = Math.sqrt(Math.pow(t2.clientX - t1.clientX, 2) + Math.pow(t2.clientY - t1.clientY, 2));
                     const midX = (t1.clientX + t2.clientX) / 2, midY = (t1.clientY + t2.clientY) / 2;
-
                     if (touchInfo.current.lastDistance > 0) {
                         const factor = dist / touchInfo.current.lastDistance;
                         const newScale = Math.min(Math.max(scale * factor, 0.08), 3.0);
-                        
-                        // 計算新 Offset 以保持雙指中心點不變
-                        const dx = midX - touchInfo.current.initialMidX;
-                        const dy = midY - touchInfo.current.initialMidY;
-                        
-                        setOffset({
-                            x: midX - (midX - offset.x) * (newScale / scale) + dx * 0.5,
-                            y: midY - (midY - offset.y) * (newScale / scale) + dy * 0.5
-                        });
+                        const dx = midX - touchInfo.current.initialMidX, dy = midY - touchInfo.current.initialMidY;
+                        setOffset({ x: midX - (midX - offset.x) * (newScale / scale) + dx * 0.5, y: midY - (midY - offset.y) * (newScale / scale) + dy * 0.5 });
                         setScale(newScale);
                     }
-                    touchInfo.current.lastDistance = dist;
-                    touchInfo.current.initialMidX = midX;
-                    touchInfo.current.initialMidY = midY;
+                    touchInfo.current.lastDistance = dist; touchInfo.current.initialMidX = midX; touchInfo.current.initialMidY = midY;
                 } else {
+                    if (dragInfo.current.isDragging || dragInfo.current.isPanning) e.preventDefault();
                     onMouseMove(e);
                 }
             }, [scale, offset, onMouseMove]);
 
             const onTouchStart = useCallback((e) => {
                 if (e.touches.length === 2) {
+                    e.preventDefault();
                     const t1 = e.touches[0], t2 = e.touches[1];
                     touchInfo.current.lastDistance = Math.sqrt(Math.pow(t2.clientX - t1.clientX, 2) + Math.pow(t2.clientY - t1.clientY, 2));
-                    touchInfo.current.initialMidX = (t1.clientX + t2.clientX) / 2;
-                    touchInfo.current.initialMidY = (t1.clientY + t2.clientY) / 2;
+                    touchInfo.current.initialMidX = (t1.clientX + t2.clientX) / 2; touchInfo.current.initialMidY = (t1.clientY + t2.clientY) / 2;
                 } else {
                     onMouseDown(e);
                 }
             }, [onMouseDown]);
 
-            const onTouchEnd = useCallback(() => {
-                touchInfo.current.lastDistance = 0;
-                onMouseUp();
-            }, [onMouseUp]);
+            const onTouchEnd = useCallback(() => { touchInfo.current.lastDistance = 0; onMouseUp(); }, [onMouseUp]);
 
             useEffect(() => {
                 const container = containerRef.current; if (!container) return;
                 const handleWheelNative = (e) => {
-                    e.preventDefault();
-                    const factor = Math.pow(1.15, -e.deltaY / 120);
-                    const newScale = Math.min(Math.max(scale * factor, 0.08), 3.0);
-                    const rect = container.getBoundingClientRect();
-                    const mouseX = e.clientX - rect.left, mouseY = e.clientY - rect.top;
+                    e.preventDefault(); const factor = Math.pow(1.15, -e.deltaY / 120); const newScale = Math.min(Math.max(scale * factor, 0.08), 3.0);
+                    const rect = container.getBoundingClientRect(); const mouseX = e.clientX - rect.left, mouseY = e.clientY - rect.top;
                     setOffset(prev => ({ x: mouseX - (mouseX - prev.x) * (newScale / scale), y: mouseY - (mouseY - prev.y) * (newScale / scale) }));
                     setScale(newScale);
                 };
@@ -763,59 +605,41 @@
             }, [scale, offset]);
 
             useEffect(() => {
-                window.addEventListener('mousemove', onMouseMove); 
-                window.addEventListener('mouseup', onMouseUp);
+                window.addEventListener('mousemove', onMouseMove); window.addEventListener('mouseup', onMouseUp);
                 window.addEventListener('touchmove', onTouchMove, { passive: false });
                 window.addEventListener('touchend', onTouchEnd);
                 return () => { 
-                    window.removeEventListener('mousemove', onMouseMove); 
-                    window.removeEventListener('mouseup', onMouseUp); 
-                    window.removeEventListener('touchmove', onTouchMove);
-                    window.removeEventListener('touchend', onTouchEnd);
+                    window.removeEventListener('mousemove', onMouseMove); window.removeEventListener('mouseup', onMouseUp); 
+                    window.removeEventListener('touchmove', onTouchMove); window.removeEventListener('touchend', onTouchEnd);
                 };
             }, [onMouseMove, onMouseUp, onTouchMove, onTouchEnd]);
 
             const handleResetView = () => {
                 if (nodes.length === 0) return;
                 let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
-                nodes.forEach(n => {
-                    const { w, h } = getNodeDimensions(n);
-                    minX = Math.min(minX, n.x); maxX = Math.max(maxX, n.x + w);
-                    minY = Math.min(minY, n.y); maxY = Math.max(maxY, n.y + h);
-                });
-                const contentW = maxX - minX, contentH = maxY - minY;
-                const rect = containerRef.current.getBoundingClientRect();
-                const padding = 150;
+                nodes.forEach(n => { const { w, h } = getNodeDimensions(n); minX = Math.min(minX, n.x); maxX = Math.max(maxX, n.x + w); minY = Math.min(minY, n.y); maxY = Math.max(maxY, n.y + h); });
+                const contentW = maxX - minX, contentH = maxY - minY; const rect = containerRef.current.getBoundingClientRect(); const padding = 150;
                 const newScale = Math.min((rect.width - padding) / contentW, (rect.height - padding) / contentH, 1.2);
-                setScale(newScale);
-                setOffset({ x: rect.width / 2 - (minX + contentW / 2) * newScale, y: rect.height / 2 - (minY + contentH / 2) * newScale });
+                setScale(newScale); setOffset({ x: rect.width / 2 - (minX + contentW / 2) * newScale, y: rect.height / 2 - (minY + contentH / 2) * newScale });
             };
-
             const getSpawnPoint = useCallback(() => {
                 const rect = containerRef.current?.getBoundingClientRect() || { width: window.innerWidth, height: window.innerHeight };
                 return { x: (rect.width/2 - offset.x)/scale - 250, y: (rect.height/2 - offset.y)/scale - 160 };
             }, [offset, scale]);
 
             const handleMergeAction = () => {
-                if (selectedNodes.size < 2) return;
-                const list = nodes.filter(n => selectedNodes.has(n.id) && n.templateId !== 'SOURCE');
-                if (list.length < 2) return;
-                saveHistory();
-                const avgX = list.reduce((s,n)=>s+n.x,0)/list.length, avgY = list.reduce((s,n)=>s+n.y,0)/list.length;
+                if (selectedNodes.size < 2) return; const list = nodes.filter(n => selectedNodes.has(n.id) && n.templateId !== 'SOURCE'); if (list.length < 2) return;
+                saveHistory(); const avgX = list.reduce((s,n)=>s+n.x,0)/list.length, avgY = list.reduce((s,n)=>s+n.y,0)/list.length;
                 const composition = {}; let totalKw = 0;
                 list.forEach(n => {
                     const libItem = library.find(l => l.id === n.templateId);
                     if(!composition[n.templateId]) composition[n.templateId] = { label: n.label || libItem?.label || "設備", qty: 0 };
-                    composition[n.templateId].qty += (n.qty || 1);
-                    totalKw += (n.customKw !== undefined ? n.customKw : (libItem?.kw || 0)) * (n.qty || 1);
+                    composition[n.templateId].qty += (n.qty || 1); totalKw += (n.customKw !== undefined ? n.customKw : (libItem?.kw || 0)) * (n.qty || 1);
                 });
                 const newId = `merged-${Date.now()}`;
                 const newPipesArr = pipes.map(p => {
                     const fromS = selectedNodes.has(p.fromId), toS = selectedNodes.has(p.toId);
-                    if (fromS && toS) return null;
-                    if (fromS) return { ...p, fromId: newId };
-                    if (toS) return { ...p, toId: newId };
-                    return p;
+                    if (fromS && toS) return null; if (fromS) return { ...p, fromId: newId }; if (toS) return { ...p, toId: newId }; return p;
                 }).filter(p => p);
                 setNodes(prev => [...prev.filter(n => !selectedNodes.has(n.id)), { id: newId, isMerged: true, label: "多負載彙整區域", x: avgX, y: avgY, customKw: totalKw, composition, color: 'bg-indigo-700' }]);
                 setPipes(newPipesArr); setSelectedNodes(new Set([newId]));
@@ -823,12 +647,9 @@
 
             const handleUnmerge = (nodeId) => {
                 const nodeItem = renderNodeMap[nodeId]; if (!nodeItem || !nodeItem.isMerged) return;
-                saveHistory();
-                const restoredNodesArr = []; let oY = 0;
+                saveHistory(); const restoredNodesArr = []; let oY = 0;
                 Object.keys(nodeItem.composition).forEach(libId => {
-                    const c = nodeItem.composition[libId];
-                    restoredNodesArr.push({ id: `inst-${Date.now()}-${libId}`, templateId: libId, label: c.label, x: nodeItem.x + 350, y: nodeItem.y + oY, qty: c.qty });
-                    oY += 180;
+                    const c = nodeItem.composition[libId]; restoredNodesArr.push({ id: `inst-${Date.now()}-${libId}`, templateId: libId, label: c.label, x: nodeItem.x + 350, y: nodeItem.y + oY, qty: c.qty }); oY += 180;
                 });
                 const firstId = restoredNodesArr[0].id;
                 setPipes(prev => prev.map(p => (p.fromId===nodeId?{...p,fromId:firstId}:(p.toId===nodeId?{...p,toId:firstId}:p))));
@@ -840,24 +661,17 @@
             return (
                 <div ref={containerRef} className={`flex h-full w-full bg-slate-200 relative overflow-hidden canvas-grid ${copyToolActive ? 'copy-mode-active' : ''} ${placementGroup ? 'placement-mode-active' : ''}`} onMouseDown={onMouseDown} onTouchStart={onTouchStart}>
                     {selectionBox && (
-                        <div className="selection-box" style={{
-                            left: Math.min(selectionBox.startX, selectionBox.endX),
-                            top: Math.min(selectionBox.startY, selectionBox.endY),
-                            width: Math.abs(selectionBox.startX - selectionBox.endX),
-                            height: Math.abs(selectionBox.startY - selectionBox.endY)
-                        }} />
+                        <div className="selection-box" style={{ left: Math.min(selectionBox.startX, selectionBox.endX), top: Math.min(selectionBox.startY, selectionBox.endY), width: Math.abs(selectionBox.startX - selectionBox.endX), height: Math.abs(selectionBox.startY - selectionBox.endY) }} />
                     )}
-
                     <div className={`absolute left-0 top-0 bottom-0 md:left-4 md:top-4 md:bottom-4 w-52 bg-white shadow-2xl md:rounded-3xl z-[1500] transition-all duration-500 flex flex-col border-r md:border-4 border-slate-100 ${sidebarOpen ? 'translate-x-0' : '-translate-x-full opacity-0'}`}>
                         <div className="p-4 border-b flex justify-between items-center font-black text-[10px] uppercase text-slate-400"><span>Library</span><button onClick={() => setSidebarOpen(false)} className="hover:text-slate-800 transition-all p-2"><Icons.X /></button></div>
-                        <div className="flex-1 p-3 space-y-4 overflow-y-auto">
+                        <div className="flex-1 p-3 space-y-4 overflow-y-auto font-black">
                             <button onClick={() => { setCopyToolActive(!copyToolActive); setSelectedNodes(new Set()); setPlacementGroup(null); }} className={`w-full p-4 rounded-2xl flex items-center justify-between border-4 transition-all font-black uppercase text-xs tracking-tighter ${copyToolActive ? 'bg-emerald-500 text-white border-emerald-600 scale-105 shadow-xl' : 'bg-slate-100 text-slate-500 border-slate-200 hover:bg-slate-200'}`}>
-                                <span>Copy Mode</span>
-                                <Icons.Copy />
+                                <span>Copy Mode</span><Icons.Copy />
                             </button>
                             <div className="h-px bg-slate-100 my-2" />
-                            <button onClick={() => { saveHistory(); const p = getSpawnPoint(); setNodes(prev => [...prev, { id: `src-${Date.now()}`, templateId: 'SOURCE', label: '主總管彙整中心', x: p.x, y: p.y, qty: 1 }])}} className="w-full p-5 bg-yellow-400 rounded-2xl shadow-lg flex items-center justify-between border-4 border-yellow-500 transition-all font-black uppercase text-xs tracking-tighter"><span>Header</span><Icons.Plus /></button>
-                            <button onClick={() => { saveHistory(); const p = getSpawnPoint(); setNodes(prev => [...prev, { id: `pvt-${Date.now()}`, type: 'PIVOT', label: '區域分區支點', x: p.x, y: p.y, color: 'bg-slate-800' }])}} className="w-full p-5 bg-slate-800 text-white rounded-2xl shadow-lg flex items-center justify-between border-4 border-slate-950 transition-all font-black uppercase text-xs tracking-tighter"><span>Pivot</span><Icons.Plus /></button>
+                            <button onClick={() => { saveHistory(); const p = getSpawnPoint(); setNodes(prev => [...prev, { id: `src-${Date.now()}`, templateId: 'SOURCE', label: '主總管彙整中心', x: p.x, y: p.y, qty: 1 }])}} className="w-full p-5 bg-yellow-400 rounded-2xl shadow-lg flex items-center justify-between border-4 border-yellow-500 transition-all uppercase text-xs tracking-tighter"><span>Header</span><Icons.Plus /></button>
+                            <button onClick={() => { saveHistory(); const p = getSpawnPoint(); setNodes(prev => [...prev, { id: `pvt-${Date.now()}`, type: 'PIVOT', label: '區域分區支點', x: p.x, y: p.y, color: 'bg-slate-800' }])}} className="w-full p-5 bg-slate-800 text-white rounded-2xl shadow-lg flex items-center justify-between border-4 border-slate-950 transition-all uppercase text-xs tracking-tighter"><span>Pivot</span><Icons.Plus /></button>
                             <div className="h-px bg-slate-100 my-2" />
                             {library.map(lib => (
                                 <button key={lib.id} onClick={() => { saveHistory(); const p = getSpawnPoint(); setNodes(prev => [...prev, { id: `inst-${Date.now()}`, templateId: lib.id, label: lib.label, x: p.x, y: p.y, qty: 1, color: lib.color }])}} className="w-full p-3 bg-white border-2 border-slate-50 rounded-[1.2rem] hover:border-blue-500 shadow-sm flex items-center gap-4 active:scale-95 transition-all text-left">
@@ -867,18 +681,14 @@
                         </div>
                     </div>
                     {!sidebarOpen && (
-                        <button onClick={() => setSidebarOpen(true)} className="absolute left-6 top-6 bg-slate-900 text-white p-4 rounded-2xl shadow-2xl z-[1500] border-2 border-white transition-all hover:scale-110 active:scale-95">
-                            <Icons.Menu />
-                        </button>
+                        <button onClick={() => setSidebarOpen(true)} className="absolute left-6 top-6 bg-slate-900 text-white p-4 rounded-2xl shadow-2xl z-[1500] border-2 border-white transition-all hover:scale-110 active:scale-95"><Icons.Menu /></button>
                     )}
-
                     {selectedNodes.size > 1 && !copyToolActive && !placementGroup && (
                         <div className="absolute top-4 left-1/2 -translate-x-1/2 bg-white px-6 md:px-10 py-3 md:py-5 rounded-[1.5rem] md:rounded-[2.5rem] shadow-2xl border-[4px] md:border-[6px] border-blue-600 z-[2500] flex items-center gap-4 md:gap-8 animate-in slide-in-from-top-10">
                             <div className="hidden sm:flex flex-col font-black text-left leading-none"><span className="text-xs text-blue-500 uppercase tracking-widest mb-1">Group</span><span className="text-xl font-black italic">已選中 {selectedNodes.size} 個設備</span></div>
                             <button onClick={handleMergeAction} className="bg-blue-600 text-white px-6 py-3 md:px-10 md:py-4 rounded-xl md:rounded-3xl font-black text-base md:text-xl uppercase flex items-center gap-2 md:gap-4 hover:bg-blue-500 shadow-xl transition-all active:scale-95"><Icons.Layers /> 大總量合併</button>
                         </div>
                     )}
-
                     <main className="flex-1 relative overflow-hidden">
                         <div className="absolute inset-0 origin-top-left" style={{ transform: `translate3d(${offset.x}px, ${offset.y}px, 0) scale(${scale})` }}>
                             <svg className="absolute inset-0 w-[20000px] h-[20000px] pointer-events-none z-0">
@@ -886,27 +696,18 @@
                                     const fN = renderNodeMap[p.fromId], tN = renderNodeMap[p.toId]; if (!fN || !tN) return null;
                                     const o1 = getPortOffset(p.fromPort, fN), o2 = getPortOffset(p.toPort, tN);
                                     const x1 = fN.x + o1.x, y1 = fN.y + o1.y, x2 = tN.x + o2.x, y2 = tN.y + o2.y;
-                                    return (
-                                        <g key={p.id}>
-                                            <path ref={el => pathRefs.current[p.id] = el} d={getPathD(x1, y1, x2, y2, p.fromPort, p.toPort)} stroke={p.warning ? "#f59e0b" : "#2563eb"} strokeWidth={p.warning ? 16 : 8} fill="none" strokeLinecap="round" className={p.warning ? "warning-pulse" : ""} />
-                                        </g>
-                                    );
+                                    return (<path key={p.id} ref={el => pathRefs.current[p.id] = el} d={getPathD(x1, y1, x2, y2, p.fromPort, p.toPort)} stroke={p.warning ? "#f59e0b" : "#2563eb"} strokeWidth={p.warning ? 16 : 8} fill="none" strokeLinecap="round" className={p.warning ? "warning-pulse" : ""} />);
                                 })}
                                 {placementGroup && placementGroup.pipes.map(p => {
-                                    const fN = placementGroup.nodes.find(n => n.id === p.fromId);
-                                    const tN = placementGroup.nodes.find(n => n.id === p.toId);
-                                    if (!fN || !tN) return null;
+                                    const fN = placementGroup.nodes.find(n => n.id === p.fromId), tN = placementGroup.nodes.find(n => n.id === p.toId); if (!fN || !tN) return null;
                                     const o1 = getPortOffset(p.fromPort, fN), o2 = getPortOffset(p.toPort, tN);
                                     const x1 = mouseWorldPos.x + fN.relativeX + o1.x, y1 = mouseWorldPos.y + fN.relativeY + o1.y;
                                     const x2 = mouseWorldPos.x + tN.relativeX + o2.x, y2 = mouseWorldPos.y + tN.relativeY + o2.y;
-                                    return (
-                                        <path key={`ghost-pipe-${p.id}`} d={getPathD(x1, y1, x2, y2, p.fromPort, p.toPort)} stroke="#10b981" strokeWidth={6} fill="none" strokeDasharray="10,5" className="ghost-group" />
-                                    );
+                                    return (<path key={`ghost-pipe-${p.id}`} d={getPathD(x1, y1, x2, y2, p.fromPort, p.toPort)} stroke="#10b981" strokeWidth={6} fill="none" strokeDasharray="10,5" className="ghost-group" />);
                                 })}
                                 {snapPort && <circle cx={snapPort.x} cy={snapPort.y} r={40} fill="none" stroke="#f97316" strokeWidth={8} strokeDasharray="12" className="animate-pulse active-snap" />}
                                 {activeConn && <path ref={ghostPathRef} d="" stroke="#f97316" strokeWidth={8} fill="none" strokeDasharray="12,10" />}
                             </svg>
-
                             {results.map(p => {
                                 const fN = renderNodeMap[p.fromId], tN = renderNodeMap[p.toId]; if (!fN || !tN) return null;
                                 const o1 = getPortOffset(p.fromPort, fN), o2 = getPortOffset(p.toPort, tN);
@@ -917,62 +718,25 @@
                                             <div className="text-6xl font-black text-white leading-none mb-1 tracking-tighter italic">DN{p.dn}</div>
                                             <div className="text-2xl font-black text-blue-400 mb-2 leading-none">{p.lpm.toFixed(0)} <small className="text-xs font-bold font-black">LPM</small></div>
                                             {p.warning && <div className="text-[12px] font-black uppercase text-red-500 mt-2 flex items-center gap-2 animate-pulse font-black"><Icons.AlertTriangle /> 流速過載</div>}
-                                            <button onClick={() => { saveHistory(); setPipes(prev => prev.filter(pip => pip.id !== p.id))}} className="absolute -top-6 -right-6 bg-red-600 border-4 border-white rounded-full shadow-2xl text-white p-3 opacity-0 group-hover:opacity-100 hover:bg-red-700 transition-all active:scale-75 z-[200]">
-                                                <Icons.X />
-                                            </button>
+                                            <button onClick={() => { saveHistory(); setPipes(prev => prev.filter(pip => pip.id !== p.id))}} className="absolute -top-6 -right-6 bg-red-600 border-4 border-white rounded-full shadow-2xl text-white p-3 opacity-0 group-hover:opacity-100 hover:bg-red-700 transition-all active:scale-75 z-[200]"><Icons.X /></button>
                                         </div>
                                     </div>
                                 );
                             })}
-
                             {placementGroup && placementGroup.nodes.map(nodeItem => {
-                                const libItem = library.find(l => l.id === nodeItem.templateId);
-                                const { w, h } = getNodeDimensions(nodeItem);
-                                return (
-                                    <div key={`ghost-${nodeItem.id}`} 
-                                        style={{ left: mouseWorldPos.x + nodeItem.relativeX, top: mouseWorldPos.y + nodeItem.relativeY, width: w, height: h, outline: '4px dashed #10b981' }}
-                                        className="absolute bg-white/40 rounded-[3.5rem] border-[6px] border-emerald-500/50 z-[8000] ghost-group flex items-center justify-center font-black text-2xl text-emerald-700">
-                                        放置預覽: {nodeItem.label || libItem?.label}
-                                    </div>
-                                );
+                                const libItem = library.find(l => l.id === nodeItem.templateId); const { w, h } = getNodeDimensions(nodeItem);
+                                return (<div key={`ghost-${nodeItem.id}`} style={{ left: mouseWorldPos.x + nodeItem.relativeX, top: mouseWorldPos.y + nodeItem.relativeY, width: w, height: h, outline: '4px dashed #10b981' }} className="absolute bg-white/40 rounded-[3.5rem] border-[6px] border-emerald-500/50 z-[8000] ghost-group flex items-center justify-center font-black text-2xl text-emerald-700">放置預覽: {nodeItem.label || libItem?.label}</div>);
                             })}
-
                             {nodes.map(nodeItem => {
                                 const isS = nodeItem.templateId === 'SOURCE'; const isP = nodeItem.type === 'PIVOT'; const libItem = library.find(l => l.id === nodeItem.templateId);
-                                const isSel = selectedNodes.has(nodeItem.id); const flowLpm = nodeFlows[nodeItem.id] || 0; const sizing = HydraulicEngine.getSizing(flowLpm / 60);
-                                const { w, h } = getNodeDimensions(nodeItem);
+                                const isSel = selectedNodes.has(nodeItem.id); const flowLpm = nodeFlows[nodeItem.id] || 0; const sizing = HydraulicEngine.getSizing(flowLpm / 60); const { w, h } = getNodeDimensions(nodeItem);
                                 return (
-                                    <div key={nodeItem.id} ref={el => nodeRefs.current[nodeItem.id] = el} 
-                                        onDragStart={e => e.preventDefault()}
-                                        style={{ left: nodeItem.x, top: nodeItem.y, width: w, height: h, transform: 'translate3d(0,0,0)', outline: isSel ? '12px dashed #3b82f6' : 'none', outlineOffset: '20px', zIndex: 1000 }}
-                                        onClick={e => { 
-                                            e.stopPropagation(); 
-                                            if (placementGroup) return; 
-                                            if (copyToolActive) { generatePlacementGroup([nodeItem.id]); return; }
-                                            if (e.shiftKey) setSelectedNodes(prev => { const n=new Set(prev); n.has(nodeItem.id)?n.delete(nodeItem.id):n.add(nodeItem.id); return n; }); 
-                                            else setSelectedNodes(new Set([nodeItem.id])); 
-                                        }}
+                                    <div key={nodeItem.id} ref={el => nodeRefs.current[nodeItem.id] = el} onDragStart={e => e.preventDefault()} style={{ left: nodeItem.x, top: nodeItem.y, width: w, height: h, transform: 'translate3d(0,0,0)', outline: isSel ? '12px dashed #3b82f6' : 'none', outlineOffset: '20px', zIndex: 1000 }}
+                                        onClick={e => { e.stopPropagation(); if (placementGroup) return; if (copyToolActive) { generatePlacementGroup([nodeItem.id]); return; } if (e.shiftKey) setSelectedNodes(prev => { const n=new Set(prev); n.has(nodeItem.id)?n.delete(nodeItem.id):n.add(nodeItem.id); return n; }); else setSelectedNodes(new Set([nodeItem.id])); }}
                                         className={`absolute bg-white rounded-[3.5rem] border-[6px] flex flex-col node-layer ${isS ? 'source-glow' : 'shadow-[0_40px_100px_-20px_rgba(0,0,0,0.4)]'}`}>
-                                        
                                         <div className={`h-16 shrink-0 ${isS?'h-20':''} ${nodeItem.color || (isS ? 'bg-yellow-400 text-slate-900' : (isP ? 'bg-slate-800 text-white' : (nodeItem.isMerged ? 'bg-indigo-700 text-white' : (libItem?.color || 'bg-slate-400 text-white'))))} flex items-center px-8 justify-between cursor-move rounded-t-[2.9rem] shadow-xl relative` }
-                                            onMouseDown={e => { 
-                                                e.stopPropagation(); 
-                                                if (copyToolActive || placementGroup) return;
-                                                document.body.classList.add('dragging-active'); isDraggingRef.current = true;
-                                                const pos = getEventPos(e);
-                                                const movingSet = selectedNodes.has(nodeItem.id) ? selectedNodes : new Set([nodeItem.id]);
-                                                const connected = pipesSnapshot.current.filter(p => movingSet.has(p.fromId) || movingSet.has(p.toId));
-                                                dragInfo.current = { isDragging: true, id: nodeItem.id, startX: pos.x, startY: pos.y, connectedPipeIds: connected.map(p=>p.id), dx: 0, dy: 0 }; 
-                                            }}
-                                            onTouchStart={e => {
-                                                e.stopPropagation();
-                                                if (e.touches.length > 1) return;
-                                                document.body.classList.add('dragging-active'); isDraggingRef.current = true;
-                                                const pos = getEventPos(e);
-                                                const movingSet = selectedNodes.has(nodeItem.id) ? selectedNodes : new Set([nodeItem.id]);
-                                                const connected = pipesSnapshot.current.filter(p => movingSet.has(p.fromId) || movingSet.has(p.toId));
-                                                dragInfo.current = { isDragging: true, id: nodeItem.id, startX: pos.x, startY: pos.y, connectedPipeIds: connected.map(p=>p.id), dx: 0, dy: 0 };
-                                            }}
+                                            onMouseDown={e => { e.stopPropagation(); if (copyToolActive || placementGroup) return; document.body.classList.add('dragging-active'); isDraggingRef.current = true; const pos = getEventPos(e); const movingSet = selectedNodes.has(nodeItem.id) ? selectedNodes : new Set([nodeItem.id]); const connected = pipesSnapshot.current.filter(p => movingSet.has(p.fromId) || movingSet.has(p.toId)); dragInfo.current = { isDragging: true, id: nodeItem.id, startX: pos.x, startY: pos.y, connectedPipeIds: connected.map(p=>p.id), dx: 0, dy: 0 }; }}
+                                            onTouchStart={e => { e.stopPropagation(); if (e.touches.length > 1) return; document.body.classList.add('dragging-active'); isDraggingRef.current = true; const pos = getEventPos(e); const movingSet = selectedNodes.has(nodeItem.id) ? selectedNodes : new Set([nodeItem.id]); const connected = pipesSnapshot.current.filter(p => movingSet.has(p.fromId) || movingSet.has(p.toId)); dragInfo.current = { isDragging: true, id: nodeItem.id, startX: pos.x, startY: pos.y, connectedPipeIds: connected.map(p=>p.id), dx: 0, dy: 0 }; }}
                                         >
                                             <input className={`font-black bg-transparent outline-none w-full border-b-2 border-transparent focus:border-white/30 tracking-tighter ${isS ? 'text-3xl text-slate-900' : (isP || nodeItem.isMerged ? 'text-2xl text-white' : 'text-xl text-white')}`} value={nodeItem.label || libItem?.label || ''} onChange={e => setNodes(prev => prev.map(n => n.id === nodeItem.id ? { ...n, label: e.target.value } : n))} placeholder="輸入名稱..." />
                                             <div className="flex items-center gap-3">
@@ -980,44 +744,33 @@
                                                 <button onClick={e => { e.stopPropagation(); saveHistory(); setNodes(prev => prev.filter(n => n.id !== nodeItem.id)); }} className={`${isS ? 'text-slate-900 opacity-40' : 'text-white opacity-40'} hover:opacity-100 p-1.5 transform hover:scale-125 transition-all`}><Icons.Trash2 /></button>
                                             </div>
                                             {activeColorPickerId === nodeItem.id && (
-                                                <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-4 bg-white p-3 rounded-[1.5rem] shadow-2xl border-2 z-[999] w-[160px] grid grid-cols-3 gap-2 animate-in slide-in-from-bottom-2" onMouseDown={e => e.stopPropagation()} onTouchStart={e => e.stopPropagation()}>
+                                                <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-4 bg-white p-3 rounded-[1.5rem] shadow-2xl border-2 z-[6000] w-[160px] grid grid-cols-3 gap-2 animate-in slide-in-from-bottom-2" onMouseDown={e => e.stopPropagation()} onTouchStart={e => e.stopPropagation()}>
                                                     {COLOR_PALETTE.map(c => (<div key={c} className={`w-8 h-8 rounded-full cursor-pointer ${c} ${nodeItem.color === c ? 'ring-2 ring-slate-800 ring-offset-2' : ''}`} onClick={() => { saveHistory(); setNodes(nodes.map(n => n.id === nodeItem.id ? { ...n, color: c } : n)); setActiveColorPickerId(null); }} />))}
                                                 </div>
                                             )}
                                         </div>
-
                                         <div className="p-6 flex-1 flex flex-col text-slate-800 overflow-hidden font-black">
                                             {nodeItem.isMerged && (
-                                                <div className="mt-1 border-b-2 pb-3 mb-4 overflow-hidden">
-                                                    {Object.values(nodeItem.composition).map((c,i)=>(
-                                                        <div key={i} className="text-xl text-slate-500 flex justify-between mb-1 italic tracking-tight leading-none">
-                                                            <span>{c.label}</span> <b className="text-blue-600 ml-4">x{c.qty}</b>
-                                                        </div>
-                                                    ))}
+                                                <div className="mt-1 border-b-2 pb-3 mb-4 overflow-hidden font-black">
+                                                    {Object.values(nodeItem.composition).map((c,i)=>(<div key={i} className="text-xl text-slate-500 flex justify-between mb-1 italic tracking-tight leading-none"><span>{c.label}</span> <b className="text-blue-600 ml-4">x{c.qty}</b></div>))}
                                                     <button onClick={(e) => { e.stopPropagation(); handleUnmerge(nodeItem.id); }} className="text-lg text-blue-600 font-bold underline mt-2 pointer-events-auto">解除大區彙整</button>
                                                 </div>
                                             )}
-
-                                            <div className="mt-auto flex flex-col gap-3 text-slate-900">
+                                            <div className="mt-auto flex flex-col gap-3 text-slate-900 font-black">
                                                 {(isS || isP || nodeItem.isMerged) ? (
                                                     <div className="flex flex-col gap-4 w-full">
                                                         <div className="bg-slate-50 p-4 px-6 rounded-[2rem] border-2 border-slate-100 shadow-sm flex flex-col gap-0.5">
                                                             <span className="text-[10px] opacity-50 font-black tracking-widest uppercase">{isS ? 'SYSTEM SUM' : 'BRANCH FLOW'}</span>
-                                                            <div className="flex justify-between items-end">
-                                                                <span className="text-5xl font-black text-blue-700 tracking-tighter leading-none">{flowLpm.toFixed(0)}</span>
-                                                                <span className="text-xl font-black text-blue-300 italic uppercase">LPM</span>
-                                                            </div>
+                                                            <div className="flex justify-between items-end"><span className="text-5xl font-black text-blue-700 tracking-tighter leading-none">{flowLpm.toFixed(0)}</span><span className="text-xl font-black text-blue-300 italic uppercase">LPM</span></div>
                                                         </div>
                                                         <div className="bg-slate-50 p-4 px-6 rounded-[2rem] border-2 border-slate-100 shadow-sm flex justify-between items-center group">
                                                             <span className="text-[10px] opacity-50 font-black tracking-widest uppercase">MATCH DN</span>
-                                                            <span className={`font-black text-5xl px-8 py-2 rounded-[2.5rem] shadow-lg border-2 border-white transition-all transform leading-none ${sizing.warning ? 'bg-red-500 text-white animate-pulse' : 'bg-emerald-500 text-white'}`}>
-                                                                DN{sizing.dn}
-                                                            </span>
+                                                            <span className={`font-black text-5xl px-8 py-2 rounded-[2.5rem] shadow-lg border-2 border-white leading-none ${sizing.warning ? 'bg-red-500 text-white animate-pulse' : 'bg-emerald-500 text-white'}`}>DN{sizing.dn}</span>
                                                         </div>
                                                     </div>
                                                 ) : (
-                                                    <div className="flex flex-col gap-2">
-                                                        <div className="flex justify-between items-center bg-slate-50 p-3 px-6 rounded-[1.5rem] border-2 border-slate-100 shadow-sm">
+                                                    <div className="flex flex-col gap-2 font-black">
+                                                        <div className="flex justify-between items-center bg-slate-50 p-3 px-6 rounded-[1.5rem] border-2 border-slate-100 shadow-sm font-black">
                                                             <span className="text-[9px] opacity-60 font-black tracking-widest uppercase">QTY</span>
                                                             <div className="flex items-center gap-4 pointer-events-auto">
                                                                 <button onClick={() => { saveHistory(); setNodes(prev => prev.map(n => n.id === nodeItem.id ? { ...n, qty: Math.max(1, (n.qty || 1) - 1) } : n))}} className="w-8 h-8 flex items-center justify-center bg-white rounded-lg border-2 shadow-sm font-black text-xl">-</button>
@@ -1025,25 +778,17 @@
                                                                 <button onClick={() => { saveHistory(); setNodes(prev => prev.map(n => n.id === nodeItem.id ? { ...n, qty: (n.qty || 1) + 1 } : n))}} className="w-8 h-8 flex items-center justify-center bg-white rounded-lg border-2 shadow-sm font-black text-xl">+</button>
                                                             </div>
                                                         </div>
-                                                        <div className="flex justify-between items-center bg-slate-50 p-3 px-6 rounded-[1.5rem] border-2 border-slate-100 shadow-sm">
-                                                            <span className="text-[9px] opacity-60 font-black tracking-widest uppercase">FLOW</span>
-                                                            <span className="text-3xl font-black text-blue-700 tracking-tighter">{flowLpm.toFixed(0)} <small className="text-sm opacity-40">LPM</small></span>
-                                                        </div>
-                                                        <div className="flex justify-between items-center bg-slate-50 p-3 px-6 rounded-[1.5rem] border-2 border-slate-100 shadow-sm">
-                                                            <span className="text-[9px] opacity-60 font-black tracking-widest uppercase">SIZE</span>
-                                                            <span className={`text-3xl font-black px-4 py-0.5 rounded-xl ${sizing.warning ? 'bg-red-100 text-red-600 animate-pulse' : 'text-emerald-600'}`}>DN{sizing.dn}</span>
-                                                        </div>
+                                                        <div className="flex justify-between items-center bg-slate-50 p-3 px-6 rounded-[1.5rem] border-2 border-slate-100 shadow-sm font-black"><span className="text-[9px] opacity-60 font-black tracking-widest uppercase font-black">FLOW</span><span className="text-3xl font-black text-blue-700 tracking-tighter">{flowLpm.toFixed(0)} <small className="text-sm opacity-40">LPM</small></span></div>
+                                                        <div className="flex justify-between items-center bg-slate-50 p-3 px-6 rounded-[1.5rem] border-2 border-slate-100 shadow-sm font-black"><span className="text-[9px] opacity-60 font-black tracking-widest uppercase font-black">SIZE</span><span className={`text-3xl font-black px-4 py-0.5 rounded-xl ${sizing.warning ? 'bg-red-100 text-red-600 animate-pulse' : 'text-emerald-600'}`}>DN{sizing.dn}</span></div>
                                                     </div>
                                                 )}
                                             </div>
                                         </div>
-                                        
                                         {['left', 'right', 'top', 'bottom'].map(port => {
-                                            const off = getPortOffset(port, nodeItem);
-                                            const isActivePort = snapPort?.nodeId === nodeItem.id && snapPort?.port === port;
+                                            const off = getPortOffset(port, nodeItem); const isActivePort = snapPort?.nodeId === nodeItem.id && snapPort?.port === port;
                                             return (<div key={port} style={{ left: off.x-20, top: off.y-20 }} className={`absolute w-10 h-10 rounded-full border-[4px] border-white z-20 port-dot shadow-xl transition-all ${isActivePort ? 'snap-active' : ''}`}
                                                     onMouseDown={e => { e.preventDefault(); e.stopPropagation(); const pO = getPortOffset(port, nodeItem); setActiveConn({ fromId: nodeItem.id, fromPort: port, startX: nodeItem.x + pO.x, startY: nodeItem.y + pO.y }); }} 
-                                                    onTouchStart={e => { e.stopPropagation(); const pO = getPortOffset(port, nodeItem); setActiveConn({ fromId: nodeItem.id, fromPort: port, startX: nodeItem.x + pO.x, startY: nodeItem.y + pO.y }); }} /> );
+                                                    onTouchStart={e => { e.stopPropagation(); const pO = getPortOffset(port, nodeItem); setActiveConn({ fromId: nodeItem.id, fromPort: port, startX: nodeItem.x + pO.x, startY: nodeItem.y + pO.y }); }} />);
                                         })}
                                     </div>
                                 );
@@ -1051,7 +796,7 @@
                         </div>
                         <div className="absolute top-6 right-6 bg-slate-900/95 backdrop-blur text-white p-3 rounded-[1.5rem] shadow-2xl min-w-[120px] md:min-w-[140px] z-[250] flex flex-col gap-3 border border-white/10 text-center">
                             <div className="flex justify-between items-center text-[10px] font-black uppercase opacity-60 px-2 tracking-widest"><span>Zoom</span><span>{(scale * 100).toFixed(0)}%</span></div>
-                            <button onClick={handleResetView} className="bg-blue-600 text-white py-3 rounded-xl font-black text-xs uppercase shadow-lg hover:bg-blue-500 active:scale-95 transition-all flex items-center justify-center gap-2"><Icons.Maximize /> <span className="hidden md:inline">全景對焦</span></button>
+                            <button onClick={handleResetView} className="bg-blue-600 text-white py-3 rounded-xl font-black text-xs uppercase shadow-lg active:scale-95 flex items-center justify-center gap-2 font-black"><Icons.Maximize /> <span className="hidden md:inline font-black">全景對焦</span></button>
                         </div>
                     </main>
                 </div>
