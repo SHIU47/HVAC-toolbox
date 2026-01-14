@@ -5,7 +5,13 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>東旭的 HVAC Pro-Suite | 專業空調設計網站</title>
     
-    <!-- 網站圖示 (Favicon): 藍色背景白色 H -->
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#2563eb">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="HVAC Pro">
+    <link rel="apple-touch-icon" href="icon-192.png">
+
     <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='25' fill='%232563eb'/><text x='50%' y='54%' dominant-baseline='central' text-anchor='middle' font-family='system-ui, sans-serif' font-size='65' font-weight='900' fill='white'>H</text></svg>">
 
     <script src="https://cdn.tailwindcss.com"></script>
@@ -24,7 +30,7 @@
             color: #1e293b;
             overflow: hidden;
             margin: 0;
-            perspective: 2000px; /* 為 3D 動畫提供深度 */
+            perspective: 2000px; 
             -webkit-tap-highlight-color: transparent;
         }
 
@@ -121,7 +127,6 @@
             } 
         }
 
-        /* --- 核心跳轉動畫 --- */
         .card-opening {
             position: fixed !important;
             z-index: 200 !important;
@@ -133,7 +138,6 @@
             border-radius: 0 !important;
         }
 
-        /* 曜石黑 Icon 盒 */
         .icon-box {
             width: 60px; height: 60px;
             background-color: var(--obsidian-black) !important;
@@ -159,7 +163,6 @@
             background-color: #000000 !important;
         }
 
-        /* 導覽箭頭 */
         .nav-arrow {
             position: absolute;
             top: 50%; transform: translateY(-50%);
@@ -181,7 +184,6 @@
         .nav-arrow.left { left: 5px; }
         .nav-arrow.right { right: 5px; }
 
-        /* Iframe 模組容器 */
         #module-container {
             position: fixed;
             top: 0; left: 0; width: 100%; height: 100vh;
@@ -202,7 +204,6 @@
             text-transform: uppercase; letter-spacing: 1px;
         }
 
-        /* 轉場閃光特效 */
         #transition-flash {
             position: fixed;
             inset: 0;
@@ -220,7 +221,6 @@
     <div class="bg-pattern"></div>
     <div id="transition-flash"></div>
 
-    <!-- 頂部導覽列 (模組模式下會隱藏或整合) -->
     <header id="main-header" class="h-[64px] md:h-[72px] bg-white/90 backdrop-blur-md border-b border-slate-200 px-4 md:px-12 flex items-center justify-between flex-shrink-0 z-[110] transition-all duration-500">
         <div class="flex items-center gap-4 md:gap-10">
             <div class="flex items-center gap-3 md:gap-5">
@@ -234,12 +234,9 @@
         <div id="current-time" class="text-xs md:text-lg font-bold text-slate-800 font-mono bg-white px-3 md:px-6 py-1.5 md:py-2 rounded-xl border border-slate-200 shadow-sm">--:--</div>
     </header>
 
-    <!-- 主要內容區 -->
     <main class="flex-grow flex flex-col overflow-hidden relative">
-        
         <div id="toolbox-hub" class="flex-grow h-full overflow-y-auto p-6 md:p-16 lg:p-20 no-scrollbar relative z-10 transition-all duration-500">
             <div class="max-w-[1600px] mx-auto relative">
-                
                 <div class="mb-12 md:mb-24 text-center md:text-left transition-all duration-500">
                     <div class="inline-block px-5 py-2 bg-blue-600 text-white text-[10px] md:text-[11px] font-black uppercase tracking-[0.5em] rounded-full mb-6 shadow-lg shadow-blue-200">Creater & Owner Shiu_orz</div>
                     <h2 class="text-5xl md:text-8xl font-black text-slate-900 mb-6 tracking-tighter leading-none">
@@ -250,13 +247,11 @@
                     </p>
                 </div>
 
-                <!-- 分類 1: 基礎設計 -->
                 <section class="mb-24 md:mb-36 section-container">
                     <h3 class="text-[10px] md:text-xs font-black text-slate-400 uppercase tracking-[0.5em] mb-8 md:mb-14 flex items-center gap-4 md:gap-10">
                         <span class="w-12 md:w-48 h-1 md:h-2 bg-blue-600 rounded-full"></span>
                         基礎設計工具 General
                     </h3>
-                    
                     <div class="slider-wrapper">
                         <button class="nav-arrow left" onclick="sideScroll('general-slider', 'left')">
                             <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="3"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7" /></svg>
@@ -268,13 +263,11 @@
                     </div>
                 </section>
 
-                <!-- 分類 2: 進階系統 -->
                 <section class="mb-10 section-container">
                     <h3 class="text-[10px] md:text-xs font-black text-slate-400 uppercase tracking-[0.5em] mb-8 md:mb-14 flex items-center gap-4 md:gap-10">
                         <span class="w-12 md:w-48 h-1 md:h-2 bg-slate-900 rounded-full"></span>
                         進階系統模組 Advanced
                     </h3>
-
                     <div class="slider-wrapper">
                         <button class="nav-arrow left" onclick="sideScroll('advanced-slider', 'left')">
                             <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="3"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7" /></svg>
@@ -296,7 +289,6 @@
             </div>
         </div>
 
-        <!-- 外部模組視窗：現在包含了頂部返回導覽 -->
         <div id="module-container">
             <div class="h-[64px] md:h-[72px] bg-slate-900 text-white flex items-center px-4 md:px-12 justify-between shrink-0 shadow-2xl">
                 <button onclick="closeModule()" class="flex items-center gap-3 px-5 py-2 rounded-full bg-white/10 hover:bg-white/20 text-white font-bold text-sm transition-all group">
@@ -309,11 +301,10 @@
                     <span id="active-tool-title" class="text-sm md:text-lg font-black tracking-widest uppercase">載入中...</span>
                     <span class="text-[8px] opacity-40 font-bold uppercase tracking-[0.2em]">Live Computation Core</span>
                 </div>
-                <div class="w-20 md:w-32"></div> <!-- Spacer -->
+                <div class="w-20 md:w-32"></div>
             </div>
             <iframe id="module-viewport" src="about:blank"></iframe>
         </div>
-
     </main>
 
     <script>
@@ -424,7 +415,6 @@
             container.scrollTo({ left: target, behavior: 'smooth' });
         }
 
-        // --- 翻轉進入核心函數 ---
         function loadModulePortal(event, id, toolName, fileName) {
             const card = event.currentTarget;
             const hub = document.getElementById('toolbox-hub');
@@ -434,11 +424,9 @@
             const iframe = document.getElementById('module-viewport');
             const activeTitle = document.getElementById('active-tool-title');
             
-            // 1. 取得卡片當前絕對位置並鎖定它
             const rect = card.getBoundingClientRect();
             const clone = card.cloneNode(true);
             
-            // 設定複製出的卡片位置
             clone.style.position = 'fixed';
             clone.style.top = rect.top + 'px';
             clone.style.left = rect.left + 'px';
@@ -449,21 +437,15 @@
             clone.classList.add('active-center');
             document.body.appendChild(clone);
 
-            // 2. 啟動轉場動畫
             requestAnimationFrame(() => {
-                // 隱藏原始 UI
                 hub.style.opacity = '0';
                 hub.style.transform = 'scale(0.95)';
                 header.style.transform = 'translateY(-100%)';
-                
-                // 啟動卡片翻轉放大
                 clone.classList.add('card-opening');
                 
-                // 3. 轉場中閃光與 Iframe 載入
                 setTimeout(() => {
                     flash.style.opacity = '1';
                     setTimeout(() => {
-                        // 準備 Iframe
                         activeTitle.innerText = toolName;
                         container.style.display = 'flex';
                         iframe.src = fileName + '?v=' + Date.now();
@@ -483,10 +465,9 @@
             const container = document.getElementById('module-container');
             const iframe = document.getElementById('module-viewport');
 
-            container.style.animation = 'none'; // 停止進入動畫
+            container.style.animation = 'none';
             container.style.display = 'none';
             
-            // 恢復主畫面
             hub.style.opacity = '1';
             hub.style.transform = 'scale(1)';
             header.style.transform = 'translateY(0)';
@@ -501,12 +482,19 @@
             }
         }
 
+        // --- 初始化與 Service Worker 註冊 ---
         window.onload = () => {
             initDynamicSliders();
             setInterval(updateTime, 1000);
             updateTime();
+
+            // PWA: 註冊 Service Worker
+            if ('serviceWorker' in navigator) {
+                navigator.serviceWorker.register('./sw.js')
+                    .then(reg => console.log('SW Registered!', reg))
+                    .catch(err => console.log('SW Error!', err));
+            }
         };
     </script>
 </body>
 </html>
-
