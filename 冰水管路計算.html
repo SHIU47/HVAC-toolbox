@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>HydroPuzzle Pro - 視覺與結構完美版</title>
+    <title>HydroPuzzle Pro - 專業核心優化版</title>
     <!-- 載入 React 與 Babel -->
     <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
@@ -33,7 +33,7 @@
         }
         
         .node-layer { will-change: transform; transition: outline 0.2s, box-shadow 0.3s; pointer-events: auto !important; }
-        .is-dragging { z-index: 3000 !important; }
+        .is-dragging { z-index: 5000 !important; cursor: grabbing !important; }
 
         .modal-overlay { background: rgba(15, 23, 42, 0.85); backdrop-filter: blur(12px); }
         .modal-content { animation: modal-in 0.4s cubic-bezier(0.34, 1.56, 0.64, 1); }
@@ -42,7 +42,7 @@
             to { opacity: 1; transform: scale(1) translateY(0); }
         }
 
-        .port-dot { transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1); cursor: crosshair; background-color: #0f172a; border: 3px solid white; box-shadow: 0 5px 15px rgba(0,0,0,0.4); z-index: 100; }
+        .port-dot { transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1); cursor: crosshair; background-color: #0f172a; border: 3px solid white; box-shadow: 0 5px 15px rgba(0,0,0,0.4); z-index: 6000; }
         .port-dot.snap-active { transform: scale(2.5); background-color: #f97316; box-shadow: 0 0 30px #f97316; border-color: white; }
         .port-dot:hover { transform: scale(2.0); background-color: #f97316; box-shadow: 0 0 20px #f97316; }
         
@@ -62,8 +62,9 @@
         .pipe-label-html {
             position: absolute;
             pointer-events: auto;
-            z-index: 200; 
+            z-index: 300; 
             transform: translate(-50%, -50%);
+            will-change: left, top;
         }
 
         /* 浮動預覽組件 */
@@ -200,6 +201,22 @@
                 { id: 'p-2', fromId: 'pvt-1', fromPort: 'right', toId: 'inst-1', toPort: 'left' },
             ]);
 
+            const [history, setHistory] = useState([]);
+            const saveHistory = useCallback(() => {
+                const snapshot = JSON.stringify({ library, nodes, pipes });
+                setHistory(prev => [snapshot, ...prev].slice(0, 20));
+            }, [library, nodes, pipes]);
+
+            const undo = useCallback(() => {
+                if (history.length === 0) return;
+                const [lastState, ...rest] = history;
+                const data = JSON.parse(lastState);
+                setLibrary(data.library);
+                setNodes(data.nodes);
+                setPipes(data.pipes);
+                setHistory(rest);
+            }, [history]);
+
             const [scale, setScale] = useState(INITIAL_PROJECT_DATA?.viewState?.scale || 0.6);
             const [offset, setOffset] = useState(INITIAL_PROJECT_DATA?.viewState?.offset || { x: window.innerWidth / 2 - 10000 * 0.6, y: window.innerHeight / 2 - 10000 * 0.6 });
             
@@ -224,8 +241,8 @@
                     if (weight < 2) { baseFlowLpsMap[node.id] = 0; } 
                     else if (node.isMerged) { baseFlowLpsMap[node.id] = HydraulicEngine.calculateLps(node.customKw || 0, 1, 5); } 
                     else {
-                        const lib = library.find(l => l.id === node.templateId);
-                        baseFlowLpsMap[node.id] = HydraulicEngine.calculateLps(node.customKw || lib?.kw || 0, node.qty || 1, lib?.dt || 5);
+                        const libItem = library.find(l => l.id === node.templateId);
+                        baseFlowLpsMap[node.id] = HydraulicEngine.calculateLps(node.customKw || libItem?.kw || 0, node.qty || 1, libItem?.dt || 5);
                     }
                 });
 
@@ -331,24 +348,27 @@
                     </header>
                     <div className="flex-1 relative overflow-hidden">
                         {activeTab === 'setup' ? (
-                            <EquipmentSetup library={library} setLibrary={setLibrary} showToast={showToast} />
+                            <EquipmentSetup library={library} setLibrary={setLibrary} saveHistory={saveHistory} />
                         ) : (
-                            <HydraulicEditor library={library} nodes={nodes} setNodes={setNodes} pipes={pipes} setPipes={setPipes} scale={scale} setScale={setScale} offset={offset} setOffset={setOffset} results={results} nodeFlows={nodeCalculatedFlows} isDraggingRef={isDraggingRef} solveHydraulics={solveHydraulics} showToast={showToast} />
+                            <HydraulicEditor library={library} nodes={nodes} setNodes={setNodes} pipes={pipes} setPipes={setPipes} scale={scale} setScale={setScale} offset={offset} setOffset={setOffset} results={results} nodeFlows={nodeCalculatedFlows} isDraggingRef={isDraggingRef} solveHydraulics={solveHydraulics} showToast={showToast} saveHistory={saveHistory} undo={undo} />
                         )}
                     </div>
                 </div>
             );
         }
 
-        function EquipmentSetup({ library, setLibrary, showToast }) {
+        function EquipmentSetup({ library, setLibrary, saveHistory }) {
             const [activePickerId, setActivePickerId] = useState(null);
-            const update = (id, field, val) => setLibrary(prev => prev.map(item => item.id === id ? { ...item, [field]: val } : item));
+            const update = (id, field, val) => {
+                saveHistory();
+                setLibrary(prev => prev.map(item => item.id === id ? { ...item, [field]: val } : item));
+            };
             return (
                 <div className="p-12 h-full overflow-y-auto bg-slate-50" onClick={() => setActivePickerId(null)}>
                     <div className="max-w-[1000px] mx-auto text-left">
                         <div className="flex justify-between items-center mb-8">
                             <h2 className="text-3xl font-black text-slate-800 tracking-tight underline decoration-blue-400 decoration-8 underline-offset-8">標準參數庫</h2>
-                            <button onClick={(e) => { e.stopPropagation(); setLibrary([...library, { id: `lib-${Date.now()}`, label: '新機組模板', kw: 100, dt: 5, color: 'bg-blue-600' }])}} className="bg-blue-600 text-white px-8 py-4 rounded-2xl font-black text-base flex items-center gap-3 shadow-xl hover:bg-blue-700 transition-all"><Icons.Plus /> 新增模板</button>
+                            <button onClick={(e) => { e.stopPropagation(); saveHistory(); setLibrary([...library, { id: `lib-${Date.now()}`, label: '新機組模板', kw: 100, dt: 5, color: 'bg-blue-600' }])}} className="bg-blue-600 text-white px-8 py-4 rounded-2xl font-black text-base flex items-center gap-3 shadow-xl hover:bg-blue-700 transition-all"><Icons.Plus /> 新增模板</button>
                         </div>
                         <div className="bg-white rounded-[2.5rem] shadow-2xl border-2 border-slate-100 overflow-visible text-left">
                             <table className="w-full text-base">
@@ -370,7 +390,7 @@
                                             <td className="px-4 py-6 text-center text-xl font-black"><input type="number" className="w-24 text-center bg-slate-50 p-2 rounded-xl" value={item.kw} onChange={e => update(item.id, 'kw', parseFloat(e.target.value)||0)} /></td>
                                             <td className="px-4 py-6 text-center text-xl font-black"><input type="number" className="w-20 text-center bg-slate-100 p-2 rounded-xl" value={item.dt} onChange={e => update(item.id, 'dt', parseFloat(e.target.value)||0)} /></td>
                                             <td className="px-4 py-6 text-center font-black text-2xl text-emerald-600">{(item.kw/(CP*item.dt)*60).toFixed(1)}</td>
-                                            <td className="px-8 py-6 text-right"><button onClick={() => setLibrary(library.filter(l => l.id !== item.id))} className="text-slate-300 hover:text-red-500 transition-all p-2 transform hover:scale-125"><Icons.Trash2 /></button></td>
+                                            <td className="px-8 py-6 text-right"><button onClick={() => { saveHistory(); setLibrary(library.filter(l => l.id !== item.id))}} className="text-slate-300 hover:text-red-500 transition-all p-2 transform hover:scale-125"><Icons.Trash2 /></button></td>
                                         </tr>
                                     ))}
                                 </tbody>
@@ -381,7 +401,7 @@
             );
         }
 
-        function HydraulicEditor({ library, nodes, setNodes, pipes, setPipes, scale, setScale, offset, setOffset, results, nodeFlows, isDraggingRef, solveHydraulics, showToast }) {
+        function HydraulicEditor({ library, nodes, setNodes, pipes, setPipes, scale, setScale, offset, setOffset, results, nodeFlows, isDraggingRef, solveHydraulics, showToast, saveHistory, undo }) {
             const [selectedNodes, setSelectedNodes] = useState(new Set());
             const [activeConn, setActiveConn] = useState(null); 
             const [sidebarOpen, setSidebarOpen] = useState(true);
@@ -389,7 +409,7 @@
             const [activeColorPickerId, setActiveColorPickerId] = useState(null);
             const [copyToolActive, setCopyToolActive] = useState(false);
             const [selectionBox, setSelectionBox] = useState(null);
-            const [placementGroup, setPlacementGroup] = useState(null); // { nodes, pipes, baseWorldPos }
+            const [placementGroup, setPlacementGroup] = useState(null);
 
             const containerRef = useRef(null);
             const nodesSnapshot = useRef(nodes);
@@ -410,7 +430,7 @@
             useEffect(() => { pipesSnapshot.current = pipes; }, [pipes]);
 
             const dragInfo = useRef({ isDragging: false, id: null, startX: 0, startY: 0, connectedPipeIds: [], dx: 0, dy: 0, isPanning: false, isSelecting: false });
-            const nodeRefs = useRef({}); const pathRefs = useRef({}); const ghostPathRef = useRef(null);
+            const nodeRefs = useRef({}); const pathRefs = useRef({}); const labelRefs = useRef({}); const ghostPathRef = useRef(null);
 
             const getNodeDimensions = (node) => {
                 const isS = node?.templateId === 'SOURCE'; const isP = node?.type === 'PIVOT'; const isM = node?.isMerged;
@@ -435,13 +455,28 @@
                 y: (sy - offset.y) / scale
             }), [offset, scale]);
 
+            useEffect(() => {
+                const handleKeyDown = (e) => {
+                    if (e.key === "Escape") {
+                        setActiveConn(null);
+                        setPlacementGroup(null);
+                        setSelectionBox(null);
+                        setSelectedNodes(new Set());
+                        setCopyToolActive(false);
+                    }
+                    if (e.ctrlKey && e.key === "z") {
+                        e.preventDefault();
+                        undo();
+                    }
+                };
+                window.addEventListener("keydown", handleKeyDown);
+                return () => window.removeEventListener("keydown", handleKeyDown);
+            }, [undo]);
+
             const generatePlacementGroup = useCallback((selectedNodeIds) => {
                 if (selectedNodeIds.length === 0) return;
-                
                 const idMap = {};
                 const newNodesArr = [];
-                
-                // 計算中心點作為基準
                 let minX = Infinity, minY = Infinity;
                 selectedNodeIds.forEach(id => {
                     const original = nodeMapSnapshot.current[id];
@@ -450,7 +485,6 @@
                         minY = Math.min(minY, original.y);
                     }
                 });
-
                 selectedNodeIds.forEach(id => {
                     const original = nodeMapSnapshot.current[id];
                     if (original) {
@@ -459,7 +493,6 @@
                         newNodesArr.push({ ...original, id: newId, relativeX: original.x - minX, relativeY: original.y - minY });
                     }
                 });
-
                 const newPipesArr = [];
                 pipesSnapshot.current.forEach(p => {
                     if (idMap[p.fromId] && idMap[p.toId]) {
@@ -471,10 +504,9 @@
                         });
                     }
                 });
-
                 setPlacementGroup({ nodes: newNodesArr, pipes: newPipesArr });
                 setSelectedNodes(new Set());
-                showToast("請移動滑鼠選擇放置位置，點擊左鍵放下。");
+                showToast("請移動滑鼠選擇放置位置，點擊左鍵放下 (ESC 取消)");
             }, []);
 
             useEffect(() => {
@@ -526,7 +558,7 @@
                 }
 
                 if (placementGroup) {
-                    // 強制觸發重繪以更新浮動預覽
+                    // 強制重繪
                     setPlacementGroup(prev => ({...prev}));
                     return;
                 }
@@ -534,11 +566,11 @@
                 if (activeConn && ghostPathRef.current) {
                     const tx = (e.clientX - offset.x) / scale, ty = (e.clientY - offset.y) / scale;
                     let foundSnap = null;
-                    for (const node of nodesSnapshot.current) {
-                        if (node.id === activeConn.fromId) continue;
+                    for (const nodeItem of nodesSnapshot.current) {
+                        if (nodeItem.id === activeConn.fromId) continue;
                         ['left', 'right', 'top', 'bottom'].forEach(pKey => {
-                            const off = getPortOffset(pKey, node); const px = node.x + off.x, py = node.y + off.y;
-                            if (Math.sqrt(Math.pow(tx - px, 2) + Math.pow(ty - py, 2)) < 65 / scale) foundSnap = { nodeId: node.id, port: pKey, x: px, y: py };
+                            const off = getPortOffset(pKey, nodeItem); const px = nodeItem.x + off.x, py = nodeItem.y + off.y;
+                            if (Math.sqrt(Math.pow(tx - px, 2) + Math.pow(ty - py, 2)) < 65 / scale) foundSnap = { nodeId: nodeItem.id, port: pKey, x: px, y: py };
                         });
                     }
                     const targetX = foundSnap ? foundSnap.x : tx, targetY = foundSnap ? foundSnap.y : ty;
@@ -546,23 +578,43 @@
                     ghostPathRef.current.setAttribute('d', getPathD(activeConn.startX, activeConn.startY, targetX, targetY, activeConn.fromPort, foundSnap ? foundSnap.port : 'left'));
                     return;
                 }
+                
                 if (!dragInfo.current.isDragging) return;
+                
                 if (rafId.current) return;
                 rafId.current = window.requestAnimationFrame(() => {
                     rafId.current = null;
+                    if (!dragInfo.current.isDragging) return;
+                    
                     const { id, startX, startY, connectedPipeIds } = dragInfo.current;
                     const dx = (e.clientX - startX) / scale, dy = (e.clientY - startY) / scale;
                     dragInfo.current.dx = dx; dragInfo.current.dy = dy;
                     const movingSet = selectedNodes.has(id) ? selectedNodes : new Set([id]);
-                    movingSet.forEach(mId => { if (nodeRefs.current[mId]) nodeRefs.current[mId].style.transform = `translate3d(${dx}px, ${dy}px, 0)`; });
+                    
+                    movingSet.forEach(mId => { 
+                        if (nodeRefs.current[mId]) {
+                            nodeRefs.current[mId].style.transform = `translate3d(${dx}px, ${dy}px, 0)`; 
+                            nodeRefs.current[mId].classList.add('is-dragging');
+                        }
+                    });
                     
                     connectedPipeIds.forEach(pId => {
-                        const p = pipesSnapshot.current.find(pip => pip.id === pId); if (!p || !pathRefs.current[pId]) return;
-                        const fNode = movingSet.has(p.fromId) ? { ...nodeMapSnapshot.current[p.fromId], x: nodeMapSnapshot.current[p.fromId].x + dx, y: nodeMapSnapshot.current[p.fromId].y + dy } : nodeMapSnapshot.current[p.fromId];
-                        const tNode = movingSet.has(p.toId) ? { ...nodeMapSnapshot.current[p.toId], x: nodeMapSnapshot.current[p.toId].x + dx, y: nodeMapSnapshot.current[p.toId].y + dy } : nodeMapSnapshot.current[p.toId];
-                        const o1 = getPortOffset(p.fromPort, fNode), o2 = getPortOffset(p.toPort, tNode);
-                        const x1 = fNode.x + o1.x, y1 = fNode.y + o1.y, x2 = tNode.x + o2.x, y2 = tNode.y + o2.y;
-                        pathRefs.current[pId].setAttribute('d', getPathD(x1, y1, x2, y2, p.fromPort, p.toPort));
+                        const pItem = pipesSnapshot.current.find(pip => pip.id === pId); 
+                        if (!pItem || !pathRefs.current[pId]) return;
+                        
+                        const fN = movingSet.has(pItem.fromId) ? { ...nodeMapSnapshot.current[pItem.fromId], x: (nodeMapSnapshot.current[pItem.fromId]?.x || 0) + dx, y: (nodeMapSnapshot.current[pItem.fromId]?.y || 0) + dy } : nodeMapSnapshot.current[pItem.fromId];
+                        const tN = movingSet.has(pItem.toId) ? { ...nodeMapSnapshot.current[pItem.toId], x: (nodeMapSnapshot.current[pItem.toId]?.x || 0) + dx, y: (nodeMapSnapshot.current[pItem.toId]?.y || 0) + dy } : nodeMapSnapshot.current[pItem.toId];
+                        
+                        if (!fN || !tN) return;
+                        
+                        const o1 = getPortOffset(pItem.fromPort, fN), o2 = getPortOffset(pItem.toPort, tN);
+                        const x1 = fN.x + o1.x, y1 = fN.y + o1.y, x2 = tN.x + o2.x, y2 = tN.y + o2.y;
+                        
+                        pathRefs.current[pId].setAttribute('d', getPathD(x1, y1, x2, y2, pItem.fromPort, pItem.toPort));
+                        if (labelRefs.current[pId]) {
+                            labelRefs.current[pId].style.left = `${(x1 + x2) / 2}px`;
+                            labelRefs.current[pId].style.top = `${(y1 + y2) / 2}px`;
+                        }
                     });
                 });
             }, [scale, offset, activeConn, selectedNodes, solveHydraulics, placementGroup]);
@@ -576,20 +628,12 @@
                     const wEnd = screenToWorld(selectionBox.endX, selectionBox.endY);
                     const xMin = Math.min(wStart.x, wEnd.x), xMax = Math.max(wStart.x, wEnd.x);
                     const yMin = Math.min(wStart.y, wEnd.y), yMax = Math.max(wStart.y, wEnd.y);
-                    
-                    const insideIds = nodesSnapshot.current
-                        .filter(n => {
-                            const { w, h } = getNodeDimensions(n);
-                            const centerX = n.x + w/2;
-                            const centerY = n.y + h/2;
-                            return centerX >= xMin && centerX <= xMax && centerY >= yMin && centerY <= yMax;
-                        })
-                        .map(n => n.id);
-                    
-                    if (insideIds.length > 0) {
-                        generatePlacementGroup(insideIds);
-                    }
-                    
+                    const insideIds = nodesSnapshot.current.filter(n => {
+                        const { w, h } = getNodeDimensions(n);
+                        const centerX = n.x + w/2, centerY = n.y + h/2;
+                        return centerX >= xMin && centerX <= xMax && centerY >= yMin && centerY <= yMax;
+                    }).map(n => n.id);
+                    if (insideIds.length > 0) generatePlacementGroup(insideIds);
                     setSelectionBox(null);
                     dragInfo.current.isSelecting = false;
                     return;
@@ -598,21 +642,37 @@
                 if (dragInfo.current.isDragging) {
                     const { dx, dy, id } = dragInfo.current;
                     const movingSet = selectedNodes.has(id) ? selectedNodes : new Set([id]);
-                    setNodes(prev => prev.map(n => movingSet.has(n.id) ? { ...n, x: n.x + dx, y: n.y + dy } : n));
-                    movingSet.forEach(mId => { if (nodeRefs.current[mId]) nodeRefs.current[mId].style.transform = 'translate3d(0,0,0)'; });
-                    dragInfo.current.isDragging = false; isDraggingRef.current = false;
+                    if (Math.abs(dx) > 1 || Math.abs(dy) > 1) {
+                        saveHistory();
+                        setNodes(prev => prev.map(n => movingSet.has(n.id) ? { ...n, x: n.x + dx, y: n.y + dy } : n));
+                    }
+                    movingSet.forEach(mId => { 
+                        if (nodeRefs.current[mId]) {
+                            nodeRefs.current[mId].style.transform = 'translate3d(0,0,0)'; 
+                            nodeRefs.current[mId].classList.remove('is-dragging');
+                        }
+                    });
+                    dragInfo.current.isDragging = false; 
+                    isDraggingRef.current = false;
                 }
+                
                 if (activeConn && snapPort) {
                     const isDup = pipesSnapshot.current.some(p => p.fromId === activeConn.fromId && p.toId === snapPort.nodeId && p.fromPort === activeConn.fromPort && p.toPort === snapPort.port);
-                    if (!isDup) setPipes(prev => [...prev, { id: `p-${Date.now()}-${Math.random()}`, fromId: activeConn.fromId, fromPort: activeConn.fromPort, toId: snapPort.nodeId, toPort: snapPort.port }]);
+                    if (!isDup) {
+                        saveHistory();
+                        setPipes(prev => [...prev, { id: `p-${Date.now()}-${Math.random()}`, fromId: activeConn.fromId, fromPort: activeConn.fromPort, toId: snapPort.nodeId, toPort: snapPort.port }]);
+                    }
                 }
-                dragInfo.current.isPanning = false; setActiveConn(null); setSnapPort(null);
+                
+                dragInfo.current.isPanning = false; 
+                setActiveConn(null); 
+                setSnapPort(null);
                 if (ghostPathRef.current) ghostPathRef.current.setAttribute('d', '');
-            }, [activeConn, snapPort, selectedNodes, setNodes, setPipes, selectionBox, screenToWorld, generatePlacementGroup]);
+            }, [activeConn, snapPort, selectedNodes, setNodes, setPipes, selectionBox, screenToWorld, generatePlacementGroup, saveHistory]);
 
             const onMouseDown = useCallback((e) => {
                 if (placementGroup) {
-                    // 放下浮動群組
+                    saveHistory();
                     const worldPos = screenToWorld(e.clientX, e.clientY);
                     const finalNodes = placementGroup.nodes.map(n => ({
                         ...n,
@@ -641,7 +701,7 @@
                 else if (e.target.tagName === 'svg' || e.target.classList.contains('canvas-grid')) { 
                     setSelectedNodes(new Set()); setActiveColorPickerId(null); 
                 }
-            }, [placementGroup, screenToWorld, copyToolActive, offset, setNodes, setPipes]);
+            }, [placementGroup, screenToWorld, copyToolActive, offset, setNodes, setPipes, saveHistory]);
 
             useEffect(() => {
                 window.addEventListener('mousemove', onMouseMove); 
@@ -656,13 +716,14 @@
                 if (selectedNodes.size < 2) return;
                 const list = nodes.filter(n => selectedNodes.has(n.id) && n.templateId !== 'SOURCE');
                 if (list.length < 2) return;
+                saveHistory();
                 const avgX = list.reduce((s,n)=>s+n.x,0)/list.length, avgY = list.reduce((s,n)=>s+n.y,0)/list.length;
                 const composition = {}; let totalKw = 0;
                 list.forEach(n => {
-                    const lib = library.find(l => l.id === n.templateId);
-                    if(!composition[n.templateId]) composition[n.templateId] = { label: n.label || lib?.label || "設備", qty: 0 };
+                    const libItem = library.find(l => l.id === n.templateId);
+                    if(!composition[n.templateId]) composition[n.templateId] = { label: n.label || libItem?.label || "設備", qty: 0 };
                     composition[n.templateId].qty += (n.qty || 1);
-                    totalKw += (n.customKw !== undefined ? n.customKw : (lib?.kw || 0)) * (n.qty || 1);
+                    totalKw += (n.customKw !== undefined ? n.customKw : (libItem?.kw || 0)) * (n.qty || 1);
                 });
                 const newId = `merged-${Date.now()}`;
                 const newPipesArr = pipes.map(p => {
@@ -677,11 +738,12 @@
             };
 
             const handleUnmerge = (nodeId) => {
-                const node = renderNodeMap[nodeId]; if (!node || !node.isMerged) return;
+                const nodeItem = renderNodeMap[nodeId]; if (!nodeItem || !nodeItem.isMerged) return;
+                saveHistory();
                 const restoredNodesArr = []; let oY = 0;
-                Object.keys(node.composition).forEach(libId => {
-                    const c = node.composition[libId];
-                    restoredNodesArr.push({ id: `inst-${Date.now()}-${libId}`, templateId: libId, label: c.label, x: node.x + 350, y: node.y + oY, qty: c.qty });
+                Object.keys(nodeItem.composition).forEach(libId => {
+                    const c = nodeItem.composition[libId];
+                    restoredNodesArr.push({ id: `inst-${Date.now()}-${libId}`, templateId: libId, label: c.label, x: nodeItem.x + 350, y: nodeItem.y + oY, qty: c.qty });
                     oY += 180;
                 });
                 const firstId = restoredNodesArr[0].id;
@@ -693,7 +755,6 @@
 
             return (
                 <div ref={containerRef} className={`flex h-full w-full bg-slate-200 relative overflow-hidden canvas-grid ${copyToolActive ? 'copy-mode-active' : ''} ${placementGroup ? 'placement-mode-active' : ''}`} onMouseDown={onMouseDown}>
-                    
                     {selectionBox && (
                         <div className="selection-box" style={{
                             left: Math.min(selectionBox.startX, selectionBox.endX),
@@ -711,11 +772,11 @@
                                 <Icons.Copy />
                             </button>
                             <div className="h-px bg-slate-100 my-2" />
-                            <button onClick={() => { const p = getSpawnPoint(); setNodes(prev => [...prev, { id: `src-${Date.now()}`, templateId: 'SOURCE', label: '主總管彙整中心', x: p.x, y: p.y, qty: 1 }])}} className="w-full p-5 bg-yellow-400 rounded-2xl hover:scale-[1.05] shadow-lg flex items-center justify-between border-4 border-yellow-500 transition-all font-black uppercase text-xs tracking-tighter pointer-events-auto"><span>Header</span><Icons.Plus /></button>
-                            <button onClick={() => { const p = getSpawnPoint(); setNodes(prev => [...prev, { id: `pvt-${Date.now()}`, type: 'PIVOT', label: '區域分區支點', x: p.x, y: p.y, color: 'bg-slate-800' }])}} className="w-full p-5 bg-slate-800 text-white rounded-2xl hover:scale-[1.05] shadow-lg flex items-center justify-between border-4 border-slate-950 transition-all font-black uppercase text-xs tracking-tighter pointer-events-auto"><span>Pivot</span><Icons.Plus /></button>
+                            <button onClick={() => { saveHistory(); const p = getSpawnPoint(); setNodes(prev => [...prev, { id: `src-${Date.now()}`, templateId: 'SOURCE', label: '主總管彙整中心', x: p.x, y: p.y, qty: 1 }])}} className="w-full p-5 bg-yellow-400 rounded-2xl hover:scale-[1.05] shadow-lg flex items-center justify-between border-4 border-yellow-500 transition-all font-black uppercase text-xs tracking-tighter pointer-events-auto"><span>Header</span><Icons.Plus /></button>
+                            <button onClick={() => { saveHistory(); const p = getSpawnPoint(); setNodes(prev => [...prev, { id: `pvt-${Date.now()}`, type: 'PIVOT', label: '區域分區支點', x: p.x, y: p.y, color: 'bg-slate-800' }])}} className="w-full p-5 bg-slate-800 text-white rounded-2xl hover:scale-[1.05] shadow-lg flex items-center justify-between border-4 border-slate-950 transition-all font-black uppercase text-xs tracking-tighter pointer-events-auto"><span>Pivot</span><Icons.Plus /></button>
                             <div className="h-px bg-slate-100 my-2" />
                             {library.map(lib => (
-                                <button key={lib.id} onClick={() => { const p = getSpawnPoint(); setNodes(prev => [...prev, { id: `inst-${Date.now()}`, templateId: lib.id, label: lib.label, x: p.x, y: p.y, qty: 1, color: lib.color }])}} className="w-full p-3 bg-white border-2 border-slate-50 rounded-[1.2rem] hover:border-blue-500 shadow-sm flex items-center gap-4 active:scale-95 transition-all text-left">
+                                <button key={lib.id} onClick={() => { saveHistory(); const p = getSpawnPoint(); setNodes(prev => [...prev, { id: `inst-${Date.now()}`, templateId: lib.id, label: lib.label, x: p.x, y: p.y, qty: 1, color: lib.color }])}} className="w-full p-3 bg-white border-2 border-slate-50 rounded-[1.2rem] hover:border-blue-500 shadow-sm flex items-center gap-4 active:scale-95 transition-all text-left">
                                     <div className={`w-2.5 h-10 rounded-full ${lib.color}`} /><div className="flex-1 overflow-hidden font-black"><div className="text-xs text-slate-800 truncate leading-tight font-black">{lib.label}</div><div className="text-[9px] text-blue-600 mt-0.5 uppercase tracking-tighter font-black">{lib.kw} kW</div></div>
                                 </button>
                             ))}
@@ -738,45 +799,41 @@
                         <div className="absolute inset-0 origin-top-left" style={{ transform: `translate3d(${offset.x}px, ${offset.y}px, 0) scale(${scale})` }}>
                             <svg className="absolute inset-0 w-[20000px] h-[20000px] pointer-events-none z-0">
                                 {results.map(p => {
-                                    const fromNode = renderNodeMap[p.fromId], toNode = renderNodeMap[p.toId]; if (!fromNode || !toNode) return null;
-                                    const o1 = getPortOffset(p.fromPort, fromNode), o2 = getPortOffset(p.toPort, toNode);
-                                    const x1 = fromNode.x + o1.x, y1 = fromNode.y + o1.y, x2 = toNode.x + o2.x, y2 = toNode.y + o2.y;
+                                    const fN = renderNodeMap[p.fromId], tN = renderNodeMap[p.toId]; if (!fN || !tN) return null;
+                                    const o1 = getPortOffset(p.fromPort, fN), o2 = getPortOffset(p.toPort, tN);
+                                    const x1 = fN.x + o1.x, y1 = fN.y + o1.y, x2 = tN.x + o2.x, y2 = tN.y + o2.y;
                                     return (
                                         <g key={p.id}>
-                                            <path d={getPathD(x1, y1, x2, y2, p.fromPort, p.toPort)} stroke={p.warning ? "#f59e0b" : "#2563eb"} strokeWidth={p.warning ? 16 : 8} fill="none" strokeLinecap="round" className={p.warning ? "warning-pulse" : ""} />
+                                            <path ref={el => pathRefs.current[p.id] = el} d={getPathD(x1, y1, x2, y2, p.fromPort, p.toPort)} stroke={p.warning ? "#f59e0b" : "#2563eb"} strokeWidth={p.warning ? 16 : 8} fill="none" strokeLinecap="round" className={p.warning ? "warning-pulse" : ""} />
                                         </g>
                                     );
                                 })}
-
-                                {/* 放置模式下的浮動連線 */}
                                 {placementGroup && placementGroup.pipes.map(p => {
-                                    const fromNode = placementGroup.nodes.find(n => n.id === p.fromId);
-                                    const toNode = placementGroup.nodes.find(n => n.id === p.toId);
-                                    if (!fromNode || !toNode) return null;
-                                    const o1 = getPortOffset(p.fromPort, fromNode), o2 = getPortOffset(p.toPort, toNode);
-                                    const x1 = mouseWorldPos.x + fromNode.relativeX + o1.x, y1 = mouseWorldPos.y + fromNode.relativeY + o1.y;
-                                    const x2 = mouseWorldPos.x + toNode.relativeX + o2.x, y2 = mouseWorldPos.y + toNode.relativeY + o2.y;
+                                    const fN = placementGroup.nodes.find(n => n.id === p.fromId);
+                                    const tN = placementGroup.nodes.find(n => n.id === p.toId);
+                                    if (!fN || !tN) return null;
+                                    const o1 = getPortOffset(p.fromPort, fN), o2 = getPortOffset(p.toPort, tN);
+                                    const x1 = mouseWorldPos.x + fN.relativeX + o1.x, y1 = mouseWorldPos.y + fN.relativeY + o1.y;
+                                    const x2 = mouseWorldPos.x + tN.relativeX + o2.x, y2 = mouseWorldPos.y + tN.relativeY + o2.y;
                                     return (
                                         <path key={`ghost-pipe-${p.id}`} d={getPathD(x1, y1, x2, y2, p.fromPort, p.toPort)} stroke="#10b981" strokeWidth={6} fill="none" strokeDasharray="10,5" className="ghost-group" />
                                     );
                                 })}
-
                                 {snapPort && <circle cx={snapPort.x} cy={snapPort.y} r={40} fill="none" stroke="#f97316" strokeWidth={8} strokeDasharray="12" className="animate-pulse active-snap" />}
                                 {activeConn && <path ref={ghostPathRef} d="" stroke="#f97316" strokeWidth={8} fill="none" strokeDasharray="12,10" />}
                             </svg>
 
-                            {/* 置頂管路標籤 */}
                             {results.map(p => {
-                                const fromNode = renderNodeMap[p.fromId], toNode = renderNodeMap[p.toId]; if (!fromNode || !toNode) return null;
-                                const o1 = getPortOffset(p.fromPort, fromNode), o2 = getPortOffset(p.toPort, toNode);
-                                const x1 = fromNode.x + o1.x, y1 = fromNode.y + o1.y, x2 = toNode.x + o2.x, y2 = toNode.y + o2.y;
+                                const fN = renderNodeMap[p.fromId], tN = renderNodeMap[p.toId]; if (!fN || !tN) return null;
+                                const o1 = getPortOffset(p.fromPort, fN), o2 = getPortOffset(p.toPort, tN);
+                                const x1 = fN.x + o1.x, y1 = fN.y + o1.y, x2 = tN.x + o2.x, y2 = tN.y + o2.y;
                                 return (
-                                    <div key={`lbl-${p.id}`} className="pipe-label-html" style={{ left: (x1+x2)/2, top: (y1+y2)/2 }}>
+                                    <div key={`lbl-${p.id}`} ref={el => labelRefs.current[p.id] = el} className="pipe-label-html" style={{ left: (x1+x2)/2, top: (y1+y2)/2 }}>
                                         <div className="group relative flex flex-col items-center justify-center p-6 bg-slate-900 rounded-[3rem] border-4 border-white shadow-2xl transition-all hover:scale-110">
                                             <div className="text-6xl font-black text-white leading-none mb-1 tracking-tighter italic">DN{p.dn}</div>
                                             <div className="text-2xl font-black text-blue-400 mb-2 leading-none">{p.lpm.toFixed(0)} <small className="text-xs font-bold font-black">LPM</small></div>
                                             {p.warning && <div className="text-[12px] font-black uppercase text-red-500 mt-2 flex items-center gap-2 animate-pulse leading-none font-black"><Icons.AlertTriangle /> 流速過載</div>}
-                                            <button onClick={() => setPipes(prev => prev.filter(pip => pip.id !== p.id))} className="absolute -top-6 -right-6 bg-red-600 border-4 border-white rounded-full shadow-2xl text-white p-3 opacity-0 group-hover:opacity-100 hover:bg-red-700 transition-all active:scale-75 z-[200]">
+                                            <button onClick={() => { saveHistory(); setPipes(prev => prev.filter(pip => pip.id !== p.id))}} className="absolute -top-6 -right-6 bg-red-600 border-4 border-white rounded-full shadow-2xl text-white p-3 opacity-0 group-hover:opacity-100 hover:bg-red-700 transition-all active:scale-75 z-[200]">
                                                 <Icons.X />
                                             </button>
                                         </div>
@@ -784,71 +841,70 @@
                                 );
                             })}
 
-                            {/* 浮動放置預覽圖塊 */}
-                            {placementGroup && placementGroup.nodes.map(node => {
-                                const lib = library.find(l => l.id === node.templateId);
-                                const { w, h } = getNodeDimensions(node);
+                            {placementGroup && placementGroup.nodes.map(nodeItem => {
+                                const libItem = library.find(l => l.id === nodeItem.templateId);
+                                const { w, h } = getNodeDimensions(nodeItem);
                                 return (
-                                    <div key={`ghost-${node.id}`} 
-                                        style={{ left: mouseWorldPos.x + node.relativeX, top: mouseWorldPos.y + node.relativeY, width: w, height: h, outline: '4px dashed #10b981' }}
+                                    <div key={`ghost-${nodeItem.id}`} 
+                                        style={{ left: mouseWorldPos.x + nodeItem.relativeX, top: mouseWorldPos.y + nodeItem.relativeY, width: w, height: h, outline: '4px dashed #10b981' }}
                                         className="absolute bg-white/40 rounded-[3.5rem] border-[6px] border-emerald-500/50 z-[8000] ghost-group flex items-center justify-center font-black text-2xl text-emerald-700">
-                                        放置預覽: {node.label || lib?.label}
+                                        放置預覽: {nodeItem.label || libItem?.label}
                                     </div>
                                 );
                             })}
 
-                            {nodes.map(node => {
-                                const isS = node.templateId === 'SOURCE'; const isP = node.type === 'PIVOT'; const lib = library.find(l => l.id === node.templateId);
-                                const isSel = selectedNodes.has(node.id); const flowLpm = nodeFlows[node.id] || 0; const sizing = HydraulicEngine.getSizing(flowLpm / 60);
-                                const { w, h } = getNodeDimensions(node);
-
+                            {nodes.map(nodeItem => {
+                                const isS = nodeItem.templateId === 'SOURCE'; const isP = nodeItem.type === 'PIVOT'; const libItem = library.find(l => l.id === nodeItem.templateId);
+                                const isSel = selectedNodes.has(nodeItem.id); const flowLpm = nodeFlows[nodeItem.id] || 0; const sizing = HydraulicEngine.getSizing(flowLpm / 60);
+                                const { w, h } = getNodeDimensions(nodeItem);
                                 return (
-                                    <div key={node.id} ref={el => nodeRefs.current[node.id] = el} 
-                                        style={{ left: node.x, top: node.y, width: w, height: h, transform: 'translate3d(0,0,0)', outline: isSel ? '12px dashed #3b82f6' : 'none', outlineOffset: '20px' }}
+                                    <div key={nodeItem.id} ref={el => nodeRefs.current[nodeItem.id] = el} 
+                                        onDragStart={e => e.preventDefault()}
+                                        style={{ left: nodeItem.x, top: nodeItem.y, width: w, height: h, transform: 'translate3d(0,0,0)', outline: isSel ? '12px dashed #3b82f6' : 'none', outlineOffset: '20px', zIndex: 1000 }}
                                         onClick={e => { 
                                             e.stopPropagation(); 
                                             if (placementGroup) return; 
-                                            if (copyToolActive) { handleSingleCopy(node); return; }
-                                            if (e.shiftKey) setSelectedNodes(prev => { const n=new Set(prev); n.has(node.id)?n.delete(node.id):n.add(node.id); return n; }); 
-                                            else setSelectedNodes(new Set([node.id])); 
+                                            if (copyToolActive) { generatePlacementGroup([nodeItem.id]); return; }
+                                            if (e.shiftKey) setSelectedNodes(prev => { const n=new Set(prev); n.has(nodeItem.id)?n.delete(nodeItem.id):n.add(nodeItem.id); return n; }); 
+                                            else setSelectedNodes(new Set([nodeItem.id])); 
                                         }}
-                                        className={`absolute bg-white rounded-[3.5rem] border-[6px] z-10 flex flex-col node-layer ${isS ? 'source-glow' : 'shadow-[0_40px_100px_-20px_rgba(0,0,0,0.4)]'}`}>
+                                        className={`absolute bg-white rounded-[3.5rem] border-[6px] flex flex-col node-layer ${isS ? 'source-glow' : 'shadow-[0_40px_100px_-20px_rgba(0,0,0,0.4)]'}`}>
                                         
-                                        <div className={`h-16 shrink-0 ${isS?'h-20':''} ${node.color || (isS ? 'bg-yellow-400 text-slate-900' : (isP ? 'bg-slate-800 text-white' : (node.isMerged ? 'bg-indigo-700 text-white' : (lib?.color || 'bg-slate-400 text-white'))))} flex items-center px-8 justify-between cursor-move rounded-t-[2.9rem] shadow-xl relative` }
+                                        <div className={`h-16 shrink-0 ${isS?'h-20':''} ${nodeItem.color || (isS ? 'bg-yellow-400 text-slate-900' : (isP ? 'bg-slate-800 text-white' : (nodeItem.isMerged ? 'bg-indigo-700 text-white' : (libItem?.color || 'bg-slate-400 text-white'))))} flex items-center px-8 justify-between cursor-move rounded-t-[2.9rem] shadow-xl relative` }
                                             onMouseDown={e => { 
                                                 e.stopPropagation(); 
                                                 if (copyToolActive || placementGroup) return;
                                                 document.body.classList.add('dragging-active'); isDraggingRef.current = true;
-                                                const movingSet = selectedNodes.has(node.id) ? selectedNodes : new Set([node.id]);
+                                                const movingSet = selectedNodes.has(nodeItem.id) ? selectedNodes : new Set([nodeItem.id]);
                                                 const connected = pipesSnapshot.current.filter(p => movingSet.has(p.fromId) || movingSet.has(p.toId));
-                                                dragInfo.current = { isDragging: true, id: node.id, startX: e.clientX, startY: e.clientY, connectedPipeIds: connected.map(p=>p.id), dx: 0, dy: 0 }; 
+                                                dragInfo.current = { isDragging: true, id: nodeItem.id, startX: e.clientX, startY: e.clientY, connectedPipeIds: connected.map(p=>p.id), dx: 0, dy: 0 }; 
                                             }}>
-                                            <input className={`font-black bg-transparent outline-none w-full border-b-2 border-transparent focus:border-white/30 tracking-tighter ${isS ? 'text-3xl text-slate-900' : (isP || node.isMerged ? 'text-2xl text-white' : 'text-xl text-white')}`} value={node.label || lib?.label || ''} onChange={e => setNodes(prev => prev.map(n => n.id === node.id ? { ...n, label: e.target.value } : n))} placeholder="輸入名稱..." />
+                                            <input className={`font-black bg-transparent outline-none w-full border-b-2 border-transparent focus:border-white/30 tracking-tighter ${isS ? 'text-3xl text-slate-900' : (isP || nodeItem.isMerged ? 'text-2xl text-white' : 'text-xl text-white')}`} value={nodeItem.label || libItem?.label || ''} onChange={e => setNodes(prev => prev.map(n => n.id === nodeItem.id ? { ...n, label: e.target.value } : n))} placeholder="輸入名稱..." />
                                             <div className="flex items-center gap-3">
-                                                {isP && <button onClick={(e) => { e.stopPropagation(); setActiveColorPickerId(activeColorPickerId === node.id ? null : node.id); }} className="text-white opacity-60 hover:opacity-100 p-1.5 transform hover:scale-125 transition-all"><Icons.Palette /></button>}
-                                                <button onClick={e => { e.stopPropagation(); setNodes(prev => prev.filter(n => n.id !== node.id)); }} className={`${isS ? 'text-slate-900 opacity-40' : 'text-white opacity-40'} hover:opacity-100 p-1.5 transform hover:scale-125 transition-all`}><Icons.Trash2 /></button>
+                                                {isP && <button onClick={(e) => { e.stopPropagation(); setActiveColorPickerId(activeColorPickerId === nodeItem.id ? null : nodeItem.id); }} className="text-white opacity-60 hover:opacity-100 p-1.5 transform hover:scale-125 transition-all"><Icons.Palette /></button>}
+                                                <button onClick={e => { e.stopPropagation(); saveHistory(); setNodes(prev => prev.filter(n => n.id !== nodeItem.id)); }} className={`${isS ? 'text-slate-900 opacity-40' : 'text-white opacity-40'} hover:opacity-100 p-1.5 transform hover:scale-125 transition-all`}><Icons.Trash2 /></button>
                                             </div>
-                                            {activeColorPickerId === node.id && (
+                                            {activeColorPickerId === nodeItem.id && (
                                                 <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-4 bg-white p-3 rounded-[1.5rem] shadow-2xl border-2 z-[999] w-[160px] grid grid-cols-3 gap-2 animate-in slide-in-from-bottom-2" onMouseDown={e => e.stopPropagation()}>
-                                                    {COLOR_PALETTE.map(c => (<div key={c} className={`w-8 h-8 rounded-full cursor-pointer ${c} ${node.color === c ? 'ring-2 ring-slate-800 ring-offset-2' : ''}`} onClick={() => { setNodes(nodes.map(n => n.id === node.id ? { ...n, color: c } : n)); setActiveColorPickerId(null); }} />))}
+                                                    {COLOR_PALETTE.map(c => (<div key={c} className={`w-8 h-8 rounded-full cursor-pointer ${c} ${nodeItem.color === c ? 'ring-2 ring-slate-800 ring-offset-2' : ''}`} onClick={() => { saveHistory(); setNodes(nodes.map(n => n.id === nodeItem.id ? { ...n, color: c } : n)); setActiveColorPickerId(null); }} />))}
                                                 </div>
                                             )}
                                         </div>
 
                                         <div className="p-6 flex-1 flex flex-col text-slate-800 overflow-hidden font-black">
-                                            {node.isMerged && (
+                                            {nodeItem.isMerged && (
                                                 <div className="mt-1 border-b-2 pb-3 mb-4 overflow-hidden">
-                                                    {Object.values(node.composition).map((c,i)=>(
+                                                    {Object.values(nodeItem.composition).map((c,i)=>(
                                                         <div key={i} className="text-xl text-slate-500 flex justify-between mb-1 italic tracking-tight leading-none">
                                                             <span>{c.label}</span> <b className="text-blue-600 ml-4">x{c.qty}</b>
                                                         </div>
                                                     ))}
-                                                    <button onClick={(e) => { e.stopPropagation(); handleUnmerge(node.id); }} className="text-lg text-blue-600 font-bold underline mt-2 pointer-events-auto">解除大區彙整</button>
+                                                    <button onClick={(e) => { e.stopPropagation(); handleUnmerge(nodeItem.id); }} className="text-lg text-blue-600 font-bold underline mt-2 pointer-events-auto">解除大區彙整</button>
                                                 </div>
                                             )}
 
                                             <div className="mt-auto flex flex-col gap-3 text-slate-900">
-                                                {(isS || isP || node.isMerged) ? (
+                                                {(isS || isP || nodeItem.isMerged) ? (
                                                     <div className="flex flex-col gap-4 w-full">
                                                         <div className="bg-slate-50 p-4 px-6 rounded-[2rem] border-2 border-slate-100 shadow-sm flex flex-col gap-0.5">
                                                             <span className="text-[10px] opacity-50 font-black tracking-widest uppercase">{isS ? 'SYSTEM SUM' : 'BRANCH FLOW'}</span>
@@ -869,9 +925,9 @@
                                                         <div className="flex justify-between items-center bg-slate-50 p-3 px-6 rounded-[1.5rem] border-2 border-slate-100 shadow-sm">
                                                             <span className="text-[9px] opacity-60 font-black tracking-widest uppercase">QTY</span>
                                                             <div className="flex items-center gap-4 pointer-events-auto">
-                                                                <button onClick={() => setNodes(prev => prev.map(n => n.id === node.id ? { ...n, qty: Math.max(1, (n.qty || 1) - 1) } : n))} className="w-8 h-8 flex items-center justify-center bg-white rounded-lg border-2 shadow-sm hover:bg-slate-100 font-black text-xl">-</button>
-                                                                <input type="number" className="w-10 text-center text-2xl font-black bg-transparent outline-none" value={node.qty || 1} onChange={e => setNodes(prev => prev.map(n => n.id === node.id ? { ...n, qty: Math.max(1, parseInt(e.target.value) || 1) } : n))} />
-                                                                <button onClick={() => setNodes(prev => prev.map(n => n.id === node.id ? { ...n, qty: (n.qty || 1) + 1 } : n))} className="w-8 h-8 flex items-center justify-center bg-white rounded-lg border-2 shadow-sm hover:bg-slate-100 font-black text-xl">+</button>
+                                                                <button onClick={() => { saveHistory(); setNodes(prev => prev.map(n => n.id === nodeItem.id ? { ...n, qty: Math.max(1, (n.qty || 1) - 1) } : n))}} className="w-8 h-8 flex items-center justify-center bg-white rounded-lg border-2 shadow-sm hover:bg-slate-100 font-black text-xl">-</button>
+                                                                <input type="number" className="w-10 text-center text-2xl font-black bg-transparent outline-none" value={nodeItem.qty || 1} onChange={e => { saveHistory(); setNodes(prev => prev.map(n => n.id === nodeItem.id ? { ...n, qty: Math.max(1, parseInt(e.target.value) || 1) } : n))}} />
+                                                                <button onClick={() => { saveHistory(); setNodes(prev => prev.map(n => n.id === nodeItem.id ? { ...n, qty: (n.qty || 1) + 1 } : n))}} className="w-8 h-8 flex items-center justify-center bg-white rounded-lg border-2 shadow-sm hover:bg-slate-100 font-black text-xl">+</button>
                                                             </div>
                                                         </div>
                                                         <div className="flex justify-between items-center bg-slate-50 p-3 px-6 rounded-[1.5rem] border-2 border-slate-100 shadow-sm">
@@ -888,10 +944,10 @@
                                         </div>
                                         
                                         {['left', 'right', 'top', 'bottom'].map(port => {
-                                            const off = getPortOffset(port, node);
-                                            const isActive = snapPort?.nodeId === node.id && snapPort?.port === port;
-                                            return (<div key={port} style={{ left: off.x-16, top: off.y-16 }} className={`absolute w-8 h-8 rounded-full border-[4px] border-white z-20 port-dot shadow-xl transition-all ${isActive ? 'snap-active' : ''}`}
-                                                    onMouseDown={e => { e.preventDefault(); e.stopPropagation(); const pO = getPortOffset(port, node); setActiveConn({ fromId: node.id, fromPort: port, startX: node.x + pO.x, startY: node.y + pO.y }); }} /> );
+                                            const off = getPortOffset(port, nodeItem);
+                                            const isActivePort = snapPort?.nodeId === nodeItem.id && snapPort?.port === port;
+                                            return (<div key={port} style={{ left: off.x-16, top: off.y-16 }} className={`absolute w-8 h-8 rounded-full border-[4px] border-white z-20 port-dot shadow-xl transition-all ${isActivePort ? 'snap-active' : ''}`}
+                                                    onMouseDown={e => { e.preventDefault(); e.stopPropagation(); const pO = getPortOffset(port, nodeItem); setActiveConn({ fromId: nodeItem.id, fromPort: port, startX: nodeItem.x + pO.x, startY: nodeItem.y + pO.y }); }} /> );
                                         })}
                                     </div>
                                 );
