@@ -35,7 +35,7 @@
             -webkit-tap-highlight-color: transparent;
         }
 
-        /* --- 系統層級與動畫 --- */
+        /* --- 系統啟動動畫 --- */
         #boot-loader {
             position: fixed; inset: 0; background: #ffffff; z-index: 9999;
             display: flex; flex-direction: column; align-items: center; justify-content: center;
@@ -55,7 +55,7 @@
         }
         .bg-pattern { position: fixed; inset: 0; z-index: -1; background-image: radial-gradient(#cbd5e1 1.5px, transparent 1.5px); background-size: 50px 50px; opacity: 0.5; }
 
-        /* --- 無限滑軌專用樣式 --- */
+        /* --- 無限滑軌樣式 --- */
         .slider-wrapper { position: relative; width: 100%; padding: 0 20px; overflow: visible; }
         @media (min-width: 768px) { .slider-wrapper { padding: 0 80px; } }
 
@@ -63,7 +63,6 @@
             display: flex; overflow-x: auto; gap: 20px; padding: 70px 0;
             scrollbar-width: none; -ms-overflow-style: none;
             scroll-snap-type: x mandatory;
-            /* 左右預留足夠空間讓無限邏輯運作 */
             scroll-behavior: auto; 
         }
         @media (min-width: 768px) { .slider-container { gap: 40px; } }
@@ -98,7 +97,6 @@
             font-size: 2rem; color: white; transition: all 0.5s ease;
         }
         @media (min-width: 768px) { .icon-box { width: 85px; height: 85px; border-radius: 26px; font-size: 2.8rem; } }
-        .tool-card:hover .icon-box { transform: scale(1.1) rotate(5deg); background-color: #000 !important; }
 
         .nav-arrow {
             position: absolute; top: 50%; transform: translateY(-50%); width: 48px; height: 48px;
@@ -110,20 +108,16 @@
         .nav-arrow:hover { background: var(--primary-blue); color: white; transform: translateY(-50%) scale(1.1); }
         .nav-arrow.left { left: 15px; } .nav-arrow.right { right: 15px; }
 
-        /* --- 軟體開啟容器 --- */
+        /* --- 軟體檢視器 --- */
         #module-container {
             position: fixed; top: 0; left: 0; width: 100%; height: 100vh;
             z-index: 9000; background: white; display: none; flex-direction: column;
             animation: moduleEntrance 0.6s cubic-bezier(0.23, 1, 0.32, 1) forwards;
         }
-        @keyframes moduleEntrance {
-            from { opacity: 0; transform: scale(1.05); filter: blur(10px); }
-            to { opacity: 1; transform: scale(1); filter: blur(0); }
-        }
+        @keyframes moduleEntrance { from { opacity: 0; transform: scale(1.05); filter: blur(10px); } to { opacity: 1; transform: scale(1); filter: blur(0); } }
         #module-viewport { flex-grow: 1; width: 100%; height: 100%; border: none; background: white; }
         #transition-flash { position: fixed; inset: 0; background: white; z-index: 9500; opacity: 0; pointer-events: none; transition: opacity 0.4s ease; }
 
-        /* 儀表板組件 */
         .status-ticker { font-family: 'JetBrains Mono', monospace; font-size: 9px; color: #94a3b8; font-weight: 700; text-transform: uppercase; }
         .weather-widget { display: flex; align-items: center; gap: 12px; background: white; border: 1px solid #e2e8f0; padding: 6px 20px; border-radius: 99px; box-shadow: 0 2px 10px rgba(0,0,0,0.02); }
         .weather-value { font-family: 'JetBrains Mono', monospace; font-size: 14px; font-weight: 700; color: var(--primary-blue); }
@@ -134,12 +128,12 @@
 </head>
 <body class="h-screen flex flex-col">
 
-    <!-- 系統啟動 -->
+    <!-- 系統啟動 (檢查版本用) -->
     <div id="boot-loader">
         <div class="flex flex-col items-center">
             <div class="w-16 h-16 bg-blue-600 rounded-2xl flex items-center justify-center text-white font-black text-2xl shadow-2xl mb-8">東旭</div>
-            <div class="font-mono text-[10px] text-blue-600 font-bold uppercase tracking-[0.4em]">HVAC Pro-Suite v2.5.3</div>
-            <div id="boot-status" class="text-[8px] font-mono text-slate-400 uppercase tracking-[0.3em] mt-4">Calibrating Environmental Sensors...</div>
+            <div class="font-mono text-[10px] text-blue-600 font-bold uppercase tracking-[0.4em]">HVAC Pro-Suite v2.5.5</div>
+            <div id="boot-status" class="text-[8px] font-mono text-slate-400 uppercase tracking-[0.3em] mt-4">Syncing Logic Nodes...</div>
             <div class="boot-bar"><div class="boot-progress"></div></div>
         </div>
     </div>
@@ -160,7 +154,7 @@
         </div>
         
         <div class="flex items-center gap-4">
-            <!-- 實時溫濕度 -->
+            <!-- 實時溫濕度站 -->
             <div class="weather-widget hidden sm:flex">
                 <div class="flex flex-col items-center"><span class="text-[8px] text-slate-400 font-bold">TEMP</span><span id="live-temp" class="weather-value">--.-°C</span></div>
                 <div class="w-px h-6 bg-slate-100"></div>
@@ -181,14 +175,13 @@
                         點選任一卡片以進入計算核心。
                     </p>
                     
-                    <!-- 最近使用 -->
                     <div id="recent-container" class="hidden mt-12 flex flex-wrap gap-4 items-center justify-center md:justify-start">
                         <span class="text-[10px] font-black text-slate-400 uppercase tracking-widest">Recent Tools:</span>
                         <div id="recent-list" class="flex flex-wrap gap-3"></div>
                     </div>
                 </div>
 
-                <!-- 無限輪轉滑軌區 -->
+                <!-- 滑軌 1 -->
                 <section class="mb-24 md:mb-36">
                     <h3 class="text-[10px] md:text-xs font-black text-slate-400 uppercase tracking-[0.5em] mb-8 flex items-center gap-6">
                         <span class="w-12 md:w-32 h-1 bg-blue-600 rounded-full"></span>基礎設計工具 General
@@ -200,6 +193,7 @@
                     </div>
                 </section>
 
+                <!-- 滑軌 2 -->
                 <section class="mb-10">
                     <h3 class="text-[10px] md:text-xs font-black text-slate-400 uppercase tracking-[0.5em] mb-8 flex items-center gap-6">
                         <span class="w-12 md:w-32 h-1 bg-slate-900 rounded-full"></span>進階系統模組 Advanced
@@ -217,7 +211,6 @@
             </div>
         </div>
 
-        <!-- 軟體檢視器 -->
         <div id="module-container">
             <div class="h-[64px] md:h-[80px] bg-slate-900 text-white flex items-center px-4 md:px-12 justify-between shrink-0 shadow-2xl">
                 <button onclick="closeModule()" class="flex items-center gap-3 px-5 py-2 rounded-full bg-white/10 hover:bg-white/20 text-white font-bold text-sm transition-all group">
@@ -243,7 +236,7 @@
                 { id: 'air-duct', name: '風管尺寸檢核', desc: '等摩擦法與等流速自動計算選型。', icon: '💨', tag: 'Duct', file: '風管計算.html', color: 'bg-indigo-100', text: 'text-indigo-700' }
             ],
             advanced: [
-                { id: 'psychro-pro', name: '空氣線圖 Pro', desc: '混風系統與盤管負荷 Mapping 邏輯分析。', icon: '📊', tag: 'System', file: '空氣線圖Pro 計算器.html', color: 'bg-blue-500', text: 'text-white' },
+                { id: 'psychro-pro', name: '空氣線圖 Pro', desc: '混風系統與盤管負荷 Mapping 邏輯分析。', icon: '📊', tag: 'System', file: '空氣線圖Pro 計算器.html', color: 'bg-sky-500', text: 'text-white' },
                 { id: 'cr-master', name: '無塵室大師 Pro', desc: 'MAU、FFU、RCU 熱平衡與氣流平衡。', icon: '🏗️', tag: 'Fab', file: 'Clean room master.html', color: 'bg-slate-900', text: 'text-white' },
                 { id: 'chilled-water', name: '冰水管路計算', desc: '拼圖式建模，自動計算壓損與等效管徑。', icon: '❄️', tag: 'Hydronic', file: '冰水管路計算.html', color: 'bg-blue-600', text: 'text-white' },
                 { id: 'water-tower', name: '水塔補水量', desc: '蒸發、流洩與補水平衡動態模擬。', icon: '🗼', tag: 'Balance', file: '冷卻水塔補水量計算.html', color: 'bg-blue-600', text: 'text-white' }
@@ -252,7 +245,30 @@
 
         const allToolsList = [...toolsData.general, ...toolsData.advanced];
 
-        // --- 核心功能：溫濕度站 ---
+        // --- 核心更新邏輯：自動重新整理 ---
+        function handleServiceWorker() {
+            if ('serviceWorker' in navigator) {
+                // 每次註冊都帶上時間戳記，確保 sw.js 檔案本身不被瀏覽器緩存
+                const swUrl = `./sw.js?v=${Date.now()}`; 
+                
+                navigator.serviceWorker.register(swUrl)
+                .then(reg => {
+                    console.log('SW Status: Checking for updates');
+                    
+                    // 監聽是否有新版本在安裝
+                    reg.onupdatefound = () => {
+                        const installingWorker = reg.installing;
+                        installingWorker.onstatechange = () => {
+                            if (installingWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                                // 檢測到新版本安裝完成，強制重整頁面
+                                window.location.reload(); 
+                            }
+                        };
+                    };
+                }).catch(err => console.log('SW Registry Error', err));
+            }
+        }
+
         async function fetchWeather() {
             const tempEl = document.getElementById('live-temp');
             const rhEl = document.getElementById('live-rh');
@@ -262,42 +278,31 @@
                 if (data && data.current) {
                     tempEl.innerText = `${data.current.temperature_2m}°C`;
                     rhEl.innerText = `${data.current.relative_humidity_2m}%`;
-                    document.getElementById('ticker-text').innerText = `WEATHER_NODE OK • TAIPEI ${data.current.temperature_2m}°C • LOAD STABLE`;
                 }
             } catch (e) {
                 tempEl.innerText = '24.5°C'; rhEl.innerText = '55%';
             }
         }
 
-        // --- 核心功能：無限輪轉邏輯 ---
         function initInfiniteSlider(id, originalCount) {
             const container = document.getElementById(id);
             const originalCards = Array.from(container.children);
-            
-            // 複製三組實現無縫滾動
             originalCards.forEach(card => container.appendChild(card.cloneNode(true)));
             originalCards.forEach(card => container.insertBefore(card.cloneNode(true), container.firstChild));
-
             const updatePos = () => {
                 const card = container.querySelector('.tool-card');
                 if (!card) return;
                 const cardWidth = card.offsetWidth + parseInt(getComputedStyle(container).gap);
                 container.scrollLeft = cardWidth * originalCount;
             };
-
             window.addEventListener('resize', updatePos);
             setTimeout(updatePos, 100);
-
             container.addEventListener('scroll', () => {
                 const centerX = container.getBoundingClientRect().left + container.offsetWidth / 2;
                 const cardWidth = container.querySelector('.tool-card').offsetWidth + parseInt(getComputedStyle(container).gap);
                 const setWidth = cardWidth * originalCount;
-
-                // 無縫跳轉
                 if (container.scrollLeft >= setWidth * 2) container.scrollLeft -= setWidth;
                 else if (container.scrollLeft <= 0) container.scrollLeft += setWidth;
-
-                // 亮點檢測
                 container.querySelectorAll('.tool-card').forEach(c => {
                     const cCenter = c.getBoundingClientRect().left + c.offsetWidth / 2;
                     c.classList.toggle('active-center', Math.abs(centerX - cCenter) < 150);
@@ -307,13 +312,10 @@
 
         function sideScroll(id, direction) {
             const container = document.getElementById(id);
-            const card = container.querySelector('.tool-card');
-            const cardWidth = card.offsetWidth + parseInt(getComputedStyle(container).gap);
-            const move = direction === 'right' ? cardWidth : -cardWidth;
-            container.scrollBy({ left: move, behavior: 'smooth' });
+            const cardWidth = container.querySelector('.tool-card').offsetWidth + parseInt(getComputedStyle(container).gap);
+            container.scrollBy({ left: direction === 'right' ? cardWidth : -cardWidth, behavior: 'smooth' });
         }
 
-        // --- 核心功能：開啟軟體門戶 ---
         function loadModulePortal(event, id, toolName, fileName) {
             updateRecentTools(id);
             const card = event.currentTarget.classList && event.currentTarget.classList.contains('tool-card') ? event.currentTarget : null;
@@ -329,22 +331,17 @@
                 const clone = card.cloneNode(true);
                 Object.assign(clone.style, { position: 'fixed', top: rect.top+'px', left: rect.left+'px', width: rect.width+'px', height: rect.height+'px', margin: '0', transition: 'none', zIndex: '1000' });
                 document.body.appendChild(clone);
-
                 requestAnimationFrame(() => {
                     hub.style.opacity = '0';
                     header.style.transform = 'translateY(-100%)';
                     clone.classList.add('card-opening');
-                    
                     setTimeout(() => {
                         flash.style.opacity = '1';
                         setTimeout(() => {
                             activeTitle.innerText = toolName;
                             container.style.display = 'flex';
                             iframe.src = fileName + '?v=' + Date.now();
-                            iframe.onload = () => {
-                                flash.style.opacity = '0';
-                                if(document.body.contains(clone)) document.body.removeChild(clone);
-                            };
+                            iframe.onload = () => { flash.style.opacity = '0'; if(document.body.contains(clone)) document.body.removeChild(clone); };
                         }, 250);
                     }, 500);
                 });
@@ -364,24 +361,22 @@
         function closeModule() {
             document.getElementById('module-container').style.display = 'none';
             document.getElementById('toolbox-hub').style.opacity = '1';
+            document.getElementById('toolbox-hub').style.transform = 'scale(1)';
             document.getElementById('main-header').style.transform = 'translateY(0)';
             document.getElementById('module-viewport').src = 'about:blank';
         }
 
-        // --- 輔助功能 ---
         function createCardHTML(tool) {
-            return `
-                <div onclick="loadModulePortal(event, '${tool.id}', '${tool.name}', '${tool.file}')" class="tool-card group">
-                    <div class="flex justify-between items-start">
-                        <div class="icon-box">${tool.icon}</div>
-                        <span class="tag ${tool.color} ${tool.text}">${tool.tag}</span>
-                    </div>
-                    <div class="mt-8">
-                        <h4 class="text-2xl md:text-3xl font-black text-slate-800 mb-2">${tool.name}</h4>
-                        <p class="text-xs md:text-sm text-slate-400 font-bold leading-tight">${tool.desc}</p>
-                    </div>
+            return `<div onclick="loadModulePortal(event, '${tool.id}', '${tool.name}', '${tool.file}')" class="tool-card group">
+                <div class="flex justify-between items-start">
+                    <div class="icon-box">${tool.icon}</div>
+                    <span class="tag ${tool.color} ${tool.text}">${tool.tag}</span>
                 </div>
-            `;
+                <div class="mt-8">
+                    <h4 class="text-2xl md:text-3xl font-black text-slate-800 mb-2">${tool.name}</h4>
+                    <p class="text-xs md:text-sm text-slate-400 font-bold leading-tight">${tool.desc}</p>
+                </div>
+            </div>`;
         }
 
         function updateRecentTools(id) {
@@ -414,22 +409,22 @@
                 document.documentElement.style.setProperty('--mouse-x', `${(e.clientX/window.innerWidth)*100}%`);
                 document.documentElement.style.setProperty('--mouse-y', `${(e.clientY/window.innerHeight)*100}%`);
             });
-            
             fetchWeather();
             document.getElementById('general-slider').innerHTML = toolsData.general.map(createCardHTML).join('');
             document.getElementById('advanced-slider').innerHTML = toolsData.advanced.map(createCardHTML).join('');
             initInfiniteSlider('general-slider', toolsData.general.length);
             initInfiniteSlider('advanced-slider', toolsData.advanced.length);
             renderRecentTools();
-            
             setTimeout(() => {
                 document.getElementById('boot-loader').style.opacity = '0';
                 setTimeout(() => document.getElementById('boot-loader').style.display = 'none', 800);
             }, 1800);
-
             setInterval(() => {
                 document.getElementById('current-time').innerText = new Date().toLocaleTimeString('zh-TW', { hour12: false, hour: '2-digit', minute: '2-digit' });
             }, 1000);
+            
+            // 呼叫 SW 管理邏輯
+            handleServiceWorker();
         };
     </script>
 </body>
