@@ -35,14 +35,14 @@
             -webkit-tap-highlight-color: transparent;
         }
 
-        /* --- 系統啟動動畫 --- */
+        /* --- 啟動動畫層 --- */
         #boot-loader {
             position: fixed; inset: 0; background: #ffffff; z-index: 9999;
             display: flex; flex-direction: column; align-items: center; justify-content: center;
             transition: opacity 0.8s cubic-bezier(0.65, 0, 0.35, 1);
         }
         .boot-bar { width: 240px; height: 3px; background: #eff6ff; margin-top: 24px; border-radius: 99px; position: relative; overflow: hidden; }
-        .boot-progress { position: absolute; height: 100%; width: 0%; background: var(--primary-blue); box-shadow: 0 0 15px var(--primary-blue); animation: bootProgress 1.8s cubic-bezier(0.23, 1, 0.32, 1) forwards; }
+        .boot-progress { position: absolute; height: 100%; width: 0%; background: var(--primary-blue); box-shadow: 0 0-15px var(--primary-blue); animation: bootProgress 1.6s cubic-bezier(0.23, 1, 0.32, 1) forwards; }
         @keyframes bootProgress { 0% { width: 0%; } 100% { width: 100%; } }
 
         .mesh-bg {
@@ -55,7 +55,7 @@
         }
         .bg-pattern { position: fixed; inset: 0; z-index: -1; background-image: radial-gradient(#cbd5e1 1.5px, transparent 1.5px); background-size: 50px 50px; opacity: 0.5; }
 
-        /* --- 無限滑軌 --- */
+        /* --- 無限滑軌樣式 --- */
         .slider-wrapper { position: relative; width: 100%; padding: 0 20px; overflow: visible; }
         @media (min-width: 768px) { .slider-wrapper { padding: 0 80px; } }
 
@@ -105,7 +105,6 @@
             box-shadow: 0 10px 25px rgba(0,0,0,0.1); transition: all 0.3s;
         }
         @media (min-width: 1024px) { .nav-arrow { display: flex; } }
-        .nav-arrow:hover { background: var(--primary-blue); color: white; transform: translateY(-50%) scale(1.1); }
         .nav-arrow.left { left: 15px; } .nav-arrow.right { right: 15px; }
 
         /* --- 軟體容器 --- */
@@ -116,7 +115,7 @@
         }
         @keyframes moduleEntrance { from { opacity: 0; transform: scale(1.05); filter: blur(10px); } to { opacity: 1; transform: scale(1); filter: blur(0); } }
         #module-viewport { flex-grow: 1; width: 100%; height: 100%; border: none; background: white; }
-        #transition-flash { position: fixed; inset: 0; background: white; z-index: 9500; opacity: 0; pointer-events: none; transition: opacity 0.4s ease; }
+        #transition-flash { position: fixed; inset: 0; background: white; z-index: 9500; opacity: 0; pointer-events: none; transition: opacity 0.3s ease; }
 
         .status-ticker { font-family: 'JetBrains Mono', monospace; font-size: 9px; color: #94a3b8; font-weight: 700; text-transform: uppercase; }
         .weather-widget { display: flex; align-items: center; gap: 12px; background: white; border: 1px solid #e2e8f0; padding: 6px 20px; border-radius: 99px; box-shadow: 0 2px 10px rgba(0,0,0,0.02); }
@@ -128,12 +127,12 @@
 </head>
 <body class="h-screen flex flex-col">
 
-    <!-- 系統啟動 (版本 v2.6.1) -->
+    <!-- 系統啟動 -->
     <div id="boot-loader">
         <div class="flex flex-col items-center">
             <div class="w-16 h-16 bg-blue-600 rounded-2xl flex items-center justify-center text-white font-black text-2xl shadow-2xl mb-8">東旭</div>
-            <div class="font-mono text-[10px] text-blue-600 font-bold uppercase tracking-[0.4em]">HVAC Pro-Suite v2.6.1</div>
-            <div id="boot-status" class="text-[8px] font-mono text-slate-400 uppercase tracking-[0.3em] mt-4">Synchronizing System Cache...</div>
+            <div class="font-mono text-[10px] text-blue-600 font-bold uppercase tracking-[0.4em]">HVAC Pro-Suite v2.6.2</div>
+            <div id="boot-status" class="text-[8px] font-mono text-slate-400 uppercase tracking-[0.3em] mt-4">Initializing Logic Core...</div>
             <div class="boot-bar"><div class="boot-progress"></div></div>
         </div>
     </div>
@@ -216,7 +215,7 @@
                 </button>
                 <div class="flex flex-col items-center">
                     <span id="active-tool-title" class="text-sm md:text-xl font-black tracking-widest uppercase text-blue-400">LOADING...</span>
-                    <span class="text-[8px] opacity-40 font-bold uppercase tracking-[0.2em]">Logic Node Active</span>
+                    <span class="text-[8px] opacity-40 font-bold uppercase tracking-[0.2em]">Logic Execution Node</span>
                 </div>
                 <button onclick="iframeReload()" class="w-10 h-10 rounded-full bg-white/5 hover:bg-white/10 flex items-center justify-center">🔄</button>
             </div>
@@ -225,7 +224,7 @@
     </main>
 
     <script>
-        const APP_VERSION = 'v2.6.1';
+        const APP_VERSION = 'v2.6.2';
 
         const toolsData = {
             general: [
@@ -246,18 +245,17 @@
 
         const allToolsList = [...toolsData.general, ...toolsData.advanced];
 
-        // --- 安全管理 Service Worker 與 緩存 ---
+        // --- 安全管理 Service Worker ---
         async function forceUpdateCheck() {
             if (!('serviceWorker' in navigator)) return;
             try {
                 const savedVersion = localStorage.getItem('shiu_hvac_ver');
                 if (savedVersion !== APP_VERSION) {
-                    console.log('New Version Detected: Purging...');
                     const registrations = await navigator.serviceWorker.getRegistrations();
                     for (let reg of registrations) { await reg.unregister(); }
                     if (window.caches) {
-                        const names = await caches.keys();
-                        for (let n of names) { await caches.delete(n); }
+                        const cacheNames = await caches.keys();
+                        for (let n of cacheNames) { await caches.delete(n); }
                     }
                     localStorage.setItem('shiu_hvac_ver', APP_VERSION);
                     window.location.reload();
@@ -295,12 +293,13 @@
             } catch (e) { tempEl.innerText = '24.5°C'; rhEl.innerText = '55%'; }
         }
 
-        // --- 無限滑軌核心演算法復原 ---
+        // --- 無限滑軌核心演算法 ---
         function initInfiniteSlider(id, originalCount) {
             const container = document.getElementById(id);
             const originalCards = Array.from(container.children);
             if (originalCards.length === 0) return;
 
+            // 複製卡片實現無限滾動
             originalCards.forEach(card => container.appendChild(card.cloneNode(true)));
             originalCards.forEach(card => container.insertBefore(card.cloneNode(true), container.firstChild));
 
@@ -322,8 +321,11 @@
                 const cardWidth = card.offsetWidth + gap;
                 const setWidth = cardWidth * originalCount;
 
-                if (container.scrollLeft >= setWidth * 2) container.scrollLeft -= setWidth;
-                else if (container.scrollLeft <= 0) container.scrollLeft += setWidth;
+                if (container.scrollLeft >= setWidth * 2) {
+                    container.scrollLeft -= setWidth;
+                } else if (container.scrollLeft <= 0) {
+                    container.scrollLeft += setWidth;
+                }
 
                 const centerX = container.getBoundingClientRect().left + container.offsetWidth / 2;
                 container.querySelectorAll('.tool-card').forEach(c => {
@@ -355,7 +357,7 @@
             if (card) {
                 const rect = card.getBoundingClientRect();
                 const clone = card.cloneNode(true);
-                Object.assign(clone.style, { position: 'fixed', top: rect.top+'px', left: rect.left+'px', width: rect.width+'px', height: rect.height+'px', margin: '0', transition: 'none', zIndex: '1000' });
+                Object.assign(clone.style, { position: 'fixed', top: rect.top+'px', left: rect.left+'px', width: rect.width+'px', height: rect.height+'px', margin: '0', transition: 'none', zIndex: '8500' });
                 document.body.appendChild(clone);
                 requestAnimationFrame(() => {
                     hub.style.opacity = '0';
@@ -367,7 +369,10 @@
                             activeTitle.innerText = toolName;
                             container.style.display = 'flex';
                             iframe.src = fileName + '?v=' + Date.now();
-                            iframe.onload = () => { flash.style.opacity = '0'; if(document.body.contains(clone)) document.body.removeChild(clone); };
+                            iframe.onload = () => {
+                                flash.style.opacity = '0';
+                                if(document.body.contains(clone)) document.body.removeChild(clone);
+                            };
                         }, 250);
                     }, 500);
                 });
@@ -429,6 +434,15 @@
         function iframeReload() { document.getElementById('module-viewport').contentWindow.location.reload(); }
 
         window.onload = () => {
+            // 啟動強制隱藏遮罩的保險定時器 (預防程式報錯導致卡死)
+            setTimeout(() => {
+                const loader = document.getElementById('boot-loader');
+                if (loader && loader.style.display !== 'none') {
+                    loader.style.opacity = '0';
+                    setTimeout(() => loader.style.display = 'none', 800);
+                }
+            }, 3000);
+
             forceUpdateCheck().finally(() => {
                 document.addEventListener('mousemove', e => {
                     document.documentElement.style.setProperty('--mouse-x', `${(e.clientX/window.innerWidth)*100}%`);
@@ -440,10 +454,13 @@
                 initInfiniteSlider('general-slider', toolsData.general.length);
                 initInfiniteSlider('advanced-slider', toolsData.advanced.length);
                 renderRecentTools();
+                
+                // 正常的動畫隱藏邏輯
                 setTimeout(() => {
                     document.getElementById('boot-loader').style.opacity = '0';
                     setTimeout(() => document.getElementById('boot-loader').style.display = 'none', 800);
                 }, 1800);
+                
                 setInterval(() => {
                     document.getElementById('current-time').innerText = new Date().toLocaleTimeString('zh-TW', { hour12: false, hour: '2-digit', minute: '2-digit' });
                 }, 1000);
