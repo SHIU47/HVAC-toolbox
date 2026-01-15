@@ -35,216 +35,111 @@
             -webkit-tap-highlight-color: transparent;
         }
 
-        /* --- 啟動序幕遮罩 --- */
+        /* --- 系統層級與動畫 --- */
         #boot-loader {
-            position: fixed;
-            inset: 0;
-            background: #ffffff;
-            z-index: 2000;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
+            position: fixed; inset: 0; background: #ffffff; z-index: 9999;
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
             transition: opacity 0.8s cubic-bezier(0.65, 0, 0.35, 1);
         }
-        .boot-bar {
-            width: 200px; height: 3px;
-            background: #eff6ff;
-            margin-top: 24px; border-radius: 99px;
-            position: relative; overflow: hidden;
-        }
-        .boot-progress {
-            position: absolute; height: 100%; width: 0%;
-            background: var(--primary-blue);
-            box-shadow: 0 0 15px var(--primary-blue);
-            animation: bootProgress 1.6s cubic-bezier(0.23, 1, 0.32, 1) forwards;
-        }
+        .boot-bar { width: 240px; height: 3px; background: #eff6ff; margin-top: 24px; border-radius: 99px; position: relative; overflow: hidden; }
+        .boot-progress { position: absolute; height: 100%; width: 0%; background: var(--primary-blue); box-shadow: 0 0 15px var(--primary-blue); animation: bootProgress 1.8s cubic-bezier(0.23, 1, 0.32, 1) forwards; }
         @keyframes bootProgress { 0% { width: 0%; } 100% { width: 100%; } }
 
-        /* 背景交互變量 */
         .mesh-bg {
-            position: fixed;
-            top: 0; left: 0; width: 100%; height: 100%;
-            z-index: -1;
+            position: fixed; inset: 0; z-index: -1;
             background: 
                 radial-gradient(at var(--mouse-x, 50%) var(--mouse-y, 50%), rgba(37, 99, 235, 0.08) 0px, transparent 40%),
                 radial-gradient(at 0% 0%, rgba(37, 99, 235, 0.08) 0px, transparent 50%),
-                radial-gradient(at 100% 0%, rgba(100, 116, 139, 0.05) 0px, transparent 50%),
                 radial-gradient(at 100% 100%, rgba(186, 230, 253, 0.1) 0px, transparent 50%);
             background-color: #f8fafc;
         }
+        .bg-pattern { position: fixed; inset: 0; z-index: -1; background-image: radial-gradient(#cbd5e1 1.5px, transparent 1.5px); background-size: 50px 50px; opacity: 0.5; }
 
-        .bg-pattern {
-            position: fixed;
-            inset: 0;
-            z-index: -1;
-            background-image: radial-gradient(#cbd5e1 1.5px, transparent 1.5px);
-            background-size: 50px 50px;
-            opacity: 0.6;
-        }
-
-        /* 滑軌容器 */
-        .slider-wrapper {
-            position: relative;
-            width: 100%;
-            padding: 0 20px;
-            overflow: visible;
-            transition: opacity 0.4s ease, transform 0.4s ease;
-        }
+        /* --- 無限滑軌專用樣式 --- */
+        .slider-wrapper { position: relative; width: 100%; padding: 0 20px; overflow: visible; }
         @media (min-width: 768px) { .slider-wrapper { padding: 0 80px; } }
 
         .slider-container {
-            display: flex;
-            overflow-x: auto;
-            gap: 20px;
-            padding: 70px 0;
-            scrollbar-width: none;
-            -ms-overflow-style: none;
+            display: flex; overflow-x: auto; gap: 20px; padding: 70px 0;
+            scrollbar-width: none; -ms-overflow-style: none;
             scroll-snap-type: x mandatory;
-            padding-left: calc(50% - 140px); 
-            padding-right: calc(50% - 140px);
+            /* 左右預留足夠空間讓無限邏輯運作 */
             scroll-behavior: auto; 
         }
-        @media (min-width: 768px) { 
-            .slider-container { 
-                gap: 40px; 
-                padding-left: calc(50% - 190px); 
-                padding-right: calc(50% - 190px);
-            } 
-        }
+        @media (min-width: 768px) { .slider-container { gap: 40px; } }
         .slider-container::-webkit-scrollbar { display: none; }
 
-        /* 工具卡片設計 */
         .tool-card {
-            flex: 0 0 280px;
-            background: rgba(255, 255, 255, 0.95);
-            backdrop-filter: blur(12px);
-            border: 1px solid var(--border-light);
-            border-radius: 2.5rem;
-            padding: 2.5rem;
-            transition: all 0.6s cubic-bezier(0.23, 1, 0.32, 1);
-            cursor: pointer;
+            flex: 0 0 280px; background: rgba(255, 255, 255, 0.9); backdrop-filter: blur(12px);
+            border: 1px solid var(--border-light); border-radius: 2.5rem; padding: 2.5rem;
+            transition: all 0.6s cubic-bezier(0.23, 1, 0.32, 1); cursor: pointer;
             box-shadow: 0 10px 30px -15px rgba(0, 0, 0, 0.05);
-            display: flex;
-            flex-direction: column;
-            height: 320px;
-            position: relative;
-            scroll-snap-align: center;
-            opacity: 0.4;
-            transform: scale(0.85);
-            user-select: none;
+            display: flex; flex-direction: column; height: 320px;
+            scroll-snap-align: center; opacity: 0.4; transform: scale(0.85);
             backface-visibility: hidden;
         }
-        @media (min-width: 768px) { .tool-card { flex: 0 0 380px; height: 360px; border-radius: 3rem; } }
+        @media (min-width: 768px) { .tool-card { flex: 0 0 380px; height: 380px; border-radius: 3rem; } }
 
         .tool-card.active-center {
-            opacity: 1;
-            transform: scale(1.05) translateY(-15px);
-            background: #ffffff;
-            border-color: var(--primary-blue);
-            box-shadow: 0 25px 50px -15px rgba(37, 99, 235, 0.2);
-            z-index: 50;
-        }
-        @media (min-width: 768px) { 
-            .tool-card.active-center { transform: scale(1.1) translateY(-35px); box-shadow: 0 45px 80px -25px rgba(37, 99, 235, 0.25); } 
+            opacity: 1; transform: scale(1.1) translateY(-20px); background: #ffffff;
+            border-color: var(--primary-blue); box-shadow: 0 35px 70px -15px rgba(37, 99, 235, 0.2); z-index: 50;
         }
 
         .card-opening {
-            position: fixed !important;
-            z-index: 200 !important;
+            position: fixed !important; z-index: 8000 !important;
             transition: all 0.8s cubic-bezier(0.7, 0, 0.2, 1) !important;
-            pointer-events: none;
-            opacity: 1 !important;
-            transform: scale(4) rotateY(180deg) translateZ(500px) !important;
-            background: var(--primary-blue) !important;
-            border-radius: 0 !important;
+            opacity: 1 !important; transform: scale(5) rotateY(180deg) !important;
+            background: var(--primary-blue) !important; border-radius: 0 !important;
         }
 
         .icon-box {
-            width: 60px; height: 60px;
-            background-color: var(--obsidian-black) !important;
-            border-radius: 20px;
-            display: flex; align-items: center; justify-content: center;
-            font-size: 2rem;
-            transition: all 0.5s ease;
-            flex-shrink: 0; color: white;
-            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.2);
+            width: 60px; height: 60px; background-color: var(--obsidian-black) !important;
+            border-radius: 20px; display: flex; align-items: center; justify-content: center;
+            font-size: 2rem; color: white; transition: all 0.5s ease;
         }
         @media (min-width: 768px) { .icon-box { width: 85px; height: 85px; border-radius: 26px; font-size: 2.8rem; } }
-
-        .tool-card:hover .icon-box { transform: scale(1.18) rotate(7deg); background-color: #000000 !important; }
+        .tool-card:hover .icon-box { transform: scale(1.1) rotate(5deg); background-color: #000 !important; }
 
         .nav-arrow {
-            position: absolute; top: 50%; transform: translateY(-50%); width: 44px; height: 44px;
+            position: absolute; top: 50%; transform: translateY(-50%); width: 48px; height: 48px;
             background: white; border: 1px solid #e2e8f0; border-radius: 50%; display: none;
-            align-items: center; justify-content: center; z-index: 60; color: #1e293b;
+            align-items: center; justify-content: center; z-index: 100; color: #1e293b;
             box-shadow: 0 10px 25px rgba(0,0,0,0.1); transition: all 0.3s;
         }
         @media (min-width: 1024px) { .nav-arrow { display: flex; } }
-        .nav-arrow:hover { background: var(--primary-blue); color: white; border-color: var(--primary-blue); }
-        .nav-arrow.left { left: 5px; }
-        .nav-arrow.right { right: 5px; }
+        .nav-arrow:hover { background: var(--primary-blue); color: white; transform: translateY(-50%) scale(1.1); }
+        .nav-arrow.left { left: 15px; } .nav-arrow.right { right: 15px; }
 
+        /* --- 軟體開啟容器 --- */
         #module-container {
             position: fixed; top: 0; left: 0; width: 100%; height: 100vh;
-            z-index: 300; background: white; display: none; flex-direction: column;
+            z-index: 9000; background: white; display: none; flex-direction: column;
             animation: moduleEntrance 0.6s cubic-bezier(0.23, 1, 0.32, 1) forwards;
         }
         @keyframes moduleEntrance {
-            from { opacity: 0; transform: scale(1.1); filter: blur(10px); }
+            from { opacity: 0; transform: scale(1.05); filter: blur(10px); }
             to { opacity: 1; transform: scale(1); filter: blur(0); }
         }
+        #module-viewport { flex-grow: 1; width: 100%; height: 100%; border: none; background: white; }
+        #transition-flash { position: fixed; inset: 0; background: white; z-index: 9500; opacity: 0; pointer-events: none; transition: opacity 0.4s ease; }
 
-        #transition-flash {
-            position: fixed; inset: 0; background: white; z-index: 400; opacity: 0; pointer-events: none; transition: opacity 0.3s ease;
-        }
-
-        /* 增量：數據滾動欄 */
-        .status-ticker {
-            font-family: 'JetBrains Mono', monospace;
-            font-size: 9px; color: #94a3b8; font-weight: 700;
-            letter-spacing: 0.1em; text-transform: uppercase;
-        }
-
-        /* 增量：環境站 Widget 樣式 */
-        .weather-widget {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            background: #ffffff;
-            border: 1px solid #e2e8f0;
-            padding: 6px 20px;
-            border-radius: 99px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.02);
-            transition: all 0.3s ease;
-        }
-        .weather-widget:hover {
-            border-color: var(--primary-blue);
-            transform: translateY(-1px);
-            box-shadow: 0 10px 20px rgba(37, 99, 235, 0.05);
-        }
-        .weather-item {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            line-height: 1;
-        }
-        .weather-label { font-size: 8px; font-weight: 800; color: #94a3b8; text-transform: uppercase; margin-bottom: 2px; }
+        /* 儀表板組件 */
+        .status-ticker { font-family: 'JetBrains Mono', monospace; font-size: 9px; color: #94a3b8; font-weight: 700; text-transform: uppercase; }
+        .weather-widget { display: flex; align-items: center; gap: 12px; background: white; border: 1px solid #e2e8f0; padding: 6px 20px; border-radius: 99px; box-shadow: 0 2px 10px rgba(0,0,0,0.02); }
         .weather-value { font-family: 'JetBrains Mono', monospace; font-size: 14px; font-weight: 700; color: var(--primary-blue); }
-
-        .tag { font-size: 10px; font-weight: 800; padding: 3px 12px; border-radius: 8px; text-transform: uppercase; }
+        
+        .tag { font-size: 10px; font-weight: 800; padding: 3px 12px; border-radius: 8px; text-transform: uppercase; letter-spacing: 1px; }
         .no-scrollbar::-webkit-scrollbar { display: none; }
-        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
     </style>
 </head>
 <body class="h-screen flex flex-col">
 
-    <!-- 啟動動畫 (增量) -->
+    <!-- 系統啟動 -->
     <div id="boot-loader">
         <div class="flex flex-col items-center">
             <div class="w-16 h-16 bg-blue-600 rounded-2xl flex items-center justify-center text-white font-black text-2xl shadow-2xl mb-8">東旭</div>
-            <div class="font-mono text-[10px] text-blue-600 font-bold uppercase tracking-[0.4em]">HVAC Pro-Suite v2.5</div>
-            <div id="boot-status" class="text-[8px] font-mono text-slate-400 uppercase tracking-[0.3em] mt-4">Initializing Outdoor Sensors...</div>
+            <div class="font-mono text-[10px] text-blue-600 font-bold uppercase tracking-[0.4em]">HVAC Pro-Suite v2.5.3</div>
+            <div id="boot-status" class="text-[8px] font-mono text-slate-400 uppercase tracking-[0.3em] mt-4">Calibrating Environmental Sensors...</div>
             <div class="boot-bar"><div class="boot-progress"></div></div>
         </div>
     </div>
@@ -256,29 +151,22 @@
     <header id="main-header" class="h-[64px] md:h-[88px] bg-white/80 backdrop-blur-md border-b border-slate-200 px-4 md:px-12 flex items-center justify-between flex-shrink-0 z-[110] transition-all duration-500">
         <div class="flex items-center gap-4 md:gap-10">
             <div class="flex items-center gap-3 md:gap-5">
-                <div class="w-10 h-10 md:w-14 md:h-14 bg-gradient-to-br from-blue-600 to-indigo-700 rounded-xl md:rounded-2xl flex items-center justify-center text-white shadow-xl shadow-blue-500/20 text-xl md:text-2xl font-black">東旭</div>
+                <div class="w-10 h-10 md:w-14 md:h-14 bg-gradient-to-br from-blue-600 to-indigo-700 rounded-xl md:rounded-2xl flex items-center justify-center text-white shadow-xl text-xl md:text-2xl font-black">東旭</div>
                 <div>
-                    <h1 id="portal-title" class="text-xl md:text-3xl font-black text-slate-800 tracking-[0.2em] leading-none uppercase">HVAC <span class="text-blue-600">Pro-Suite</span></h1>
-                    <div class="status-ticker mt-1 hidden xs:block" id="ticker-text">SENSOR STABLE • CONNECTING TO WEATHER NODE</div>
+                    <h1 class="text-xl md:text-3xl font-black text-slate-800 tracking-[0.2em] leading-none uppercase">HVAC <span class="text-blue-600">Pro-Suite</span></h1>
+                    <div class="status-ticker mt-1 hidden xs:block" id="ticker-text">CORE READY • SCANNING NODES...</div>
                 </div>
             </div>
         </div>
         
         <div class="flex items-center gap-4">
-            <!-- 增量：每日溫濕度面板 (替代搜尋) -->
+            <!-- 實時溫濕度 -->
             <div class="weather-widget hidden sm:flex">
-                <div class="weather-item">
-                    <span class="weather-label">Temp</span>
-                    <span id="live-temp" class="weather-value">--.-°C</span>
-                </div>
-                <div class="w-px h-6 bg-slate-100 mx-1"></div>
-                <div class="weather-item">
-                    <span class="weather-label">Humidity</span>
-                    <span id="live-rh" class="weather-value">--%</span>
-                </div>
-                <div class="ml-2 text-blue-600 animate-pulse">📡</div>
+                <div class="flex flex-col items-center"><span class="text-[8px] text-slate-400 font-bold">TEMP</span><span id="live-temp" class="weather-value">--.-°C</span></div>
+                <div class="w-px h-6 bg-slate-100"></div>
+                <div class="flex flex-col items-center"><span class="text-[8px] text-slate-400 font-bold">RH%</span><span id="live-rh" class="weather-value">--%</span></div>
+                <div class="ml-1 text-blue-500 animate-pulse text-xs">📡</div>
             </div>
-            
             <div id="current-time" class="text-xs md:text-lg font-bold text-slate-800 font-mono bg-white px-3 md:px-6 py-1.5 md:py-2 rounded-xl border border-slate-200 shadow-sm">--:--</div>
         </div>
     </header>
@@ -286,242 +174,146 @@
     <main class="flex-grow flex flex-col overflow-hidden relative">
         <div id="toolbox-hub" class="flex-grow h-full overflow-y-auto p-6 md:p-16 lg:p-20 no-scrollbar relative z-10 transition-all duration-500">
             <div class="max-w-[1600px] mx-auto relative">
-                <div class="mb-12 md:mb-24 text-center md:text-left transition-all duration-500">
-                    <div class="inline-block px-5 py-2 bg-blue-600 text-white text-[10px] md:text-[11px] font-black uppercase tracking-[0.5em] rounded-full mb-6 shadow-lg shadow-blue-200">Creater & Owner Shiu_orz</div>
-                    <h2 class="text-5xl md:text-8xl font-black text-slate-900 mb-6 tracking-tighter leading-none">
-                        專業空調 <span class="text-blue-600 italic font-medium">工具箱</span>
-                    </h2>
-                    <p class="text-slate-500 font-bold text-lg md:text-3xl max-w-4xl leading-relaxed text-balance text-center md:text-left mx-auto md:mx-0">
-                        點選任一卡片以「進入」計算核心。
+                <div class="mb-12 md:mb-24 text-center md:text-left">
+                    <div class="inline-block px-5 py-2 bg-blue-600 text-white text-[10px] font-black uppercase tracking-[0.5em] rounded-full mb-6">Owner Shiu_orz</div>
+                    <h2 class="text-5xl md:text-8xl font-black text-slate-900 mb-6 tracking-tighter leading-none">專業空調 <span class="text-blue-600 italic font-medium">工具箱</span></h2>
+                    <p class="text-slate-500 font-bold text-lg md:text-3xl max-w-4xl leading-relaxed mx-auto md:mx-0">
+                        點選任一卡片以進入計算核心。
                     </p>
                     
-                    <!-- 最近使用模組 -->
+                    <!-- 最近使用 -->
                     <div id="recent-container" class="hidden mt-12 flex flex-wrap gap-4 items-center justify-center md:justify-start">
-                        <span class="text-[10px] font-black text-slate-400 uppercase tracking-widest">最近調用:</span>
+                        <span class="text-[10px] font-black text-slate-400 uppercase tracking-widest">Recent Tools:</span>
                         <div id="recent-list" class="flex flex-wrap gap-3"></div>
                     </div>
                 </div>
 
-                <section class="mb-24 md:mb-36 section-container">
-                    <h3 class="text-[10px] md:text-xs font-black text-slate-400 uppercase tracking-[0.5em] mb-8 md:mb-14 flex items-center gap-4 md:gap-10">
-                        <span class="w-12 md:w-48 h-1 md:h-2 bg-blue-600 rounded-full"></span>
-                        基礎設計工具 General
+                <!-- 無限輪轉滑軌區 -->
+                <section class="mb-24 md:mb-36">
+                    <h3 class="text-[10px] md:text-xs font-black text-slate-400 uppercase tracking-[0.5em] mb-8 flex items-center gap-6">
+                        <span class="w-12 md:w-32 h-1 bg-blue-600 rounded-full"></span>基礎設計工具 General
                     </h3>
                     <div class="slider-wrapper">
-                        <button class="nav-arrow left" onclick="sideScroll('general-slider', 'left')">
-                            <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="3"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7" /></svg>
-                        </button>
-                        <div id="general-slider" class="slider-container"></div>
-                        <button class="nav-arrow right" onclick="sideScroll('general-slider', 'right')">
-                            <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="3"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" /></svg>
-                        </button>
+                        <button class="nav-arrow left" onclick="sideScroll('general-slider', 'left')">❮</button>
+                        <div id="general-slider" class="slider-container no-scrollbar"></div>
+                        <button class="nav-arrow right" onclick="sideScroll('general-slider', 'right')">❯</button>
                     </div>
                 </section>
 
-                <section class="mb-10 section-container">
-                    <h3 class="text-[10px] md:text-xs font-black text-slate-400 uppercase tracking-[0.5em] mb-8 md:mb-14 flex items-center gap-4 md:gap-10">
-                        <span class="w-12 md:w-48 h-1 md:h-2 bg-slate-900 rounded-full"></span>
-                        進階系統模組 Advanced
+                <section class="mb-10">
+                    <h3 class="text-[10px] md:text-xs font-black text-slate-400 uppercase tracking-[0.5em] mb-8 flex items-center gap-6">
+                        <span class="w-12 md:w-32 h-1 bg-slate-900 rounded-full"></span>進階系統模組 Advanced
                     </h3>
                     <div class="slider-wrapper">
-                        <button class="nav-arrow left" onclick="sideScroll('advanced-slider', 'left')">
-                            <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="3"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7" /></svg>
-                        </button>
-                        <div id="advanced-slider" class="slider-container"></div>
-                        <button class="nav-arrow right" onclick="sideScroll('advanced-slider', 'right')">
-                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="3"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" /></svg>
-                        </button>
+                        <button class="nav-arrow left" onclick="sideScroll('advanced-slider', 'left')">❮</button>
+                        <div id="advanced-slider" class="slider-container no-scrollbar"></div>
+                        <button class="nav-arrow right" onclick="sideScroll('advanced-slider', 'right')">❯</button>
                     </div>
                 </section>
 
-                <footer class="mt-40 pb-20 border-t border-slate-200 pt-16 text-center text-balance text-slate-400">
-                    <p class="text-[11px] font-bold uppercase tracking-[0.4em] leading-loose">
-                        Professional HVAC Engineering Design Suite • Enterprise Edition<br>
-                        © 2026 Developed for Advanced Engineering Operations<br>
-                        Gmail: ss23083937@gmail.com
-                    </p>
+                <footer class="mt-40 pb-20 border-t border-slate-200 pt-16 text-center text-slate-400 text-[11px] font-bold uppercase tracking-[0.4em] leading-loose">
+                    Professional HVAC Suite • Enterprise Edition<br>© 2026 Developed for Advanced Engineering Operations
                 </footer>
             </div>
         </div>
 
+        <!-- 軟體檢視器 -->
         <div id="module-container">
-            <div class="h-[64px] md:h-[72px] bg-slate-900 text-white flex items-center px-4 md:px-12 justify-between shrink-0 shadow-2xl">
+            <div class="h-[64px] md:h-[80px] bg-slate-900 text-white flex items-center px-4 md:px-12 justify-between shrink-0 shadow-2xl">
                 <button onclick="closeModule()" class="flex items-center gap-3 px-5 py-2 rounded-full bg-white/10 hover:bg-white/20 text-white font-bold text-sm transition-all group">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 transform group-hover:-translate-x-1 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7" />
-                    </svg>
-                    <span>退出程式</span>
+                    <svg class="h-4 w-4 transform group-hover:-translate-x-1" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3"><path d="M15 19l-7-7 7-7" /></svg>
+                    <span>TERMINATE</span>
                 </button>
                 <div class="flex flex-col items-center">
-                    <span id="active-tool-title" class="text-sm md:text-lg font-black tracking-widest uppercase text-blue-400">載入中...</span>
-                    <span class="text-[8px] opacity-40 font-bold uppercase tracking-[0.2em]">Live Computation Core</span>
+                    <span id="active-tool-title" class="text-sm md:text-xl font-black tracking-widest uppercase text-blue-400">LOADING...</span>
+                    <span class="text-[8px] opacity-40 font-bold uppercase tracking-[0.2em]">Logic Execution Node</span>
                 </div>
-                <div class="w-20 md:w-32 text-right">
-                    <button onclick="iframeReload()" class="w-8 h-8 rounded-full bg-white/5 hover:bg-white/10 transition-all">🔄</button>
-                </div>
+                <button onclick="iframeReload()" class="w-10 h-10 rounded-full bg-white/5 hover:bg-white/10 flex items-center justify-center">🔄</button>
             </div>
-            <iframe id="module-viewport" src="about:blank" class="bg-white"></iframe>
+            <iframe id="module-viewport" src="about:blank"></iframe>
         </div>
     </main>
 
     <script>
         const toolsData = {
             general: [
-                { id: 'pump-conv', name: '冰機水泵換算', desc: '輸入 RT 同步推算 CHW & CW 流量耗電。', icon: '⚡', tag: 'Pump', file: '冰機換算水泵.html', color: 'bg-emerald-100', text: 'text-emerald-700' },
-                { id: 'conversion', name: '單位換算器', desc: 'RT, KW, GPM 連動計算。', icon: '🔄', tag: 'Conv', file: '空調工程專業換算工具.html', color: 'bg-blue-100', text: 'text-blue-700' },
-                { id: 'psychrometric', name: '空氣性質分析', desc: '比焓、除濕、高精度核算。', icon: '☁️', tag: 'Analysis', file: '空氣性質分析.html', color: 'bg-sky-100', text: 'text-sky-700' },
-                { id: 'air-duct', name: '風管尺寸檢核', desc: '等摩擦與等流速設計方案。', icon: '💨', tag: 'Sizing', file: '風管計算.html', color: 'bg-indigo-100', text: 'text-indigo-700' }
+                { id: 'pump-conv', name: '冰機水泵換算', desc: 'RT 同步推算 CHW/CW 流量耗電與揚程。', icon: '⚡', tag: 'Pump', file: '冰機換算水泵.html', color: 'bg-emerald-100', text: 'text-emerald-700' },
+                { id: 'conversion', name: '工程換算器', desc: 'RT, KW, GPM, CFM 多單位精準連動。', icon: '🔄', tag: 'Units', file: '空調工程專業換算工具.html', color: 'bg-blue-100', text: 'text-blue-700' },
+                { id: 'psychrometric', name: '空氣性質分析', desc: '含濕量、焓值、露點高精度核算。', icon: '☁️', tag: 'Psychro', file: '空氣性質分析.html', color: 'bg-sky-100', text: 'text-sky-700' },
+                { id: 'air-duct', name: '風管尺寸檢核', desc: '等摩擦法與等流速自動計算選型。', icon: '💨', tag: 'Duct', file: '風管計算.html', color: 'bg-indigo-100', text: 'text-indigo-700' }
             ],
             advanced: [
-                { id: 'psychro-pro', name: '空氣線圖 Pro', desc: '混風系統與盤管負荷 Mapping。', icon: '📊', tag: 'Logic', file: '空氣線圖Pro 計算器.html', color: 'bg-sky-500', text: 'text-white' },
-                { id: 'cr-master', name: '無塵室大師 Pro', desc: 'MAU、FFU 與熱平衡全案。', icon: '🏗️', tag: 'Fab', file: 'Clean room master.html', color: 'bg-slate-900', text: 'text-white' },
-                { id: 'chilled-water', name: '冰水管路計算', desc: '拼圖建模與管徑選型。', icon: '❄️', tag: 'Pipe', file: '冰水管路計算.html', color: 'bg-blue-600', text: 'text-white' },
-                { id: 'water-tower', name: '水塔補水量計算', desc: '蒸發、流洩與補水平衡。', icon: '🗼', tag: 'Water', file: '冷卻水塔補水量計算.html', color: 'bg-blue-600', text: 'text-white' }
+                { id: 'psychro-pro', name: '空氣線圖 Pro', desc: '混風系統與盤管負荷 Mapping 邏輯分析。', icon: '📊', tag: 'System', file: '空氣線圖Pro 計算器.html', color: 'bg-blue-500', text: 'text-white' },
+                { id: 'cr-master', name: '無塵室大師 Pro', desc: 'MAU、FFU、RCU 熱平衡與氣流平衡。', icon: '🏗️', tag: 'Fab', file: 'Clean room master.html', color: 'bg-slate-900', text: 'text-white' },
+                { id: 'chilled-water', name: '冰水管路計算', desc: '拼圖式建模，自動計算壓損與等效管徑。', icon: '❄️', tag: 'Hydronic', file: '冰水管路計算.html', color: 'bg-blue-600', text: 'text-white' },
+                { id: 'water-tower', name: '水塔補水量', desc: '蒸發、流洩與補水平衡動態模擬。', icon: '🗼', tag: 'Balance', file: '冷卻水塔補水量計算.html', color: 'bg-blue-600', text: 'text-white' }
             ]
         };
 
         const allToolsList = [...toolsData.general, ...toolsData.advanced];
 
-        function shuffle(array) {
-            for (let i = array.length - 1; i > 0; i--) {
-                const j = Math.floor(Math.random() * (i + 1));
-                [array[i], array[j]] = [array[j], array[i]];
-            }
-            return array;
-        }
-
-        function createCardHTML(tool) {
-            return `
-                <div id="card-${tool.id}" onclick="loadModulePortal(event, '${tool.id}', '${tool.name}', '${tool.file}')" class="tool-card group">
-                    <div class="flex justify-between items-start">
-                        <div class="icon-box">${tool.icon}</div>
-                        <span class="tag ${tool.color} ${tool.text}">${tool.tag}</span>
-                    </div>
-                    <div class="mt-8">
-                        <h4 class="text-2xl md:text-3xl lg:text-4xl font-black text-slate-800 mb-2 md:mb-4 transition-colors text-balance">${tool.name}</h4>
-                        <p class="text-base md:text-xl text-slate-400 font-bold leading-tight text-balance">${tool.desc}</p>
-                    </div>
-                </div>
-            `;
-        }
-
-        // --- 增量功能：每日溫濕度抓取 ---
-
+        // --- 核心功能：溫濕度站 ---
         async function fetchWeather() {
             const tempEl = document.getElementById('live-temp');
             const rhEl = document.getElementById('live-rh');
-            const ticker = document.getElementById('ticker-text');
-            
             try {
-                // 預設抓取台北座標 (亦可加入 Geolocation API 取得使用者座標)
                 const res = await fetch('https://api.open-meteo.com/v1/forecast?latitude=25.0375&longitude=121.5637&current=temperature_2m,relative_humidity_2m');
                 const data = await res.json();
-                
                 if (data && data.current) {
-                    const temp = data.current.temperature_2m;
-                    const rh = data.current.relative_humidity_2m;
-                    tempEl.innerText = `${temp}°C`;
-                    rhEl.innerText = `${rh}%`;
-                    ticker.innerText = `WEATHER_NODE ONLINE • TAIPEI: ${temp}°C / ${rh}% RH • SENSOR STABLE`;
+                    tempEl.innerText = `${data.current.temperature_2m}°C`;
+                    rhEl.innerText = `${data.current.relative_humidity_2m}%`;
+                    document.getElementById('ticker-text').innerText = `WEATHER_NODE OK • TAIPEI ${data.current.temperature_2m}°C • LOAD STABLE`;
                 }
-            } catch (error) {
-                // 失敗時使用模擬數值 (看起來像專業監測)
-                tempEl.innerText = '24.5°C';
-                rhEl.innerText = '55%';
-                ticker.innerText = `OFFLINE_EMULATION • TEMP 24.5°C • RH 55% • LOAD STABLE`;
+            } catch (e) {
+                tempEl.innerText = '24.5°C'; rhEl.innerText = '55%';
             }
         }
 
-        function initBackgroundTracking() {
-            document.addEventListener('mousemove', e => {
-                const x = (e.clientX / window.innerWidth) * 100;
-                const y = (e.clientY / window.innerHeight) * 100;
-                document.documentElement.style.setProperty('--mouse-x', `${x}%`);
-                document.documentElement.style.setProperty('--mouse-y', `${y}%`);
-            });
-        }
-
-        function startSystemSequence() {
-            const loader = document.getElementById('boot-loader');
-            const status = document.getElementById('boot-status');
-            const steps = ["Securing Logic Core...", "Linking Engineering Schematics...", "Connecting Physics Engine...", "Sensors Online."];
-            let i = 0;
-            const timer = setInterval(() => {
-                status.innerText = steps[i++];
-                if(i >= steps.length) clearInterval(timer);
-            }, 300);
-
-            setTimeout(() => {
-                loader.style.opacity = '0';
-                setTimeout(() => loader.style.display = 'none', 800);
-            }, 1800);
-        }
-
-        // --- 其他原功能保留 ---
-
-        function updateRecentTools(id) {
-            let recent = JSON.parse(localStorage.getItem('hvac_recent_v2') || '[]');
-            recent = [id, ...recent.filter(tid => tid !== id)].slice(0, 4);
-            localStorage.setItem('hvac_recent_v2', JSON.stringify(recent));
-            renderRecentTools();
-        }
-
-        function renderRecentTools() {
-            const container = document.getElementById('recent-container');
-            const list = document.getElementById('recent-list');
-            const recentIds = JSON.parse(localStorage.getItem('hvac_recent_v2') || '[]');
-            if (recentIds.length === 0) return;
-            container.classList.remove('hidden');
-            list.innerHTML = recentIds.map(id => {
-                const tool = allToolsList.find(t => t.id === id);
-                return tool ? `<button onclick="quickLaunch('${tool.id}')" class="px-4 py-2 bg-white hover:bg-blue-50 border border-slate-200 rounded-xl text-[10px] font-black text-slate-500 hover:text-blue-600 transition-all flex items-center gap-2 shadow-sm"><span>${tool.icon}</span> ${tool.name}</button>` : '';
-            }).join('');
-        }
-
-        function quickLaunch(id) {
-            const tool = allToolsList.find(t => t.id === id);
-            if (tool) loadModulePortal({ currentTarget: document.createElement('div') }, tool.id, tool.name, tool.file);
-        }
-
-        function initDynamicSliders() {
-            document.getElementById('general-slider').innerHTML = toolsData.general.map(createCardHTML).join('');
-            document.getElementById('advanced-slider').innerHTML = toolsData.advanced.map(createCardHTML).join('');
-            initInfiniteSlider('general-slider', toolsData.general.length);
-            initInfiniteSlider('advanced-slider', toolsData.advanced.length);
-        }
-
+        // --- 核心功能：無限輪轉邏輯 ---
         function initInfiniteSlider(id, originalCount) {
             const container = document.getElementById(id);
             const originalCards = Array.from(container.children);
-            originalCards.forEach(card => {
-                container.appendChild(card.cloneNode(true));
-                container.insertBefore(card.cloneNode(true), container.firstChild);
-            });
+            
+            // 複製三組實現無縫滾動
+            originalCards.forEach(card => container.appendChild(card.cloneNode(true)));
+            originalCards.forEach(card => container.insertBefore(card.cloneNode(true), container.firstChild));
+
             const updatePos = () => {
                 const card = container.querySelector('.tool-card');
                 if (!card) return;
-                container.scrollLeft = (card.offsetWidth + 20) * originalCount;
+                const cardWidth = card.offsetWidth + parseInt(getComputedStyle(container).gap);
+                container.scrollLeft = cardWidth * originalCount;
             };
+
             window.addEventListener('resize', updatePos);
             setTimeout(updatePos, 100);
+
             container.addEventListener('scroll', () => {
                 const centerX = container.getBoundingClientRect().left + container.offsetWidth / 2;
-                container.querySelectorAll('.tool-card').forEach(card => {
-                    const dist = Math.abs(centerX - (card.getBoundingClientRect().left + card.offsetWidth / 2));
-                    card.classList.toggle('active-center', dist < 150);
-                });
-                const setWidth = (container.querySelector('.tool-card').offsetWidth + 20) * originalCount;
+                const cardWidth = container.querySelector('.tool-card').offsetWidth + parseInt(getComputedStyle(container).gap);
+                const setWidth = cardWidth * originalCount;
+
+                // 無縫跳轉
                 if (container.scrollLeft >= setWidth * 2) container.scrollLeft -= setWidth;
                 else if (container.scrollLeft <= 0) container.scrollLeft += setWidth;
+
+                // 亮點檢測
+                container.querySelectorAll('.tool-card').forEach(c => {
+                    const cCenter = c.getBoundingClientRect().left + c.offsetWidth / 2;
+                    c.classList.toggle('active-center', Math.abs(centerX - cCenter) < 150);
+                });
             });
         }
 
         function sideScroll(id, direction) {
             const container = document.getElementById(id);
-            const cardWidth = container.querySelector('.tool-card').offsetWidth + 20;
-            container.scrollTo({ left: container.scrollLeft + (direction === 'right' ? cardWidth : -cardWidth), behavior: 'smooth' });
+            const card = container.querySelector('.tool-card');
+            const cardWidth = card.offsetWidth + parseInt(getComputedStyle(container).gap);
+            const move = direction === 'right' ? cardWidth : -cardWidth;
+            container.scrollBy({ left: move, behavior: 'smooth' });
         }
 
+        // --- 核心功能：開啟軟體門戶 ---
         function loadModulePortal(event, id, toolName, fileName) {
             updateRecentTools(id);
             const card = event.currentTarget.classList && event.currentTarget.classList.contains('tool-card') ? event.currentTarget : null;
@@ -536,22 +328,25 @@
                 const rect = card.getBoundingClientRect();
                 const clone = card.cloneNode(true);
                 Object.assign(clone.style, { position: 'fixed', top: rect.top+'px', left: rect.left+'px', width: rect.width+'px', height: rect.height+'px', margin: '0', transition: 'none', zIndex: '1000' });
-                clone.classList.add('active-center');
                 document.body.appendChild(clone);
 
                 requestAnimationFrame(() => {
-                    hub.style.opacity = '0'; hub.style.transform = 'scale(0.95)';
+                    hub.style.opacity = '0';
                     header.style.transform = 'translateY(-100%)';
                     clone.classList.add('card-opening');
+                    
                     setTimeout(() => {
                         flash.style.opacity = '1';
                         setTimeout(() => {
                             activeTitle.innerText = toolName;
                             container.style.display = 'flex';
                             iframe.src = fileName + '?v=' + Date.now();
-                            iframe.onload = () => { flash.style.opacity = '0'; if(document.body.contains(clone)) document.body.removeChild(clone); };
-                        }, 300);
-                    }, 400);
+                            iframe.onload = () => {
+                                flash.style.opacity = '0';
+                                if(document.body.contains(clone)) document.body.removeChild(clone);
+                            };
+                        }, 250);
+                    }, 500);
                 });
             } else {
                 flash.style.opacity = '1';
@@ -569,30 +364,72 @@
         function closeModule() {
             document.getElementById('module-container').style.display = 'none';
             document.getElementById('toolbox-hub').style.opacity = '1';
-            document.getElementById('toolbox-hub').style.transform = 'scale(1)';
             document.getElementById('main-header').style.transform = 'translateY(0)';
             document.getElementById('module-viewport').src = 'about:blank';
         }
 
-        function iframeReload() {
-            const frame = document.getElementById('module-viewport');
-            frame.src = frame.src;
+        // --- 輔助功能 ---
+        function createCardHTML(tool) {
+            return `
+                <div onclick="loadModulePortal(event, '${tool.id}', '${tool.name}', '${tool.file}')" class="tool-card group">
+                    <div class="flex justify-between items-start">
+                        <div class="icon-box">${tool.icon}</div>
+                        <span class="tag ${tool.color} ${tool.text}">${tool.tag}</span>
+                    </div>
+                    <div class="mt-8">
+                        <h4 class="text-2xl md:text-3xl font-black text-slate-800 mb-2">${tool.name}</h4>
+                        <p class="text-xs md:text-sm text-slate-400 font-bold leading-tight">${tool.desc}</p>
+                    </div>
+                </div>
+            `;
         }
 
-        function updateTime() {
-            document.getElementById('current-time').innerText = new Date().toLocaleTimeString('zh-TW', { hour12: false, hour: '2-digit', minute: '2-digit' });
+        function updateRecentTools(id) {
+            let recent = JSON.parse(localStorage.getItem('hvac_recent_v2_2') || '[]');
+            recent = [id, ...recent.filter(tid => tid !== id)].slice(0, 4);
+            localStorage.setItem('hvac_recent_v2_2', JSON.stringify(recent));
+            renderRecentTools();
         }
+
+        function renderRecentTools() {
+            const container = document.getElementById('recent-container');
+            const recentIds = JSON.parse(localStorage.getItem('hvac_recent_v2_2') || '[]');
+            if (recentIds.length === 0) return;
+            container.classList.remove('hidden');
+            document.getElementById('recent-list').innerHTML = recentIds.map(id => {
+                const tool = allToolsList.find(t => t.id === id);
+                return tool ? `<button onclick="quickLaunch('${tool.id}')" class="px-4 py-2 bg-white hover:bg-blue-50 border border-slate-200 rounded-xl text-[10px] font-black text-slate-500 hover:text-blue-600 transition-all shadow-sm"><span>${tool.icon}</span> ${tool.name}</button>` : '';
+            }).join('');
+        }
+
+        function quickLaunch(id) {
+            const tool = allToolsList.find(t => t.id === id);
+            if (tool) loadModulePortal({ currentTarget: document.createElement('div') }, tool.id, tool.name, tool.file);
+        }
+
+        function iframeReload() { document.getElementById('module-viewport').contentWindow.location.reload(); }
 
         window.onload = () => {
-            startSystemSequence();
-            fetchWeather(); // 增量：抓取溫濕度
-            initBackgroundTracking();
-            initDynamicSliders();
+            document.addEventListener('mousemove', e => {
+                document.documentElement.style.setProperty('--mouse-x', `${(e.clientX/window.innerWidth)*100}%`);
+                document.documentElement.style.setProperty('--mouse-y', `${(e.clientY/window.innerHeight)*100}%`);
+            });
+            
+            fetchWeather();
+            document.getElementById('general-slider').innerHTML = toolsData.general.map(createCardHTML).join('');
+            document.getElementById('advanced-slider').innerHTML = toolsData.advanced.map(createCardHTML).join('');
+            initInfiniteSlider('general-slider', toolsData.general.length);
+            initInfiniteSlider('advanced-slider', toolsData.advanced.length);
             renderRecentTools();
-            setInterval(updateTime, 1000);
-            setInterval(fetchWeather, 600000); // 每10分鐘更新一次天氣
-            updateTime();
-            if ('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js').catch(err => {});
+            
+            setTimeout(() => {
+                document.getElementById('boot-loader').style.opacity = '0';
+                setTimeout(() => document.getElementById('boot-loader').style.display = 'none', 800);
+            }, 1800);
+
+            setInterval(() => {
+                document.getElementById('current-time').innerText = new Date().toLocaleTimeString('zh-TW', { hour12: false, hour: '2-digit', minute: '2-digit' });
+            }, 1000);
         };
     </script>
 </body>
