@@ -42,7 +42,7 @@
             transition: opacity 0.8s cubic-bezier(0.65, 0, 0.35, 1);
         }
         .boot-bar { width: 240px; height: 3px; background: #eff6ff; margin-top: 24px; border-radius: 99px; position: relative; overflow: hidden; }
-        .boot-progress { position: absolute; height: 100%; width: 0%; background: var(--primary-blue); box-shadow: 0 0 15px var(--primary-blue); animation: bootProgress 1.8s cubic-bezier(0.23, 1, 0.32, 1) forwards; }
+        .boot-progress { position: absolute; height: 100%; width: 0%; background: var(--primary-blue); box-shadow: 0 0 15px var(--primary-blue); animation: bootProgress 1.6s cubic-bezier(0.23, 1, 0.32, 1) forwards; }
         @keyframes bootProgress { 0% { width: 0%; } 100% { width: 100%; } }
 
         .mesh-bg {
@@ -128,11 +128,11 @@
 </head>
 <body class="h-screen flex flex-col">
 
-    <!-- 系統啟動 (檢查版本 v2.6.4) -->
+    <!-- 系統啟動 (檢查版本 v2.6.9) -->
     <div id="boot-loader">
         <div class="flex flex-col items-center">
             <div class="w-16 h-16 bg-blue-600 rounded-2xl flex items-center justify-center text-white font-black text-2xl shadow-2xl mb-8">東旭</div>
-            <div class="font-mono text-[10px] text-blue-600 font-bold uppercase tracking-[0.4em]">HVAC Pro-Suite v2.6.4</div>
+            <div class="font-mono text-[10px] text-blue-600 font-bold uppercase tracking-[0.4em]">HVAC Pro-Suite v2.6.9</div>
             <div id="boot-status" class="text-[8px] font-mono text-slate-400 uppercase tracking-[0.3em] mt-4">Initializing Logic Core...</div>
             <div class="boot-bar"><div class="boot-progress"></div></div>
         </div>
@@ -154,6 +154,7 @@
         </div>
         
         <div class="flex items-center gap-4">
+            <!-- 實時溫濕度站 -->
             <div class="weather-widget hidden sm:flex">
                 <div class="flex flex-col items-center"><span class="text-[8px] text-slate-400 font-bold">TEMP</span><span id="live-temp" class="weather-value">--.-°C</span></div>
                 <div class="w-px h-6 bg-slate-100"></div>
@@ -167,45 +168,52 @@
     <main class="flex-grow flex flex-col overflow-hidden relative">
         <div id="toolbox-hub" class="flex-grow h-full overflow-y-auto p-6 md:p-16 lg:p-20 no-scrollbar relative z-10 transition-all duration-500">
             <div class="max-w-[1600px] mx-auto relative">
-                <div class="mb-12 md:mb-24 text-center md:text-left">
-                    <div class="inline-block px-5 py-2 bg-blue-600 text-white text-[10px] font-black uppercase tracking-[0.5em] rounded-full mb-6">Creater & Owner Shiu_orz</div>
+                <div class="mb-12 md:mb-24 text-center md:text-left transition-all duration-500">
+                    <div class="inline-block px-5 py-2 bg-blue-600 text-white text-[10px] md:text-[11px] font-black uppercase tracking-[0.5em] rounded-full mb-6 shadow-lg shadow-blue-200">Creater & Owner Shiu_orz</div>
                     <h2 class="text-5xl md:text-8xl font-black text-slate-900 mb-6 tracking-tighter leading-none">專業空調 <span class="text-blue-600 italic font-medium">工具箱</span></h2>
                     <p class="text-slate-500 font-bold text-lg md:text-3xl max-w-4xl leading-relaxed mx-auto md:mx-0">
-                        點選任一卡片以進入計算核心。
+                        點選任一卡片以「進入」計算核心。
                     </p>
+                    
+                    <!-- 最近使用模組 -->
                     <div id="recent-container" class="hidden mt-12 flex flex-wrap gap-4 items-center justify-center md:justify-start">
                         <span class="text-[10px] font-black text-slate-400 uppercase tracking-widest">Recent Tools:</span>
                         <div id="recent-list" class="flex flex-wrap gap-3"></div>
                     </div>
                 </div>
 
-                <!-- 滑軌 1：基礎設計工具 -->
-                <section class="mb-24 md:mb-36">
-                    <h3 class="text-[10px] md:text-xs font-black text-slate-400 uppercase tracking-[0.5em] mb-8 flex items-center gap-6">
-                        <span class="w-12 md:w-32 h-1 bg-blue-600 rounded-full"></span>基礎設計工具 General
+                <!-- 無限滑軌 1：基礎設計工具 -->
+                <section class="mb-24 md:mb-36 section-container">
+                    <h3 class="text-[10px] md:text-xs font-black text-slate-400 uppercase tracking-[0.5em] mb-8 flex items-center gap-4 md:gap-10">
+                        <span class="w-12 md:w-48 h-1 md:h-2 bg-blue-600 rounded-full"></span>
+                        基礎設計工具 General
                     </h3>
                     <div class="slider-wrapper">
                         <button class="nav-arrow left" onclick="sideScroll('general-slider', 'left')">❮</button>
-                        <div id="general-slider" class="slider-container no-scrollbar"></div>
+                        <div id="general-slider" class="slider-container"></div>
                         <button class="nav-arrow right" onclick="sideScroll('general-slider', 'right')">❯</button>
                     </div>
                 </section>
 
-                <!-- 滑軌 2：進階系統模組 -->
-                <section class="mb-10">
-                    <h3 class="text-[10px] md:text-xs font-black text-slate-400 uppercase tracking-[0.5em] mb-8 flex items-center gap-6">
-                        <span class="w-12 md:w-32 h-1 bg-slate-900 rounded-full"></span>進階系統模組 Advanced
+                <!-- 無限滑軌 2：進階系統模組 -->
+                <section class="mb-10 section-container">
+                    <h3 class="text-[10px] md:text-xs font-black text-slate-400 uppercase tracking-[0.5em] mb-8 flex items-center gap-4 md:gap-10">
+                        <span class="w-12 md:w-48 h-1 md:h-2 bg-slate-900 rounded-full"></span>
+                        進階系統模組 Advanced
                     </h3>
                     <div class="slider-wrapper">
                         <button class="nav-arrow left" onclick="sideScroll('advanced-slider', 'left')">❮</button>
-                        <div id="advanced-slider" class="slider-container no-scrollbar"></div>
+                        <div id="advanced-slider" class="slider-container"></div>
                         <button class="nav-arrow right" onclick="sideScroll('advanced-slider', 'right')">❯</button>
                     </div>
                 </section>
 
-                <footer class="mt-40 pb-20 border-t border-slate-200 pt-16 text-center text-slate-400 text-[11px] font-bold uppercase tracking-[0.4em] leading-loose">
-                    Professional HVAC Suite • Enterprise Edition<br>© 2026 Developed for Advanced Engineering Operations<br>
-                    Gmail: ss23083937@gmail.com
+                <footer class="mt-40 pb-20 border-t border-slate-200 pt-16 text-center text-balance text-slate-400">
+                    <p class="text-[11px] font-bold uppercase tracking-[0.4em] leading-loose">
+                        Professional HVAC Engineering Design Suite • Enterprise Edition<br>
+                        © 2026 Developed for Advanced Engineering Operations<br>
+                        Gmail: ss23083937@gmail.com
+                    </p>
                 </footer>
             </div>
         </div>
@@ -213,75 +221,89 @@
         <div id="module-container">
             <div class="h-[64px] md:h-[80px] bg-slate-900 text-white flex items-center px-4 md:px-12 justify-between shrink-0 shadow-2xl">
                 <button onclick="closeModule()" class="flex items-center gap-3 px-5 py-2 rounded-full bg-white/10 hover:bg-white/20 text-white font-bold text-sm transition-all group">
-                    <svg class="h-4 w-4 transform group-hover:-translate-x-1" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3"><path d="M15 19l-7-7 7-7" /></svg>
-                    <span>TERMINATE</span>
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 transform group-hover:-translate-x-1 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7" />
+                    </svg>
+                    <span>退出程式</span>
                 </button>
                 <div class="flex flex-col items-center">
-                    <span id="active-tool-title" class="text-sm md:text-xl font-black tracking-widest uppercase text-blue-400">LOADING...</span>
-                    <span class="text-[8px] opacity-40 font-bold uppercase tracking-[0.2em]">Logic Execution Node</span>
+                    <span id="active-tool-title" class="text-sm md:text-lg font-black tracking-widest uppercase text-blue-400">載入中...</span>
+                    <span class="text-[8px] opacity-40 font-bold uppercase tracking-[0.2em]">Live Computation Core</span>
                 </div>
-                <button onclick="iframeReload()" class="w-10 h-10 rounded-full bg-white/5 hover:bg-white/10 flex items-center justify-center">🔄</button>
+                <div class="w-20 md:w-32 text-right">
+                    <button onclick="iframeReload()" class="w-8 h-8 rounded-full bg-white/5 hover:bg-white/10 transition-all">🔄</button>
+                </div>
             </div>
             <iframe id="module-viewport" src="about:blank" class="bg-white"></iframe>
         </div>
     </main>
 
     <script>
-        const APP_VERSION = 'v2.6.4';
+        const APP_VERSION = 'v2.6.9';
 
         const toolsData = {
             general: [
-                { id: 'pump-conv', name: '冰機水泵換算', desc: 'RT 同步推算 CHW/CW 流量耗電與揚程。', icon: '⚡', tag: 'Pump', file: '冰機換算水泵.html', color: 'bg-emerald-100', text: 'text-emerald-700' },
-                { id: 'expansion-tank', name: '膨脹水箱選型', desc: '密閉系統回溫/升溫膨脹體積核算與安全係數審查。', icon: '📦', tag: 'Tank', file: '膨脹水箱計算.html', color: 'bg-indigo-100', text: 'text-indigo-700' },
+                { id: 'pump-conv', name: '冰機水泵換算', desc: '輸入 RT 同步推算 CHW & CW 流量耗電與揚程。', icon: '⚡', tag: 'Pump', file: '冰機換算水泵.html', color: 'bg-emerald-100', text: 'text-emerald-700' },
+                { id: 'expansion-tank', name: '膨脹水箱選型', desc: '密閉系統回溫膨脹體積核算與安全係數審查。', icon: '📦', tag: 'Tank', file: '膨脹水箱計算.html', color: 'bg-indigo-100', text: 'text-indigo-700' },
                 { id: 'conversion', name: '工程換算器', desc: 'RT, KW, GPM, CFM 多單位精準連動。', icon: '🔄', tag: 'Units', file: '空調工程專業換算工具.html', color: 'bg-blue-100', text: 'text-blue-700' },
-                { id: 'psychrometric', name: '空氣性質分析', desc: '含濕量、焓值、露點高精度核算。', icon: '☁️', tag: 'Psychro', file: '空氣性質分析.html', color: 'bg-sky-100', text: 'text-sky-700' },
-                { id: 'air-duct', name: '風管尺寸檢核', desc: '等摩擦法與等流速自動計算選型。', icon: '💨', tag: 'Duct', file: '風管計算.html', color: 'bg-indigo-100', text: 'text-indigo-700' }
+                { id: 'psychrometric', name: '空氣性質分析', desc: '比焓、除濕、高精度核算。', icon: '☁️', tag: 'Psychro', file: '空氣性質分析.html', color: 'bg-sky-100', text: 'text-sky-700' },
+                { id: 'air-duct', name: '風管尺寸檢核', desc: '等摩擦與等流速設計方案。', icon: '💨', tag: 'Duct', file: '風管計算.html', color: 'bg-indigo-100', text: 'text-indigo-700' }
             ],
             advanced: [
-                { id: 'pressure-loss', name: '專業壓損計算書', desc: '水系統與風系統最不利環路壓力損失精準計算。', icon: '📐', tag: 'Loss', file: '水管風管壓損計算.html', color: 'bg-blue-600', text: 'text-white' },
+                { id: 'pressure-loss', name: '專業壓損計算書', desc: '水管與風管最不利環路壓力損失精準計算。', icon: '📐', tag: 'Loss', file: '水管風管壓損計算.html', color: 'bg-blue-600', text: 'text-white' },
                 { id: 'psychro-pro', name: '空氣線圖 Pro', desc: '混風系統與盤管負荷 Mapping 邏輯分析。', icon: '📊', tag: 'System', file: '空氣線圖Pro 計算器.html', color: 'bg-sky-500', text: 'text-white' },
-                { id: 'cr-master', name: '無塵室大師 Pro', desc: 'MAU、FFU、RCU 熱平衡與氣流平衡。', icon: '🏗️', tag: 'Fab', file: 'Clean room master.html', color: 'bg-slate-900', text: 'text-white' },
-                { id: 'chilled-water', name: '冰水管路計算', desc: '拼圖建模，自動計算壓損與等效管徑。', icon: '❄️', tag: 'Hydronic', file: '冰水管路計算.html', color: 'bg-blue-600', text: 'text-white' },
-                { id: 'water-tower', name: '水塔補水量', desc: '蒸發、流洩與補水平衡動態模擬。', icon: '🗼', tag: 'Balance', file: '冷卻水塔補水量計算.html', color: 'bg-blue-600', text: 'text-white' }
+                { id: 'cr-master', name: '無塵室大師 Pro', desc: 'MAU、FFU 與熱平衡全案。', icon: '🏗️', tag: 'Fab', file: 'Clean room master.html', color: 'bg-slate-900', text: 'text-white' },
+                { id: 'chilled-water', name: '冰水管路計算', desc: '拼圖建模與管徑選型。', icon: '❄️', tag: 'Pipe', file: '冰水管路計算.html', color: 'bg-blue-600', text: 'text-white' },
+                { id: 'water-tower', name: '水塔補水量', desc: '蒸發、流洩與補水平衡。', icon: '🗼', tag: 'Water', file: '冷卻水塔補水量計算.html', color: 'bg-blue-600', text: 'text-white' }
             ]
         };
 
         const allToolsList = [...toolsData.general, ...toolsData.advanced];
 
+        // --- 安全管理 Service Worker 與 緩存 (修復 TypeError: URL protocol error) ---
         async function forceUpdateCheck() {
-            if (!('serviceWorker' in navigator)) return;
+            // 僅在正常的 http/https 協定下執行，避免在 blob: 或本地預覽環境報錯
+            if (!('serviceWorker' in navigator) || !window.location.protocol.startsWith('http')) return;
+            
             try {
                 const savedVersion = localStorage.getItem('shiu_hvac_ver');
                 if (savedVersion !== APP_VERSION) {
+                    console.log('New Version Detected: Purging Cache...');
                     const registrations = await navigator.serviceWorker.getRegistrations();
-                    for (let reg of registrations) { await reg.unregister(); }
+                    for (let reg of registrations) { try { await reg.unregister(); } catch(e) {} }
                     if (window.caches) {
                         const cacheNames = await caches.keys();
-                        for (let name of cacheNames) { await caches.delete(name); }
+                        for (let n of cacheNames) { await caches.delete(n); }
                     }
                     localStorage.setItem('shiu_hvac_ver', APP_VERSION);
-                    window.location.reload();
+                    // 稍作延遲再刷新，防止競爭條件
+                    setTimeout(() => window.location.reload(), 300);
                 }
-            } catch (e) { console.warn('Cache management skipped'); }
+            } catch (e) { 
+                console.warn('SW State Issue Suppressed'); 
+            }
         }
 
         function handleServiceWorker() {
-            if (!('serviceWorker' in navigator) || !window.isSecureContext) return;
+            // 嚴格檢查環境是否支援
+            if (!('serviceWorker' in navigator) || !window.isSecureContext || !window.location.protocol.startsWith('http')) return;
+            
             try {
+                // 使用帶有時間戳記的路徑防止 sw.js 被緩存
                 navigator.serviceWorker.register(`./sw.js?v=${Date.now()}`).then(reg => {
                     reg.onupdatefound = () => {
-                        const installingWorker = reg.installing;
-                        if (!installingWorker) return;
-                        installingWorker.onstatechange = () => {
-                            if (installingWorker.state === 'installed' && navigator.serviceWorker.controller) {
-                                window.location.reload(); 
-                            }
+                        const worker = reg.installing;
+                        if (!worker) return;
+                        worker.onstatechange = () => {
+                            // 檢測到新版本安裝完成，不自動刷新以免打斷使用者操作
+                            console.log('New ServiceWorker version available.');
                         };
                     };
-                }).catch(err => {});
-            } catch (err) {}
+                }).catch(() => {});
+            } catch (e) {}
         }
 
+        // --- UI 輔助功能 ---
         async function fetchWeather() {
             const tempEl = document.getElementById('live-temp');
             const rhEl = document.getElementById('live-rh');
@@ -300,6 +322,7 @@
             const originalCards = Array.from(container.children);
             if (originalCards.length === 0) return;
 
+            // 複製三組實現物理無限感
             originalCards.forEach(card => container.appendChild(card.cloneNode(true)));
             originalCards.forEach(card => container.insertBefore(card.cloneNode(true), container.firstChild));
 
@@ -434,24 +457,40 @@
         function iframeReload() { document.getElementById('module-viewport').contentWindow.location.reload(); }
 
         window.onload = () => {
+            const bootLoader = document.getElementById('boot-loader');
+            
+            // 安全機制：4秒後強制移除遮罩
+            const safetyTimeout = setTimeout(() => {
+                if (bootLoader && bootLoader.style.display !== 'none') {
+                    bootLoader.style.opacity = '0';
+                    setTimeout(() => bootLoader.style.display = 'none', 800);
+                }
+            }, 4000);
+
+            document.addEventListener('mousemove', e => {
+                document.documentElement.style.setProperty('--mouse-x', `${(e.clientX/window.innerWidth)*100}%`);
+                document.documentElement.style.setProperty('--mouse-y', `${(e.clientY/window.innerHeight)*100}%`);
+            });
+
+            fetchWeather();
+            document.getElementById('general-slider').innerHTML = toolsData.general.map(createCardHTML).join('');
+            document.getElementById('advanced-slider').innerHTML = toolsData.advanced.map(createCardHTML).join('');
+            initInfiniteSlider('general-slider', toolsData.general.length);
+            initInfiniteSlider('advanced-slider', toolsData.advanced.length);
+            renderRecentTools();
+            
+            // 正常載入隱藏
             forceUpdateCheck().finally(() => {
-                document.addEventListener('mousemove', e => {
-                    document.documentElement.style.setProperty('--mouse-x', `${(e.clientX/window.innerWidth)*100}%`);
-                    document.documentElement.style.setProperty('--mouse-y', `${(e.clientY/window.innerHeight)*100}%`);
-                });
-                fetchWeather();
-                document.getElementById('general-slider').innerHTML = toolsData.general.map(createCardHTML).join('');
-                document.getElementById('advanced-slider').innerHTML = toolsData.advanced.map(createCardHTML).join('');
-                initInfiniteSlider('general-slider', toolsData.general.length);
-                initInfiniteSlider('advanced-slider', toolsData.advanced.length);
-                renderRecentTools();
-                setTimeout(() => {
-                    const l = document.getElementById('boot-loader');
-                    if(l) { l.style.opacity = '0'; setTimeout(() => l.style.display = 'none', 800); }
-                }, 1800);
+                clearTimeout(safetyTimeout);
+                if (bootLoader) {
+                    bootLoader.style.opacity = '0';
+                    setTimeout(() => bootLoader.style.display = 'none', 800);
+                }
+                
                 setInterval(() => {
                     document.getElementById('current-time').innerText = new Date().toLocaleTimeString('zh-TW', { hour12: false, hour: '2-digit', minute: '2-digit' });
                 }, 1000);
+                
                 handleServiceWorker();
             });
         };
