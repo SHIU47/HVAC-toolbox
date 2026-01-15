@@ -55,7 +55,7 @@
         }
         .bg-pattern { position: fixed; inset: 0; z-index: -1; background-image: radial-gradient(#cbd5e1 1.5px, transparent 1.5px); background-size: 50px 50px; opacity: 0.5; }
 
-        /* --- 無限滑軌樣式 --- */
+        /* --- 無限滑軌 --- */
         .slider-wrapper { position: relative; width: 100%; padding: 0 20px; overflow: visible; }
         @media (min-width: 768px) { .slider-wrapper { padding: 0 80px; } }
 
@@ -108,7 +108,7 @@
         .nav-arrow:hover { background: var(--primary-blue); color: white; transform: translateY(-50%) scale(1.1); }
         .nav-arrow.left { left: 15px; } .nav-arrow.right { right: 15px; }
 
-        /* --- 軟體檢視器 --- */
+        /* --- 軟體容器 --- */
         #module-container {
             position: fixed; top: 0; left: 0; width: 100%; height: 100vh;
             z-index: 9000; background: white; display: none; flex-direction: column;
@@ -128,12 +128,12 @@
 </head>
 <body class="h-screen flex flex-col">
 
-    <!-- 系統啟動 -->
+    <!-- 系統啟動 (版本 v2.6.1) -->
     <div id="boot-loader">
         <div class="flex flex-col items-center">
             <div class="w-16 h-16 bg-blue-600 rounded-2xl flex items-center justify-center text-white font-black text-2xl shadow-2xl mb-8">東旭</div>
-            <div class="font-mono text-[10px] text-blue-600 font-bold uppercase tracking-[0.4em]">HVAC Pro-Suite v2.6.0</div>
-            <div id="boot-status" class="text-[8px] font-mono text-slate-400 uppercase tracking-[0.3em] mt-4">Syncing Logic Nodes...</div>
+            <div class="font-mono text-[10px] text-blue-600 font-bold uppercase tracking-[0.4em]">HVAC Pro-Suite v2.6.1</div>
+            <div id="boot-status" class="text-[8px] font-mono text-slate-400 uppercase tracking-[0.3em] mt-4">Synchronizing System Cache...</div>
             <div class="boot-bar"><div class="boot-progress"></div></div>
         </div>
     </div>
@@ -148,7 +148,7 @@
                 <div class="w-10 h-10 md:w-14 md:h-14 bg-gradient-to-br from-blue-600 to-indigo-700 rounded-xl md:rounded-2xl flex items-center justify-center text-white shadow-xl text-xl md:text-2xl font-black">東旭</div>
                 <div>
                     <h1 class="text-xl md:text-3xl font-black text-slate-800 tracking-[0.2em] leading-none uppercase">HVAC <span class="text-blue-600">Pro-Suite</span></h1>
-                    <div class="status-ticker mt-1 hidden xs:block" id="ticker-text">CORE READY • SCANNING NODES...</div>
+                    <div class="status-ticker mt-1 hidden xs:block" id="ticker-text">CORE READY • SYSTEM ONLINE</div>
                 </div>
             </div>
         </div>
@@ -179,8 +179,7 @@
                     </div>
                 </div>
 
-                <!-- 無限滑軌 1：基礎設計工具 -->
-                <section class="mb-24 md:mb-36">
+                <section class="mb-24 md:mb-36 section-container">
                     <h3 class="text-[10px] md:text-xs font-black text-slate-400 uppercase tracking-[0.5em] mb-8 flex items-center gap-6">
                         <span class="w-12 md:w-32 h-1 bg-blue-600 rounded-full"></span>基礎設計工具 General
                     </h3>
@@ -191,8 +190,7 @@
                     </div>
                 </section>
 
-                <!-- 無限滑軌 2：進階系統模組 -->
-                <section class="mb-10">
+                <section class="mb-10 section-container">
                     <h3 class="text-[10px] md:text-xs font-black text-slate-400 uppercase tracking-[0.5em] mb-8 flex items-center gap-6">
                         <span class="w-12 md:w-32 h-1 bg-slate-900 rounded-full"></span>進階系統模組 Advanced
                     </h3>
@@ -218,7 +216,7 @@
                 </button>
                 <div class="flex flex-col items-center">
                     <span id="active-tool-title" class="text-sm md:text-xl font-black tracking-widest uppercase text-blue-400">LOADING...</span>
-                    <span class="text-[8px] opacity-40 font-bold uppercase tracking-[0.2em]">Logic Execution Node</span>
+                    <span class="text-[8px] opacity-40 font-bold uppercase tracking-[0.2em]">Logic Node Active</span>
                 </div>
                 <button onclick="iframeReload()" class="w-10 h-10 rounded-full bg-white/5 hover:bg-white/10 flex items-center justify-center">🔄</button>
             </div>
@@ -227,7 +225,7 @@
     </main>
 
     <script>
-        const APP_VERSION = 'v2.6.0';
+        const APP_VERSION = 'v2.6.1';
 
         const toolsData = {
             general: [
@@ -248,22 +246,23 @@
 
         const allToolsList = [...toolsData.general, ...toolsData.advanced];
 
-        // --- 強制快取更新與安全性檢查 ---
+        // --- 安全管理 Service Worker 與 緩存 ---
         async function forceUpdateCheck() {
             if (!('serviceWorker' in navigator)) return;
             try {
                 const savedVersion = localStorage.getItem('shiu_hvac_ver');
                 if (savedVersion !== APP_VERSION) {
+                    console.log('New Version Detected: Purging...');
                     const registrations = await navigator.serviceWorker.getRegistrations();
                     for (let reg of registrations) { await reg.unregister(); }
                     if (window.caches) {
-                        const cacheNames = await caches.keys();
-                        for (let name of cacheNames) { await caches.delete(name); }
+                        const names = await caches.keys();
+                        for (let n of names) { await caches.delete(n); }
                     }
                     localStorage.setItem('shiu_hvac_ver', APP_VERSION);
                     window.location.reload();
                 }
-            } catch (e) { console.warn('SW State Error ignored'); }
+            } catch (e) { console.warn('Cache Check Blocked'); }
         }
 
         function handleServiceWorker() {
@@ -279,8 +278,8 @@
                             }
                         };
                     };
-                }).catch(err => {});
-            } catch (err) {}
+                }).catch(() => {});
+            } catch (e) {}
         }
 
         async function fetchWeather() {
@@ -296,13 +295,12 @@
             } catch (e) { tempEl.innerText = '24.5°C'; rhEl.innerText = '55%'; }
         }
 
-        // --- 無限滑軌核心復原 ---
+        // --- 無限滑軌核心演算法復原 ---
         function initInfiniteSlider(id, originalCount) {
             const container = document.getElementById(id);
             const originalCards = Array.from(container.children);
             if (originalCards.length === 0) return;
 
-            // 複製卡片實現無限滾動
             originalCards.forEach(card => container.appendChild(card.cloneNode(true)));
             originalCards.forEach(card => container.insertBefore(card.cloneNode(true), container.firstChild));
 
@@ -319,18 +317,14 @@
 
             container.addEventListener('scroll', () => {
                 const card = container.querySelector('.tool-card');
+                if (!card) return;
                 const gap = parseInt(getComputedStyle(container).gap) || 0;
                 const cardWidth = card.offsetWidth + gap;
                 const setWidth = cardWidth * originalCount;
 
-                // 無縫跳轉邏輯
-                if (container.scrollLeft >= setWidth * 2) {
-                    container.scrollLeft -= setWidth;
-                } else if (container.scrollLeft <= 0) {
-                    container.scrollLeft += setWidth;
-                }
+                if (container.scrollLeft >= setWidth * 2) container.scrollLeft -= setWidth;
+                else if (container.scrollLeft <= 0) container.scrollLeft += setWidth;
 
-                // 中心亮點檢測
                 const centerX = container.getBoundingClientRect().left + container.offsetWidth / 2;
                 container.querySelectorAll('.tool-card').forEach(c => {
                     const cCenter = c.getBoundingClientRect().left + c.offsetWidth / 2;
@@ -342,6 +336,7 @@
         function sideScroll(id, direction) {
             const container = document.getElementById(id);
             const card = container.querySelector('.tool-card');
+            if (!card) return;
             const gap = parseInt(getComputedStyle(container).gap) || 0;
             const cardWidth = card.offsetWidth + gap;
             container.scrollBy({ left: direction === 'right' ? cardWidth : -cardWidth, behavior: 'smooth' });
@@ -360,25 +355,19 @@
             if (card) {
                 const rect = card.getBoundingClientRect();
                 const clone = card.cloneNode(true);
-                // 確保 clone 的 z-index 低於 module-container
-                Object.assign(clone.style, { position: 'fixed', top: rect.top+'px', left: rect.left+'px', width: rect.width+'px', height: rect.height+'px', margin: '0', transition: 'none', zIndex: '8000' });
+                Object.assign(clone.style, { position: 'fixed', top: rect.top+'px', left: rect.left+'px', width: rect.width+'px', height: rect.height+'px', margin: '0', transition: 'none', zIndex: '1000' });
                 document.body.appendChild(clone);
-
                 requestAnimationFrame(() => {
                     hub.style.opacity = '0';
                     header.style.transform = 'translateY(-100%)';
                     clone.classList.add('card-opening');
-                    
                     setTimeout(() => {
                         flash.style.opacity = '1';
                         setTimeout(() => {
                             activeTitle.innerText = toolName;
                             container.style.display = 'flex';
                             iframe.src = fileName + '?v=' + Date.now();
-                            iframe.onload = () => {
-                                flash.style.opacity = '0';
-                                if(document.body.contains(clone)) document.body.removeChild(clone);
-                            };
+                            iframe.onload = () => { flash.style.opacity = '0'; if(document.body.contains(clone)) document.body.removeChild(clone); };
                         }, 250);
                     }, 500);
                 });
@@ -415,15 +404,15 @@
         }
 
         function updateRecentTools(id) {
-            let recent = JSON.parse(localStorage.getItem('hvac_recent_v2_5') || '[]');
+            let recent = JSON.parse(localStorage.getItem('hvac_recent_v2_6') || '[]');
             recent = [id, ...recent.filter(tid => tid !== id)].slice(0, 4);
-            localStorage.setItem('hvac_recent_v2_5', JSON.stringify(recent));
+            localStorage.setItem('hvac_recent_v2_6', JSON.stringify(recent));
             renderRecentTools();
         }
 
         function renderRecentTools() {
             const container = document.getElementById('recent-container');
-            const recentIds = JSON.parse(localStorage.getItem('hvac_recent_v2_5') || '[]');
+            const recentIds = JSON.parse(localStorage.getItem('hvac_recent_v2_6') || '[]');
             if (recentIds.length === 0) return;
             container.classList.remove('hidden');
             document.getElementById('recent-list').innerHTML = recentIds.map(id => {
