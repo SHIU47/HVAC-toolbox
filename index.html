@@ -35,14 +35,14 @@
             -webkit-tap-highlight-color: transparent;
         }
 
-        /* --- 啟動動畫層 --- */
+        /* --- 系統啟動動畫 --- */
         #boot-loader {
             position: fixed; inset: 0; background: #ffffff; z-index: 9999;
             display: flex; flex-direction: column; align-items: center; justify-content: center;
             transition: opacity 0.8s cubic-bezier(0.65, 0, 0.35, 1);
         }
         .boot-bar { width: 240px; height: 3px; background: #eff6ff; margin-top: 24px; border-radius: 99px; position: relative; overflow: hidden; }
-        .boot-progress { position: absolute; height: 100%; width: 0%; background: var(--primary-blue); box-shadow: 0 0-15px var(--primary-blue); animation: bootProgress 1.6s cubic-bezier(0.23, 1, 0.32, 1) forwards; }
+        .boot-progress { position: absolute; height: 100%; width: 0%; background: var(--primary-blue); box-shadow: 0 0 15px var(--primary-blue); animation: bootProgress 1.6s cubic-bezier(0.23, 1, 0.32, 1) forwards; }
         @keyframes bootProgress { 0% { width: 0%; } 100% { width: 100%; } }
 
         .mesh-bg {
@@ -105,9 +105,10 @@
             box-shadow: 0 10px 25px rgba(0,0,0,0.1); transition: all 0.3s;
         }
         @media (min-width: 1024px) { .nav-arrow { display: flex; } }
+        .nav-arrow:hover { background: var(--primary-blue); color: white; transform: translateY(-50%) scale(1.1); }
         .nav-arrow.left { left: 15px; } .nav-arrow.right { right: 15px; }
 
-        /* --- 軟體容器 --- */
+        /* --- 軟體檢視器 --- */
         #module-container {
             position: fixed; top: 0; left: 0; width: 100%; height: 100vh;
             z-index: 9000; background: white; display: none; flex-direction: column;
@@ -115,7 +116,7 @@
         }
         @keyframes moduleEntrance { from { opacity: 0; transform: scale(1.05); filter: blur(10px); } to { opacity: 1; transform: scale(1); filter: blur(0); } }
         #module-viewport { flex-grow: 1; width: 100%; height: 100%; border: none; background: white; }
-        #transition-flash { position: fixed; inset: 0; background: white; z-index: 9500; opacity: 0; pointer-events: none; transition: opacity 0.3s ease; }
+        #transition-flash { position: fixed; inset: 0; background: white; z-index: 9500; opacity: 0; pointer-events: none; transition: opacity 0.4s ease; }
 
         .status-ticker { font-family: 'JetBrains Mono', monospace; font-size: 9px; color: #94a3b8; font-weight: 700; text-transform: uppercase; }
         .weather-widget { display: flex; align-items: center; gap: 12px; background: white; border: 1px solid #e2e8f0; padding: 6px 20px; border-radius: 99px; box-shadow: 0 2px 10px rgba(0,0,0,0.02); }
@@ -127,11 +128,11 @@
 </head>
 <body class="h-screen flex flex-col">
 
-    <!-- 系統啟動 -->
+    <!-- 系統啟動 (檢查版本 v2.6.3) -->
     <div id="boot-loader">
         <div class="flex flex-col items-center">
             <div class="w-16 h-16 bg-blue-600 rounded-2xl flex items-center justify-center text-white font-black text-2xl shadow-2xl mb-8">東旭</div>
-            <div class="font-mono text-[10px] text-blue-600 font-bold uppercase tracking-[0.4em]">HVAC Pro-Suite v2.6.2</div>
+            <div class="font-mono text-[10px] text-blue-600 font-bold uppercase tracking-[0.4em]">HVAC Pro-Suite v2.6.3</div>
             <div id="boot-status" class="text-[8px] font-mono text-slate-400 uppercase tracking-[0.3em] mt-4">Initializing Logic Core...</div>
             <div class="boot-bar"><div class="boot-progress"></div></div>
         </div>
@@ -167,7 +168,7 @@
         <div id="toolbox-hub" class="flex-grow h-full overflow-y-auto p-6 md:p-16 lg:p-20 no-scrollbar relative z-10 transition-all duration-500">
             <div class="max-w-[1600px] mx-auto relative">
                 <div class="mb-12 md:mb-24 text-center md:text-left">
-                    <div class="inline-block px-5 py-2 bg-blue-600 text-white text-[10px] font-black uppercase tracking-[0.5em] rounded-full mb-6">Creater & Owner Shiu_orz</div>
+                    <div class="inline-block px-5 py-2 bg-blue-600 text-white text-[10px] font-black uppercase tracking-[0.5em] rounded-full mb-6 shadow-lg shadow-blue-200">Creater & Owner Shiu_orz</div>
                     <h2 class="text-5xl md:text-8xl font-black text-slate-900 mb-6 tracking-tighter leading-none">專業空調 <span class="text-blue-600 italic font-medium">工具箱</span></h2>
                     <p class="text-slate-500 font-bold text-lg md:text-3xl max-w-4xl leading-relaxed mx-auto md:mx-0">
                         點選任一卡片以進入計算核心。
@@ -178,7 +179,8 @@
                     </div>
                 </div>
 
-                <section class="mb-24 md:mb-36 section-container">
+                <!-- 滑軌 1 -->
+                <section class="mb-24 md:mb-36">
                     <h3 class="text-[10px] md:text-xs font-black text-slate-400 uppercase tracking-[0.5em] mb-8 flex items-center gap-6">
                         <span class="w-12 md:w-32 h-1 bg-blue-600 rounded-full"></span>基礎設計工具 General
                     </h3>
@@ -189,7 +191,8 @@
                     </div>
                 </section>
 
-                <section class="mb-10 section-container">
+                <!-- 滑軌 2 -->
+                <section class="mb-10">
                     <h3 class="text-[10px] md:text-xs font-black text-slate-400 uppercase tracking-[0.5em] mb-8 flex items-center gap-6">
                         <span class="w-12 md:w-32 h-1 bg-slate-900 rounded-full"></span>進階系統模組 Advanced
                     </h3>
@@ -224,7 +227,7 @@
     </main>
 
     <script>
-        const APP_VERSION = 'v2.6.2';
+        const APP_VERSION = 'v2.6.3';
 
         const toolsData = {
             general: [
@@ -236,31 +239,30 @@
             ],
             advanced: [
                 { id: 'pressure-loss', name: '專業壓損計算書', desc: '水系統與風系統最不利環路壓力損失精準計算。', icon: '📐', tag: 'Loss', file: '水管風管壓損計算.html', color: 'bg-blue-600', text: 'text-white' },
-                { id: 'psychro-pro', name: '空氣線圖 Pro', desc: '混風系統與盤管負荷 Mapping 邏輯分析分析。', icon: '📊', tag: 'System', file: '空氣線圖Pro 計算器.html', color: 'bg-sky-500', text: 'text-white' },
+                { id: 'psychro-pro', name: '空氣線圖 Pro', desc: '混風系統與盤管負荷 Mapping 邏輯分析。', icon: '📊', tag: 'System', file: '空氣線圖Pro 計算器.html', color: 'bg-sky-500', text: 'text-white' },
                 { id: 'cr-master', name: '無塵室大師 Pro', desc: 'MAU、FFU、RCU 熱平衡與氣流平衡。', icon: '🏗️', tag: 'Fab', file: 'Clean room master.html', color: 'bg-slate-900', text: 'text-white' },
-                { id: 'chilled-water', name: '冰水管路計算', desc: '拼圖式建模，自動計算壓損與等效管徑。', icon: '❄️', tag: 'Hydronic', file: '冰水管路計算.html', color: 'bg-blue-600', text: 'text-white' },
+                { id: 'chilled-water', name: '冰水管路計算', desc: '拼圖建模，自動計算壓損與等效管徑。', icon: '❄️', tag: 'Hydronic', file: '冰水管路計算.html', color: 'bg-blue-600', text: 'text-white' },
                 { id: 'water-tower', name: '水塔補水量', desc: '蒸發、流洩與補水平衡動態模擬。', icon: '🗼', tag: 'Balance', file: '冷卻水塔補水量計算.html', color: 'bg-blue-600', text: 'text-white' }
             ]
         };
 
         const allToolsList = [...toolsData.general, ...toolsData.advanced];
 
-        // --- 安全管理 Service Worker ---
         async function forceUpdateCheck() {
             if (!('serviceWorker' in navigator)) return;
             try {
                 const savedVersion = localStorage.getItem('shiu_hvac_ver');
                 if (savedVersion !== APP_VERSION) {
-                    const registrations = await navigator.serviceWorker.getRegistrations();
-                    for (let reg of registrations) { await reg.unregister(); }
+                    const regs = await navigator.serviceWorker.getRegistrations();
+                    for (let r of regs) { await r.unregister(); }
                     if (window.caches) {
-                        const cacheNames = await caches.keys();
-                        for (let n of cacheNames) { await caches.delete(n); }
+                        const names = await caches.keys();
+                        for (let n of names) { await caches.delete(n); }
                     }
                     localStorage.setItem('shiu_hvac_ver', APP_VERSION);
                     window.location.reload();
                 }
-            } catch (e) { console.warn('Cache Check Blocked'); }
+            } catch (e) {}
         }
 
         function handleServiceWorker() {
@@ -269,82 +271,69 @@
                 navigator.serviceWorker.register(`./sw.js?v=${Date.now()}`).then(reg => {
                     reg.onupdatefound = () => {
                         const worker = reg.installing;
-                        if (!worker) return;
-                        worker.onstatechange = () => {
-                            if (worker.state === 'installed' && navigator.serviceWorker.controller) {
-                                window.location.reload(); 
-                            }
-                        };
+                        if (worker) {
+                            worker.onstatechange = () => {
+                                if (worker.state === 'installed' && navigator.serviceWorker.controller) {
+                                    window.location.reload();
+                                }
+                            };
+                        }
                     };
                 }).catch(() => {});
             } catch (e) {}
         }
 
         async function fetchWeather() {
-            const tempEl = document.getElementById('live-temp');
-            const rhEl = document.getElementById('live-rh');
+            const tEl = document.getElementById('live-temp');
+            const rEl = document.getElementById('live-rh');
             try {
-                const res = await fetch('https://api.open-meteo.com/v1/forecast?latitude=25.0375&longitude=121.5637&current=temperature_2m,relative_humidity_2m');
-                const data = await res.json();
-                if (data && data.current) {
-                    tempEl.innerText = `${data.current.temperature_2m}°C`;
-                    rhEl.innerText = `${data.current.relative_humidity_2m}%`;
+                const res = await fetch('https://api.open-meteo.com/v1/forecast?latitude=25.03&longitude=121.56&current=temperature_2m,relative_humidity_2m');
+                const d = await res.json();
+                if (d && d.current) {
+                    tEl.innerText = `${d.current.temperature_2m}°C`;
+                    rEl.innerText = `${d.current.relative_humidity_2m}%`;
                 }
-            } catch (e) { tempEl.innerText = '24.5°C'; rhEl.innerText = '55%'; }
+            } catch (e) { tEl.innerText = '24.5°C'; rEl.innerText = '55%'; }
         }
 
-        // --- 無限滑軌核心演算法 ---
-        function initInfiniteSlider(id, originalCount) {
+        function initInfiniteSlider(id, count) {
             const container = document.getElementById(id);
-            const originalCards = Array.from(container.children);
-            if (originalCards.length === 0) return;
+            const items = Array.from(container.children);
+            if (items.length === 0) return;
+            
+            items.forEach(i => container.appendChild(i.cloneNode(true)));
+            items.forEach(i => container.insertBefore(i.cloneNode(true), container.firstChild));
 
-            // 複製卡片實現無限滾動
-            originalCards.forEach(card => container.appendChild(card.cloneNode(true)));
-            originalCards.forEach(card => container.insertBefore(card.cloneNode(true), container.firstChild));
-
-            const updatePos = () => {
+            const update = () => {
                 const card = container.querySelector('.tool-card');
-                if (!card) return;
-                const gap = parseInt(getComputedStyle(container).gap) || 0;
-                const cardWidth = card.offsetWidth + gap;
-                container.scrollLeft = cardWidth * originalCount;
+                const gap = parseInt(getComputedStyle(container).gap);
+                container.scrollLeft = (card.offsetWidth + gap) * count;
             };
-
-            window.addEventListener('resize', updatePos);
-            setTimeout(updatePos, 100);
+            window.addEventListener('resize', update);
+            setTimeout(update, 100);
 
             container.addEventListener('scroll', () => {
                 const card = container.querySelector('.tool-card');
-                if (!card) return;
-                const gap = parseInt(getComputedStyle(container).gap) || 0;
-                const cardWidth = card.offsetWidth + gap;
-                const setWidth = cardWidth * originalCount;
+                const gap = parseInt(getComputedStyle(container).gap);
+                const w = card.offsetWidth + gap;
+                if (container.scrollLeft >= w * count * 2) container.scrollLeft -= w * count;
+                else if (container.scrollLeft <= 0) container.scrollLeft += w * count;
 
-                if (container.scrollLeft >= setWidth * 2) {
-                    container.scrollLeft -= setWidth;
-                } else if (container.scrollLeft <= 0) {
-                    container.scrollLeft += setWidth;
-                }
-
-                const centerX = container.getBoundingClientRect().left + container.offsetWidth / 2;
+                const center = container.getBoundingClientRect().left + container.offsetWidth / 2;
                 container.querySelectorAll('.tool-card').forEach(c => {
                     const cCenter = c.getBoundingClientRect().left + c.offsetWidth / 2;
-                    c.classList.toggle('active-center', Math.abs(centerX - cCenter) < 150);
+                    c.classList.toggle('active-center', Math.abs(center - cCenter) < 150);
                 });
             });
         }
 
-        function sideScroll(id, direction) {
+        function sideScroll(id, dir) {
             const container = document.getElementById(id);
-            const card = container.querySelector('.tool-card');
-            if (!card) return;
-            const gap = parseInt(getComputedStyle(container).gap) || 0;
-            const cardWidth = card.offsetWidth + gap;
-            container.scrollBy({ left: direction === 'right' ? cardWidth : -cardWidth, behavior: 'smooth' });
+            const w = container.querySelector('.tool-card').offsetWidth + parseInt(getComputedStyle(container).gap);
+            container.scrollBy({ left: dir === 'right' ? w : -w, behavior: 'smooth' });
         }
 
-        function loadModulePortal(event, id, toolName, fileName) {
+        function loadModulePortal(event, id, name, file) {
             updateRecentTools(id);
             const card = event.currentTarget.classList && event.currentTarget.classList.contains('tool-card') ? event.currentTarget : null;
             const hub = document.getElementById('toolbox-hub');
@@ -357,7 +346,7 @@
             if (card) {
                 const rect = card.getBoundingClientRect();
                 const clone = card.cloneNode(true);
-                Object.assign(clone.style, { position: 'fixed', top: rect.top+'px', left: rect.left+'px', width: rect.width+'px', height: rect.height+'px', margin: '0', transition: 'none', zIndex: '8500' });
+                Object.assign(clone.style, { position: 'fixed', top: rect.top+'px', left: rect.left+'px', width: rect.width+'px', height: rect.height+'px', margin: '0', transition: 'none', zIndex: '1000' });
                 document.body.appendChild(clone);
                 requestAnimationFrame(() => {
                     hub.style.opacity = '0';
@@ -366,21 +355,18 @@
                     setTimeout(() => {
                         flash.style.opacity = '1';
                         setTimeout(() => {
-                            activeTitle.innerText = toolName;
+                            activeTitle.innerText = name;
                             container.style.display = 'flex';
-                            iframe.src = fileName + '?v=' + Date.now();
-                            iframe.onload = () => {
-                                flash.style.opacity = '0';
-                                if(document.body.contains(clone)) document.body.removeChild(clone);
-                            };
+                            iframe.src = file + '?v=' + Date.now();
+                            iframe.onload = () => { flash.style.opacity = '0'; if(document.body.contains(clone)) document.body.removeChild(clone); };
                         }, 250);
                     }, 500);
                 });
             } else {
                 flash.style.opacity = '1';
                 setTimeout(() => {
-                    activeTitle.innerText = toolName;
-                    container.style.display = 'flex'; iframe.src = fileName;
+                    activeTitle.innerText = name;
+                    container.style.display = 'flex'; iframe.src = file;
                     hub.style.opacity = '0'; header.style.transform = 'translateY(-100%)';
                     setTimeout(() => flash.style.opacity = '0', 400);
                 }, 300);
@@ -390,57 +376,52 @@
         function closeModule() {
             document.getElementById('module-container').style.display = 'none';
             document.getElementById('toolbox-hub').style.opacity = '1';
-            document.getElementById('toolbox-hub').style.transform = 'scale(1)';
             document.getElementById('main-header').style.transform = 'translateY(0)';
             document.getElementById('module-viewport').src = 'about:blank';
         }
 
-        function createCardHTML(tool) {
-            return `<div onclick="loadModulePortal(event, '${tool.id}', '${tool.name}', '${tool.file}')" class="tool-card group">
+        function createCardHTML(t) {
+            return `<div onclick="loadModulePortal(event, '${t.id}', '${t.name}', '${t.file}')" class="tool-card group">
                 <div class="flex justify-between items-start">
-                    <div class="icon-box">${tool.icon}</div>
-                    <span class="tag ${tool.color} ${tool.text}">${tool.tag}</span>
+                    <div class="icon-box">${t.icon}</div>
+                    <span class="tag ${t.color} ${t.text}">${t.tag}</span>
                 </div>
                 <div class="mt-8">
-                    <h4 class="text-2xl md:text-3xl font-black text-slate-800 mb-2">${tool.name}</h4>
-                    <p class="text-xs md:text-sm text-slate-400 font-bold leading-tight">${tool.desc}</p>
+                    <h4 class="text-2xl md:text-3xl font-black text-slate-800 mb-2">${t.name}</h4>
+                    <p class="text-xs md:text-sm text-slate-400 font-bold leading-tight">${t.desc}</p>
                 </div>
             </div>`;
         }
 
         function updateRecentTools(id) {
-            let recent = JSON.parse(localStorage.getItem('hvac_recent_v2_6') || '[]');
-            recent = [id, ...recent.filter(tid => tid !== id)].slice(0, 4);
-            localStorage.setItem('hvac_recent_v2_6', JSON.stringify(recent));
+            let r = JSON.parse(localStorage.getItem('hvac_recent_v2_6') || '[]');
+            r = [id, ...r.filter(tid => tid !== id)].slice(0, 4);
+            localStorage.setItem('hvac_recent_v2_6', JSON.stringify(r));
             renderRecentTools();
         }
 
         function renderRecentTools() {
-            const container = document.getElementById('recent-container');
-            const recentIds = JSON.parse(localStorage.getItem('hvac_recent_v2_6') || '[]');
-            if (recentIds.length === 0) return;
-            container.classList.remove('hidden');
-            document.getElementById('recent-list').innerHTML = recentIds.map(id => {
-                const tool = allToolsList.find(t => t.id === id);
-                return tool ? `<button onclick="quickLaunch('${tool.id}')" class="px-4 py-2 bg-white hover:bg-blue-50 border border-slate-200 rounded-xl text-[10px] font-black text-slate-500 hover:text-blue-600 transition-all shadow-sm"><span>${tool.icon}</span> ${tool.name}</button>` : '';
+            const c = document.getElementById('recent-container');
+            const ids = JSON.parse(localStorage.getItem('hvac_recent_v2_6') || '[]');
+            if (ids.length === 0) return;
+            c.classList.remove('hidden');
+            document.getElementById('recent-list').innerHTML = ids.map(id => {
+                const t = allToolsList.find(x => x.id === id);
+                return t ? `<button onclick="quickLaunch('${t.id}')" class="px-4 py-2 bg-white hover:bg-blue-50 border border-slate-200 rounded-xl text-[10px] font-black text-slate-500 hover:text-blue-600 transition-all shadow-sm"><span>${t.icon}</span> ${t.name}</button>` : '';
             }).join('');
         }
 
         function quickLaunch(id) {
-            const tool = allToolsList.find(t => t.id === id);
-            if (tool) loadModulePortal({ currentTarget: document.createElement('div') }, tool.id, tool.name, tool.file);
+            const t = allToolsList.find(x => x.id === id);
+            if (t) loadModulePortal({ currentTarget: document.createElement('div') }, t.id, t.name, t.file);
         }
 
         function iframeReload() { document.getElementById('module-viewport').contentWindow.location.reload(); }
 
         window.onload = () => {
-            // 啟動強制隱藏遮罩的保險定時器 (預防程式報錯導致卡死)
             setTimeout(() => {
-                const loader = document.getElementById('boot-loader');
-                if (loader && loader.style.display !== 'none') {
-                    loader.style.opacity = '0';
-                    setTimeout(() => loader.style.display = 'none', 800);
-                }
+                const l = document.getElementById('boot-loader');
+                if (l && l.style.display !== 'none') { l.style.opacity = '0'; setTimeout(() => l.style.display = 'none', 800); }
             }, 3000);
 
             forceUpdateCheck().finally(() => {
@@ -454,13 +435,10 @@
                 initInfiniteSlider('general-slider', toolsData.general.length);
                 initInfiniteSlider('advanced-slider', toolsData.advanced.length);
                 renderRecentTools();
-                
-                // 正常的動畫隱藏邏輯
                 setTimeout(() => {
-                    document.getElementById('boot-loader').style.opacity = '0';
-                    setTimeout(() => document.getElementById('boot-loader').style.display = 'none', 800);
+                    const l = document.getElementById('boot-loader');
+                    l.style.opacity = '0'; setTimeout(() => l.style.display = 'none', 800);
                 }, 1800);
-                
                 setInterval(() => {
                     document.getElementById('current-time').innerText = new Date().toLocaleTimeString('zh-TW', { hour12: false, hour: '2-digit', minute: '2-digit' });
                 }, 1000);
