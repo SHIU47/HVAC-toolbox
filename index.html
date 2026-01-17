@@ -35,7 +35,7 @@
             -webkit-tap-highlight-color: transparent;
         }
 
-        /* --- 系統啟動動畫 (Compositor Accelerated) --- */
+        /* --- 系統啟動動畫 (GPU Accelerated) --- */
         #boot-loader {
             position: fixed; inset: 0; background: #ffffff; z-index: 9999;
             display: flex; flex-direction: column; align-items: center; justify-content: center;
@@ -56,7 +56,7 @@
         }
         .bg-pattern { position: fixed; inset: 0; z-index: -1; background-size: 50px 50px; opacity: 0.5; background-image: radial-gradient(#cbd5e1 1.5px, transparent 1.5px); }
 
-        /* --- 無限滑軌與互動強化 --- */
+        /* --- Slider Logic Styling --- */
         .slider-wrapper { position: relative; width: 100%; padding: 0 20px; overflow: visible; }
         @media (min-width: 768px) { .slider-wrapper { padding: 0 80px; } }
 
@@ -81,7 +81,6 @@
         }
         @media (min-width: 768px) { .tool-card { flex: 0 0 380px; height: 380px; border-radius: 3rem; } }
 
-        /* 中心主角感強化 */
         .tool-card.active-center {
             opacity: 1; transform: scale(1.1) translateY(-20px); background: #ffffff;
             border-color: var(--primary-blue); 
@@ -89,7 +88,6 @@
             z-index: 50;
         }
 
-        /* ENTER 按鈕提示 */
         .enter-hint {
             position: absolute; bottom: 2rem; right: 2.5rem;
             font-family: 'JetBrains Mono', monospace; font-size: 10px; font-weight: 800;
@@ -154,11 +152,11 @@
 </head>
 <body class="h-screen flex flex-col">
 
-    <!-- 啟動動畫 (Engineering Initialization) -->
+    <!-- 啟動動畫 -->
     <div id="boot-loader">
         <div class="flex flex-col items-center">
             <div class="w-16 h-16 bg-blue-600 rounded-2xl flex items-center justify-center text-white font-black text-2xl shadow-2xl mb-8">東旭</div>
-            <div class="font-mono text-[10px] text-blue-600 font-bold uppercase tracking-[0.4em]">HVAC Pro-Suite v2.7.5</div>
+            <div class="font-mono text-[10px] text-blue-600 font-bold uppercase tracking-[0.4em]">HVAC Pro-Suite v2.7.6</div>
             <div id="boot-status" class="text-[8px] font-mono text-slate-400 uppercase tracking-[0.3em] mt-4">Initializing Logic Core...</div>
             <div class="boot-bar"><div class="boot-progress"></div></div>
         </div>
@@ -249,12 +247,11 @@
                         <span id="active-tool-id" class="text-[9px] px-2 py-0.5 bg-blue-600 rounded font-mono font-bold">ID:--</span>
                         <span id="active-tool-title" class="text-sm md:text-xl font-black tracking-widest uppercase text-blue-400">LOADING...</span>
                     </div>
-                    <span id="active-tool-meta" class="text-[8px] opacity-40 font-bold uppercase tracking-[0.2em] mt-1">v2.7.5 • CORE LOGIC ACTIVE</span>
+                    <span id="active-tool-meta" class="text-[8px] opacity-40 font-bold uppercase tracking-[0.2em] mt-1">v2.7.6 • CORE LOGIC ACTIVE</span>
                 </div>
                 <button onclick="iframeReload()" class="w-10 h-10 rounded-full bg-white/5 hover:bg-white/10 flex items-center justify-center">🔄</button>
             </div>
             
-            <!-- Skeleton Loader -->
             <div id="skeleton-loader">
                 <div class="skeleton-item h-10 w-1/4"></div>
                 <div class="skeleton-item h-64 w-full"></div>
@@ -269,7 +266,7 @@
     </main>
 
     <script>
-        const APP_VERSION = 'v2.7.5';
+        const APP_VERSION = 'v2.7.6';
 
         const toolsData = {
             general: [
@@ -280,17 +277,16 @@
                 { id: 'DCT-05', name: '風管尺寸檢核', desc: '等摩擦法與等流速自動計算選型。', icon: '💨', tag: 'Air', calcType: 'Dimensioning', file: '風管計算.html', color: 'bg-indigo-100', text: 'text-indigo-700' }
             ],
             advanced: [
+                { id: 'FAB-50', name: '無塵室模擬器 Lite', desc: '無塵室 3D 氣流模擬與 FFU/DCC 佈置分析。', icon: '🌀', tag: 'BIM/CFD', calcType: '3D Simulation', file: '無塵室氣流模擬.html', color: 'bg-slate-900', text: 'text-white' },
                 { id: 'PRL-01', name: '專業壓損計算書', desc: '水系統與風系統最不利環路壓力損失精準計算。', icon: '📐', tag: 'Loss', calcType: 'Friction / Minor', file: '水管風管壓損計算.html', color: 'bg-blue-600', text: 'text-white' },
                 { id: 'PSY-PRO', name: '空氣線圖 Pro', desc: '混風系統與盤管負荷 Mapping 邏輯分析分析。', icon: '📊', tag: 'System', calcType: 'Mapping / Load', file: '空氣線圖Pro 計算器.html', color: 'bg-sky-500', text: 'text-white' },
                 { id: 'CRM-03', name: '無塵室大師 Pro', desc: 'MAU、FFU、RCU 熱平衡與氣流平衡。', icon: '🏗️', tag: 'Fab', calcType: 'Balance / Airflow', file: 'Clean room master.html', color: 'bg-slate-900', text: 'text-white' },
-                { id: 'CHW-04', name: '冰水管路計算', desc: '拼圖建模，自動計算壓損與等效管徑。', icon: '❄️', tag: 'Hydronic', calcType: 'Network Loss', file: '冰水管路計算.html', color: 'bg-blue-600', text: 'text-white' },
-                { id: 'WTR-05', name: '水塔補水量', desc: '蒸發、流洩與補水平衡動態模擬。', icon: '🗼', tag: 'Hydraulic', calcType: 'Water Balance', file: '冷卻水塔補水量計算.html', color: 'bg-blue-600', text: 'text-white' }
+                { id: 'CHW-04', name: '冰水管路計算', desc: '拼圖建模，自動計算壓損與等效管徑。', icon: '❄️', tag: 'Hydronic', calcType: 'Network Loss', file: '冰水管路計算.html', color: 'bg-blue-600', text: 'text-white' }
             ]
         };
 
         const allToolsList = [...toolsData.general, ...toolsData.advanced];
 
-        // --- 安全管理 Service Worker (Non-blocking) ---
         function handleServiceWorker() {
             if (!('serviceWorker' in navigator) || !window.location.protocol.startsWith('http')) return;
             navigator.serviceWorker.register(`./sw.js?v=${APP_VERSION}`).catch(() => {});
@@ -308,7 +304,6 @@
             } catch (e) {}
         }
 
-        // --- Weather API (Idle Task) ---
         async function fetchWeather() {
             const tempEl = document.getElementById('live-temp');
             const rhEl = document.getElementById('live-rh');
@@ -322,7 +317,6 @@
             } catch (e) { tempEl.innerText = '24.5°C'; rhEl.innerText = '55%'; }
         }
 
-        // --- 無限滑軌核心 (Precision Logic) ---
         function initInfiniteSlider(id, originalCount) {
             const container = document.getElementById(id);
             const originalCards = Array.from(container.children);
@@ -335,8 +329,7 @@
                 const card = container.querySelector('.tool-card');
                 if (!card) return;
                 const gap = parseInt(getComputedStyle(container).gap) || 0;
-                const cardWidth = card.offsetWidth + gap;
-                container.scrollLeft = cardWidth * originalCount;
+                container.scrollLeft = (card.offsetWidth + gap) * originalCount;
             };
 
             window.addEventListener('resize', updatePos);
@@ -362,8 +355,7 @@
                 container.querySelectorAll('.tool-card').forEach(c => {
                     const cRect = c.getBoundingClientRect();
                     const cCenter = cRect.left + cRect.width / 2;
-                    // 當卡片中心與容器中心距離小於卡片寬度的 40% 時設為 active
-                    const isActive = Math.abs(centerX - cCenter) < (cRect.width * 0.4);
+                    const isActive = Math.abs(centerX - cCenter) < (cRect.width * 0.45);
                     c.classList.toggle('active-center', isActive);
                 });
             });
@@ -378,7 +370,6 @@
             container.scrollBy({ left: direction === 'right' ? move : -move, behavior: 'smooth' });
         }
 
-        // --- Module Lifecycle Management ---
         function loadModulePortal(event, id, toolName, fileName) {
             updateRecentTools(id);
             const toolObj = allToolsList.find(t => t.id === id) || { tag: 'SYSTEM' };
@@ -440,12 +431,14 @@
             const iframe = document.getElementById('module-viewport');
             const skeleton = document.getElementById('skeleton-loader');
             
-            // 完整 Reset 狀態
+            // 物理級 Reset：清空資源避免洩漏
             container.style.display = 'none';
             iframe.src = 'about:blank';
             skeleton.style.display = 'none';
             document.getElementById('toolbox-hub').style.opacity = '1';
             document.getElementById('main-header').style.transform = 'translateY(0)';
+            document.getElementById('active-tool-id').innerText = 'ID:--';
+            document.getElementById('active-tool-title').innerText = 'LOADING...';
         }
 
         function createCardHTML(tool) {
@@ -464,15 +457,15 @@
         }
 
         function updateRecentTools(id) {
-            let recent = JSON.parse(localStorage.getItem('hvac_recent_v2_9') || '[]');
+            let recent = JSON.parse(localStorage.getItem('hvac_recent_v2_9_1') || '[]');
             recent = [id, ...recent.filter(tid => tid !== id)].slice(0, 4);
-            localStorage.setItem('hvac_recent_v2_9', JSON.stringify(recent));
+            localStorage.setItem('hvac_recent_v2_9_1', JSON.stringify(recent));
             renderRecentTools();
         }
 
         function renderRecentTools() {
             const container = document.getElementById('recent-container');
-            const recentIds = JSON.parse(localStorage.getItem('hvac_recent_v2_9') || '[]');
+            const recentIds = JSON.parse(localStorage.getItem('hvac_recent_v2_9_1') || '[]');
             if (recentIds.length === 0) return;
             container.classList.remove('hidden');
             document.getElementById('recent-list').innerHTML = recentIds.map(id => {
@@ -491,7 +484,6 @@
         window.onload = () => {
             const loader = document.getElementById('boot-loader');
             
-            // 安全機制
             const safetyTimeout = setTimeout(() => {
                 if (loader && loader.style.display !== 'none') {
                     loader.style.opacity = '0';
@@ -499,7 +491,6 @@
                 }
             }, 3000);
 
-            // 背景滑鼠追蹤
             document.addEventListener('mousemove', e => {
                 const x = (e.clientX / window.innerWidth) * 100;
                 const y = (e.clientY / window.innerHeight) * 100;
@@ -507,14 +498,12 @@
                 document.documentElement.style.setProperty('--mouse-y', `${y}%`);
             });
 
-            // 初始化 UI
             document.getElementById('general-slider').innerHTML = toolsData.general.map(createCardHTML).join('');
             document.getElementById('advanced-slider').innerHTML = toolsData.advanced.map(createCardHTML).join('');
             initInfiniteSlider('general-slider', toolsData.general.length);
             initInfiniteSlider('advanced-slider', toolsData.advanced.length);
             renderRecentTools();
             
-            // 系統隱藏
             setTimeout(() => {
                 clearTimeout(safetyTimeout);
                 if (loader) {
@@ -522,12 +511,13 @@
                     setTimeout(() => loader.style.display = 'none', 600);
                 }
                 
-                // --- 非阻塞任務：延遲加載天氣與 Service Worker ---
-                setTimeout(() => {
+                // --- 非阻塞延後加載任務 ---
+                const idleCallback = window.requestIdleCallback || ((cb) => setTimeout(cb, 1));
+                idleCallback(() => {
                     fetchWeather();
                     handleServiceWorker();
                     forceUpdateCheck();
-                }, 1000);
+                });
 
             }, 1800);
 
