@@ -1,0 +1,1451 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fab Designer Pro (v50.1 - Shaft Fixed)</title>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        brand: { 50: '#eff6ff', 100: '#dbeafe', 500: '#3b82f6', 600: '#2563eb', 900: '#1e3a8a' },
+                    },
+                    boxShadow: {
+                        'floating': '0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1)'
+                    },
+                    animation: {
+                        'pulse-fast': 'pulse 1.5s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        body { font-family: 'Inter', system-ui, -apple-system, sans-serif; background-color: #f1f5f9; overflow: hidden; user-select: none; }
+        
+        /* Layout Structure */
+        .app-shell { display: flex; flex-direction: column; height: 100vh; }
+        .workspace-area { flex: 1; display: flex; position: relative; overflow: hidden; background: #f8fafc; }
+        
+        /* Sidebar Styling */
+        .sidebar-left { width: 72px; background: white; border-right: 1px solid #e2e8f0; display: flex; flex-direction: column; align-items: center; padding-top: 16px; gap: 12px; z-index: 20; box-shadow: 4px 0 24px rgba(0,0,0,0.02); }
+        .sidebar-right { width: 320px; background: white; border-left: 1px solid #e2e8f0; display: flex; flex-direction: column; z-index: 20; position: absolute; right: 0; top: 0; bottom: 0; box-shadow: -4px 0 24px rgba(0,0,0,0.02); transition: transform 0.3s ease; }
+
+        /* Icon Buttons */
+        .icon-btn { width: 44px; height: 44px; border-radius: 12px; display: flex; flex-direction: column; align-items: center; justify-content: center; color: #64748b; cursor: pointer; transition: all 0.2s; position: relative; border: 1px solid transparent; }
+        .icon-btn:hover { background-color: #f1f5f9; color: #3b82f6; transform: translateY(-1px); }
+        .icon-btn.active { background-color: #eff6ff; color: #2563eb; border-color: #bfdbfe; box-shadow: 0 2px 4px rgba(37,99,235,0.1); }
+        .icon-btn i { font-size: 22px; margin-bottom: 0px; }
+        .icon-btn span { font-size: 9px; font-weight: 600; margin-top: 2px; }
+        .icon-btn .tooltip { position: absolute; left: 56px; background: #1e293b; color: white; padding: 6px 10px; border-radius: 6px; font-size: 12px; opacity: 0; pointer-events: none; transition: opacity 0.2s; white-space: nowrap; z-index: 50; font-weight: 500; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+        .icon-btn:hover .tooltip { opacity: 1; transform: translateX(5px); }
+
+        /* Form Elements */
+        .input-group { margin-bottom: 16px; }
+        .input-label { display: block; font-size: 11px; font-weight: 700; color: #64748b; margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.05em; }
+        .input-field { width: 100%; border: 1px solid #e2e8f0; border-radius: 8px; padding: 8px 12px; font-size: 13px; color: #1e293b; transition: 0.2s; background: #f8fafc; }
+        .input-field:focus { border-color: #3b82f6; background: white; box-shadow: 0 0 0 3px rgba(59,130,246,0.1); outline: none; }
+        
+        /* Canvas */
+        .canvas-wrapper { flex: 1; background-color: #f8fafc; position: relative; overflow: hidden; cursor: crosshair; background-image: radial-gradient(#e2e8f0 1px, transparent 1px); background-size: 20px 20px; }
+        canvas { display: block; width: 100%; height: 100%; outline: none; }
+
+        /* HUD & Overlays */
+        .hud-panel { position: absolute; top: 20px; left: 20px; width: 280px; background: rgba(255,255,255,0.95); backdrop-filter: blur(12px); border: 1px solid #e2e8f0; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1), 0 8px 10px -6px rgba(0,0,0,0.1); border-radius: 16px; padding: 20px; z-index: 40; }
+        .layer-indicator { width: 4px; border-radius: 2px; margin-right: 12px; height: 100%; position: absolute; left: 0; top: 0; }
+        
+        /* Modal & Badges */
+        .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.5); backdrop-filter: blur(4px); z-index: 100; display: none; align-items: center; justify-content: center; }
+        .modal-content { background: white; width: 600px; border-radius: 16px; padding: 24px; box-shadow: 0 20px 50px rgba(0,0,0,0.2); position: relative; animation: popIn 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
+        @keyframes popIn { from { transform: scale(0.9); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+        
+        .warn-badge { position: absolute; top: 20px; right: 20px; background: #fef2f2; color: #ef4444; border: 1px solid #fecaca; padding: 8px 12px; border-radius: 8px; font-size: 12px; font-weight: bold; display: flex; align-items: center; gap: 6px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); z-index: 50; animation: slideIn 0.3s ease-out; }
+        @keyframes slideIn { from { transform: translateY(-10px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+
+        /* Scrollbar */
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; }
+        ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+
+        /* Velocity Legend */
+        .vel-legend { display: flex; align-items: center; gap: 8px; font-size: 10px; color: #64748b; margin-top: 10px; }
+        .vel-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
+
+        /* Toggle Switch */
+        .toggle-checkbox:checked { right: 0; border-color: #3b82f6; }
+        .toggle-checkbox:checked + .toggle-label { background-color: #3b82f6; }
+    </style>
+</head>
+<body>
+
+<div class="app-shell">
+    <header class="h-16 bg-white border-b border-slate-200 flex items-center justify-between px-6 z-30 shadow-sm">
+        <div class="flex items-center gap-4">
+            <div class="w-10 h-10 bg-gradient-to-br from-blue-600 to-indigo-700 rounded-xl flex items-center justify-center text-white shadow-lg shadow-blue-500/30">
+                <i class="ph-bold ph-wind text-2xl"></i>
+            </div>
+            <div>
+                <h1 class="font-bold text-slate-800 text-base leading-tight">Fab Designer Pro</h1>
+                <div class="text-[11px] text-slate-500 font-medium tracking-wide">V50.1 - SHAFT FIXED</div>
+            </div>
+        </div>
+
+        <div class="flex items-center bg-slate-100 p-1 rounded-lg border border-slate-200">
+            <button onclick="App.switch('t1')" id="btn_t1" class="px-4 py-2 rounded-md text-sm font-bold text-slate-600 hover:text-slate-900 transition flex items-center gap-2 bg-white shadow-sm">
+                <i class="ph-bold ph-pencil-ruler"></i> 平面 Layout
+            </button>
+            <button onclick="App.switch('t2')" id="btn_t2" class="px-4 py-2 rounded-md text-sm font-bold text-slate-500 hover:text-slate-900 transition flex items-center gap-2 hover:bg-white/50">
+                <i class="ph-bold ph-rows"></i> 剖面 Section
+            </button>
+            <button onclick="App.switch('t3')" id="btn_t3" class="px-4 py-2 rounded-md text-sm font-bold text-slate-500 hover:text-slate-900 transition flex items-center gap-2 hover:bg-white/50">
+                <i class="ph-bold ph-cube-transparent"></i> 模擬 CFD
+            </button>
+        </div>
+
+        <div class="flex items-center gap-3">
+             <div class="flex items-center gap-2 mr-4 bg-slate-50 px-3 py-1.5 rounded-lg border border-slate-200">
+                <label class="text-xs font-bold text-slate-600 cursor-pointer select-none" for="snap_toggle">Grid Snap</label>
+                <div class="relative inline-block w-8 mr-2 align-middle select-none transition duration-200 ease-in">
+                    <input type="checkbox" name="toggle" id="snap_toggle" class="toggle-checkbox absolute block w-4 h-4 rounded-full bg-white border-4 appearance-none cursor-pointer" style="top:2px; left:2px; transition: all 0.3s;" onclick="CAD.toggleGrid()" checked/>
+                    <label for="snap_toggle" class="toggle-label block overflow-hidden h-5 rounded-full bg-slate-300 cursor-pointer"></label>
+                </div>
+            </div>
+
+            <button onclick="if(confirm('確定重置專案 (將載入預設配置)？')) { localStorage.removeItem('fab_data'); location.reload(); }" class="text-slate-400 hover:text-red-500 transition p-2 hover:bg-red-50 rounded-lg" title="重置專案">
+                <i class="ph-bold ph-arrow-counter-clockwise text-xl"></i>
+            </button>
+        </div>
+    </header>
+
+    <div class="workspace-area">
+        
+        <div class="sidebar-left">
+            <div class="icon-btn active" id="tool_select" onclick="CAD.setTool('select')">
+                <i class="ph-bold ph-cursor-click"></i>
+                <span>選取</span>
+                <div class="tooltip">選取物件 (V)</div>
+            </div>
+            
+            <div class="w-10 h-[1px] bg-slate-200 my-1"></div>
+            
+            <div class="icon-btn" id="tool_ffu" onclick="CAD.activateLayer('ceiling'); CAD.setTool('ffu')">
+                <i class="ph-bold ph-fan"></i>
+                <span>FFU</span>
+                <div class="tooltip">風機過濾組</div>
+            </div>
+            
+            <div class="icon-btn" id="tool_dcc" onclick="CAD.activateLayerDCC()">
+                <i class="ph-bold ph-snowflake"></i>
+                <span>DCC</span>
+                <div class="tooltip">DCC 乾盤管</div>
+            </div>
+
+            <div class="w-10 h-[1px] bg-slate-200 my-1"></div>
+
+            <div class="icon-btn" id="tool_mach" onclick="CAD.activateLayer('room'); CAD.setTool('mach')">
+                <i class="ph-bold ph-hard-drives"></i>
+                <span>機台</span>
+                <div class="tooltip">生產設備 (碰撞體)</div>
+            </div>
+
+            <div class="w-10 h-[1px] bg-slate-200 my-1"></div>
+
+            <div class="icon-btn" id="tool_shaft" onclick="CAD.activateLayer('subfab'); CAD.setTool('shaft')">
+                <i class="ph-bold ph-columns"></i>
+                <span>回風</span>
+                <div class="tooltip">回風井 (Return Shaft)</div>
+            </div>
+
+             <div class="mt-auto mb-2 icon-btn" id="tool_cut" onclick="CAD.setTool('cut')">
+                <i class="ph-bold ph-scissors"></i>
+                <span>剖面</span>
+                <div class="tooltip">繪製剖面線</div>
+            </div>
+
+            <button onclick="App.showGuide()" class="mb-4 w-10 h-10 rounded-full bg-blue-100 text-blue-600 hover:bg-blue-200 flex items-center justify-center transition shadow-sm" title="佈置教學">
+                <i class="ph-bold ph-lightbulb text-xl"></i>
+            </button>
+        </div>
+
+        <div id="view-t1" class="flex-1 flex w-full relative">
+            <div class="canvas-wrapper" id="cad_container">
+                <canvas id="c_cad"></canvas>
+                
+                <div class="absolute bottom-8 left-1/2 transform -translate-x-1/2 bg-white/95 backdrop-blur border border-slate-200 p-1.5 rounded-full shadow-floating flex gap-1 z-30">
+                    <button class="px-5 py-2 rounded-full text-xs font-bold transition flex items-center gap-2 layer-pill active" id="pill_ceiling" onclick="CAD.activateLayer('ceiling')">
+                        <span class="w-2.5 h-2.5 rounded-full bg-blue-500"></span> 天花板
+                    </button>
+                    <button class="px-5 py-2 rounded-full text-xs font-bold transition flex items-center gap-2 layer-pill text-slate-500 hover:bg-slate-100" id="pill_room" onclick="CAD.activateLayer('room')">
+                        <span class="w-2.5 h-2.5 rounded-full bg-green-500"></span> 無塵室
+                    </button>
+                    <button class="px-5 py-2 rounded-full text-xs font-bold transition flex items-center gap-2 layer-pill text-slate-500 hover:bg-slate-100" id="pill_subfab" onclick="CAD.activateLayer('subfab')">
+                        <span class="w-2.5 h-2.5 rounded-full bg-slate-500"></span> 下夾層
+                    </button>
+                </div>
+
+                <div class="absolute top-6 right-6 flex gap-2">
+                     <button onclick="CAD.zoomFit()" class="bg-white p-2.5 rounded-xl shadow-md border border-slate-100 text-slate-500 hover:text-blue-600 hover:shadow-lg transition" title="縮放至適合大小">
+                        <i class="ph-bold ph-corners-out text-lg"></i>
+                    </button>
+                </div>
+                
+                <div id="layer_hint" class="absolute top-6 left-6 bg-slate-800 text-white px-3 py-1.5 rounded-lg text-xs font-bold shadow-lg opacity-0 transition-opacity pointer-events-none">
+                    當前層級: 天花板
+                </div>
+            </div>
+
+            <div class="sidebar-right">
+                <div class="h-14 border-b border-slate-100 flex items-center px-6 font-bold text-xs text-slate-800 uppercase tracking-widest bg-slate-50/50">
+                    屬性 Properties
+                </div>
+                <div class="p-6 overflow-y-auto flex-1 custom-scrollbar">
+                    
+                    <div id="props_selection" class="hidden mb-8 bg-blue-50/50 p-4 rounded-xl border border-blue-100">
+                        <div class="text-xs font-bold text-blue-600 mb-4 flex items-center gap-2">
+                            <i class="ph-fill ph-check-circle text-lg"></i> 已選取物件
+                        </div>
+                        <div class="grid grid-cols-2 gap-4">
+                            <div class="input-group mb-0">
+                                <label class="input-label text-blue-800">寬度 Width (mm)</label>
+                                <input type="number" id="sel_w" class="input-field border-blue-200 focus:border-blue-500" onchange="CAD.updateSel()">
+                            </div>
+                            <div class="input-group mb-0">
+                                <label class="input-label text-blue-800">深度 Depth (mm)</label>
+                                <input type="number" id="sel_d" class="input-field border-blue-200 focus:border-blue-500" onchange="CAD.updateSel()">
+                            </div>
+                        </div>
+                        
+                        <div id="prop_h_container" class="hidden input-group mt-3 mb-0">
+                            <label class="input-label text-green-700">高度 Height (mm)</label>
+                            <input type="number" id="sel_h" class="input-field border-green-200 focus:border-green-500 text-green-800 font-bold" onchange="CAD.updateSel()">
+                        </div>
+
+                        <div class="text-[10px] text-slate-500 mt-2">
+                            層級: <span id="sel_layer" class="font-bold text-slate-700">--</span>
+                        </div>
+                        <button onclick="CAD.delSelected()" class="w-full mt-4 py-2.5 text-xs font-bold text-red-500 bg-white border border-red-100 hover:bg-red-50 rounded-lg transition flex items-center justify-center gap-2">
+                            <i class="ph-bold ph-trash"></i> 刪除物件
+                        </button>
+                    </div>
+
+                    <div id="props_ffu" class="mb-8">
+                         <div class="text-xs font-bold text-slate-800 mb-4 flex items-center justify-between border-b border-slate-100 pb-2">
+                            <span>FFU 陣列參數</span>
+                            <span class="bg-blue-100 text-blue-700 px-2 py-0.5 rounded text-[10px]">AUTO</span>
+                        </div>
+                        <div class="space-y-4">
+                            <div class="grid grid-cols-2 gap-4">
+                                <div class="input-group mb-0">
+                                    <label class="input-label">面風速 (m/s)</label>
+                                    <input id="ffu_vel" class="input-field" value="0.45" step="0.05" type="number">
+                                </div>
+                                <div class="input-group mb-0">
+                                    <label class="input-label">覆蓋率 (%)</label>
+                                    <input id="ffu_cov" class="input-field" value="40" type="number">
+                                </div>
+                            </div>
+                            <button onclick="CAD.autoLayoutFFU()" class="w-full py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-sm font-bold shadow-lg shadow-blue-500/20 transition flex items-center justify-center gap-2">
+                                <i class="ph-bold ph-magic-wand"></i> 自動生成陣列
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="mb-8">
+                        <div class="text-xs font-bold text-slate-800 mb-4 border-b border-slate-100 pb-2">無塵室尺寸 (Layout Size)</div>
+                        <div class="grid grid-cols-2 gap-4">
+                            <div class="input-group mb-0">
+                                <label class="input-label">全長 (m)</label>
+                                <input id="room_w" class="input-field" value="40" type="number" onchange="CAD.updateSize()">
+                            </div>
+                            <div class="input-group mb-0">
+                                <label class="input-label">全寬 (m)</label>
+                                <input id="room_d" class="input-field" value="30" type="number" onchange="CAD.updateSize()">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="flex-1">
+                        <div class="text-xs font-bold text-slate-800 mb-3 flex justify-between items-center">
+                            <span>物件清單</span>
+                            <span class="text-slate-400 font-mono bg-slate-100 px-2 rounded-full text-[10px]" id="obj_count">0</span>
+                        </div>
+                        <div id="obj_list" class="space-y-2 max-h-[300px] overflow-y-auto pr-1 custom-scrollbar">
+                            </div>
+                        <button onclick="if(confirm('清除所有物件？')) { App.data.objs=[]; CAD.draw(); CAD.updateList(); }" class="w-full mt-4 py-2 text-xs text-slate-400 hover:text-slate-600 transition border border-dashed border-slate-300 rounded-lg hover:border-slate-400">
+                            清空所有物件
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="view-t2" class="flex-1 w-full hidden relative bg-slate-100">
+             <div class="absolute left-6 top-6 bottom-6 w-80 bg-white rounded-2xl shadow-floating p-6 z-20 flex flex-col">
+                <div class="text-sm font-bold text-slate-800 mb-6 pb-4 border-b border-slate-100 flex items-center gap-2">
+                    <i class="ph-fill ph-ruler-vertical text-blue-500"></i>
+                    樓層高度設定 (Heights)
+                </div>
+                
+                <div class="space-y-6 flex-1 overflow-y-auto">
+                    <div class="relative pl-6">
+                        <div class="layer-indicator bg-blue-200"></div>
+                        <label class="input-label text-blue-600 text-xs">上夾層 (Plenum)</label>
+                        <div class="flex items-center gap-2">
+                            <input id="h_upper" class="input-field text-lg font-bold text-slate-700" value="2500" type="number" onchange="Section.render()">
+                            <span class="text-xs text-slate-400">mm</span>
+                        </div>
+                        <div class="text-[10px] text-slate-400 mt-1.5 leading-relaxed">DCC 乾盤管、回風混氣區、消防管路空間</div>
+                    </div>
+
+                    <div class="relative pl-6">
+                         <div class="layer-indicator bg-slate-800"></div>
+                        <label class="input-label text-slate-800 text-xs">無塵室 (Cleanroom)</label>
+                         <div class="flex items-center gap-2">
+                            <input id="h_room" class="input-field text-lg font-bold text-slate-700" value="4000" type="number" onchange="Section.render()">
+                            <span class="text-xs text-slate-400">mm</span>
+                        </div>
+                        <div class="text-[10px] text-slate-400 mt-1.5 leading-relaxed">主要生產區域 (Ballroom)、機台進駐空間</div>
+                    </div>
+
+                    <div class="relative pl-6">
+                         <div class="layer-indicator bg-yellow-400"></div>
+                        <label class="input-label text-yellow-600 text-xs">高架地板 (Raised Floor)</label>
+                         <div class="flex items-center gap-2">
+                            <input id="h_rf" class="input-field text-lg font-bold text-slate-700" value="800" type="number" onchange="Section.render()">
+                            <span class="text-xs text-slate-400">mm</span>
+                        </div>
+                    </div>
+
+                    <div class="relative pl-6">
+                         <div class="layer-indicator bg-slate-400"></div>
+                        <label class="input-label text-slate-600 text-xs">下夾層 (Sub-Fab)</label>
+                         <div class="flex items-center gap-2">
+                            <input id="h_sub" class="input-field text-lg font-bold text-slate-700" value="3500" type="number" onchange="Section.render()">
+                            <span class="text-xs text-slate-400">mm</span>
+                        </div>
+                        <div class="text-[10px] text-slate-400 mt-1.5 leading-relaxed">回風路徑、輔助設備 (Pumps/Chillers) 空間</div>
+                    </div>
+                </div>
+                
+                <div class="bg-blue-50 p-3 rounded-lg text-[10px] text-blue-700 leading-relaxed border border-blue-100">
+                    <i class="ph-bold ph-info mr-1"></i>
+                    高度設定將直接影響 3D 模擬。剖面圖現已支援即時投影物件（機台/FFU）。
+                </div>
+             </div>
+
+             <div class="absolute inset-0 flex items-center justify-center pl-[340px] pr-6 py-6">
+                 <div class="w-full h-full bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden relative">
+                     <canvas id="c_sec"></canvas>
+                      <div id="sec_msg" class="absolute top-8 left-1/2 transform -translate-x-1/2 bg-yellow-50 text-yellow-700 px-4 py-2 rounded-full text-xs border border-yellow-200 shadow-sm flex items-center gap-2 font-bold">
+                        <i class="ph-fill ph-warning-circle text-lg"></i> 請先在平面圖 (Layout) 使用剪刀工具繪製剖面線
+                    </div>
+                 </div>
+             </div>
+        </div>
+
+        <div id="view-t3" class="flex-1 w-full hidden relative bg-slate-900">
+            <div id="three_target" class="w-full h-full outline-none cursor-move"></div>
+            
+            <div id="sim_warning" class="warn-badge hidden">
+                <i class="ph-bold ph-warning-octagon text-lg"></i>
+                <span id="sim_warn_text">配置錯誤</span>
+            </div>
+
+            <div class="hud-panel">
+                <div class="flex items-center justify-between mb-6 pb-4 border-b border-slate-100">
+                    <div class="flex items-center gap-2 font-bold text-slate-800 text-sm">
+                        <i class="ph-fill ph-wind text-blue-600 text-xl"></i>
+                        CFD 物理模擬
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <span class="text-[10px] text-slate-400">Real-time</span>
+                        <span class="w-2 h-2 rounded-full bg-green-500 animate-pulse-fast"></span>
+                    </div>
+                </div>
+
+                <div class="bg-slate-50 rounded-xl p-4 mb-6 border border-slate-200 space-y-3">
+                     <div class="flex justify-between items-center text-xs">
+                        <span class="text-slate-500 font-medium">總風量 (Total CMH)</span>
+                        <span class="font-bold text-slate-700 font-mono" id="val_cmh">0</span>
+                    </div>
+                    <div class="flex justify-between items-center text-xs">
+                        <span class="text-slate-500 font-medium">粒子數量 (Particles)</span>
+                        <span class="font-bold text-purple-600 font-mono" id="val_pcount">0</span>
+                    </div>
+                    
+                    <div class="mt-4 pt-3 border-t border-slate-100">
+                        <div class="text-[10px] font-bold text-slate-600 mb-2">速度熱圖 Velocity Heatmap</div>
+                        <div class="grid grid-cols-1 gap-1">
+                            <div class="vel-legend"><span class="vel-dot bg-blue-500"></span> &lt; 1.0 m/s (Laminar)</div>
+                            <div class="vel-legend"><span class="vel-dot bg-green-500"></span> 1.0 ~ 3.0 m/s</div>
+                            <div class="vel-legend"><span class="vel-dot bg-red-500"></span> &gt; 3.0 m/s (High Speed)</div>
+                            <div class="vel-legend"><span class="vel-dot bg-cyan-400"></span> Cooling (DCC)</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="space-y-6">
+                      <div>
+                        <div class="flex justify-between text-xs mb-2 font-bold text-slate-700">
+                            <span>高架地板開孔率 (Ratio)</span>
+                            <span id="txt_ratio" class="text-blue-600">25%</span>
+                        </div>
+                        <input type="range" min="10" max="60" value="25" class="w-full h-1.5 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-blue-600" oninput="Sim3D.updateParams(this.value)">
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-3">
+                        <button onclick="Sim3D.init()" class="py-2.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold shadow-md shadow-blue-500/20 transition">重啟 (Resim)</button>
+                        <button onclick="Sim3D.togglePause()" id="btn_pause" class="py-2.5 rounded-lg bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 text-xs font-bold transition">暫停</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="guide_modal" class="modal-overlay" onclick="App.hideGuide()">
+        <div class="modal-content" onclick="event.stopPropagation()">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-lg font-bold text-slate-800 flex items-center gap-2">
+                    <i class="ph-fill ph-lightbulb text-yellow-500"></i> 無塵室配置教學 (Layout Guide)
+                </h3>
+                <button onclick="App.hideGuide()" class="text-slate-400 hover:text-slate-600"><i class="ph-bold ph-x text-xl"></i></button>
+            </div>
+            <div class="space-y-4 text-sm text-slate-600">
+                <p class="leading-relaxed">正確的氣流循環路徑如下，請確保您在設計中包含以下關鍵元件：</p>
+                <div class="bg-slate-50 p-4 rounded-lg border border-slate-200">
+                    <ol class="list-decimal list-inside space-y-2 font-medium">
+                        <li><span class="text-blue-600 font-bold">FFU (天花板層)</span>：負責將潔淨空氣吹入無塵室。請盡量覆蓋工作區域。</li>
+                        <li><span class="text-slate-700 font-bold">高架地板 (RF)</span>：氣流通過地板孔洞進入下夾層。</li>
+                        <li><span class="text-cyan-600 font-bold">DCC 乾盤管</span>：<span class="text-red-500">優先路徑！</span> 若放置於下夾層，氣流必須先經過 DCC 冷卻，才會流向回風井。</li>
+                        <li><span class="text-slate-500 font-bold">回風井 (下夾層層)</span>：將氣流引導回天花板。請設置在周圍。</li>
+                    </ol>
+                </div>
+            </div>
+            <button onclick="App.hideGuide()" class="w-full mt-6 py-2.5 bg-blue-600 text-white rounded-lg font-bold hover:bg-blue-700 transition">我瞭解了</button>
+        </div>
+    </div>
+</div>
+
+<script>
+/** * FAB DESIGNER PRO v50.1 - CORE LOGIC * */
+
+const App = {
+    data: {
+        w: 40000, d: 30000, 
+        cut: null,
+        objs: [],
+        heights: { u: 2500, r: 4000, f: 800, s: 3500 }, // mm
+        sim: { ratio: 25 },
+        gridSize: 600, // For snapping
+        isSnap: true
+    },
+    ui: { activeTab: 't1', activeLayer: 'ceiling' },
+
+    init: () => {
+        // Load Demo Data if empty
+        if(App.data.objs.length === 0) {
+            App.loadDemoLayout();
+        }
+        CAD.init();
+    },
+
+    loadDemoLayout: () => {
+        let id = Date.now();
+        // 1. Generate FFU Grid (Ceiling)
+        // Cover center area
+        for(let x = -14000; x <= 14000; x += 2400) {
+            for(let y = -10000; y <= 10000; y += 2400) {
+                App.data.objs.push({
+                    id: id++, type: 'ffu', layer: 'ceiling',
+                    x: x, y: y, w: 1200, d: 1200, col: '#60a5fa'
+                });
+            }
+        }
+
+        // 2. Add Return Shafts (Side Walls - Subfab Layer logic handled by physics)
+        // Shafts usually go through all layers, but we place them to define the "target"
+        // Left Wall
+        App.data.objs.push({id: id++, type: 'shaft', layer: 'subfab', x: -18500, y: 0, w: 2000, d: 24000, col: '#64748b'});
+        // Right Wall
+        App.data.objs.push({id: id++, type: 'shaft', layer: 'subfab', x: 18500, y: 0, w: 2000, d: 24000, col: '#64748b'});
+
+        // 3. Add Machines (Room)
+        // Central block
+        App.data.objs.push({id: id++, type: 'mach', layer: 'room', x: 0, y: 0, w: 4000, d: 12000, h: 3000, col: '#22c55e'});
+        // Side blocks
+        App.data.objs.push({id: id++, type: 'mach', layer: 'room', x: -8000, y: 0, w: 3000, d: 8000, h: 2500, col: '#22c55e'});
+        App.data.objs.push({id: id++, type: 'mach', layer: 'room', x: 8000, y: 0, w: 3000, d: 8000, h: 2500, col: '#22c55e'});
+
+        // 4. Add DCCs (Subfab Layer - Key for the path "Subfab -> DCC -> Shaft")
+        // Placing them just before the shafts to ensure particles hit them on the way to the side
+        // Left side DCCs
+        App.data.objs.push({id: id++, type: 'dcc', layer: 'subfab', x: -16000, y: -5000, w: 1000, d: 4000, col: '#06b6d4'});
+        App.data.objs.push({id: id++, type: 'dcc', layer: 'subfab', x: -16000, y: 5000, w: 1000, d: 4000, col: '#06b6d4'});
+        // Right side DCCs
+        App.data.objs.push({id: id++, type: 'dcc', layer: 'subfab', x: 16000, y: -5000, w: 1000, d: 4000, col: '#06b6d4'});
+        App.data.objs.push({id: id++, type: 'dcc', layer: 'subfab', x: 16000, y: 5000, w: 1000, d: 4000, col: '#06b6d4'});
+        
+        // Define a cut line for section view automatically
+        App.data.cut = { p1: {x: -20000, y: 0}, p2: {x: 20000, y: 0} };
+        
+        CAD.updateList();
+    },
+
+    switch: (tabId) => {
+        if(App.ui.activeTab === 't3' && tabId !== 't3') Sim3D.stop();
+        App.ui.activeTab = tabId;
+
+        // View Visibility
+        ['t1','t2','t3'].forEach(t => {
+            document.getElementById('view-'+t).classList.toggle('hidden', t !== tabId);
+        });
+        
+        // Button States
+        document.getElementById('btn_t1').className = tabId==='t1' ? "px-4 py-2 rounded-md text-sm font-bold text-slate-600 flex items-center gap-2 bg-white shadow-sm border border-slate-200" : "px-4 py-2 rounded-md text-sm font-bold text-slate-500 hover:text-slate-900 transition flex items-center gap-2 hover:bg-white/50";
+        document.getElementById('btn_t2').className = tabId==='t2' ? "px-4 py-2 rounded-md text-sm font-bold text-slate-600 flex items-center gap-2 bg-white shadow-sm border border-slate-200" : "px-4 py-2 rounded-md text-sm font-bold text-slate-500 hover:text-slate-900 transition flex items-center gap-2 hover:bg-white/50";
+        document.getElementById('btn_t3').className = tabId==='t3' ? "px-4 py-2 rounded-md text-sm font-bold text-slate-600 flex items-center gap-2 bg-white shadow-sm border border-slate-200" : "px-4 py-2 rounded-md text-sm font-bold text-slate-500 hover:text-slate-900 transition flex items-center gap-2 hover:bg-white/50";
+
+        if(tabId === 't1') setTimeout(() => CAD.resize(), 50);
+        if(tabId === 't2') setTimeout(() => Section.init(), 50);
+        if(tabId === 't3') setTimeout(() => Sim3D.init(), 100);
+    },
+    showGuide: () => document.getElementById('guide_modal').style.display = 'flex',
+    hideGuide: () => document.getElementById('guide_modal').style.display = 'none'
+};
+
+/** MODULE: CAD EDITOR */
+const CAD = {
+    ctx: null, scale: 0.015, offset: {x:0, y:0},
+    tool: 'select', mode: 'select', 
+    isPan: false, isDrag: false, isDraw: false,
+    startPos: {x:0,y:0}, selected: null, ghost: null,
+
+    init: () => {
+        const c = document.getElementById('c_cad');
+        const p = document.getElementById('cad_container');
+        c.width = p.clientWidth; c.height = p.clientHeight;
+        CAD.ctx = c.getContext('2d');
+        
+        c.onmousedown = CAD.onDown;
+        window.onmousemove = CAD.onMove;
+        window.onmouseup = CAD.onUp;
+        c.onwheel = CAD.onWheel;
+        c.oncontextmenu = e => e.preventDefault();
+
+        CAD.centerView();
+        CAD.activateLayer('ceiling');
+        CAD.updateList(); // Ensure list is shown
+    },
+
+    toggleGrid: () => {
+        App.data.isSnap = document.getElementById('snap_toggle').checked;
+    },
+
+    snap: (val) => {
+        if(!App.data.isSnap) return val;
+        const gs = App.data.gridSize;
+        return Math.round(val / gs) * gs;
+    },
+
+    resize: () => {
+        const c = document.getElementById('c_cad');
+        const p = document.getElementById('cad_container');
+        if(c && p) { c.width = p.clientWidth; c.height = p.clientHeight; CAD.draw(); }
+    },
+
+    activateLayerDCC: () => {
+        if(App.ui.activeLayer === 'room') {
+            CAD.activateLayer('ceiling');
+        }
+        CAD.setTool('dcc');
+    },
+
+    activateLayer: (layer) => {
+        App.ui.activeLayer = layer;
+        document.querySelectorAll('.layer-pill').forEach(el => {
+            el.classList.remove('active', 'bg-slate-100', 'text-slate-800', 'ring-2', 'ring-blue-100');
+            el.classList.add('text-slate-500');
+            if(el.id === 'pill_'+layer) {
+                el.classList.add('active', 'bg-white', 'text-slate-800', 'shadow-sm', 'border-slate-200');
+                el.classList.remove('text-slate-500');
+            }
+        });
+        
+        const h = document.getElementById('layer_hint');
+        h.innerText = `當前層級: ${layer === 'ceiling' ? '天花板' : layer === 'room' ? '無塵室' : '下夾層'}`;
+        h.style.opacity = '1';
+        setTimeout(() => h.style.opacity = '0', 2000);
+
+        document.getElementById('props_ffu').classList.toggle('hidden', layer !== 'ceiling');
+        CAD.setTool('select');
+        CAD.draw();
+    },
+
+    setTool: (t) => {
+        CAD.tool = t;
+        CAD.mode = (t === 'select') ? 'select' : 'draw';
+        document.querySelectorAll('.icon-btn').forEach(b => b.classList.remove('active'));
+        const btn = document.getElementById('tool_'+t);
+        if(btn) btn.classList.add('active');
+        CAD.selected = null;
+        document.getElementById('props_selection').classList.add('hidden');
+        CAD.draw();
+    },
+
+    updateSize: () => {
+        App.data.w = parseInt(document.getElementById('room_w').value) * 1000;
+        App.data.d = parseInt(document.getElementById('room_d').value) * 1000;
+        CAD.draw();
+    },
+
+    toWorld: (sx, sy) => ({ x: (sx - CAD.offset.x)/CAD.scale, y: (sy - CAD.offset.y)/CAD.scale }),
+    toScreen: (wx, wy) => ({ x: wx*CAD.scale + CAD.offset.x, y: wy*CAD.scale + CAD.offset.y }),
+
+    onDown: (e) => {
+        const r = CAD.ctx.canvas.getBoundingClientRect();
+        const mx = e.clientX - r.left, my = e.clientY - r.top;
+        const w = CAD.toWorld(mx, my);
+
+        if(e.button === 1 || e.button === 2 || (e.button===0 && e.altKey)) {
+            CAD.isPan = true; CAD.startPos = {x:mx, y:my}; return;
+        }
+
+        if(CAD.mode === 'select') {
+            const hit = App.data.objs.slice().reverse().find(o => 
+                o.layer === App.ui.activeLayer &&
+                Math.abs(w.x - o.x) < o.w/2 && Math.abs(w.y - o.y) < o.d/2
+            );
+
+            CAD.selected = hit || null;
+            if(hit) {
+                CAD.isDrag = true; CAD.startPos = {x:w.x, y:w.y}; CAD.objPos = {x:hit.x, y:hit.y};
+                document.getElementById('props_selection').classList.remove('hidden');
+                document.getElementById('sel_w').value = hit.w;
+                document.getElementById('sel_d').value = hit.d;
+                document.getElementById('sel_layer').innerText = hit.layer;
+                
+                // Show Height prop only for machines
+                const hContainer = document.getElementById('prop_h_container');
+                if(hit.type === 'mach') {
+                    hContainer.classList.remove('hidden');
+                    document.getElementById('sel_h').value = hit.h || 2500;
+                } else {
+                    hContainer.classList.add('hidden');
+                }
+
+            } else {
+                document.getElementById('props_selection').classList.add('hidden');
+            }
+            CAD.draw();
+        } 
+        else if (CAD.mode === 'draw') {
+            CAD.isDraw = true; 
+            const sn = { x: CAD.snap(w.x), y: CAD.snap(w.y) };
+            CAD.startPos = (CAD.tool === 'cut') ? w : sn; // Don't snap cut start perfectly
+            CAD.ghost = { x: sn.x, y: sn.y, w: 0, d: 0 };
+        }
+    },
+
+    onMove: (e) => {
+        if(App.ui.activeTab !== 't1') return;
+        const r = CAD.ctx.canvas.getBoundingClientRect();
+        const mx = e.clientX - r.left, my = e.clientY - r.top;
+        const w = CAD.toWorld(mx, my);
+
+        if(CAD.isPan) {
+            CAD.offset.x += mx - CAD.startPos.x;
+            CAD.offset.y += my - CAD.startPos.y;
+            CAD.startPos = {x:mx, y:my};
+            CAD.draw();
+        }
+        else if(CAD.isDrag && CAD.selected) {
+            let nx = CAD.objPos.x + (w.x - CAD.startPos.x);
+            let ny = CAD.objPos.y + (w.y - CAD.startPos.y);
+            if(App.data.isSnap) {
+                nx = CAD.snap(nx);
+                ny = CAD.snap(ny);
+            }
+            CAD.selected.x = nx;
+            CAD.selected.y = ny;
+            CAD.draw();
+        }
+        else if(CAD.isDraw) {
+            if(CAD.tool === 'cut') {
+                // Freeform for cut
+                CAD.ghost = { x1: CAD.startPos.x, y1: CAD.startPos.y, x2: w.x, y2: w.y };
+            } else {
+                // Snapped box for objects
+                const cur = { x: CAD.snap(w.x), y: CAD.snap(w.y) };
+                CAD.ghost = {
+                    x: (CAD.startPos.x + cur.x)/2,
+                    y: (CAD.startPos.y + cur.y)/2,
+                    w: Math.abs(cur.x - CAD.startPos.x),
+                    d: Math.abs(cur.y - CAD.startPos.y)
+                };
+            }
+            CAD.draw();
+        }
+    },
+
+    onUp: () => {
+        if(CAD.isDraw && CAD.ghost) {
+            if(CAD.tool === 'cut') {
+                App.data.cut = { p1: {x: CAD.ghost.x1, y: CAD.ghost.y1}, p2: {x: CAD.ghost.x2, y: CAD.ghost.y2} };
+            } else {
+                if(CAD.ghost.w > 100 && CAD.ghost.d > 100) {
+                    let col = '#94a3b8';
+                    let label = CAD.tool.toUpperCase();
+                    let h = 0; // default height property for machines
+                    
+                    if(CAD.tool==='ffu') { col = '#60a5fa'; }
+                    if(CAD.tool==='dcc') { col = '#06b6d4'; }
+                    if(CAD.tool==='mach') { col = '#22c55e'; h=2500; }
+                    if(CAD.tool==='shaft') { col = '#64748b'; }
+                    
+                    App.data.objs.push({
+                        id: Date.now(), type: CAD.tool, layer: App.ui.activeLayer,
+                        x: CAD.ghost.x, y: CAD.ghost.y, w: CAD.ghost.w, d: CAD.ghost.d, 
+                        col, label, h
+                    });
+                    CAD.updateList();
+                }
+            }
+        }
+        CAD.isPan = false; CAD.isDrag = false; CAD.isDraw = false; CAD.ghost = null;
+        if(CAD.tool !== 'select') CAD.setTool('select');
+        CAD.draw();
+    },
+
+    onWheel: (e) => {
+        const zoom = e.deltaY < 0 ? 1.1 : 0.9;
+        const r = CAD.ctx.canvas.getBoundingClientRect();
+        const mx = e.clientX - r.left, my = e.clientY - r.top;
+        const wx = (mx - CAD.offset.x) / CAD.scale;
+        const wy = (my - CAD.offset.y) / CAD.scale;
+        
+        CAD.scale *= zoom;
+        CAD.offset.x = mx - wx * CAD.scale;
+        CAD.offset.y = my - wy * CAD.scale;
+        CAD.draw();
+    },
+
+    zoomFit: () => {
+        const c = CAD.ctx.canvas;
+        const scW = (c.width-100)/App.data.w;
+        const scH = (c.height-100)/App.data.d;
+        CAD.scale = Math.min(scW, scH);
+        CAD.centerView();
+    },
+    centerView: () => {
+        const c = CAD.ctx.canvas;
+        CAD.offset.x = c.width/2; CAD.offset.y = c.height/2;
+        CAD.draw();
+    },
+
+    updateSel: () => {
+        if(CAD.selected) {
+            CAD.selected.w = parseFloat(document.getElementById('sel_w').value);
+            CAD.selected.d = parseFloat(document.getElementById('sel_d').value);
+            if(CAD.selected.type === 'mach') {
+                CAD.selected.h = parseFloat(document.getElementById('sel_h').value);
+            }
+            CAD.draw();
+        }
+    },
+    delSelected: () => {
+        if(CAD.selected) {
+            App.data.objs = App.data.objs.filter(o => o !== CAD.selected);
+            CAD.selected = null;
+            document.getElementById('props_selection').classList.add('hidden');
+            CAD.draw(); CAD.updateList();
+        }
+    },
+    updateList: () => {
+        const list = document.getElementById('obj_list');
+        list.innerHTML = App.data.objs.map(o => `
+            <div class="flex items-center justify-between p-2.5 bg-white rounded-lg border border-slate-200 hover:border-blue-300 transition group shadow-sm">
+                <div class="flex items-center gap-3">
+                    <div class="w-3 h-3 rounded-full shadow-sm" style="background:${o.col}"></div>
+                    <div>
+                         <div class="text-xs font-bold text-slate-700 leading-none mb-1">${o.type.toUpperCase()}</div>
+                         <div class="text-[10px] text-slate-400 leading-none">ID: ${o.id.toString().substr(-4)}</div>
+                    </div>
+                </div>
+                <button onclick="CAD.delId(${o.id})" class="text-slate-300 hover:text-red-500 p-1 rounded hover:bg-red-50 transition opacity-0 group-hover:opacity-100"><i class="ph-bold ph-trash"></i></button>
+            </div>
+        `).join('');
+        document.getElementById('obj_count').innerText = App.data.objs.length;
+    },
+    delId: (id) => { App.data.objs = App.data.objs.filter(o => o.id !== id); CAD.draw(); CAD.updateList(); },
+
+    autoLayoutFFU: () => {
+        if(App.ui.activeLayer !== 'ceiling') { alert('請切換至天花板層級'); return; }
+        const vel = parseFloat(document.getElementById('ffu_vel').value);
+        const cov = parseFloat(document.getElementById('ffu_cov').value)/100;
+        
+        App.data.objs = App.data.objs.filter(o => o.type !== 'ffu'); // Clear existing
+        
+        const fSize = 1200;
+        const area = App.data.w * App.data.d;
+        const count = Math.ceil((area * cov) / (fSize*fSize));
+        
+        const cols = Math.floor(Math.sqrt(count * (App.data.w/App.data.d)));
+        const rows = Math.ceil(count / cols);
+        const sx = App.data.w / cols;
+        const sy = App.data.d / rows;
+
+        for(let r=0; r<rows; r++) {
+            for(let c=0; c<cols; c++) {
+                App.data.objs.push({
+                    id: Date.now() + Math.random(), type: 'ffu', layer: 'ceiling',
+                    x: CAD.snap(-App.data.w/2 + (c+0.5)*sx),
+                    y: CAD.snap(-App.data.d/2 + (r+0.5)*sy),
+                    w: 1200, d: 1200, col: '#60a5fa'
+                });
+            }
+        }
+        CAD.updateList(); CAD.draw();
+    },
+
+    draw: () => {
+        if(!CAD.ctx) return;
+        const ctx = CAD.ctx;
+        const w = ctx.canvas.width, h = ctx.canvas.height;
+        ctx.clearRect(0,0,w,h);
+
+        ctx.save();
+        
+        // Draw Grid
+        const step = 2000 * CAD.scale;
+        const offX = CAD.offset.x % step;
+        const offY = CAD.offset.y % step;
+        ctx.strokeStyle = '#e2e8f0'; ctx.lineWidth = 1;
+        ctx.beginPath();
+        for(let x=offX; x<w; x+=step) { ctx.moveTo(x,0); ctx.lineTo(x,h); }
+        for(let y=offY; y<h; y+=step) { ctx.moveTo(0,y); ctx.lineTo(w,y); }
+        ctx.stroke();
+
+        // Draw Snap Points if snap enabled (Sub-grid)
+        if(App.data.isSnap && CAD.scale > 0.01) {
+            const snapStep = App.data.gridSize * CAD.scale;
+            const snapOffX = (CAD.offset.x) % snapStep;
+            const snapOffY = (CAD.offset.y) % snapStep;
+            ctx.fillStyle = '#f1f5f9';
+            for(let x=snapOffX; x<w; x+=snapStep) {
+                for(let y=snapOffY; y<h; y+=snapStep) {
+                   ctx.fillRect(x-1, y-1, 2, 2);
+                }
+            }
+        }
+
+        const p1 = CAD.toScreen(-App.data.w/2, -App.data.d/2);
+        const p2 = CAD.toScreen(App.data.w/2, App.data.d/2);
+        
+        ctx.shadowColor = 'rgba(0,0,0,0.05)'; ctx.shadowBlur = 30; ctx.shadowOffsetY = 10;
+        ctx.fillStyle = '#ffffff'; ctx.fillRect(p1.x, p1.y, p2.x-p1.x, p2.y-p1.y);
+        ctx.shadowBlur = 0; ctx.shadowOffsetY = 0;
+        
+        ctx.strokeStyle = '#94a3b8'; ctx.lineWidth = 2; ctx.strokeRect(p1.x, p1.y, p2.x-p1.x, p2.y-p1.y);
+
+        App.data.objs.forEach(o => {
+            const isActive = (o.layer === App.ui.activeLayer);
+            const p = CAD.toScreen(o.x, o.y);
+            const sw = o.w * CAD.scale;
+            const sd = o.d * CAD.scale;
+
+            ctx.globalAlpha = isActive ? 1.0 : 0.2;
+            ctx.fillStyle = o.col;
+            if(o.type === 'ffu') ctx.globalAlpha = isActive ? 0.7 : 0.1;
+
+            ctx.fillRect(p.x-sw/2, p.y-sd/2, sw, sd);
+            
+            ctx.strokeStyle = 'rgba(0,0,0,0.2)'; ctx.lineWidth = 1;
+            ctx.strokeRect(p.x-sw/2, p.y-sd/2, sw, sd);
+
+            if(CAD.selected === o) {
+                ctx.strokeStyle = '#2563eb'; ctx.lineWidth = 2;
+                ctx.strokeRect(p.x-sw/2-2, p.y-sd/2-2, sw+4, sd+4);
+                
+                ctx.fillStyle = 'white'; 
+                const corners = [
+                    {x: p.x-sw/2-2, y: p.y-sd/2-2}, {x: p.x+sw/2+2, y: p.y-sd/2-2},
+                    {x: p.x+sw/2+2, y: p.y+sd/2+2}, {x: p.x-sw/2-2, y: p.y+sd/2+2}
+                ];
+                corners.forEach(c => {
+                    ctx.beginPath(); ctx.arc(c.x, c.y, 3, 0, Math.PI*2); ctx.fill(); ctx.stroke();
+                });
+            }
+        });
+
+        ctx.globalAlpha = 1;
+        if(CAD.isDraw && CAD.ghost) {
+            const p = CAD.toScreen(CAD.ghost.x, CAD.ghost.y);
+            if(CAD.tool === 'cut') {
+                const s = CAD.toScreen(CAD.ghost.x1, CAD.ghost.y1);
+                const e = CAD.toScreen(CAD.ghost.x2, CAD.ghost.y2);
+                ctx.strokeStyle = '#ef4444'; ctx.lineWidth = 2; ctx.setLineDash([5,5]);
+                ctx.beginPath(); ctx.moveTo(s.x, s.y); ctx.lineTo(e.x, e.y); ctx.stroke();
+                ctx.setLineDash([]);
+            } else {
+                const sw = CAD.ghost.w * CAD.scale;
+                const sd = CAD.ghost.d * CAD.scale;
+                ctx.fillStyle = 'rgba(37, 99, 235, 0.2)'; ctx.fillRect(p.x-sw/2, p.y-sd/2, sw, sd);
+                ctx.strokeStyle = '#2563eb'; ctx.strokeRect(p.x-sw/2, p.y-sd/2, sw, sd);
+            }
+        }
+
+        if(App.data.cut) {
+            const c1 = CAD.toScreen(App.data.cut.p1.x, App.data.cut.p1.y);
+            const c2 = CAD.toScreen(App.data.cut.p2.x, App.data.cut.p2.y);
+            ctx.strokeStyle = '#ef4444'; ctx.lineWidth = 2; ctx.setLineDash([6,4]);
+            ctx.beginPath(); ctx.moveTo(c1.x, c1.y); ctx.lineTo(c2.x, c2.y); ctx.stroke();
+            ctx.setLineDash([]);
+            ctx.fillStyle = '#ef4444';
+            ctx.beginPath(); ctx.arc(c1.x, c1.y, 4, 0, Math.PI*2); ctx.fill();
+            ctx.beginPath(); ctx.arc(c2.x, c2.y, 4, 0, Math.PI*2); ctx.fill();
+            
+            ctx.font = "bold 12px sans-serif"; ctx.fillStyle = "#ef4444";
+            ctx.fillText("A", c1.x + 8, c1.y + 8);
+            ctx.fillText("A'", c2.x + 8, c2.y + 8);
+        }
+
+        ctx.restore();
+    }
+};
+
+/** MODULE: SECTION VIEW - SMART PROJECTION */
+const Section = {
+    ctx: null, scale: 0.1,
+    init: () => {
+        const c = document.getElementById('c_sec');
+        c.width = c.clientWidth; c.height = c.clientHeight;
+        Section.ctx = c.getContext('2d');
+        Section.render();
+    },
+    
+    // Math helper to find if point projects onto line segment
+    project: (p, a, b) => {
+        const atob = { x: b.x - a.x, y: b.y - a.y };
+        const atop = { x: p.x - a.x, y: p.y - a.y };
+        const len2 = atob.x * atob.x + atob.y * atob.y;
+        let dot = atop.x * atob.x + atop.y * atob.y;
+        let t = Math.min(1, Math.max(0, dot / len2));
+        const closest = { x: a.x + atob.x * t, y: a.y + atob.y * t };
+        return { point: closest, t: t, dist: Math.hypot(p.x - closest.x, p.y - closest.y) };
+    },
+
+    render: () => {
+        const ctx = Section.ctx;
+        if(!ctx) return;
+        
+        const H = App.data.heights;
+        H.u = parseInt(document.getElementById('h_upper').value) || 2500;
+        H.r = parseInt(document.getElementById('h_room').value) || 4000;
+        H.f = parseInt(document.getElementById('h_rf').value) || 800;
+        H.s = parseInt(document.getElementById('h_sub').value) || 3500;
+
+        const w = ctx.canvas.width, h = ctx.canvas.height;
+        ctx.clearRect(0,0,w,h);
+
+        let cutLen = App.data.w;
+        const msg = document.getElementById('sec_msg');
+        
+        if(!App.data.cut) {
+            msg.classList.remove('hidden');
+            return; // Don't render if no cut
+        }
+        
+        msg.classList.add('hidden');
+        const p1 = App.data.cut.p1;
+        const p2 = App.data.cut.p2;
+        const dx = p2.x - p1.x;
+        const dy = p2.y - p1.y;
+        cutLen = Math.sqrt(dx*dx + dy*dy);
+
+        const totalH = H.u + H.r + H.f + H.s;
+        const pad = 80;
+        const scale = Math.min((h - pad*2)/totalH, (w - pad*2)/cutLen);
+        
+        const Ox = (w - cutLen*scale)/2;
+        const Oy = h - (h - totalH*scale)/2; 
+
+        // 1. Draw Background Layers
+        const drawLayer = (bottomY, height, col, label, sub) => {
+            const sy = Oy - (bottomY + height) * scale;
+            const sh = height * scale;
+            
+            ctx.fillStyle = col;
+            ctx.fillRect(Ox, sy, cutLen*scale, sh);
+            
+            ctx.strokeStyle = '#cbd5e1'; ctx.lineWidth = 1;
+            ctx.strokeRect(Ox, sy, cutLen*scale, sh);
+
+            ctx.fillStyle = '#475569';
+            ctx.font = 'bold 12px sans-serif';
+            ctx.textAlign = 'left';
+            ctx.fillText(label, Ox - 5, sy + sh/2);
+            if(sub) {
+                 ctx.font = '10px sans-serif'; ctx.fillStyle = '#94a3b8';
+                 ctx.fillText(sub, Ox - 5, sy + sh/2 + 12);
+            }
+            
+            ctx.textAlign = 'right';
+            ctx.fillStyle = '#64748b'; ctx.font = '12px sans-serif';
+            ctx.fillText(height + 'mm', Ox + cutLen*scale + 50, sy + sh/2 + 4);
+            
+            ctx.beginPath(); ctx.moveTo(Ox+cutLen*scale+5, sy); ctx.lineTo(Ox+cutLen*scale+15, sy); ctx.stroke();
+            ctx.beginPath(); ctx.moveTo(Ox+cutLen*scale+5, sy+sh); ctx.lineTo(Ox+cutLen*scale+15, sy+sh); ctx.stroke();
+            ctx.beginPath(); ctx.moveTo(Ox+cutLen*scale+10, sy); ctx.lineTo(Ox+cutLen*scale+10, sy+sh); ctx.stroke();
+        };
+
+        drawLayer(-(H.f+H.s), H.s, '#f1f5f9', 'Sub-Fab', '下夾層');
+        drawLayer(-H.f, H.f, '#fefce8', 'RF', '高架地板');
+        drawLayer(0, H.r, '#ffffff', 'Cleanroom', '無塵室');
+        drawLayer(H.r, H.u, '#eff6ff', 'Plenum', '上夾層');
+
+        // 2. Project Objects onto Section
+        // Algorithm: Check if object center roughly projects onto line, and if dist is within object radius
+        App.data.objs.forEach(o => {
+            const proj = Section.project({x:o.x, y:o.y}, p1, p2);
+            
+            // Check if object intersects the "thick" cut line
+            // Radius approx (max dimension / 2)
+            const radius = Math.max(o.w, o.d) / 2;
+            
+            if (proj.dist < radius && proj.t >= 0 && proj.t <= 1) {
+                // Determine vertical position based on type
+                let objBottomY = 0;
+                let objH = 0;
+                let col = o.col;
+                
+                if (o.type === 'mach') {
+                    objBottomY = 0; // sits on floor
+                    objH = o.h || 2500;
+                    // Visualize width on section based on intersection is complex, 
+                    // simplifying to projected width proportional to original width
+                    // Just draw a box at 't' position
+                } else if (o.type === 'ffu') {
+                    objBottomY = H.r; // ceiling
+                    objH = 300;
+                } else if (o.type === 'dcc') {
+                    if(o.layer === 'subfab') objBottomY = -(H.f+H.s); // Simplified
+                    else objBottomY = H.r + 200;
+                    objH = 1800;
+                } else {
+                    return;
+                }
+
+                // Draw on Section
+                const screenX = Ox + (proj.t * cutLen * scale);
+                // Draw width as fixed representative or calculated? Let's use scaled W
+                const drawW = (o.w * scale); 
+                const screenY = Oy - (objBottomY + objH) * scale;
+                const drawH = objH * scale;
+
+                ctx.fillStyle = col;
+                ctx.globalAlpha = 0.8;
+                ctx.fillRect(screenX - drawW/2, screenY, drawW, drawH);
+                ctx.strokeRect(screenX - drawW/2, screenY, drawW, drawH);
+                
+                // Label
+                ctx.fillStyle = '#1e293b'; ctx.font = '9px sans-serif'; ctx.textAlign = 'center';
+                ctx.globalAlpha = 1.0;
+                if(drawW > 20) ctx.fillText(o.type.toUpperCase(), screenX, screenY + drawH/2 + 3);
+            }
+        });
+    }
+};
+
+/** MODULE: CFD ENGINE (Three.js) - STRICT LOGIC UPDATE */
+const Sim3D = {
+    scene: null, renderer: null, frameId: null, paused: false,
+    
+    stop: () => {
+        if(Sim3D.frameId) cancelAnimationFrame(Sim3D.frameId);
+        if(Sim3D.renderer) { Sim3D.renderer.dispose(); Sim3D.renderer = null; }
+    },
+    togglePause: () => {
+        Sim3D.paused = !Sim3D.paused;
+        document.getElementById('btn_pause').innerText = Sim3D.paused ? '繼續' : '暫停';
+    },
+    updateParams: (v) => {
+        App.data.sim.ratio = v;
+        document.getElementById('txt_ratio').innerText = v + '%';
+    },
+
+    init: () => {
+        Sim3D.stop();
+        const con = document.getElementById('three_target');
+        con.innerHTML = '';
+        
+        const H = App.data.heights;
+        H.u = parseInt(document.getElementById('h_upper').value) || 2500;
+        H.r = parseInt(document.getElementById('h_room').value) || 4000;
+        H.f = parseInt(document.getElementById('h_rf').value) || 800;
+        H.s = parseInt(document.getElementById('h_sub').value) || 3500;
+        
+        const W = App.data.w, D = App.data.d;
+
+        const scene = new THREE.Scene(); 
+        scene.background = new THREE.Color(0x0f172a);
+        
+        const cam = new THREE.PerspectiveCamera(50, con.clientWidth/con.clientHeight, 100, 300000);
+        cam.position.set(W*0.8, H.r*3, D*1.5);
+
+        const ren = new THREE.WebGLRenderer({antialias:true});
+        ren.setSize(con.clientWidth, con.clientHeight);
+        con.appendChild(ren.domElement);
+
+        const controls = new THREE.OrbitControls(cam, ren.domElement);
+        controls.target.set(0, H.r/2, 0);
+        controls.enableDamping = true;
+
+        // --- Visual Layer Boxes ---
+        const addZone = (minY, height, color, opacity) => {
+            const geo = new THREE.BoxGeometry(W, height, D);
+            const mat = new THREE.MeshBasicMaterial({ color: color, transparent: true, opacity: opacity, side: THREE.BackSide, depthWrite: false });
+            const mesh = new THREE.Mesh(geo, mat);
+            mesh.position.y = minY + height/2;
+            scene.add(mesh);
+        };
+        addZone(-(H.f+H.s), H.s, 0x475569, 0.15); // Sub
+        addZone(-H.f, H.f, 0xfefce8, 0.15); // RF
+        addZone(0, H.r, 0xffffff, 0.05); // Room
+        addZone(H.r, H.u, 0x3b82f6, 0.1); // Plenum
+
+        const addGrid = (y, col) => {
+            const g = new THREE.GridHelper(Math.max(W,D), 20, col, 0x1e293b);
+            g.position.y = y; scene.add(g);
+        };
+        addGrid(H.r, 0x60a5fa);
+        addGrid(0, 0x94a3b8);
+        addGrid(-H.f, 0x475569);
+        addGrid(-(H.f+H.s), 0x1e293b);
+
+        // Process Objects
+        const ffuLocs = [], shafts = [];
+        const machines = [];
+        
+        // Split DCCs into Subfab and Plenum based on Layer
+        const dccsSub = [];
+        const dccsPlenum = [];
+        
+        App.data.objs.forEach(o => {
+            let h=1000, y=0, col=0xffffff, op=0.3;
+            
+            if(o.type === 'ffu') {
+                h=300; y=H.r + h/2; col=0x60a5fa; ffuLocs.push(o); op=0.8;
+                // FFU Geometry
+                const mesh = new THREE.Mesh(new THREE.BoxGeometry(o.w, h, o.d), new THREE.MeshBasicMaterial({color:col, transparent:true, opacity:op}));
+                mesh.position.set(o.x, y, o.y);
+                scene.add(mesh);
+
+            } else if (o.type === 'dcc') {
+                h=1800; col=0x06b6d4; op=0.6;
+                if(o.layer === 'subfab') {
+                    y = -(H.f + H.s) + H.s*0.5; 
+                    dccsSub.push({x:o.x, z:o.y, w:o.w, d:o.d, yCenter: y});
+                } else {
+                    y = H.r + 200 + h/2; // Plenum default
+                    dccsPlenum.push({x:o.x, z:o.y, w:o.w, d:o.d, yCenter: y});
+                }
+                const mesh = new THREE.Mesh(new THREE.BoxGeometry(o.w, h, o.d), new THREE.MeshBasicMaterial({color:col, transparent:true, opacity:op}));
+                mesh.position.set(o.x, y, o.y);
+                scene.add(mesh);
+
+            } else if (o.type === 'shaft') {
+                h=H.u + H.r + H.f + H.s; y=((H.u+H.r)-(H.f+H.s))/2; col=0x475569; shafts.push(o); op=0.15;
+                const mesh = new THREE.Mesh(new THREE.BoxGeometry(o.w, h, o.d), new THREE.MeshBasicMaterial({color:col, transparent:true, opacity:op}));
+                mesh.position.set(o.x, y, o.y);
+                scene.add(mesh);
+
+            } else if (o.type === 'mach') {
+                h = o.h || 2500; 
+                y=h/2; col=0x22c55e; op=0.3; 
+                machines.push({x:o.x, z:o.y, w:o.w, d:o.d, h:h});
+                
+                // Add visible Obstacles for machines
+                const geo = new THREE.BoxGeometry(o.w, h, o.d);
+                const edges = new THREE.EdgesGeometry(geo);
+                const line = new THREE.LineSegments(edges, new THREE.LineBasicMaterial({ color: 0x16a34a }));
+                const mesh = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ color: 0x22c55e, transparent: true, opacity: 0.15 }));
+                mesh.position.set(o.x, y, o.y);
+                line.position.set(o.x, y, o.y);
+                scene.add(mesh);
+                scene.add(line);
+            }
+        });
+
+        // Warnings
+        const warnEl = document.getElementById('sim_warning');
+        if(shafts.length === 0 && ffuLocs.length > 0) {
+            warnEl.classList.remove('hidden'); document.getElementById('sim_warn_text').innerText = '缺少回風井 (No Shaft)';
+        } else if(ffuLocs.length === 0) {
+            warnEl.classList.remove('hidden'); document.getElementById('sim_warn_text').innerText = '缺少 FFU';
+        } else {
+            warnEl.classList.add('hidden');
+        }
+
+        // Particles
+        let pCount = ffuLocs.length * 2000;
+        if(pCount === 0) pCount = 2000;
+        if(pCount > 200000) pCount = 200000;
+        
+        document.getElementById('val_pcount').innerText = pCount.toLocaleString();
+        document.getElementById('val_cmh').innerText = (ffuLocs.length * 2000).toLocaleString() + " CMH";
+        
+        const posArr = new Float32Array(pCount * 3);
+        const colArr = new Float32Array(pCount * 3);
+        const meta = [];
+
+        for(let i=0; i<pCount; i++) {
+            posArr[i*3] = (Math.random()-0.5)*W; 
+            posArr[i*3+1] = Math.random()*H.r; 
+            posArr[i*3+2] = (Math.random()-0.5)*D;
+            colArr[i*3]=0.2; colArr[i*3+1]=0.6; colArr[i*3+2]=1.0;
+            meta.push({ state: 'room', vx:0, vy:0, vz:0, target: null, hitDCC: false });
+        }
+
+        const geo = new THREE.BufferGeometry();
+        geo.setAttribute('position', new THREE.BufferAttribute(posArr, 3));
+        geo.setAttribute('color', new THREE.BufferAttribute(colArr, 3));
+        const mat = new THREE.PointsMaterial({vertexColors:true, size: 250, transparent:true, opacity:0.6, sizeAttenuation:true});
+        const particles = new THREE.Points(geo, mat);
+        scene.add(particles);
+
+        Sim3D.scene = scene; Sim3D.renderer = ren;
+
+        // === PHYSICS LOOP ===
+        const animate = () => {
+            Sim3D.frameId = requestAnimationFrame(animate);
+            if(Sim3D.paused) { controls.update(); return; }
+
+            const pa = particles.geometry.attributes.position.array;
+            const ca = particles.geometry.attributes.color.array;
+            
+            // Velocity Colors Thresholds (Units/frame)
+            const V_LOW = 400; 
+            const V_HIGH = 1200;
+
+            for(let i=0; i<pCount; i++) {
+                let x = pa[i*3], y = pa[i*3+1], z = pa[i*3+2];
+                let m = meta[i];
+                let r=0, g=0, b=0;
+
+                // 1. Room
+                if(m.state === 'room') {
+                    m.vy = -180 - Math.random()*60; 
+                    // Machine Collision
+                    for(let mach of machines) {
+                        if(y < mach.h && y > 0 && Math.abs(x - mach.x) < mach.w/2 && Math.abs(z - mach.z) < mach.d/2) {
+                            m.vy *= 0.5; 
+                            const dx = x - mach.x; const dz = z - mach.z; const len = Math.sqrt(dx*dx + dz*dz) || 1;
+                            m.vx += (dx/len) * 200; m.vz += (dz/len) * 200;
+                        }
+                    }
+                    m.vx *= 0.9; m.vz *= 0.9; 
+                    if(y < 0) { m.state = 'rf'; }
+                }
+
+                // 2. RF
+                else if(m.state === 'rf') {
+                    if(y < -H.f) { 
+                        m.state = 'sub'; 
+                        m.hitDCC = false; 
+                        m.target = null; // Clear previous target explicitly when entering subfab
+                    }
+                    else m.vy = -80;
+                }
+
+                // 3. SUBFAB (Strict DCC Logic)
+                else if(m.state === 'sub') {
+                    // Volumetric bounce off floor and ceiling of subfab
+                    if(y < -(H.f+H.s)) { y = -(H.f+H.s); m.vy *= -0.5; }
+                    if(y > -H.f) { y = -H.f; m.vy *= -0.5; } // Bounce off RF bottom
+                    
+                    // Add Turbulence
+                    m.vx += (Math.random()-0.5)*50; 
+                    m.vy += (Math.random()-0.5)*50; 
+                    m.vz += (Math.random()-0.5)*50;
+                    
+                    // Damping to prevent explosion
+                    m.vx *= 0.9; 
+                    m.vz *= 0.9;
+
+                    // A. Check for Subfab DCCs FIRST
+                    if(dccsSub.length > 0 && !m.hitDCC) {
+                        // Seeking Subfab DCC (Locked)
+                         if(!m.target) {
+                             // Find NEAREST DCC
+                             let bestDCC = dccsSub[0], minD = Infinity;
+                             for(let dcc of dccsSub) {
+                                 const d = (x-dcc.x)**2 + (z-dcc.z)**2;
+                                 if(d < minD) { minD = d; bestDCC = dcc; }
+                             }
+                             m.target = { x: bestDCC.x + (Math.random()-0.5)*bestDCC.w, z: bestDCC.z + (Math.random()-0.5)*bestDCC.d };
+                         }
+                         const dx = m.target.x - x, dz = m.target.z - z;
+                         const dist = Math.sqrt(dx*dx + dz*dz);
+                         
+                         if(dist < 800) { m.hitDCC = true; m.target = null; } // Hit! Unlock. (Increased radius)
+                         else {
+                             // Fly towards DCC (Strong pull)
+                             const speed = 1000; 
+                             m.vx = (dx/dist)*speed; m.vz = (dz/dist)*speed; 
+                             // Less vertical clamping for volumetric look
+                         }
+                    }
+                    
+                    // B. Seek Shaft (After DCC hit OR if no DCCs exist)
+                    else {
+                        if(!m.target && shafts.length > 0) {
+                            let bestS = shafts[0], minD = Infinity;
+                            for(let s of shafts) {
+                                const d = (x-s.x)**2 + (z-s.y)**2;
+                                if(d < minD) { minD = d; bestS = s; }
+                            }
+                            m.target = { x: bestS.x + (Math.random()-0.5)*(bestS.w*0.8), z: bestS.y + (Math.random()-0.5)*(bestS.d*0.8), obj: bestS };
+                        }
+
+                        if(m.target) {
+                            const dx = m.target.x - x; const dz = m.target.z - z; const d = Math.sqrt(dx*dx + dz*dz);
+                            const speed = 800 + (2000000 / (d+100)); 
+                            m.vx = (dx/d)*speed; m.vz = (dz/d)*speed; 
+                            
+                            // Check containment in shaft area - Add safety check for m.target.obj
+                            if(m.target.obj && Math.abs(x - m.target.obj.x) < m.target.obj.w/2 + 200 && Math.abs(z - m.target.obj.y) < m.target.obj.d/2 + 200) {
+                                m.state = 'shaft'; 
+                                m.shaftObj = m.target.obj; // Capture first
+                                m.target = null; // Then clear
+                            }
+                        } else { m.vx *= 0.9; m.vz *= 0.9; }
+                    }
+                }
+
+                // 4. SHAFT (Fixed Logic: Even Distribution)
+                else if(m.state === 'shaft') {
+                    // Variable upward speed + turbulence
+                    m.vy = 800 + Math.random() * 600; 
+                    
+                    // Contain within Shaft walls (Soft Wall), instead of forcing to center
+                    if(m.shaftObj) {
+                        const dx = m.shaftObj.x - x;
+                        const dz = m.shaftObj.y - z; // shaftObj.y is Z in our data
+                        
+                        const halfW = m.shaftObj.w / 2;
+                        const halfD = m.shaftObj.d / 2;
+
+                        // Only push back if they drift near the edges (80% safe zone)
+                        if(Math.abs(dx) > halfW * 0.8) m.vx += dx * 0.05;
+                        if(Math.abs(dz) > halfD * 0.8) m.vz += dz * 0.05;
+
+                        // Add turbulence to keep them spread out
+                        m.vx += (Math.random()-0.5) * 50;
+                        m.vz += (Math.random()-0.5) * 50;
+                    }
+                    
+                    m.vx *= 0.9; // Damping
+                    m.vz *= 0.9;
+
+                    if(y > H.r + Math.random()*H.u) { // Enter plenum at random heights
+                         m.state = 'plenum'; 
+                         m.hitDCC = false; 
+                    }
+                }
+
+                // 5. PLENUM
+                else if(m.state === 'plenum') {
+                    // Ceiling bounce
+                    if (y > H.r + H.u) { y = H.r + H.u; m.vy *= -1; }
+                    // Floor bounce (Ceiling of Room)
+                    if (y < H.r) { y = H.r; m.vy *= -0.5; }
+
+                    // Seek FFU (Center)
+                    if(!m.target && ffuLocs.length > 0) {
+                         const f = ffuLocs[Math.floor(Math.random()*ffuLocs.length)];
+                         m.target = { x: f.x, z: f.y };
+                    }
+                    
+                    if(m.target) {
+                        const dx = m.target.x - x; const dz = m.target.z - z; const d = Math.sqrt(dx*dx + dz*dz);
+                        // Reset condition: near FFU and at correct height
+                        if(d < 800 && Math.abs(y - H.r) < 200) {
+                            // Reset to Room
+                            m.state = 'room'; 
+                            x = m.target.x + (Math.random()-0.5)*1000; 
+                            z = m.target.z + (Math.random()-0.5)*1000; 
+                            y = H.r - 50; 
+                            m.target = null;
+                            m.vx = 0; m.vz = 0;
+                        } else {
+                            // Fly towards FFU with turbulence
+                            const speed = 800;
+                            m.vx = (dx/d)*speed + (Math.random()-0.5)*50; 
+                            m.vz = (dz/d)*speed + (Math.random()-0.5)*50;
+                            m.vy += (Math.random()-0.5)*50; // Allow vertical drift
+                            if(y > H.r + 500) m.vy -= 20; // Gentle gravity towards FFU level
+                            
+                            // Damping in Plenum
+                            m.vx *= 0.9;
+                            m.vz *= 0.9;
+                        }
+                    }
+                }
+
+                // === BOUNDARY CHECKS (Wall Collision) ===
+                if (x < -W/2) { x = -W/2; m.vx *= -0.5; }
+                if (x > W/2) { x = W/2; m.vx *= -0.5; }
+                if (z < -D/2) { z = -D/2; m.vz *= -0.5; }
+                if (z > D/2) { z = D/2; m.vz *= -0.5; }
+                
+                // === FINAL SAFETY NET (Bottom Clamp) ===
+                if (y < -(H.f+H.s)) y = -(H.f+H.s) + 10;
+
+                // === VISUALIZATION COLORING ===
+                const velocity = Math.sqrt(m.vx*m.vx + m.vy*m.vy + m.vz*m.vz);
+                
+                if (m.hitDCC) {
+                     // CYAN for Cooled Air (Post-DCC)
+                     r = 0.2; g = 0.9; b = 1.0;
+                } 
+                else if (velocity > V_HIGH) {
+                    // RED (High Speed)
+                    r = 0.9; g = 0.3; b = 0.3;
+                } else if (velocity > V_LOW) {
+                    // GREEN (Medium Flow)
+                    r = 0.2; g = 0.8; b = 0.4;
+                } else {
+                    // BLUE (Laminar/Low Speed)
+                    r = 0.2; g = 0.5; b = 1.0;
+                }
+
+                // Apply
+                pa[i*3] = x + m.vx * 0.16;
+                pa[i*3+1] = y + m.vy * 0.16;
+                pa[i*3+2] = z + m.vz * 0.16;
+                ca[i*3]=r; ca[i*3+1]=g; ca[i*3+2]=b;
+            }
+
+            particles.geometry.attributes.position.needsUpdate = true;
+            particles.geometry.attributes.color.needsUpdate = true;
+            controls.update();
+            ren.render(scene, cam);
+        };
+        animate();
+    }
+};
+
+window.onload = () => App.init();
+
+</script>
+</body>
+</html>
