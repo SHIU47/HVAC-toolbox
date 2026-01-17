@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>HVAC 專業設計審查級壓損計算書 (機電主任工程師版)</title>
+    <title>HVAC 專業設計審查級壓損計算書 (v2.0 )</title>
     
     <!-- 載入核心與字體 -->
     <script src="https://cdn.tailwindcss.com"></script>
@@ -91,9 +91,9 @@
                 <div>
                     <h1 class="text-3xl font-black tracking-tight">HVAC 系統壓力損失審查計算書</h1>
                     <div class="flex items-center gap-3 mt-2">
-                        <span class="text-[11px] font-bold uppercase tracking-widest text-blue-400">Mechanical Engineering Suite</span>
+                        <span class="text-[11px] font-bold uppercase tracking-widest text-blue-400">Mechanical Engineering Suite v2.0</span>
                         <div class="h-1 w-1 rounded-full bg-slate-600"></div>
-                        <span class="text-[11px] text-slate-400 font-mono">Standard: ASHRAE Fundamentals 2025</span>
+                        <span class="text-[11px] text-slate-400 font-mono">Added: Elevation Head Calculation</span>
                     </div>
                 </div>
             </div>
@@ -165,6 +165,7 @@
                                 <p class="font-black text-slate-800 underline mb-2 tracking-tight">Hydronic System (水系統):</p>
                                 <p>● 當 $Re \ge 10^4$ 時，採用 Hazen-Williams 公式計算磨擦。</p>
                                 <p>● 低雷諾數流態下，自動改採 Darcy-Weisbach 以維護審查精度。</p>
+                                <p>● <strong>總揚程</strong> $H = (H_f + H_m) \times S.F. + H_e + H_z$。</p>
                             </div>
                             <div id="airLogic" class="hidden bg-slate-50 p-5 rounded-[1.5rem] border border-slate-100">
                                 <p class="font-black text-slate-800 underline mb-2 tracking-tight">Air Distribution (風系統):</p>
@@ -204,10 +205,22 @@
                                 <span class="text-[11px] font-bold text-amber-600 uppercase tracking-tighter">設備定額 $H_e$</span>
                                 <span class="mono font-bold text-amber-700 bg-amber-50 px-2 py-1 rounded" id="resEquip">0.000</span>
                             </div>
+                            
+                            <!-- Static Head Row (New) -->
+                            <div id="staticHeadRow" class="flex justify-between items-center group bg-emerald-50 p-2 rounded-lg border border-emerald-100">
+                                <div class="flex flex-col">
+                                    <span class="text-[11px] font-black text-emerald-600 uppercase tracking-tighter">靜落差/位能 $H_z$</span>
+                                    <span class="text-[9px] text-emerald-400 font-bold leading-none">僅開放系統需填</span>
+                                </div>
+                                <div class="flex items-center gap-2">
+                                    <input type="number" id="staticHeadVal" value="0" step="0.5" class="input-pro w-20 text-right font-mono font-bold text-emerald-700 bg-white" onchange="updateCalculations()">
+                                    <span class="text-[10px] text-emerald-500 font-bold">m</span>
+                                </div>
+                            </div>
                         </div>
 
                         <div class="p-6 bg-slate-50 rounded-[2rem] border border-slate-100 space-y-3">
-                            <label class="block text-[10px] font-black text-slate-400 mb-1 uppercase tracking-widest font-bold">安全係數 (Safety Factor)</label>
+                            <label class="block text-[10px] font-black text-slate-400 mb-1 uppercase tracking-widest font-bold">安全係數 (S.F.) - 僅摩擦項</label>
                             <input type="number" id="sfValue" value="1.15" step="0.01" class="font-mono w-full bg-white border border-slate-200 rounded-2xl p-4 font-black text-blue-600 input-pro" onchange="updateCalculations()">
                         </div>
 
@@ -241,34 +254,33 @@
     <div id="helpModal" class="fixed inset-0 bg-slate-900/90 backdrop-blur-md z-50 flex items-center justify-center hidden p-6">
         <div class="bg-white w-full max-w-4xl rounded-[3.5rem] shadow-2xl overflow-hidden animate-slide">
             <div class="p-10 border-b border-slate-100 flex justify-between items-center bg-slate-50">
-                <h2 class="text-2xl font-black text-slate-900 tracking-tighter">HVAC 壓損計算器：專家使用指南</h2>
+                <h2 class="text-2xl font-black text-slate-900 tracking-tighter">HVAC 壓損計算器 v2：專家使用指南</h2>
                 <button onclick="toggleHelp()" class="p-3 hover:bg-slate-200 rounded-full transition-all text-xl">✕</button>
             </div>
             <div class="p-12 max-h-[70vh] overflow-y-auto space-y-12">
                 <section class="grid grid-cols-1 md:grid-cols-2 gap-12 text-slate-600">
                     <div class="space-y-4">
-                        <h4 class="font-black text-blue-600 uppercase text-xs tracking-[0.2em] border-b pb-2 font-bold">水系統操作 SOP</h4>
+                        <h4 class="font-black text-blue-600 uppercase text-xs tracking-[0.2em] border-b pb-2 font-bold">水系統與高程 (Water & Elevation)</h4>
                         <ol class="space-y-4 text-sm list-decimal ml-4">
-                            <li><strong>路徑選取</strong>：僅輸入最不利迴路（泵到最遠點）。</li>
-                            <li><strong>流量遺傳</strong>：只需輸入第一段流量，後續零件自動繼承。</li>
-                            <li><strong>選單功能</strong>：優先從預設零件庫選取 K 值，確保審查一致性。</li>
+                            <li><strong>閉路系統 (Closed Loop)</strong>：如冰水、熱水系統。水由泵浦送出再回到泵浦，位能互相抵銷。此時 <span class="text-emerald-600 font-bold">靜落差 $H_z$ 請設為 0</span>。</li>
+                            <li><strong>開路系統 (Open Loop)</strong>：如冷卻水塔。泵浦需將水從水盤打至散熱材噴嘴。此時請輸入 <span class="text-emerald-600 font-bold">噴嘴與水盤液面之高程差 (m)</span>。</li>
+                            <li><strong>補給水泵</strong>：需克服地下室至頂樓水箱之高差，請如實輸入垂直高度。</li>
                         </ol>
                     </div>
                     <div class="space-y-4">
-                        <h4 class="font-black text-indigo-600 uppercase text-xs tracking-[0.2em] border-b pb-2 font-bold">風系統重點</h4>
+                        <h4 class="font-black text-indigo-600 uppercase text-xs tracking-[0.2em] border-b pb-2 font-bold">風系統 (Air)</h4>
                         <ul class="space-y-4 text-sm list-disc ml-4">
-                            <li><strong>幾何類型</strong>：圓管/方管自動切換計算模型。</li>
-                            <li><strong>選型基礎</strong>：風機選型請以右側「總靜壓需求」為準。</li>
+                            <li>風機靜壓 (ESP/TSP) 計算通常忽略空氣柱重量（Stack Effect）。</li>
+                            <li>本工具在切換至風系統時，會自動隱藏靜落差欄位以防誤用。</li>
+                            <li>若需計算高樓煙囪效應，請另行檢討並加在「設備定額」中。</li>
                         </ul>
                     </div>
                 </section>
                 <div class="bg-red-50 p-10 rounded-[2.5rem] border border-red-100">
-                    <h4 class="font-black text-red-800 uppercase text-xs tracking-widest mb-6 font-bold">⚠️ 工程設計防呆檢查 (Audit)</h4>
+                    <h4 class="font-black text-red-800 uppercase text-xs tracking-widest mb-6 font-bold">⚠️ 安全係數與高程邏輯</h4>
                     <div class="grid grid-cols-1 sm:grid-cols-2 gap-6 text-[11px] font-bold text-red-700 leading-relaxed">
-                        <div class="flex gap-3"><span>✕</span> <span>切勿每一段管都輸入流量，這會導致繼承邏輯錯誤。</span></div>
-                        <div class="flex gap-3"><span>✕</span> <span>流速警告若顯示紅色，代表噪音與震動過高，請調大管徑。</span></div>
-                        <div class="flex gap-3"><span>✕</span> <span>安全係數 SF 僅作用於管路磨擦，不對設備壓損重複計算。</span></div>
-                        <div class="flex gap-3"><span>✕</span> <span>請確認零件庫選取的項目是否與您的圖紙規範一致。</span></div>
+                        <div class="flex gap-3"><span>!</span> <span>注意：安全係數 (S.F.) 僅放大「管路摩擦」與「零件阻力」。</span></div>
+                        <div class="flex gap-3"><span>!</span> <span>設備本身的壓損（如冰機）與靜落差（重力）為物理定值，程式不會對這兩項乘上 1.15 倍，避免過度設計 (Over-design)。</span></div>
                     </div>
                 </div>
             </div>
@@ -360,6 +372,7 @@
             const elAirL = document.getElementById('airLogic');
             const elWatL = document.getElementById('waterLogic');
             const elTag = document.getElementById('currentSystemTag');
+            const elStaticRow = document.getElementById('staticHeadRow'); // Static Head Control
 
             if(elDyn) elDyn.classList.toggle('hidden', mode === 'water');
             if(elAir) elAir.classList.toggle('hidden', mode === 'water');
@@ -367,6 +380,9 @@
             if(elAirL) elAirL.classList.toggle('hidden', mode === 'water');
             if(elWatL) elWatL.classList.toggle('hidden', mode === 'air');
             
+            // Static Head only visible for Water
+            if(elStaticRow) elStaticRow.classList.toggle('hidden', mode === 'air');
+
             if(elTag) {
                 elTag.innerText = (mode === 'water') ? 'WATER SYSTEM' : 'AIR SYSTEM';
                 elTag.className = (mode === 'water') ? 'px-3 py-1 rounded-lg bg-blue-600 text-white text-[10px] font-black' : 'px-3 py-1 rounded-lg bg-indigo-600 text-white text-[10px] font-black';
@@ -383,7 +399,7 @@
                 type: type,
                 name: type === 'pipe' ? `P-${rows.length+1}` : (type === 'fitting' ? `F-${rows.length+1}` : `E-${rows.length+1}`),
                 d1: mode === 'water' ? 50 : 300, 
-                d2: mode === 'air' ? 300 : 0,   
+                d2: mode === 'air' ? 300 : 0,    
                 shape: 'circular',
                 length: 10,
                 flow: 0,
@@ -507,7 +523,12 @@
             });
 
             const sf = parseFloat(document.getElementById('sfValue').value) || 1.0;
-            const total = (fricTotal + fitTotal) * sf + eqTotal;
+            // 获取静态高差
+            const hz = mode === 'water' ? (parseFloat(document.getElementById('staticHeadVal').value) || 0) : 0;
+            
+            // 总扬程计算：安全系数不应放大重力项(Hz)与设备项(He)，通常仅放大摩擦损耗，但有些规范要求全部放大。
+            // 此处采用业界标准：SF仅放大不确定性较高的管路摩擦與零件。
+            const total = (fricTotal + fitTotal) * sf + eqTotal + hz;
             
             document.getElementById('resFriction').innerText = fricTotal.toFixed(3);
             document.getElementById('resFitting').innerText = fitTotal.toFixed(3);
