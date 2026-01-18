@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Cleanroom Fab Designer Lite (v50.2)</title>
+    <title>Cleanroom Flow Designe Lite (v50.3 )</title>
     
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/@phosphor-icons/web"></script>
@@ -92,7 +92,7 @@
             </div>
             <div>
                 <h1 class="font-bold text-slate-800 text-base leading-tight">Fab Designer Pro</h1>
-                <div class="text-[11px] text-slate-500 font-medium tracking-wide">V50.2 - LOGIC FIXED</div>
+                <div class="text-[11px] text-slate-500 font-medium tracking-wide">V50.3 - FLOW FIXED</div>
             </div>
         </div>
 
@@ -419,7 +419,7 @@
 </div>
 
 <script>
-/** * FAB DESIGNER PRO v50.2 - LOGIC FIXED * */
+/** * FAB DESIGNER PRO v50.3 - FLOW FIXED * */
 
 const App = {
     data: {
@@ -1320,7 +1320,8 @@ const Sim3D = {
                                 const d = (x-s.x)**2 + (z-s.y)**2;
                                 if(d < minD) { minD = d; bestS = s; }
                             }
-                            m.target = { x: bestS.x + (Math.random()-0.5)*(bestS.w*0.8), z: bestS.y + (Math.random()-0.5)*(bestS.d*0.8), obj: bestS };
+                            // FIXED: Use 90% of shaft width for entry target to spread particles
+                            m.target = { x: bestS.x + (Math.random()-0.5)*(bestS.w*0.9), z: bestS.y + (Math.random()-0.5)*(bestS.d*0.9), obj: bestS };
                         }
 
                         if(m.target) {
@@ -1338,16 +1339,26 @@ const Sim3D = {
                     }
                 }
 
-                // 4. SHAFT (Up)
+                // 4. SHAFT (Up) - FIXED: No Centering Force
                 else if(m.state === 'shaft') {
                     m.vy = 800 + Math.random() * 600; 
                     
                     if(m.shaftObj) {
-                         // Keep inside shaft bounds loosely
-                         const dx = m.shaftObj.x - x; const dz = m.shaftObj.y - z;
-                         m.vx += dx * 0.05; m.vz += dz * 0.05;
+                         const s = m.shaftObj;
+                         const halfW = s.w/2; const halfD = s.d/2;
+                         const relX = x - s.x; const relZ = z - s.y;
+                         
+                         // ONLY push back if hitting walls (Boundary Constraint)
+                         if(relX < -halfW*0.9) m.vx += 20;
+                         else if(relX > halfW*0.9) m.vx -= 20;
+                         
+                         if(relZ < -halfD*0.9) m.vz += 20;
+                         else if(relZ > halfD*0.9) m.vz -= 20;
+                         
+                         // Random spread
+                         m.vx += (Math.random()-0.5)*20;
+                         m.vz += (Math.random()-0.5)*20;
                     }
-                    m.vx *= 0.8; m.vz *= 0.8;
 
                     if(y > H.r + Math.random()*H.u) { 
                          m.state = 'plenum'; 
