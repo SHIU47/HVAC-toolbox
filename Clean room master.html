@@ -220,7 +220,7 @@
                 <div class="mt-4"><span id="mau_room_status" class="badge-info uppercase">DESIGNED</span></div>
             </div>
             <div class="summary-card border-b-8 border-emerald-500 relative">
-                <div class="absolute top-4 right-4 help-circle" title="公式：(總循環量 - 排氣量) / (面積 × 高度)">?</div>
+                <div class="absolute top-4 right-4 help-circle" title="公式：總循環量 / (面積 × 高度)">?</div>
                 <span class="text-[11px] font-black opacity-40 uppercase tracking-widest">換氣次數 (ACH)</span>
                 <div class="flex items-baseline gap-2 mt-3 font-mono">
                     <span id="res_ACH" class="text-4xl text-emerald-400 tracking-tighter">0</span>
@@ -392,7 +392,7 @@ function renderRoomList() {
         item.onclick = () => setActiveRoom(room.id);
         const vol = room.area * room.height;
         const totalFlow = room.ffuQty * room.ffuV * FFU_SIZE_DEFAULT * 3600;
-        const ach = vol > 0 ? ((totalFlow - room.exhaust) / vol).toFixed(0) : 0;
+        const ach = vol > 0 ? (totalFlow / vol).toFixed(0) : 0;
         item.innerHTML = `<div class="flex justify-between items-start gap-2"><span class="font-black text-base text-slate-800 truncate">${room.name}</span><span class="text-[9px] font-black shrink-0 px-2 py-0.5 rounded-full ${ach < 70 ? 'bg-amber-100 text-amber-600' : 'bg-emerald-100 text-emerald-600'}">${ach} ACH</span></div><p class="text-[10px] text-slate-400 font-black uppercase mt-1 tracking-widest">${room.area} m² / ${room.ffuQty} FFU</p>`;
         listEl.appendChild(item);
     });
@@ -467,8 +467,8 @@ function calculateProject() {
             }
         });
 
-        // 2. ✅ ACH 公式：(總循環量 - 排氣量) / 體積
-        const ach = volume > 0 ? ((totalFFUFlow - room.exhaust) / volume) : 0;
+        // 2. ✅ ACH 公式：總循環量 / 體積
+        const ach = volume > 0 ? (totalFFUFlow / volume) : 0;
         const balance = totalHeatLoad > 0 ? (roomDccCooling / totalHeatLoad * 100) : 0;
 
         // 建議 FFU (依帶熱需求)
