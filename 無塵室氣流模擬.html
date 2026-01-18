@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Cleanroom Flow Designe Lite (v50.3 )</title>
+    <title>Cleanroom Flow Designer Lite (v50.4)</title>
     
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/@phosphor-icons/web"></script>
@@ -92,7 +92,7 @@
             </div>
             <div>
                 <h1 class="font-bold text-slate-800 text-base leading-tight">Fab Designer Pro</h1>
-                <div class="text-[11px] text-slate-500 font-medium tracking-wide">V50.3 - FLOW FIXED</div>
+                <div class="text-[11px] text-slate-500 font-medium tracking-wide">V50.4 - OBSTACLES ADDED</div>
             </div>
         </div>
 
@@ -152,6 +152,12 @@
                 <i class="ph-bold ph-hard-drives"></i>
                 <span>機台</span>
                 <div class="tooltip">生產設備 (碰撞體)</div>
+            </div>
+
+            <div class="icon-btn" id="tool_obs" onclick="CAD.setTool('obs')">
+                <i class="ph-bold ph-wall"></i>
+                <span>阻礙</span>
+                <div class="tooltip">管線/柱子 (Obstacle)</div>
             </div>
 
             <div class="w-10 h-[1px] bg-slate-200 my-1"></div>
@@ -419,7 +425,7 @@
 </div>
 
 <script>
-/** * FAB DESIGNER PRO v50.3 - FLOW FIXED * */
+/** * FAB DESIGNER PRO v50.4 - OBSTACLES ADDED * */
 
 const App = {
     data: {
@@ -453,8 +459,12 @@ const App = {
         // 3. DCCs - Default to Subfab
         App.data.objs.push({id: id++, type: 'dcc', layer: 'subfab', x: -16000, y: 0, w: 1000, d: 6000, col: '#06b6d4', dccLoc: 'subfab'});
         App.data.objs.push({id: id++, type: 'dcc', layer: 'subfab', x: 16000, y: 0, w: 1000, d: 6000, col: '#06b6d4', dccLoc: 'subfab'});
+
+        // 4. Obstacles (Pipes/Pillars) - Demo
+        // Subfab pipe
+        App.data.objs.push({id: id++, type: 'obs', layer: 'subfab', x: 0, y: -8000, w: 20000, d: 1000, h: 1000, col: '#64748b', label: 'OBS'});
         
-        // 4. Run Auto FFU
+        // 5. Run Auto FFU
         App.ui.activeLayer = 'ceiling'; // trick to enable function
         CAD.autoLayoutFFU(true); // pass true to skip alert in init
 
@@ -594,9 +604,9 @@ const CAD = {
                 
                 // Show Height prop
                 const hContainer = document.getElementById('prop_h_container');
-                if(hit.type === 'mach') {
+                if(hit.type === 'mach' || hit.type === 'obs') {
                     hContainer.classList.remove('hidden');
-                    document.getElementById('sel_h').value = hit.h || 2500;
+                    document.getElementById('sel_h').value = hit.h || 1000;
                 } else {
                     hContainer.classList.add('hidden');
                 }
@@ -677,6 +687,7 @@ const CAD = {
                     if(CAD.tool==='dcc') { col = '#06b6d4'; dccLoc = 'subfab'; }
                     if(CAD.tool==='mach') { col = '#22c55e'; h=2500; }
                     if(CAD.tool==='shaft') { col = '#64748b'; }
+                    if(CAD.tool==='obs') { col = '#64748b'; label='OBS'; h=1000; }
                     
                     App.data.objs.push({
                         id: Date.now(), type: CAD.tool, layer: App.ui.activeLayer,
@@ -722,7 +733,7 @@ const CAD = {
         if(CAD.selected) {
             CAD.selected.w = parseFloat(document.getElementById('sel_w').value);
             CAD.selected.d = parseFloat(document.getElementById('sel_d').value);
-            if(CAD.selected.type === 'mach') {
+            if(CAD.selected.type === 'mach' || CAD.selected.type === 'obs') {
                 CAD.selected.h = parseFloat(document.getElementById('sel_h').value);
             }
             if(CAD.selected.type === 'dcc') {
@@ -1060,6 +1071,18 @@ const Section = {
                     if(o.dccLoc === 'subfab') objBottomY = -(H.f+H.s); 
                     else objBottomY = H.r + 200;
                     objH = 1800;
+                } else if (o.type === 'obs') {
+                    // Obstacles vary by layer
+                    if(o.layer === 'subfab') {
+                        // Subfab pipes - center floating or floor mounted?
+                        // Let's float them to look like pipes
+                        objBottomY = -(H.f + H.s) + (H.s/2) - (o.h/2);
+                    } else if(o.layer === 'room') {
+                        objBottomY = 0; // Pillars
+                    } else if(o.layer === 'ceiling') {
+                        objBottomY = H.r + (H.u/2) - (o.h/2); // Ducts
+                    }
+                    objH = o.h || 1000;
                 } else { return; }
 
                 const screenX = Ox + (proj.t * cutLen * scale);
@@ -1147,6 +1170,7 @@ const Sim3D = {
         // Process Objects & Calc Velocity
         const ffuLocs = [], shafts = [];
         const machines = [];
+        const obstacles = [];
         const dccsSub = [];
         const dccsPlenum = [];
         
@@ -1177,13 +1201,34 @@ const Sim3D = {
                 h = o.h || 2500; 
                 y=h/2; col=0x22c55e; op=0.3; 
                 machines.push({x:o.x, z:o.y, w:o.w, d:o.d, h:h});
+            } else if (o.type === 'obs') {
+                h = o.h || 1000;
+                col = 0x64748b; op = 0.5;
+                // Layer logic
+                if(o.layer === 'subfab') {
+                    // Floating pipe in Subfab
+                    y = -(H.f + H.s) + (H.s/2); 
+                } else if(o.layer === 'room') {
+                    // Pillar in Room
+                    y = h/2; 
+                } else if(o.layer === 'ceiling') {
+                    // Duct in Plenum
+                    y = H.r + (H.u/2);
+                }
+                obstacles.push({x:o.x, yCenter:y, z:o.y, w:o.w, d:o.d, h:h});
             }
             
             // Render Object
-            if(o.type !== 'ffu') { // FFUs rendered later or separately? No, render simple box
+            if(o.type !== 'ffu') { 
                  const mesh = new THREE.Mesh(new THREE.BoxGeometry(o.w, h, o.d), new THREE.MeshBasicMaterial({color:col, transparent:true, opacity:op}));
                  mesh.position.set(o.x, y, o.y);
                  scene.add(mesh);
+                 // Add wireframe to obstacles to make them look "constructed"
+                 if(o.type === 'obs') {
+                     const wire = new THREE.LineSegments(new THREE.EdgesGeometry(mesh.geometry), new THREE.LineBasicMaterial({color:0x334155}));
+                     wire.position.copy(mesh.position);
+                     scene.add(wire);
+                 }
             } else {
                  const mesh = new THREE.Mesh(new THREE.BoxGeometry(o.w, h, o.d), new THREE.MeshBasicMaterial({color:col, transparent:true, opacity:op}));
                  mesh.position.set(o.x, y, o.y);
@@ -1259,6 +1304,32 @@ const Sim3D = {
                 let x = pa[i*3], y = pa[i*3+1], z = pa[i*3+2];
                 let m = meta[i];
                 let r=0, g=0, b=0;
+
+                // --- GLOBAL OBSTACLE COLLISION (Any State) ---
+                // We check obstacle collision regardless of state to ensure physical consistency
+                for(let obs of obstacles) {
+                     // Simple AABB check (yCenter +/- h/2)
+                     const oTop = obs.yCenter + obs.h/2;
+                     const oBot = obs.yCenter - obs.h/2;
+                     
+                     if(y < oTop && y > oBot && Math.abs(x - obs.x) < obs.w/2 && Math.abs(z - obs.z) < obs.d/2) {
+                         // HIT OBSTACLE
+                         // Simple deflection: Push away from center
+                         const dx = x - obs.x; 
+                         const dz = z - obs.z;
+                         // Normalize
+                         const dist = Math.sqrt(dx*dx + dz*dz) || 1;
+                         
+                         // Push out
+                         const pushForce = 200; 
+                         m.vx += (dx/dist) * pushForce;
+                         m.vz += (dz/dist) * pushForce;
+                         
+                         // If vertical flow (like in Room), slow down Y to simulate drag
+                         m.vy *= 0.5;
+                     }
+                }
+
 
                 // --- STATE MACHINE ---
 
