@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Cleanroom Flow Designer Lite (v50.4)</title>
+    <title>Cleanroom Flow Designer Lite (v50.5)</title>
     
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/@phosphor-icons/web"></script>
@@ -92,7 +92,7 @@
             </div>
             <div>
                 <h1 class="font-bold text-slate-800 text-base leading-tight">Fab Designer Pro</h1>
-                <div class="text-[11px] text-slate-500 font-medium tracking-wide">V50.4 - OBSTACLES ADDED</div>
+                <div class="text-[11px] text-slate-500 font-medium tracking-wide">V50.5 - DCC HEIGHT</div>
             </div>
         </div>
 
@@ -425,7 +425,7 @@
 </div>
 
 <script>
-/** * FAB DESIGNER PRO v50.4 - OBSTACLES ADDED * */
+/** * FAB DESIGNER PRO v50.5 - DCC HEIGHT ADDED * */
 
 const App = {
     data: {
@@ -457,8 +457,8 @@ const App = {
         App.data.objs.push({id: id++, type: 'mach', layer: 'room', x: 0, y: 0, w: 4000, d: 12000, h: 3000, col: '#22c55e'});
 
         // 3. DCCs - Default to Subfab
-        App.data.objs.push({id: id++, type: 'dcc', layer: 'subfab', x: -16000, y: 0, w: 1000, d: 6000, col: '#06b6d4', dccLoc: 'subfab'});
-        App.data.objs.push({id: id++, type: 'dcc', layer: 'subfab', x: 16000, y: 0, w: 1000, d: 6000, col: '#06b6d4', dccLoc: 'subfab'});
+        App.data.objs.push({id: id++, type: 'dcc', layer: 'subfab', x: -16000, y: 0, w: 1000, d: 6000, h: 1800, col: '#06b6d4', dccLoc: 'subfab'});
+        App.data.objs.push({id: id++, type: 'dcc', layer: 'subfab', x: 16000, y: 0, w: 1000, d: 6000, h: 1800, col: '#06b6d4', dccLoc: 'subfab'});
 
         // 4. Obstacles (Pipes/Pillars) - Demo
         // Subfab pipe
@@ -602,11 +602,11 @@ const CAD = {
                 document.getElementById('sel_d').value = hit.d;
                 document.getElementById('sel_id').innerText = hit.id.toString().substr(-4);
                 
-                // Show Height prop
+                // Show Height prop (Updated for DCC)
                 const hContainer = document.getElementById('prop_h_container');
-                if(hit.type === 'mach' || hit.type === 'obs') {
+                if(hit.type === 'mach' || hit.type === 'obs' || hit.type === 'dcc') {
                     hContainer.classList.remove('hidden');
-                    document.getElementById('sel_h').value = hit.h || 1000;
+                    document.getElementById('sel_h').value = hit.h || (hit.type==='dcc'?1800:1000);
                 } else {
                     hContainer.classList.add('hidden');
                 }
@@ -684,7 +684,7 @@ const CAD = {
                     let dccLoc = null;
                     
                     if(CAD.tool==='ffu') { col = '#60a5fa'; }
-                    if(CAD.tool==='dcc') { col = '#06b6d4'; dccLoc = 'subfab'; }
+                    if(CAD.tool==='dcc') { col = '#06b6d4'; dccLoc = 'subfab'; h=1800; }
                     if(CAD.tool==='mach') { col = '#22c55e'; h=2500; }
                     if(CAD.tool==='shaft') { col = '#64748b'; }
                     if(CAD.tool==='obs') { col = '#64748b'; label='OBS'; h=1000; }
@@ -733,14 +733,11 @@ const CAD = {
         if(CAD.selected) {
             CAD.selected.w = parseFloat(document.getElementById('sel_w').value);
             CAD.selected.d = parseFloat(document.getElementById('sel_d').value);
-            if(CAD.selected.type === 'mach' || CAD.selected.type === 'obs') {
+            if(CAD.selected.type === 'mach' || CAD.selected.type === 'obs' || CAD.selected.type === 'dcc') {
                 CAD.selected.h = parseFloat(document.getElementById('sel_h').value);
             }
             if(CAD.selected.type === 'dcc') {
                 CAD.selected.dccLoc = document.getElementById('sel_dcc_layer').value;
-                // Update Layer visual property strictly if desired, or keep as subfab layer in list but mark prop
-                // Note: We keep "layer" prop as 'subfab' or 'ceiling' mostly for 2D visibility toggling
-                // But dccLoc determines physics.
             }
             CAD.draw();
         }
@@ -1070,7 +1067,7 @@ const Section = {
                     // Logic for DCC Layer Display
                     if(o.dccLoc === 'subfab') objBottomY = -(H.f+H.s); 
                     else objBottomY = H.r + 200;
-                    objH = 1800;
+                    objH = o.h || 1800; // Use object height
                 } else if (o.type === 'obs') {
                     // Obstacles vary by layer
                     if(o.layer === 'subfab') {
@@ -1185,7 +1182,7 @@ const Sim3D = {
                 h=300; y=H.r + h/2; col=0x60a5fa; ffuLocs.push(o); op=0.8;
                 totalFFUArea += (o.w/1000 * o.d/1000);
             } else if (o.type === 'dcc') {
-                h=1800; col=0x06b6d4; op=0.6;
+                h=o.h || 1800; col=0x06b6d4; op=0.6; // Use dynamic height
                 // Strict Layer Check
                 if(o.dccLoc === 'plenum') {
                      y = H.r + 200 + h/2;
