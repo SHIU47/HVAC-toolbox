@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Cleanroom Flow Designer Lite (v50.5)</title>
+    <title>Cleanroom Flow Designer Lite (v53.3)</title>
     
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/@phosphor-icons/web"></script>
@@ -56,7 +56,7 @@
         .select-field { width: 100%; border: 1px solid #e2e8f0; border-radius: 8px; padding: 8px 12px; font-size: 13px; color: #1e293b; background-color: white; }
         
         /* Canvas */
-        .canvas-wrapper { flex: 1; background-color: #f8fafc; position: relative; overflow: hidden; cursor: crosshair; background-image: radial-gradient(#e2e8f0 1px, transparent 1px); background-size: 20px 20px; }
+        .canvas-wrapper { flex: 1; background-color: #f8fafc; position: relative; overflow: hidden; cursor: none; /* Hide default cursor to use custom crosshair */ background-image: radial-gradient(#e2e8f0 1px, transparent 1px); background-size: 20px 20px; }
         canvas { display: block; width: 100%; height: 100%; outline: none; }
 
         /* HUD & Overlays */
@@ -92,7 +92,7 @@
             </div>
             <div>
                 <h1 class="font-bold text-slate-800 text-base leading-tight">Fab Designer Pro</h1>
-                <div class="text-[11px] text-slate-500 font-medium tracking-wide">V50.5 - DCC HEIGHT</div>
+                <div class="text-[11px] text-slate-500 font-medium tracking-wide">V53.3 - STABILITY FIX</div>
             </div>
         </div>
 
@@ -154,16 +154,22 @@
                 <div class="tooltip">生產設備 (碰撞體)</div>
             </div>
 
+            <div class="icon-btn" id="tool_pillar" onclick="CAD.setTool('pillar')">
+                <i class="ph-bold ph-columns"></i>
+                <span>柱子</span>
+                <div class="tooltip">結構柱 (全樓層)</div>
+            </div>
+
             <div class="icon-btn" id="tool_obs" onclick="CAD.setTool('obs')">
                 <i class="ph-bold ph-wall"></i>
                 <span>阻礙</span>
-                <div class="tooltip">管線/柱子 (Obstacle)</div>
+                <div class="tooltip">管線/障礙 (Obstacle)</div>
             </div>
 
             <div class="w-10 h-[1px] bg-slate-200 my-1"></div>
 
             <div class="icon-btn" id="tool_shaft" onclick="CAD.activateLayer('subfab'); CAD.setTool('shaft')">
-                <i class="ph-bold ph-columns"></i>
+                <i class="ph-bold ph-columns-plus-right"></i>
                 <span>回風</span>
                 <div class="tooltip">回風井 (Return Shaft)</div>
             </div>
@@ -252,7 +258,7 @@
                         </div>
                         <div class="bg-yellow-50 text-yellow-800 p-3 rounded-lg text-[10px] mb-4 border border-yellow-200 leading-relaxed">
                             <i class="ph-bold ph-warning"></i> 
-                            系統將自動避開回風道 (Shaft) 區域。請先完成無塵室尺寸與回風道配置。
+                            系統將自動避開回風道 (Shaft) 與 柱子 (Pillar)。請先完成無塵室尺寸與回風道配置。
                         </div>
                         <div class="space-y-4">
                             <div class="grid grid-cols-2 gap-4">
@@ -262,11 +268,8 @@
                                 </div>
                                 <div class="input-group mb-0">
                                     <label class="input-label">覆蓋率 (%)</label>
-                                    <select id="ffu_cov" class="select-field">
-                                        <option value="25">25% (Low)</option>
-                                        <option value="50" selected>50% (Std)</option>
-                                        <option value="100">100% (Full)</option>
-                                    </select>
+                                    <input id="ffu_cov" class="input-field font-bold text-blue-600" value="50" min="1" max="100" type="number">
+                                    <div class="text-[10px] text-slate-400 mt-1">請輸入 1-100</div>
                                 </div>
                             </div>
                             <button onclick="CAD.autoLayoutFFU()" class="w-full py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-sm font-bold shadow-lg shadow-blue-500/20 transition flex items-center justify-center gap-2">
@@ -304,7 +307,7 @@
             </div>
         </div>
 
-        <div id="view-t2" class="flex-1 w-full hidden relative bg-slate-100">
+        <div id="view-t2" class="flex-1 w-full hidden relative bg-slate-100" style="cursor: default;">
              <div class="absolute left-6 top-6 bottom-6 w-80 bg-white rounded-2xl shadow-floating p-6 z-20 flex flex-col">
                 <div class="text-sm font-bold text-slate-800 mb-6 pb-4 border-b border-slate-100 flex items-center gap-2">
                     <i class="ph-fill ph-ruler-vertical text-blue-500"></i>
@@ -360,7 +363,7 @@
              </div>
         </div>
 
-        <div id="view-t3" class="flex-1 w-full hidden relative bg-slate-900">
+        <div id="view-t3" class="flex-1 w-full hidden relative bg-slate-900" style="cursor: default;">
             <div id="three_target" class="w-full h-full outline-none cursor-move"></div>
             
             <div id="sim_warning" class="warn-badge hidden">
@@ -380,18 +383,30 @@
                     </div>
                 </div>
 
-                <div class="bg-slate-50 rounded-xl p-4 mb-6 border border-slate-200 space-y-3">
-                     <div class="flex justify-between items-center text-xs">
-                        <span class="text-slate-500 font-medium">總風量 (CMH)</span>
-                        <span class="font-bold text-slate-700 font-mono" id="val_cmh">0</span>
+                <div class="bg-slate-50 rounded-xl p-4 mb-6 border border-slate-200 space-y-2">
+                     <div class="flex justify-between items-center text-xs border-b border-slate-200 pb-2">
+                        <span class="text-slate-500 font-medium">總循環風量 (CMH)</span>
+                        <span class="font-bold text-slate-800 font-mono text-sm" id="val_cmh">0</span>
                     </div>
                      <div class="flex justify-between items-center text-xs">
-                        <span class="text-slate-500 font-medium">垂直回風速 (m/s)</span>
+                        <span class="text-slate-500 font-medium">Sub-Fab 風速 (m/s)</span>
+                        <span class="font-bold text-slate-700 font-mono" id="val_v_sub">0.0</span>
+                    </div>
+                     <div class="flex justify-between items-center text-xs">
+                        <span class="text-slate-500 font-medium">側回風道截面 (m/s)</span>
+                        <span class="font-bold text-slate-700 font-mono" id="val_v_shaft_entry">0.0</span>
+                    </div>
+                     <div class="flex justify-between items-center text-xs">
+                        <span class="text-slate-500 font-medium">垂直回風井 (m/s)</span>
                         <span class="font-bold text-slate-700 font-mono" id="val_v_shaft">0.0</span>
                     </div>
                      <div class="flex justify-between items-center text-xs">
-                        <span class="text-slate-500 font-medium">下層回風速 (m/s)</span>
-                        <span class="font-bold text-slate-700 font-mono" id="val_v_sub">0.0</span>
+                        <span class="text-slate-500 font-medium">上夾層 Plenum (m/s)</span>
+                        <span class="font-bold text-slate-700 font-mono" id="val_v_plenum">0.0</span>
+                    </div>
+                     <div class="flex justify-between items-center text-xs pt-2 border-t border-slate-100">
+                        <span class="text-cyan-600 font-bold">DCC 通過風速 (m/s)</span>
+                        <span class="font-bold text-cyan-600 font-mono" id="val_v_dcc">0.0</span>
                     </div>
                     
                     <div class="mt-4 pt-3 border-t border-slate-100">
@@ -400,7 +415,7 @@
                             <div class="vel-legend"><span class="vel-dot bg-blue-500"></span> 正常氣流 (Normal)</div>
                             <div class="vel-legend"><span class="vel-dot bg-cyan-400"></span> 冷卻後 (Cooled)</div>
                             <div class="vel-legend"><span class="vel-dot bg-red-500"></span> 風速過高 (Over Limit)</div>
-                            <div class="text-[10px] text-red-400 mt-1 pl-4">* Limit: Shaft>3.0 / Sub>2.5</div>
+                            <div class="text-[10px] text-red-400 mt-1 pl-4">* Limit: Shaft>5.0 / Sub>3.0</div>
                         </div>
                     </div>
                 </div>
@@ -425,7 +440,7 @@
 </div>
 
 <script>
-/** * FAB DESIGNER PRO v50.5 - DCC HEIGHT ADDED * */
+/** * FAB DESIGNER PRO v53.3 - STABILITY FIX * */
 
 const App = {
     data: {
@@ -449,26 +464,24 @@ const App = {
     loadDemoLayout: () => {
         let id = Date.now();
         
-        // 1. Shafts first (Rule: define boundaries)
+        // 1. Shafts first
         App.data.objs.push({id: id++, type: 'shaft', layer: 'subfab', x: -18500, y: 0, w: 2000, d: 24000, col: '#64748b'});
         App.data.objs.push({id: id++, type: 'shaft', layer: 'subfab', x: 18500, y: 0, w: 2000, d: 24000, col: '#64748b'});
 
         // 2. Machines
         App.data.objs.push({id: id++, type: 'mach', layer: 'room', x: 0, y: 0, w: 4000, d: 12000, h: 3000, col: '#22c55e'});
 
-        // 3. DCCs - Default to Subfab
+        // 3. DCCs
         App.data.objs.push({id: id++, type: 'dcc', layer: 'subfab', x: -16000, y: 0, w: 1000, d: 6000, h: 1800, col: '#06b6d4', dccLoc: 'subfab'});
         App.data.objs.push({id: id++, type: 'dcc', layer: 'subfab', x: 16000, y: 0, w: 1000, d: 6000, h: 1800, col: '#06b6d4', dccLoc: 'subfab'});
 
-        // 4. Obstacles (Pipes/Pillars) - Demo
-        // Subfab pipe
+        // 4. Obstacles
         App.data.objs.push({id: id++, type: 'obs', layer: 'subfab', x: 0, y: -8000, w: 20000, d: 1000, h: 1000, col: '#64748b', label: 'OBS'});
         
         // 5. Run Auto FFU
-        App.ui.activeLayer = 'ceiling'; // trick to enable function
-        CAD.autoLayoutFFU(true); // pass true to skip alert in init
+        App.ui.activeLayer = 'ceiling'; 
+        CAD.autoLayoutFFU(true); 
 
-        // Cut line
         App.data.cut = { p1: {x: -20000, y: 0}, p2: {x: 20000, y: 0} };
         
         CAD.updateList();
@@ -498,6 +511,7 @@ const CAD = {
     tool: 'select', mode: 'select', 
     isPan: false, isDrag: false, isDraw: false,
     startPos: {x:0,y:0}, selected: null, ghost: null,
+    currM: {x:0, y:0}, 
 
     init: () => {
         const c = document.getElementById('c_cad');
@@ -534,7 +548,7 @@ const CAD = {
     },
 
     activateLayerDCC: () => {
-        CAD.activateLayer('subfab'); // DCC belongs to subfab layer visually mostly
+        CAD.activateLayer('subfab');
         CAD.setTool('dcc');
     },
 
@@ -590,7 +604,7 @@ const CAD = {
 
         if(CAD.mode === 'select') {
             const hit = App.data.objs.slice().reverse().find(o => 
-                o.layer === App.ui.activeLayer &&
+                (o.layer === App.ui.activeLayer || o.type === 'pillar') && 
                 Math.abs(w.x - o.x) < o.w/2 && Math.abs(w.y - o.y) < o.d/2
             );
 
@@ -602,7 +616,6 @@ const CAD = {
                 document.getElementById('sel_d').value = hit.d;
                 document.getElementById('sel_id').innerText = hit.id.toString().substr(-4);
                 
-                // Show Height prop (Updated for DCC)
                 const hContainer = document.getElementById('prop_h_container');
                 if(hit.type === 'mach' || hit.type === 'obs' || hit.type === 'dcc') {
                     hContainer.classList.remove('hidden');
@@ -611,7 +624,6 @@ const CAD = {
                     hContainer.classList.add('hidden');
                 }
 
-                // Show DCC Location Prop
                 const dccContainer = document.getElementById('prop_dcc_loc');
                 if(hit.type === 'dcc') {
                     dccContainer.classList.remove('hidden');
@@ -637,6 +649,8 @@ const CAD = {
         if(App.ui.activeTab !== 't1') return;
         const r = CAD.ctx.canvas.getBoundingClientRect();
         const mx = e.clientX - r.left, my = e.clientY - r.top;
+        CAD.currM = {x: mx, y: my}; 
+
         const w = CAD.toWorld(mx, my);
 
         if(CAD.isPan) {
@@ -669,6 +683,8 @@ const CAD = {
                 };
             }
             CAD.draw();
+        } else {
+            CAD.draw();
         }
     },
 
@@ -677,25 +693,27 @@ const CAD = {
             if(CAD.tool === 'cut') {
                 App.data.cut = { p1: {x: CAD.ghost.x1, y: CAD.ghost.y1}, p2: {x: CAD.ghost.x2, y: CAD.ghost.y2} };
             } else {
-                if(CAD.ghost.w > 100 && CAD.ghost.d > 100) {
-                    let col = '#94a3b8';
-                    let label = CAD.tool.toUpperCase();
-                    let h = 0; 
-                    let dccLoc = null;
-                    
-                    if(CAD.tool==='ffu') { col = '#60a5fa'; }
-                    if(CAD.tool==='dcc') { col = '#06b6d4'; dccLoc = 'subfab'; h=1800; }
-                    if(CAD.tool==='mach') { col = '#22c55e'; h=2500; }
-                    if(CAD.tool==='shaft') { col = '#64748b'; }
-                    if(CAD.tool==='obs') { col = '#64748b'; label='OBS'; h=1000; }
-                    
-                    App.data.objs.push({
-                        id: Date.now(), type: CAD.tool, layer: App.ui.activeLayer,
-                        x: CAD.ghost.x, y: CAD.ghost.y, w: CAD.ghost.w, d: CAD.ghost.d, 
-                        col, label, h, dccLoc
-                    });
-                    CAD.updateList();
-                }
+                if(CAD.ghost.w < 100) CAD.ghost.w = 600;
+                if(CAD.ghost.d < 100) CAD.ghost.d = 600;
+
+                let col = '#94a3b8';
+                let label = CAD.tool.toUpperCase();
+                let h = 0; 
+                let dccLoc = null;
+                
+                if(CAD.tool==='ffu') { col = '#60a5fa'; }
+                if(CAD.tool==='dcc') { col = '#06b6d4'; dccLoc = 'subfab'; h=1800; }
+                if(CAD.tool==='mach') { col = '#22c55e'; h=2500; }
+                if(CAD.tool==='shaft') { col = '#64748b'; }
+                if(CAD.tool==='obs') { col = '#64748b'; label='OBS'; h=1000; }
+                if(CAD.tool==='pillar') { col = '#94a3b8'; label='COL'; h=0; } 
+                
+                App.data.objs.push({
+                    id: Date.now(), type: CAD.tool, layer: App.ui.activeLayer,
+                    x: CAD.ghost.x, y: CAD.ghost.y, w: CAD.ghost.w, d: CAD.ghost.d, 
+                    col, label, h, dccLoc
+                });
+                CAD.updateList();
             }
         }
         CAD.isPan = false; CAD.isDrag = false; CAD.isDraw = false; CAD.ghost = null;
@@ -768,81 +786,60 @@ const CAD = {
     },
     delId: (id) => { App.data.objs = App.data.objs.filter(o => o.id !== id); CAD.draw(); CAD.updateList(); },
 
-    // === MODIFIED FFU AUTO LAYOUT LOGIC ===
+    // === MODIFIED FFU AUTO LAYOUT LOGIC (Avoid Pillar) ===
     autoLayoutFFU: (silent=false) => {
         if(App.ui.activeLayer !== 'ceiling') { if(!silent) alert('請切換至天花板層級'); return; }
         
-        const cov = parseInt(document.getElementById('ffu_cov').value); // 25, 50, 100
+        let cov = parseInt(document.getElementById('ffu_cov').value); 
+        if(isNaN(cov) || cov < 1) cov = 1;
+        if(cov > 100) cov = 100;
+
         const fSize = 1200; // Fixed 1200mm
         
         // 1. Clear existing FFUs
         App.data.objs = App.data.objs.filter(o => o.type !== 'ffu');
 
-        // 2. Identify Exclusion Zones (Shafts) - Using World Coordinates
-        const shafts = App.data.objs.filter(o => o.type === 'shaft');
+        // 2. Identify Exclusion Zones (Shafts AND Pillars)
+        const exclusionZones = App.data.objs.filter(o => o.type === 'shaft' || o.type === 'pillar');
 
-        // 3. Grid Calculation
-        // Align grid to center of room to be symmetrical
-        // Start from -W/2, go to +W/2
+        // 3. Grid Calculation (Average Distribution Logic)
         const roomW = App.data.w;
         const roomD = App.data.d;
         
-        // Calculate number of full 1200mm units that fit
         const cols = Math.floor(roomW / fSize);
         const rows = Math.floor(roomD / fSize);
 
-        // Calculate offset to center the grid
         const startX = -(cols * fSize) / 2 + (fSize/2);
         const startY = -(rows * fSize) / 2 + (fSize/2);
 
         let placed = 0;
-        let isChecker = (cov === 50); // Checkerboard pattern
-        let skipStep = (cov === 25) ? 2 : 1; // For 25%, simplified step logic or just random skip? 
-        // Better logic for 25%: Checkerboard but skip every other line? Let's stick to Checker for 50, Full for 100, Sparse for 25.
 
         for(let r=0; r<rows; r++) {
             for(let c=0; c<cols; c++) {
                 
-                // Logic for coverage
                 let shouldPlace = false;
-                if(cov === 100) shouldPlace = true;
-                else if(cov === 50) {
-                    // Checkerboard: (row + col) is even (or odd)
-                    if((r + c) % 2 === 0) shouldPlace = true;
-                }
-                else if(cov === 25) {
-                    // One every 4
-                    if((r % 2 === 0) && (c % 2 === 0)) shouldPlace = true;
-                }
+                if(Math.random() * 100 < cov) shouldPlace = true;
 
                 if(!shouldPlace) continue;
 
                 const cx = startX + c * fSize;
                 const cy = startY + r * fSize;
 
-                // 4. Collision Check (Shaft)
-                // Check if this 1200x1200 box intersects any shaft
-                let hitShaft = false;
-                for(let s of shafts) {
-                    // Simple AABB
+                // 4. Collision Check
+                let hitObj = false;
+                for(let s of exclusionZones) {
                     const fLeft = cx - fSize/2; const fRight = cx + fSize/2;
                     const fTop = cy - fSize/2; const fBottom = cy + fSize/2;
-                    
                     const sLeft = s.x - s.w/2; const sRight = s.x + s.w/2;
                     const sTop = s.y - s.d/2; const sBottom = s.y + s.d/2;
 
                     if(fLeft < sRight && fRight > sLeft && fTop < sBottom && fBottom > sTop) {
-                        hitShaft = true; 
+                        hitObj = true; 
                         break;
                     }
                 }
 
-                // 5. Boundary Check (Implicitly handled by loop limits, but double check)
-                // If the loop puts it partially outside (due to float math), cut it.
-                // Since we use Math.floor(W/1200), we ensure we only place FULL tiles inside the dimensions.
-                // So "Cut by boundary" is effectively "Don't place".
-
-                if(!hitShaft) {
+                if(!hitObj) {
                     App.data.objs.push({
                         id: Date.now() + Math.random(), type: 'ffu', layer: 'ceiling',
                         x: cx, y: cy, w: fSize, d: fSize, col: '#60a5fa'
@@ -853,7 +850,7 @@ const CAD = {
         }
         
         CAD.updateList(); CAD.draw();
-        if(!silent) alert(`已完成佈置。\n共放置 ${placed} 個 FFU。\n模式: ${cov}% 覆蓋率 (固定 1200mm 格點)`);
+        if(!silent) alert(`已完成佈置。\n共放置 ${placed} 個 FFU。\n模式: ${cov}% 自訂覆蓋率 (平均分佈)`);
     },
 
     draw: () => {
@@ -898,26 +895,23 @@ const CAD = {
 
         App.data.objs.forEach(o => {
             const isActive = (o.layer === App.ui.activeLayer);
-            // Exception: Shafts are visible in Subfab and Ceiling usually, but let's stick to strict layer logic or make Shafts always ghost visible?
-            // Let's keep strict layer logic for clarity, but show "ghost" of shaft in Ceiling to help manual FFU placement
             let isGhost = false;
             if(App.ui.activeLayer === 'ceiling' && o.type === 'shaft') isGhost = true;
+            let isGlobal = (o.type === 'pillar');
 
             const p = CAD.toScreen(o.x, o.y);
             const sw = o.w * CAD.scale;
             const sd = o.d * CAD.scale;
 
-            if(isActive || isGhost) {
-                ctx.globalAlpha = isActive ? 1.0 : 0.1;
+            if(isActive || isGhost || isGlobal) {
+                ctx.globalAlpha = isActive ? 1.0 : (isGlobal ? 0.6 : 0.1);
                 ctx.fillStyle = o.col;
                 if(o.type === 'ffu') ctx.globalAlpha = isActive ? 0.7 : 0.1;
 
                 ctx.fillRect(p.x-sw/2, p.y-sd/2, sw, sd);
-                
                 ctx.strokeStyle = 'rgba(0,0,0,0.2)'; ctx.lineWidth = 1;
                 ctx.strokeRect(p.x-sw/2, p.y-sd/2, sw, sd);
                 
-                // Draw X in Shaft
                 if(o.type === 'shaft') {
                     ctx.beginPath();
                     ctx.moveTo(p.x-sw/2, p.y-sd/2); ctx.lineTo(p.x+sw/2, p.y+sd/2);
@@ -967,10 +961,18 @@ const CAD = {
             ctx.fillStyle = '#ef4444';
             ctx.beginPath(); ctx.arc(c1.x, c1.y, 4, 0, Math.PI*2); ctx.fill();
             ctx.beginPath(); ctx.arc(c2.x, c2.y, 4, 0, Math.PI*2); ctx.fill();
-            
             ctx.font = "bold 12px sans-serif"; ctx.fillStyle = "#ef4444";
             ctx.fillText("A", c1.x + 8, c1.y + 8);
             ctx.fillText("A'", c2.x + 8, c2.y + 8);
+        }
+
+        if(CAD.currM.x !== 0 && CAD.currM.y !== 0) {
+            ctx.strokeStyle = '#f97316'; 
+            ctx.lineWidth = 1;
+            ctx.setLineDash([4, 4]); 
+            ctx.beginPath(); ctx.moveTo(CAD.currM.x, 0); ctx.lineTo(CAD.currM.x, h); ctx.stroke();
+            ctx.beginPath(); ctx.moveTo(0, CAD.currM.y); ctx.lineTo(w, CAD.currM.y); ctx.stroke();
+            ctx.setLineDash([]); 
         }
 
         ctx.restore();
@@ -986,7 +988,6 @@ const Section = {
         Section.ctx = c.getContext('2d');
         Section.render();
     },
-    
     project: (p, a, b) => {
         const atob = { x: b.x - a.x, y: b.y - a.y };
         const atop = { x: p.x - a.x, y: p.y - a.y };
@@ -996,11 +997,9 @@ const Section = {
         const closest = { x: a.x + atob.x * t, y: a.y + atob.y * t };
         return { point: closest, t: t, dist: Math.hypot(p.x - closest.x, p.y - closest.y) };
     },
-
     render: () => {
         const ctx = Section.ctx;
         if(!ctx) return;
-        
         const H = App.data.heights;
         H.u = parseInt(document.getElementById('h_upper').value) || 2500;
         H.r = parseInt(document.getElementById('h_room').value) || 4000;
@@ -1013,10 +1012,7 @@ const Section = {
         let cutLen = App.data.w;
         const msg = document.getElementById('sec_msg');
         
-        if(!App.data.cut) {
-            msg.classList.remove('hidden');
-            return;
-        }
+        if(!App.data.cut) { msg.classList.remove('hidden'); return; }
         
         msg.classList.add('hidden');
         const p1 = App.data.cut.p1;
@@ -1028,12 +1024,10 @@ const Section = {
         const totalH = H.u + H.r + H.f + H.s;
         const pad = 80;
         const scale = Math.min((h - pad*2)/totalH, (w - pad*2)/cutLen);
-        
         const Ox = (w - cutLen*scale)/2;
         const Oy = h - (h - totalH*scale)/2; 
 
-        // Draw Layers
-        const drawLayer = (bottomY, height, col, label, sub) => {
+        const drawLayer = (bottomY, height, col, label) => {
             const sy = Oy - (bottomY + height) * scale;
             const sh = height * scale;
             ctx.fillStyle = col; ctx.fillRect(Ox, sy, cutLen*scale, sh);
@@ -1044,41 +1038,32 @@ const Section = {
             ctx.fillText(height + 'mm', Ox + cutLen*scale + 50, sy + sh/2 + 4);
         };
 
-        drawLayer(-(H.f+H.s), H.s, '#f1f5f9', 'Sub-Fab', '下夾層');
-        drawLayer(-H.f, H.f, '#fefce8', 'RF', '高架地板');
-        drawLayer(0, H.r, '#ffffff', 'Cleanroom', '無塵室');
-        drawLayer(H.r, H.u, '#eff6ff', 'Plenum', '上夾層');
+        drawLayer(-(H.f+H.s), H.s, '#f1f5f9', 'Sub-Fab');
+        drawLayer(-H.f, H.f, '#fefce8', 'RF');
+        drawLayer(0, H.r, '#ffffff', 'Cleanroom');
+        drawLayer(H.r, H.u, '#eff6ff', 'Plenum');
 
-        // Project Objects
         App.data.objs.forEach(o => {
             const proj = Section.project({x:o.x, y:o.y}, p1, p2);
             const radius = Math.max(o.w, o.d) / 2;
             
             if (proj.dist < radius && proj.t >= 0 && proj.t <= 1) {
-                let objBottomY = 0;
-                let objH = 0;
-                let col = o.col;
-                
-                if (o.type === 'mach') {
-                    objBottomY = 0; objH = o.h || 2500;
-                } else if (o.type === 'ffu') {
-                    objBottomY = H.r; objH = 300;
-                } else if (o.type === 'dcc') {
-                    // Logic for DCC Layer Display
-                    if(o.dccLoc === 'subfab') objBottomY = -(H.f+H.s); 
-                    else objBottomY = H.r + 200;
-                    objH = o.h || 1800; // Use object height
-                } else if (o.type === 'obs') {
-                    // Obstacles vary by layer
-                    if(o.layer === 'subfab') {
-                        // Subfab pipes - center floating or floor mounted?
-                        // Let's float them to look like pipes
-                        objBottomY = -(H.f + H.s) + (H.s/2) - (o.h/2);
-                    } else if(o.layer === 'room') {
-                        objBottomY = 0; // Pillars
-                    } else if(o.layer === 'ceiling') {
-                        objBottomY = H.r + (H.u/2) - (o.h/2); // Ducts
-                    }
+                let objBottomY = 0; let objH = 0; let col = o.col;
+                if (o.type === 'mach') { objBottomY = 0; objH = o.h || 2500; } 
+                else if (o.type === 'ffu') { objBottomY = H.r; objH = 300; } 
+                else if (o.type === 'dcc') {
+                    if(o.dccLoc === 'subfab') objBottomY = -(H.f+H.s); else objBottomY = H.r + 200;
+                    objH = o.h || 1800; 
+                } 
+                else if (o.type === 'pillar') { 
+                    // Pillar Logic Fix: Bottom of Subfab to Top of Plenum
+                    objBottomY = -(H.f + H.s); 
+                    objH = H.s + H.f + H.r + H.u; 
+                } 
+                else if (o.type === 'obs') {
+                    if(o.layer === 'subfab') objBottomY = -(H.f + H.s) + (H.s/2) - (o.h/2);
+                    else if(o.layer === 'room') objBottomY = 0; 
+                    else if(o.layer === 'ceiling') objBottomY = H.r + (H.u/2) - (o.h/2);
                     objH = o.h || 1000;
                 } else { return; }
 
@@ -1097,10 +1082,11 @@ const Section = {
     }
 };
 
-/** MODULE: CFD ENGINE (Three.js) - STRICT LOGIC UPDATE */
+/** MODULE: CFD ENGINE (Three.js) - IMPROVED METRICS */
 const Sim3D = {
     scene: null, renderer: null, frameId: null, paused: false,
     metrics: { vShaft: 0, vSub: 0 },
+    alerts: { shaft: false, sub: false }, // Store alerts here
     
     stop: () => {
         if(Sim3D.frameId) cancelAnimationFrame(Sim3D.frameId);
@@ -1142,7 +1128,6 @@ const Sim3D = {
         controls.target.set(0, H.r/2, 0);
         controls.enableDamping = true;
 
-        // --- Visual Layer Boxes ---
         const addZone = (minY, height, color, opacity) => {
             const geo = new THREE.BoxGeometry(W, height, D);
             const mat = new THREE.MeshBasicMaterial({ color: color, transparent: true, opacity: opacity, side: THREE.BackSide, depthWrite: false });
@@ -1164,109 +1149,118 @@ const Sim3D = {
         addGrid(-H.f, 0x475569);
         addGrid(-(H.f+H.s), 0x1e293b);
 
-        // Process Objects & Calc Velocity
         const ffuLocs = [], shafts = [];
         const machines = [];
         const obstacles = [];
         const dccsSub = [];
         const dccsPlenum = [];
         
-        // Metrics Calculation Vars
         let totalFFUArea = 0;
-        let totalShaftArea = 0;
+        let totalShaftArea = 0; // Vertical cross section (top/bottom)
+        let totalDCCArea = 0;
 
         App.data.objs.forEach(o => {
             let h=1000, y=0, col=0xffffff, op=0.3;
-            
             if(o.type === 'ffu') {
                 h=300; y=H.r + h/2; col=0x60a5fa; ffuLocs.push(o); op=0.8;
                 totalFFUArea += (o.w/1000 * o.d/1000);
             } else if (o.type === 'dcc') {
-                h=o.h || 1800; col=0x06b6d4; op=0.6; // Use dynamic height
-                // Strict Layer Check
+                h=o.h || 1800; col=0x06b6d4; op=0.6; 
                 if(o.dccLoc === 'plenum') {
-                     y = H.r + 200 + h/2;
-                     dccsPlenum.push({x:o.x, z:o.y, w:o.w, d:o.d, yCenter: y});
+                      y = H.r + 200 + h/2;
+                      dccsPlenum.push({x:o.x, z:o.y, w:o.w, d:o.d, yCenter: y});
                 } else {
-                     y = -(H.f + H.s) + H.s*0.5; 
-                     dccsSub.push({x:o.x, z:o.y, w:o.w, d:o.d, yCenter: y});
+                      y = -(H.f + H.s) + H.s*0.5; 
+                      dccsSub.push({x:o.x, z:o.y, w:o.w, d:o.d, yCenter: y});
                 }
+                totalDCCArea += (o.w/1000 * (h/1000)); // Face area W*H
             } else if (o.type === 'shaft') {
                 h=H.u + H.r + H.f + H.s; y=((H.u+H.r)-(H.f+H.s))/2; col=0x475569; shafts.push(o); op=0.15;
-                totalShaftArea += (o.w/1000 * o.d/1000);
+                totalShaftArea += (o.w/1000 * o.d/1000); // Vertical flow area
             } else if (o.type === 'mach') {
-                h = o.h || 2500; 
-                y=h/2; col=0x22c55e; op=0.3; 
+                h = o.h || 2500; y=h/2; col=0x22c55e; op=0.3; 
                 machines.push({x:o.x, z:o.y, w:o.w, d:o.d, h:h});
+            } else if (o.type === 'pillar') {
+                // Pillar extends from bottom of subfab to top of plenum
+                const yMin = -(H.f + H.s); const yMax = H.r + H.u; 
+                h = yMax - yMin; y = yMin + h/2; col = 0x94a3b8; op = 0.8;
+                obstacles.push({x:o.x, yCenter:y, z:o.y, w:o.w, d:o.d, h:h});
             } else if (o.type === 'obs') {
-                h = o.h || 1000;
-                col = 0x64748b; op = 0.5;
-                // Layer logic
-                if(o.layer === 'subfab') {
-                    // Floating pipe in Subfab
-                    y = -(H.f + H.s) + (H.s/2); 
-                } else if(o.layer === 'room') {
-                    // Pillar in Room
-                    y = h/2; 
-                } else if(o.layer === 'ceiling') {
-                    // Duct in Plenum
-                    y = H.r + (H.u/2);
-                }
+                h = o.h || 1000; col = 0x64748b; op = 0.5;
+                if(o.layer === 'subfab') y = -(H.f + H.s) + (H.s/2); 
+                else if(o.layer === 'room') y = h/2; 
+                else if(o.layer === 'ceiling') y = H.r + (H.u/2);
                 obstacles.push({x:o.x, yCenter:y, z:o.y, w:o.w, d:o.d, h:h});
             }
             
-            // Render Object
             if(o.type !== 'ffu') { 
                  const mesh = new THREE.Mesh(new THREE.BoxGeometry(o.w, h, o.d), new THREE.MeshBasicMaterial({color:col, transparent:true, opacity:op}));
                  mesh.position.set(o.x, y, o.y);
                  scene.add(mesh);
-                 // Add wireframe to obstacles to make them look "constructed"
-                 if(o.type === 'obs') {
+                 if(o.type === 'obs' || o.type === 'pillar') {
                      const wire = new THREE.LineSegments(new THREE.EdgesGeometry(mesh.geometry), new THREE.LineBasicMaterial({color:0x334155}));
-                     wire.position.copy(mesh.position);
-                     scene.add(wire);
+                     wire.position.copy(mesh.position); scene.add(wire);
                  }
             } else {
                  const mesh = new THREE.Mesh(new THREE.BoxGeometry(o.w, h, o.d), new THREE.MeshBasicMaterial({color:col, transparent:true, opacity:op}));
-                 mesh.position.set(o.x, y, o.y);
-                 scene.add(mesh);
+                 mesh.position.set(o.x, y, o.y); scene.add(mesh);
             }
         });
 
-        // --- PHYSICS CALCULATION (Engineered Logic) ---
-        // 1. Total Airflow (Q) = FFU Count * Area * Velocity
-        // Standard FFU (1.2x1.2) @ 0.45m/s
         const ffuVel = parseFloat(document.getElementById('ffu_vel').value) || 0.45;
         const totalCMH = (ffuLocs.length * (1.2*1.2) * ffuVel) * 3600;
+        const totalCMS = totalCMH / 3600;
         
-        // 2. Shaft Velocity = Q / Shaft Area
-        const vShaft = (totalShaftArea > 0) ? (totalCMH / 3600) / totalShaftArea : 999;
+        // --- UPDATED METRICS CALCULATIONS ---
         
-        // 3. Subfab Velocity (Approx Horizontal Flux)
-        // Cross Section = RoomWidth * SubfabHeight (roughly)
-        const subfabCrossSection = (W/1000) * (H.s/1000);
-        const vSub = (totalCMH / 3600) / subfabCrossSection; // Average horiz speed
+        // 1. Vertical Shaft Velocity (m/s)
+        const vShaft = (totalShaftArea > 0) ? totalCMS / totalShaftArea : 0;
+        
+        // 2. Subfab Velocity (Horizontal average)
+        // Area = RoomDepth * SubfabHeight (Assuming flow is primarily X-axis towards shafts)
+        const areaSubX = (D/1000) * (H.s/1000); 
+        const vSub = areaSubX > 0 ? totalCMS / areaSubX : 0; 
 
-        Sim3D.metrics = { vShaft, vSub };
+        // 3. Subfab to Shaft Entry (Return Grille) Velocity
+        let shaftEntryArea = 0;
+        shafts.forEach(s => {
+            const intakeWidth = Math.max(s.w, s.d) / 1000;
+            shaftEntryArea += intakeWidth * (H.s/1000); 
+        });
+        const vShaftEntry = shaftEntryArea > 0 ? totalCMS / shaftEntryArea : 0;
+
+        // 4. Plenum Velocity (Horizontal)
+        // Area = RoomDepth * PlenumHeight
+        const areaPlenum = (D/1000) * (H.u/1000);
+        const vPlenum = areaPlenum > 0 ? totalCMS / areaPlenum : 0;
+
+        // 5. DCC Face Velocity
+        const vDCC = totalDCCArea > 0 ? totalCMS / totalDCCArea : 0;
+
+        // --- UPDATE UI ---
         document.getElementById('val_cmh').innerText = Math.round(totalCMH).toLocaleString();
         document.getElementById('val_v_shaft').innerText = vShaft.toFixed(2);
         document.getElementById('val_v_sub').innerText = vSub.toFixed(2);
+        document.getElementById('val_v_shaft_entry').innerText = vShaftEntry.toFixed(2);
+        document.getElementById('val_v_plenum').innerText = vPlenum.toFixed(2);
+        document.getElementById('val_v_dcc').innerText = vDCC.toFixed(2);
         
-        // Alert Coloring Flags
-        const ALERT_SHAFT = vShaft > 3.0;
-        const ALERT_SUB = vSub > 2.5;
+        // --- ALERTS ---
+        const setAlert = (id, val, limit) => {
+            const el = document.getElementById(id);
+            if(val > limit) el.classList.add('text-red-500'); else el.classList.remove('text-red-500');
+        };
+        setAlert('val_v_shaft', vShaft, 5.0);
+        setAlert('val_v_sub', vSub, 3.0);
+        setAlert('val_v_dcc', vDCC, 2.5);
 
-        if(ALERT_SHAFT) document.getElementById('val_v_shaft').classList.add('text-red-500');
-        else document.getElementById('val_v_shaft').classList.remove('text-red-500');
-        
-        if(ALERT_SUB) document.getElementById('val_v_sub').classList.add('text-red-500');
-        else document.getElementById('val_v_sub').classList.remove('text-red-500');
+        // Store flags in Sim3D object to avoid ReferenceError
+        Sim3D.alerts.shaft = vShaft > 5.0;
+        Sim3D.alerts.sub = vSub > 3.0;
 
-
-        // Particles Setup
+        // --- PARTICLES ---
         let pCount = ffuLocs.length * 50; 
-        if(pCount < 1000) pCount = 1000;
-        if(pCount > 15000) pCount = 15000; // Cap for performance
+        if(pCount < 1000) pCount = 1000; if(pCount > 15000) pCount = 15000; 
         
         const posArr = new Float32Array(pCount * 3);
         const colArr = new Float32Array(pCount * 3);
@@ -1289,86 +1283,59 @@ const Sim3D = {
 
         Sim3D.scene = scene; Sim3D.renderer = ren;
 
-        // === PHYSICS LOOP ===
         const animate = () => {
             Sim3D.frameId = requestAnimationFrame(animate);
             if(Sim3D.paused) { controls.update(); return; }
 
             const pa = particles.geometry.attributes.position.array;
             const ca = particles.geometry.attributes.color.array;
-            
+            const floorY = -(H.f + H.s);
+
             for(let i=0; i<pCount; i++) {
                 let x = pa[i*3], y = pa[i*3+1], z = pa[i*3+2];
                 let m = meta[i];
                 let r=0, g=0, b=0;
 
-                // --- GLOBAL OBSTACLE COLLISION (Any State) ---
-                // We check obstacle collision regardless of state to ensure physical consistency
                 for(let obs of obstacles) {
-                     // Simple AABB check (yCenter +/- h/2)
-                     const oTop = obs.yCenter + obs.h/2;
-                     const oBot = obs.yCenter - obs.h/2;
-                     
-                     if(y < oTop && y > oBot && Math.abs(x - obs.x) < obs.w/2 && Math.abs(z - obs.z) < obs.d/2) {
-                         // HIT OBSTACLE
-                         // Simple deflection: Push away from center
-                         const dx = x - obs.x; 
-                         const dz = z - obs.z;
-                         // Normalize
-                         const dist = Math.sqrt(dx*dx + dz*dz) || 1;
-                         
-                         // Push out
-                         const pushForce = 200; 
-                         m.vx += (dx/dist) * pushForce;
-                         m.vz += (dz/dist) * pushForce;
-                         
-                         // If vertical flow (like in Room), slow down Y to simulate drag
-                         m.vy *= 0.5;
-                     }
+                      const oTop = obs.yCenter + obs.h/2;
+                      const oBot = obs.yCenter - obs.h/2;
+                      if(y < oTop && y > oBot && Math.abs(x - obs.x) < obs.w/2 && Math.abs(z - obs.z) < obs.d/2) {
+                          const dx = x - obs.x; const dz = z - obs.z;
+                          const dist = Math.sqrt(dx*dx + dz*dz) || 1;
+                          const pushForce = 300; 
+                          m.vx += (dx/dist) * pushForce;
+                          m.vz += (dz/dist) * pushForce;
+                          m.vx += (Math.random()-0.5) * 400;
+                          m.vz += (Math.random()-0.5) * 400;
+                          m.vy *= 0.5;
+                      }
                 }
 
-
-                // --- STATE MACHINE ---
-
-                // 1. Room (Down)
                 if(m.state === 'room') {
                     m.vy = -150 - Math.random()*50; 
-                    // Machines
+                    m.vx *= 0.1; m.vz *= 0.1;
                     for(let mach of machines) {
                         if(y < mach.h && y > 0 && Math.abs(x - mach.x) < mach.w/2 && Math.abs(z - mach.z) < mach.d/2) {
                             m.vy *= 0.5; 
                             const dx = x - mach.x; const dz = z - mach.z; const len = Math.sqrt(dx*dx + dz*dz) || 1;
-                            m.vx += (dx/len) * 200; m.vz += (dz/len) * 200;
+                            m.vx += (dx/len) * 200 + (Math.random()-0.5)*100; 
+                            m.vz += (dz/len) * 200 + (Math.random()-0.5)*100;
                         }
                     }
-                    m.vx *= 0.9; m.vz *= 0.9; 
                     if(y < 0) { m.state = 'rf'; }
                 }
-
-                // 2. RF (Through Floor)
                 else if(m.state === 'rf') {
-                    if(y < -H.f) { 
-                        m.state = 'sub'; 
-                        m.hitDCC = false; 
-                        m.target = null;
-                    }
+                    if(y < -H.f) { m.state = 'sub'; m.hitDCC = false; m.target = null; m.vy = -200; }
                     else m.vy = -80;
                 }
-
-                // 3. SUBFAB (Horizontal Path)
                 else if(m.state === 'sub') {
-                    // Bounds
-                    if(y < -(H.f+H.s)) { y = -(H.f+H.s); m.vy *= -0.5; }
-                    if(y > -H.f) { y = -H.f; m.vy *= -0.5; } 
-                    
-                    // Logic: If DCC in Subfab, Seek DCC -> Then Shaft
-                    // Logic: If DCC in Plenum, Seek Shaft directly
-                    
+                    if(y > floorY + H.s * 0.3) { m.vy -= 15; }
+                    if(y < floorY + 20) { y = floorY + 20; m.vy = 0; m.vx *= 0.95; m.vz *= 0.95; } 
+                    else if (y > -H.f) { y = -H.f; m.vy *= -0.5; }
+
                     let targetIsDCC = (dccsSub.length > 0 && !m.hitDCC);
-                    
                     if(targetIsDCC) {
                          if(!m.target) {
-                             // Find nearest DCC
                              let bestDCC = dccsSub[0], minD = Infinity;
                              for(let dcc of dccsSub) {
                                  const d = (x-dcc.x)**2 + (z-dcc.z)**2;
@@ -1376,72 +1343,48 @@ const Sim3D = {
                              }
                              m.target = { x: bestDCC.x + (Math.random()-0.5)*bestDCC.w, z: bestDCC.z + (Math.random()-0.5)*bestDCC.d };
                          }
-                         
                          const dx = m.target.x - x, dz = m.target.z - z; const dist = Math.sqrt(dx*dx+dz*dz);
                          if(dist < 500) { m.hitDCC = true; m.target = null; }
                          else { m.vx = (dx/dist)*1000; m.vz = (dz/dist)*1000; }
                     } else {
-                        // Seek Shaft
                          if(!m.target && shafts.length > 0) {
                             let bestS = shafts[0], minD = Infinity;
                             for(let s of shafts) {
                                 const d = (x-s.x)**2 + (z-s.y)**2;
                                 if(d < minD) { minD = d; bestS = s; }
                             }
-                            // FIXED: Use 90% of shaft width for entry target to spread particles
                             m.target = { x: bestS.x + (Math.random()-0.5)*(bestS.w*0.9), z: bestS.y + (Math.random()-0.5)*(bestS.d*0.9), obj: bestS };
                         }
-
                         if(m.target) {
                             const dx = m.target.x - x; const dz = m.target.z - z; const d = Math.sqrt(dx*dx + dz*dz);
                             const speed = 800 + (2000000 / (d+100)); 
-                            m.vx = (dx/d)*speed; m.vz = (dz/d)*speed; 
-                            
-                            // Check entry to shaft
+                            let seekFactor = 1.0;
+                            if(y > floorY + H.s * 0.5) seekFactor = 0.2;
+                            m.vx = (dx/d)*speed * seekFactor; m.vz = (dz/d)*speed * seekFactor; 
                             if(m.target.obj && Math.abs(x - m.target.obj.x) < m.target.obj.w/2 + 200 && Math.abs(z - m.target.obj.y) < m.target.obj.d/2 + 200) {
-                                m.state = 'shaft'; 
-                                m.shaftObj = m.target.obj; 
-                                m.target = null; 
+                                m.state = 'shaft'; m.shaftObj = m.target.obj; m.target = null; 
                             }
                         }
                     }
                 }
-
-                // 4. SHAFT (Up) - FIXED: No Centering Force
                 else if(m.state === 'shaft') {
                     m.vy = 800 + Math.random() * 600; 
-                    
                     if(m.shaftObj) {
                          const s = m.shaftObj;
                          const halfW = s.w/2; const halfD = s.d/2;
                          const relX = x - s.x; const relZ = z - s.y;
-                         
-                         // ONLY push back if hitting walls (Boundary Constraint)
-                         if(relX < -halfW*0.9) m.vx += 20;
-                         else if(relX > halfW*0.9) m.vx -= 20;
-                         
-                         if(relZ < -halfD*0.9) m.vz += 20;
-                         else if(relZ > halfD*0.9) m.vz -= 20;
-                         
-                         // Random spread
-                         m.vx += (Math.random()-0.5)*20;
-                         m.vz += (Math.random()-0.5)*20;
+                         if(relX < -halfW) { x = s.x - halfW; m.vx = Math.abs(m.vx) * 0.5 + 50; } 
+                         else if(relX > halfW) { x = s.x + halfW; m.vx = -Math.abs(m.vx) * 0.5 - 50; } 
+                         if(relZ < -halfD) { z = s.y - halfD; m.vz = Math.abs(m.vz) * 0.5 + 50; } 
+                         else if(relZ > halfD) { z = s.y + halfD; m.vz = -Math.abs(m.vz) * 0.5 - 50; } 
+                         m.vx += (Math.random()-0.5)*10; m.vz += (Math.random()-0.5)*10;
                     }
-
-                    if(y > H.r + Math.random()*H.u) { 
-                         m.state = 'plenum'; 
-                         m.hitDCC = false; // Reset for Plenum DCC logic
-                    }
+                    if(y > H.r + Math.random()*H.u) { m.state = 'plenum'; m.hitDCC = false; }
                 }
-
-                // 5. PLENUM
                 else if(m.state === 'plenum') {
                     if (y > H.r + H.u) { y = H.r + H.u; m.vy *= -1; }
                     if (y < H.r) { y = H.r; m.vy *= -0.5; }
-
-                    // Logic: If DCC in Plenum, Seek DCC -> Then FFU
                     let targetIsDCC = (dccsPlenum.length > 0 && !m.hitDCC);
-
                     if(targetIsDCC) {
                          if(!m.target) {
                              let bestDCC = dccsPlenum[0], minD = Infinity;
@@ -1455,7 +1398,6 @@ const Sim3D = {
                          if(dist < 500) { m.hitDCC = true; m.target = null; }
                          else { m.vx = (dx/dist)*800; m.vz = (dz/dist)*800; }
                     } else {
-                        // Seek FFU
                         if(!m.target && ffuLocs.length > 0) {
                              const f = ffuLocs[Math.floor(Math.random()*ffuLocs.length)];
                              m.target = { x: f.x, z: f.y };
@@ -1463,47 +1405,26 @@ const Sim3D = {
                         if(m.target) {
                             const dx = m.target.x - x; const dz = m.target.z - z; const d = Math.sqrt(dx*dx + dz*dz);
                             if(d < 800 && Math.abs(y - H.r) < 200) {
-                                m.state = 'room'; 
-                                x = m.target.x + (Math.random()-0.5)*1000; 
-                                z = m.target.z + (Math.random()-0.5)*1000; 
-                                y = H.r - 50; 
-                                m.target = null;
+                                m.state = 'room'; x = m.target.x + (Math.random()-0.5)*1000; z = m.target.z + (Math.random()-0.5)*1000; y = H.r - 50; m.target = null;
                             } else {
-                                const speed = 800;
-                                m.vx = (dx/d)*speed; m.vz = (dz/d)*speed;
+                                const speed = 800; m.vx = (dx/d)*speed; m.vz = (dz/d)*speed;
                             }
                         }
                     }
                 }
 
-                // Boundaries
                 if (x < -W/2) { x = -W/2; m.vx *= -0.5; }
                 if (x > W/2) { x = W/2; m.vx *= -0.5; }
                 if (z < -D/2) { z = -D/2; m.vz *= -0.5; }
                 if (z > D/2) { z = D/2; m.vz *= -0.5; }
-                if (y < -(H.f+H.s)) y = -(H.f+H.s) + 10;
+                if (y < floorY) y = floorY + 10; 
 
-                // --- COLORING LOGIC (STRICT) ---
-                if (m.state === 'shaft' && ALERT_SHAFT) {
-                    // Shaft Alert
-                    r = 1.0; g = 0.2; b = 0.2; // Red
-                } 
-                else if (m.state === 'sub' && ALERT_SUB) {
-                     // Subfab Alert
-                     r = 1.0; g = 0.2; b = 0.2; // Red
-                }
-                else if (m.hitDCC) {
-                     // Cooled
-                     r = 0.2; g = 0.9; b = 1.0; // Cyan
-                } 
-                else if (m.state === 'room') {
-                    // Cleanroom air
-                    r = 0.2; g = 0.5; b = 1.0; // Blue
-                }
-                else {
-                    // Return air / Warm
-                    r = 0.2; g = 0.8; b = 0.4; // Greenish
-                }
+                // Use Global Alert State
+                if (m.state === 'shaft' && Sim3D.alerts.shaft) { r = 1.0; g = 0.2; b = 0.2; } 
+                else if (m.state === 'sub' && Sim3D.alerts.sub) { r = 1.0; g = 0.2; b = 0.2; }
+                else if (m.hitDCC) { r = 0.2; g = 0.9; b = 1.0; } 
+                else if (m.state === 'room') { r = 0.2; g = 0.5; b = 1.0; }
+                else { r = 0.2; g = 0.8; b = 0.4; }
 
                 pa[i*3] = x + m.vx * 0.16;
                 pa[i*3+1] = y + m.vy * 0.16;
