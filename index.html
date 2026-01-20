@@ -19,7 +19,7 @@
     
     <script
       crossorigin="anonymous"
-      data-clerk-publishable-key="pk_test_ZGlzY3JldGUtZmlsbHktNTkuY2xlcmsuYWNjb3VudHMuZGV2JA"
+      data-clerk-publishable-key="pk_test_ZG1zY3JldGUtZmlsbHktNTkuY2xlcmsuYWNjb3VudHMuZGV2JA"
       src="https://discrete-filly-59.clerk.accounts.dev/npm/@clerk/clerk-js@latest/dist/clerk.browser.js"
       type="text/javascript">
     </script>
@@ -196,7 +196,7 @@
         <div id="toolbox-hub" class="flex-grow h-full overflow-y-auto p-6 md:p-16 lg:p-20 no-scrollbar relative z-10 transition-all duration-500">
             <div class="max-w-[1600px] mx-auto relative">
                 <div class="mb-12 md:mb-24 text-center md:text-left transition-all duration-500">
-                    <div class="inline-block px-5 py-2 bg-blue-600 text-white text-[10px] font-black uppercase tracking-[0.5em] rounded-full mb-6 shadow-lg shadow-blue-200">Creater & Owner Shiu_orz</div>
+                    <div id="welcome-badge" class="inline-block px-5 py-2 bg-blue-600 text-white text-[10px] font-black uppercase tracking-[0.5em] rounded-full mb-6 shadow-lg shadow-blue-200">Creater & Owner Shiu_orz</div>
                     <h2 class="text-5xl md:text-8xl font-black text-slate-900 mb-6 tracking-tighter leading-none">專業空調 <span class="text-blue-600 italic font-medium">工具箱</span></h2>
                     <p class="text-slate-500 font-bold text-lg md:text-3xl max-w-4xl leading-relaxed mx-auto md:mx-0">
                         點選作業單元卡片以進入計算核心。
@@ -280,7 +280,7 @@
                 { id: 'PRL-01', name: '專業壓損計算書', desc: '水系統與風系統最不利環路壓力損失精準計算。', icon: '📐', tag: 'Loss', calcType: 'Friction / Minor', file: '水管風管壓損計算.html', color: 'bg-blue-600', text: 'text-white' },
                 { id: 'PSY-PRO', name: '空氣線圖 Pro', desc: '混風系統與盤管負荷 Mapping 邏輯分析分析。', icon: '📊', tag: 'System', calcType: 'Mapping / Load', file: '空氣線圖Pro 計算器.html', color: 'bg-sky-500', text: 'text-white' },
                 { id: 'CRM-03', name: '無塵室大師 Pro', desc: 'MAU、FFU、RCU 熱平衡與氣流平衡。', icon: '🏗️', tag: 'Fab', calcType: 'Balance / Airflow', file: 'Clean room master.html', color: 'bg-slate-900', text: 'text-white' },
-                { id: 'CHW-04', name: '冰水管路計算', desc: '拼圖建模，自動計算壓損與等效管徑。', icon: '❄️', tag: 'Hydronic', calcType: 'Network Loss', file: '冰水管路計算.html', color: 'bg-blue-600', text: 'text-white' }
+                { id: 'CHW-04', name: '冰水管路計算', desc: '拼圖建模，自動計算壓損與等效管徑。', icon: '❄️', tag: 'Hydronic', calcType: 'Network Loss', file: '冰水管水管計算.html', color: 'bg-blue-600', text: 'text-white' }
             ]
         };
 
@@ -483,88 +483,73 @@
             const loader = document.getElementById('boot-loader');
             const bootStatus = document.getElementById('boot-status');
 
-            // 安全防禦：檢查 Clerk 是否被阻擋
             if (typeof Clerk === 'undefined') {
                 bootStatus.innerText = "Auth Service Blocked (Check AdBlock)";
                 bootStatus.style.color = "#ef4444";
-                console.error("Clerk SDK failed to load.");
                 return; 
             }
 
-            bootStatus.innerText = "Authenticating User...";
             try {
+                bootStatus.innerText = "Authenticating User...";
                 await Clerk.load();
                 
-                // 身份驗證攔截
-               if (!Clerk.user) {
-    bootStatus.innerText = "Login Required";
-    Clerk.openSignIn({ 
-        // 強制指定回傳到工具箱首頁，記得最後面要加斜線 /
-        afterSignInUrl: 'https://shiu47.github.io/HVAC-toolbox/' 
-    });
-    return;
-}else {
-    // 如果「已經有使用者」，就直接隱藏啟動畫面，進入工具箱
-    console.log("使用者已登入:", Clerk.user.primaryEmailAddress.emailAddress);
-    bootStatus.innerText = "Welcome back!";
-    
-    // 執行進入系統的動畫...
-    loader.style.opacity = '0';
-    setTimeout(() => loader.style.display = 'none', 600);
-}
+                // 修正判定邏輯：同時檢查 session 與 user
+                if (!Clerk.session || !Clerk.user) {
+                    bootStatus.innerText = "Redirecting to Login...";
+                    Clerk.openSignIn({ 
+                        afterSignInUrl: 'https://shiu47.github.io/HVAC-toolbox/' 
+                    });
+                    return;
+                }
 
-                // 掛載使用者頭像
+                // 成功登入流程
+                bootStatus.innerText = "Welcome back!";
+                
+                // 個人化歡迎詞
+                const userName = Clerk.user.firstName || Clerk.user.primaryEmailAddress.emailAddress.split('@')[0];
+                const badge = document.getElementById('welcome-badge');
+                if (badge) badge.innerText = `歡迎回來，${userName} 工程師`;
+
+                // 掛載頭像按鈕
                 Clerk.mountUserButton(document.getElementById('user-button'));
 
-                bootStatus.innerText = "Initializing Logic Core...";
-                
-                const safetyTimeout = setTimeout(() => {
-                    if (loader && loader.style.display !== 'none') {
-                        loader.style.opacity = '0';
-                        setTimeout(() => loader.style.display = 'none', 600);
-                    }
-                }, 3000);
-
-                document.addEventListener('mousemove', e => {
-                    const x = (e.clientX / window.innerWidth) * 100;
-                    const y = (e.clientY / window.innerHeight) * 100;
-                    document.documentElement.style.setProperty('--mouse-x', `${x}%`);
-                    document.documentElement.style.setProperty('--mouse-y', `${y}%`);
-                });
-
+                // 初始化滑軌與內容
                 document.getElementById('general-slider').innerHTML = toolsData.general.map(createCardHTML).join('');
                 document.getElementById('advanced-slider').innerHTML = toolsData.advanced.map(createCardHTML).join('');
                 initInfiniteSlider('general-slider', toolsData.general.length);
                 initInfiniteSlider('advanced-slider', toolsData.advanced.length);
                 renderRecentTools();
-                
+
+                // 隱藏啟動畫面
                 setTimeout(() => {
-                    clearTimeout(safetyTimeout);
-                    if (loader) {
-                        loader.style.opacity = '0';
-                        setTimeout(() => loader.style.display = 'none', 600);
-                    }
-                    
-                    const idleCallback = window.requestIdleCallback || ((cb) => setTimeout(cb, 1));
-                    idleCallback(() => {
+                    loader.style.opacity = '0';
+                    setTimeout(() => {
+                        loader.style.display = 'none';
                         fetchWeather();
                         handleServiceWorker();
                         forceUpdateCheck();
-                    });
-                }, 1800);
+                    }, 600);
+                }, 1000);
 
             } catch (err) {
-                bootStatus.innerText = "Auth Service Error. Please Refresh.";
-                console.error("Clerk runtime error:", err);
+                bootStatus.innerText = "Auth Error. Please Refresh.";
+                console.error("Clerk Error:", err);
             }
 
             setInterval(() => {
                 document.getElementById('current-time').innerText = new Date().toLocaleTimeString('zh-TW', { hour12: false, hour: '2-digit', minute: '2-digit' });
             }, 1000);
+
+            document.addEventListener('mousemove', e => {
+                const x = (e.clientX / window.innerWidth) * 100;
+                const y = (e.clientY / window.innerHeight) * 100;
+                document.documentElement.style.setProperty('--mouse-x', `${x}%`);
+                document.documentElement.style.setProperty('--mouse-y', `${y}%`);
+            });
         };
     </script>
 </body>
 </html>
 
-
-
+幫我改好給我複製 把跳轉那個修好
+加上個人歡迎詞
