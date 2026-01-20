@@ -17,6 +17,14 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=Noto+Sans+TC:wght@400;500;700&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
     
+    <script
+      async
+      crossorigin="anonymous"
+      data-clerk-publishable-key="YOUR_PUBLISHABLE_KEY"
+      src="https://your-domain.clerk.accounts.dev/npm/@clerk/clerk-js@latest/dist/clerk.browser.js"
+      type="text/javascript">
+    </script>
+
     <style>
         :root {
             --primary-blue: #2563eb;
@@ -152,7 +160,6 @@
 </head>
 <body class="h-screen flex flex-col">
 
-    <!-- 啟動動畫 -->
     <div id="boot-loader">
         <div class="flex flex-col items-center">
             <div class="w-16 h-16 bg-blue-600 rounded-2xl flex items-center justify-center text-white font-black text-2xl shadow-2xl mb-8">東旭</div>
@@ -185,6 +192,7 @@
                 <div class="ml-1 text-blue-500 animate-pulse text-xs">📡</div>
             </div>
             <div id="current-time" class="text-xs md:text-lg font-bold text-slate-800 font-mono bg-white px-3 md:px-6 py-1.5 md:py-2 rounded-xl border border-slate-200 shadow-sm">--:--</div>
+            <div id="user-button"></div>
         </div>
     </header>
 
@@ -204,7 +212,6 @@
                     </div>
                 </div>
 
-                <!-- 滑軌 1：基礎設計工具 -->
                 <section class="mb-24 md:mb-36 section-container">
                     <h3 class="text-[10px] md:text-xs font-black text-slate-400 uppercase tracking-[0.5em] mb-8 flex items-center gap-6">
                         <span class="w-12 md:w-32 h-1 bg-blue-600 rounded-full"></span>基礎設計工具 General
@@ -216,7 +223,6 @@
                     </div>
                 </section>
 
-                <!-- 滑軌 2：進階系統模組 -->
                 <section class="mb-10 section-container">
                     <h3 class="text-[10px] md:text-xs font-black text-slate-400 uppercase tracking-[0.5em] mb-8 flex items-center gap-6">
                         <span class="w-12 md:w-32 h-1 bg-slate-900 rounded-full"></span>進階系統模組 Advanced
@@ -235,7 +241,6 @@
             </div>
         </div>
 
-        <!-- 軟體檢視器模組 -->
         <div id="module-container">
             <div class="h-[64px] md:h-[80px] bg-slate-900 text-white flex items-center px-4 md:px-12 justify-between shrink-0 shadow-2xl relative z-[10]">
                 <button onclick="closeModule()" class="flex items-center gap-3 px-5 py-2 rounded-full bg-white/10 hover:bg-white/20 text-white font-bold text-xs transition-all group">
@@ -348,7 +353,6 @@
                     container.scrollLeft += setWidth;
                 }
 
-                // 比例級 Active Card 判斷
                 const containerRect = container.getBoundingClientRect();
                 const centerX = containerRect.left + containerRect.width / 2;
                 
@@ -431,7 +435,6 @@
             const iframe = document.getElementById('module-viewport');
             const skeleton = document.getElementById('skeleton-loader');
             
-            // 物理級 Reset：清空資源避免洩漏
             container.style.display = 'none';
             iframe.src = 'about:blank';
             skeleton.style.display = 'none';
@@ -481,9 +484,35 @@
 
         function iframeReload() { document.getElementById('module-viewport').contentWindow.location.reload(); }
 
-        window.onload = () => {
+        // --- Clerk 整合啟動邏輯 ---
+        window.onload = async () => {
             const loader = document.getElementById('boot-loader');
-            
+            const bootStatus = document.getElementById('boot-status');
+
+            // 1. 初始化 Clerk
+            bootStatus.innerText = "Authenticating User...";
+            try {
+                await Clerk.load();
+            } catch (err) {
+                console.error("Clerk 載入失敗:", err);
+            }
+
+            // 2. 檢查登入狀態
+            if (!Clerk.user) {
+                bootStatus.innerText = "Login Required";
+                Clerk.openSignIn({
+                    afterSignInUrl: window.location.href,
+                });
+                return; // 未登入則攔截後續執行
+            }
+
+            // 3. 已登入，掛載頭像按鈕
+            const userButtonDiv = document.getElementById('user-button');
+            Clerk.mountUserButton(userButtonDiv);
+
+            // --- 4. 恢復原本的初始化邏輯 ---
+            bootStatus.innerText = "Initializing Logic Core...";
+
             const safetyTimeout = setTimeout(() => {
                 if (loader && loader.style.display !== 'none') {
                     loader.style.opacity = '0';
@@ -511,7 +540,6 @@
                     setTimeout(() => loader.style.display = 'none', 600);
                 }
                 
-                // --- 非阻塞延後加載任務 ---
                 const idleCallback = window.requestIdleCallback || ((cb) => setTimeout(cb, 1));
                 idleCallback(() => {
                     fetchWeather();
