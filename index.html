@@ -496,11 +496,14 @@
                 await Clerk.load();
                 
                 // 身份驗證攔截
-                if (!Clerk.user) {
-                    bootStatus.innerText = "Login Required";
-                    Clerk.openSignIn({ afterSignInUrl: window.location.href });
-                    return;
-                }
+               if (!Clerk.user) {
+    bootStatus.innerText = "Login Required";
+    Clerk.openSignIn({ 
+        // 強制指定回傳到工具箱首頁，記得最後面要加斜線 /
+        afterSignInUrl: 'https://shiu47.github.io/HVAC-toolbox/' 
+    });
+    return;
+}
 
                 // 掛載使用者頭像
                 Clerk.mountUserButton(document.getElementById('user-button'));
@@ -554,4 +557,5 @@
     </script>
 </body>
 </html>
+
 
