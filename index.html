@@ -19,137 +19,48 @@
     
     <script
       crossorigin="anonymous"
-      data-clerk-publishable-key="pk_test_ZG1zY3JldGUtZmlsbHktNTkuY2xlcmsuYWNjb3VudHMuZGV2JA"
+      data-clerk-publishable-key="pk_test_ZGlzY3JldGUtZmlsbHktNTkuY2xlcmsuYWNjb3VudHMuZGV2JA"
       src="https://discrete-filly-59.clerk.accounts.dev/npm/@clerk/clerk-js@latest/dist/clerk.browser.js"
       type="text/javascript">
     </script>
 
     <style>
-        :root {
-            --primary-blue: #2563eb;
-            --soft-blue: #eff6ff;
-            --border-light: rgba(226, 232, 240, 0.8);
-            --obsidian-black: #0f172a;
-        }
-
-        body {
-            font-family: 'Plus Jakarta Sans', 'Noto Sans TC', sans-serif;
-            background: #f8fafc;
-            color: #1e293b;
-            overflow: hidden;
-            margin: 0;
-            perspective: 2000px; 
-            -webkit-tap-highlight-color: transparent;
-        }
-
-        #boot-loader {
-            position: fixed; inset: 0; background: #ffffff; z-index: 9999;
-            display: flex; flex-direction: column; align-items: center; justify-content: center;
-            transition: opacity 0.6s cubic-bezier(0.65, 0, 0.35, 1);
-            will-change: opacity;
-        }
+        :root { --primary-blue: #2563eb; --soft-blue: #eff6ff; --border-light: rgba(226, 232, 240, 0.8); --obsidian-black: #0f172a; }
+        body { font-family: 'Plus Jakarta Sans', 'Noto Sans TC', sans-serif; background: #f8fafc; color: #1e293b; overflow: hidden; margin: 0; perspective: 2000px; -webkit-tap-highlight-color: transparent; }
+        #boot-loader { position: fixed; inset: 0; background: #ffffff; z-index: 9999; display: flex; flex-direction: column; align-items: center; justify-content: center; transition: opacity 0.6s cubic-bezier(0.65, 0, 0.35, 1); will-change: opacity; }
         .boot-bar { width: 240px; height: 3px; background: #eff6ff; margin-top: 24px; border-radius: 99px; position: relative; overflow: hidden; }
         .boot-progress { position: absolute; height: 100%; width: 0%; background: var(--primary-blue); box-shadow: 0 0 15px var(--primary-blue); animation: bootProgress 1.4s cubic-bezier(0.23, 1, 0.32, 1) forwards; }
         @keyframes bootProgress { 0% { width: 0%; } 100% { width: 100%; } }
-
-        .mesh-bg {
-            position: fixed; inset: 0; z-index: -1;
-            background: 
-                radial-gradient(at var(--mouse-x, 50%) var(--mouse-y, 50%), rgba(37, 99, 235, 0.08) 0px, transparent 40%),
-                radial-gradient(at 0% 0%, rgba(37, 99, 235, 0.08) 0px, transparent 50%),
-                radial-gradient(at 100% 100%, rgba(186, 230, 253, 0.1) 0px, transparent 50%);
-            background-color: #f8fafc;
-        }
+        .mesh-bg { position: fixed; inset: 0; z-index: -1; background: radial-gradient(at var(--mouse-x, 50%) var(--mouse-y, 50%), rgba(37, 99, 235, 0.08) 0px, transparent 40%), radial-gradient(at 0% 0%, rgba(37, 99, 235, 0.08) 0px, transparent 50%), radial-gradient(at 100% 100%, rgba(186, 230, 253, 0.1) 0px, transparent 50%); background-color: #f8fafc; }
         .bg-pattern { position: fixed; inset: 0; z-index: -1; background-size: 50px 50px; opacity: 0.5; background-image: radial-gradient(#cbd5e1 1.5px, transparent 1.5px); }
-
         .slider-wrapper { position: relative; width: 100%; padding: 0 20px; overflow: visible; }
         @media (min-width: 768px) { .slider-wrapper { padding: 0 80px; } }
-
-        .slider-container {
-            display: flex; overflow-x: auto; gap: 20px; padding: 70px 0;
-            scrollbar-width: none; -ms-overflow-style: none;
-            scroll-snap-type: x mandatory;
-            scroll-behavior: auto; 
-        }
+        .slider-container { display: flex; overflow-x: auto; gap: 20px; padding: 70px 0; scrollbar-width: none; -ms-overflow-style: none; scroll-snap-type: x mandatory; scroll-behavior: auto; }
         @media (min-width: 768px) { .slider-container { gap: 40px; } }
         .slider-container::-webkit-scrollbar { display: none; }
-
-        .tool-card {
-            flex: 0 0 280px; background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(12px);
-            border: 1px solid var(--border-light); border-radius: 2.5rem; padding: 2.5rem;
-            transition: all 0.5s cubic-bezier(0.23, 1, 0.32, 1); cursor: pointer;
-            box-shadow: 0 10px 30px -15px rgba(0, 0, 0, 0.05);
-            display: flex; flex-direction: column; height: 320px;
-            scroll-snap-align: center; opacity: 0.15; transform: scale(0.85);
-            backface-visibility: hidden; position: relative;
-            will-change: transform, opacity;
-        }
+        .tool-card { flex: 0 0 280px; background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(12px); border: 1px solid var(--border-light); border-radius: 2.5rem; padding: 2.5rem; transition: all 0.5s cubic-bezier(0.23, 1, 0.32, 1); cursor: pointer; display: flex; flex-direction: column; height: 320px; scroll-snap-align: center; opacity: 0.15; transform: scale(0.85); backface-visibility: hidden; position: relative; will-change: transform, opacity; }
         @media (min-width: 768px) { .tool-card { flex: 0 0 380px; height: 380px; border-radius: 3rem; } }
-
-        .tool-card.active-center {
-            opacity: 1; transform: scale(1.1) translateY(-20px); background: #ffffff;
-            border-color: var(--primary-blue); 
-            box-shadow: 0 35px 70px -15px rgba(37, 99, 235, 0.12), 0 0 30px rgba(37, 99, 235, 0.04);
-            z-index: 50;
-        }
-
-        .enter-hint {
-            position: absolute; bottom: 2rem; right: 2.5rem;
-            font-family: 'JetBrains Mono', monospace; font-size: 10px; font-weight: 800;
-            color: var(--primary-blue); opacity: 0; transform: translateX(-10px);
-            transition: all 0.4s ease; pointer-events: none;
-        }
+        .tool-card.active-center { opacity: 1; transform: scale(1.1) translateY(-20px); background: #ffffff; border-color: var(--primary-blue); box-shadow: 0 35px 70px -15px rgba(37, 99, 235, 0.12), 0 0 30px rgba(37, 99, 235, 0.04); z-index: 50; }
+        .enter-hint { position: absolute; bottom: 2rem; right: 2.5rem; font-family: 'JetBrains Mono', monospace; font-size: 10px; font-weight: 800; color: var(--primary-blue); opacity: 0; transform: translateX(-10px); transition: all 0.4s ease; pointer-events: none; }
         .active-center:hover .enter-hint { opacity: 1; transform: translateX(0); }
-
-        .card-opening {
-            position: fixed !important; z-index: 8000 !important;
-            transition: all 0.8s cubic-bezier(0.7, 0, 0.2, 1) !important;
-            opacity: 1 !important; transform: scale(5) rotateY(180deg) !important;
-            background: var(--primary-blue) !important; border-radius: 0 !important;
-            will-change: transform, opacity;
-        }
-
-        .icon-box {
-            width: 60px; height: 60px; background-color: var(--obsidian-black);
-            border-radius: 20px; display: flex; align-items: center; justify-content: center;
-            font-size: 2rem; color: white; transition: all 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
-        }
+        .card-opening { position: fixed !important; z-index: 8000 !important; transition: all 0.8s cubic-bezier(0.7, 0, 0.2, 1) !important; opacity: 1 !important; transform: scale(5) rotateY(180deg) !important; background: var(--primary-blue) !important; border-radius: 0 !important; will-change: transform, opacity; }
+        .icon-box { width: 60px; height: 60px; background-color: var(--obsidian-black); border-radius: 20px; display: flex; align-items: center; justify-content: center; font-size: 2rem; color: white; transition: all 0.5s cubic-bezier(0.34, 1.56, 0.64, 1); }
         @media (min-width: 768px) { .icon-box { width: 85px; height: 85px; border-radius: 26px; font-size: 2.8rem; } }
         .tool-card:hover .icon-box { transform: rotate(15deg) scale(1.1); background-color: #000 !important; }
-
-        .nav-arrow {
-            position: absolute; top: 50%; transform: translateY(-50%); width: 48px; height: 48px;
-            background: white; border: 1px solid #e2e8f0; border-radius: 50%; display: none;
-            align-items: center; justify-content: center; z-index: 100; color: #1e293b;
-            box-shadow: 0 10px 25px rgba(0,0,0,0.1); transition: all 0.3s;
-        }
+        .nav-arrow { position: absolute; top: 50%; transform: translateY(-50%); width: 48px; height: 48px; background: white; border: 1px solid #e2e8f0; border-radius: 50%; display: none; align-items: center; justify-content: center; z-index: 100; color: #1e293b; box-shadow: 0 10px 25px rgba(0,0,0,0.1); transition: all 0.3s; }
         @media (min-width: 1024px) { .nav-arrow { display: flex; } }
         .nav-arrow:hover { background: var(--primary-blue); color: white; transform: translateY(-50%) scale(1.1); }
         .nav-arrow.left { left: 15px; } .nav-arrow.right { right: 15px; }
-
-        #module-container {
-            position: fixed; top: 0; left: 0; width: 100%; height: 100vh;
-            z-index: 9000; background: white; display: none; flex-direction: column;
-            animation: moduleEntrance 0.6s cubic-bezier(0.23, 1, 0.32, 1) forwards;
-            will-change: transform, opacity;
-        }
+        #module-container { position: fixed; top: 0; left: 0; width: 100%; height: 100vh; z-index: 9000; background: white; display: none; flex-direction: column; animation: moduleEntrance 0.6s cubic-bezier(0.23, 1, 0.32, 1) forwards; will-change: transform, opacity; }
         @keyframes moduleEntrance { from { opacity: 0; transform: scale(1.02); filter: blur(5px); } to { opacity: 1; transform: scale(1); filter: blur(0); } }
-        
         #module-viewport { flex-grow: 1; width: 100%; height: 100%; border: none; background: white; z-index: 2; }
-        
-        #skeleton-loader {
-            position: absolute; inset: 80px 0 0 0; background: #f8fafc; z-index: 1;
-            display: flex; flex-direction: column; padding: 40px; gap: 24px;
-        }
+        #skeleton-loader { position: absolute; inset: 80px 0 0 0; background: #f8fafc; z-index: 1; display: flex; flex-direction: column; padding: 40px; gap: 24px; }
         .skeleton-item { background: #e2e8f0; border-radius: 12px; animation: proPulse 1.8s infinite ease-in-out; }
         @keyframes proPulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
-
         #transition-flash { position: fixed; inset: 0; background: white; z-index: 9500; opacity: 0; pointer-events: none; transition: opacity 0.4s ease; }
-
         .status-ticker { font-family: 'JetBrains Mono', monospace; font-size: 9px; color: #94a3b8; font-weight: 700; text-transform: uppercase; }
         .weather-widget { display: flex; align-items: center; gap: 12px; background: white; border: 1px solid #e2e8f0; padding: 6px 20px; border-radius: 99px; box-shadow: 0 2px 10px rgba(0,0,0,0.02); }
         .weather-value { font-family: 'JetBrains Mono', monospace; font-size: 14px; font-weight: 700; color: var(--primary-blue); }
-        
         .tag { font-size: 10px; font-weight: 800; padding: 3px 12px; border-radius: 8px; text-transform: uppercase; letter-spacing: 1px; }
         .no-scrollbar::-webkit-scrollbar { display: none; }
     </style>
@@ -285,23 +196,8 @@
 
         const allToolsList = [...toolsData.general, ...toolsData.advanced];
 
-        function handleServiceWorker() {
-            if (!('serviceWorker' in navigator) || !window.location.protocol.startsWith('http')) return;
-            navigator.serviceWorker.register(`./sw.js?v=${APP_VERSION}`).catch(() => {});
-        }
-
-        async function fetchWeather() {
-            const tempEl = document.getElementById('live-temp');
-            const rhEl = document.getElementById('live-rh');
-            try {
-                const res = await fetch('https://api.open-meteo.com/v1/forecast?latitude=25.0375&longitude=121.5637&current=temperature_2m,relative_humidity_2m');
-                const data = await res.json();
-                if (data && data.current) {
-                    tempEl.innerText = `${data.current.temperature_2m}°C`;
-                    rhEl.innerText = `${data.current.relative_humidity_2m}%`;
-                }
-            } catch (e) { tempEl.innerText = '24.5°C'; rhEl.innerText = '55%'; }
-        }
+        function handleServiceWorker() { if (!('serviceWorker' in navigator) || !window.location.protocol.startsWith('http')) return; navigator.serviceWorker.register(`./sw.js?v=${APP_VERSION}`).catch(() => {}); }
+        async function fetchWeather() { const tempEl = document.getElementById('live-temp'); const rhEl = document.getElementById('live-rh'); try { const res = await fetch('https://api.open-meteo.com/v1/forecast?latitude=25.0375&longitude=121.5637&current=temperature_2m,relative_humidity_2m'); const data = await res.json(); if (data && data.current) { tempEl.innerText = `${data.current.temperature_2m}°C`; rhEl.innerText = `${data.current.relative_humidity_2m}%`; } } catch (e) { tempEl.innerText = '24.5°C'; rhEl.innerText = '55%'; } }
 
         function initInfiniteSlider(id, originalCount) {
             const container = document.getElementById(id);
@@ -309,12 +205,7 @@
             if (originalCards.length === 0) return;
             originalCards.forEach(card => container.appendChild(card.cloneNode(true)));
             originalCards.forEach(card => container.insertBefore(card.cloneNode(true), container.firstChild));
-            const updatePos = () => {
-                const card = container.querySelector('.tool-card');
-                if (!card) return;
-                const gap = parseInt(getComputedStyle(container).gap) || 0;
-                container.scrollLeft = (card.offsetWidth + gap) * originalCount;
-            };
+            const updatePos = () => { const card = container.querySelector('.tool-card'); if (!card) return; const gap = parseInt(getComputedStyle(container).gap) || 0; container.scrollLeft = (card.offsetWidth + gap) * originalCount; };
             window.addEventListener('resize', updatePos);
             setTimeout(updatePos, 100);
             container.addEventListener('scroll', () => {
@@ -336,14 +227,7 @@
             });
         }
 
-        function sideScroll(id, direction) {
-            const container = document.getElementById(id);
-            const firstCard = container.querySelector('.tool-card');
-            if (!firstCard) return;
-            const gap = parseInt(getComputedStyle(container).gap) || 0;
-            const move = firstCard.offsetWidth + gap;
-            container.scrollBy({ left: direction === 'right' ? move : -move, behavior: 'smooth' });
-        }
+        function sideScroll(id, direction) { const container = document.getElementById(id); const firstCard = container.querySelector('.tool-card'); if (!firstCard) return; const gap = parseInt(getComputedStyle(container).gap) || 0; const move = firstCard.offsetWidth + gap; container.scrollBy({ left: direction === 'right' ? move : -move, behavior: 'smooth' }); }
 
         function loadModulePortal(event, id, toolName, fileName) {
             updateRecentTools(id);
@@ -372,23 +256,14 @@
                             container.style.display = 'flex';
                             skeleton.style.display = 'flex';
                             iframe.src = fileName + '?v=' + Date.now();
-                            iframe.onload = () => {
-                                flash.style.opacity = '0';
-                                skeleton.style.display = 'none';
-                                if(document.body.contains(clone)) document.body.removeChild(clone);
-                            };
+                            iframe.onload = () => { flash.style.opacity = '0'; skeleton.style.display = 'none'; if(document.body.contains(clone)) document.body.removeChild(clone); };
                         }, 250);
                     }, 500);
                 });
             }
         }
 
-        function closeModule() {
-            document.getElementById('module-container').style.display = 'none';
-            document.getElementById('module-viewport').src = 'about:blank';
-            document.getElementById('toolbox-hub').style.opacity = '1';
-            document.getElementById('main-header').style.transform = 'translateY(0)';
-        }
+        function closeModule() { document.getElementById('module-container').style.display = 'none'; document.getElementById('module-viewport').src = 'about:blank'; document.getElementById('toolbox-hub').style.opacity = '1'; document.getElementById('main-header').style.transform = 'translateY(0)'; }
 
         function createCardHTML(tool) {
             return `<div onclick="loadModulePortal(event, '${tool.id}', '${tool.name}', '${tool.file}')" class="tool-card group">
@@ -404,32 +279,12 @@
             </div>`;
         }
 
-        function updateRecentTools(id) {
-            let recent = JSON.parse(localStorage.getItem('hvac_recent_v2_9_1') || '[]');
-            recent = [id, ...recent.filter(tid => tid !== id)].slice(0, 4);
-            localStorage.setItem('hvac_recent_v2_9_1', JSON.stringify(recent));
-            renderRecentTools();
-        }
-
-        function renderRecentTools() {
-            const container = document.getElementById('recent-container');
-            const recentIds = JSON.parse(localStorage.getItem('hvac_recent_v2_9_1') || '[]');
-            if (recentIds.length === 0) return;
-            container.classList.remove('hidden');
-            document.getElementById('recent-list').innerHTML = recentIds.map(id => {
-                const tool = allToolsList.find(t => t.id === id);
-                return tool ? `<button onclick="quickLaunch('${tool.id}')" class="px-4 py-2 bg-white border rounded-xl text-[10px] font-black">${tool.name}</button>` : '';
-            }).join('');
-        }
-
-        function quickLaunch(id) {
-            const tool = allToolsList.find(t => t.id === id);
-            if (tool) loadModulePortal({ currentTarget: document.createElement('div') }, tool.id, tool.name, tool.file);
-        }
-
+        function updateRecentTools(id) { let recent = JSON.parse(localStorage.getItem('hvac_recent_v2_9_1') || '[]'); recent = [id, ...recent.filter(tid => tid !== id)].slice(0, 4); localStorage.setItem('hvac_recent_v2_9_1', JSON.stringify(recent)); renderRecentTools(); }
+        function renderRecentTools() { const container = document.getElementById('recent-container'); const recentIds = JSON.parse(localStorage.getItem('hvac_recent_v2_9_1') || '[]'); if (recentIds.length === 0) return; container.classList.remove('hidden'); document.getElementById('recent-list').innerHTML = recentIds.map(id => { const tool = allToolsList.find(t => t.id === id); return tool ? `<button onclick="quickLaunch('${tool.id}')" class="px-4 py-2 bg-white border rounded-xl text-[10px] font-black">${tool.name}</button>` : ''; }).join(''); }
+        function quickLaunch(id) { const tool = allToolsList.find(t => t.id === id); if (tool) loadModulePortal({ currentTarget: document.createElement('div') }, tool.id, tool.name, tool.file); }
         function iframeReload() { document.getElementById('module-viewport').contentWindow.location.reload(); }
 
-        // --- 優化後的啟動邏輯：徹底解決「卡在已登入畫面」的問題 ---
+        // --- 優化後的啟動邏輯：徹底解決已登入死結問題 ---
         window.onload = async () => {
             const loader = document.getElementById('boot-loader');
             const bootStatus = document.getElementById('boot-status');
@@ -444,7 +299,7 @@
                 bootStatus.innerText = "VERIFYING SESSION...";
                 await Clerk.load();
                 
-                // 核心判定優化：如果已經有 session，絕對不執行 openSignIn
+                // 核心關鍵判定：只要有 session，絕對不叫 openSignIn
                 if (!Clerk.session) {
                     bootStatus.innerText = "LOGIN REQUIRED";
                     Clerk.openSignIn({ 
@@ -456,12 +311,12 @@
                 // --- 進入系統流程 ---
                 bootStatus.innerText = "WELCOME BACK!";
                 
-                // 個人歡迎詞
+                // 1. 個人化歡迎詞
                 const userName = Clerk.user.firstName || Clerk.user.primaryEmailAddress.emailAddress.split('@')[0];
                 const badge = document.getElementById('welcome-badge');
                 if (badge) badge.innerText = `歡迎回來，${userName} 工程師`;
 
-                // 掛載按鈕與內容
+                // 2. 掛載按鈕與渲染內容
                 Clerk.mountUserButton(document.getElementById('user-button'));
                 document.getElementById('general-slider').innerHTML = toolsData.general.map(createCardHTML).join('');
                 document.getElementById('advanced-slider').innerHTML = toolsData.advanced.map(createCardHTML).join('');
@@ -469,21 +324,17 @@
                 initInfiniteSlider('advanced-slider', toolsData.advanced.length);
                 renderRecentTools();
 
-                // 移除啟動畫面
+                // 3. 移除啟動畫面
                 setTimeout(() => {
                     loader.style.opacity = '0';
-                    setTimeout(() => {
-                        loader.style.display = 'none';
-                        fetchWeather();
-                        handleServiceWorker();
-                    }, 600);
+                    setTimeout(() => { loader.style.display = 'none'; fetchWeather(); handleServiceWorker(); }, 600);
                 }, 1000);
 
             } catch (err) {
                 bootStatus.innerText = "AUTH ERROR. PLEASE REFRESH.";
             }
 
-            // 更新時間與滑鼠效果
+            // 更新時間與視覺效果
             setInterval(() => { document.getElementById('current-time').innerText = new Date().toLocaleTimeString('zh-TW', { hour12: false, hour: '2-digit', minute: '2-digit' }); }, 1000);
             document.addEventListener('mousemove', e => {
                 const x = (e.clientX / window.innerWidth) * 100;
