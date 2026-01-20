@@ -503,6 +503,14 @@
         afterSignInUrl: 'https://shiu47.github.io/HVAC-toolbox/' 
     });
     return;
+}else {
+    // 如果「已經有使用者」，就直接隱藏啟動畫面，進入工具箱
+    console.log("使用者已登入:", Clerk.user.primaryEmailAddress.emailAddress);
+    bootStatus.innerText = "Welcome back!";
+    
+    // 執行進入系統的動畫...
+    loader.style.opacity = '0';
+    setTimeout(() => loader.style.display = 'none', 600);
 }
 
                 // 掛載使用者頭像
@@ -557,5 +565,6 @@
     </script>
 </body>
 </html>
+
 
 
