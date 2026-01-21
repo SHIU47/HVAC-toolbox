@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>HVAC 專業設計審查級壓損計算書 (v2.2)</title>
+    <title>HVAC 專業設計審查級壓損計算書 (v2.3)</title>
     
     <!-- 載入核心與字體 -->
     <script src="https://cdn.tailwindcss.com"></script>
@@ -74,7 +74,15 @@
         /* KaTeX 修正 */
         .katex { font-size: 1.05em !important; }
 
-        @media print { .no-print { display: none !important; } body { background: white; padding: 0; } .pro-card { border: none; box-shadow: none; } }
+        @media print { 
+            .no-print { display: none !important; } 
+            body { background: white; padding: 0; -webkit-print-color-adjust: exact; } 
+            .pro-card { box-shadow: none; border: 1px solid #cbd5e1; break-inside: avoid; }
+            /* 強制列印背景色，確保標題美觀 */
+            header { background-color: #0f172a !important; color: white !important; -webkit-print-color-adjust: exact; }
+            .bg-blue-50 { background-color: #eff6ff !important; }
+            input, select { border: none; background: transparent; appearance: none; padding: 0; font-weight: bold; }
+        }
     </style>
 </head>
 <body class="p-6 md:p-10">
@@ -91,9 +99,9 @@
                 <div>
                     <h1 class="text-3xl font-black tracking-tight">HVAC 系統壓力損失審查計算書</h1>
                     <div class="flex items-center gap-3 mt-2">
-                        <span class="text-[11px] font-bold uppercase tracking-widest text-blue-400">Mechanical Engineering Suite v2.2</span>
+                        <span class="text-[11px] font-bold uppercase tracking-widest text-blue-400">Mechanical Engineering Suite v2.3</span>
                         <div class="h-1 w-1 rounded-full bg-slate-600"></div>
-                        <span class="text-[11px] text-slate-400 font-mono">Features: Full Material Library (Water/Air)</span>
+                        <span class="text-[11px] text-slate-400 font-mono">Print Ready Version</span>
                     </div>
                 </div>
             </div>
@@ -145,7 +153,7 @@
                                         <th class="pb-2" id="thFlow">流量 (m³/h)</th>
                                         <th class="pb-2">材質與阻力係數</th>
                                         <th class="pb-2 pr-4 text-center">計算與流態</th>
-                                        <th class="pb-2 w-10"></th>
+                                        <th class="pb-2 w-10 no-print"></th>
                                     </tr>
                                 </thead>
                                 <tbody id="calcBody"></tbody>
@@ -186,8 +194,8 @@
                 </div>
             </div>
 
-            <!-- Right Panel -->
-            <aside class="xl:col-span-3 space-y-8 no-print animate-slide" style="animation-delay: 0.3s;">
+            <!-- Right Panel: Removed no-print class -->
+            <aside class="xl:col-span-3 space-y-8 animate-slide" style="animation-delay: 0.3s;">
                 <div class="pro-card p-8 sticky top-10 shadow-2xl border-blue-50/50">
                     <h2 class="text-xs font-black text-slate-400 mb-8 border-b pb-4 uppercase tracking-[0.2em]">Summary Dashboard</h2>
                     
@@ -241,7 +249,8 @@
                             </div>
                         </div>
 
-                        <button onclick="window.print()" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-black py-5 rounded-2xl transition-all shadow-2xl shadow-blue-200 uppercase text-xs tracking-widest">
+                        <!-- Button is no-print -->
+                        <button onclick="window.print()" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-black py-5 rounded-2xl transition-all shadow-2xl shadow-blue-200 uppercase text-xs tracking-widest no-print">
                             下載正式審查報告 (PDF)
                         </button>
                     </div>
@@ -251,10 +260,10 @@
     </div>
 
     <!-- Help Modal -->
-    <div id="helpModal" class="fixed inset-0 bg-slate-900/90 backdrop-blur-md z-50 flex items-center justify-center hidden p-6">
+    <div id="helpModal" class="fixed inset-0 bg-slate-900/90 backdrop-blur-md z-50 flex items-center justify-center hidden p-6 no-print">
         <div class="bg-white w-full max-w-4xl rounded-[3.5rem] shadow-2xl overflow-hidden animate-slide">
             <div class="p-10 border-b border-slate-100 flex justify-between items-center bg-slate-50">
-                <h2 class="text-2xl font-black text-slate-900 tracking-tighter">HVAC 壓損計算器 v2.2：專家使用指南</h2>
+                <h2 class="text-2xl font-black text-slate-900 tracking-tighter">HVAC 壓損計算器 v2.3：專家使用指南</h2>
                 <button onclick="toggleHelp()" class="p-3 hover:bg-slate-200 rounded-full transition-all text-xl">✕</button>
             </div>
             <div class="p-12 max-h-[70vh] overflow-y-auto space-y-12">
