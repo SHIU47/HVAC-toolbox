@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Cleanroom Flow Designer Lite (v53.7)</title>
+    <title>Cleanroom Flow Designer Lite (v53.8)</title>
     
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/@phosphor-icons/web"></script>
@@ -92,7 +92,7 @@
             </div>
             <div>
                 <h1 class="font-bold text-slate-800 text-base leading-tight">Fab Designer Pro</h1>
-                <div class="text-[11px] text-slate-500 font-medium tracking-wide">V53.7 - PLENUM TURBULENCE</div>
+                <div class="text-[11px] text-slate-500 font-medium tracking-wide">V53.8 - DCC CALC FIX</div>
             </div>
         </div>
 
@@ -407,7 +407,7 @@
                         <span class="text-cyan-600 font-bold">DCC 面風速 (m/s)</span>
                         <span class="font-bold text-cyan-600 font-mono" id="val_v_dcc">0.0</span>
                     </div>
-                    <div class="text-[9px] text-slate-400 text-right mt-1">* V = Flow / Total DCC Face Area</div>
+                    <div class="text-[9px] text-slate-400 text-right mt-1">* V = Flow / Total DCC Face Area (L*H)</div>
                     
                     <div class="mt-4 pt-3 border-t border-slate-100">
                         <div class="text-[10px] font-bold text-slate-600 mb-2">速度熱圖 / 狀態</div>
@@ -440,7 +440,7 @@
 </div>
 
 <script>
-/** * FAB DESIGNER PRO v53.7 - PLENUM TURBULENCE * */
+/** * FAB DESIGNER PRO v53.8 - DCC CALC FIX * */
 
 const App = {
     data: {
@@ -1174,7 +1174,10 @@ const Sim3D = {
                       dccsSub.push(dccData);
                 }
                 // Face Velocity Calculation: W * H (Face Area)
-                totalDCCArea += (o.w/1000 * (h/1000)); 
+                // FIX: Use the MAX dimension (Length) * Height for Face Area, not Thickness * Height
+                // Assuming DCC is placed perpendicular to flow, length is the face width
+                const faceLength = Math.max(o.w, o.d);
+                totalDCCArea += (faceLength/1000 * (h/1000)); 
             } else if (o.type === 'shaft') {
                 h=H.u + H.r + H.f + H.s; y=((H.u+H.r)-(H.f+H.s))/2; col=0x475569; shafts.push(o); op=0.15;
                 totalShaftArea += (o.w/1000 * o.d/1000);
