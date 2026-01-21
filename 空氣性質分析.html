@@ -6,6 +6,28 @@
     <title>HVAC Pro - MAU 除濕性能計算器</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet">
+    
+    <!-- MathJax 配置：解決 typesetPromise 錯誤 -->
+    <script>
+        window.MathJax = {
+            tex: {
+                inlineMath: [['$', '$'], ['\\(', '\\)']],
+                displayMath: [['$$', '$$'], ['\\[', '\\]']],
+                processEscapes: true
+            },
+            options: {
+                processHtmlClass: 'tex2jax_process'
+            },
+            startup: {
+                ready: () => {
+                    MathJax.startup.defaultReady();
+                    console.log('MathJax 引擎載入完成');
+                }
+            }
+        };
+    </script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+
     <style>
         :root {
             --brand-color: #0284c7;
@@ -43,7 +65,6 @@
             color: var(--brand-color);
             box-shadow: 0 0 0 1px var(--brand-color);
         }
-        /* 隱藏 Chrome/Safari/Edge 的數字箭頭 */
         input::-webkit-outer-spin-button,
         input::-webkit-inner-spin-button {
             -webkit-appearance: none;
@@ -55,7 +76,7 @@
         }
     </style>
 </head>
-<body class="py-10 px-4 md:px-8">
+<body class="py-10 px-4 md:px-8 tex2jax_process">
 
 <div class="app-container">
     <!-- 頁首設計 -->
@@ -270,9 +291,18 @@
                 <h3 class="text-slate-800 font-bold text-lg uppercase tracking-tight">計算依據 (Physics)</h3>
             </div>
             <ul class="space-y-4 text-sm text-slate-500 font-medium">
-                <li class="flex items-start"><span class="w-1.5 h-1.5 bg-slate-300 rounded-full mt-1.5 mr-3 shrink-0"></span>基於 ASHRAE Fundamentals 2017 高精度公式。</li>
-                <li class="flex items-start"><span class="w-1.5 h-1.5 bg-slate-300 rounded-full mt-1.5 mr-3 shrink-0"></span>除濕量 $M_w = \rho \cdot Q \cdot (W_A - W_B)$，其中 $\rho$ 依入口狀態自動修正。</li>
-                <li class="flex items-start"><span class="w-1.5 h-1.5 bg-slate-300 rounded-full mt-1.5 mr-3 shrink-0"></span>總冷量包含顯熱與潛熱，採用比焓差 $\Delta H$ 進行計算。</li>
+                <li class="flex items-start">
+                    <span class="w-1.5 h-1.5 bg-slate-300 rounded-full mt-1.5 mr-3 shrink-0"></span>
+                    基於 $ASHRAE\ Fundamentals\ 2017$ 高精度空氣線圖公式。
+                </li>
+                <li class="flex items-start">
+                    <span class="w-1.5 h-1.5 bg-slate-300 rounded-full mt-1.5 mr-3 shrink-0"></span>
+                    除濕量 $M_w = \rho \cdot Q \cdot (W_A - W_B)$，其中密度 $\rho$ 依入口狀態自動修正。
+                </li>
+                <li class="flex items-start">
+                    <span class="w-1.5 h-1.5 bg-slate-300 rounded-full mt-1.5 mr-3 shrink-0"></span>
+                    總冷量包含顯熱與潛熱，採用比焓差公式 $Q_t = \rho \cdot Q \cdot (h_A - h_B)$ 進行計算。
+                </li>
             </ul>
         </div>
         <div class="bg-slate-50 rounded-2xl p-6 border border-slate-100">
@@ -283,7 +313,7 @@
                 MAU 設計建議
             </h4>
             <p class="text-sm text-slate-500 leading-relaxed font-medium">
-                設計外氣空調箱時，出口溫度 (State B) 通常建議設定在露點 12-14°C 以利除濕。若該地區夏季極端潮濕，請確保冷卻盤管排數足夠（通常為 6-8 排）以達到預期之離風狀態。
+                設計外氣空調箱時，出口溫度 (State B) 通常建議設定在露點 $12 \sim 14^\circ\text{C}$ 以利除濕。若該地區夏季極端潮濕，請確保冷卻盤管排數足夠（通常為 $6 \sim 8$ 排）以達成熱焓降。
             </p>
         </div>
     </section>
@@ -349,8 +379,8 @@
             RH = VP / Pws_db;
         }
 
-        if (!W) W = 0.621945 * VP / (P - VP);
-        if (!H) H = 1.006 * DB + W * (2501 + 1.86 * DB);
+        if (W === undefined) W = 0.621945 * VP / (P - VP);
+        H = 1.006 * DB + W * (2501 + 1.86 * DB);
         
         const volume = 0.287042 * (DB + 273.15) * (1 + 1.6078 * W) / P;
         const density = (1 + W) / volume;
@@ -368,7 +398,7 @@
             const propA = getProperties(P, parseFloat(document.getElementById('dbA').value), parseFloat(document.getElementById('secA').value), secTypeA);
             const propB = getProperties(P, parseFloat(document.getElementById('dbB').value), parseFloat(document.getElementById('secB').value), secTypeB);
 
-            // Update UI Labels
+            // Update UI
             document.getElementById('wA').innerText = (propA.w * 1000).toFixed(2);
             document.getElementById('hA').innerText = propA.h.toFixed(1);
             document.getElementById('rhA').innerText = propA.rh.toFixed(1);
@@ -377,7 +407,7 @@
             document.getElementById('hB').innerText = propB.h.toFixed(1);
             document.getElementById('rhB').innerText = propB.rh.toFixed(1);
 
-            const massFlow = CMH * propA.density;
+            const massFlow = CMH * propA.density; // 根據入口狀態計算質量流量
             const dehumid = massFlow * (propA.w - propB.w);
             const totalKW = massFlow * (propA.h - propB.h) / 3600;
             const sensKW = massFlow * 1.006 * (propA.db - propB.db) / 3600;
@@ -389,6 +419,11 @@
             document.getElementById('res-sens-cap').innerText = sensKW.toFixed(2);
             document.getElementById('res-lat-cap').innerText = latentKW.toFixed(2);
             document.getElementById('res-shr').innerText = `顯熱比 SHR: ${(sensKW / totalKW).toFixed(3)}`;
+
+            // 安全觸發 MathJax 渲染
+            if (window.MathJax && typeof MathJax.typesetPromise === 'function') {
+                MathJax.typesetPromise().catch((err) => console.log('MathJax typeset failed: ', err));
+            }
 
         } catch (e) {
             console.warn("Calculation pending valid input...");
@@ -424,8 +459,13 @@
         });
     }
 
-    inputIds.forEach(id => document.getElementById(id).addEventListener('input', calculate));
-    calculate();
+    inputIds.forEach(id => {
+        document.getElementById(id).addEventListener('input', calculate);
+        if (id === 'flowUnit') document.getElementById(id).addEventListener('change', calculate);
+    });
+
+    // 初始計算
+    window.onload = calculate;
 </script>
 
 </body>
