@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>HVAC 專業設計審查級壓損計算書 (v2.0 )</title>
+    <title>HVAC 專業設計審查級壓損計算書 (v2.2)</title>
     
     <!-- 載入核心與字體 -->
     <script src="https://cdn.tailwindcss.com"></script>
@@ -91,9 +91,9 @@
                 <div>
                     <h1 class="text-3xl font-black tracking-tight">HVAC 系統壓力損失審查計算書</h1>
                     <div class="flex items-center gap-3 mt-2">
-                        <span class="text-[11px] font-bold uppercase tracking-widest text-blue-400">Mechanical Engineering Suite v2.0</span>
+                        <span class="text-[11px] font-bold uppercase tracking-widest text-blue-400">Mechanical Engineering Suite v2.2</span>
                         <div class="h-1 w-1 rounded-full bg-slate-600"></div>
-                        <span class="text-[11px] text-slate-400 font-mono">Added: Elevation Head Calculation</span>
+                        <span class="text-[11px] text-slate-400 font-mono">Features: Full Material Library (Water/Air)</span>
                     </div>
                 </div>
             </div>
@@ -143,7 +143,7 @@
                                         <th class="pb-2">幾何參數</th>
                                         <th class="pb-2">長度 (m)</th>
                                         <th class="pb-2" id="thFlow">流量 (m³/h)</th>
-                                        <th class="pb-2">阻力設定 (常用選單)</th>
+                                        <th class="pb-2">材質與阻力係數</th>
                                         <th class="pb-2 pr-4 text-center">計算與流態</th>
                                         <th class="pb-2 w-10"></th>
                                     </tr>
@@ -165,12 +165,12 @@
                                 <p class="font-black text-slate-800 underline mb-2 tracking-tight">Hydronic System (水系統):</p>
                                 <p>● 當 $Re \ge 10^4$ 時，採用 Hazen-Williams 公式計算磨擦。</p>
                                 <p>● 低雷諾數流態下，自動改採 Darcy-Weisbach 以維護審查精度。</p>
-                                <p>● <strong>總揚程</strong> $H = (H_f + H_m) \times S.F. + H_e + H_z$。</p>
+                                <p>● <strong>C 值</strong>：依材質選定，新鋼管預設 120，塑料管 150。</p>
                             </div>
                             <div id="airLogic" class="hidden bg-slate-50 p-5 rounded-[1.5rem] border border-slate-100">
                                 <p class="font-black text-slate-800 underline mb-2 tracking-tight">Air Distribution (風系統):</p>
-                                <p>● 全程求解 Swamee-Jain 摩擦因子 $f$，粗糙度 $\epsilon = 0.15 \text{ mm}$。</p>
-                                <p>● 方管採用水力直徑 $D_h = \frac{4A}{P}$ 進行流態分析。</p>
+                                <p>● 全程求解 Swamee-Jain 摩擦因子 $f$。</p>
+                                <p>● <strong>粗糙度 $\epsilon$</strong>：依材質選定，標準鍍鋅管 0.15mm，軟管 2.5mm。</p>
                             </div>
                         </div>
                     </div>
@@ -206,7 +206,7 @@
                                 <span class="mono font-bold text-amber-700 bg-amber-50 px-2 py-1 rounded" id="resEquip">0.000</span>
                             </div>
                             
-                            <!-- Static Head Row (New) -->
+                            <!-- Static Head Row -->
                             <div id="staticHeadRow" class="flex justify-between items-center group bg-emerald-50 p-2 rounded-lg border border-emerald-100">
                                 <div class="flex flex-col">
                                     <span class="text-[11px] font-black text-emerald-600 uppercase tracking-tighter">靜落差/位能 $H_z$</span>
@@ -254,33 +254,35 @@
     <div id="helpModal" class="fixed inset-0 bg-slate-900/90 backdrop-blur-md z-50 flex items-center justify-center hidden p-6">
         <div class="bg-white w-full max-w-4xl rounded-[3.5rem] shadow-2xl overflow-hidden animate-slide">
             <div class="p-10 border-b border-slate-100 flex justify-between items-center bg-slate-50">
-                <h2 class="text-2xl font-black text-slate-900 tracking-tighter">HVAC 壓損計算器 v2：專家使用指南</h2>
+                <h2 class="text-2xl font-black text-slate-900 tracking-tighter">HVAC 壓損計算器 v2.2：專家使用指南</h2>
                 <button onclick="toggleHelp()" class="p-3 hover:bg-slate-200 rounded-full transition-all text-xl">✕</button>
             </div>
             <div class="p-12 max-h-[70vh] overflow-y-auto space-y-12">
                 <section class="grid grid-cols-1 md:grid-cols-2 gap-12 text-slate-600">
                     <div class="space-y-4">
-                        <h4 class="font-black text-blue-600 uppercase text-xs tracking-[0.2em] border-b pb-2 font-bold">水系統與高程 (Water & Elevation)</h4>
+                        <h4 class="font-black text-blue-600 uppercase text-xs tracking-[0.2em] border-b pb-2 font-bold">材質與 C 值設定</h4>
                         <ol class="space-y-4 text-sm list-decimal ml-4">
-                            <li><strong>閉路系統 (Closed Loop)</strong>：如冰水、熱水系統。水由泵浦送出再回到泵浦，位能互相抵銷。此時 <span class="text-emerald-600 font-bold">靜落差 $H_z$ 請設為 0</span>。</li>
-                            <li><strong>開路系統 (Open Loop)</strong>：如冷卻水塔。泵浦需將水從水盤打至散熱材噴嘴。此時請輸入 <span class="text-emerald-600 font-bold">噴嘴與水盤液面之高程差 (m)</span>。</li>
-                            <li><strong>補給水泵</strong>：需克服地下室至頂樓水箱之高差，請如實輸入垂直高度。</li>
+                            <li><strong>選單連動</strong>：在「阻力設定」欄位選擇管材，程式會自動填入建議的 Hazen-Williams C 值或風管粗糙度 $\epsilon$。</li>
+                            <li><strong>老化考量</strong>：預設黑鐵管 C=120，這已包含約 15-20 年的老化係數。</li>
+                            <li><strong>軟管注意</strong>：軟管 (Flexible Duct) 的粗糙度高達 2.5mm，約為鍍鋅風管的 16 倍，請務必如實選用以免風量不足。</li>
                         </ol>
                     </div>
                     <div class="space-y-4">
-                        <h4 class="font-black text-indigo-600 uppercase text-xs tracking-[0.2em] border-b pb-2 font-bold">風系統 (Air)</h4>
+                        <h4 class="font-black text-indigo-600 uppercase text-xs tracking-[0.2em] border-b pb-2 font-bold">高程與系統類型</h4>
                         <ul class="space-y-4 text-sm list-disc ml-4">
-                            <li>風機靜壓 (ESP/TSP) 計算通常忽略空氣柱重量（Stack Effect）。</li>
-                            <li>本工具在切換至風系統時，會自動隱藏靜落差欄位以防誤用。</li>
-                            <li>若需計算高樓煙囪效應，請另行檢討並加在「設備定額」中。</li>
+                            <li><strong>閉路系統</strong>：$H_z = 0$。</li>
+                            <li><strong>開路系統</strong>：$H_z$ = 垂直幾何落差。</li>
+                            <li><strong>安全係數</strong>：S.F. 不放大 $H_z$ 與設備壓損。</li>
                         </ul>
                     </div>
                 </section>
                 <div class="bg-red-50 p-10 rounded-[2.5rem] border border-red-100">
-                    <h4 class="font-black text-red-800 uppercase text-xs tracking-widest mb-6 font-bold">⚠️ 安全係數與高程邏輯</h4>
+                    <h4 class="font-black text-red-800 uppercase text-xs tracking-widest mb-6 font-bold">⚠️ 工程設計防呆檢查 (Audit)</h4>
                     <div class="grid grid-cols-1 sm:grid-cols-2 gap-6 text-[11px] font-bold text-red-700 leading-relaxed">
-                        <div class="flex gap-3"><span>!</span> <span>注意：安全係數 (S.F.) 僅放大「管路摩擦」與「零件阻力」。</span></div>
-                        <div class="flex gap-3"><span>!</span> <span>設備本身的壓損（如冰機）與靜落差（重力）為物理定值，程式不會對這兩項乘上 1.15 倍，避免過度設計 (Over-design)。</span></div>
+                        <div class="flex gap-3"><span>✕</span> <span>切勿每一段管都輸入流量，這會導致繼承邏輯錯誤。</span></div>
+                        <div class="flex gap-3"><span>✕</span> <span>流速警告若顯示紅色，代表噪音與震動過高，請調大管徑。</span></div>
+                        <div class="flex gap-3"><span>✕</span> <span>不鏽鋼與銅管表面光滑，C值通常取 140；鍍鋅管較粗糙取 110。</span></div>
+                        <div class="flex gap-3"><span>✕</span> <span>軟管壓損極大，請限制軟管長度（建議 < 1.5m）。</span></div>
                     </div>
                 </div>
             </div>
@@ -296,6 +298,15 @@
         
         const LIBRARIES = {
             water: {
+                materials: [
+                    { name: '🔘 自定義 (Custom)', value: 120 },
+                    { name: '🧪 塑料管 (PVC/CPVC)', value: 150 },
+                    { name: '✨ 銅管/不鏽鋼 (Copper/SS)', value: 140 },
+                    { name: '🏗️ 新黑鐵管 (New Steel)', value: 120 },
+                    { name: '🛡️ 鍍鋅鋼管 (Galvanized)', value: 110 },
+                    { name: '🏚️ 舊鐵管 (Old Steel)', value: 100 },
+                    { name: '🧱 鑄鐵管 (Cast Iron)', value: 100 }
+                ],
                 fittings: [
                     { name: '🔘 自定義輸入 (K)', value: 0 },
                     { name: '📏 90° 彎頭 (長半徑)', value: 0.45 },
@@ -319,6 +330,15 @@
                 ]
             },
             air: {
+                materials: [
+                    { name: '🔘 自定義 (Custom)', value: 0.15 },
+                    { name: '🏗️ 鍍鋅鋼管 (Galvanized)', value: 0.15 },
+                    { name: '✨ 鋁管/不鏽鋼 (Al/SS)', value: 0.05 },
+                    { name: '🧪 塑料/PVC (Plastic)', value: 0.05 },
+                    { name: '🐍 軟管/伸縮管 (Flexible)', value: 2.50 }, // High loss
+                    { name: '🧱 混凝土風道 (Concrete)', value: 2.00 },
+                    { name: '🛡️ 內襯平滑風管 (Lined)', value: 0.03 }
+                ],
                 fittings: [
                     { name: '🔘 自定義輸入 (K)', value: 0 },
                     { name: '📐 90° 彎頭 (含導流片)', value: 0.25 },
@@ -337,7 +357,7 @@
             }
         };
 
-        const RHO_AIR = 1.204, MU_AIR = 1.81e-5, EPSILON_AIR = 0.00015; 
+        const RHO_AIR = 1.204, MU_AIR = 1.81e-5, EPSILON_AIR = 0.00015; // Kept as fallback
         const RHO_WATER = 998.2, MU_WATER = 0.001002, GRAVITY_ACCEL = 9.80665, EPSILON_WATER = 0.000045;
 
         function flow_m3h_to_m3s(q_h) { return (parseFloat(q_h) || 0) / 3600; }
@@ -405,9 +425,11 @@
                 flow: 0,
                 lossType: 'k', 
                 libSelection: '🔘 自定義輸入',
+                material: mode === 'water' ? '🏗️ 新黑鐵管 (New Steel)' : '🏗️ 鍍鋅鋼管 (Galvanized)',
+                cValue: 120, // Water
+                roughness: 0.15, // Air (mm)
                 kValue: 0,
                 leq: 0,
-                cValue: 120,
                 fixedLoss: 0
             };
             if (rows.length === 0 && type === 'pipe') row.flow = mode === 'water' ? 10 : 1200;
@@ -433,6 +455,23 @@
                         if (row.type === 'fitting') row.kValue = selected.value;
                         else row.fixedLoss = selected.value;
                     }
+                } else if (field === 'material') {
+                    // Update C Value or Roughness based on material
+                    const lib = mode === 'water' ? LIBRARIES.water.materials : LIBRARIES.air.materials;
+                    const selected = lib.find(item => item.name === value);
+                    row.material = value;
+                    if (selected && !value.includes('自定義')) {
+                        if (mode === 'water') row.cValue = selected.value;
+                        else row.roughness = selected.value;
+                    }
+                } else if (field === 'cValue') {
+                    // If manually changing C-Value
+                    row.cValue = parseFloat(value);
+                    if (mode === 'water') row.material = '🔘 自定義 (Custom)';
+                } else if (field === 'roughness') {
+                    // If manually changing Roughness
+                    row.roughness = parseFloat(value);
+                    if (mode === 'air') row.material = '🔘 自定義 (Custom)';
                 } else {
                     row[field] = (field === 'name' || field === 'shape' || field === 'lossType') ? value : parseFloat(value) || 0;
                 }
@@ -494,7 +533,9 @@
                         res.loss = (f * (row.length / dh) * (v * v) / (2 * GRAVITY_ACCEL));
                     }
                 } else {
-                    const f = getFrictionFactor(res.re, dh, EPSILON_AIR);
+                    // Use row specific roughness if available, else standard
+                    const epsilon = (row.roughness !== undefined ? row.roughness : 0.15) / 1000; // mm to m
+                    const f = getFrictionFactor(res.re, dh, epsilon);
                     res.loss = f * (row.length / dh) * (RHO_AIR * v * v / 2);
                 }
             } else if (row.type === 'fitting') {
@@ -504,7 +545,10 @@
                     if (mode === 'water') {
                         res.loss = (res.re >= 10000) ? (10.67 * row.leq * Math.pow(q_m3s, 1.852)) / (Math.pow(row.cValue, 1.852) * Math.pow(dh, 4.8704)) : (getFrictionFactor(res.re, dh, EPSILON_WATER) * (row.leq / dh) * (v * v) / (2 * GRAVITY_ACCEL));
                     } else {
-                        res.loss = getFrictionFactor(res.re, dh, EPSILON_AIR) * (row.leq / dh) * (RHO_AIR * v * v / 2);
+                         // Fittings typically inherit roughness or use standard, here using standard EPSILON_AIR to keep it simple as fittings don't have material selector
+                         // OR we could use the standard 0.15mm as the fitting material is usually consistent with main duct
+                         const epsilon = 0.00015; 
+                        res.loss = getFrictionFactor(res.re, dh, epsilon) * (row.leq / dh) * (RHO_AIR * v * v / 2);
                     }
                 }
             }
@@ -526,8 +570,7 @@
             // 获取静态高差
             const hz = mode === 'water' ? (parseFloat(document.getElementById('staticHeadVal').value) || 0) : 0;
             
-            // 总扬程计算：安全系数不应放大重力项(Hz)与设备项(He)，通常仅放大摩擦损耗，但有些规范要求全部放大。
-            // 此处采用业界标准：SF仅放大不确定性较高的管路摩擦與零件。
+            // 总扬程计算
             const total = (fricTotal + fitTotal) * sf + eqTotal + hz;
             
             document.getElementById('resFriction').innerText = fricTotal.toFixed(3);
@@ -589,7 +632,32 @@
                             <input type="number" value="${row.fixedLoss}" onchange="updateRow(${row.id}, 'fixedLoss', this.value)" class="input-pro font-black text-amber-600 bg-amber-50/20">
                         </div>`;
                 } else {
-                    lossHTML = `<div class="flex flex-col gap-1"><label class="text-[9px] font-black text-slate-400">C-COEFF</label><input type="number" value="${row.cValue}" onchange="updateRow(${row.id}, 'cValue', this.value)" class="input-pro font-bold"></div>`;
+                    // Pipe Row Logic for C-Value / Material / Roughness
+                    if (mode === 'water') {
+                        const matOptions = LIBRARIES.water.materials.map(m => `<option value="${m.name}" ${row.material === m.name ? 'selected' : ''}>${m.name}</option>`).join('');
+                        lossHTML = `
+                            <div class="flex flex-col gap-1">
+                                <select onchange="updateRow(${row.id}, 'material', this.value)" class="text-[10px] h-7 py-0 font-bold bg-slate-100 text-slate-700 rounded-lg border-none">${matOptions}</select>
+                                <div class="flex items-center gap-2">
+                                     <span class="text-[9px] font-black text-slate-400">C=</span>
+                                     <input type="number" value="${row.cValue}" onchange="updateRow(${row.id}, 'cValue', this.value)" class="input-pro font-bold h-7">
+                                </div>
+                            </div>
+                        `;
+                    } else {
+                        // AIR mode
+                        const matOptions = LIBRARIES.air.materials.map(m => `<option value="${m.name}" ${row.material === m.name ? 'selected' : ''}>${m.name}</option>`).join('');
+                        lossHTML = `
+                            <div class="flex flex-col gap-1">
+                                <select onchange="updateRow(${row.id}, 'material', this.value)" class="text-[10px] h-7 py-0 font-bold bg-slate-100 text-slate-700 rounded-lg border-none">${matOptions}</select>
+                                <div class="flex items-center gap-2">
+                                     <span class="text-[9px] font-black text-slate-400">ε=</span>
+                                     <input type="number" step="0.01" value="${row.roughness}" onchange="updateRow(${row.id}, 'roughness', this.value)" class="input-pro font-bold h-7">
+                                     <span class="text-[9px] text-slate-400">mm</span>
+                                </div>
+                            </div>
+                        `;
+                    }
                 }
 
                 const res = calculateRow(row, idx);
