@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>PsychroSolver Pro-V8.2 - 最終工程核算版</title>
+    <title>PsychroSolver Pro-V8.5</title>
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- React & ReactDOM -->
@@ -21,7 +21,7 @@
         :root {
             --font-main: 'Inter', 'Noto Sans TC', system-ui, sans-serif;
             --font-heading: 'Montserrat', 'Noto Sans TC', sans-serif;
-            --font-mono: 'JetBrains+Mono', monospace;
+            --font-mono: 'JetBrains Mono', monospace; /* Fixed font name */
         }
 
         body { 
@@ -33,8 +33,8 @@
         }
         
         .font-heading { font-family: var(--font-heading); letter-spacing: -0.02em; }
-        .font-data { font-family: 'JetBrains+Mono', monospace; }
-        .font-mono { font-family: 'JetBrains+Mono', monospace; }
+        .font-data { font-family: var(--font-mono); }
+        .font-mono { font-family: var(--font-mono); }
 
         .custom-scrollbar::-webkit-scrollbar { width: 3px; height: 3px; }
         .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
@@ -43,7 +43,10 @@
         .card-hover { transition: all 0.2s ease; }
         .card-hover:hover { transform: translateY(-1px); box-shadow: 0 4px 12px -5px rgba(0, 0, 0, 0.1); }
         
-        select { appearance: none; }
+        select { 
+            appearance: none; 
+            -webkit-appearance: none; /* Fixed for Safari/Chrome */
+        }
         
         .process-line {
             stroke-dasharray: 1000;
@@ -70,20 +73,63 @@
                 grid-template-columns: 320px 1fr;
             }
         }
+
+        /* ----- PRINT STYLES (PDF Optimization) ----- */
+        @media print {
+            @page { size: A4 landscape; margin: 5mm; }
+            body { background: white; -webkit-print-color-adjust: exact; print-color-adjust: exact; overflow: visible !important; height: auto !important; }
+            
+            /* Hide UI Elements */
+            .no-print, header, aside, .custom-scrollbar::-webkit-scrollbar { display: none !important; }
+            
+            /* Show Print Only Elements */
+            .print-only { display: block !important; }
+
+            /* Layout Fixes */
+            .app-grid { display: block !important; height: auto !important; overflow: visible !important; }
+            main { 
+                margin: 0 !important; 
+                padding: 0 !important; 
+                overflow: visible !important; 
+                height: auto !important; 
+                background: white !important;
+            }
+
+            /* Component Reset */
+            .shadow-xl, .shadow-2xl, .shadow-md, .shadow-sm, .shadow-inner { box-shadow: none !important; }
+            .rounded-3xl, .rounded-[2rem], .rounded-[2.5rem], .rounded-2xl { border-radius: 0 !important; border: 1px solid #94a3b8 !important; }
+            .card-hover:hover { transform: none !important; box-shadow: none !important; }
+
+            /* Chart Visibility Enhancements for Print */
+            svg { width: 100% !important; height: auto !important; break-inside: avoid; border: 1px solid #cbd5e1; }
+            .process-line { stroke-dashoffset: 0 !important; animation: none !important; stroke-width: 4px !important; opacity: 1 !important; }
+            path[stroke="#94a3b8"] { stroke: #475569 !important; stroke-width: 1.5px !important; opacity: 0.6 !important; } /* Saturation Curve */
+            path[stroke="#e2e8f0"] { stroke: #cbd5e1 !important; } /* Grid lines */
+            circle { stroke-width: 1.5px !important; } /* Points */
+            
+            /* Table Optimization */
+            .w-full { width: 100% !important; }
+            .bg-slate-800 { background-color: #0f172a !important; color: white !important; }
+            th, td { padding: 4px 8px !important; font-size: 9pt !important; border: 1px solid #e2e8f0; }
+            tr { break-inside: avoid; }
+        }
+
+        .print-only { display: none; }
     </style>
 </head>
 <body>
     <div id="root"></div>
 
     <script type="text/babel">
-        const { useState, useMemo, useEffect, useRef } = React;
+        const { useState, useMemo, useEffect, useRef, useCallback } = React;
 
-        const Icon = ({ name, className = "w-3.5 h-3.5" }) => {
+        // Memoized Icon component to prevent re-scanning DOM on every render
+        const Icon = React.memo(({ name, className = "w-3.5 h-3.5" }) => {
             useEffect(() => {
                 if (window.lucide) window.lucide.createIcons();
-            }, [name]);
+            }, [name]); // Only re-run if icon name changes
             return <i data-lucide={name} className={className}></i>;
-        };
+        });
 
         const PsychroLib = {
             P: 101.325,
@@ -105,14 +151,21 @@
                 const v = 0.287042 * (db + 273.15) * (1 + 1.6078 * w) / PsychroLib.P;
                 const alpha = Math.log(pw);
                 const dp = 6.54 + 14.526 * alpha + 0.7389 * Math.pow(alpha, 2) + 0.09486 * Math.pow(alpha, 3) + 0.4569 * Math.pow(pw, 0.1984);
+                
+                // Fixed: Added max iterations and NaN check
                 let wb = db;
-                for(let i=0; i<15; i++) {
+                let iter = 0;
+                while (iter < 20) {
                     const pswb = PsychroLib.getPsat(wb);
                     const w_star = 0.621945 * pswb / (PsychroLib.P - pswb);
                     const f = (1.006 * wb + w_star * (2501 + 1.86 * wb)) - h;
-                    wb = wb - f / (1.5 + 2.5 * w_star); 
-                    if (Math.abs(f) < 0.0001) break;
+                    const new_wb = wb - f / (1.5 + 2.5 * w_star);
+                    if (Math.abs(new_wb - wb) < 0.0001 || isNaN(new_wb)) { wb = new_wb; break; }
+                    wb = new_wb;
+                    iter++;
                 }
+                if (isNaN(wb)) wb = db; // Fallback
+
                 return { db, rh, w, h, v, dp, wb, pw };
             },
             calculateByDBW: (db, w) => {
@@ -127,7 +180,11 @@
                 const ratio = (oa_ratio_percent || 0) / 100;
                 const hMix = (oa?.h || 0) * ratio + (ra?.h || 0) * (1 - ratio);
                 const wMix = (oa?.w || 0) * ratio + (ra?.w || 0) * (1 - ratio);
-                const dbMix = (hMix - 2501 * wMix) / (1.006 + 1.86 * wMix);
+                let dbMix = (hMix - 2501 * wMix) / (1.006 + 1.86 * wMix);
+                
+                // Fixed: Division by zero protection
+                if (isNaN(dbMix) || !isFinite(dbMix)) dbMix = oa.db;
+                
                 return PsychroLib.calculateByDBW(dbMix, wMix);
             }
         };
@@ -165,8 +222,13 @@
         const clipLineToView = (p1, p2, VIEW) => {
             const BUFFER = 0.0001; 
             let x1 = p1.db, y1 = p1.w, x2 = p2.db, y2 = p2.w;
+            // Fixed: Check for zero length or NaN to avoid SVG errors
+            if (isNaN(x1) || isNaN(y1) || isNaN(x2) || isNaN(y2)) return null;
+            if (Math.abs(x2 - x1) < 1e-9 && Math.abs(y2 - y1) < 1e-9) return null;
+
             let code1 = computeCode(x1, y1, VIEW), code2 = computeCode(x2, y2, VIEW);
-            while (true) {
+            let iter = 0;
+            while (iter < 10) { // Limit iterations
                 if (!(code1 | code2)) return { x1, y1, x2, y2 };
                 if (code1 & code2) return null;
                 let codeOut = code1 ? code1 : code2;
@@ -175,16 +237,21 @@
                 else if (codeOut & BOTTOM) { x = x1 + (x2 - x1) * (VIEW.wMin + BUFFER - y1) / (y2 - y1); y = VIEW.wMin + BUFFER; }
                 else if (codeOut & RIGHT) { y = y1 + (y2 - y1) * (VIEW.dbMax - BUFFER - x1) / (x2 - x1); x = VIEW.dbMax - BUFFER; }
                 else if (codeOut & LEFT) { y = y1 + (y2 - y1) * (VIEW.dbMin + BUFFER - x1) / (x2 - x1); x = VIEW.dbMin + BUFFER; }
+                
+                if (isNaN(x) || isNaN(y)) return null;
+
                 if (codeOut === code1) { x1 = x; y1 = y; code1 = computeCode(x1, y1, VIEW); }
                 else { x2 = x; y2 = y; code2 = computeCode(x2, y2, VIEW); }
+                iter++;
             }
+            return null;
         };
 
         const App = () => {
             const [mode, setMode] = useState('MAU'); 
             const [airFlow, setAirFlow] = useState(35000); 
-            const [coilWidth, setCoilWidth] = useState(2400); // 新增寬度
-            const [coilHeight, setCoilHeight] = useState(1600); // 新增高度
+            const [coilWidth, setCoilWidth] = useState(2400);
+            const [coilHeight, setCoilHeight] = useState(1600);
             const [oa, setOa] = useState({ db: 35, rh: 75 });
             const [ra, setRa] = useState({ db: 26, rh: 50 }); 
             const [room, setRoom] = useState({ db: 23, rh: 50 }); 
@@ -202,7 +269,7 @@
             const [coils, setCoils] = useState([
                 { id: 1, energy: 'HW', label: '1.預熱 (Pre-Heat)', db: 36, rh: 70, active: true },
                 { id: 2, energy: 'CHW_M', label: '2.預冷 (Pre-Cool)', db: 22, rh: 95, active: true },
-                { id: 3, energy: 'WW', label: '3.水洗 (Water Wash)', db: 18, rh: 98, active: true },
+                { id: 3, energy: 'WW', label: '3.水洗 (Water Wash)', efficiency: 75, db: 18, rh: 98, active: true }, 
                 { id: 4, energy: 'CHW_L', label: '4.除濕 (Dehumidifier)', db: 11, rh: 98, active: true },
                 { id: 5, energy: 'HW', label: '5.再熱 (Re-Heat)', db: 22, rh: 45, active: true }
             ]);
@@ -210,22 +277,28 @@
             const VIEW = { dbMin: -1, dbMax: 51, wMin: -0.001, wMax: 0.036 };
 
             const handleDragStart = (index) => setDraggingIndex(index);
-            const handleDragOver = (e) => e.preventDefault();
+            const handleDragOver = (e) => { e.preventDefault(); };
             const handleDrop = (index) => {
+                // Fixed: Added preventDefault and null check
+                window.event && window.event.preventDefault();
                 if (draggingIndex === null || draggingIndex === index) return;
-                const newCoils = [...coils];
-                const draggedItem = newCoils[draggingIndex];
-                newCoils.splice(draggingIndex, 1);
-                newCoils.splice(index, 0, draggedItem);
-                setCoils(newCoils);
+                
+                // Fixed: Functional update for state
+                setCoils(prevCoils => {
+                    const newCoils = [...prevCoils];
+                    const draggedItem = newCoils[draggingIndex];
+                    newCoils.splice(draggingIndex, 1);
+                    newCoils.splice(index, 0, draggedItem);
+                    return newCoils;
+                });
                 setDraggingIndex(null);
             };
 
             const handleAddCoil = () => {
-                setCoils([...coils, { id: Date.now(), energy: 'HW', label: `${coils.length + 1}.新階段`, db: 25, rh: 50, active: true }]);
+                setCoils(prev => [...prev, { id: Date.now(), energy: 'HW', label: `${prev.length + 1}.新階段`, db: 25, rh: 50, efficiency: 75, active: true }]);
             };
 
-            const handleDeleteCoil = (id) => setCoils(coils.filter(c => c.id !== id));
+            const handleDeleteCoil = (id) => setCoils(prev => prev.filter(c => c.id !== id));
 
             const calcResults = useMemo(() => {
                 const oaS = PsychroLib.calculateByDBRH(oa.db || 0, oa.rh || 0);
@@ -236,28 +309,41 @@
                 
                 let totalWaterRate = 0; 
                 
-                // --- 面風速計算 ---
-                const faceArea = (coilWidth / 1000) * (coilHeight / 1000) || 1;
+                // --- 面風速計算 (Fixed: Avoid division by zero) ---
+                const faceArea = Math.max(0.01, (coilWidth / 1000) * (coilHeight / 1000));
                 const faceVelocity = (airFlow / 3600) / faceArea;
 
+                // Fixed: Filter inside map might leave nulls if not careful, better to map then filter(Boolean) as done, but ensure logic is safe
                 const results = coils.map(coil => {
                     if (!coil.active) return null;
                     const start = stages[stages.length - 1].state;
-                    const end = PsychroLib.calculateByDBRH(coil.db || 0, coil.rh || 0);
+                    
+                    let end;
+                    if (coil.energy === 'WW') {
+                        const Tw = waterConfig.WW.in; 
+                        const epsilon = (coil.efficiency ?? 75) / 100; 
+                        
+                        const satState = PsychroLib.calculateByDBRH(Tw, 100);
+                        
+                        const db_out = start.db + epsilon * (Tw - start.db);
+                        const w_out = start.w + epsilon * (satState.w - start.w);
+                        
+                        end = PsychroLib.calculateByDBW(db_out, w_out);
+                    } else {
+                        end = PsychroLib.calculateByDBRH(coil.db || 0, coil.rh || 0);
+                    }
                     
                     const massFlow = (airFlow || 0) / ((start.v || 0.8) * 3600); 
                     const load = massFlow * (end.h - start.h); 
                     const rt = Math.abs(load) / 3.51685;
                     const wc = waterConfig[coil.energy] || { in: 7, out: 12 };
                     const dt = Math.abs(wc.out - wc.in) || 1;
-                    const lpm = (Math.abs(load) * 60) / (4.186 * dt);
+                    const lpm = (Math.abs(load) * 60) / (Math.max(0.1, 4.186 * dt)); // Avoid div by zero in lpm
                     const pipeSize = getPipeSize(lpm);
 
-                    // --- FIN/ROW 估計邏輯 ---
                     const dt_air = Math.abs(start.db - end.db);
                     let rowFin = "---";
                     if (coil.energy !== 'WW') {
-                        // 考慮風速修正
                         const velFactor = faceVelocity / 2.5; 
                         const rows = coil.energy === 'HW' ? (dt_air > 15 ? 2 : 1) : Math.max(4, Math.min(10, Math.round((dt_air / 2.5) * velFactor)));
                         const fpi = coil.energy === 'HW' ? 10 : (faceVelocity > 2.7 ? 14 : 12);
@@ -272,7 +358,10 @@
                     }
 
                     stages.push({ label: coil.label, state: end, energy: coil.energy });
-                    return { ...coil, start, end, load, rt, lpm, pipeSize, dt, rowFin, faceVelocity };
+                    
+                    const resultCoil = coil.energy === 'WW' ? { ...coil, db: end.db, rh: end.rh } : coil;
+                    
+                    return { ...resultCoil, start, end, load, rt, lpm, pipeSize, dt, rowFin, faceVelocity };
                 }).filter(Boolean);
                 
                 return { stages, results, oaState: oaS, raState: raS, roomState: roomS, totalWaterRate, faceVelocity };
@@ -281,7 +370,7 @@
             const handleExportExcel = () => {
                 const wb = XLSX.utils.book_new();
                 const systemSummary = [
-                    ["PsychroSolver Pro V8.2 工程核算報告", ""],
+                    ["PsychroSolver Pro V8.5 工程核算報告", ""],
                     ["目標設定", `${room.db}±${roomTol.db}℃ / ${room.rh}±${roomTol.rh}%`],
                     ["運作風量 (CMH)", airFlow], 
                     ["迎風寬度 (mm)", coilWidth],
@@ -290,11 +379,28 @@
                     ["系統除濕總水量 (L/h)", calcResults.totalWaterRate.toFixed(2)],
                     ["報告時間", new Date().toLocaleString()]
                 ];
-                const coilHeader = [["盤管組件", "能源", "負荷(kW)", "負荷(RT)", "流量(LPM)", "面風速(m/s)", "規格(Row/Fin)", "管徑(A)"]];
-                const coilData = calcResults.results.map(r => [r.label, r.energy, Math.abs(r.load).toFixed(2), r.rt.toFixed(2), r.lpm.toFixed(2), r.faceVelocity.toFixed(2), r.rowFin, r.pipeSize]);
+                const coilHeader = [["盤管組件", "能源", "設定出口(DB/RH)", "接觸因子(%)", "負荷(kW)", "負荷(RT)", "流量(LPM)", "面風速(m/s)", "規格(Row/Fin)", "管徑(A)"]];
+                
+                // Fixed: Handle null efficiency gracefully for export
+                const coilData = calcResults.results.map(r => [
+                    r.label, 
+                    r.energy, 
+                    `${r.db.toFixed(1)}°C / ${r.rh.toFixed(0)}%`,
+                    r.energy === 'WW' ? (r.efficiency !== undefined && r.efficiency !== null ? r.efficiency + '%' : '75%') : '---',
+                    Math.abs(r.load).toFixed(2), 
+                    r.rt.toFixed(2), 
+                    r.lpm.toFixed(2), 
+                    r.faceVelocity.toFixed(2), 
+                    r.rowFin, 
+                    r.pipeSize
+                ]);
                 const finalWS = XLSX.utils.aoa_to_sheet([...systemSummary, [""], ...coilHeader, ...coilData]);
                 XLSX.utils.book_append_sheet(wb, finalWS, "AuditReport");
-                XLSX.writeFile(wb, `PsychroSolver_V8_2_Export.xlsx`);
+                XLSX.writeFile(wb, `PsychroSolver_V8_5_Export.xlsx`);
+            };
+
+            const handlePrint = () => {
+                window.print();
             };
 
             const svgW = 1000, svgH = 450; 
@@ -356,29 +462,74 @@
 
             return (
                 <div className="flex flex-col h-screen overflow-hidden text-xs bg-[#f8fafc]">
-                    <header className="px-4 py-3 bg-gradient-to-r from-slate-800 to-slate-900 flex justify-between items-center z-40 shrink-0 shadow-md">
+                    <header className="px-4 py-3 bg-gradient-to-r from-slate-800 to-slate-900 flex justify-between items-center z-40 shrink-0 shadow-md no-print">
                         <div className="flex items-center gap-2 md:gap-3">
                             <div className="bg-indigo-600 p-1.5 rounded-lg text-white shadow-[0_0_15px_rgba(79,70,229,0.4)] shrink-0"><Icon name="Target" /></div>
-                            <h1 className="text-sm md:text-base font-black font-heading text-white uppercase italic tracking-tighter truncate">PsychroSolver V8.2 <span className="hidden sm:inline font-light text-[10px] opacity-40 ml-2 uppercase tracking-widest">Final Audit Pro</span></h1>
+                            <h1 className="text-sm md:text-base font-black font-heading text-white uppercase italic tracking-tighter truncate">PsychroSolver V8.5 <span className="hidden sm:inline font-light text-[10px] opacity-40 ml-2 uppercase tracking-widest">Final Audit Pro</span></h1>
                         </div>
                         <div className="flex gap-1 bg-white/5 p-1 rounded-xl border border-white/10 backdrop-blur-sm shrink-0">
                             {['MAU', 'AHU'].map(m => (
-                                <button key={m} onClick={() => setMode(m)} className={`px-3 md:px-6 py-1 md:py-1.5 rounded-lg text-[10px] font-black transition-all ${mode === m ? 'bg-white text-indigo-900 shadow-md transform scale-105' : 'text-white/40 hover:text-white'}`}>{m} 模式</button>
+                                <button type="button" key={m} onClick={() => setMode(m)} className={`px-3 md:px-6 py-1 md:py-1.5 rounded-lg text-[10px] font-black transition-all ${mode === m ? 'bg-white text-indigo-900 shadow-md transform scale-105' : 'text-white/40 hover:text-white'}`}>{m} 模式</button>
                             ))}
                         </div>
                     </header>
 
+                    {/* Print Only Header Summary */}
+                    <div className="print-only p-6 border-b border-slate-300 mb-4 bg-white">
+                        <div className="flex justify-between items-start mb-6">
+                            <div>
+                                <h1 className="text-2xl font-black font-heading uppercase text-slate-900">PsychroSolver Report</h1>
+                                <p className="text-xs text-slate-500 font-mono mt-1">Generated: {new Date().toLocaleString()}</p>
+                            </div>
+                            <div className="text-right">
+                                <span className="bg-slate-900 text-white px-3 py-1 rounded text-xs font-bold uppercase">{mode} System</span>
+                            </div>
+                        </div>
+                        <div className="grid grid-cols-4 gap-6 text-xs border border-slate-200 rounded p-4">
+                            <div>
+                                <span className="block text-slate-400 font-bold uppercase text-[9px] mb-1">Air Flow (CMH)</span>
+                                <span className="text-lg font-black font-data">{airFlow}</span>
+                            </div>
+                            <div>
+                                <span className="block text-slate-400 font-bold uppercase text-[9px] mb-1">Coil Size (mm)</span>
+                                <span className="text-base font-bold font-data">{coilWidth} x {coilHeight}</span>
+                            </div>
+                            <div>
+                                <span className="block text-slate-400 font-bold uppercase text-[9px] mb-1">Face Velocity</span>
+                                <span className="text-base font-bold font-data">{calcResults.faceVelocity.toFixed(2)} m/s</span>
+                            </div>
+                            <div>
+                                <span className="block text-slate-400 font-bold uppercase text-[9px] mb-1">Total Condensate</span>
+                                <span className="text-base font-black text-emerald-600 font-data">{calcResults.totalWaterRate.toFixed(2)} L/h</span>
+                            </div>
+                            <div className="col-span-2 pt-2 border-t border-slate-100 mt-2">
+                                <span className="block text-slate-400 font-bold uppercase text-[9px] mb-1">Outdoor Air (OA)</span>
+                                <span className="font-mono font-bold">{oa.db}°C / {oa.rh}%</span>
+                            </div>
+                            {mode === 'AHU' && (
+                                <div className="col-span-2 pt-2 border-t border-slate-100 mt-2">
+                                    <span className="block text-slate-400 font-bold uppercase text-[9px] mb-1">Return Air (RA)</span>
+                                    <span className="font-mono font-bold">{ra.db}°C / {ra.rh}% (Mix: {mixRatio}%)</span>
+                                </div>
+                            )}
+                            <div className="col-span-2 pt-2 border-t border-slate-100 mt-2">
+                                <span className="block text-slate-400 font-bold uppercase text-[9px] mb-1">Target Room Condition</span>
+                                <span className="font-mono font-bold text-indigo-600">{room.db}±{roomTol.db}°C / {room.rh}±{roomTol.rh}%</span>
+                            </div>
+                        </div>
+                    </div>
+
                     <div className="app-grid overflow-hidden">
-                        {/* 左側欄 */}
-                        <aside className="border-r border-slate-200 bg-white overflow-y-auto p-4 space-y-5 custom-scrollbar z-30 shadow-sm">
+                        {/* 左側欄 - No Print */}
+                        <aside className="border-r border-slate-200 bg-white overflow-y-auto p-4 space-y-5 custom-scrollbar z-30 shadow-sm no-print">
                             <div className="bg-gradient-to-br from-indigo-800 to-indigo-950 p-4 md:p-5 rounded-2xl md:rounded-3xl space-y-3 shadow-lg border border-indigo-400/20">
                                 <div className="text-center">
                                     <label className="text-[10px] font-black text-indigo-300/60 uppercase block mb-1">System Air Flow (CMH)</label>
-                                    <input type="number" value={airFlow} onChange={e => setAirFlow(Number(e.target.value))} className="bg-transparent text-2xl md:text-3xl font-black text-white outline-none w-full text-center font-heading" />
+                                    <input type="number" min="0" value={airFlow} onChange={e => setAirFlow(Number(e.target.value))} className="bg-transparent text-2xl md:text-3xl font-black text-white outline-none w-full text-center font-heading" />
                                 </div>
                                 <div className="grid grid-cols-2 gap-2 px-2 pb-2">
-                                    <div className="bg-white/10 p-2 rounded-xl text-center border border-white/5"><span className="text-[8px] text-indigo-200 block uppercase font-bold">Width (mm)</span><input type="number" value={coilWidth} onChange={e => setCoilWidth(Number(e.target.value))} className="bg-transparent w-full text-center font-black text-white outline-none text-xs font-data" /></div>
-                                    <div className="bg-white/10 p-2 rounded-xl text-center border border-white/5"><span className="text-[8px] text-indigo-200 block uppercase font-bold">Height (mm)</span><input type="number" value={coilHeight} onChange={e => setCoilHeight(Number(e.target.value))} className="bg-transparent w-full text-center font-black text-white outline-none text-xs font-data" /></div>
+                                    <div className="bg-white/10 p-2 rounded-xl text-center border border-white/5"><span className="text-[8px] text-indigo-200 block uppercase font-bold">Width (mm)</span><input type="number" min="1" value={coilWidth} onChange={e => setCoilWidth(Number(e.target.value))} className="bg-transparent w-full text-center font-black text-white outline-none text-xs font-data" /></div>
+                                    <div className="bg-white/10 p-2 rounded-xl text-center border border-white/5"><span className="text-[8px] text-indigo-200 block uppercase font-bold">Height (mm)</span><input type="number" min="1" value={coilHeight} onChange={e => setCoilHeight(Number(e.target.value))} className="bg-transparent w-full text-center font-black text-white outline-none text-xs font-data" /></div>
                                 </div>
                             </div>
 
@@ -386,8 +537,8 @@
                                 <div className="p-4 bg-white rounded-2xl border border-slate-100 shadow-sm space-y-3 border-l-4 border-l-blue-500 card-hover">
                                     <p className="text-xs font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">OA 外氣條件</p>
                                     <div className="grid grid-cols-2 gap-3">
-                                        <div className="bg-slate-50 p-2 rounded-xl text-center shadow-inner"><span className="text-[9px] text-slate-400 block font-bold uppercase">DB ℃</span><input type="number" value={oa.db} onChange={e => setOa({...oa, db: Number(e.target.value)})} className="bg-transparent w-full text-center font-bold text-blue-600 outline-none text-xs font-data" /></div>
-                                        <div className="bg-slate-50 p-2 rounded-xl text-center shadow-inner"><span className="text-[9px] text-slate-400 block font-bold uppercase">RH %</span><input type="number" value={oa.rh} onChange={e => setOa({...oa, rh: Number(e.target.value)})} className="bg-transparent w-full text-center font-bold text-blue-600 outline-none text-xs font-data" /></div>
+                                        <div className="bg-slate-50 p-2 rounded-xl text-center shadow-inner"><span className="text-[9px] text-slate-400 block font-bold uppercase">DB ℃</span><input type="number" value={oa.db} onChange={e => setOa(prev => ({...prev, db: Number(e.target.value)}))} className="bg-transparent w-full text-center font-bold text-blue-600 outline-none text-xs font-data" /></div>
+                                        <div className="bg-slate-50 p-2 rounded-xl text-center shadow-inner"><span className="text-[9px] text-slate-400 block font-bold uppercase">RH %</span><input type="number" min="0" max="100" value={oa.rh} onChange={e => setOa(prev => ({...prev, rh: Number(e.target.value)}))} className="bg-transparent w-full text-center font-bold text-blue-600 outline-none text-xs font-data" /></div>
                                     </div>
                                 </div>
 
@@ -395,12 +546,12 @@
                                     <div className="p-4 bg-white rounded-2xl border border-emerald-100 shadow-sm space-y-3 border-l-4 border-l-emerald-500 card-hover bg-emerald-50/20">
                                         <p className="text-xs font-black text-emerald-800 uppercase tracking-widest flex items-center gap-2">RA 回風 & 混風比</p>
                                         <div className="grid grid-cols-2 gap-3">
-                                            <div className="bg-white p-2 rounded-xl border border-emerald-100 text-center shadow-sm"><span className="text-[9px] text-emerald-400 block font-bold uppercase">RA DB ℃</span><input type="number" value={ra.db} onChange={e => setRa({...ra, db: Number(e.target.value)})} className="bg-transparent w-full text-center font-bold text-emerald-600 outline-none text-xs font-data" /></div>
-                                            <div className="bg-white p-2 rounded-xl border border-emerald-100 text-center shadow-sm"><span className="text-[9px] text-emerald-400 block font-bold uppercase">RA RH %</span><input type="number" value={ra.rh} onChange={e => setRa({...ra, rh: Number(e.target.value)})} className="bg-transparent w-full text-center font-bold text-emerald-600 outline-none text-xs font-data" /></div>
+                                            <div className="bg-white p-2 rounded-xl border border-emerald-100 text-center shadow-sm"><span className="text-[9px] text-emerald-400 block font-bold uppercase">RA DB ℃</span><input type="number" value={ra.db} onChange={e => setRa(prev => ({...prev, db: Number(e.target.value)}))} className="bg-transparent w-full text-center font-bold text-emerald-600 outline-none text-xs font-data" /></div>
+                                            <div className="bg-white p-2 rounded-xl border border-emerald-100 text-center shadow-sm"><span className="text-[9px] text-emerald-400 block font-bold uppercase">RA RH %</span><input type="number" min="0" max="100" value={ra.rh} onChange={e => setRa(prev => ({...prev, rh: Number(e.target.value)}))} className="bg-transparent w-full text-center font-bold text-emerald-600 outline-none text-xs font-data" /></div>
                                         </div>
                                         <div className="flex justify-between items-center px-2 bg-emerald-600 text-white p-2 rounded-xl shadow-lg mt-1">
                                             <span className="text-[10px] font-black uppercase tracking-widest">外氣比 OA %</span>
-                                            <input type="number" value={mixRatio} onChange={e => setMixRatio(Number(e.target.value))} className="bg-emerald-800 w-10 text-center py-1 rounded-lg outline-none text-[12px] font-data font-black" />
+                                            <input type="number" min="0" max="100" value={mixRatio} onChange={e => setMixRatio(Number(e.target.value))} className="bg-emerald-800 w-10 text-center py-1 rounded-lg outline-none text-[12px] font-data font-black" />
                                         </div>
                                     </div>
                                 )}
@@ -409,14 +560,14 @@
                                     <p className="text-xs font-black text-indigo-300 uppercase tracking-widest flex items-center gap-2"><div className="w-1 h-3 bg-indigo-500 rounded-full animate-pulse"/>目標範圍設計</p>
                                     <div className="space-y-3">
                                         <div className="flex items-center gap-2">
-                                            <div className="flex-1 bg-white/5 p-2 rounded-xl text-center border border-white/5 shadow-inner"><span className="text-[9px] text-slate-400 block uppercase">Base DB</span><input type="number" value={room.db} onChange={e => setRoom({...room, db: Number(e.target.value)})} className="bg-transparent w-full text-center font-bold text-white outline-none text-xs font-data" /></div>
+                                            <div className="flex-1 bg-white/5 p-2 rounded-xl text-center border border-white/5 shadow-inner"><span className="text-[9px] text-slate-400 block uppercase">Base DB</span><input type="number" value={room.db} onChange={e => setRoom(prev => ({...prev, db: Number(e.target.value)}))} className="bg-transparent w-full text-center font-bold text-white outline-none text-xs font-data" /></div>
                                             <span className="text-indigo-500 font-black">±</span>
-                                            <input type="number" step="0.1" value={roomTol.db} onChange={e => setRoomTol({...roomTol, db: Number(e.target.value)})} className="w-12 bg-indigo-900/40 p-2 rounded-xl text-center font-black text-indigo-100 outline-none text-xs font-data border border-indigo-500/30" />
+                                            <input type="number" min="0" step="0.1" value={roomTol.db} onChange={e => setRoomTol(prev => ({...prev, db: Number(e.target.value)}))} className="w-12 bg-indigo-900/40 p-2 rounded-xl text-center font-black text-indigo-100 outline-none text-xs font-data border border-indigo-500/30" />
                                         </div>
                                         <div className="flex items-center gap-2">
-                                            <div className="flex-1 bg-white/5 p-2 rounded-xl text-center border border-white/5 shadow-inner"><span className="text-[9px] text-slate-400 block uppercase">Base RH</span><input type="number" value={room.rh} onChange={e => setRoom({...room, rh: Number(e.target.value)})} className="bg-transparent w-full text-center font-bold text-white outline-none text-xs font-data" /></div>
+                                            <div className="flex-1 bg-white/5 p-2 rounded-xl text-center border border-white/5 shadow-inner"><span className="text-[9px] text-slate-400 block uppercase">Base RH</span><input type="number" min="0" max="100" value={room.rh} onChange={e => setRoom(prev => ({...prev, rh: Number(e.target.value)}))} className="bg-transparent w-full text-center font-bold text-white outline-none text-xs font-data" /></div>
                                             <span className="text-indigo-500 font-black">±</span>
-                                            <input type="number" value={roomTol.rh} onChange={e => setRoomTol({...roomTol, rh: Number(e.target.value)})} className="w-12 bg-indigo-900/40 p-2 rounded-xl text-center font-black text-indigo-100 outline-none text-xs font-data border border-indigo-500/30" />
+                                            <input type="number" min="0" value={roomTol.rh} onChange={e => setRoomTol(prev => ({...prev, rh: Number(e.target.value)}))} className="w-12 bg-indigo-900/40 p-2 rounded-xl text-center font-black text-indigo-100 outline-none text-xs font-data border border-indigo-500/30" />
                                         </div>
                                     </div>
                                 </div>
@@ -425,7 +576,7 @@
                             <section className="space-y-2 pb-10">
                                 <div className="flex justify-between items-center text-xs font-black text-slate-400 uppercase border-b border-slate-100 pb-2">
                                     <span>盤管處理序列</span>
-                                    <button onClick={handleAddCoil} className="p-1 bg-indigo-600 text-white rounded active:scale-95 transition-all shadow-md"><Icon name="Plus" /></button>
+                                    <button type="button" onClick={handleAddCoil} className="p-1 bg-indigo-600 text-white rounded active:scale-95 transition-all shadow-md"><Icon name="Plus" /></button>
                                 </div>
                                 {coils.map((c, i) => (
                                     <div key={c.id} draggable="true" onDragStart={() => handleDragStart(i)} onDragOver={(e) => handleDragOver(e)} onDrop={() => handleDrop(i)}
@@ -434,19 +585,62 @@
                                         <div className="flex justify-between items-center mb-2 px-1">
                                             <div className="flex items-center gap-2">
                                                 <div className="text-slate-300 group-hover:text-indigo-400"><Icon name="GripVertical" className="w-4 h-4 shrink-0" /></div>
-                                                <input type="text" value={c.label} onChange={e => setCoils(coils.map(item => item.id === c.id ? {...item, label: e.target.value} : item))} className="bg-transparent text-xs font-black text-slate-700 outline-none w-28 focus:text-indigo-600 truncate" />
+                                                <input type="text" value={c.label} onChange={e => {
+                                                    const val = e.target.value;
+                                                    setCoils(prev => prev.map(item => item.id === c.id ? {...item, label: val} : item));
+                                                }} className="bg-transparent text-xs font-black text-slate-700 outline-none w-28 focus:text-indigo-600 truncate" />
                                             </div>
-                                            <button onClick={() => handleDeleteCoil(c.id)} className="text-slate-200 hover:text-rose-500"><Icon name="Trash2" className="w-3.5 h-3.5" /></button>
+                                            <button type="button" onClick={() => handleDeleteCoil(c.id)} className="text-slate-200 hover:text-rose-500"><Icon name="Trash2" className="w-3.5 h-3.5" /></button>
                                         </div>
-                                        <select value={c.energy} onChange={e => setCoils(coils.map(item => item.id === c.id ? {...item, energy: e.target.value} : item))} className="w-full bg-slate-50 text-[11px] font-bold text-slate-500 p-1.5 rounded-lg border border-slate-100 mb-2 cursor-pointer shadow-inner">
+                                        <select value={c.energy} onChange={e => {
+                                            const val = e.target.value;
+                                            setCoils(prev => prev.map(item => item.id === c.id ? {...item, energy: val} : item));
+                                        }} className="w-full bg-slate-50 text-[11px] font-bold text-slate-500 p-1.5 rounded-lg border border-slate-100 mb-2 cursor-pointer shadow-inner">
                                             <option value="HW">熱水系統 (HW)</option>
                                             <option value="CHW_M">中溫冰水 (CHW-M)</option>
                                             <option value="CHW_L">低溫冰水 (CHW-L)</option>
                                             <option value="WW">水洗段 (Wash)</option>
                                         </select>
                                         <div className="grid grid-cols-2 gap-2 mt-1">
-                                            <div className="bg-slate-50/50 p-2 rounded-xl border border-slate-100 text-center"><label className="text-[9px] font-black text-slate-400 block uppercase mb-1">Outlet DB</label><input type="number" step="0.1" value={c.db} onChange={e => setCoils(coils.map(item => item.id === c.id ? {...item, db: Number(e.target.value)} : item))} className="bg-transparent w-full font-black text-blue-600 text-center outline-none text-[11px] font-data" /></div>
-                                            <div className="bg-slate-50/50 p-2 rounded-xl border border-slate-100 text-center"><label className="text-[9px] font-black text-slate-400 block uppercase mb-1">Outlet RH</label><input type="number" value={c.rh} onChange={e => setCoils(coils.map(item => item.id === c.id ? {...item, rh: Number(e.target.value)} : item))} className="bg-transparent w-full font-black text-blue-600 text-center outline-none text-[11px] font-data" /></div>
+                                            {c.energy === 'WW' ? (
+                                                <div className="col-span-2 bg-teal-50/50 p-2 rounded-xl border border-teal-100 text-center">
+                                                    <label className="text-[9px] font-black text-teal-600 block uppercase mb-1">接觸因子 (Contact Factor) %</label>
+                                                    <div className="flex items-center justify-center gap-2">
+                                                        <input 
+                                                            type="range" 
+                                                            min="10" 
+                                                            max="100" 
+                                                            value={c.efficiency ?? 75} 
+                                                            onChange={e => {
+                                                                const val = Number(e.target.value);
+                                                                setCoils(prev => prev.map(item => item.id === c.id ? {...item, efficiency: val} : item));
+                                                            }}
+                                                            className="w-full h-1 bg-teal-200 rounded-lg appearance-none cursor-pointer" 
+                                                        />
+                                                        <input 
+                                                            type="number" 
+                                                            min="0" max="100"
+                                                            value={c.efficiency ?? 75} 
+                                                            onChange={e => {
+                                                                const val = Number(e.target.value);
+                                                                setCoils(prev => prev.map(item => item.id === c.id ? {...item, efficiency: val} : item));
+                                                            }}
+                                                            className="bg-transparent w-12 font-black text-teal-700 text-center outline-none text-[11px] font-data border-b border-teal-300" 
+                                                        />
+                                                    </div>
+                                                </div>
+                                            ) : (
+                                                <>
+                                                    <div className="bg-slate-50/50 p-2 rounded-xl border border-slate-100 text-center"><label className="text-[9px] font-black text-slate-400 block uppercase mb-1">Outlet DB</label><input type="number" step="0.1" value={c.db} onChange={e => {
+                                                        const val = Number(e.target.value);
+                                                        setCoils(prev => prev.map(item => item.id === c.id ? {...item, db: val} : item));
+                                                    }} className="bg-transparent w-full font-black text-blue-600 text-center outline-none text-[11px] font-data" /></div>
+                                                    <div className="bg-slate-50/50 p-2 rounded-xl border border-slate-100 text-center"><label className="text-[9px] font-black text-slate-400 block uppercase mb-1">Outlet RH</label><input type="number" min="0" max="100" value={c.rh} onChange={e => {
+                                                        const val = Number(e.target.value);
+                                                        setCoils(prev => prev.map(item => item.id === c.id ? {...item, rh: val} : item));
+                                                    }} className="bg-transparent w-full font-black text-blue-600 text-center outline-none text-[11px] font-data" /></div>
+                                                </>
+                                            )}
                                         </div>
                                     </div>
                                 ))}
@@ -466,9 +660,11 @@
                                             </React.Fragment>
                                         ))}
                                     </g>
-                                    <path d={chartAssets.satPath} fill="none" stroke="#94a3b8" strokeWidth="2" strokeDasharray="6 3" opacity="0.15" />
+                                    {/* 飽和曲線：預設 0.2，列印時會變成 0.6 */}
+                                    <path d={chartAssets.satPath} fill="none" stroke="#94a3b8" strokeWidth="2" strokeDasharray="6 3" opacity="0.2" />
                                     {chartAssets.rhLines.map((rh) => <path key={rh.rh} d={rh.path} fill="none" stroke="#e2e8f0" strokeWidth="1" strokeDasharray="4 4" />)}
-                                    {chartAssets.zonePath && <path d={chartAssets.zonePath} fill="#4f46e5" fillOpacity="0.05" stroke="#4f46e5" strokeWidth="1.5" strokeDasharray="6 4" />}
+                                    {/* 舒適區：預設 0.05，列印時會更明顯 */}
+                                    {chartAssets.zonePath && <path d={chartAssets.zonePath} fill="#4f46e5" fillOpacity="0.1" stroke="#4f46e5" strokeWidth="1.5" strokeDasharray="6 4" />}
                                     
                                     {mode === 'AHU' && (
                                         <g>
@@ -499,7 +695,7 @@
                                                 <p className="text-[9px] md:text-[10px] text-slate-400 font-black uppercase mt-2 tracking-[0.2em] font-mono italic">Audit Report Cycle: {mode} active</p>
                                             </div>
                                         </div>
-                                        <div className="flex flex-col sm:flex-row gap-4">
+                                        <div className="flex flex-col sm:flex-row gap-4 no-print">
                                             <div className="bg-emerald-50 border border-emerald-100 p-3 md:p-4 rounded-3xl flex items-center gap-4 px-6 md:px-10 shadow-inner w-full sm:w-auto">
                                                 <div className="bg-emerald-600 p-2 rounded-xl text-white shadow-md shadow-emerald-200 shrink-0"><Icon name="Droplets" className="w-5 h-5" /></div>
                                                 <div className="text-right">
@@ -509,7 +705,10 @@
                                                     </p>
                                                 </div>
                                             </div>
-                                            <button onClick={handleExportExcel} className="bg-slate-800 hover:bg-slate-900 px-6 md:px-8 py-3 md:py-4 rounded-3xl text-[10px] md:text-[11px] font-black text-white uppercase flex items-center justify-center gap-3 shadow-xl transition-all">
+                                            <button type="button" onClick={handlePrint} className="bg-indigo-600 hover:bg-indigo-700 px-6 md:px-8 py-3 md:py-4 rounded-3xl text-[10px] md:text-[11px] font-black text-white uppercase flex items-center justify-center gap-3 shadow-xl transition-all">
+                                                <Icon name="Printer"/> PDF / 列印
+                                            </button>
+                                            <button type="button" onClick={handleExportExcel} className="bg-slate-800 hover:bg-slate-900 px-6 md:px-8 py-3 md:py-4 rounded-3xl text-[10px] md:text-[11px] font-black text-white uppercase flex items-center justify-center gap-3 shadow-xl transition-all">
                                                 <Icon name="DownloadCloud"/> 輸出 EXCEL
                                             </button>
                                         </div>
@@ -517,50 +716,60 @@
 
                                     {/* 能源進出水溫配置 */}
                                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 bg-slate-50 p-4 md:p-6 rounded-3xl border border-slate-100 shadow-inner">
-                                        {['CHW_L', 'CHW_M', 'HW', 'WW'].map(k => (
-                                            <div key={k} className="space-y-3">
-                                                <div className="text-[9px] font-black uppercase tracking-[0.1em] border-b border-slate-200/60 pb-2 flex items-center gap-2 text-slate-500">
-                                                    <div className={`w-2 h-2 rounded-full ${k==='HW'?'bg-rose-500':k==='WW'?'bg-teal-400':'bg-blue-500'}`} /> {k === 'WW' ? '水洗段' : k === 'HW' ? '熱水段' : k === 'CHW_L' ? '低溫冰水' : '中溫冰水'}
+                                            {['CHW_L', 'CHW_M', 'HW', 'WW'].map(k => (
+                                                <div key={k} className="space-y-3">
+                                                    <div className="text-[9px] font-black uppercase tracking-[0.1em] border-b border-slate-200/60 pb-2 flex items-center gap-2 text-slate-500">
+                                                        <div className={`w-2 h-2 rounded-full ${k==='HW'?'bg-rose-500':k==='WW'?'bg-teal-400':'bg-blue-500'}`} /> {k === 'WW' ? '水洗段' : k === 'HW' ? '熱水段' : k === 'CHW_L' ? '低溫冰水' : '中溫冰水'}
+                                                    </div>
+                                                    <div className="grid grid-cols-2 gap-2">
+                                                        <div className="flex flex-col"><span className="text-[8px] text-slate-400 mb-1 ml-1 font-bold">Tin</span><input type="number" value={waterConfig[k].in} onChange={e=>{
+                                                            const val = Number(e.target.value);
+                                                            setWaterConfig(prev => ({...prev,[k]:{...prev[k],in:val}}));
+                                                        }} className="bg-white border border-slate-200 rounded-xl p-1.5 text-center font-black text-indigo-700 outline-none text-xs font-data shadow-sm" /></div>
+                                                        <div className="flex flex-col"><span className="text-[8px] text-slate-400 mb-1 ml-1 font-bold">Tout</span><input type="number" value={waterConfig[k].out} onChange={e=>{
+                                                            const val = Number(e.target.value);
+                                                            setWaterConfig(prev => ({...prev,[k]:{...prev[k],out:val}}));
+                                                        }} className="bg-white border border-slate-200 rounded-xl p-1.5 text-center font-black text-indigo-700 outline-none text-xs font-data shadow-sm" /></div>
+                                                    </div>
                                                 </div>
-                                                <div className="grid grid-cols-2 gap-2">
-                                                    <div className="flex flex-col"><span className="text-[8px] text-slate-400 mb-1 ml-1 font-bold">Tin</span><input type="number" value={waterConfig[k].in} onChange={e=>setWaterConfig({...waterConfig,[k]:{...waterConfig[k],in:Number(e.target.value)}})} className="bg-white border border-slate-200 rounded-xl p-1.5 text-center font-black text-indigo-700 outline-none text-xs font-data shadow-sm" /></div>
-                                                    <div className="flex flex-col"><span className="text-[8px] text-slate-400 mb-1 ml-1 font-bold">Tout</span><input type="number" value={waterConfig[k].out} onChange={e=>setWaterConfig({...waterConfig,[k]:{...waterConfig[k],out:Number(e.target.value)}})} className="bg-white border border-slate-200 rounded-xl p-1.5 text-center font-black text-indigo-700 outline-none text-xs font-data shadow-sm" /></div>
-                                                </div>
-                                            </div>
-                                        ))}
+                                            ))}
                                     </div>
 
-                                    {/* 數據表格 - 針對橫向空間優化 */}
+                                    {/* 數據表格 - 新增出口狀態欄位 */}
                                     <div className="w-full border border-slate-100 rounded-3xl overflow-x-auto shadow-sm bg-white custom-scrollbar">
-                                        <table className="w-full text-left border-collapse min-w-[950px]">
-                                            <thead>
-                                                <tr className="bg-slate-800 text-white uppercase text-[9px] font-black font-heading tracking-[0.1em]">
-                                                    <th className="p-3 md:p-4 px-4 md:px-6 w-[18%]">盤管組件</th>
-                                                    <th className="p-3 md:p-4 text-center bg-slate-700 border-l border-white/5">負荷 (kW)</th>
-                                                    <th className="p-3 md:p-4 text-center bg-slate-700 border-l border-white/5 uppercase">RT</th>
-                                                    <th className="p-3 md:p-4 text-center bg-slate-700 border-l border-white/5">流量 (LPM)</th>
-                                                    <th className="p-3 md:p-4 text-center bg-slate-700 border-l border-white/5">風速 (m/s)</th>
-                                                    <th className="p-3 md:p-4 text-center bg-slate-700 border-l border-white/5">估計 FIN/ROW</th>
-                                                    <th className="p-3 md:p-4 text-center bg-indigo-700 border-l border-white/5 shadow-2xl">建議管徑</th>
-                                                </tr>
-                                            </thead>
-                                            <tbody className="text-[10px] md:text-[11px]">
-                                                {calcResults.results.map((res, i) => (
-                                                    <tr key={res.id} className="border-b border-slate-50 hover:bg-slate-50/80 transition-all group">
-                                                        <td className="p-3 md:p-4 px-4 md:px-6 font-black flex items-center gap-2 italic text-slate-700">
-                                                            <div className={`w-2.5 h-2.5 rounded-full ${res.energy==='HW'?'bg-rose-500':res.energy==='WW'?'bg-teal-500':res.energy==='CHW_M'?'bg-sky-400':'bg-blue-600'} shadow-sm shrink-0`} />
-                                                            <span className="text-xs font-heading group-hover:text-indigo-600 uppercase truncate">{res.label}</span>
-                                                        </td>
-                                                        <td className="p-3 md:p-4 text-center font-data font-black text-slate-800 text-base md:text-xl tracking-tighter border-l border-slate-50">{Math.abs(res.load).toFixed(1)}</td>
-                                                        <td className="p-3 md:p-4 text-center font-data font-black text-slate-800 text-base md:text-xl tracking-tighter border-l border-slate-50">{res.rt.toFixed(1)}</td>
-                                                        <td className="p-3 md:p-4 text-center font-data font-black text-slate-800 text-base md:text-xl tracking-tighter border-l border-slate-50">{res.lpm.toFixed(1)}</td>
-                                                        <td className={`p-3 md:p-4 text-center font-data font-black text-base md:text-xl border-l border-slate-50 ${res.faceVelocity > 2.8 ? 'text-rose-500 animate-pulse' : 'text-slate-800'}`}>{res.faceVelocity.toFixed(2)}</td>
-                                                        <td className="p-3 md:p-4 text-center font-data font-black text-slate-800 text-sm md:text-base border-l border-slate-50 tracking-tighter uppercase">{res.rowFin}</td>
-                                                        <td className="p-3 md:p-4 text-center font-heading font-black text-emerald-600 italic text-xl md:text-3xl bg-emerald-50/5 tracking-tighter border-l border-slate-50">{res.pipeSize}</td>
+                                            <table className="w-full text-left border-collapse min-w-[950px]">
+                                                <thead>
+                                                    <tr className="bg-slate-800 text-white uppercase text-[9px] font-black font-heading tracking-[0.1em]">
+                                                        <th className="p-3 md:p-4 px-4 md:px-6 w-[18%]">盤管組件</th>
+                                                        <th className="p-3 md:p-4 text-center bg-indigo-900 border-l border-white/5">出口條件 (DB/RH)</th>
+                                                        <th className="p-3 md:p-4 text-center bg-slate-700 border-l border-white/5">負荷 (kW)</th>
+                                                        <th className="p-3 md:p-4 text-center bg-slate-700 border-l border-white/5 uppercase">RT</th>
+                                                        <th className="p-3 md:p-4 text-center bg-slate-700 border-l border-white/5">流量 (LPM)</th>
+                                                        <th className="p-3 md:p-4 text-center bg-slate-700 border-l border-white/5">風速 (m/s)</th>
+                                                        <th className="p-3 md:p-4 text-center bg-slate-700 border-l border-white/5">估計 FIN/ROW</th>
+                                                        <th className="p-3 md:p-4 text-center bg-indigo-700 border-l border-white/5 shadow-2xl">建議管徑</th>
                                                     </tr>
-                                                ))}
-                                            </tbody>
-                                        </table>
+                                                </thead>
+                                                <tbody className="text-[10px] md:text-[11px]">
+                                                    {calcResults.results.map((res, i) => (
+                                                        <tr key={res.id} className="border-b border-slate-50 hover:bg-slate-50/80 transition-all group">
+                                                            <td className="p-3 md:p-4 px-4 md:px-6 font-black flex items-center gap-2 italic text-slate-700">
+                                                                <div className={`w-2.5 h-2.5 rounded-full ${res.energy==='HW'?'bg-rose-500':res.energy==='WW'?'bg-teal-500':res.energy==='CHW_M'?'bg-sky-400':'bg-blue-600'} shadow-sm shrink-0`} />
+                                                                <span className="text-xs font-heading group-hover:text-indigo-600 uppercase truncate">{res.label}</span>
+                                                            </td>
+                                                            <td className="p-3 md:p-4 text-center font-mono font-bold text-indigo-600 border-l border-slate-50 bg-indigo-50/5">
+                                                                {res.db.toFixed(1)} <span className="text-[9px] text-slate-400">℃</span> / {res.rh.toFixed(0)} <span className="text-[9px] text-slate-400">%</span>
+                                                            </td>
+                                                            <td className="p-3 md:p-4 text-center font-data font-black text-slate-800 text-base md:text-xl tracking-tighter border-l border-slate-50">{Math.abs(res.load).toFixed(1)}</td>
+                                                            <td className="p-3 md:p-4 text-center font-data font-black text-slate-800 text-base md:text-xl tracking-tighter border-l border-slate-50">{res.rt.toFixed(1)}</td>
+                                                            <td className="p-3 md:p-4 text-center font-data font-black text-slate-800 text-base md:text-xl tracking-tighter border-l border-slate-50">{res.lpm.toFixed(1)}</td>
+                                                            <td className={`p-3 md:p-4 text-center font-data font-black text-base md:text-xl border-l border-slate-50 ${res.faceVelocity > 2.8 ? 'text-rose-500 animate-pulse' : 'text-slate-800'}`}>{res.faceVelocity.toFixed(2)}</td>
+                                                            <td className="p-3 md:p-4 text-center font-data font-black text-slate-800 text-sm md:text-base border-l border-slate-50 tracking-tighter uppercase">{res.rowFin}</td>
+                                                            <td className="p-3 md:p-4 text-center font-heading font-black text-emerald-600 italic text-xl md:text-3xl bg-emerald-50/5 tracking-tighter border-l border-slate-50">{res.pipeSize}</td>
+                                                        </tr>
+                                                    ))}
+                                                </tbody>
+                                            </table>
                                     </div>
                                 </div>
                             </div>
@@ -569,7 +778,7 @@
                     </div>
 
                     {hoveredPoint && (
-                        <div className="fixed pointer-events-none z-50 transition-all duration-300 hidden sm:block" style={{ left: 'max(10px, min(80vw, ' + (xScale(hoveredPoint.state.db) + 320) + 'px))', top: yScale(hoveredPoint.state.w) + 100 + 'px' }}>
+                        <div className="fixed pointer-events-none z-50 transition-all duration-300 hidden sm:block no-print" style={{ left: 'max(10px, min(80vw, ' + (xScale(hoveredPoint.state.db) + 320) + 'px))', top: yScale(hoveredPoint.state.w) + 100 + 'px' }}>
                             <div className="bg-slate-800/95 text-white p-5 md:p-6 rounded-[1.5rem] md:rounded-[2rem] shadow-2xl w-[180px] md:w-[210px] backdrop-blur-xl border border-white/10 shadow-indigo-900/30">
                                 <h4 className="text-[10px] md:text-[12px] font-black uppercase text-indigo-400 italic mb-3 border-b border-white/5 pb-2 font-heading tracking-widest truncate">{hoveredPoint.label}</h4>
                                 <div className="space-y-2 text-[9px] md:text-[10px] font-mono">
