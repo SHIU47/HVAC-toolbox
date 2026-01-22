@@ -3,18 +3,39 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>CT Master Pro v1.7 - 冷卻水塔計算系統</title>
+    <title>CT Master Pro v2.0 - 冷卻水塔計算系統 </title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <!-- 引入 MathJax 用於渲染數學公式 -->
+    <script>
+        window.MathJax = {
+            tex: { inlineMath: [['$', '$'], ['\\(', '\\)']] },
+            svg: { fontCache: 'global' }
+        };
+    </script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet">
     <style>
         body { font-family: 'Inter', 'Noto Sans TC', sans-serif; background-color: #f8fafc; color: #334155; }
+        /* 固定首欄效果 */
         .sticky-col { position: sticky; left: 0; background: inherit; z-index: 20; border-right: 2px solid #e2e8f0; }
+        /* 隱藏數字輸入框的上下箭頭 */
         input::-webkit-outer-spin-button, input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
         .table-container::-webkit-scrollbar { height: 8px; }
         .table-container::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
         .input-glow:focus { border-color: #0ea5e9; box-shadow: 0 0 0 4px rgba(14, 165, 233, 0.15); outline: none; }
         .row-input { background-color: #fffbeb; }
-        @media print { .no-print { display: none; } }
+        
+        /* Modal 動畫 */
+        .modal-enter { opacity: 0; transform: scale(0.95); }
+        .modal-enter-active { opacity: 1; transform: scale(1); transition: all 0.2s ease-out; }
+        .modal-exit { opacity: 1; transform: scale(1); }
+        .modal-exit-active { opacity: 0; transform: scale(0.95); transition: all 0.2s ease-in; }
+
+        @media print { 
+            .no-print { display: none !important; } 
+            body { background-color: white; }
+            .sticky-col { border-right: 1px solid #000; }
+        }
     </style>
 </head>
 <body class="py-6 px-4 md:px-8">
@@ -23,17 +44,29 @@
     <!-- Header -->
     <header class="flex flex-col md:flex-row justify-between items-center mb-8 gap-6 bg-slate-900 p-8 rounded-[2rem] text-white shadow-xl relative overflow-hidden">
         <div class="flex items-center gap-5 z-10">
-            <div class="bg-sky-600 w-16 h-16 rounded-2xl text-white flex items-center justify-center shadow-lg">
+            <div class="bg-sky-600 w-16 h-16 rounded-2xl text-white flex items-center justify-center shadow-lg shrink-0">
                 <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect width="16" height="20" x="4" y="2" rx="2"/><line x1="8" x2="16" y1="6" y2="6"/><line x1="16" x2="16" y1="14" y2="18"/><path d="M16 10h.01"/><path d="M12 10h.01"/><path d="M8 10h.01"/><path d="M12 14h.01"/><path d="M8 14h.01"/><path d="M12 18h.01"/><path d="M8 18h.01"/></svg>
             </div>
             <div>
                 <h1 class="text-3xl font-black tracking-tight uppercase">CT Master <span class="text-sky-400">Pro</span></h1>
-                <p class="text-slate-400 text-xs font-bold uppercase tracking-widest mt-1">v1.7 工程師顧問版 </p>
+                <div class="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-3 mt-1">
+                    <p class="text-slate-400 text-xs font-bold uppercase tracking-widest">v2.0 資深工程師版</p>
+                    <span class="hidden sm:inline text-slate-600">|</span>
+                    <p class="text-emerald-400 text-[10px] font-mono font-bold bg-emerald-900/30 px-2 py-0.5 rounded border border-emerald-800">
+                        假設水密度 $\rho \approx 1.0 \text{ kg/L}$ (故 kg/s ≈ L/s)
+                    </p>
+                </div>
             </div>
         </div>
-        <div class="flex items-center gap-3 bg-slate-800 px-5 py-3 rounded-2xl border border-slate-700 no-print">
-            <div class="w-2 h-2 bg-emerald-500 rounded-full animate-pulse"></div>
-            <span class="text-[10px] font-black text-slate-300 uppercase tracking-tighter leading-none">Auto-Calculate: Enabled</span>
+        <div class="flex items-center gap-3 no-print shrink-0">
+            <div class="flex items-center gap-3 bg-slate-800 px-5 py-3 rounded-2xl border border-slate-700">
+                <div class="w-2 h-2 bg-emerald-500 rounded-full animate-pulse"></div>
+                <span class="text-[10px] font-black text-slate-300 uppercase tracking-tighter leading-none">Auto-Calculate</span>
+            </div>
+            <button onclick="toggleModal(true)" class="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-500 text-white px-5 py-3 rounded-2xl font-bold text-xs transition-all shadow-lg hover:shadow-indigo-500/30 active:scale-95">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><path d="M12 17h.01"/></svg>
+                使用指南
+            </button>
         </div>
     </header>
 
@@ -43,7 +76,9 @@
             <table class="w-full text-left border-collapse" id="mainCalcTable">
                 <thead>
                     <tr class="bg-slate-900 text-white text-[10px] uppercase tracking-[0.2em] font-black" id="tableHeader">
-                        <th class="p-5 border-r border-slate-800 sticky-col bg-slate-900 z-30 w-64 shadow-xl text-center">計算項目 \ 案例案例</th>
+                        <th class="p-5 border-r border-slate-800 sticky-col bg-slate-900 z-30 w-72 shadow-xl text-center">
+                            計算參數 \ 設計案例
+                        </th>
                         <!-- 案例標題由 JS 動態生成 -->
                     </tr>
                 </thead>
@@ -58,57 +93,184 @@
     <footer class="mt-10 grid grid-cols-1 lg:grid-cols-3 gap-8 text-[11px] text-slate-500 leading-relaxed no-print">
         <div class="lg:col-span-2 bg-white p-8 rounded-[2rem] border border-slate-200 shadow-sm">
             <h3 class="font-black text-slate-800 uppercase mb-4 flex items-center gap-2">
-                <div class="w-1 h-4 bg-sky-500 rounded-full"></div> 設計基準與物料平衡 (Design Basis)
+                <div class="w-1 h-4 bg-sky-500 rounded-full"></div> 設計基準與物理模型 (Engineering Basis)
             </h3>
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div class="space-y-2">
-                    <p>● <span class="font-bold text-slate-700">熱力學常數：</span>1 RT = 3.51685 kW，水比熱 $C_p = 4.186$ kJ/kg·K。</p>
-                    <p>● <span class="font-bold text-slate-700">循環量公式：</span>$Flow = (RT \times 3.517 \times HRF) / (4.186 \times \Delta T)$。</p>
-                    <p>● <span class="font-bold text-slate-700">蒸發損失量：</span>採用 ASHRAE 潛熱估算法，係數取 0.00153。</p>
+                <div class="space-y-3">
+                    <p>● <span class="font-bold text-slate-700">熱力學常數：</span><br>1 RT = 3.51685 kW (冷凍噸換算)<br>水比熱 $C_p = 4.186 \text{ kJ/kg}\cdot\text{K}$。</p>
+                    <p>● <span class="font-bold text-slate-700">循環水量 (Circulation)：</span><br>基於能量守恆 $Q = \dot{m} C_p \Delta T$。<br>公式：$LPS = \frac{RT \times 3.517 \times HRF}{4.186 \times \Delta T}$。</p>
+                    <p>● <span class="font-bold text-slate-700">蒸發損失 (Evaporation)：</span><br>採用 ASHRAE 經驗係數 <strong class="text-sky-600">0.00153</strong> (約 0.85 潛熱比)。<br><span class="italic text-[10px]">註：冷卻水散熱約 85% 靠蒸發潛熱，15% 靠顯熱傳導。</span></p>
                 </div>
-                <div class="space-y-2">
-                    <p>● <span class="font-bold text-slate-700">Windage 損失：</span>單位為 %。程式自動將輸入值除以 100 進行運算。</p>
-                    <p>● <span class="font-bold text-slate-700">補水安全係數：</span>設計值取「計算需求」或「2% 循環量」之較大值。</p>
-                    <p>● <span class="font-bold text-slate-700">流洩判定：</span>若計算流洩量為負，代表自然飄水已足以維持濃縮倍率。</p>
+                <div class="space-y-3">
+                    <p>● <span class="font-bold text-slate-700">飄水損失 (Windage/Drift)：</span><br>取決於擋水板 (Drift Eliminator) 效率，一般取 0.005%~0.05%。</p>
+                    <p>● <span class="font-bold text-slate-700">等效濃縮倍率 (COC eq)：</span><br>當<span class="text-amber-600 font-bold">排放閥完全關閉</span>時，僅靠飄水排鹽所能達到的自然平衡倍率。<br>$COC_{eq} = \frac{E + W}{W}$。</p>
+                    <p>● <span class="font-bold text-slate-700">設計補水量 (Design Makeup)：</span><br>取 $\text{Max}(\text{計算需求}, 0.02 \times \text{循環量})$。<br><span class="italic text-[10px]">註：2% 為工程慣用安全係數，預留緊急排汙能力。</span></p>
                 </div>
             </div>
         </div>
         <div class="bg-slate-900 p-8 rounded-[2rem] text-white flex flex-col justify-between shadow-2xl">
             <div>
                 <h3 class="font-black text-sky-400 uppercase mb-4 flex items-center gap-2 tracking-widest text-sm">
-                    工程邊際校核
+                    工程邊際校核 (Check)
                 </h3>
-                <div class="space-y-3 opacity-80">
-                    <p>1. <span class="text-amber-400 font-bold">風損警告</span>：若飄水損失過大導致不需排汙，流洩量將標示為 0 並提示「自然排放已足」。</p>
-                    <p>2. <span class="text-red-400 font-bold">無效輸入</span>：$\Delta T$、RT 或 HRF 必須大於 0，否則系統將顯示 Error。</p>
+                <div class="space-y-4 opacity-90 text-[11px]">
+                    <div class="flex gap-3">
+                        <span class="text-amber-400 font-bold whitespace-nowrap">[自然平衡]</span>
+                        <p>若計算之排汙量 (Blowdown) 為負值，代表飄水損失 (Windage) 已大於維持濃縮倍率所需之排鹽量，系統無需額外排放。</p>
+                    </div>
+                    <div class="flex gap-3">
+                        <span class="text-red-400 font-bold whitespace-nowrap">[無效輸入]</span>
+                        <p>若 $\Delta T=0$ 或 $COC \le 1$ (直通水)，將觸發物理限制錯誤 (Error)。</p>
+                    </div>
                 </div>
             </div>
             <div class="mt-8 pt-4 border-t border-slate-800 text-[9px] font-mono text-slate-500 uppercase tracking-widest">
-                System Build 1.7 • Stable Preview
+                System Build 2.0 • Manual Included
             </div>
         </div>
     </footer>
 </div>
 
-<script>
-    // --- 工程常數 ---
-    const RT_TO_KW = 3.51685;
-    const WATER_CP = 4.186;
+<!-- Help Modal Overlay -->
+<div id="helpModal" class="fixed inset-0 bg-slate-900/80 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4 transition-opacity duration-300" onclick="if(event.target === this) toggleModal(false)">
+    <div class="bg-white w-full max-w-4xl max-h-[85vh] rounded-[2.5rem] shadow-2xl overflow-hidden flex flex-col transform transition-all duration-300 scale-95" id="helpContent">
+        <!-- Modal Header -->
+        <div class="p-8 border-b border-slate-100 flex justify-between items-center bg-slate-50">
+            <div>
+                <h2 class="text-2xl font-black text-slate-800 tracking-tight">系統使用手冊 (User Manual)</h2>
+                <p class="text-xs text-slate-500 mt-1 font-bold">CT Master Pro v2.0 • ASHRAE Standard Based</p>
+            </div>
+            <button onclick="toggleModal(false)" class="bg-white p-2 rounded-full hover:bg-slate-100 border border-slate-200 text-slate-500 transition-all">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+            </button>
+        </div>
+        
+        <!-- Modal Content (Scrollable) -->
+        <div class="p-8 md:p-10 overflow-y-auto space-y-10 text-slate-600 text-sm leading-relaxed">
+            
+            <!-- Section 1 -->
+            <section>
+                <h3 class="font-black text-sky-600 uppercase text-xs tracking-widest mb-4 flex items-center gap-2">
+                    <div class="w-1 h-4 bg-sky-600 rounded-full"></div> 1. 輸入參數說明 (Inputs)
+                </h3>
+                <div class="overflow-hidden rounded-xl border border-slate-200">
+                    <table class="w-full text-left">
+                        <thead class="bg-slate-50 text-[10px] uppercase font-black text-slate-500">
+                            <tr>
+                                <th class="p-3 border-b border-slate-200">參數名稱</th>
+                                <th class="p-3 border-b border-slate-200">單位</th>
+                                <th class="p-3 border-b border-slate-200">工程定義與典型值</th>
+                            </tr>
+                        </thead>
+                        <tbody class="text-[11px] font-medium divide-y divide-slate-100">
+                            <tr>
+                                <td class="p-3 font-bold text-slate-800">1. 主機能力 (RT)</td>
+                                <td class="p-3 font-mono">RT</td>
+                                <td class="p-3">冷凍噸數。系統自動換算排熱量 kW。</td>
+                            </tr>
+                            <tr>
+                                <td class="p-3 font-bold text-slate-800">2. 排熱因子 (HRF)</td>
+                                <td class="p-3 font-mono">Ratio</td>
+                                <td class="p-3">Heat Rejection Factor。<br>公式：$1 + (1 / COP)$。典型值：1.25 (螺旋/離心), 1.30 (氣冷/低效)。</td>
+                            </tr>
+                            <tr>
+                                <td class="p-3 font-bold text-slate-800">3. 冷卻水溫差 (ΔT)</td>
+                                <td class="p-3 font-mono">°C</td>
+                                <td class="p-3">進出水溫差。標準設計為 5°C。溫差越大，流量越小。</td>
+                            </tr>
+                            <tr>
+                                <td class="p-3 font-bold text-slate-800">4. 濃縮倍率 (COC)</td>
+                                <td class="p-3 font-mono">Times</td>
+                                <td class="p-3">Cycles of Concentration。<br>建議值：3~6。倍率越高越省水，但結垢風險增加。</td>
+                            </tr>
+                            <tr>
+                                <td class="p-3 font-bold text-slate-800">5. 飄水損失 (Windage)</td>
+                                <td class="p-3 font-mono">%</td>
+                                <td class="p-3">飛濺損失率。標準：0.05%；高效擋水板：0.005%。</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </section>
 
+            <!-- Section 2 -->
+            <section>
+                <h3 class="font-black text-emerald-600 uppercase text-xs tracking-widest mb-4 flex items-center gap-2">
+                    <div class="w-1 h-4 bg-emerald-600 rounded-full"></div> 2. 計算結果解讀 (Logic)
+                </h3>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div class="bg-slate-50 p-5 rounded-2xl border border-slate-100">
+                        <h4 class="font-bold text-slate-800 mb-2">A 區：質量平衡 (Mass Balance)</h4>
+                        <ul class="space-y-2 list-disc list-outside ml-4 marker:text-emerald-400">
+                            <li><strong class="text-slate-700">循環水量：</strong>基於熱負載計算。</li>
+                            <li><strong class="text-slate-700">人為排汙 (Blowdown)：</strong>維持 COC 所需的強制排水。若顯示 <span class="text-amber-500 font-bold">無需排放</span>，代表飄水損失已足夠帶走鹽分。</li>
+                            <li><strong class="text-slate-700">補給水 (Makeup-A)：</strong>理論總需求 = 蒸發 + 飄水 + 排汙。</li>
+                        </ul>
+                    </div>
+                    <div class="bg-slate-50 p-5 rounded-2xl border border-slate-100">
+                        <h4 class="font-bold text-slate-800 mb-2">B 區 & C 區：邊際與決策</h4>
+                        <ul class="space-y-2 list-disc list-outside ml-4 marker:text-indigo-400">
+                            <li><strong class="text-slate-700">COC eq：</strong>若完全關閉排放閥，系統會達到的自然平衡倍率。</li>
+                            <li><strong class="text-slate-700">設計補水量：</strong>取 <span class="font-mono bg-slate-200 px-1 rounded">Max(Makeup-A, 2%循環量)</span>。</li>
+                            <li><strong class="text-slate-700">2% 規則：</strong>工程慣用安全係數，確保水質惡化時有足夠水源進行大量置換。</li>
+                        </ul>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Section 3 -->
+            <section>
+                <h3 class="font-black text-rose-500 uppercase text-xs tracking-widest mb-4 flex items-center gap-2">
+                    <div class="w-1 h-4 bg-rose-500 rounded-full"></div> 3. 故障排除 (Troubleshooting)
+                </h3>
+                <div class="space-y-2 bg-rose-50 p-4 rounded-xl border border-rose-100 text-rose-800">
+                    <p><strong>Q: 為何出現 "Error"？</strong><br>A: 請檢查 $\Delta T$ 是否 $\le 0$，或 $COC \le 1$。濃縮倍率必須大於 1。</p>
+                    <p class="mt-2"><strong>Q: 為何排汙量是 0？</strong><br>A: 這不是錯誤。當飄水損失率 (Windage) 設定較高，或濃縮倍率 (COC) 設定較低時，自然飄出的水已足夠維持鹽分平衡。</p>
+                </div>
+            </section>
+
+        </div>
+        
+        <!-- Modal Footer -->
+        <div class="p-6 border-t border-slate-100 bg-slate-50 flex justify-end">
+            <button onclick="toggleModal(false)" class="bg-slate-900 text-white px-8 py-3 rounded-xl font-bold text-xs hover:bg-slate-800 transition-all shadow-lg">
+                我瞭解了 (Close)
+            </button>
+        </div>
+    </div>
+</div>
+
+<script>
+    /**
+     * CT Master Pro v1.9 - Core Calculation Logic
+     * * Engineering Assumptions:
+     * 1. Water Density: approx 1.0 kg/L (Standard at 30-40°C range)
+     * 2. Heat Rejection: Total Heat = Cooling Load * (1 + 1/COP) => Simplified via HRF
+     * 3. Mass Balance: Makeup = Evap + Blowdown + Windage
+     * 4. Salt Balance: Makeup * TDS_in = (Blowdown + Windage) * TDS_basin
+     */
+
+    // --- Engineering Constants ---
+    const RT_TO_KW = 3.51685; // 1 Refrigeration Ton = 3.51685 kW
+    const WATER_CP = 4.186;   // Specific Heat of Water (kJ/kg.K)
+    const EVAP_COEFF = 0.00153; // ASHRAE coefficient (considering sensible heat transfer)
+
+    // --- Initial Demo Cases ---
     const initialCases = [
         { rt: 1000, hrf: 1.25, dt: 5, coc: 4, windage: 0.05 },
-        { rt: 800,  hrf: 1.3,  dt: 5, coc: 5, windage: 0.05 },
-        { rt: 500,  hrf: 1.2,  dt: 5, coc: 3, windage: 0.1 },
-        { rt: 1200, hrf: 1.25, dt: 6, coc: 4, windage: 0.05 },
+        { rt: 800,  hrf: 1.3,  dt: 5, coc: 6, windage: 0.02 }, // Low drift
+        { rt: 500,  hrf: 1.2,  dt: 5, coc: 3, windage: 0.1 },  // High drift
+        { rt: 1200, hrf: 1.25, dt: 6, coc: 4, windage: 0.05 }, // High Delta T
         { rt: 600,  hrf: 1.25, dt: 5, coc: 4, windage: 0.05 },
-        { rt: 2000, hrf: 1.25, dt: 5, coc: 6, windage: 0.02 }
+        { rt: 2000, hrf: 1.25, dt: 5, coc: 8, windage: 0.01 }  // High efficiency
     ];
 
-    // --- 初始化表格結構 ---
+    // --- DOM Structure Initialization ---
     function initTable() {
         const header = document.getElementById('tableHeader');
         const body = document.getElementById('tableBody');
         
+        // Generate Header Columns
         initialCases.forEach((_, i) => {
             const th = document.createElement('th');
             th.className = "p-5 text-center min-w-[170px] border-r border-slate-800";
@@ -116,26 +278,35 @@
             header.appendChild(th);
         });
 
+        // Define Row Structure (Label, Key, Type)
         const rows = [
-            { id: 'in_rt', label: '1. 冰水主機能力 (RT)', type: 'input', key: 'rt', placeholder: '1000' },
-            { id: 'in_hrf', label: '2. HRF (塞熱因數)', type: 'input', key: 'hrf', step: 0.01, placeholder: '1.25' },
-            { id: 'in_dt', label: '3. 冷卻水溫差 ΔT (°C)', type: 'input', key: 'dt', placeholder: '5' },
-            { id: 'in_coc', label: '4. 設定濃縮倍率 COC', type: 'input', key: 'coc', placeholder: '4' },
-            { id: 'in_wind', label: '5. 飄水損失 Windage (%)', type: 'input', key: 'windage', step: 0.001, placeholder: '例: 0.05% 填 0.05' },
-            { id: 'sep_a', label: '核心計算區 A：理論模型 (LPS)', type: 'separator', color: 'bg-sky-600' },
-            { id: 'res_circ', label: '循環水量 Circulation', type: 'display', key: 'circ' },
-            { id: 'res_evap', label: '蒸發量 Evaporation', type: 'display', key: 'evap', dec: 3 },
-            { id: 'res_wind', label: '飄水損失量 Windage', type: 'display', key: 'wind', dec: 3 },
-            { id: 'res_blow', label: '人為流洩量 Blowdown', type: 'display', key: 'blow', dec: 3, checkWarn: true },
-            { id: 'res_makeup_a', label: '補給水量需求 Makeup-A', type: 'display', key: 'makeupA', bold: true },
-            { id: 'sep_b', label: '核心計算區 B：自然平衡', type: 'separator', color: 'bg-emerald-600' },
-            { id: 'res_eqcoc', label: '等效濃縮倍率 (COC eq)', type: 'display', key: 'eqcoc', suffix: 'x' },
-            { id: 'res_makeup_b', label: '無流洩補水量 Makeup-B', type: 'display', key: 'makeupB' },
-            { id: 'sep_c', label: '最終設計決策 (Design Result)', type: 'separator', color: 'bg-indigo-900', rowClass: 'h-16 shadow-lg' },
-            { id: 'res_design', label: '設計總補水量 (LPS)', type: 'final', key: 'design' },
-            { id: 'res_source', label: '判定依據 Source', type: 'source', key: 'source' }
+            // Inputs
+            { id: 'in_rt', label: '1. 冰水主機能力 (RT)', unit: 'RT', type: 'input', key: 'rt', placeholder: '1000' },
+            { id: 'in_hrf', label: '2. 排熱因子 (HRF)', unit: 'ratio', type: 'input', key: 'hrf', step: 0.01, placeholder: '1.25' },
+            { id: 'in_dt', label: '3. 冷卻水溫差 ΔT', unit: '°C', type: 'input', key: 'dt', placeholder: '5' },
+            { id: 'in_coc', label: '4. 設定濃縮倍率 (COC)', unit: 'times', type: 'input', key: 'coc', placeholder: '4' },
+            { id: 'in_wind', label: '5. 飄水損失率 (Windage)', unit: '%', type: 'input', key: 'windage', step: 0.001, placeholder: '0.05' },
+            
+            // Section A: Mass Balance
+            { id: 'sep_a', label: '核心計算區 A：質量平衡模型', type: 'separator', color: 'bg-sky-600' },
+            { id: 'res_circ', label: '循環水量 (Circulation)', unit: 'LPS', type: 'display', key: 'circ' },
+            { id: 'res_evap', label: '蒸發損失 (Evaporation)', unit: 'LPS', type: 'display', key: 'evap', dec: 3 },
+            { id: 'res_wind', label: '飄水損失 (Windage)', unit: 'LPS', type: 'display', key: 'wind', dec: 3 },
+            { id: 'res_blow', label: '人為排汙 (Blowdown)', unit: 'LPS', type: 'display', key: 'blow', dec: 3, checkWarn: true },
+            { id: 'res_makeup_a', label: '補給水需求 (Makeup-A)', unit: 'LPS', type: 'display', key: 'makeupA', bold: true },
+            
+            // Section B: Natural Equilibrium
+            { id: 'sep_b', label: '核心計算區 B：自然平衡極限', type: 'separator', color: 'bg-emerald-600' },
+            { id: 'res_eqcoc', label: '等效濃縮倍率 (COC eq)', unit: 'times', type: 'display', key: 'eqcoc', suffix: 'x' },
+            { id: 'res_makeup_b', label: '無排汙補水量 (Makeup-B)', unit: 'LPS', type: 'display', key: 'makeupB' },
+            
+            // Section C: Design Decision
+            { id: 'sep_c', label: '最終設計決策 (Design Output)', type: 'separator', color: 'bg-indigo-900', rowClass: 'h-16 shadow-lg' },
+            { id: 'res_design', label: '建議設計補水量', unit: 'LPS', type: 'final', key: 'design' },
+            { id: 'res_source', label: '判定依據 (Source)', unit: '', type: 'source', key: 'source' }
         ];
 
+        // Generate Rows
         rows.forEach(row => {
             const tr = document.createElement('tr');
             tr.id = `row_${row.id}`;
@@ -147,29 +318,33 @@
                 return;
             }
 
+            // Determine Label Column Style
             let labelClass = "p-4 text-xs font-bold border-r border-slate-100 sticky-col bg-white z-10";
+            let labelText = row.label;
+            if (row.unit) labelText += ` <span class="text-[9px] text-slate-400 font-mono">[${row.unit}]</span>`;
+
             if (row.type === 'input') labelClass = "p-5 text-xs font-black border-r border-amber-100 sticky-col bg-amber-50 z-10 text-amber-900";
             if (row.type === 'final') labelClass = "p-6 text-sm font-black border-r border-indigo-800 sticky-col bg-indigo-900 text-white z-10";
             
-            let html = `<td class="${labelClass}">${row.label}</td>`;
+            let html = `<td class="${labelClass}">${labelText}</td>`;
 
+            // Generate Cells for each Case
             initialCases.forEach((c, i) => {
                 const caseIdx = i + 1;
                 if (row.type === 'input') {
-                    // 直接在標籤內加入 oninput 確保即時觸發
                     html += `<td class="p-3 border-r border-amber-100 bg-amber-50/40">
                         <input type="number" step="${row.step || 'any'}" 
                                placeholder="${row.placeholder || ''}"
                                data-case="${caseIdx}" data-key="${row.key}" value="${c[row.key]}" 
                                oninput="calculate()"
-                               class="w-full bg-white border border-amber-200 rounded-xl p-2.5 text-center font-bold text-amber-700 input-glow shadow-sm">
+                               class="w-full bg-white border border-amber-200 rounded-xl p-2.5 text-center font-bold text-amber-700 input-glow shadow-sm transition-all">
                     </td>`;
                 } else if (row.type === 'final') {
-                    html += `<td id="val_${row.key}_${caseIdx}" class="p-6 text-center border-r border-indigo-800 font-black text-3xl text-emerald-400 bg-slate-900">--</td>`;
+                    html += `<td id="val_${row.key}_${caseIdx}" class="p-6 text-center border-r border-indigo-800 font-black text-3xl text-emerald-400 bg-slate-900 font-mono tracking-tight">--</td>`;
                 } else if (row.type === 'source') {
-                    html += `<td id="val_${row.key}_${caseIdx}" class="p-3 text-center border-r border-slate-200 text-[9px] font-bold text-indigo-500 italic bg-slate-50/50 leading-tight">--</td>`;
+                    html += `<td id="val_${row.key}_${caseIdx}" class="p-3 text-center border-r border-slate-200 text-[10px] font-bold text-indigo-600 italic bg-slate-50/50 leading-tight">--</td>`;
                 } else {
-                    let cellClass = `p-4 text-center border-r border-slate-100 font-mono text-sm ${row.bold ? 'font-black text-slate-800 bg-slate-50/30' : ''}`;
+                    let cellClass = `p-4 text-center border-r border-slate-100 font-mono text-sm ${row.bold ? 'font-black text-slate-800 bg-slate-50/50' : 'text-slate-600'}`;
                     html += `<td id="val_${row.key}_${caseIdx}" class="${cellClass}">--</td>`;
                 }
             });
@@ -177,55 +352,85 @@
             tr.innerHTML = html;
             body.appendChild(tr);
         });
+        
+        // Trigger MathJax re-render after DOM update
+        if (window.MathJax) {
+            MathJax.typesetPromise();
+        }
     }
 
-    // --- 核心計算邏輯 ---
+    // --- Core Engineering Calculation ---
     function calculate() {
         const caseCount = initialCases.length;
 
         for (let i = 1; i <= caseCount; i++) {
+            // 1. Retrieve Inputs
             const inputs = document.querySelectorAll(`input[data-case="${i}"]`);
             const vals = {};
-            inputs.forEach(input => vals[input.dataset.key] = parseFloat(input.value) || 0);
+            inputs.forEach(input => vals[input.dataset.key] = parseFloat(input.value));
             
             const rt = vals.rt;
             const hrf = vals.hrf;
             const dt = vals.dt;
             const coc = vals.coc;
-            const windageRatio = vals.windage / 100; // 0.05% -> 0.0005
+            const windageRatio = vals.windage / 100; // Convert % to decimal
 
-            const isError = (dt <= 0 || rt <= 0 || hrf <= 0);
+            // 2. Validate Inputs (Engineering Constraints)
+            // Delta T cannot be 0 (divide by zero risk). HRF and RT must be positive.
+            const isError = (isNaN(dt) || dt <= 0 || isNaN(rt) || rt <= 0 || isNaN(hrf) || hrf <= 0 || isNaN(coc) || coc <= 1);
             
             let data = { circ: 0, evap: 0, wind: 0, blow: 0, makeupA: 0, eqcoc: 0, makeupB: 0, design: 0, source: "--", blowWarn: false };
 
             if (!isError) {
-                // A 區：理論平衡
+                // --- Step A: Circulation Flow ---
+                // Formula: Flow (kg/s) = Heat Load (kW) / (Cp * dT)
+                // Heat Load = RT * 3.51685 * HRF
                 data.circ = (rt * RT_TO_KW * hrf) / (WATER_CP * dt);
-                data.evap = data.circ * dt * 0.00153; 
+
+                // --- Step B: Losses Calculation ---
+                // Evaporation: E = Circ * Range * 0.00153 (ASHRAE empirical)
+                data.evap = data.circ * dt * EVAP_COEFF; 
+                
+                // Windage: W = Circ * Windage%
                 data.wind = data.circ * windageRatio;
                 
-                const rawBlow = coc > 1 ? (data.evap / (coc - 1)) - data.wind : 0;
+                // --- Step C: Blowdown (Mass Balance) ---
+                // Salt Balance Equation: M * C_in = (B + W) * C_basin
+                // Since M = E + B + W, substitute M: (E + B + W) * C_in = (B + W) * COC * C_in
+                // Simplify: E + B + W = (B + W) * COC
+                // E = (B + W) * (COC - 1)
+                // B + W = E / (COC - 1)
+                // Blowdown B = [E / (COC - 1)] - W
+                
+                const requiredBleed = (data.evap / (coc - 1)); // Total bleed needed (Blow + Wind)
+                const rawBlow = requiredBleed - data.wind;
+
                 if (rawBlow < 0) {
+                    // Windage alone is reducing salts faster than needed. No blowdown required.
                     data.blow = 0;
                     data.blowWarn = true; 
                 } else {
                     data.blow = rawBlow;
                 }
                 
+                // Total Makeup A (Theoretical) = E + B + W
                 data.makeupA = data.evap + data.wind + data.blow;
 
-                // B 區：自然平衡
-                data.eqcoc = data.wind > 0 ? (data.evap + data.wind) / data.wind : 0; 
+                // --- Step D: Natural Equilibrium (No Blowdown) ---
+                // If B = 0, then COC = (E + W) / W
+                data.eqcoc = data.wind > 0 ? (data.evap + data.wind) / data.wind : 999; 
                 data.makeupB = data.evap + data.wind;
 
-                // C 區：設計決策
+                // --- Step E: Design Decision (2% Rule) ---
+                // Safety margin rule often used in industry specifications
                 const rule2Pct = data.circ * 0.02;
+                
                 if (data.makeupA >= rule2Pct) {
                     data.design = data.makeupA;
-                    data.source = "A區計算需求值";
+                    data.source = "A區: 理論計算值";
                 } else {
                     data.design = rule2Pct;
-                    data.source = "2% 循環量規範";
+                    data.source = "安全規範: 2% 循環量";
                 }
             }
 
@@ -233,20 +438,21 @@
         }
     }
 
+    // --- Update UI with Engineering Formatting ---
     function updateCaseUI(idx, data, isError) {
         const update = (key, val, dec = 2, suffix = "") => {
             const el = document.getElementById(`val_${key}_${idx}`);
             if (!el) return;
+            
             if (isError) {
                 el.innerText = "Error";
-                el.classList.add('text-red-500');
+                el.classList.add('text-rose-500', 'font-bold');
             } else {
-                el.classList.remove('text-red-500');
-                if (key === 'eqcoc' && val === 0) {
-                    el.innerText = "無自然濃縮";
-                    el.classList.add('text-[10px]', 'text-slate-400');
+                el.classList.remove('text-rose-500', 'font-bold');
+                
+                if (key === 'eqcoc' && val > 100) {
+                    el.innerText = "> 100x"; // Cap large numbers
                 } else {
-                    el.classList.remove('text-[10px]', 'text-slate-400');
                     el.innerText = val.toFixed(dec) + (suffix ? " " + suffix : "");
                 }
             }
@@ -256,30 +462,79 @@
         update('evap', data.evap, 3);
         update('wind', data.wind, 3);
         
-        // 流洩量警示邏輯
+        // Blowdown Logic with Engineering Note
         const blowEl = document.getElementById(`val_blow_${idx}`);
-        if (!isError && data.blowWarn) {
-            blowEl.innerHTML = `<div class="flex flex-col"><span class="text-amber-500 font-bold">0.000</span><span class="text-[8px] font-bold text-amber-600 tracking-tighter">自然排放已足</span></div>`;
+        if (isError) {
+            blowEl.innerText = "Error";
+            blowEl.className = "p-4 text-center border-r border-slate-100 font-mono text-sm text-rose-500 font-bold";
+        } else if (data.blowWarn) {
+            blowEl.innerHTML = `<div class="flex flex-col items-center">
+                <span class="text-amber-500 font-bold">0.000</span>
+                <span class="text-[9px] font-black text-amber-600/80 uppercase tracking-tighter bg-amber-100 px-1.5 rounded mt-1">無需排放</span>
+            </div>`;
         } else {
-            update('blow', data.blow, 3);
+            blowEl.innerText = data.blow.toFixed(3);
+            blowEl.className = "p-4 text-center border-r border-slate-100 font-mono text-sm text-slate-600"; // Reset style
         }
 
         update('makeupA', data.makeupA);
         update('eqcoc', data.eqcoc, 1, "x");
         update('makeupB', data.makeupB);
-        update('design', data.design, 2, "LPS");
+        update('design', data.design, 2, ""); // LPS removed from cell to keep clean, unit is in header
         
         const sourceEl = document.getElementById(`val_source_${idx}`);
-        sourceEl.innerText = isError ? "數據不足" : data.source;
+        if (isError) {
+            sourceEl.innerText = "參數無效";
+            sourceEl.classList.add('text-rose-500');
+        } else {
+            sourceEl.innerText = data.source;
+            sourceEl.classList.remove('text-rose-500');
+            // Highlight if 2% rule overrides
+            if (data.source.includes("2%")) {
+                sourceEl.classList.add('text-indigo-600');
+                sourceEl.classList.remove('text-slate-400');
+            } else {
+                sourceEl.classList.add('text-slate-400');
+                sourceEl.classList.remove('text-indigo-600');
+            }
+        }
     }
 
-    // --- 啟動 ---
+    // --- Help Modal Logic ---
+    function toggleModal(show) {
+        const modal = document.getElementById('helpModal');
+        const content = document.getElementById('helpContent');
+        if (show) {
+            modal.classList.remove('hidden');
+            // Trigger MathJax render when modal opens
+            if (window.MathJax) {
+                MathJax.typesetPromise([modal]);
+            }
+            setTimeout(() => {
+                modal.classList.remove('opacity-0');
+                content.classList.remove('scale-95');
+                content.classList.add('scale-100');
+            }, 10);
+        } else {
+            modal.classList.add('opacity-0');
+            content.classList.remove('scale-100');
+            content.classList.add('scale-95');
+            setTimeout(() => {
+                modal.classList.add('hidden');
+            }, 300);
+        }
+    }
+
+    // --- Entry Point ---
     window.onload = () => {
         initTable();
         calculate();
+        // Force MathJax to render initial static content
+        if (window.MathJax) {
+            MathJax.typesetPromise();
+        }
     };
 </script>
 
 </body>
-
 </html>
