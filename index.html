@@ -73,7 +73,7 @@
     <div id="boot-loader">
         <div class="flex flex-col items-center">
             <div class="w-16 h-16 bg-blue-600 rounded-2xl flex items-center justify-center text-white font-black text-2xl shadow-2xl mb-8">東旭</div>
-            <div class="font-mono text-[10px] text-blue-600 font-bold uppercase tracking-[0.4em]">HVAC Pro-Suite v2.7.6</div>
+            <div class="font-mono text-[10px] text-blue-600 font-bold uppercase tracking-[0.4em]">HVAC Pro-Suite v2.9.1</div>
             <div id="boot-status" class="text-[8px] font-mono text-slate-400 uppercase tracking-[0.3em] mt-4">Initializing Logic Core...</div>
             <div class="boot-bar"><div class="boot-progress"></div></div>
         </div>
@@ -162,7 +162,7 @@
                         <span id="active-tool-id" class="text-[9px] px-2 py-0.5 bg-blue-600 rounded font-mono font-bold">ID:--</span>
                         <span id="active-tool-title" class="text-sm md:text-xl font-black tracking-widest uppercase text-blue-400">LOADING...</span>
                     </div>
-                    <span id="active-tool-meta" class="text-[8px] opacity-40 font-bold uppercase tracking-[0.2em] mt-1">v2.7.6 • CORE LOGIC ACTIVE</span>
+                    <span id="active-tool-meta" class="text-[8px] opacity-40 font-bold uppercase tracking-[0.2em] mt-1">v2.9.1 • CORE LOGIC ACTIVE</span>
                 </div>
                 <button onclick="iframeReload()" class="w-10 h-10 rounded-full bg-white/5 hover:bg-white/10 flex items-center justify-center">🔄</button>
             </div>
@@ -179,14 +179,15 @@
     </main>
 
     <script>
-        const APP_VERSION = 'v2.7.6';
+        const APP_VERSION = 'v2.9.1';
         const toolsData = {
             general: [
                 { id: 'PMP-01', name: '冰機水泵換算', desc: 'RT 同步推算 CHW/CW 流量耗電與揚程。', icon: '⚡', tag: 'Hydronic', calcType: 'Flow / Power', file: '冰機換算水泵.html', color: 'bg-emerald-100', text: 'text-emerald-700' },
                 { id: 'TNK-02', name: '膨脹水箱選型', desc: '密閉系統膨脹體積核算與安全係數審查。', icon: '📦', tag: 'Pressure', calcType: 'Sizing / Safety', file: '膨脹水箱計算.html', color: 'bg-indigo-100', text: 'text-indigo-700' },
-                { id: 'CON-03', name: '工程換算器', desc: 'RT, KW, GPM, CFM 多單位精準連動。', icon: '🔄', tag: 'Utility', calcType: 'Unit Scaling', file: '空調工程專業換算工具.html', color: 'bg-blue-100', text: 'text-blue-700' },
-                { id: 'PSY-04', name: '空氣性質分析', desc: '含濕量、焓值、露點高精度核算。', icon: '☁️', tag: 'Air', calcType: 'Psychrometric', file: '空氣性質分析.html', color: 'bg-sky-100', text: 'text-sky-700' },
-                { id: 'DCT-05', name: '風管尺寸檢核', desc: '等摩擦法與等流速自動計算選型。', icon: '💨', tag: 'Air', calcType: 'Dimensioning', file: '風管計算.html', color: 'bg-indigo-100', text: 'text-indigo-700' }
+                { id: 'WT-03', name: '冷卻塔補水量', desc: '蒸發、飛散與排放損耗精準水平衡核算。', icon: '💧', tag: 'Makeup', calcType: 'Water Balance', file: '冷卻水塔補水量計算.html', color: 'bg-cyan-100', text: 'text-cyan-700' },
+                { id: 'CON-04', name: '工程換算器', desc: 'RT, KW, GPM, CFM 多單位精準連動。', icon: '🔄', tag: 'Utility', calcType: 'Unit Scaling', file: '空調工程專業換算工具.html', color: 'bg-blue-100', text: 'text-blue-700' },
+                { id: 'PSY-05', name: '空氣性質分析', desc: '含濕量、焓值、露點高精度核算。', icon: '☁️', tag: 'Air', calcType: 'Psychrometric', file: '空氣性質分析.html', color: 'bg-sky-100', text: 'text-sky-700' },
+                { id: 'DCT-06', name: '風管尺寸檢核', desc: '等摩擦法與等流速自動計算選型。', icon: '💨', tag: 'Air', calcType: 'Dimensioning', file: '風管計算.html', color: 'bg-indigo-100', text: 'text-indigo-700' }
             ],
             advanced: [
                 { id: 'FAB-50', name: '無塵室模擬器 Lite', desc: '無塵室 3D 氣流模擬與 FFU/DCC 佈置分析。', icon: '🌀', tag: 'BIM/CFD', calcType: '3D Simulation', file: '無塵室氣流模擬.html', color: 'bg-slate-900', text: 'text-white' },
@@ -232,19 +233,15 @@
 
         function sideScroll(id, direction) { const container = document.getElementById(id); const firstCard = container.querySelector('.tool-card'); if (!firstCard) return; const gap = parseInt(getComputedStyle(container).gap) || 0; const move = firstCard.offsetWidth + gap; container.scrollBy({ left: direction === 'right' ? move : -move, behavior: 'smooth' }); }
 
-        // --- 核心改動：加入身份檢查 ---
         async function loadModulePortal(event, id, toolName, fileName) {
-            // 檢查使用者是否已登入
             if (!Clerk.user) {
-                Clerk.openSignIn({ 
-                    afterSignInUrl: window.location.href // 登入成功後回到目前頁面
-                });
+                Clerk.openSignIn({ afterSignInUrl: window.location.href });
                 return;
             }
 
             updateRecentTools(id);
             const toolObj = allToolsList.find(t => t.id === id) || { tag: 'SYSTEM' };
-            const card = event.currentTarget.classList && event.currentTarget.classList.contains('tool-card') ? event.currentTarget : null;
+            const card = event.currentTarget && event.currentTarget.classList && event.currentTarget.classList.contains('tool-card') ? event.currentTarget : null;
             const hub = document.getElementById('toolbox-hub');
             const header = document.getElementById('main-header');
             const flash = document.getElementById('transition-flash');
@@ -297,7 +294,6 @@
         function quickLaunch(id) { const tool = allToolsList.find(t => t.id === id); if (tool) loadModulePortal({ currentTarget: document.createElement('div') }, tool.id, tool.name, tool.file); }
         function iframeReload() { document.getElementById('module-viewport').contentWindow.location.reload(); }
 
-        // --- 優化後的啟動邏輯：不再強迫登入 ---
         window.onload = async () => {
             const loader = document.getElementById('boot-loader');
             const bootStatus = document.getElementById('boot-status');
@@ -312,14 +308,12 @@
                 bootStatus.innerText = "LOADING ENGINE...";
                 await Clerk.load();
                 
-                // 1. 初始化所有卡片內容
                 document.getElementById('general-slider').innerHTML = toolsData.general.map(createCardHTML).join('');
                 document.getElementById('advanced-slider').innerHTML = toolsData.advanced.map(createCardHTML).join('');
                 initInfiniteSlider('general-slider', toolsData.general.length);
                 initInfiniteSlider('advanced-slider', toolsData.advanced.length);
                 renderRecentTools();
 
-                // 2. 身份與歡迎詞處理
                 if (Clerk.user) {
                     const userName = Clerk.user.firstName || Clerk.user.primaryEmailAddress.emailAddress.split('@')[0];
                     const badge = document.getElementById('welcome-badge');
@@ -327,7 +321,6 @@
                     Clerk.mountUserButton(document.getElementById('user-button'));
                 }
 
-                // 3. 移除啟動畫面，直接進入主頁面
                 setTimeout(() => {
                     loader.style.opacity = '0';
                     setTimeout(() => { loader.style.display = 'none'; fetchWeather(); handleServiceWorker(); }, 600);
@@ -337,7 +330,6 @@
                 console.error("Auth Error:", err);
             }
 
-            // 其他視覺效果
             setInterval(() => { document.getElementById('current-time').innerText = new Date().toLocaleTimeString('zh-TW', { hour12: false, hour: '2-digit', minute: '2-digit' }); }, 1000);
             document.addEventListener('mousemove', e => {
                 const x = (e.clientX / window.innerWidth) * 100;
@@ -349,7 +341,3 @@
     </script>
 </body>
 </html>
-
-
-
-
