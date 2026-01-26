@@ -263,6 +263,7 @@
 
         async function loadModulePortal(event, id, toolName, fileName) {
             if (!Clerk.user) {
+                // Modified: Ensure afterSignInUrl is set to current location to prevent 404
                 Clerk.openSignIn({ afterSignInUrl: window.location.href });
                 return;
             }
@@ -333,7 +334,12 @@
 
             try {
                 bootStatus.innerText = "LOADING ENGINE...";
-                await Clerk.load();
+                
+                // Modified: Added explicit redirect URLs to prevent 404s
+                await Clerk.load({
+                    afterSignInUrl: window.location.href,
+                    afterSignOutUrl: window.location.href
+                });
                 
                 document.getElementById('general-slider').innerHTML = toolsData.general.map(createCardHTML).join('');
                 document.getElementById('advanced-slider').innerHTML = toolsData.advanced.map(createCardHTML).join('');
@@ -349,7 +355,11 @@
                     const userName = Clerk.user.firstName || Clerk.user.primaryEmailAddress.emailAddress.split('@')[0];
                     const badge = document.getElementById('welcome-badge');
                     if (badge) badge.innerText = `歡迎回來，${userName} 工程師`;
-                    Clerk.mountUserButton(document.getElementById('user-button'));
+                    
+                    // Modified: Mount user button with explicit sign-out redirect
+                    Clerk.mountUserButton(document.getElementById('user-button'), {
+                        afterSignOutUrl: window.location.href
+                    });
                 }
 
                 setTimeout(() => {
