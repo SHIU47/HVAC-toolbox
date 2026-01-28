@@ -12,13 +12,10 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="HVAC Pro">
-    <meta property="og:type" content="website">
-    <meta property="og:title" content="東旭的空調工具箱 | HVAC Pro-Suite">
-    <meta property="og:description" content="專為 HVAC 工程師打造：冰機水泵換算、風管尺寸檢核、無塵室大師 Pro 等精準計算工具，提升你的工作效率。">
-    <meta property="og:image" content="https://shiu47.github.io/HVAC-Pro-Suite/icon-192.png">
-    <!-- 這裡設定讀取你上傳的 icon-192.png -->
     <link rel="icon" href="icon-192.png" type="image/png" sizes="192x192">
     <link rel="shortcut icon" href="icon-192.png">
+
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='25' fill='%232563eb'/><text x='50%' y='54%' dominant-baseline='central' text-anchor='middle' font-family='system-ui, sans-serif' font-size='65' font-weight='900' fill='white'>H</text></svg>">
 
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=Noto+Sans+TC:wght@400;500;700&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
@@ -85,7 +82,7 @@
     <div id="boot-loader">
         <div class="flex flex-col items-center">
             <div class="w-16 h-16 bg-blue-600 rounded-2xl flex items-center justify-center text-white font-black text-2xl shadow-2xl mb-8">東旭</div>
-            <div class="font-mono text-[10px] text-blue-600 font-bold uppercase tracking-[0.4em]">HVAC Pro-Suite v3.0.0</div>
+            <div class="font-mono text-[10px] text-blue-600 font-bold uppercase tracking-[0.4em]">HVAC Pro-Suite v3.1.0</div>
             <div id="boot-status" class="text-[8px] font-mono text-slate-400 uppercase tracking-[0.3em] mt-4">Initializing Logic Core...</div>
             <div class="boot-bar"><div class="boot-progress"></div></div>
         </div>
@@ -188,7 +185,7 @@
                         <span id="active-tool-id" class="text-[9px] px-2 py-0.5 bg-blue-600 rounded font-mono font-bold">ID:--</span>
                         <span id="active-tool-title" class="text-sm md:text-xl font-black tracking-widest uppercase text-blue-400">LOADING...</span>
                     </div>
-                    <span id="active-tool-meta" class="text-[8px] opacity-40 font-bold uppercase tracking-[0.2em] mt-1">v3.0.0 • CORE LOGIC ACTIVE</span>
+                    <span id="active-tool-meta" class="text-[8px] opacity-40 font-bold uppercase tracking-[0.2em] mt-1">v3.1.0 • CORE LOGIC ACTIVE</span>
                 </div>
                 <button onclick="iframeReload()" class="w-10 h-10 rounded-full bg-white/5 hover:bg-white/10 flex items-center justify-center">🔄</button>
             </div>
@@ -205,7 +202,7 @@
     </main>
 
     <script>
-        const APP_VERSION = 'v3.0.0';
+        const APP_VERSION = 'v3.1.0';
         const toolsData = {
             general: [
                 { id: 'PMP-01', name: '冰機水泵換算', desc: 'RT 同步推算 CHW/CW 流量耗電與揚程。', icon: '⚡', tag: 'Hydronic', calcType: 'Flow / Power', file: '冰機換算水泵.html', color: 'bg-emerald-100', text: 'text-emerald-700' },
@@ -218,13 +215,14 @@
             ],
             advanced: [
                 { id: 'FAB-50', name: '無塵室模擬器 Lite', desc: '無塵室 3D 氣流模擬與 FFU/DCC 佈置分析。', icon: '🌀', tag: 'BIM/CFD', calcType: '3D Simulation', file: '無塵室氣流模擬.html', color: 'bg-slate-900', text: 'text-white' },
-                { id: 'PRL-01', name: '專業壓損計算書', desc: '水系統與風系統最不利環路壓力損失精算。', icon: '📐', tag: 'Loss', calcType: 'Friction / Minor', file: '水管風管壓損計算.html', color: 'bg-blue-600', text: 'text-white' },
-                { id: 'PSY-PRO', name: '空氣線圖 Pro', desc: '混風系統與盤管負荷 Mapping 邏輯分析。', icon: '📊', tag: 'System', calcType: 'Mapping / Load', file: '空氣線圖Pro 計算器.html', color: 'bg-sky-500', text: 'text-white' },
+                { id: 'PRL-01', name: '專業壓損計算書', desc: '水系統與風系統最不利環路壓力損失精準計算。', icon: '📐', tag: 'Loss', calcType: 'Friction / Minor', file: '水管風管壓損計算.html', color: 'bg-blue-600', text: 'text-white' },
+                { id: 'PSY-PRO', name: '空氣線圖 Pro', desc: '混風系統與盤管負荷 Mapping 邏輯分析分析。', icon: '📊', tag: 'System', calcType: 'Mapping / Load', file: '空氣線圖Pro 計算器.html', color: 'bg-sky-500', text: 'text-white' },
                 { id: 'CRM-03', name: '無塵室大師 Pro', desc: 'MAU、FFU、RCU 熱平衡與氣流平衡。', icon: '🏗️', tag: 'Fab', calcType: 'Balance / Airflow', file: 'Clean room master.html', color: 'bg-slate-900', text: 'text-white' },
                 { id: 'CHW-04', name: '冰水管路計算', desc: '拼圖建模，自動計算壓損與等效管徑。', icon: '❄️', tag: 'Hydronic', calcType: 'Network Loss', file: '冰水管路計算.html', color: 'bg-blue-600', text: 'text-white' }
             ],
             others: [
-                { id: 'PCW-08', name: 'PCW 系統估算', desc: '製程冷卻水系統需求分析與設備選型。', icon: '🏭', tag: 'Process', calcType: 'System Design', file: 'PCW計算.html', color: 'bg-orange-100', text: 'text-orange-700' }
+                { id: 'PCW-08', name: 'PCW 系統估算', desc: '製程冷卻水系統需求分析與設備選型。', icon: '🏭', tag: 'Process', calcType: 'System Design', file: 'PCW計算.html', color: 'bg-orange-100', text: 'text-orange-700' },
+                { id: 'GAS-09', name: 'Bulk Gas 系統', desc: '氮氣、氧氣等大宗氣體管路壓損與流速工程審查。', icon: '⛽', tag: 'Process', calcType: 'Pipe Loss', file: 'Bulk gas system.html', color: 'bg-rose-100', text: 'text-rose-700' }
             ]
         };
 
@@ -266,7 +264,6 @@
 
         async function loadModulePortal(event, id, toolName, fileName) {
             if (!Clerk.user) {
-                // Modified: Ensure afterSignInUrl is set to current location to prevent 404
                 Clerk.openSignIn({ afterSignInUrl: window.location.href });
                 return;
             }
@@ -337,8 +334,6 @@
 
             try {
                 bootStatus.innerText = "LOADING ENGINE...";
-                
-                // Modified: Added explicit redirect URLs to prevent 404s
                 await Clerk.load({
                     afterSignInUrl: window.location.href,
                     afterSignOutUrl: window.location.href
@@ -358,8 +353,6 @@
                     const userName = Clerk.user.firstName || Clerk.user.primaryEmailAddress.emailAddress.split('@')[0];
                     const badge = document.getElementById('welcome-badge');
                     if (badge) badge.innerText = `歡迎回來，${userName} 工程師`;
-                    
-                    // Modified: Mount user button with explicit sign-out redirect
                     Clerk.mountUserButton(document.getElementById('user-button'), {
                         afterSignOutUrl: window.location.href
                     });
@@ -383,6 +376,3 @@
     </script>
 </body>
 </html>
-
-
-
