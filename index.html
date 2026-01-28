@@ -19,6 +19,7 @@
 
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=Noto+Sans+TC:wght@400;500;700&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     
     <script
       crossorigin="anonymous"
@@ -29,16 +30,29 @@
 
     <style>
         :root { --primary-blue: #2563eb; --soft-blue: #eff6ff; --border-light: rgba(226, 232, 240, 0.8); --obsidian-black: #0f172a; }
-        body { font-family: 'Plus Jakarta Sans', 'Noto Sans TC', sans-serif; background: #f8fafc; color: #1e293b; overflow: hidden; margin: 0; perspective: 2000px; -webkit-tap-highlight-color: transparent; }
+        body { font-family: 'Plus Jakarta Sans', 'Noto Sans TC', sans-serif; background: #f8fafc; color: #1e293b; margin: 0; perspective: 2000px; -webkit-tap-highlight-color: transparent; overflow-x: hidden; }
         
+        /* Boot Loader */
         #boot-loader { position: fixed; inset: 0; background: #ffffff; z-index: 9999; display: flex; flex-direction: column; align-items: center; justify-content: center; transition: opacity 0.6s cubic-bezier(0.65, 0, 0.35, 1); will-change: opacity; }
         .boot-bar { width: 240px; height: 3px; background: #eff6ff; margin-top: 24px; border-radius: 99px; position: relative; overflow: hidden; }
         .boot-progress { position: absolute; height: 100%; width: 0%; background: var(--primary-blue); box-shadow: 0 0 15px var(--primary-blue); animation: bootProgress 1.4s cubic-bezier(0.23, 1, 0.32, 1) forwards; }
         @keyframes bootProgress { 0% { width: 0%; } 100% { width: 100%; } }
         
-        .mesh-bg { position: fixed; inset: 0; z-index: -1; background: radial-gradient(at var(--mouse-x, 50%) var(--mouse-y, 50%), rgba(37, 99, 235, 0.08) 0px, transparent 40%), radial-gradient(at 0% 0%, rgba(37, 99, 235, 0.08) 0px, transparent 50%), radial-gradient(at 100% 100%, rgba(186, 230, 253, 0.1) 0px, transparent 50%); background-color: #f8fafc; }
-        .bg-pattern { position: fixed; inset: 0; z-index: -1; background-size: 50px 50px; opacity: 0.5; background-image: radial-gradient(#cbd5e1 1.5px, transparent 1.5px); }
+        /* Shared Backgrounds */
+        .mesh-bg { position: fixed; inset: 0; z-index: -1; background: radial-gradient(at var(--mouse-x, 50%) var(--mouse-y, 50%), rgba(37, 99, 235, 0.08) 0px, transparent 40%), radial-gradient(at 0% 0%, rgba(37, 99, 235, 0.08) 0px, transparent 50%), radial-gradient(at 100% 100%, rgba(186, 230, 253, 0.1) 0px, transparent 50%); background-color: #f8fafc; pointer-events: none; }
+        .bg-pattern { position: fixed; inset: 0; z-index: -1; background-size: 50px 50px; opacity: 0.5; background-image: radial-gradient(#cbd5e1 1.5px, transparent 1.5px); pointer-events: none; }
+
+        /* VIEW MANAGEMENT */
+        .view-section { width: 100%; min-height: 100vh; transition: opacity 0.5s ease; }
+        #dashboard-view { display: none; opacity: 0; height: 100vh; flex-direction: column; overflow: hidden; }
+        #landing-view { display: block; opacity: 1; }
+
+        /* LANDING PAGE STYLES */
+        .hero-gradient { background: linear-gradient(135deg, #ffffff 0%, #eff6ff 100%); }
+        .feature-card { transition: all 0.3s ease; }
+        .feature-card:hover { transform: translateY(-5px); box-shadow: 0 10px 30px rgba(37, 99, 235, 0.1); border-color: #bfdbfe; }
         
+        /* DASHBOARD STYLES (Original) */
         .slider-wrapper { position: relative; width: 100%; padding: 0 20px; overflow: visible; }
         @media (min-width: 768px) { .slider-wrapper { padding: 0 80px; } }
         .slider-container { display: flex; overflow-x: auto; gap: 20px; padding: 70px 0; scrollbar-width: none; -ms-overflow-style: none; scroll-snap-type: x mandatory; scroll-behavior: auto; }
@@ -62,6 +76,7 @@
         .nav-arrow:hover { background: var(--primary-blue); color: white; transform: translateY(-50%) scale(1.1); }
         .nav-arrow.left { left: 15px; } .nav-arrow.right { right: 15px; }
         
+        /* Module / Iframe */
         #module-container { position: fixed; top: 0; left: 0; width: 100%; height: 100vh; z-index: 9000; background: white; display: none; flex-direction: column; animation: moduleEntrance 0.6s cubic-bezier(0.23, 1, 0.32, 1) forwards; will-change: transform, opacity; }
         @keyframes moduleEntrance { from { opacity: 0; transform: scale(1.02); filter: blur(5px); } to { opacity: 1; transform: scale(1); filter: blur(0); } }
         #module-viewport { flex-grow: 1; width: 100%; height: 100%; border: none; background: white; z-index: 2; }
@@ -77,8 +92,9 @@
         .no-scrollbar::-webkit-scrollbar { display: none; }
     </style>
 </head>
-<body class="h-screen flex flex-col">
+<body>
 
+    <!-- BOOT LOADER -->
     <div id="boot-loader">
         <div class="flex flex-col items-center">
             <div class="w-16 h-16 bg-blue-600 rounded-2xl flex items-center justify-center text-white font-black text-2xl shadow-2xl mb-8">東旭</div>
@@ -92,117 +108,239 @@
     <div class="bg-pattern"></div>
     <div id="transition-flash"></div>
 
-    <header id="main-header" class="h-[64px] md:h-[88px] bg-white/80 backdrop-blur-md border-b border-slate-200 px-4 md:px-12 flex items-center justify-between flex-shrink-0 z-[110] transition-all duration-500">
-        <div class="flex items-center gap-4 md:gap-10">
-            <div class="flex items-center gap-3 md:gap-5">
-                <div class="w-10 h-10 md:w-14 md:h-14 bg-gradient-to-br from-blue-600 to-indigo-700 rounded-xl md:rounded-2xl flex items-center justify-center text-white shadow-xl text-xl md:text-2xl font-black">東旭</div>
-                <div>
-                    <h1 class="text-xl md:text-3xl font-black text-slate-800 tracking-[0.2em] leading-none uppercase">HVAC <span class="text-blue-600">Pro-Suite</span></h1>
-                    <div class="status-ticker mt-1 hidden xs:block" id="ticker-text">CORE READY • ENGINE RUNNING</div>
-                </div>
-            </div>
-        </div>
+    <!-- ============================================== -->
+    <!--  1. LANDING PAGE VIEW (SCROLLABLE INTRO)       -->
+    <!-- ============================================== -->
+    <div id="landing-view" class="view-section overflow-y-auto">
         
-        <div class="flex items-center gap-4">
-            <div class="weather-widget hidden sm:flex">
-                <div class="flex flex-col items-center"><span class="text-[8px] text-slate-400 font-bold uppercase">Temp</span><span id="live-temp" class="weather-value">--.-°C</span></div>
-                <div class="w-px h-6 bg-slate-100"></div>
-                <div class="flex flex-col items-center"><span class="text-[8px] text-slate-400 font-bold uppercase">Rh%</span><span id="live-rh" class="weather-value">--%</span></div>
-                <div class="ml-1 text-blue-500 animate-pulse text-xs">📡</div>
+        <!-- Sticky Nav -->
+        <nav class="sticky top-0 z-50 bg-white/80 backdrop-blur-md border-b border-slate-100 px-6 py-4 flex justify-between items-center">
+            <div class="flex items-center gap-3">
+                <!-- 原本的「東旭」Logo -->
+                <div class="w-10 h-10 md:w-12 md:h-12 bg-gradient-to-br from-blue-600 to-indigo-700 rounded-lg md:rounded-xl flex items-center justify-center text-white shadow-lg shadow-blue-200 text-sm md:text-base font-black">東旭</div>
+                <div class="flex flex-col justify-center">
+                    <span class="text-lg font-black text-slate-800 leading-none">HVAC <span class="text-blue-600">PRO-SUITE</span></span>
+                    <span class="text-[10px] text-slate-400 font-bold tracking-wider">東旭的空調工具箱</span>
+                </div>
             </div>
-            <div id="current-time" class="text-xs md:text-lg font-bold text-slate-800 font-mono bg-white px-3 md:px-6 py-1.5 md:py-2 rounded-xl border border-slate-200 shadow-sm tracking-tighter">--:--</div>
-            <div id="user-button"></div>
-        </div>
-    </header>
+            <div class="hidden md:flex gap-8 text-sm font-bold text-slate-500">
+                <a href="#features" class="hover:text-blue-600 transition-colors">功能亮點</a>
+                <a href="#standards" class="hover:text-blue-600 transition-colors">設計標準</a>
+            </div>
+            <button onclick="enterDashboard()" class="bg-blue-600 text-white px-6 py-2 rounded-full font-bold text-sm shadow-lg shadow-blue-100 hover:bg-blue-700 transition-all hover:scale-105 active:scale-95">
+                <span id="landing-cta-text">進入系統</span>
+            </button>
+        </nav>
 
-    <main class="flex-grow flex flex-col overflow-hidden relative">
-        <div id="toolbox-hub" class="flex-grow h-full overflow-y-auto p-6 md:p-16 lg:p-20 no-scrollbar relative z-10 transition-all duration-500">
-            <div class="max-w-[1600px] mx-auto relative">
-                
-                <div class="mb-12 md:mb-24 text-center md:text-left transition-all duration-500">
-                    <div id="welcome-badge" class="inline-block px-5 py-2 bg-blue-600 text-white text-[10px] font-black uppercase tracking-[0.5em] rounded-full mb-6 shadow-lg shadow-blue-200 tracking-tighter">GUEST MODE: LOGIN TO ACCESS TOOLS</div>
-                    <h2 class="text-5xl md:text-8xl font-black text-slate-900 mb-6 tracking-tighter leading-none">專業空調 <span class="text-blue-600 italic font-medium">工具箱</span></h2>
-                    <p class="text-slate-500 font-bold text-lg md:text-3xl max-w-4xl leading-relaxed mx-auto md:mx-0">
-                        點選作業單元卡片以進入計算核心。
+        <!-- Hero Section -->
+        <header class="hero-gradient py-24 px-6 text-center">
+            <div class="max-w-4xl mx-auto">
+                <div class="inline-block bg-blue-50 text-blue-600 px-4 py-1.5 rounded-full text-xs font-bold mb-8 tracking-widest border border-blue-100 animate-pulse">NEXT-GEN HVAC ENGINE</div>
+                <h1 class="text-5xl md:text-7xl font-black text-slate-900 mb-8 leading-tight tracking-tight">
+                    專業空調工程師的<br><span class="text-blue-600">數位瑞士刀</span>
+                </h1>
+                <p class="text-slate-500 text-lg md:text-xl mb-12 leading-relaxed max-w-2xl mx-auto">
+                    整合負荷計算、系統模擬與規範校核。我們不只提供計算結果，更為您的設計方案提供公信力與精確度。
+                </p>
+                <div class="flex flex-col md:flex-row justify-center gap-4">
+                    <button onclick="enterDashboard()" class="bg-blue-600 text-white px-10 py-5 rounded-2xl font-bold text-lg shadow-2xl shadow-blue-200 hover:bg-blue-700 hover:-translate-y-1 transition-all flex items-center justify-center gap-3">
+                        <i class="fa-solid fa-rocket"></i> 開始免費核算
+                    </button>
+                    <a href="#features" class="bg-white border-2 border-slate-200 text-slate-600 px-10 py-5 rounded-2xl font-bold text-lg hover:bg-slate-50 hover:border-slate-300 transition-all flex items-center justify-center">
+                        了解更多
+                    </a>
+                </div>
+            </div>
+        </header>
+
+        <!-- Features Section -->
+        <section id="features" class="py-24 px-6">
+            <div class="max-w-6xl mx-auto">
+                <div class="text-center mb-16">
+                    <h2 class="text-3xl font-black text-slate-800 mb-4">為什麼選擇 HVAC Pro-Suite？</h2>
+                    <p class="text-slate-400">專為工程實務優化的四大核心優勢</p>
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-4 gap-8">
+                    <div class="feature-card p-8 rounded-3xl bg-white border border-slate-100 shadow-sm">
+                        <div class="w-14 h-14 bg-blue-50 rounded-2xl flex items-center justify-center text-blue-600 mb-6 text-2xl"><i class="fa-solid fa-bolt"></i></div>
+                        <h4 class="font-bold text-xl mb-3 text-slate-800">極速運算</h4>
+                        <p class="text-slate-500 text-sm leading-relaxed">輸入參數即刻反應結果，無需等待。支援多參數連動變更分析。</p>
+                    </div>
+                    <div class="feature-card p-8 rounded-3xl bg-white border border-slate-100 shadow-sm">
+                        <div class="w-14 h-14 bg-blue-50 rounded-2xl flex items-center justify-center text-blue-600 mb-6 text-2xl"><i class="fa-solid fa-chart-area"></i></div>
+                        <h4 class="font-bold text-xl mb-3 text-slate-800">視覺化物理量</h4>
+                        <p class="text-slate-500 text-sm leading-relaxed">動態空氣線圖與壓力損失曲線，讓抽象的工程數值變成直觀的圖表。</p>
+                    </div>
+                    <div class="feature-card p-8 rounded-3xl bg-white border border-slate-100 shadow-sm">
+                        <div class="w-14 h-14 bg-blue-50 rounded-2xl flex items-center justify-center text-blue-600 mb-6 text-2xl"><i class="fa-solid fa-file-pdf"></i></div>
+                        <h4 class="font-bold text-xl mb-3 text-slate-800">專業報告產出</h4>
+                        <p class="text-slate-500 text-sm leading-relaxed">一鍵生成符合送審格式的計算書，包含完整公式細節與引用來源。</p>
+                    </div>
+                    <div class="feature-card p-8 rounded-3xl bg-white border border-slate-100 shadow-sm">
+                        <div class="w-14 h-14 bg-blue-50 rounded-2xl flex items-center justify-center text-blue-600 mb-6 text-2xl"><i class="fa-solid fa-mobile-screen"></i></div>
+                        <h4 class="font-bold text-xl mb-3 text-slate-800">第一現場支持</h4>
+                        <p class="text-slate-500 text-sm leading-relaxed">完美的行動裝置適配。不論在辦公室或工區現場，專業如影隨形。</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Standards Section -->
+        <section id="standards" class="py-20 px-6 bg-slate-900 text-white overflow-hidden relative">
+            <div class="absolute top-0 right-0 w-96 h-96 bg-blue-600 rounded-full blur-[120px] opacity-20 pointer-events-none"></div>
+            <div class="max-w-6xl mx-auto flex flex-col md:flex-row items-center gap-16 relative z-10">
+                <div class="md:w-1/2">
+                    <h2 class="text-4xl font-black mb-6">對標國際工程標準</h2>
+                    <p class="text-slate-400 text-lg mb-8 leading-relaxed">
+                        我們深知數據精確度的重要性。所有工具算法皆經過嚴謹校核，並標註引用來源，讓您的計算結果經得起考驗。
                     </p>
-                    <div id="recent-container" class="hidden mt-12 flex flex-wrap gap-4 items-center justify-center md:justify-start">
-                        <span class="text-[10px] font-black text-slate-400 uppercase tracking-widest">Recent Tools:</span>
-                        <div id="recent-list" class="flex flex-wrap gap-3"></div>
+                    <div class="flex flex-wrap gap-3">
+                        <span class="px-4 py-2 bg-white/10 rounded-lg border border-white/20 text-sm font-mono"><i class="fa-solid fa-check text-blue-400 mr-2"></i>ASHRAE</span>
+                        <span class="px-4 py-2 bg-white/10 rounded-lg border border-white/20 text-sm font-mono"><i class="fa-solid fa-check text-blue-400 mr-2"></i>CNS 標準</span>
+                        <span class="px-4 py-2 bg-white/10 rounded-lg border border-white/20 text-sm font-mono"><i class="fa-solid fa-check text-blue-400 mr-2"></i>ISO 14644</span>
                     </div>
                 </div>
-
-                <!-- 基礎設計 -->
-                <section class="mb-24 md:mb-36 section-container">
-                    <h3 class="text-[10px] md:text-xs font-black text-slate-400 uppercase tracking-[0.5em] mb-8 flex items-center gap-6">
-                        <span class="w-12 md:w-32 h-1 bg-blue-600 rounded-full"></span>基礎設計工具 General
-                    </h3>
-                    <div class="slider-wrapper">
-                        <button class="nav-arrow left" onclick="sideScroll('general-slider', 'left')">❮</button>
-                        <div id="general-slider" class="slider-container no-scrollbar"></div>
-                        <button class="nav-arrow right" onclick="sideScroll('general-slider', 'right')">❯</button>
+                <div class="md:w-1/2 flex justify-center">
+                    <div class="w-full max-w-sm aspect-video bg-white/5 rounded-2xl border border-white/10 backdrop-blur-sm flex items-center justify-center relative overflow-hidden group">
+                        <i class="fa-solid fa-shield-halved text-8xl text-blue-500/50 group-hover:scale-110 transition-transform duration-500"></i>
+                        <div class="absolute bottom-4 left-4 text-xs font-mono text-slate-400">VERIFIED ALGORITHM</div>
                     </div>
-                </section>
-
-                <!-- 進階模組 -->
-                <section class="mb-24 md:mb-36 section-container">
-                    <h3 class="text-[10px] md:text-xs font-black text-slate-400 uppercase tracking-[0.5em] mb-8 flex items-center gap-6">
-                        <span class="w-12 md:w-32 h-1 bg-slate-900 rounded-full"></span>進階系統模組 Advanced
-                    </h3>
-                    <div class="slider-wrapper">
-                        <button class="nav-arrow left" onclick="sideScroll('advanced-slider', 'left')">❮</button>
-                        <div id="advanced-slider" class="slider-container no-scrollbar"></div>
-                        <button class="nav-arrow right" onclick="sideScroll('advanced-slider', 'right')">❯</button>
-                    </div>
-                </section>
-
-                <!-- 其他/特殊模組 (New) -->
-                <section class="mb-10 section-container">
-                    <h3 class="text-[10px] md:text-xs font-black text-slate-400 uppercase tracking-[0.5em] mb-8 flex items-center gap-6">
-                        <span class="w-12 md:w-32 h-1 bg-amber-500 rounded-full"></span>其他系統 Others
-                    </h3>
-                    <div class="slider-wrapper">
-                        <button class="nav-arrow left" onclick="sideScroll('others-slider', 'left')">❮</button>
-                        <div id="others-slider" class="slider-container no-scrollbar"></div>
-                        <button class="nav-arrow right" onclick="sideScroll('others-slider', 'right')">❯</button>
-                    </div>
-                </section>
-
-                <footer class="mt-40 pb-20 border-t border-slate-200 pt-16 text-center text-slate-400 text-[11px] font-bold uppercase tracking-[0.4em] leading-loose">
-                    Professional HVAC Suite • Enterprise Edition<br>© 2026 Developed for Advanced Engineering Operations<br>
-                    Gmail: ss23083937@gmail.com
-                </footer>
+                </div>
             </div>
-        </div>
+        </section>
 
-        <div id="module-container">
-            <div class="h-[64px] md:h-[80px] bg-slate-900 text-white flex items-center px-4 md:px-12 justify-between shrink-0 shadow-2xl relative z-[10]">
-                <button onclick="closeModule()" class="flex items-center gap-3 px-5 py-2 rounded-full bg-white/10 hover:bg-white/20 text-white font-bold text-xs transition-all group">
-                    <svg class="h-4 w-4 transform group-hover:-translate-x-1" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3"><path d="M15 19l-7-7 7-7" /></svg>
-                    <span>TERMINATE</span>
+        <!-- CTA Section -->
+        <section class="py-32 px-6 text-center">
+             <h2 class="text-3xl font-black text-slate-900 mb-8">準備好開始工作了嗎？</h2>
+             <button onclick="enterDashboard()" class="bg-slate-900 text-white px-12 py-5 rounded-full font-bold text-xl hover:bg-black transition-all hover:scale-105 shadow-xl">
+                進入工具箱 <i class="fa-solid fa-arrow-right ml-2"></i>
+             </button>
+        </section>
+
+        <footer class="py-12 px-6 border-t border-slate-100 bg-white text-center">
+            <p class="text-slate-400 text-xs font-bold uppercase tracking-widest mb-4">© 2026 HVAC Pro-Suite • Enterprise Edition</p>
+            <div class="flex justify-center gap-6 text-slate-300 text-xl">
+                <i class="fa-brands fa-github hover:text-slate-800 cursor-pointer transition-colors"></i>
+                <i class="fa-solid fa-envelope hover:text-blue-600 cursor-pointer transition-colors"></i>
+            </div>
+        </footer>
+    </div>
+
+    <!-- ============================================== -->
+    <!--  2. DASHBOARD VIEW (ORIGINAL TOOL INTERFACE)   -->
+    <!-- ============================================== -->
+    <div id="dashboard-view" class="view-section">
+        <header id="main-header" class="h-[64px] md:h-[88px] bg-white/80 backdrop-blur-md border-b border-slate-200 px-4 md:px-12 flex items-center justify-between flex-shrink-0 z-[110] transition-all duration-500">
+            <div class="flex items-center gap-4 md:gap-10">
+                <!-- Back to Landing Page Button -->
+                <button onclick="exitDashboard()" class="w-10 h-10 md:w-14 md:h-14 bg-slate-100 hover:bg-slate-200 rounded-xl md:rounded-2xl flex items-center justify-center text-slate-500 transition-colors">
+                    <i class="fa-solid fa-house"></i>
                 </button>
-                <div class="flex flex-col items-center">
-                    <div class="flex items-center gap-3">
-                        <span id="active-tool-id" class="text-[9px] px-2 py-0.5 bg-blue-600 rounded font-mono font-bold">ID:--</span>
-                        <span id="active-tool-title" class="text-sm md:text-xl font-black tracking-widest uppercase text-blue-400">LOADING...</span>
+                <div class="flex items-center gap-3 md:gap-5">
+                    <!-- 原本的「東旭」Logo -->
+                    <div class="w-10 h-10 md:w-14 md:h-14 bg-gradient-to-br from-blue-600 to-indigo-700 rounded-xl md:rounded-2xl flex items-center justify-center text-white shadow-xl text-xl md:text-2xl font-black">東旭</div>
+                    <div>
+                        <h1 class="text-xl md:text-3xl font-black text-slate-800 tracking-[0.2em] leading-none uppercase">HVAC <span class="text-blue-600">Pro</span></h1>
+                        <div class="status-ticker mt-1 hidden xs:block" id="ticker-text">CORE READY • ENGINE RUNNING</div>
                     </div>
-                    <span id="active-tool-meta" class="text-[8px] opacity-40 font-bold uppercase tracking-[0.2em] mt-1">v3.1.0 • CORE LOGIC ACTIVE</span>
-                </div>
-                <button onclick="iframeReload()" class="w-10 h-10 rounded-full bg-white/5 hover:bg-white/10 flex items-center justify-center">🔄</button>
-            </div>
-            <div id="skeleton-loader">
-                <div class="skeleton-item h-10 w-1/4"></div>
-                <div class="skeleton-item h-64 w-full"></div>
-                <div class="grid grid-cols-2 gap-8 mt-4">
-                    <div class="skeleton-item h-32"></div>
-                    <div class="skeleton-item h-32"></div>
                 </div>
             </div>
-            <iframe id="module-viewport" src="about:blank"></iframe>
-        </div>
-    </main>
+            
+            <div class="flex items-center gap-4">
+                <div class="weather-widget hidden sm:flex">
+                    <div class="flex flex-col items-center"><span class="text-[8px] text-slate-400 font-bold uppercase">Temp</span><span id="live-temp" class="weather-value">--.-°C</span></div>
+                    <div class="w-px h-6 bg-slate-100"></div>
+                    <div class="flex flex-col items-center"><span class="text-[8px] text-slate-400 font-bold uppercase">Rh%</span><span id="live-rh" class="weather-value">--%</span></div>
+                    <div class="ml-1 text-blue-500 animate-pulse text-xs">📡</div>
+                </div>
+                <div id="current-time" class="text-xs md:text-lg font-bold text-slate-800 font-mono bg-white px-3 md:px-6 py-1.5 md:py-2 rounded-xl border border-slate-200 shadow-sm tracking-tighter">--:--</div>
+                <div id="user-button"></div>
+            </div>
+        </header>
+
+        <main class="flex-grow flex flex-col overflow-hidden relative">
+            <div id="toolbox-hub" class="flex-grow h-full overflow-y-auto p-6 md:p-16 lg:p-20 no-scrollbar relative z-10 transition-all duration-500">
+                <div class="max-w-[1600px] mx-auto relative">
+                    
+                    <div class="mb-12 md:mb-24 text-center md:text-left transition-all duration-500">
+                        <div id="welcome-badge" class="inline-block px-5 py-2 bg-blue-600 text-white text-[10px] font-black uppercase tracking-[0.5em] rounded-full mb-6 shadow-lg shadow-blue-200 tracking-tighter">GUEST MODE: LOGIN TO ACCESS TOOLS</div>
+                        <h2 class="text-4xl md:text-7xl font-black text-slate-900 mb-6 tracking-tighter leading-none">工程師 <span class="text-blue-600 italic font-medium">工作台</span></h2>
+                        <div id="recent-container" class="hidden mt-8 flex flex-wrap gap-4 items-center justify-center md:justify-start">
+                            <span class="text-[10px] font-black text-slate-400 uppercase tracking-widest">Recent:</span>
+                            <div id="recent-list" class="flex flex-wrap gap-3"></div>
+                        </div>
+                    </div>
+
+                    <!-- 基礎設計 -->
+                    <section class="mb-24 md:mb-36 section-container">
+                        <h3 class="text-[10px] md:text-xs font-black text-slate-400 uppercase tracking-[0.5em] mb-8 flex items-center gap-6">
+                            <span class="w-12 md:w-32 h-1 bg-blue-600 rounded-full"></span>基礎設計工具 General
+                        </h3>
+                        <div class="slider-wrapper">
+                            <button class="nav-arrow left" onclick="sideScroll('general-slider', 'left')">❮</button>
+                            <div id="general-slider" class="slider-container no-scrollbar"></div>
+                            <button class="nav-arrow right" onclick="sideScroll('general-slider', 'right')">❯</button>
+                        </div>
+                    </section>
+
+                    <!-- 進階模組 -->
+                    <section class="mb-24 md:mb-36 section-container">
+                        <h3 class="text-[10px] md:text-xs font-black text-slate-400 uppercase tracking-[0.5em] mb-8 flex items-center gap-6">
+                            <span class="w-12 md:w-32 h-1 bg-slate-900 rounded-full"></span>進階系統模組 Advanced
+                        </h3>
+                        <div class="slider-wrapper">
+                            <button class="nav-arrow left" onclick="sideScroll('advanced-slider', 'left')">❮</button>
+                            <div id="advanced-slider" class="slider-container no-scrollbar"></div>
+                            <button class="nav-arrow right" onclick="sideScroll('advanced-slider', 'right')">❯</button>
+                        </div>
+                    </section>
+
+                    <!-- 其他系統 -->
+                    <section class="mb-10 section-container">
+                        <h3 class="text-[10px] md:text-xs font-black text-slate-400 uppercase tracking-[0.5em] mb-8 flex items-center gap-6">
+                            <span class="w-12 md:w-32 h-1 bg-amber-500 rounded-full"></span>其他系統 Others
+                        </h3>
+                        <div class="slider-wrapper">
+                            <button class="nav-arrow left" onclick="sideScroll('others-slider', 'left')">❮</button>
+                            <div id="others-slider" class="slider-container no-scrollbar"></div>
+                            <button class="nav-arrow right" onclick="sideScroll('others-slider', 'right')">❯</button>
+                        </div>
+                    </section>
+                </div>
+            </div>
+
+            <div id="module-container">
+                <div class="h-[64px] md:h-[80px] bg-slate-900 text-white flex items-center px-4 md:px-12 justify-between shrink-0 shadow-2xl relative z-[10]">
+                    <button onclick="closeModule()" class="flex items-center gap-3 px-5 py-2 rounded-full bg-white/10 hover:bg-white/20 text-white font-bold text-xs transition-all group">
+                        <svg class="h-4 w-4 transform group-hover:-translate-x-1" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3"><path d="M15 19l-7-7 7-7" /></svg>
+                        <span>TERMINATE</span>
+                    </button>
+                    <div class="flex flex-col items-center">
+                        <div class="flex items-center gap-3">
+                            <span id="active-tool-id" class="text-[9px] px-2 py-0.5 bg-blue-600 rounded font-mono font-bold">ID:--</span>
+                            <span id="active-tool-title" class="text-sm md:text-xl font-black tracking-widest uppercase text-blue-400">LOADING...</span>
+                        </div>
+                        <span id="active-tool-meta" class="text-[8px] opacity-40 font-bold uppercase tracking-[0.2em] mt-1">v3.1.0 • CORE LOGIC ACTIVE</span>
+                    </div>
+                    <button onclick="iframeReload()" class="w-10 h-10 rounded-full bg-white/5 hover:bg-white/10 flex items-center justify-center">🔄</button>
+                </div>
+                <div id="skeleton-loader">
+                    <div class="skeleton-item h-10 w-1/4"></div>
+                    <div class="skeleton-item h-64 w-full"></div>
+                    <div class="grid grid-cols-2 gap-8 mt-4">
+                        <div class="skeleton-item h-32"></div>
+                        <div class="skeleton-item h-32"></div>
+                    </div>
+                </div>
+                <iframe id="module-viewport" src="about:blank"></iframe>
+            </div>
+        </main>
+    </div>
 
     <script>
         const APP_VERSION = 'v3.1.0';
+        let isDashboardInit = false;
+
         const toolsData = {
             general: [
                 { id: 'PMP-01', name: '冰機水泵換算', desc: 'RT 同步推算 CHW/CW 流量耗電與揚程。', icon: '⚡', tag: 'Hydronic', calcType: 'Flow / Power', file: '冰機換算水泵.html', color: 'bg-emerald-100', text: 'text-emerald-700' },
@@ -231,26 +369,91 @@
         function handleServiceWorker() { if (!('serviceWorker' in navigator) || !window.location.protocol.startsWith('http')) return; navigator.serviceWorker.register(`./sw.js?v=${APP_VERSION}`).catch(() => {}); }
         async function fetchWeather() { const tempEl = document.getElementById('live-temp'); const rhEl = document.getElementById('live-rh'); try { const res = await fetch('https://api.open-meteo.com/v1/forecast?latitude=25.0375&longitude=121.5637&current=temperature_2m,relative_humidity_2m'); const data = await res.json(); if (data && data.current) { tempEl.innerText = `${data.current.temperature_2m}°C`; rhEl.innerText = `${data.current.relative_humidity_2m}%`; } } catch (e) { tempEl.innerText = '24.5°C'; rhEl.innerText = '55%'; } }
 
+        // --- NEW: View Switching Logic ---
+        function enterDashboard() {
+            document.getElementById('landing-view').style.opacity = '0';
+            setTimeout(() => {
+                document.getElementById('landing-view').style.display = 'none';
+                const dash = document.getElementById('dashboard-view');
+                dash.style.display = 'flex';
+                // Trigger reflow
+                void dash.offsetWidth; 
+                dash.style.opacity = '1';
+                
+                if (!isDashboardInit) {
+                    initDashboardTools();
+                    isDashboardInit = true;
+                } else {
+                    // Re-calculate slider positions since they were hidden
+                    window.dispatchEvent(new Event('resize'));
+                }
+            }, 500);
+        }
+
+        function exitDashboard() {
+            const dash = document.getElementById('dashboard-view');
+            dash.style.opacity = '0';
+            setTimeout(() => {
+                dash.style.display = 'none';
+                const landing = document.getElementById('landing-view');
+                landing.style.display = 'block';
+                void landing.offsetWidth;
+                landing.style.opacity = '1';
+            }, 500);
+        }
+
+        function initDashboardTools() {
+            // Render Cards
+            document.getElementById('general-slider').innerHTML = toolsData.general.map(createCardHTML).join('');
+            document.getElementById('advanced-slider').innerHTML = toolsData.advanced.map(createCardHTML).join('');
+            document.getElementById('others-slider').innerHTML = toolsData.others.map(createCardHTML).join('');
+            
+            // Init Sliders
+            setTimeout(() => {
+                initInfiniteSlider('general-slider', toolsData.general.length);
+                initInfiniteSlider('advanced-slider', toolsData.advanced.length);
+                initInfiniteSlider('others-slider', toolsData.others.length);
+            }, 100);
+            
+            renderRecentTools();
+            fetchWeather();
+        }
+
+        // --- Slider Logic ---
         function initInfiniteSlider(id, originalCount) {
             const container = document.getElementById(id);
-            if (!container) return; // Guard
+            if (!container) return; 
             const originalCards = Array.from(container.children);
             if (originalCards.length === 0) return;
             originalCards.forEach(card => container.appendChild(card.cloneNode(true)));
             originalCards.forEach(card => container.insertBefore(card.cloneNode(true), container.firstChild));
-            const updatePos = () => { const card = container.querySelector('.tool-card'); if (!card) return; const gap = parseInt(getComputedStyle(container).gap) || 0; container.scrollLeft = (card.offsetWidth + gap) * originalCount; };
+            
+            const updatePos = () => { 
+                const card = container.querySelector('.tool-card'); 
+                if (!card) return; 
+                const gap = parseInt(getComputedStyle(container).gap) || 0; 
+                // Important: if hidden, offsetWidth is 0. Guard against this.
+                if (card.offsetWidth === 0) return;
+                
+                container.scrollLeft = (card.offsetWidth + gap) * originalCount; 
+            };
+            
             window.addEventListener('resize', updatePos);
-            setTimeout(updatePos, 100);
+            setTimeout(updatePos, 100); // Initial pos
+            
             container.addEventListener('scroll', () => {
                 const card = container.querySelector('.tool-card');
-                if (!card) return;
+                if (!card || card.offsetWidth === 0) return;
                 const gap = parseInt(getComputedStyle(container).gap) || 0;
                 const cardWidth = card.offsetWidth + gap;
                 const setWidth = cardWidth * originalCount;
+                
                 if (container.scrollLeft >= setWidth * 2) { container.scrollLeft -= setWidth; } 
                 else if (container.scrollLeft <= 0) { container.scrollLeft += setWidth; }
+                
                 const containerRect = container.getBoundingClientRect();
                 const centerX = containerRect.left + containerRect.width / 2;
+                
                 container.querySelectorAll('.tool-card').forEach(c => {
                     const cRect = c.getBoundingClientRect();
                     const cCenter = cRect.left + cRect.width / 2;
@@ -262,6 +465,7 @@
 
         function sideScroll(id, direction) { const container = document.getElementById(id); const firstCard = container.querySelector('.tool-card'); if (!firstCard) return; const gap = parseInt(getComputedStyle(container).gap) || 0; const move = firstCard.offsetWidth + gap; container.scrollBy({ left: direction === 'right' ? move : -move, behavior: 'smooth' }); }
 
+        // --- Module Logic ---
         async function loadModulePortal(event, id, toolName, fileName) {
             if (!Clerk.user) {
                 Clerk.openSignIn({ afterSignInUrl: window.location.href });
@@ -298,6 +502,17 @@
                         }, 250);
                     }, 500);
                 });
+            } else {
+                 // Fallback for recent tools quick launch (no card animation)
+                 flash.style.opacity = '1';
+                 setTimeout(() => {
+                    document.getElementById('active-tool-id').innerText = `ID:${id}`;
+                    document.getElementById('active-tool-title').innerText = toolName;
+                    container.style.display = 'flex';
+                    skeleton.style.display = 'flex';
+                    iframe.src = fileName + '?v=' + Date.now();
+                    iframe.onload = () => { flash.style.opacity = '0'; skeleton.style.display = 'none'; };
+                 }, 300);
             }
         }
 
@@ -317,17 +532,18 @@
             </div>`;
         }
 
-        function updateRecentTools(id) { let recent = JSON.parse(localStorage.getItem('hvac_recent_v3_0_0') || '[]'); recent = [id, ...recent.filter(tid => tid !== id)].slice(0, 4); localStorage.setItem('hvac_recent_v3_0_0', JSON.stringify(recent)); renderRecentTools(); }
-        function renderRecentTools() { const container = document.getElementById('recent-container'); const recentIds = JSON.parse(localStorage.getItem('hvac_recent_v3_0_0') || '[]'); if (recentIds.length === 0) return; container.classList.remove('hidden'); document.getElementById('recent-list').innerHTML = recentIds.map(id => { const tool = allToolsList.find(t => t.id === id); return tool ? `<button onclick="quickLaunch('${tool.id}')" class="px-4 py-2 bg-white border rounded-xl text-[10px] font-black">${tool.name}</button>` : ''; }).join(''); }
-        function quickLaunch(id) { const tool = allToolsList.find(t => t.id === id); if (tool) loadModulePortal({ currentTarget: document.createElement('div') }, tool.id, tool.name, tool.file); }
+        function updateRecentTools(id) { let recent = JSON.parse(localStorage.getItem('hvac_recent_v3_0_0') || '[]'); recent = [id, ...recent.filter(tid => tid !== id)].slice(4); localStorage.setItem('hvac_recent_v3_0_0', JSON.stringify(recent)); renderRecentTools(); }
+        function renderRecentTools() { const container = document.getElementById('recent-container'); const recentIds = JSON.parse(localStorage.getItem('hvac_recent_v3_0_0') || '[]'); if (recentIds.length === 0) return; container.classList.remove('hidden'); document.getElementById('recent-list').innerHTML = recentIds.map(id => { const tool = allToolsList.find(t => t.id === id); return tool ? `<button onclick="quickLaunch('${tool.id}')" class="px-4 py-2 bg-white border rounded-xl text-[10px] font-black hover:bg-slate-50 transition-colors">${tool.name}</button>` : ''; }).join(''); }
+        function quickLaunch(id) { const tool = allToolsList.find(t => t.id === id); if (tool) loadModulePortal({}, tool.id, tool.name, tool.file); }
         function iframeReload() { document.getElementById('module-viewport').contentWindow.location.reload(); }
 
+        // --- Init ---
         window.onload = async () => {
             const loader = document.getElementById('boot-loader');
             const bootStatus = document.getElementById('boot-status');
 
             if (typeof Clerk === 'undefined') {
-                bootStatus.innerText = "Auth Service Blocked (Check AdBlock)";
+                bootStatus.innerText = "Auth Service Blocked";
                 bootStatus.style.color = "#ef4444";
                 return; 
             }
@@ -339,28 +555,21 @@
                     afterSignOutUrl: window.location.href
                 });
                 
-                document.getElementById('general-slider').innerHTML = toolsData.general.map(createCardHTML).join('');
-                document.getElementById('advanced-slider').innerHTML = toolsData.advanced.map(createCardHTML).join('');
-                document.getElementById('others-slider').innerHTML = toolsData.others.map(createCardHTML).join('');
-                
-                initInfiniteSlider('general-slider', toolsData.general.length);
-                initInfiniteSlider('advanced-slider', toolsData.advanced.length);
-                initInfiniteSlider('others-slider', toolsData.others.length);
-                
-                renderRecentTools();
-
+                // If user is already logged in, update landing page text
                 if (Clerk.user) {
                     const userName = Clerk.user.firstName || Clerk.user.primaryEmailAddress.emailAddress.split('@')[0];
+                    const landingCTA = document.getElementById('landing-cta-text');
+                    if(landingCTA) landingCTA.innerText = `進入系統 (${userName})`;
+                    
+                    // Update Dashboard UI
                     const badge = document.getElementById('welcome-badge');
                     if (badge) badge.innerText = `歡迎回來，${userName} 工程師`;
-                    Clerk.mountUserButton(document.getElementById('user-button'), {
-                        afterSignOutUrl: window.location.href
-                    });
+                    Clerk.mountUserButton(document.getElementById('user-button'), { afterSignOutUrl: window.location.href });
                 }
 
                 setTimeout(() => {
                     loader.style.opacity = '0';
-                    setTimeout(() => { loader.style.display = 'none'; fetchWeather(); handleServiceWorker(); }, 600);
+                    setTimeout(() => { loader.style.display = 'none'; handleServiceWorker(); }, 600);
                 }, 1000);
 
             } catch (err) { console.error("Auth Error:", err); }
