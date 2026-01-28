@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>PCW 系統估算工具 PRO v6.8 </title>
+    <title>PCW 系統估算工具 PRO v6.9 </title>
     
     <!-- React & ReactDOM -->
     <script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin></script>
@@ -74,7 +74,7 @@
 
         // --- Constants ---
         const UNLOCK_PASSWORD = "900407";
-        const STORAGE_KEY = 'pcw_estimator_v6_8_data';
+        const STORAGE_KEY = 'pcw_estimator_v6_9_data';
         const GRAVITY = 9.81;
 
         // Fluid Properties Library
@@ -610,8 +610,8 @@
                                     <Icon name="Calculator" className="text-white" size={20}/>
                                 </div>
                                 <div>
-                                    <h1 className="text-lg font-bold tracking-tight leading-tight">PCW 系統估算工具 <span className="text-[10px] bg-emerald-500 text-white px-2 py-0.5 rounded-full ml-1">v6.8</span></h1>
-                                    <p className="text-[10px] text-slate-400 font-medium">Layout Refined</p>
+                                    <h1 className="text-lg font-bold tracking-tight leading-tight">PCW 系統估算工具 <span className="text-[10px] bg-emerald-500 text-white px-2 py-0.5 rounded-full ml-1">v6.9</span></h1>
+                                    <p className="text-[10px] text-slate-400 font-medium">Layout & Help Integration</p>
                                 </div>
                             </div>
                             <div className="flex items-center gap-3">
@@ -777,7 +777,7 @@
                                     </div>
                                 </div>
 
-                                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6 items-stretch">
+                                <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-stretch">
                                     {/* Pump Card (Ref for navigation) */}
                                     <Card ref={cardRefs.pump} highlighted={highlightedCard === 'pump'} className="border-t-4 border-t-emerald-500">
                                         <SectionHeader icon="Wind" title="泵浦 (Pump)" colorClass="bg-emerald-50/50 border-emerald-100 text-emerald-900" subtitle={`H: ${equipKPI.pumpHeadM.toFixed(1)} m`}/>
@@ -852,7 +852,7 @@
                                                 <div className="text-center">
                                                     <div className="text-base text-amber-800/70 mb-1 font-bold">建議規格型號</div>
                                                     <div className="font-bold text-amber-800 text-lg mb-1">{equipKPI.filterConfig}</div>
-                                                    <div className="text-sm text-amber-600 font-mono leading-tight px-2">{equipKPI.filterModel}</div>
+                                                    <div className="text-base text-amber-600 font-mono mt-1 leading-tight px-2">{equipKPI.filterModel}</div>
                                                 </div>
                                             </div>
                                         </div>
@@ -916,7 +916,7 @@
                                 </div>
                                 <div className="text-right text-xs text-slate-500 font-mono">
                                     <p>Date: {new Date().toISOString().split('T')[0]}</p>
-                                    <p>Ref: PCW-EST-V6.8</p>
+                                    <p>Ref: PCW-EST-V6.9</p>
                                 </div>
                             </div>
 
@@ -1066,9 +1066,9 @@
                                         </section>
 
                                         <section className="pt-4 border-t border-slate-100">
-                                            <h4 className="font-bold text-slate-800 mb-2">v6.8 新功能介紹</h4>
+                                            <h4 className="font-bold text-slate-800 mb-2">v6.9 新功能介紹</h4>
                                             <ul className="list-disc pl-8 space-y-1 text-xs">
-                                                <li><strong>版面整齊化：</strong> 統一卡片高度與間距，視覺更清爽。</li>
+                                                <li><strong>版面整齊化：</strong> 改為雙欄寬版佈局，操作更舒適。</li>
                                                 <li><strong>廠商規格整合：</strong> 濾心選型現在自動導入 FILTRAFINE 等級大流量濾心計算邏輯。</li>
                                                 <li><strong>流量顯示：</strong> 修正安全係數顯示問題，優化設計流量顯示。</li>
                                             </ul>
