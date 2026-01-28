@@ -1,0 +1,603 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bulk Gas System - Engineering Audit Tool</title>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <!-- React & ReactDOM (Pinned v18.2.0) -->
+    <script crossorigin src="https://unpkg.com/react@18.2.0/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18.2.0/umd/react-dom.production.min.js"></script>
+    
+    <!-- Prop Types (Required dependency for some Recharts UMD builds) -->
+    <script src="https://unpkg.com/prop-types/prop-types.min.js"></script>
+
+    <!-- Recharts (Pinned v2.12.7 to ensure stability with React 18 UMD) -->
+    <script src="https://unpkg.com/recharts@2.12.7/umd/Recharts.js"></script>
+
+    <!-- Babel for JSX -->
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+    <style>
+        body { font-family: 'Inter', system-ui, -apple-system, sans-serif; }
+    </style>
+</head>
+<body class="bg-slate-50">
+    <div id="root"></div>
+
+    <script type="text/babel">
+        // 1. Destructure Globals
+        const { useState, useMemo } = React;
+        // Ensure Recharts is loaded before destructuring
+        const { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip: RechartsTooltip, Legend, ResponsiveContainer, ReferenceArea, ReferenceLine, PieChart, Pie, Cell } = window.Recharts || {};
+
+        // 2. Icon Components (Inline SVGs to replace lucide-react dependency for standalone file)
+        const IconBase = ({ size = 24, className = "", children }) => (
+            <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>{children}</svg>
+        );
+
+        const Database = (props) => <IconBase {...props}><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/></IconBase>;
+        const Activity = (props) => <IconBase {...props}><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></IconBase>;
+        const Gauge = (props) => <IconBase {...props}><path d="m12 14 4-4"/><path d="M3.34 19a10 10 0 1 1 17.32 0"/></IconBase>;
+        const ChevronRight = (props) => <IconBase {...props}><polyline points="9 18 15 12 9 6"/></IconBase>;
+        const ShieldCheck = (props) => <IconBase {...props}><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="m9 12 2 2 4-4"/></IconBase>;
+        const Zap = (props) => <IconBase {...props}><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></IconBase>;
+        const CheckCircle = (props) => <IconBase {...props}><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></IconBase>;
+        const XCircle = (props) => <IconBase {...props}><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></IconBase>;
+        const HelpCircle = (props) => <IconBase {...props}><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></IconBase>;
+        const ArrowRight = (props) => <IconBase {...props}><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></IconBase>;
+        const Wrench = (props) => <IconBase {...props}><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></IconBase>;
+        const AlertOctagon = (props) => <IconBase {...props}><polygon points="7.86 2 16.14 2 22 7.86 22 16.14 16.14 22 7.86 22 2 16.14 2 7.86 7.86 2"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></IconBase>;
+        const Lightbulb = (props) => <IconBase {...props}><line x1="9" y1="18" x2="15" y2="18"/><line x1="10" y1="22" x2="14" y2="22"/><path d="M15.09 14c.18-.9.27-1.85.26-2.83a7 7 0 0 0-11.76-4.59 6.91 6.91 0 0 0-.25 2.82c-.1 2 .88 4.66 2.66 6.6H15.1z"/></IconBase>;
+        const AlertTriangle = (props) => <IconBase {...props}><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></IconBase>;
+        const PlayCircle = (props) => <IconBase {...props}><circle cx="12" cy="12" r="10"/><polygon points="10 8 16 12 10 16 10 8"/></IconBase>;
+        const Settings = (props) => <IconBase {...props}><path d="M12.22 2h-.44a2 2 0 0 1-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.1a2 2 0 0 1-1-1.74v-.47a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></IconBase>;
+
+        // 3. Application Logic
+        const CONSTANTS = {
+          P_STD: 101325, 
+          T_STD: 273.15,
+          KG_CM2_TO_PA: 98066.5,
+          ROUGHNESS: 0.000015,
+        };
+
+        const GAS_PROPERTIES = {
+          GN2: { name: "一般氮氣", limitV: 15, densityStd: 1.2506, viscosity: 1.75e-5 },
+          PN2: { name: "純氮氣", limitV: 15, densityStd: 1.2506, viscosity: 1.75e-5 },
+          GO2: { name: "一般氧氣", limitV: 10, densityStd: 1.429, viscosity: 2.02e-5, hazard: "High Oxygen: 嚴格禁油、限制流速、避開碳鋼管材" },
+          PO2: { name: "純氧氣", limitV: 10, densityStd: 1.429, viscosity: 2.02e-5, hazard: "High Oxygen: 嚴格禁油、限制流速、避開碳鋼管材" },
+          PAr: { name: "純氬氣", limitV: 15, densityStd: 1.784, viscosity: 2.23e-5 },
+          PHe: { name: "純氦氣", limitV: 15, densityStd: 0.1785, viscosity: 1.96e-5, hazard: "Low Density: 關注音速限制、高滲漏風險" },
+          PCO2: { name: "純二氧化碳", limitV: 15, densityStd: 1.977, viscosity: 1.47e-5 }
+        };
+
+        const PIPE_SIZES = [
+          { label: "15A", id_mm: 16.1 }, { label: "20A", id_mm: 21.6 }, { label: "25A", id_mm: 27.2 }, 
+          { label: "40A", id_mm: 41.2 }, { label: "50A", id_mm: 52.9 }, { label: "65A", id_mm: 67.9 }, 
+          { label: "80A", id_mm: 80.7 }, { label: "100A", id_mm: 105.3 }, { label: "125A", id_mm: 130.8 }, 
+          { label: "150A", id_mm: 155.2 }, { label: "200A", id_mm: 204.7 }, { label: "250A", id_mm: 254.2 }, 
+          { label: "300A", id_mm: 311.7 }, { label: "350A", id_mm: 339.6 }, { label: "400A", id_mm: 389.8 }
+        ];
+
+        const VALVE_TYPES = {
+          ball: { name: "球閥 (Full Port)", k: 0.15 },
+          gate: { name: "閘閥 (Open)", k: 0.2 },
+          globe: { name: "截止閥 (Globe)", k: 5.0 },
+          control: { name: "控制閥 (Control)", k: 8.5 }
+        };
+
+        const K_FITTINGS = { elbow90: 0.75, tee: 1.0 };
+
+        const InfoTooltip = ({ text, dark = false }) => (
+          <div className="group relative inline-flex ml-1 align-middle">
+            <HelpCircle size={14} className={`${dark ? "text-slate-500 hover:text-slate-800" : "text-slate-400 hover:text-blue-500"} cursor-help transition-colors`} />
+            <div className="invisible group-hover:visible absolute z-50 w-64 p-3 mt-2 -ml-32 bg-slate-900 text-white text-xs rounded-lg shadow-xl opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none font-normal z-[60]">
+              {text}
+              <div className="absolute -top-1 left-1/2 -ml-1 w-2 h-2 bg-slate-900 transform rotate-45"></div>
+            </div>
+          </div>
+        );
+
+        const SectionHeader = ({ number, title }) => (
+          <div className="flex items-center gap-3 mb-6">
+            <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-blue-50 text-blue-600 font-bold text-sm border border-blue-100">
+              {number}
+            </div>
+            <h2 className="text-lg font-bold text-slate-800 tracking-tight">{title}</h2>
+          </div>
+        );
+
+        const PrimaryInputWrapper = ({ label, children, unit }) => (
+          <div className="relative group">
+            <label className="flex items-center justify-between text-xs font-bold text-slate-600 uppercase mb-2 tracking-wide">
+              {label}
+              <span className="text-[10px] bg-blue-50 text-blue-600 px-1.5 py-0.5 rounded font-bold">KEY INPUT</span>
+            </label>
+            <div className="relative">
+              {children}
+              {unit && <span className="absolute right-3 top-3 text-xs text-slate-400 font-bold pointer-events-none">{unit}</span>}
+            </div>
+          </div>
+        );
+
+        const getStatusLabel = (val, limit) => {
+          const ratio = val / limit;
+          if (ratio > 1) return { text: "FAIL", color: "text-red-500", bg: "bg-red-500/10" };
+          if (ratio > 0.9) return { text: "WARNING", color: "text-amber-500", bg: "bg-amber-500/10" };
+          return { text: "PASS", color: "text-emerald-500", bg: "bg-emerald-500/10" };
+        };
+
+        function App() {
+          const [useMargin, setUseMargin] = useState(false);
+          const [formData, setFormData] = useState({
+            gasType: "GN2",
+            pressureG: 8.0, 
+            tempC: 25,
+            flowRateSCMH: 19383,
+            pipeLength: 600,
+            elbowCount: 20,
+            teeCount: 3,
+            valveType: "globe",
+            valveCount: 2,
+            maxAllowedDP: 0.5, 
+          });
+
+          const calculation = useMemo(() => {
+            const { gasType, pressureG, tempC, flowRateSCMH, pipeLength, elbowCount, teeCount, valveType, valveCount, maxAllowedDP } = formData;
+            const gas = GAS_PROPERTIES[gasType];
+            const margin = useMargin ? 0.8 : 1.0;
+            
+            const pAbs = (pressureG * CONSTANTS.KG_CM2_TO_PA) + 101325; 
+            const tAbs = tempC + 273.15; 
+            const rhoAct = gas.densityStd * (pAbs / 101325) * (273.15 / tAbs);
+            const flowActualM3s = (flowRateSCMH * (101325 / pAbs) * (tAbs / 273.15)) / 3600;
+
+            const results = PIPE_SIZES.map(pipe => {
+              const d = pipe.id_mm / 1000; 
+              const area = Math.PI * Math.pow(d / 2, 2);
+              const u = flowActualM3s / area; 
+              const Re = (rhoAct * u * d) / gas.viscosity;
+              
+              let f = 0.02; 
+              if (Re > 4000) {
+                f = 0.25 / Math.pow(Math.log10((CONSTANTS.ROUGHNESS / (3.7 * d)) + (5.74 / Math.pow(Re, 0.9))), 2);
+              } else if (Re > 0 && Re <= 2000) {
+                f = 64 / Re;
+              } else {
+                const f2000 = 64 / 2000;
+                const f4000 = 0.25 / Math.pow(Math.log10((CONSTANTS.ROUGHNESS / (3.7 * d)) + (5.74 / Math.pow(4000, 0.9))), 2);
+                f = f2000 + (f4000 - f2000) * ((Re - 2000) / 2000);
+              }
+
+              const sumK = (elbowCount * K_FITTINGS.elbow90) + (teeCount * K_FITTINGS.tee) + (valveCount * VALVE_TYPES[valveType].k);
+              
+              const dpStraightPa = (f * (pipeLength / d)) * (rhoAct * Math.pow(u, 2) / 2);
+              const dpFittingsPa = sumK * (rhoAct * Math.pow(u, 2) / 2);
+              const dpPa = dpStraightPa + dpFittingsPa;
+              const dpKg = dpPa / CONSTANTS.KG_CM2_TO_PA;
+              const dpRatio = dpPa / pAbs;
+
+              const limitV = gas.limitV * margin;
+              const limitDP = maxAllowedDP * margin;
+              const limitRatio = 0.20;
+
+              const vSafe = u <= limitV;
+              const pSafe = dpKg <= limitDP;
+              const ratioSafe = dpRatio <= limitRatio;
+              const isSafe = vSafe && pSafe && ratioSafe;
+
+              let reStatus = "Turbulent";
+              if (Re <= 2000) reStatus = "Laminar";
+              if (Re > 2000 && Re <= 4000) reStatus = "Transition";
+
+              return {
+                ...pipe,
+                u: parseFloat(u.toFixed(2)),
+                re: Math.round(Re),
+                reStatus,
+                f: parseFloat(f.toFixed(4)),
+                dp: parseFloat(dpKg.toFixed(4)),
+                dpRatio: (dpRatio * 100).toFixed(2),
+                isSafe, vSafe, pSafe, ratioSafe,
+                limitV, limitDP,
+                split: [
+                  { name: 'Friction', value: dpStraightPa },
+                  { name: 'Fittings', value: dpFittingsPa }
+                ],
+                fittingsRatio: dpFittingsPa / (dpStraightPa + dpFittingsPa)
+              };
+            });
+
+            const recommended = results.find(r => r.isSafe) || null;
+            const bestAttempt = recommended || results[results.length - 1]; 
+
+            // Filter data for charts to remove extreme outliers that flatten the curve
+            const graphData = results.filter(r => r.u < 100);
+
+            const failureReasons = [];
+            const recommendedActions = [];
+
+            if (!recommended) {
+              if (!bestAttempt.vSafe) {
+                failureReasons.push(`Velocity Exceeded (${bestAttempt.u} > ${bestAttempt.limitV.toFixed(1)} m/s)`);
+                recommendedActions.push("Reduce Flow Rate (SCMH)");
+                recommendedActions.push("Increase Pipe Size / Parallel Lines");
+              }
+              if (!bestAttempt.pSafe) {
+                failureReasons.push(`Pressure Drop Exceeded (${bestAttempt.dp} > ${bestAttempt.limitDP.toFixed(2)} kg/cm²)`);
+                recommendedActions.push("Optimize Layout (Reduce Elbows)");
+                recommendedActions.push("Use Full Port Valves");
+                recommendedActions.push("Increase Supply Pressure");
+              }
+              if (!bestAttempt.ratioSafe) {
+                failureReasons.push(`ΔP/P > 20% (Model Invalid)`);
+                recommendedActions.push("Redefine Design Basis");
+              }
+            }
+
+            const suggestions = [];
+            if (recommended) {
+              if (recommended.u > recommended.limitV * 0.9) suggestions.push("Approaching Velocity Limit (90%) - Consider Upsizing");
+              if (recommended.fittingsRatio > 0.4) suggestions.push("High Fittings Loss (>40%) - Optimize Routing");
+              if (recommended.reStatus === "Transition") suggestions.push("Transition Flow (Re 2000-4000) - Unstable Friction");
+            }
+
+            return { results, graphData, recommended, bestAttempt, failureReasons, recommendedActions, suggestions };
+          }, [formData, useMargin]);
+
+          const { graphData, recommended, bestAttempt, failureReasons, recommendedActions, suggestions } = calculation;
+          const gasHazard = GAS_PROPERTIES[formData.gasType].hazard;
+
+          const vStatus = getStatusLabel(bestAttempt.u, bestAttempt.limitV);
+          const pStatus = getStatusLabel(bestAttempt.dp, bestAttempt.limitDP);
+
+          return (
+            <div className="min-h-screen bg-slate-50 text-slate-800 font-sans pb-12">
+              
+              {/* --- Top Navigation / Hero Header --- */}
+              <div className="w-full bg-slate-50 pt-6 px-4 md:px-8 pb-8">
+                <div className="max-w-7xl mx-auto">
+                  <div className="bg-[#1a1f36] rounded-2xl shadow-xl p-5 md:p-6 text-white flex flex-col md:flex-row items-start md:items-center justify-between gap-6 relative overflow-hidden">
+                    
+                    {/* Background decoration */}
+                    <div className="absolute top-0 right-0 w-64 h-64 bg-blue-500/10 rounded-full blur-3xl -mr-16 -mt-16 pointer-events-none"></div>
+
+                    <div className="flex items-center gap-5 relative z-10">
+                      <div className="bg-white/10 p-3 rounded-xl border border-white/10 backdrop-blur-sm">
+                        <Database size={28} className="text-blue-400" />
+                      </div>
+                      <div>
+                        <h1 className="text-2xl font-bold tracking-tight">Bulk Gas System Project</h1>
+                        <div className="flex items-center gap-2 text-xs font-medium text-slate-400 mt-1 uppercase tracking-wider">
+                          <span>Falcon A 200K</span>
+                          <span className="w-1 h-1 bg-slate-500 rounded-full"></span>
+                          <span>Engineering Audit Tool</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-3 relative z-10">
+                      <button 
+                        onClick={() => setUseMargin(!useMargin)}
+                        className={`flex items-center gap-3 px-4 py-2.5 rounded-full border transition-all ${useMargin 
+                          ? "bg-blue-500/20 border-blue-500/50 text-blue-100" 
+                          : "bg-white/5 border-white/10 text-slate-300 hover:bg-white/10"}`}
+                      >
+                         <ShieldCheck size={16} className={useMargin ? "text-blue-400" : "text-slate-400"} />
+                         <div className="text-left">
+                           <div className="text-[10px] font-bold uppercase opacity-60">Safety Margin</div>
+                           <div className="text-xs font-bold">{useMargin ? "Active (80%)" : "Standard (100%)"}</div>
+                         </div>
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="max-w-7xl mx-auto px-4 md:px-8 space-y-8">
+                
+                {/* --- Hazard Alert (If any) --- */}
+                {gasHazard && (
+                  <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 flex items-start gap-4 animate-in fade-in slide-in-from-top-2">
+                    <div className="p-2 bg-amber-100 text-amber-700 rounded-lg shrink-0">
+                      <AlertOctagon size={20} />
+                    </div>
+                    <div>
+                      <h4 className="font-bold text-amber-900 uppercase tracking-wide text-xs mb-1">Hazard Detected</h4>
+                      <p className="text-sm text-amber-800 font-medium">{gasHazard}</p>
+                    </div>
+                  </div>
+                )}
+
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                  
+                  {/* --- 01 Design Parameters --- */}
+                  <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 md:p-8">
+                    <SectionHeader number="01" title="Design Parameters / 系統參數設定" />
+                    
+                    <div className="space-y-6">
+                      <div>
+                        <label className="block text-xs font-bold text-slate-500 uppercase mb-2">Gas Type (流體性質)</label>
+                        <select className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-semibold focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all"
+                          value={formData.gasType} onChange={e => setFormData({...formData, gasType: e.target.value})}>
+                          {Object.entries(GAS_PROPERTIES).map(([k, v]) => <option key={k} value={k}>{k} - {v.name}</option>)}
+                        </select>
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-6">
+                        <PrimaryInputWrapper label="Pressure (壓力)" unit="kg/cm²G">
+                          <input type="number" className="w-full p-3 bg-white border border-slate-300 focus:border-blue-500 rounded-xl text-lg font-bold text-slate-800 outline-none transition-all shadow-sm"
+                            value={formData.pressureG} onChange={e => setFormData({...formData, pressureG: parseFloat(e.target.value) || 0})}/>
+                        </PrimaryInputWrapper>
+                        <div>
+                          <label className="block text-xs font-bold text-slate-500 uppercase mb-2">Temperature (溫度)</label>
+                          <div className="relative">
+                            <input type="number" className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-lg font-mono text-slate-600 outline-none"
+                              value={formData.tempC} onChange={e => setFormData({...formData, tempC: parseFloat(e.target.value) || 0})}/>
+                            <span className="absolute right-3 top-4 text-xs text-slate-400 font-bold">°C</span>
+                          </div>
+                        </div>
+                      </div>
+
+                      <PrimaryInputWrapper label="Flow Rate (設計流量)" unit="SCMH">
+                        <input type="number" className="w-full p-3 bg-blue-50/50 border border-blue-200 focus:border-blue-500 rounded-xl text-xl font-mono text-blue-700 font-bold outline-none transition-all"
+                          value={formData.flowRateSCMH} onChange={e => setFormData({...formData, flowRateSCMH: parseFloat(e.target.value) || 0})}/>
+                      </PrimaryInputWrapper>
+                    </div>
+                  </div>
+
+                  {/* --- 02 Piping Configuration --- */}
+                  <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 md:p-8 flex flex-col">
+                    <SectionHeader number="02" title="Piping Config / 管路配置" />
+                    
+                    <div className="space-y-6 flex-1">
+                      <div className="grid grid-cols-2 gap-6">
+                        <div className="col-span-2">
+                           <label className="block text-xs font-bold text-slate-500 uppercase mb-2">Total Length (管長)</label>
+                           <div className="relative">
+                            <input type="number" className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-lg font-mono text-slate-700 outline-none"
+                              value={formData.pipeLength} onChange={e => setFormData({...formData, pipeLength: parseFloat(e.target.value) || 0})}/>
+                            <span className="absolute right-3 top-4 text-xs text-slate-400 font-bold pointer-events-none">m</span>
+                           </div>
+                        </div>
+                        <div>
+                           <label className="block text-xs font-bold text-slate-500 uppercase mb-2">90° Elbows</label>
+                           <input type="number" className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-base font-mono text-center outline-none"
+                            value={formData.elbowCount} onChange={e => setFormData({...formData, elbowCount: parseInt(e.target.value) || 0})}/>
+                        </div>
+                        <div>
+                           <label className="block text-xs font-bold text-slate-500 uppercase mb-2">Tees</label>
+                           <input type="number" className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-base font-mono text-center outline-none"
+                            value={formData.teeCount} onChange={e => setFormData({...formData, teeCount: parseInt(e.target.value) || 0})}/>
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-3 gap-4 bg-slate-50 p-4 rounded-xl border border-slate-100">
+                         <div className="col-span-2">
+                            <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Valve Type</label>
+                            <select className="w-full p-2 bg-white border border-slate-200 rounded-lg text-xs font-bold outline-none"
+                              value={formData.valveType} onChange={e => setFormData({...formData, valveType: e.target.value})}>
+                              {Object.entries(VALVE_TYPES).map(([k, v]) => <option key={k} value={k}>{v.name}</option>)}
+                            </select>
+                         </div>
+                         <div>
+                            <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Count</label>
+                            <input type="number" className="w-full p-2 bg-white border border-slate-200 rounded-lg text-sm font-mono text-center outline-none"
+                              value={formData.valveCount} onChange={e => setFormData({...formData, valveCount: parseInt(e.target.value) || 0})}/>
+                         </div>
+                      </div>
+                      
+                      <PrimaryInputWrapper label="Max Allowed ΔP" unit="kg/cm²">
+                        <input type="number" step="0.1" className="w-full p-3 bg-white border border-slate-300 focus:border-red-500 rounded-xl text-lg font-bold text-red-600 outline-none transition-all"
+                          value={formData.maxAllowedDP} onChange={e => setFormData({...formData, maxAllowedDP: parseFloat(e.target.value) || 0})}/>
+                      </PrimaryInputWrapper>
+                    </div>
+                  </div>
+                </div>
+
+                {/* --- 03 Audit Result (Dark Hero Section) --- */}
+                <div className="rounded-3xl overflow-hidden shadow-2xl bg-[#111827] text-white">
+                  <div className="p-6 md:p-8 border-b border-white/10 flex items-center justify-between">
+                    <h2 className="text-xl font-bold flex items-center gap-3">
+                      <span className="bg-blue-600 text-white w-8 h-8 rounded-lg flex items-center justify-center text-sm font-bold">03</span>
+                      Audit Simulation Result / 審查計算結果
+                    </h2>
+                    {recommended ? (
+                      <span className="bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 px-4 py-1.5 rounded-full text-xs font-bold uppercase tracking-wider flex items-center gap-2">
+                        <CheckCircle size={14} /> Passed
+                      </span>
+                    ) : (
+                      <span className="bg-red-500/20 text-red-400 border border-red-500/30 px-4 py-1.5 rounded-full text-xs font-bold uppercase tracking-wider flex items-center gap-2">
+                        <XCircle size={14} /> Failed
+                      </span>
+                    )}
+                  </div>
+
+                  <div className="grid grid-cols-1 lg:grid-cols-3">
+                    
+                    {/* Primary Result (Hero) */}
+                    <div className="p-8 lg:border-r border-white/10 bg-[#1f2937]">
+                      <div className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-4">Minimum Compliant Pipe Size</div>
+                      <div className="flex items-baseline gap-4 mb-6">
+                        <span className="text-6xl font-black text-white">{bestAttempt.label}</span>
+                        {recommended && <span className="text-emerald-400 font-bold text-sm bg-emerald-500/10 px-2 py-1 rounded">OPTIMAL</span>}
+                      </div>
+                      
+                      <div className="space-y-3">
+                        <div className="flex justify-between items-center text-sm border-b border-white/5 pb-2">
+                          <span className="text-slate-400">Inner Diameter</span>
+                          <span className="font-mono font-bold">{bestAttempt.id_mm} <span className="text-xs text-slate-500">mm</span></span>
+                        </div>
+                        <div className="flex justify-between items-center text-sm border-b border-white/5 pb-2">
+                          <span className="text-slate-400">Reynolds Number</span>
+                          <span className="font-mono font-bold">{bestAttempt.re.toLocaleString()}</span>
+                        </div>
+                        <div className="flex justify-between items-center text-sm">
+                          <span className="text-slate-400">Flow Regime</span>
+                          <span className="font-bold text-blue-400">{bestAttempt.reStatus}</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Secondary Metrics & Charts */}
+                    <div className="col-span-2 p-8 grid grid-cols-1 md:grid-cols-2 gap-8">
+                      
+                      {/* Metrics */}
+                      <div className="space-y-6">
+                        <div className="bg-white/5 rounded-2xl p-5 border border-white/10">
+                          <div className="flex justify-between items-start mb-2">
+                            <span className="text-xs font-bold text-slate-400 uppercase">Velocity</span>
+                            <span className={`text-[10px] px-2 py-0.5 rounded font-bold uppercase tracking-wide ${vStatus.color} ${vStatus.bg}`}>
+                              {vStatus.text}
+                            </span>
+                          </div>
+                          <div className="text-3xl font-black text-white mb-1">
+                            {bestAttempt.u} <span className="text-sm font-medium text-slate-500">m/s</span>
+                          </div>
+                          <div className="w-full bg-slate-700 h-1.5 rounded-full overflow-hidden">
+                            <div className={`h-full ${bestAttempt.vSafe ? 'bg-blue-500' : 'bg-red-500'}`} style={{ width: `${Math.min((bestAttempt.u / bestAttempt.limitV) * 100, 100)}%` }}></div>
+                          </div>
+                          <div className="text-[10px] text-slate-500 mt-1 text-right">Limit: {bestAttempt.limitV.toFixed(1)} m/s</div>
+                        </div>
+
+                        <div className="bg-white/5 rounded-2xl p-5 border border-white/10">
+                          <div className="flex justify-between items-start mb-2">
+                            <span className="text-xs font-bold text-slate-400 uppercase">Total ΔP</span>
+                            <span className={`text-[10px] px-2 py-0.5 rounded font-bold uppercase tracking-wide ${pStatus.color} ${pStatus.bg}`}>
+                              {pStatus.text}
+                            </span>
+                          </div>
+                          <div className="text-3xl font-black text-white mb-1">
+                            {bestAttempt.dp} <span className="text-sm font-medium text-slate-500">kg/cm²</span>
+                          </div>
+                          <div className="w-full bg-slate-700 h-1.5 rounded-full overflow-hidden">
+                            <div className={`h-full ${bestAttempt.pSafe ? 'bg-blue-500' : 'bg-red-500'}`} style={{ width: `${Math.min((bestAttempt.dp / bestAttempt.limitDP) * 100, 100)}%` }}></div>
+                          </div>
+                          <div className="text-[10px] text-slate-500 mt-1 text-right">Limit: {bestAttempt.limitDP.toFixed(2)}</div>
+                        </div>
+                      </div>
+
+                      {/* Pie Chart */}
+                      <div className="flex flex-col justify-center items-center relative">
+                          <div className="text-xs font-bold text-slate-500 uppercase absolute top-0 left-0">Loss Breakdown</div>
+                          <div className="h-[160px] w-full mt-4">
+                            <ResponsiveContainer width="100%" height="100%">
+                              <PieChart>
+                                <Pie
+                                  data={bestAttempt.split}
+                                  cx="50%" cy="50%"
+                                  innerRadius={45} outerRadius={60} 
+                                  paddingAngle={5}
+                                  dataKey="value"
+                                  stroke="none"
+                                >
+                                  <Cell fill="#3b82f6" /> {/* Friction */}
+                                  <Cell fill="#f59e0b" /> {/* Fittings */}
+                                </Pie>
+                                <Legend verticalAlign="bottom" height={36} iconSize={8} wrapperStyle={{ fontSize: '10px', color: '#94a3b8' }}/>
+                              </PieChart>
+                            </ResponsiveContainer>
+                          </div>
+                          <div className="absolute inset-0 flex items-center justify-center pointer-events-none mt-4">
+                            <div className="text-center">
+                              <div className="text-xs text-slate-500 font-bold uppercase">Total</div>
+                              <div className="text-lg font-black text-white">{bestAttempt.dp}</div>
+                            </div>
+                          </div>
+                      </div>
+
+                    </div>
+                  </div>
+                  
+                  {/* Engineering Log Footer */}
+                  <div className="bg-[#0f172a] p-6 border-t border-white/10">
+                      <div className="flex items-center gap-2 mb-3">
+                        <Activity size={16} className="text-blue-500"/>
+                        <span className="text-xs font-bold text-slate-400 uppercase tracking-widest">Engineering Audit Log</span>
+                      </div>
+                      
+                      <div className="space-y-2">
+                        {/* Success Case */}
+                        {recommended ? (
+                          <React.Fragment>
+                            <div className="flex items-center gap-3 text-sm text-emerald-400 bg-emerald-500/10 px-4 py-3 rounded-lg border border-emerald-500/20">
+                              <CheckCircle size={16} className="shrink-0" />
+                              <span>審查通過：設計參數合理，選型結果符合工程標準。</span>
+                            </div>
+                            {suggestions.map((s, i) => (
+                              <div key={i} className="flex items-center gap-3 text-xs text-slate-300 bg-slate-800 px-4 py-2 rounded-lg border border-slate-700">
+                                <Lightbulb size={14} className="text-amber-400 shrink-0" />
+                                <span>{s}</span>
+                              </div>
+                            ))}
+                          </React.Fragment>
+                        ) : (
+                          // Failure Case
+                          <React.Fragment>
+                            <div className="flex items-center gap-3 text-sm text-red-400 bg-red-500/10 px-4 py-3 rounded-lg border border-red-500/20 mb-4">
+                              <XCircle size={16} className="shrink-0" />
+                              <span>審查失敗：設計參數未通過驗證。</span>
+                            </div>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                              <div className="space-y-2">
+                                <p className="text-[10px] font-bold text-slate-500 uppercase">Issues Found</p>
+                                {failureReasons.map((r, i) => (
+                                  <div key={i} className="flex items-center gap-2 text-xs text-red-300">
+                                    <AlertTriangle size={12} /> {r}
+                                  </div>
+                                ))}
+                              </div>
+                              <div className="space-y-2">
+                                <p className="text-[10px] font-bold text-slate-500 uppercase">Recommended Actions</p>
+                                {recommendedActions.map((a, i) => (
+                                  <div key={i} className="flex items-center gap-2 text-xs text-blue-300">
+                                    <Wrench size={12} /> {a}
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          </React.Fragment>
+                        )}
+                      </div>
+                  </div>
+                </div>
+
+                {/* --- Appendix Chart (White Card) --- */}
+                <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 md:p-8">
+                    <div className="font-bold text-xs uppercase tracking-widest text-slate-500 mb-6 flex items-center gap-2">
+                      <Activity size={16} /> Velocity Simulation Curve
+                    </div>
+                    <div className="h-[300px] w-full">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <LineChart data={graphData}>
+                          <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                          <XAxis dataKey="label" tick={{ fontSize: 10, fontWeight: 700, fill: '#64748b' }} tickLine={false} axisLine={{ stroke: '#e2e8f0' }} />
+                          <YAxis tick={{ fontSize: 10, fontMono: true, fill: '#64748b' }} tickLine={false} axisLine={false} />
+                          
+                          <ReferenceArea y1={bestAttempt.limitV} y2={Math.max(60, ...graphData.map(d => d.u))} fill="#fee2e2" fillOpacity={0.3} />
+                          
+                          <RechartsTooltip contentStyle={{ borderRadius: '8px', border: '1px solid #e2e8f0', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.05)', fontSize: '12px' }} />
+                          <Line type="monotone" dataKey="u" name="Velocity" stroke="#3b82f6" strokeWidth={3} dot={{ r: 3, fill: '#fff', strokeWidth: 2 }} activeDot={{ r: 5 }} />
+                          <Line type="step" data={graphData.map(r => ({...r, limit: r.limitV}))} dataKey="limit" name="Limit" stroke="#ef4444" strokeDasharray="4 4" dot={false} strokeWidth={2}/>
+                          
+                          {recommended && (
+                             <ReferenceLine x={recommended.label} stroke="#10b981" strokeDasharray="3 3" label={{ value: 'SELECTED', fill: '#10b981', fontSize: 10, fontWeight: 'bold', position: 'insideTopRight' }} />
+                          )}
+                        </LineChart>
+                      </ResponsiveContainer>
+                    </div>
+                </div>
+
+              </div>
+            </div>
+          );
+        }
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>
