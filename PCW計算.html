@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>PCW 系統估算工具 PRO v6.3 </title>
+    <title>PCW 系統估算工具 PRO v6.7 </title>
     
     <!-- React & ReactDOM -->
     <script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin></script>
@@ -74,7 +74,7 @@
 
         // --- Constants ---
         const UNLOCK_PASSWORD = "900407";
-        const STORAGE_KEY = 'pcw_estimator_v6_3_data';
+        const STORAGE_KEY = 'pcw_estimator_v6_7_data';
         const GRAVITY = 9.81;
 
         // Fluid Properties Library
@@ -86,7 +86,7 @@
         };
 
         // --- Icon Component (Lucide style) ---
-        const Icon = ({ name, size = 18, className = "", ...props }) => {
+        const Icon = ({ name, size = 20, className = "", ...props }) => {
             const paths = {
                 Calculator: <><rect x="4" y="2" width="16" height="20" rx="2"/><line x1="8" y1="6" x2="16" y2="6"/><line x1="16" y1="14" x2="16" y2="18"/><path d="M16 10h.01"/><path d="M12 10h.01"/><path d="M8 10h.01"/><path d="M12 14h.01"/><path d="M8 14h.01"/><path d="M12 18h.01"/><path d="M8 18h.01"/></>,
                 Layout: <><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="9" y1="21" x2="9" y2="9"/></>,
@@ -134,7 +134,7 @@
             const tankColor = isClosed ? "#6366f1" : "#0ea5e9";
             const tankLabel = isClosed ? "EXP. TANK" : "RECEIVER TANK";
             
-            // Layout Coordinates
+            // Layout Coordinates (Pump -> Filter -> PHE -> Load)
             const tankX = isClosed ? 100 : 60, tankY = isClosed ? 100 : 70;
             const pumpX = 180, pumpY = 160;
             const filterX = 300, filterY = 160;
@@ -251,7 +251,7 @@
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm animate-fade-in p-4">
                     <div className={`bg-white rounded-xl shadow-2xl w-full border border-slate-200 overflow-hidden flex flex-col max-h-[90vh] ${wide ? 'max-w-4xl' : 'max-w-lg'}`}>
                         <div className="flex justify-between items-center p-4 border-b border-slate-100 bg-slate-50 shrink-0">
-                            <h3 className="font-bold text-slate-800 flex items-center gap-2">{title}</h3>
+                            <h3 className="font-bold text-slate-800 flex items-center gap-2 text-lg">{title}</h3>
                             <button onClick={onClose} className="p-1 text-slate-400 hover:text-slate-600 rounded-full hover:bg-slate-200 transition">✕</button>
                         </div>
                         <div className="p-6 overflow-y-auto bg-slate-50">{children}</div>
@@ -270,28 +270,29 @@
             <div className={`p-4 border-b flex justify-between items-center ${colorClass}`}>
                 <div className="flex items-center gap-2">
                     <Icon name={icon} className="opacity-80"/>
-                    <h3 className="font-bold text-slate-800">{title}</h3>
+                    <h3 className="font-bold text-slate-800 text-lg">{title}</h3>
                 </div>
-                {subtitle && <span className="text-[10px] opacity-70 font-mono hidden md:inline-block">{subtitle}</span>}
+                {subtitle && <span className="text-sm opacity-70 font-mono hidden md:inline-block">{subtitle}</span>}
             </div>
         );
 
+        // Updated InputGroup: Even Larger fonts
         const InputGroup = ({ label, children, unit, className="", tooltip, error }) => (
-            <div className={`mb-4 ${className}`}>
-                <div className="flex items-center gap-1 mb-1.5">
-                    <label className="text-xs font-semibold text-slate-500 uppercase tracking-wide">{label}</label>
+            <div className={`mb-6 ${className}`}>
+                <div className="flex items-center gap-1 mb-2">
+                    <label className="text-base font-bold text-slate-600 uppercase tracking-wide">{label}</label>
                     {tooltip && <div className="group relative">
-                        <Icon name="Info" size={12} className="text-slate-400 cursor-help"/>
-                        <div className="absolute left-1/2 -translate-x-1/2 bottom-full mb-2 w-48 p-2 bg-slate-800 text-white text-[10px] rounded shadow-lg pointer-events-none opacity-0 group-hover:opacity-100 transition z-50">
+                        <Icon name="Info" size={16} className="text-slate-400 cursor-help"/>
+                        <div className="absolute left-1/2 -translate-x-1/2 bottom-full mb-2 w-56 p-3 bg-slate-800 text-white text-xs rounded shadow-lg pointer-events-none opacity-0 group-hover:opacity-100 transition z-50">
                             {tooltip}
                         </div>
                     </div>}
                 </div>
                 <div className="relative">
                     {children}
-                    {unit && <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-slate-400 font-medium pointer-events-none">{unit}</span>}
+                    {unit && <span className="absolute right-3 top-1/2 -translate-y-1/2 text-lg text-slate-400 font-medium pointer-events-none">{unit}</span>}
                 </div>
-                {error && <div className="text-[10px] text-red-500 mt-1 font-medium flex items-center gap-1"><Icon name="AlertCircle" size={10}/> {error}</div>}
+                {error && <div className="text-xs text-red-500 mt-1 font-medium flex items-center gap-1"><Icon name="AlertCircle" size={12}/> {error}</div>}
             </div>
         );
 
@@ -355,11 +356,13 @@
                 specQuality: 'Industrial',
                 specStandard: 'ASME',
                 specRedundancy: 'N+1',
-                pheSecDeltaT: 7, pheApproach: 2, pheMaterial: 'SS316', pheThickness: '0.5', pheGasket: 'EPDM', phePressure: '10', pheSpare: 20,
-                filterType: 'bag', filterMicron: 50, filterHousing: 'SS304', dpFilter: 50,
+                // PHE Defaults updated from Alfa Laval Quote (SS304/0.5mm, 10bar)
+                pheSecDeltaT: 7, pheApproach: 2, pheMaterial: 'SS304', pheThickness: '0.5', pheGasket: 'EPDM', phePressure: '10', pheSpare: 20,
+                // Filter Defaults updated from FILTRAFINE Quote (High Flow, 40um, SS304)
+                filterType: 'cartridge', filterMicron: 40, filterHousing: 'SS304', dpFilter: 50,
                 pumpType: 'vertical', pumpMaterial: 'SUS304', pumpRPM: '3600', pumpVFD: 'Yes', pumpPowerSource: '380V/3Ø/60Hz', 
                 motorEff: 'IE3', pumpEfficiency: 0.75, motorEfficiency: 0.90,
-                staticHead: 2, suctionFrictionLoss: 0.5,
+                staticHead: 2, suctionFrictionLoss: 0.5, staticLift: 0,
                 dpPHE: 50, dpLoop: 250,
                 tankStrategy: 'auto', tankMaterial: 'SS304', tankOrient: 'vertical', tankHoldupTime: 5, estSystemVol: 0,
             };
@@ -418,8 +421,14 @@
                 const pheSecFlowM3h = pheDutyKW > 0 ? pheDutyKW / (heatFactor * equipParams.pheSecDeltaT) : 0;
                 const pheNozzle = getSuggestedDN(systemKPI.effectiveFlowM3h, 2.0);
                 const pheSecNozzle = getSuggestedDN(pheSecFlowM3h, 2.0);
+                
+                // Total Friction Loss
                 const totalDP_kPa = equipParams.dpFilter + equipParams.dpPHE + equipParams.dpLoop;
-                const pumpHeadM = totalDP_kPa / (GRAVITY * (fluidProp.rho / 1000));
+                // Friction Head in Meters
+                const frictionHeadM = totalDP_kPa / (GRAVITY * (fluidProp.rho / 1000));
+                // Total Pump Head = Friction + Static Lift
+                const pumpHeadM = frictionHeadM + equipParams.staticLift;
+                
                 const pEff = equipParams.pumpEfficiency || 0.75;
                 const mEff = equipParams.motorEfficiency || 0.90;
                 const pumpEstShaftKW = (systemKPI.recPumpFlowM3h * pumpHeadM * (fluidProp.rho/1000) * GRAVITY) / (3600 * pEff * mEff); 
@@ -438,14 +447,30 @@
 
                 let filterConfig = "", filterModel = "";
                 const filterDN = pumpDischarge.dn;
+                
+                // --- Filter Logic Update (Ref: FILTRAFINE Quote) ---
                 if (equipParams.filterType === 'bag') {
                     const bagsNeeded = Math.ceil(systemKPI.recPumpFlowM3h / 30);
                     filterConfig = `${bagsNeeded} 濾袋 (Bag)`;
                     filterModel = `BF-${bagsNeeded} (Size 2)`;
                 } else {
-                    const roundsNeeded = Math.ceil(systemKPI.recPumpFlowM3h / 4);
-                    filterConfig = `${roundsNeeded} 支濾心 (Rounds)`;
-                    filterModel = `CF-${roundsNeeded} (40")`;
+                    // Cartridge Logic (High Flow Priority)
+                    // Vendor spec: 800 CMH / 16 pcs = 50 CMH/pc
+                    const flowPerCartridge = 50; 
+                    if(systemKPI.recPumpFlowM3h > 20) { // Use High Flow for > 20 m3/h
+                        const roundsNeeded = Math.ceil(systemKPI.recPumpFlowM3h / flowPerCartridge);
+                        // Ensure minimum 1
+                        const finalRounds = Math.max(1, roundsNeeded);
+                        // Housing Model approximation based on 16LHV series logic
+                        const seriesName = finalRounds >= 12 ? "16LHV" : finalRounds >= 7 ? "12LHV" : "LHV";
+                        filterConfig = `${finalRounds} 支大流量濾心 (High Flow 40")`;
+                        filterModel = `FILTRAFINE ${seriesName} Series (or equiv.) [${finalRounds}x 40"]`;
+                    } else {
+                        // Small flow standard cartridge
+                        const roundsNeeded = Math.ceil(systemKPI.recPumpFlowM3h / 2);
+                        filterConfig = `${roundsNeeded} 支一般濾心 (Standard 40")`;
+                        filterModel = `CF-${roundsNeeded} (40")`;
+                    }
                 }
 
                 let reqTankVol = 0, tankDesc = "", estSystemWaterVol = 0;
@@ -585,8 +610,8 @@
                                     <Icon name="Calculator" className="text-white" size={20}/>
                                 </div>
                                 <div>
-                                    <h1 className="text-lg font-bold tracking-tight leading-tight">PCW 系統估算工具 <span className="text-[10px] bg-emerald-500 text-white px-2 py-0.5 rounded-full ml-1">v6.3</span></h1>
-                                    <p className="text-[10px] text-slate-400 font-medium">Design & UX Edition</p>
+                                    <h1 className="text-lg font-bold tracking-tight leading-tight">PCW 系統估算工具 <span className="text-[10px] bg-emerald-500 text-white px-2 py-0.5 rounded-full ml-1">v6.7</span></h1>
+                                    <p className="text-[10px] text-slate-400 font-medium">Vendor Spec Edition</p>
                                 </div>
                             </div>
                             <div className="flex items-center gap-3">
@@ -609,31 +634,31 @@
                                 <div className="lg:col-span-8 space-y-6">
                                     <Card>
                                         <button onClick={() => setIsSettingsOpen(!isSettingsOpen)} className="w-full flex justify-between items-center p-4 bg-slate-50 border-b border-slate-100">
-                                            <span className="font-bold text-slate-700 flex items-center gap-2 text-sm"><Icon name="Settings" size={16}/> 設計基準 (Design Basis)</span>
-                                            <Icon name="ChevronDown" size={16} className={`transition text-slate-400 ${isSettingsOpen ? 'rotate-180':''}`}/>
+                                            <span className="font-bold text-slate-700 flex items-center gap-2 text-base"><Icon name="Settings" size={18}/> 設計基準 (Design Basis)</span>
+                                            <Icon name="ChevronDown" size={18} className={`transition text-slate-400 ${isSettingsOpen ? 'rotate-180':''}`}/>
                                         </button>
                                         {isSettingsOpen && (
                                             <div className="p-5 grid grid-cols-1 sm:grid-cols-3 gap-6 bg-white">
                                                 <div className="space-y-4">
-                                                    <h4 className="text-xs font-bold text-blue-600 uppercase border-b border-blue-100 pb-1">負荷參數</h4>
+                                                    <h4 className="text-sm font-bold text-blue-600 uppercase border-b border-blue-100 pb-1">負荷參數</h4>
                                                     <InputGroup label="流體性質 (Fluid)">
-                                                        <select value={params.fluidType} onChange={(e)=>setParams({...params, fluidType: e.target.value})} className="w-full border p-2 rounded text-sm outline-none focus:border-blue-500">
+                                                        <select value={params.fluidType} onChange={(e)=>setParams({...params, fluidType: e.target.value})} className="w-full border p-2 rounded text-xl outline-none focus:border-blue-500 bg-white">
                                                             {Object.entries(FLUIDS).map(([k, v]) => <option key={k} value={k}>{v.name}</option>)}
                                                         </select>
                                                     </InputGroup>
-                                                    <div className="grid grid-cols-2 gap-2">
-                                                        <InputGroup label="同時使用"><input type="number" step="0.05" value={params.simultaneity} onChange={(e)=>setParams({...params, simultaneity: parseFloat(e.target.value)||1})} className="w-full border p-2 rounded text-sm outline-none focus:border-blue-500"/></InputGroup>
-                                                        <InputGroup label="安全係數"><input type="number" step="0.05" value={params.safetyFactor} onChange={(e)=>setParams({...params, safetyFactor: parseFloat(e.target.value)||1.1})} className="w-full border p-2 rounded text-sm outline-none focus:border-blue-500"/></InputGroup>
+                                                    <div className="grid grid-cols-2 gap-4">
+                                                        <InputGroup label="同時使用"><input type="number" step="0.05" value={params.simultaneity} onChange={(e)=>setParams({...params, simultaneity: parseFloat(e.target.value)||1})} className="w-full border p-2 rounded text-xl outline-none focus:border-blue-500"/></InputGroup>
+                                                        <InputGroup label="安全係數"><input type="number" step="0.05" value={params.safetyFactor} onChange={(e)=>setParams({...params, safetyFactor: parseFloat(e.target.value)||1.1})} className="w-full border p-2 rounded text-xl outline-none focus:border-blue-500"/></InputGroup>
                                                     </div>
                                                 </div>
                                                 <div className="space-y-4">
-                                                    <h4 className="text-xs font-bold text-emerald-600 uppercase border-b border-emerald-100 pb-1">溫度設定</h4>
-                                                    <InputGroup label="供水溫度" unit="°C"><input type="number" value={params.supplyTemp} onChange={(e)=>setParams({...params, supplyTemp: parseFloat(e.target.value)||20})} className="w-full border p-2 rounded text-sm outline-none focus:border-blue-500"/></InputGroup>
-                                                    <InputGroup label="設計溫差 ΔT" unit="°C"><input type="number" step="0.5" value={params.globalDeltaT} onChange={(e)=>setParams({...params, globalDeltaT: parseFloat(e.target.value)||5})} className="w-full border p-2 rounded text-sm outline-none focus:border-blue-500"/></InputGroup>
+                                                    <h4 className="text-sm font-bold text-emerald-600 uppercase border-b border-emerald-100 pb-1">溫度設定</h4>
+                                                    <InputGroup label="供水溫度" unit="°C"><input type="number" value={params.supplyTemp} onChange={(e)=>setParams({...params, supplyTemp: parseFloat(e.target.value)||20})} className="w-full border p-2 rounded text-xl outline-none focus:border-blue-500"/></InputGroup>
+                                                    <InputGroup label="設計溫差 ΔT" unit="°C"><input type="number" step="0.5" value={params.globalDeltaT} onChange={(e)=>setParams({...params, globalDeltaT: parseFloat(e.target.value)||5})} className="w-full border p-2 rounded text-xl outline-none focus:border-blue-500"/></InputGroup>
                                                 </div>
                                                 <div className="space-y-4">
-                                                    <h4 className="text-xs font-bold text-slate-400 uppercase border-b border-slate-100 pb-1">系統預覽</h4>
-                                                    <div className="text-xs text-slate-500 space-y-2 pt-2">
+                                                    <h4 className="text-sm font-bold text-slate-400 uppercase border-b border-slate-100 pb-1">系統預覽</h4>
+                                                    <div className="text-sm text-slate-500 space-y-2 pt-2">
                                                         <div className="flex justify-between"><span>回水溫度:</span> <b>{systemKPI.designReturnTemp}°C</b></div>
                                                         <div className="flex justify-between"><span>流體密度:</span> <b>{fluidProp.rho} kg/m³</b></div>
                                                         <div className="flex justify-between"><span>比熱 (Cp):</span> <b>{fluidProp.cp} kJ/kg.K</b></div>
@@ -646,7 +671,7 @@
 
                                     <Card className="min-h-[400px]">
                                         <div className="p-4 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
-                                            <h3 className="font-bold text-slate-800 flex items-center gap-2"><Icon name="FileText" className="text-blue-500"/> 區域負載列表</h3>
+                                            <h3 className="font-bold text-slate-800 flex items-center gap-2 text-base"><Icon name="FileText" className="text-blue-500"/> 區域負載列表</h3>
                                             <button onClick={addZone} className="text-xs bg-blue-600 text-white px-3 py-1.5 rounded hover:bg-blue-700 flex items-center gap-1"><Icon name="Plus" size={14}/> 新增</button>
                                         </div>
                                         <div className="overflow-x-auto">
@@ -665,13 +690,13 @@
                                                 <tbody className="divide-y divide-slate-100">
                                                     {systemKPI.zones.map((z, idx) => (
                                                         <tr key={z.id} className="hover:bg-blue-50/30">
-                                                            <td className="px-4 py-2 text-center text-slate-400">{idx+1}</td>
-                                                            <td className="px-4 py-2"><input value={z.name} onChange={(e)=>updateZone(z.id, 'name', e.target.value)} className="w-full bg-transparent outline-none text-slate-700 placeholder:text-slate-300"/></td>
-                                                            <td className="px-4 py-2"><input type="number" value={z.flowRaw} onChange={(e)=>updateZone(z.id, 'flowRaw', parseFloat(e.target.value)||0)} className="w-full border rounded px-2 py-1 text-sm outline-none text-slate-600 font-mono"/></td>
-                                                            <td className="px-4 py-2"><select value={z.unit} onChange={(e)=>updateZone(z.id, 'unit', e.target.value)} className="bg-transparent text-xs font-bold text-slate-500 outline-none"><option value="m3h">m³/h</option><option value="Lh">L/h</option></select></td>
-                                                            <td className="px-4 py-2"><input type="number" value={z.deltaT} onChange={(e)=>updateZone(z.id, 'deltaT', parseFloat(e.target.value)||0)} className="w-full text-center border-b border-dashed border-slate-300 outline-none bg-transparent font-mono text-sm"/></td>
-                                                            <td className="px-4 py-2 text-right font-mono font-bold text-blue-600">{z.loadKW.toFixed(1)}</td>
-                                                            <td className="px-4 py-2 text-center"><button onClick={()=>removeZone(z.id)} className="text-slate-300 hover:text-red-500"><Icon name="Trash2" size={14}/></button></td>
+                                                            <td className="px-4 py-3 text-center text-slate-400">{idx+1}</td>
+                                                            <td className="px-4 py-3"><input value={z.name} onChange={(e)=>updateZone(z.id, 'name', e.target.value)} className="w-full bg-transparent outline-none text-slate-700 placeholder:text-slate-300 text-base"/></td>
+                                                            <td className="px-4 py-3"><input type="number" value={z.flowRaw} onChange={(e)=>updateZone(z.id, 'flowRaw', parseFloat(e.target.value)||0)} className="w-full border rounded px-2 py-1 text-base outline-none text-slate-600 font-mono"/></td>
+                                                            <td className="px-4 py-3"><select value={z.unit} onChange={(e)=>updateZone(z.id, 'unit', e.target.value)} className="bg-transparent text-sm font-bold text-slate-500 outline-none"><option value="m3h">m³/h</option><option value="Lh">L/h</option></select></td>
+                                                            <td className="px-4 py-3"><input type="number" value={z.deltaT} onChange={(e)=>updateZone(z.id, 'deltaT', parseFloat(e.target.value)||0)} className="w-full text-center border-b border-dashed border-slate-300 outline-none bg-transparent font-mono text-base"/></td>
+                                                            <td className="px-4 py-3 text-right font-mono font-bold text-blue-600 text-base">{z.loadKW.toFixed(1)}</td>
+                                                            <td className="px-4 py-3 text-center"><button onClick={()=>removeZone(z.id)} className="text-slate-300 hover:text-red-500"><Icon name="Trash2" size={16}/></button></td>
                                                         </tr>
                                                     ))}
                                                 </tbody>
@@ -741,14 +766,14 @@
                                 {/* System Type Selector */}
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                     <div onClick={() => setEquipParams({...equipParams, systemType: 'closed'})} className={`cursor-pointer rounded-xl border-2 p-5 transition-all relative ${equipParams.systemType === 'closed' ? 'border-indigo-600 bg-indigo-50/40' : 'border-slate-200 bg-white hover:border-slate-300'}`}>
-                                        <div className="flex justify-between items-start mb-2"><div className={`p-2 rounded-lg ${equipParams.systemType === 'closed' ? 'bg-indigo-600 text-white' : 'bg-slate-100 text-slate-400'}`}><Icon name="Shield" size={20}/></div>{equipParams.systemType === 'closed' && <Icon name="CheckCircle2" className="text-indigo-600" size={20}/>}</div>
-                                        <h3 className={`text-base font-bold mb-1 ${equipParams.systemType === 'closed' ? 'text-indigo-900' : 'text-slate-700'}`}>密閉式系統 (Closed)</h3>
-                                        <p className="text-xs text-slate-500">使用膨脹水箱，隔絕大氣。適合高潔淨需求。</p>
+                                        <div className="flex justify-between items-start mb-2"><div className={`p-2 rounded-lg ${equipParams.systemType === 'closed' ? 'bg-indigo-600 text-white' : 'bg-slate-100 text-slate-400'}`}><Icon name="Shield" size={24}/></div>{equipParams.systemType === 'closed' && <Icon name="CheckCircle2" className="text-indigo-600" size={24}/>}</div>
+                                        <h3 className={`text-lg font-bold mb-1 ${equipParams.systemType === 'closed' ? 'text-indigo-900' : 'text-slate-700'}`}>密閉式系統 (Closed)</h3>
+                                        <p className="text-sm text-slate-500">使用膨脹水箱，隔絕大氣。適合高潔淨需求。</p>
                                     </div>
                                     <div onClick={() => setEquipParams({...equipParams, systemType: 'open'})} className={`cursor-pointer rounded-xl border-2 p-5 transition-all relative ${equipParams.systemType === 'open' ? 'border-sky-500 bg-sky-50/40' : 'border-slate-200 bg-white hover:border-slate-300'}`}>
-                                        <div className="flex justify-between items-start mb-2"><div className={`p-2 rounded-lg ${equipParams.systemType === 'open' ? 'bg-sky-500 text-white' : 'bg-slate-100 text-slate-400'}`}><Icon name="Droplets" size={20}/></div>{equipParams.systemType === 'open' && <Icon name="CheckCircle2" className="text-sky-500" size={20}/>}</div>
-                                        <h3 className={`text-base font-bold mb-1 ${equipParams.systemType === 'open' ? 'text-sky-900' : 'text-slate-700'}`}>開放式系統 (Receiver Tank)</h3>
-                                        <p className="text-xs text-slate-500">回水進入儲槽，泵浦由儲槽吸水。</p>
+                                        <div className="flex justify-between items-start mb-2"><div className={`p-2 rounded-lg ${equipParams.systemType === 'open' ? 'bg-sky-500 text-white' : 'bg-slate-100 text-slate-400'}`}><Icon name="Droplets" size={24}/></div>{equipParams.systemType === 'open' && <Icon name="CheckCircle2" className="text-sky-500" size={24}/>}</div>
+                                        <h3 className={`text-lg font-bold mb-1 ${equipParams.systemType === 'open' ? 'text-sky-900' : 'text-slate-700'}`}>開放式系統 (Receiver Tank)</h3>
+                                        <p className="text-sm text-slate-500">回水進入儲槽，泵浦由儲槽吸水。</p>
                                     </div>
                                 </div>
 
@@ -756,35 +781,53 @@
                                     {/* Pump Card (Ref for navigation) */}
                                     <Card ref={cardRefs.pump} highlighted={highlightedCard === 'pump'} className="flex flex-col border-t-4 border-t-emerald-500">
                                         <SectionHeader icon="Wind" title="泵浦 (Pump)" colorClass="bg-emerald-50/50 border-emerald-100 text-emerald-900" subtitle={`H: ${equipKPI.pumpHeadM.toFixed(1)} m`}/>
-                                        <div className="p-4 space-y-4 flex-1 text-sm">
-                                            <div className="grid grid-cols-2 gap-3">
-                                                <InputGroup label="總壓損" unit="kPa" tooltip="PHE壓損 + 迴路壓損 + 過濾器壓損"><input type="number" value={equipKPI.totalDP_kPa} disabled className="w-full border-b border-slate-200 bg-slate-50 text-slate-500 pb-1 font-mono"/></InputGroup>
-                                                <InputGroup label="轉速 (RPM)"><select value={equipParams.pumpRPM} onChange={(e)=>setEquipParams({...equipParams, pumpRPM: e.target.value})} className="w-full bg-transparent border-b border-slate-300 outline-none pb-1"><option value="3600">3600</option><option value="1800">1800</option></select></InputGroup>
+                                        <div className="p-5 space-y-5 flex-1">
+                                            {/* Design Flow Display - Enlarged and Fixed */}
+                                            <div className="mb-4 p-4 bg-emerald-50 border border-emerald-100 rounded-lg">
+                                                <div className="flex justify-between items-center mb-1">
+                                                    <span className="text-base font-bold text-emerald-800">設計流量 (Flow)</span>
+                                                    <span className="text-2xl font-mono font-bold text-emerald-700">{systemKPI.recPumpFlowM3h.toFixed(1)} m³/h</span>
+                                                </div>
+                                                {/* FIXED: Rounding error fix - now safely displays integer % */}
+                                                <div className="text-sm text-emerald-600/70 text-right">包含安全係數 {((params.safetyFactor - 1) * 100).toFixed(0)}%</div>
                                             </div>
-                                            <div className="grid grid-cols-2 gap-3">
-                                                <InputGroup label="迴路壓損" unit="kPa"><input type="number" value={equipParams.dpLoop} onChange={(e)=>setEquipParams({...equipParams, dpLoop: parseFloat(e.target.value)||0})} className="w-full border-b border-slate-300 outline-none pb-1 font-mono"/></InputGroup>
-                                                <InputGroup label="PHE壓損" unit="kPa"><input type="number" value={equipParams.dpPHE} onChange={(e)=>setEquipParams({...equipParams, dpPHE: parseFloat(e.target.value)||0})} className="w-full border-b border-slate-300 outline-none pb-1 font-mono"/></InputGroup>
+
+                                            <div className="grid grid-cols-2 gap-4">
+                                                <InputGroup label="總壓損" unit="kPa" tooltip="含 PHE + 迴路 + Filter 壓損"><input type="number" value={equipKPI.totalDP_kPa} disabled className="w-full border-b border-slate-200 bg-slate-50 text-slate-500 pb-1 font-mono text-xl"/></InputGroup>
+                                                <InputGroup label="轉速 (RPM)"><select value={equipParams.pumpRPM} onChange={(e)=>setEquipParams({...equipParams, pumpRPM: e.target.value})} className="w-full bg-transparent border-b border-slate-300 outline-none pb-1 text-xl"><option value="3600">3600</option><option value="1800">1800</option></select></InputGroup>
+                                            </div>
+                                            <div className="grid grid-cols-2 gap-4">
+                                                <InputGroup label="迴路壓損" unit="kPa"><input type="number" value={equipParams.dpLoop} onChange={(e)=>setEquipParams({...equipParams, dpLoop: parseFloat(e.target.value)||0})} className="w-full border-b border-slate-300 outline-none pb-1 font-mono text-xl"/></InputGroup>
+                                                <InputGroup label="PHE壓損" unit="kPa"><input type="number" value={equipParams.dpPHE} onChange={(e)=>setEquipParams({...equipParams, dpPHE: parseFloat(e.target.value)||0})} className="w-full border-b border-slate-300 outline-none pb-1 font-mono text-xl"/></InputGroup>
+                                            </div>
+                                            <div className="grid grid-cols-2 gap-4">
+                                                {/* NEW: Static Lift */}
+                                                <InputGroup label="樓高/靜揚程" unit="m" tooltip="Static Lift (Hz): 垂直高程差"><input type="number" step="0.5" value={equipParams.staticLift} onChange={(e)=>setEquipParams({...equipParams, staticLift: parseFloat(e.target.value)||0})} className="w-full border-b border-slate-300 outline-none pb-1 font-mono text-xl"/></InputGroup>
+                                                <InputGroup label="Filter壓損" unit="kPa" tooltip="已計入總壓損"><input type="number" value={equipParams.dpFilter} disabled className="w-full border-b border-slate-200 bg-slate-50 text-slate-400 pb-1 font-mono text-xl"/></InputGroup>
                                             </div>
 
                                             {equipParams.systemType === 'open' && (
-                                                <div className={`p-2 rounded border text-xs ${equipKPI.npshStatus !== 'OK' ? 'bg-red-50 border-red-200 text-red-800' : 'bg-yellow-50 border-yellow-100 text-yellow-800'}`}>
-                                                    <div className="font-bold mb-2 flex items-center gap-1"><Icon name="AlertCircle" size={12}/> NPSH Check</div>
-                                                    <div className="grid grid-cols-2 gap-2 mb-2">
-                                                        <div><span className="block text-[10px] text-slate-500">靜壓頭 (Hz)</span><input type="number" step="0.5" value={equipParams.staticHead} onChange={(e)=>setEquipParams({...equipParams, staticHead: parseFloat(e.target.value)})} className="w-full border rounded px-1 py-0.5 bg-white"/></div>
-                                                        <div><span className="block text-[10px] text-slate-500">吸入損失 (Hf)</span><input type="number" step="0.1" value={equipParams.suctionFrictionLoss} onChange={(e)=>setEquipParams({...equipParams, suctionFrictionLoss: parseFloat(e.target.value)})} className="w-full border rounded px-1 py-0.5 bg-white"/></div>
+                                                <div className={`p-3 rounded border text-sm ${equipKPI.npshStatus !== 'OK' ? 'bg-red-50 border-red-200 text-red-800' : 'bg-yellow-50 border-yellow-100 text-yellow-800'}`}>
+                                                    <div className="font-bold mb-3 flex items-center gap-1"><Icon name="AlertCircle" size={14}/> NPSH Check</div>
+                                                    <div className="grid grid-cols-2 gap-4 mb-2">
+                                                        <div><span className="block text-sm text-slate-500 mb-1">水箱靜壓頭</span><input type="number" step="0.5" value={equipParams.staticHead} onChange={(e)=>setEquipParams({...equipParams, staticHead: parseFloat(e.target.value)})} className="w-full border rounded px-2 py-1 bg-white text-base"/></div>
+                                                        <div><span className="block text-sm text-slate-500 mb-1">吸入損失</span><input type="number" step="0.1" value={equipParams.suctionFrictionLoss} onChange={(e)=>setEquipParams({...equipParams, suctionFrictionLoss: parseFloat(e.target.value)})} className="w-full border rounded px-2 py-1 bg-white text-base"/></div>
                                                     </div>
-                                                    <div className="flex justify-between items-center border-t border-slate-200/20 pt-1">
+                                                    <div className="flex justify-between items-center border-t border-slate-200/20 pt-2 mt-2">
                                                         <span className="opacity-80">NPSHa:</span>
-                                                        <span className="font-mono font-bold">{equipKPI.npshA.toFixed(2)}m ({equipKPI.npshStatus})</span>
+                                                        <span className="font-mono font-bold text-lg">{equipKPI.npshA.toFixed(2)}m ({equipKPI.npshStatus})</span>
                                                     </div>
                                                 </div>
                                             )}
 
-                                            <div className="bg-emerald-50 -mx-4 -mb-4 p-4 border-t border-emerald-100 mt-auto">
-                                                <div className="flex justify-between mb-1"><span className="text-xs text-emerald-800 font-semibold">預估軸功</span><span className="font-mono font-bold text-emerald-600">{equipKPI.pumpEstShaftKW.toFixed(2)} kW</span></div>
+                                            <div className="bg-emerald-50 -mx-4 -mb-4 p-5 border-t border-emerald-100 mt-auto">
+                                                <div className="flex justify-between mb-2">
+                                                    <span className="text-base text-emerald-800 font-semibold">設計揚程 (Total Head)</span>
+                                                    <span className="font-mono font-bold text-emerald-700 text-2xl">{equipKPI.pumpHeadM.toFixed(1)} m</span>
+                                                </div>
                                                 <div className="flex justify-between items-center">
-                                                    <span className="text-xs text-emerald-800 font-semibold">建議口徑</span>
-                                                    <span className="font-mono text-xs">{equipKPI.pumpSuction.dn}x{equipKPI.pumpDischarge.dn}A</span>
+                                                    <span className="text-base text-emerald-800 font-semibold">預估軸功</span>
+                                                    <span className="font-mono font-bold text-emerald-600 text-xl">{equipKPI.pumpEstShaftKW.toFixed(2)} kW</span>
                                                 </div>
                                             </div>
                                         </div>
@@ -793,17 +836,19 @@
                                     {/* Filter Card */}
                                     <Card ref={cardRefs.filter} highlighted={highlightedCard === 'filter'} className="flex flex-col border-t-4 border-t-amber-500">
                                         <SectionHeader icon="Filter" title="過濾 (Filter)" colorClass="bg-amber-50/50 border-amber-100 text-amber-900"/>
-                                        <div className="p-4 space-y-4 flex-1 text-sm">
-                                            <InputGroup label="形式"><select value={equipParams.filterType} onChange={(e)=>setEquipParams({...equipParams, filterType: e.target.value})} className="w-full bg-transparent border-b border-slate-300 outline-none pb-1"><option value="bag">袋濾式 (Bag Filter)</option><option value="cartridge">濾心式 (Cartridge)</option></select></InputGroup>
-                                            <div className="grid grid-cols-2 gap-3">
-                                                <InputGroup label="精度 (um)"><input type="number" value={equipParams.filterMicron} onChange={(e)=>setEquipParams({...equipParams, filterMicron: parseFloat(e.target.value)||0})} className="w-full border-b border-slate-300 outline-none pb-1 font-mono"/></InputGroup>
-                                                <InputGroup label="初始壓損" unit="kPa"><input type="number" value={equipParams.dpFilter} onChange={(e)=>setEquipParams({...equipParams, dpFilter: parseFloat(e.target.value)||0})} className="w-full border-b border-slate-300 outline-none pb-1 font-mono"/></InputGroup>
+                                        <div className="p-5 space-y-5 flex-1">
+                                            <InputGroup label="形式"><select value={equipParams.filterType} onChange={(e)=>setEquipParams({...equipParams, filterType: e.target.value})} className="w-full bg-transparent border-b border-slate-300 outline-none pb-1 text-xl"><option value="bag">袋濾式 (Bag Filter)</option><option value="cartridge">大流量濾心 (High Flow)</option></select></InputGroup>
+                                            <div className="grid grid-cols-2 gap-4">
+                                                <InputGroup label="精度 (um)"><input type="number" value={equipParams.filterMicron} onChange={(e)=>setEquipParams({...equipParams, filterMicron: parseFloat(e.target.value)||0})} className="w-full border-b border-slate-300 outline-none pb-1 font-mono text-xl"/></InputGroup>
+                                                <InputGroup label="初始壓損" unit="kPa"><input type="number" value={equipParams.dpFilter} onChange={(e)=>setEquipParams({...equipParams, dpFilter: parseFloat(e.target.value)||0})} className="w-full border-b border-slate-300 outline-none pb-1 font-mono text-xl"/></InputGroup>
                                             </div>
-                                            <div className="bg-amber-50 -mx-4 -mb-4 p-4 border-t border-amber-100 mt-auto">
+                                            <InputGroup label="桶身材質"><select value={equipParams.filterHousing} onChange={(e)=>setEquipParams({...equipParams, filterHousing: e.target.value})} className="w-full bg-transparent border-b border-slate-300 outline-none pb-1 text-xl"><option value="SS304">SS304</option><option value="SS316">SS316</option></select></InputGroup>
+                                            
+                                            <div className="bg-amber-50 -mx-4 -mb-4 p-5 border-t border-amber-100 mt-auto">
                                                 <div className="text-center">
-                                                    <div className="text-xs text-amber-800/70 mb-1">建議規格型號</div>
-                                                    <div className="font-bold text-amber-800 text-base">{equipKPI.filterConfig}</div>
-                                                    <div className="text-[10px] text-amber-600 font-mono mt-1">{equipKPI.filterModel} (DN{equipKPI.filterDN})</div>
+                                                    <div className="text-base text-amber-800/70 mb-1">建議規格型號</div>
+                                                    <div className="font-bold text-amber-800 text-lg">{equipKPI.filterConfig}</div>
+                                                    <div className="text-base text-amber-600 font-mono mt-1 leading-tight">{equipKPI.filterModel}</div>
                                                 </div>
                                             </div>
                                         </div>
@@ -812,18 +857,18 @@
                                     {/* PHE Card */}
                                     <Card ref={cardRefs.phe} highlighted={highlightedCard === 'phe'} className="flex flex-col border-t-4 border-t-blue-500">
                                         <SectionHeader icon="Activity" title="板熱 (PHE)" colorClass="bg-blue-50/50 border-blue-100 text-blue-900" subtitle={`Duty: ${equipKPI.pheDutyKW.toFixed(0)} kW`}/>
-                                        <div className="p-4 space-y-4 flex-1 text-sm">
-                                            <div className="grid grid-cols-2 gap-3">
-                                                <InputGroup label="二次溫差" unit="°C"><input type="number" step="0.5" value={equipParams.pheSecDeltaT} onChange={(e)=>setEquipParams({...equipParams, pheSecDeltaT: parseFloat(e.target.value)||0})} className="w-full border-b border-slate-300 outline-none pb-1 font-mono"/></InputGroup>
-                                                <InputGroup label="趨近溫度" unit="°C"><input type="number" step="0.5" value={equipParams.pheApproach} onChange={(e)=>setEquipParams({...equipParams, pheApproach: parseFloat(e.target.value)||0})} className="w-full border-b border-slate-300 outline-none pb-1 font-mono"/></InputGroup>
+                                        <div className="p-5 space-y-5 flex-1">
+                                            <div className="grid grid-cols-2 gap-4">
+                                                <InputGroup label="二次溫差" unit="°C"><input type="number" step="0.5" value={equipParams.pheSecDeltaT} onChange={(e)=>setEquipParams({...equipParams, pheSecDeltaT: parseFloat(e.target.value)||0})} className="w-full border-b border-slate-300 outline-none pb-1 font-mono text-xl"/></InputGroup>
+                                                <InputGroup label="趨近溫度" unit="°C"><input type="number" step="0.5" value={equipParams.pheApproach} onChange={(e)=>setEquipParams({...equipParams, pheApproach: parseFloat(e.target.value)||0})} className="w-full border-b border-slate-300 outline-none pb-1 font-mono text-xl"/></InputGroup>
                                             </div>
-                                            <div className="grid grid-cols-2 gap-3">
-                                                <InputGroup label="板片材質"><select value={equipParams.pheMaterial} onChange={(e)=>setEquipParams({...equipParams, pheMaterial: e.target.value})} className="w-full bg-transparent border-b border-slate-300 outline-none pb-1"><option value="SS304">SS304</option><option value="SS316">SS316</option><option value="Ti">Ti</option></select></InputGroup>
-                                                <InputGroup label="設計壓力" unit="Bar"><select value={equipParams.phePressure} onChange={(e)=>setEquipParams({...equipParams, phePressure: e.target.value})} className="w-full bg-transparent border-b border-slate-300 outline-none pb-1"><option value="10">10</option><option value="16">16</option></select></InputGroup>
+                                            <div className="grid grid-cols-2 gap-4">
+                                                <InputGroup label="板片材質"><select value={equipParams.pheMaterial} onChange={(e)=>setEquipParams({...equipParams, pheMaterial: e.target.value})} className="w-full bg-transparent border-b border-slate-300 outline-none pb-1 text-xl"><option value="SS304">SS304</option><option value="SS316">SS316</option><option value="Ti">Ti</option></select></InputGroup>
+                                                <InputGroup label="設計壓力" unit="Bar"><select value={equipParams.phePressure} onChange={(e)=>setEquipParams({...equipParams, phePressure: e.target.value})} className="w-full bg-transparent border-b border-slate-300 outline-none pb-1 text-xl"><option value="10">10</option><option value="16">16</option></select></InputGroup>
                                             </div>
-                                            <div className="bg-blue-50 -mx-4 -mb-4 p-4 border-t border-blue-100">
-                                                <div className="flex justify-between mb-1"><span className="text-xs text-blue-800 font-semibold">建議管徑 (Pri)</span><span className={`font-mono font-bold ${equipKPI.pheNozzle.vel > 2.5 ? 'text-red-500':'text-blue-900'}`}>DN{equipKPI.pheNozzle.dn} <span className="text-[10px] font-normal">({equipKPI.pheNozzle.vel.toFixed(1)}m/s)</span></span></div>
-                                                <div className="text-[10px] text-amber-600 mt-2 bg-amber-50 px-2 py-1 rounded border border-amber-200"><Icon name="AlertTriangle" size={10} className="inline mr-1"/> 需廠商熱力計算</div>
+                                            <div className="bg-blue-50 -mx-4 -mb-4 p-5 border-t border-blue-100">
+                                                <div className="flex justify-between mb-2"><span className="text-base text-blue-800 font-semibold">建議管徑 (Pri)</span><span className={`font-mono font-bold text-xl ${equipKPI.pheNozzle.vel > 2.5 ? 'text-red-500':'text-blue-900'}`}>DN{equipKPI.pheNozzle.dn} <span className="text-sm font-normal">({equipKPI.pheNozzle.vel.toFixed(1)}m/s)</span></span></div>
+                                                <div className="text-sm text-amber-600 mt-2 bg-amber-50 px-2 py-1 rounded border border-amber-200"><Icon name="AlertTriangle" size={14} className="inline mr-1"/> 需廠商熱力計算</div>
                                             </div>
                                         </div>
                                     </Card>
@@ -831,20 +876,20 @@
                                     {/* Tank Card */}
                                     <Card ref={cardRefs.tank} highlighted={highlightedCard === 'tank'} className={`flex flex-col border-t-4 ${equipParams.systemType === 'closed' ? 'border-t-indigo-500' : 'border-t-sky-500'}`}>
                                         <SectionHeader icon="Box" title={equipKPI.tankDesc} colorClass={`${equipParams.systemType === 'closed' ? 'bg-indigo-50/50 border-indigo-100 text-indigo-900' : 'bg-sky-50/50 border-sky-100 text-sky-900'}`}/>
-                                        <div className="p-4 space-y-4 flex-1 text-sm">
-                                            <div className="grid grid-cols-2 gap-3">
-                                                <InputGroup label="材質"><select value={equipParams.tankMaterial} onChange={(e)=>setEquipParams({...equipParams, tankMaterial: e.target.value})} className="w-full bg-transparent border-b border-slate-300 outline-none pb-1"><option value="SS304">SS304</option><option value="SS316">SS316</option><option value="PE">PE</option></select></InputGroup>
-                                                <InputGroup label="安裝形式"><select value={equipParams.tankOrient} onChange={(e)=>setEquipParams({...equipParams, tankOrient: e.target.value})} className="w-full bg-transparent border-b border-slate-300 outline-none pb-1"><option value="vertical">Vertical</option><option value="horizontal">Horizontal</option></select></InputGroup>
+                                        <div className="p-5 space-y-5 flex-1">
+                                            <div className="grid grid-cols-2 gap-4">
+                                                <InputGroup label="材質"><select value={equipParams.tankMaterial} onChange={(e)=>setEquipParams({...equipParams, tankMaterial: e.target.value})} className="w-full bg-transparent border-b border-slate-300 outline-none pb-1 text-xl"><option value="SS304">SS304</option><option value="SS316">SS316</option><option value="PE">PE</option></select></InputGroup>
+                                                <InputGroup label="安裝形式"><select value={equipParams.tankOrient} onChange={(e)=>setEquipParams({...equipParams, tankOrient: e.target.value})} className="w-full bg-transparent border-b border-slate-300 outline-none pb-1 text-xl"><option value="vertical">Vertical</option><option value="horizontal">Horizontal</option></select></InputGroup>
                                             </div>
                                             {equipParams.systemType === 'closed' ? (
-                                                <InputGroup label="系統總水量 (m³)"><input type="number" step="0.1" value={equipKPI.estSystemWaterVol.toFixed(1)} onChange={(e)=>setEquipParams({...equipParams, estSystemVol: parseFloat(e.target.value)||0})} className="w-full border-b border-slate-300 outline-none pb-1 font-mono"/></InputGroup>
+                                                <InputGroup label="系統總水量 (m³)"><input type="number" step="0.1" value={equipKPI.estSystemWaterVol.toFixed(1)} onChange={(e)=>setEquipParams({...equipParams, estSystemVol: parseFloat(e.target.value)||0})} className="w-full border-b border-slate-300 outline-none pb-1 font-mono text-xl"/></InputGroup>
                                             ) : (
-                                                <InputGroup label="滯留時間 (min)"><input type="number" value={equipParams.tankHoldupTime} onChange={(e)=>setEquipParams({...equipParams, tankHoldupTime: parseFloat(e.target.value)||0})} className="w-full border-b border-slate-300 outline-none pb-1 font-mono"/></InputGroup>
+                                                <InputGroup label="滯留時間 (min)"><input type="number" value={equipParams.tankHoldupTime} onChange={(e)=>setEquipParams({...equipParams, tankHoldupTime: parseFloat(e.target.value)||0})} className="w-full border-b border-slate-300 outline-none pb-1 font-mono text-xl"/></InputGroup>
                                             )}
-                                            <div className="bg-slate-50 -mx-4 -mb-4 p-4 border-t border-slate-100 mt-auto">
+                                            <div className="bg-slate-50 -mx-4 -mb-4 p-5 border-t border-slate-100 mt-auto">
                                                 <div className="flex justify-between items-center">
-                                                    <span className="text-xs text-slate-600 font-bold">需求體積</span>
-                                                    <span className="font-mono font-bold text-lg text-slate-800">{equipKPI.reqTankVol.toFixed(2)} m³</span>
+                                                    <span className="text-base text-slate-600 font-bold">需求體積</span>
+                                                    <span className="font-mono font-bold text-2xl text-slate-800">{equipKPI.reqTankVol.toFixed(2)} m³</span>
                                                 </div>
                                             </div>
                                         </div>
@@ -865,7 +910,7 @@
                                 </div>
                                 <div className="text-right text-xs text-slate-500 font-mono">
                                     <p>Date: {new Date().toISOString().split('T')[0]}</p>
-                                    <p>Ref: PCW-EST-V6.3</p>
+                                    <p>Ref: PCW-EST-V6.7</p>
                                 </div>
                             </div>
 
@@ -918,14 +963,14 @@
                                         </tr>
                                         <tr>
                                             <td className="border p-2">Est. Power: {equipKPI.pumpEstShaftKW.toFixed(2)} kW</td>
-                                            <td className="border p-2 text-slate-500">NPSHa: {equipParams.systemType==='open'?equipKPI.npshA.toFixed(1):'N/A'}</td>
+                                            <td className="border p-2 text-slate-500">Static Lift included</td>
                                         </tr>
 
                                         {/* Filter */}
                                         <tr>
                                             <td className="border p-2 font-bold">Liquid Filter</td>
-                                            <td className="border p-2">{equipParams.filterType} Type, {equipParams.filterMicron} micron, Model: {equipKPI.filterModel}</td>
-                                            <td className="border p-2"></td>
+                                            <td className="border p-2">{equipParams.filterType === 'bag' ? 'Bag' : 'High Flow Cartridge'} Type, {equipParams.filterMicron} micron</td>
+                                            <td className="border p-2 text-slate-500">Model: {equipKPI.filterModel}</td>
                                         </tr>
 
                                         {/* Tank */}
@@ -990,11 +1035,11 @@
                                 {helpTab === 'quick' && (
                                     <div className="space-y-6 text-sm text-slate-600">
                                         <section>
-                                            <h4 className="font-bold text-slate-800 mb-2">v6.3 新功能介紹</h4>
+                                            <h4 className="font-bold text-slate-800 mb-2">v6.7 新功能介紹</h4>
                                             <ul className="list-disc pl-8 space-y-1">
-                                                <li><strong>互動式 P&ID：</strong> 點擊圖面元件，可直接跳轉至設定卡片。</li>
-                                                <li><strong>負載條：</strong> 視覺化呈現系統負載率。</li>
-                                                <li><strong>專業 RFQ：</strong> 提供擬真規格書預覽與列印。</li>
+                                                <li><strong>廠商規格整合：</strong> 濾心選型現在自動導入 FILTRAFINE 等級大流量濾心計算邏輯。</li>
+                                                <li><strong>字體優化：</strong> 設備選型頁面字體全面加大，提升可讀性。</li>
+                                                <li><strong>流量顯示：</strong> 修正安全係數顯示問題，優化設計流量顯示。</li>
                                             </ul>
                                         </section>
                                     </div>
