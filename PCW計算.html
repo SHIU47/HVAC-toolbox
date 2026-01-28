@@ -1080,19 +1080,19 @@
                                         <div className="bg-slate-100 p-4 rounded font-mono text-xs">
                                             NPSHa = Patm + Hz - Hf - Pvp
                                         </div>
-                                        <p>
-                                            當當選擇「開放式系統 (Open System)」時，泵浦吸入口與大氣相通，需特別注意氣蝕 (Cavitation) 風險。
-
-                                           Patm (大氣壓)： 標準為 10.33m (水柱高)。
-                                           Hz (靜壓頭)： 水箱液面高於泵浦吸入口的高度 (正值)。
-                                           Hf (吸入損失)： 吸入管段的摩擦損失。
-                                           Pvp (飽和蒸氣壓)： 水溫越高，Pvp 越高，NPSHa 越低 (越危險)。
-                                           判定標準：
-
-                                           Safe: NPSHa > 3m
-                                           Risk: NPSHa < 3m (建議提高水箱高度或加大吸入管徑)
-                                        </p>
-                                    </div>
+                                       <p>當選擇「開放式系統 (Open System)」時，泵浦吸入口與大氣相通，需特別注意氣蝕 (Cavitation) 風險。</p>
+                                            <ul className="list-disc ml-4 space-y-1">
+                                                <li><strong>Patm (大氣壓)：</strong> 標準為 10.33m (水柱高)。</li>
+                                                <li><strong>Hz (靜壓頭)：</strong> 水箱液面高於泵浦吸入口的高度 (正值)。</li>
+                                                <li><strong>Hf (吸入損失)：</strong> 吸入管段的摩擦損失。</li>
+                                                <li><strong>Pvp (飽和蒸氣壓)：</strong> 水溫越高，Pvp 越高，NPSHa 越低 (越危險)。</li>
+                                            </ul>
+                                            <p className="mt-2 font-bold text-slate-800">判定標準：</p>
+                                            <ul className="list-disc ml-4 space-y-1">
+                                                <li><span className="text-green-600 font-bold">Safe:</span> NPSHa > 3m</li>
+                                                <li><span className="text-red-600 font-bold">Risk:</span> NPSHa &lt; 3m (建議提高水箱高度或加大吸入管徑)</li>
+                                            </ul>
+                                        </div>
                                 )}
                             </div>
                         </div>
@@ -1107,4 +1107,5 @@
     </script>
 </body>
 </html>
+
 
