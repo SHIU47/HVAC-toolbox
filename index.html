@@ -4,6 +4,26 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>東旭的空調工具箱 | 專業空調設計網站</title>
+    
+    <script type="text/javascript">
+     (function(l) {
+    if (l.search[1] === 'p') {
+      var decoded = l.search.slice(1).split('&').map(function(s) { 
+        return s.replace(/~and~/g, '&') 
+      }).filter(function(v) {
+        return v.slice(0, 2) === 'p=/';
+      })[0];
+
+      if (decoded !== undefined) {
+        var path = decoded.slice(3);
+        if (path.slice(-1) === '/') path = path.slice(0, -1);
+        window.history.replaceState(null, null,
+          l.pathname.slice(0, -1) + path + (l.search.indexOf('&q=') !== -1 ? '?' + l.search.slice(l.search.indexOf('&q=') + 3).replace(/~and~/g, '&') : '') + l.hash
+        );
+      }
+    }
+     }(window.location));
+    </script>
     <meta name="google-site-verification" content="auWpazG0zdehmx6eeSwWsIkzELPrQS95zTo7EOAFdt4" />
     <meta name="description" content="東旭的空調工具箱為專業 HVAC 工程師提供冰機水泵換算、風管尺寸檢核、無塵室大師 Pro 等精準計算工具。">
     <meta name="keywords" content="東旭的空調工具箱,HVAC, 空調工程, 空調計算, 東旭, 無塵室, 工程師工具">
@@ -693,4 +713,5 @@
     </script>
 </body>
 </html>
+
 
