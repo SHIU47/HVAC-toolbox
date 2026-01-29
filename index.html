@@ -35,8 +35,7 @@
         /* Boot Loader */
         #boot-loader { position: fixed; inset: 0; background: #ffffff; z-index: 9999; display: flex; flex-direction: column; align-items: center; justify-content: center; transition: opacity 0.6s cubic-bezier(0.65, 0, 0.35, 1); will-change: opacity; }
         .boot-bar { width: 240px; height: 3px; background: #eff6ff; margin-top: 24px; border-radius: 99px; position: relative; overflow: hidden; }
-        .boot-progress { position: absolute; height: 100%; width: 0%; background: var(--primary-blue); box-shadow: 0 0 15px var(--primary-blue); animation: bootProgress 1.4s cubic-bezier(0.23, 1, 0.32, 1) forwards; }
-        @keyframes bootProgress { 0% { width: 0%; } 100% { width: 100%; } }
+        .boot-progress { position: absolute; height: 100%; width: 0%; background: var(--primary-blue); box-shadow: 0 0 15px var(--primary-blue); transition: width 0.4s ease-out; }
         
         /* Shared Backgrounds */
         .mesh-bg { position: fixed; inset: 0; z-index: -1; background: radial-gradient(at var(--mouse-x, 50%) var(--mouse-y, 50%), rgba(37, 99, 235, 0.08) 0px, transparent 40%), radial-gradient(at 0% 0%, rgba(37, 99, 235, 0.08) 0px, transparent 50%), radial-gradient(at 100% 100%, rgba(186, 230, 253, 0.1) 0px, transparent 50%); background-color: #f8fafc; pointer-events: none; }
@@ -90,6 +89,16 @@
         .weather-value { font-family: 'JetBrains Mono', monospace; font-size: 14px; font-weight: 700; color: var(--primary-blue); }
         .tag { font-size: 10px; font-weight: 800; padding: 3px 12px; border-radius: 8px; text-transform: uppercase; letter-spacing: 1px; }
         .no-scrollbar::-webkit-scrollbar { display: none; }
+        
+        /* Custom Animations for Demo */
+        @keyframes flowLine {
+            0% { transform: translateX(-100%); opacity: 0; }
+            50% { opacity: 1; }
+            100% { transform: translateX(100%); opacity: 0; }
+        }
+        .flow-animate {
+            animation: flowLine 1.5s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+        }
     </style>
 </head>
 <body>
@@ -100,7 +109,7 @@
             <div class="w-16 h-16 bg-blue-600 rounded-2xl flex items-center justify-center text-white font-black text-2xl shadow-2xl mb-8">東旭</div>
             <div class="font-mono text-[10px] text-blue-600 font-bold uppercase tracking-[0.4em]">HVAC Pro-Suite v3.1.0</div>
             <div id="boot-status" class="text-[8px] font-mono text-slate-400 uppercase tracking-[0.3em] mt-4">Initializing Logic Core...</div>
-            <div class="boot-bar"><div class="boot-progress"></div></div>
+            <div class="boot-bar"><div class="boot-progress" style="width: 0%"></div></div>
         </div>
     </div>
 
@@ -142,7 +151,8 @@
                     整合負荷計算、系統模擬與規範校核。我們不只提供計算結果，更為您的設計方案提供公信力與精確度。
                 </p>
                 <div class="flex flex-col md:flex-row justify-center gap-4">
-                    <button onclick="enterDashboard()" class="bg-blue-600 text-white px-10 py-5 rounded-2xl font-bold text-lg shadow-2xl shadow-blue-200 hover:bg-blue-700 hover:-translate-y-1 transition-all flex items-center justify-center gap-3">
+                    <button onclick="enterDashboard()" class="bg-blue-600 text-white px-10 py-5 rounded-2xl font-bold text-lg shadow-2xl shadow-blue-200 hover:bg-blue-700 hover:-translate-y-1 transition-all flex items-center justify-center gap-3 relative overflow-hidden group">
+                        <span class="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-700 transform -skew-x-12 group-hover:translate-x-full"></span>
                         <i class="fa-solid fa-rocket"></i> 開始免費核算
                     </button>
                     <a href="#features" class="bg-white border-2 border-slate-200 text-slate-600 px-10 py-5 rounded-2xl font-bold text-lg hover:bg-slate-50 hover:border-slate-300 transition-all flex items-center justify-center">
@@ -184,15 +194,15 @@
             </div>
         </section>
         
-        <!-- Interactive UX Section (Added) -->
+        <!-- Interactive UX Section (Updated) -->
         <section class="py-24 px-6 bg-slate-50">
             <div class="max-w-6xl mx-auto">
                 <div class="text-center mb-16">
                     <h2 class="text-3xl font-black text-slate-800 mb-4">互動力：讓工具變聰明</h2>
-                    <p class="text-slate-400">利用視覺化圖表，讓複雜的數據一眼被理解</p>
+                    <p class="text-slate-400">滑動數值，即時預覽計算結果，無需等待重整</p>
                 </div>
                 
-                <div class="flex flex-col lg:flex-row gap-10 items-center">
+                <div class="flex flex-col lg:flex-row gap-12 items-center">
                     <!-- Text Content -->
                     <div class="w-full lg:w-1/2 space-y-6">
                         <div class="p-6 bg-white rounded-2xl border border-l-4 border-l-blue-600 shadow-sm hover:shadow-md transition-all">
@@ -215,41 +225,194 @@
                         </div>
                     </div>
                     
-                    <!-- Visual Content (Dynamic Chart) -->
-                    <div class="w-full lg:w-1/2 h-[400px] bg-white rounded-[2.5rem] border border-slate-200 shadow-xl flex items-center justify-center relative overflow-hidden group">
-                         <div class="absolute inset-4 rounded-3xl border border-dashed border-slate-200"></div>
-                         
-                         <!-- Chart Container -->
-                         <div class="relative z-10 flex items-end gap-3 h-48 w-full max-w-sm px-6">
-                             <!-- Bar 1 -->
-                             <div class="flex-1 bg-blue-100 rounded-t-lg h-[40%] group-hover:h-[45%] transition-all duration-700 ease-in-out"></div>
-                             <!-- Bar 2 -->
-                             <div class="flex-1 bg-blue-300 rounded-t-lg h-[60%] group-hover:h-[55%] transition-all duration-700 ease-in-out delay-75"></div>
-                             <!-- Active Bar (Bar 3) -->
-                             <div class="flex-1 bg-blue-600 rounded-t-xl h-[85%] shadow-lg shadow-blue-200/50 relative group-hover:h-[90%] transition-all duration-700 ease-in-out delay-100">
-                                 <!-- Pulse Effect -->
-                                 <div class="absolute inset-0 bg-white opacity-0 animate-pulse rounded-t-xl"></div>
-                                 <!-- Tooltip Badge -->
-                                 <div class="absolute top-10 left-full ml-3 bg-blue-600 text-white px-5 py-2.5 rounded-xl shadow-xl whitespace-nowrap z-20 flex items-center gap-2 transform transition-all hover:scale-105">
-                                     <i class="fa-solid fa-chart-line text-sm"></i>
-                                     <div class="flex flex-col text-left">
-                                         <span class="text-[9px] font-bold text-blue-200 uppercase tracking-wider">Live Status</span>
-                                         <span class="text-xs font-black leading-none">REAL-TIME CHART</span>
-                                     </div>
-                                 </div>
-                             </div>
-                             <!-- Bar 4 -->
-                             <div class="flex-1 bg-blue-300 rounded-t-lg h-[55%] group-hover:h-[60%] transition-all duration-700 ease-in-out delay-150"></div>
-                             <!-- Bar 5 -->
-                             <div class="flex-1 bg-blue-100 rounded-t-lg h-[30%] group-hover:h-[25%] transition-all duration-700 ease-in-out delay-200"></div>
-                         </div>
+                    <!-- Visual Content (Interactive Chart) -->
+                    <div class="w-full lg:w-1/2 bg-white rounded-[2.5rem] border border-slate-200 p-8 shadow-xl flex flex-col items-center justify-center relative overflow-hidden group hover:border-blue-300 transition-colors">
+                        <!-- Chart Visual -->
+                        <div class="flex items-end gap-3 h-40 w-full max-w-sm mb-8" id="demo-chart">
+                            <div class="flex-1 bg-blue-100 rounded-t-lg transition-all duration-300 ease-out" style="height: 40%" id="bar-1"></div>
+                            <div class="flex-1 bg-blue-300 rounded-t-lg transition-all duration-300 ease-out" style="height: 60%" id="bar-2"></div>
+                            <div class="flex-1 bg-blue-600 rounded-t-xl shadow-lg shadow-blue-200/50 relative transition-all duration-100 ease-linear group-hover:scale-105" style="height: 50%" id="bar-3">
+                                 <div class="absolute -top-10 left-1/2 -translate-x-1/2 bg-slate-800 text-white px-3 py-1.5 rounded-lg text-xs font-bold whitespace-nowrap opacity-100 transition-opacity" id="bar-tooltip">50 RT → 60% Load</div>
+                            </div>
+                            <div class="flex-1 bg-blue-300 rounded-t-lg transition-all duration-300 ease-out" style="height: 55%" id="bar-4"></div>
+                            <div class="flex-1 bg-blue-100 rounded-t-lg transition-all duration-300 ease-out" style="height: 30%" id="bar-5"></div>
+                        </div>
 
-                         <!-- Decorative UI Toolbar (Bottom Right) -->
-                         <div class="absolute bottom-6 right-6 bg-white border border-slate-100 shadow-lg rounded-full p-1.5 flex flex-col gap-2 z-20">
-                             <div class="w-8 h-8 rounded-full flex items-center justify-center text-slate-400 hover:bg-slate-50 hover:text-blue-500 transition-colors cursor-pointer"><i class="fa-solid fa-layer-group text-xs"></i></div>
-                             <div class="w-8 h-8 rounded-full flex items-center justify-center text-slate-400 hover:bg-slate-50 hover:text-blue-500 transition-colors cursor-pointer"><i class="fa-solid fa-wand-magic-sparkles text-xs"></i></div>
-                             <div class="w-8 h-8 rounded-full flex items-center justify-center text-slate-400 hover:bg-slate-50 hover:text-blue-500 transition-colors cursor-pointer"><i class="fa-solid fa-maximize text-xs"></i></div>
-                         </div>
+                        <!-- Interactive Controls -->
+                        <div class="w-full max-w-xs relative z-10">
+                            <div class="flex justify-between text-xs font-bold text-slate-400 mb-3 uppercase tracking-wider">
+                                <span>Input Load</span>
+                                <span id="demo-value" class="text-blue-600 font-black bg-blue-50 px-2 py-0.5 rounded">50 RT</span>
+                            </div>
+                            <input type="range" min="10" max="100" value="50" class="w-full h-2 bg-slate-100 rounded-lg appearance-none cursor-pointer accent-blue-600 hover:accent-blue-500 transition-all" oninput="updateLiveChart(this.value)">
+                            <div class="mt-6 flex justify-between items-center bg-slate-50 p-4 rounded-xl border border-slate-100 shadow-inner">
+                                <div class="text-center w-1/2">
+                                    <div class="text-[10px] text-slate-400 font-bold uppercase mb-1">Flow (LPM)</div>
+                                    <div class="text-xl font-black text-slate-800 tracking-tight" id="demo-flow">120.0</div>
+                                </div>
+                                <div class="w-px h-8 bg-slate-200"></div>
+                                <div class="text-center w-1/2">
+                                    <div class="text-[10px] text-slate-400 font-bold uppercase mb-1">Head (m)</div>
+                                    <div class="text-xl font-black text-emerald-500 tracking-tight" id="demo-head">27.5</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Live Demo Section (Completely Redesigned) -->
+        <section class="py-24 px-6 relative overflow-hidden">
+            <!-- Background decorations for the section -->
+            <div class="absolute inset-0 bg-slate-50"></div>
+            <div class="absolute top-0 left-1/2 -translate-x-1/2 w-full max-w-7xl h-full bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-blue-100/50 via-transparent to-transparent pointer-events-none"></div>
+
+            <div class="max-w-6xl mx-auto relative z-10">
+                <!-- Text Header -->
+                <div class="text-center mb-16">
+                    <span class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-50 border border-blue-100 text-blue-600 text-[10px] font-bold uppercase tracking-widest mb-6">
+                        <span class="relative flex h-2 w-2">
+                          <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75"></span>
+                          <span class="relative inline-flex rounded-full h-2 w-2 bg-blue-500"></span>
+                        </span>
+                        Live Simulation
+                    </span>
+                    <h2 class="text-4xl md:text-5xl font-black text-slate-900 mb-6 tracking-tight">
+                        親眼見證：<span class="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-indigo-600">工程運算核心</span>
+                    </h2>
+                    <p class="text-slate-500 text-lg max-w-2xl mx-auto leading-relaxed">
+                        輸入參數，瞬間得出結果。無需查表，無需 Excel，一切都在瀏覽器中完成。
+                        <br class="hidden md:block" />以下為工具實際運作的模擬畫面：
+                    </p>
+                </div>
+
+                <!-- The Mockup Window -->
+                <div class="relative rounded-2xl md:rounded-3xl overflow-hidden shadow-2xl bg-slate-900 ring-1 ring-white/10 group cursor-pointer perspective-1000 mx-auto max-w-5xl" onclick="playDemo()">
+                    
+                    <!-- Window Header (Mac Style) -->
+                    <div class="h-12 bg-slate-950/50 backdrop-blur-md border-b border-white/5 flex items-center px-6 justify-between relative z-20">
+                        <div class="flex gap-2">
+                            <div class="w-3 h-3 rounded-full bg-red-500/80"></div>
+                            <div class="w-3 h-3 rounded-full bg-yellow-500/80"></div>
+                            <div class="w-3 h-3 rounded-full bg-green-500/80"></div>
+                        </div>
+                        <div class="absolute left-1/2 -translate-x-1/2 flex items-center gap-2 px-4 py-1 rounded-full bg-white/5 border border-white/5 text-[10px] text-slate-400 font-mono">
+                            <i class="fa-solid fa-lock text-[8px]"></i> hvac-pro-suite.com
+                        </div>
+                        <div class="w-16"></div> <!-- Spacer for balance -->
+                    </div>
+
+                    <!-- Main Stage -->
+                    <div class="relative bg-slate-900 aspect-[16/9] md:aspect-[21/9] overflow-hidden">
+                        
+                        <!-- Animated Grid Background -->
+                        <div class="absolute inset-0 bg-[linear-gradient(to_right,#80808012_1px,transparent_1px),linear-gradient(to_bottom,#80808012_1px,transparent_1px)] bg-[size:24px_24px]"></div>
+                        <div class="absolute inset-0 bg-[radial-gradient(circle_800px_at_50%_200px,#3b82f615,transparent)]"></div>
+
+                        <!-- Simulation Container (Flex) -->
+                        <div class="absolute inset-0 flex items-center justify-center p-8 md:p-16">
+                            
+                            <!-- Left: Input Card -->
+                            <div id="demo-input-card" class="relative z-10 w-64 bg-slate-800/80 backdrop-blur-xl border border-white/10 rounded-2xl p-5 shadow-2xl transition-all duration-500 transform hover:-translate-y-1">
+                                <div class="flex items-center justify-between mb-4 border-b border-white/5 pb-2">
+                                    <span class="text-xs font-bold text-slate-400 uppercase tracking-wider">Input Parameters</span>
+                                    <div class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></div>
+                                </div>
+                                <div class="space-y-3">
+                                    <div class="bg-slate-900/50 rounded-lg p-3 border border-white/5 flex justify-between items-center group/item">
+                                        <span class="text-xs text-slate-400 font-mono">LOAD</span>
+                                        <span id="demo-load-text" class="text-sm font-bold text-emerald-400 font-mono bg-emerald-500/10 px-2 py-0.5 rounded transition-all">100 RT</span>
+                                    </div>
+                                    <div class="bg-slate-900/50 rounded-lg p-3 border border-white/5 flex justify-between items-center">
+                                        <span class="text-xs text-slate-400 font-mono">TYPE</span>
+                                        <span class="text-sm font-bold text-blue-400 font-mono bg-blue-500/10 px-2 py-0.5 rounded">CHILLER</span>
+                                    </div>
+                                </div>
+                                <!-- Decorative dot -->
+                                <div class="absolute -right-1.5 top-1/2 -translate-y-1/2 w-3 h-3 bg-slate-700 rounded-full border-2 border-slate-900 z-20"></div>
+                            </div>
+
+                            <!-- Center: Processing Flow -->
+                            <div class="flex-1 h-[2px] bg-slate-800 relative mx-4 max-w-[200px] hidden md:block">
+                                <div class="absolute inset-0 bg-blue-500/50 blur-[1px]"></div>
+                                <!-- Animated flow particle -->
+                                <div id="flow-particle" class="absolute top-1/2 -translate-y-1/2 left-0 w-16 h-[2px] bg-gradient-to-r from-transparent via-blue-400 to-transparent opacity-0"></div>
+                                
+                                <!-- Play Button Overlay (Initially Visible) -->
+                                <div id="demo-play-overlay" class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-16 h-16 rounded-full bg-blue-600/20 border border-blue-500/50 backdrop-blur-sm flex items-center justify-center cursor-pointer hover:scale-110 hover:bg-blue-600/40 transition-all duration-300 z-30 group-hover:shadow-[0_0_30px_rgba(59,130,246,0.3)]">
+                                    <i class="fa-solid fa-play text-blue-400 text-xl ml-1 group-hover:text-white transition-colors"></i>
+                                </div>
+                            </div>
+
+                            <!-- Right: Result Card -->
+                            <div id="demo-result-card" class="relative z-10 w-72 bg-gradient-to-br from-blue-600 to-indigo-700 rounded-2xl p-1 shadow-2xl transition-all duration-500 transform hover:-translate-y-1 opacity-50 scale-95 grayscale">
+                                <div class="bg-slate-900/20 backdrop-blur-none h-full w-full rounded-xl p-5 relative overflow-hidden">
+                                    <div class="absolute top-0 right-0 p-3 opacity-20">
+                                        <i class="fa-solid fa-bolt text-4xl text-white"></i>
+                                    </div>
+                                    <div class="flex items-center gap-2 mb-6">
+                                        <div class="p-1.5 bg-white/20 rounded-lg">
+                                            <i class="fa-solid fa-calculator text-white text-xs"></i>
+                                        </div>
+                                        <span class="text-xs font-bold text-blue-100 uppercase tracking-wider">Analysis Result</span>
+                                    </div>
+                                    
+                                    <div class="space-y-4">
+                                        <div>
+                                            <div class="text-[10px] text-blue-200 uppercase font-bold mb-1 tracking-wider">Flow Rate (GPM)</div>
+                                            <div class="flex items-baseline gap-2">
+                                                <span id="demo-result-flow" class="text-4xl font-black text-white tracking-tight">--</span>
+                                                <span class="text-xs text-blue-200 font-bold">GPM</span>
+                                            </div>
+                                        </div>
+                                        <div class="w-full h-px bg-white/10"></div>
+                                        <div>
+                                            <div class="text-[10px] text-blue-200 uppercase font-bold mb-1 tracking-wider">Total Head (m)</div>
+                                            <div class="flex items-baseline gap-2">
+                                                <span id="demo-result-head" class="text-3xl font-bold text-white tracking-tight">--</span>
+                                                <span class="text-xs text-blue-200 font-bold">M</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                        </div>
+                        
+                        <!-- Status Bar -->
+                        <div class="absolute bottom-0 left-0 w-full h-8 bg-slate-950/50 backdrop-blur border-t border-white/5 flex items-center px-4 justify-between text-[10px] text-slate-500 font-mono">
+                            <div class="flex items-center gap-2">
+                                <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+                                <span>ENGINE CONNECTED</span>
+                            </div>
+                            <div>LATENCY: 12ms</div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Feature Highlights underneath -->
+                <div class="mt-12 grid grid-cols-1 md:grid-cols-3 gap-6 max-w-4xl mx-auto">
+                    <div class="flex flex-col items-center text-center p-4">
+                        <div class="w-10 h-10 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center mb-3">
+                            <i class="fa-solid fa-bolt"></i>
+                        </div>
+                        <h4 class="font-bold text-slate-800 text-sm mb-1">即時運算核心</h4>
+                        <p class="text-xs text-slate-500">輸入即所得，毫秒級反饋</p>
+                    </div>
+                    <div class="flex flex-col items-center text-center p-4">
+                        <div class="w-10 h-10 rounded-full bg-indigo-50 text-indigo-600 flex items-center justify-center mb-3">
+                            <i class="fa-solid fa-wand-magic-sparkles"></i>
+                        </div>
+                        <h4 class="font-bold text-slate-800 text-sm mb-1">自動參數優化</h4>
+                        <p class="text-xs text-slate-500">智慧推薦最佳管徑與材質</p>
+                    </div>
+                    <div class="flex flex-col items-center text-center p-4">
+                        <div class="w-10 h-10 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center mb-3">
+                            <i class="fa-solid fa-file-export"></i>
+                        </div>
+                        <h4 class="font-bold text-slate-800 text-sm mb-1">一鍵產出報告</h4>
+                        <p class="text-xs text-slate-500">符合工程送審規範格式</p>
                     </div>
                 </div>
             </div>
@@ -298,8 +461,8 @@
                      </div>
                      <!-- Standard Card 7 -->
                      <div class="p-4 bg-white/5 rounded-2xl border border-white/10 hover:bg-white/10 transition-colors">
-                        <div class="text-xs text-blue-400 font-bold uppercase tracking-wider mb-1">Cooling Water</div>
-                        <div class="font-bold text-slate-200">PCW System Design</div>
+                        <div class="text-xs text-blue-400 font-bold uppercase tracking-wider mb-1">Process Cooling Water</div>
+                        <div class="font-bold text-slate-200">Facility Design Maunal</div>
                      </div>
                      <!-- Standard Card 8 -->
                      <div class="p-4 bg-white/5 rounded-2xl border border-white/10 hover:bg-white/10 transition-colors">
@@ -643,10 +806,112 @@
         function quickLaunch(id) { const tool = allToolsList.find(t => t.id === id); if (tool) loadModulePortal({}, tool.id, tool.name, tool.file); }
         function iframeReload() { document.getElementById('module-viewport').contentWindow.location.reload(); }
 
+        // --- Demo Chart Interactive Logic ---
+        window.updateLiveChart = function(val) {
+            document.getElementById('demo-value').innerText = val + " RT";
+            
+            const flow = (val * 2.4).toFixed(1);
+            const head = (15 + (val * 0.25)).toFixed(1);
+            
+            document.getElementById('demo-flow').innerText = flow;
+            document.getElementById('demo-head').innerText = head;
+
+            const h1 = 20 + (val * 0.3);
+            const h2 = 40 + (val * 0.4);
+            const h3 = 30 + (val * 0.6); // Main bar
+            const h4 = 35 + (val * 0.2);
+            const h5 = 15 + (val * 0.5);
+
+            document.getElementById('bar-1').style.height = h1 + '%';
+            document.getElementById('bar-2').style.height = h2 + '%';
+            document.getElementById('bar-3').style.height = h3 + '%';
+            document.getElementById('bar-4').style.height = h4 + '%';
+            document.getElementById('bar-5').style.height = h5 + '%';
+            
+            // Persistent Tooltip Update
+            const tooltip = document.getElementById('bar-tooltip');
+            tooltip.innerText = val + ' RT → ' + h3.toFixed(0) + '% Load';
+            tooltip.style.opacity = 1;
+        }
+
+        // --- Live Demo Play Logic ---
+        let demoPlaying = false;
+        window.playDemo = function() {
+            if (demoPlaying) return;
+            demoPlaying = true;
+            
+            const playBtn = document.getElementById('demo-play-overlay');
+            const inputCard = document.getElementById('demo-input-card');
+            const resultCard = document.getElementById('demo-result-card');
+            const loadText = document.getElementById('demo-load-text');
+            const resFlow = document.getElementById('demo-result-flow');
+            const resHead = document.getElementById('demo-result-head');
+            const flowParticle = document.getElementById('flow-particle');
+            
+            playBtn.style.opacity = '0';
+            playBtn.style.pointerEvents = 'none';
+            
+            let rtValue = 100;
+            const interval = setInterval(() => {
+                rtValue += 100;
+                if (rtValue > 600) rtValue = 100;
+                
+                // 1. Input Animation
+                inputCard.classList.add('scale-105', 'border-blue-500/50');
+                setTimeout(() => inputCard.classList.remove('scale-105', 'border-blue-500/50'), 200);
+                
+                loadText.innerHTML = `<span class="mr-2">LOAD:</span> ${rtValue} RT`;
+                
+                // 2. Flow Animation
+                flowParticle.classList.add('flow-animate');
+                setTimeout(() => flowParticle.classList.remove('flow-animate'), 1500);
+
+                // 3. Result Animation (Delayed)
+                setTimeout(() => {
+                    // Activate result card visual
+                    resultCard.classList.remove('opacity-50', 'scale-95', 'grayscale');
+                    resultCard.classList.add('scale-105', 'shadow-blue-500/50');
+                    
+                    const gpm = (rtValue * 2.4).toFixed(0);
+                    const head = (15 + rtValue * 0.035).toFixed(1);
+                    
+                    resFlow.innerText = Number(gpm).toLocaleString();
+                    resHead.innerText = head;
+                    
+                    setTimeout(() => {
+                        resultCard.classList.remove('scale-105', 'shadow-blue-500/50');
+                        // Reset visual state after a bit
+                        if (rtValue === 600) {
+                             setTimeout(() => {
+                                 resultCard.classList.add('opacity-50', 'scale-95', 'grayscale');
+                             }, 1000);
+                        }
+                    }, 300);
+                }, 600); // Wait for flow particle to reach
+                
+            }, 2000); // Slower cycle for better visual pacing
+            
+            // Stop after one full sequence
+            setTimeout(() => {
+                clearInterval(interval);
+                demoPlaying = false;
+                playBtn.style.opacity = '1';
+                playBtn.style.pointerEvents = 'auto';
+            }, 12000);
+        }
+
         // --- Init ---
         window.onload = async () => {
             const loader = document.getElementById('boot-loader');
             const bootStatus = document.getElementById('boot-status');
+            const progress = document.querySelector('.boot-progress');
+
+            const updateProgress = (percent, message) => {
+                progress.style.width = percent + '%';
+                bootStatus.innerText = message;
+            };
+
+            updateProgress(20, "LOADING AUTH...");
 
             if (typeof Clerk === 'undefined') {
                 bootStatus.innerText = "Auth Service Blocked";
@@ -655,11 +920,13 @@
             }
 
             try {
-                bootStatus.innerText = "LOADING ENGINE...";
+                updateProgress(40, "CONNECTING TO SERVER...");
                 await Clerk.load({
                     afterSignInUrl: window.location.href,
                     afterSignOutUrl: window.location.href
                 });
+                
+                updateProgress(60, "INITIALIZING MODULES...");
                 
                 // If user is already logged in, update landing page text
                 if (Clerk.user) {
@@ -672,16 +939,23 @@
                     if (badge) badge.innerText = `歡迎回來，${userName} 工程師`;
                     Clerk.mountUserButton(document.getElementById('user-button'), { afterSignOutUrl: window.location.href });
 
+                    updateProgress(80, "LOADING WORKSPACE...");
                     // 修改處：如果已登入，直接跳轉到工作台，跳過首頁介紹
                     enterDashboard();
                 }
 
+                updateProgress(100, "SYSTEM READY ✓");
+
                 setTimeout(() => {
                     loader.style.opacity = '0';
                     setTimeout(() => { loader.style.display = 'none'; handleServiceWorker(); }, 600);
-                }, 1000);
+                }, 500);
 
-            } catch (err) { console.error("Auth Error:", err); }
+            } catch (err) { 
+                console.error("Auth Error:", err);
+                updateProgress(0, "CONNECTION FAILED");
+                bootStatus.style.color = "#ef4444";
+            }
 
             setInterval(() => { document.getElementById('current-time').innerText = new Date().toLocaleTimeString('zh-TW', { hour12: false, hour: '2-digit', minute: '2-digit' }); }, 1000);
             document.addEventListener('mousemove', e => {
