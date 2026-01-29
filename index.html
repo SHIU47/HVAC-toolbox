@@ -676,8 +676,8 @@
             try {
                 bootStatus.innerText = "LOADING ENGINE...";
                 await Clerk.load({
-                    afterSignInUrl: window.location.href,
-                    afterSignOutUrl: window.location.href
+                    afterSignInUrl: "/HVAC-toolbox/",
+                    afterSignOutUrl: "/HVAC-toolbox/"
                 });
                 
                 // If user is already logged in, update landing page text
@@ -713,6 +713,7 @@
     </script>
 </body>
 </html>
+
 
 
 
