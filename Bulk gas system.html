@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Bulk Gas System - Engineering Audit Tool </title>
+    <title>Bulk Gas System - Engineering Sizing Tool </title>
     
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
@@ -23,6 +23,11 @@
 
     <style>
         body { font-family: 'Inter', system-ui, -apple-system, sans-serif; }
+        /* Custom Scrollbar for the modal */
+        .prose-content::-webkit-scrollbar { width: 8px; }
+        .prose-content::-webkit-scrollbar-track { background: #f1f5f9; border-radius: 4px; }
+        .prose-content::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+        .prose-content::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
     </style>
 </head>
 <body class="bg-slate-50">
@@ -48,6 +53,7 @@
         const Lightbulb = (props) => <IconBase {...props}><line x1="9" y1="18" x2="15" y2="18"/><line x1="10" y1="22" x2="14" y2="22"/><path d="M15.09 14c.18-.9.27-1.85.26-2.83a7 7 0 0 0-11.76-4.59 6.91 6.91 0 0 0-.25 2.82c-.1 2 .88 4.66 2.66 6.6H15.1z"/></IconBase>;
         const AlertTriangle = (props) => <IconBase {...props}><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></IconBase>;
         const ShieldCheck = (props) => <IconBase {...props}><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="m9 12 2 2 4-4"/></IconBase>;
+        const X = (props) => <IconBase {...props}><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></IconBase>;
 
         // 3. Application Logic - Updated to Equivalent Length Method (Le/D)
         const CONSTANTS = {
@@ -118,8 +124,136 @@
           return { text: "PASS", color: "text-emerald-500", bg: "bg-emerald-500/10" };
         };
 
+        const HelpModal = ({ onClose }) => (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 animate-in fade-in duration-200">
+            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col relative overflow-hidden">
+              
+              {/* Modal Header */}
+              <div className="bg-slate-900 text-white p-6 flex items-center justify-between shrink-0">
+                <div className="flex items-center gap-3">
+                  <div className="bg-white/10 p-2 rounded-lg">
+                    <Database size={20} className="text-blue-400" />
+                  </div>
+                  <h3 className="text-lg font-bold">工程計算模型說明書</h3>
+                </div>
+                <button onClick={onClose} className="p-2 hover:bg-white/10 rounded-full transition-colors">
+                  <X size={20} />
+                </button>
+              </div>
+
+              {/* Modal Content */}
+              <div className="p-6 overflow-y-auto prose-content text-slate-700 space-y-6 text-sm leading-relaxed">
+                
+                {/* 1. Core Model */}
+                <section>
+                  <h4 className="flex items-center gap-2 text-slate-900 font-bold text-base mb-3 border-b border-slate-200 pb-2">
+                    <span className="w-6 h-6 bg-blue-100 text-blue-600 rounded flex items-center justify-center text-xs">01</span>
+                    核心計算模型 (Core Methodology)
+                  </h4>
+                  <p className="mb-2">本工具採用 **等溫可壓縮流 (Isothermal Compressible Flow)** 模型進行氣體壓損計算。此模型考慮了長管路中因壓力下降導致的氣體密度變化 ($\rho \propto P$)，比傳統不可壓縮模型更準確。</p>
+                  <div className="bg-slate-50 p-3 rounded-lg border border-slate-200 font-mono text-xs text-slate-600 my-3">
+                    ΔP = f · (L/D + Σn) · (G² · R · T) / (2 · P_avg)
+                  </div>
+                  <ul className="list-disc pl-5 space-y-1 text-slate-600">
+                    <li><strong>G (Mass Flux):</strong> 質量通量 (kg/s·m²)，在定截面管中為常數。</li>
+                    <li><strong>P_avg:</strong> 進出口平均壓力，透過疊代法 (Iteration) 收斂計算。</li>
+                    <li><strong>f (Friction Factor):</strong> 依據 Swamee-Jain 公式計算 (Turbulent)，取 P_avg 下的 Reynolds Number。</li>
+                  </ul>
+                </section>
+
+                {/* 2. Fittings Logic */}
+                <section>
+                  <h4 className="flex items-center gap-2 text-slate-900 font-bold text-base mb-3 border-b border-slate-200 pb-2">
+                    <span className="w-6 h-6 bg-blue-100 text-blue-600 rounded flex items-center justify-center text-xs">02</span>
+                    管件壓損模型 (Fittings Loss)
+                  </h4>
+                  <p className="mb-2">採用 **等效長度法 (Equivalent Length Method)**，將管件阻力換算為直管長度。</p>
+                  <div className="bg-slate-50 p-3 rounded-lg border border-slate-200 my-3">
+                    <div className="grid grid-cols-2 gap-4 text-xs">
+                      <div>
+                        <span className="font-bold block mb-1">係數設定 (n = Le/D):</span>
+                        <ul className="space-y-1 text-slate-600">
+                          <li>• 90° Elbow: n = 40</li>
+                          <li>• Tee (Run/Branch): n = 40</li>
+                          <li>• Gate/Ball Valve: n = 60</li>
+                          <li>• Globe Valve: n = 340</li>
+                        </ul>
+                      </div>
+                      <div>
+                        <span className="font-bold block mb-1">工程意義:</span>
+                        <p className="text-slate-600">此方法將管件視為摩擦係數為 f 的延伸直管。相較於固定 K 值法，此法能反映摩擦係數隨雷諾數變化的特性。</p>
+                      </div>
+                    </div>
+                  </div>
+                </section>
+
+                {/* 3. Validation Criteria */}
+                <section>
+                  <h4 className="flex items-center gap-2 text-slate-900 font-bold text-base mb-3 border-b border-slate-200 pb-2">
+                    <span className="w-6 h-6 bg-blue-100 text-blue-600 rounded flex items-center justify-center text-xs">03</span>
+                    設計驗證標準 (Validation Criteria)
+                  </h4>
+                  <div className="space-y-3">
+                    <div className="flex items-start gap-3">
+                      <div className="mt-1 w-2 h-2 rounded-full bg-red-400 shrink-0"></div>
+                      <div>
+                        <span className="font-bold text-slate-900 block">Mach Number (馬赫數) &lt; 0.3</span>
+                        <span className="text-slate-500 text-xs">
+                          當 Ma > 0.3 時，氣體壓縮性效應顯著，可能產生 Choked Flow 或震動噪音。若超過此值，系統會顯示 "CRITICAL" 警告。
+                        </span>
+                      </div>
+                    </div>
+                    <div className="flex items-start gap-3">
+                      <div className="mt-1 w-2 h-2 rounded-full bg-amber-400 shrink-0"></div>
+                      <div>
+                        <span className="font-bold text-slate-900 block">ΔP / P_avg &lt; 20%</span>
+                        <span className="text-slate-500 text-xs">
+                          本簡化積分模型的工程適用範圍。若壓損比過高 (>20%)，代表管路進入 Fanno Flow 區域，需進行更精密的微分分析。
+                        </span>
+                      </div>
+                    </div>
+                    <div className="flex items-start gap-3">
+                      <div className="mt-1 w-2 h-2 rounded-full bg-blue-400 shrink-0"></div>
+                      <div>
+                        <span className="font-bold text-slate-900 block">Velocity (流速) &lt; Limit</span>
+                        <span className="text-slate-500 text-xs">
+                          依據使用者設定的上限 (預設 15 m/s)。流速為 Average Velocity (基於 P_avg 計算)。
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                </section>
+                
+                {/* 4. Safety Margin */}
+                <section>
+                  <h4 className="flex items-center gap-2 text-slate-900 font-bold text-base mb-3 border-b border-slate-200 pb-2">
+                    <span className="w-6 h-6 bg-blue-100 text-blue-600 rounded flex items-center justify-center text-xs">04</span>
+                    安全係數 (Safety Margin)
+                  </h4>
+                  <p>
+                    開啟 "Safety Margin" 功能時，所有驗證標準 (Limit) 會縮減至 **80%**。
+                    例如：若流速上限為 15 m/s，開啟後若計算流速超過 12 m/s 即會判定為 FAIL。
+                  </p>
+                </section>
+
+              </div>
+              
+              {/* Modal Footer */}
+              <div className="bg-slate-50 p-4 border-t border-slate-200 text-right">
+                <button 
+                  onClick={onClose}
+                  className="px-6 py-2 bg-slate-900 text-white font-bold rounded-lg hover:bg-slate-800 transition-colors text-sm"
+                >
+                  關閉 (Close)
+                </button>
+              </div>
+            </div>
+          </div>
+        );
+
         function App() {
           const [useMargin, setUseMargin] = useState(false);
+          const [showHelp, setShowHelp] = useState(false);
           const [formData, setFormData] = useState({
             gasType: "GN2",
             pressureG: 8.0, 
@@ -131,10 +265,12 @@
             valveType: "gate", // Changed default to match Excel's low loss valve (n=60)
             valveCount: 2,
             maxAllowedDP: 0.5, 
+            maxVelocity: 15, // Default for GN2
           });
 
           const calculation = useMemo(() => {
-            const { gasType, pressureG, tempC, flowRateSCMH, pipeLength, elbowCount, teeCount, valveType, valveCount, maxAllowedDP } = formData;
+            // Destructure maxVelocity from formData
+            const { gasType, pressureG, tempC, flowRateSCMH, pipeLength, elbowCount, teeCount, valveType, valveCount, maxAllowedDP, maxVelocity } = formData;
             const gas = GAS_PROPERTIES[gasType];
             const margin = useMargin ? 0.8 : 1.0;
             
@@ -215,7 +351,8 @@
               const dpBar = dpTotalPa / CONSTANTS.BAR_TO_PA;
               const dpRatio = dpTotalPa / pAvg;
 
-              const limitV = gas.limitV * margin;
+              // Use the user-defined maxVelocity from formData instead of gas property default
+              const limitV = maxVelocity * margin;
               const limitDP = maxAllowedDP * margin;
               
               const vSafe = uAvg <= limitV;
@@ -294,7 +431,10 @@
           const pStatus = getStatusLabel(bestAttempt.dp, bestAttempt.limitDP);
 
           return (
-            <div className="min-h-screen bg-slate-50 text-slate-800 font-sans pb-12">
+            <div className="min-h-screen bg-slate-50 text-slate-800 font-sans pb-12 relative">
+              
+              {showHelp && <HelpModal onClose={() => setShowHelp(false)} />}
+
               <div className="w-full bg-slate-50 pt-6 px-4 md:px-8 pb-8">
                 <div className="max-w-7xl mx-auto">
                   <div className="bg-[#1e293b] rounded-2xl shadow-xl p-5 md:p-6 text-white flex flex-col md:flex-row items-start md:items-center justify-between gap-6 relative overflow-hidden">
@@ -313,6 +453,13 @@
                       </div>
                     </div>
                     <div className="flex items-center gap-3 relative z-10">
+                      <button 
+                        onClick={() => setShowHelp(true)}
+                        className="w-10 h-10 rounded-full bg-white/5 border border-white/10 flex items-center justify-center text-slate-300 hover:bg-white/10 hover:text-white transition-all"
+                        title="Help / 詳細說明書"
+                      >
+                        <HelpCircle size={20} />
+                      </button>
                       <button onClick={() => setUseMargin(!useMargin)} className={`flex items-center gap-3 px-4 py-2.5 rounded-full border transition-all ${useMargin ? "bg-blue-500/20 border-blue-500/50 text-blue-100" : "bg-white/5 border-white/10 text-slate-300 hover:bg-white/10"}`}>
                           <ShieldCheck size={16} className={useMargin ? "text-blue-400" : "text-slate-400"} />
                           <div className="text-left">
@@ -345,7 +492,15 @@
                       <div>
                         <label className="block text-xs font-bold text-slate-500 uppercase mb-2">Gas Type</label>
                         <select className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-semibold focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all"
-                          value={formData.gasType} onChange={e => setFormData({...formData, gasType: e.target.value})}>
+                          value={formData.gasType} 
+                          onChange={e => {
+                            const newGas = e.target.value;
+                            setFormData({
+                              ...formData, 
+                              gasType: newGas,
+                              maxVelocity: GAS_PROPERTIES[newGas].limitV // Auto-update limit when gas changes
+                            });
+                          }}>
                           {Object.entries(GAS_PROPERTIES).map(([k, v]) => <option key={k} value={k}>{k} - {v.name}</option>)}
                         </select>
                       </div>
@@ -407,10 +562,18 @@
                                value={formData.valveCount} onChange={e => setFormData({...formData, valveCount: parseInt(e.target.value) || 0})}/>
                           </div>
                       </div>
-                      <PrimaryInputWrapper label="Max Allowed ΔP" unit="bar">
-                        <input type="number" step="0.1" className="w-full p-3 bg-white border border-slate-300 focus:border-red-500 rounded-xl text-lg font-bold text-red-600 outline-none transition-all"
-                          value={formData.maxAllowedDP} onChange={e => setFormData({...formData, maxAllowedDP: parseFloat(e.target.value) || 0})}/>
-                      </PrimaryInputWrapper>
+                      
+                      <div className="grid grid-cols-2 gap-6">
+                        <PrimaryInputWrapper label="Max Velocity Limit" unit="m/s">
+                          <input type="number" step="1" className="w-full p-3 bg-white border border-slate-300 focus:border-blue-500 rounded-xl text-lg font-bold text-blue-600 outline-none transition-all"
+                            value={formData.maxVelocity} onChange={e => setFormData({...formData, maxVelocity: parseFloat(e.target.value) || 0})}/>
+                        </PrimaryInputWrapper>
+                        
+                        <PrimaryInputWrapper label="Max Allowed ΔP" unit="bar">
+                          <input type="number" step="0.1" className="w-full p-3 bg-white border border-slate-300 focus:border-red-500 rounded-xl text-lg font-bold text-red-600 outline-none transition-all"
+                            value={formData.maxAllowedDP} onChange={e => setFormData({...formData, maxAllowedDP: parseFloat(e.target.value) || 0})}/>
+                        </PrimaryInputWrapper>
+                      </div>
                     </div>
                   </div>
                 </div>
