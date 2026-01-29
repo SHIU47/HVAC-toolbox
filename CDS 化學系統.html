@@ -1,0 +1,621 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CDS 化學系統水力計算器 (Engineering Edition)</title>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <!-- React & ReactDOM (Pinned v18.2.0) -->
+    <script crossorigin src="https://unpkg.com/react@18.2.0/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18.2.0/umd/react-dom.production.min.js"></script>
+    
+    <!-- Prop Types -->
+    <script src="https://unpkg.com/prop-types/prop-types.min.js"></script>
+
+    <!-- Recharts (Pinned v2.12.7) -->
+    <script src="https://unpkg.com/recharts@2.12.7/umd/Recharts.js"></script>
+
+    <!-- Babel for JSX -->
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+    <style>
+        body { font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; }
+        /* Custom Scrollbar */
+        .prose-content::-webkit-scrollbar { width: 6px; }
+        .prose-content::-webkit-scrollbar-track { background: transparent; }
+        .prose-content::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; }
+        .prose-content::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-800">
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useMemo, useEffect } = React;
+        const { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip: RechartsTooltip, Legend, ResponsiveContainer, ReferenceLine, ReferenceArea } = window.Recharts || {};
+
+        // --- Icons ---
+        const IconBase = ({ size = 24, className = "", children }) => (
+            <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>{children}</svg>
+        );
+        const Beaker = (props) => <IconBase {...props}><path d="M4.5 3h15"/><path d="M6 3v16a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V3"/><path d="M6 14h12"/></IconBase>;
+        const Activity = (props) => <IconBase {...props}><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></IconBase>;
+        const AlertTriangle = (props) => <IconBase {...props}><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></IconBase>;
+        const CheckCircle = (props) => <IconBase {...props}><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></IconBase>;
+        const XCircle = (props) => <IconBase {...props}><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></IconBase>;
+        const X = (props) => <IconBase {...props}><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></IconBase>;
+        const HelpCircle = (props) => <IconBase {...props}><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></IconBase>;
+        const FilterIcon = (props) => <IconBase {...props}><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></IconBase>;
+        const Layers = (props) => <IconBase {...props}><polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/></IconBase>;
+        const Ruler = (props) => <IconBase {...props}><path d="M2 12h20"/><path d="M2 17h20"/><path d="M2 7h20"/><path d="M2 2h20"/><path d="M2 22h20"/></IconBase>;
+
+        // --- Constants & Database ---
+        const CONSTANTS = { G: 9.81, BAR_TO_PA: 100000 };
+
+        const MATERIAL_DB = {
+            "PFA": { name: "PFA (Schedule 40)", epsilon: 1.5e-6, type: "Plastic" },
+            "SUS316L_EP": { name: "SUS316L EP (BA/EP)", epsilon: 0.5e-6, type: "Metal" },
+            "PVC": { name: "Clean PVC", epsilon: 1.5e-6, type: "Plastic" },
+            "PVDF": { name: "PVDF", epsilon: 1.5e-6, type: "Plastic" }
+        };
+
+        const CHEMICAL_DB = {
+            "H2SO4": { name: "硫酸 (H2SO4 96%)", sg: 1.84, visc: 25.0, type: "Acid", risk: "高黏度風險", defaultMat: "PFA" },
+            "H3PO4": { name: "磷酸 (H3PO4 85%)", sg: 1.69, visc: 45.0, type: "Acid", risk: "極高黏度", defaultMat: "PFA" },
+            "HF": { name: "氫氟酸 (HF 49%)", sg: 1.15, visc: 1.0, type: "Acid", risk: "劇毒/腐蝕", defaultMat: "PFA" },
+            "H2O2": { name: "雙氧水 (H2O2 31%)", sg: 1.11, visc: 1.2, type: "Oxidizer", risk: "產氣風險", defaultMat: "PFA" },
+            "NH4OH": { name: "氨水 (NH4OH 29%)", sg: 0.90, visc: 1.0, type: "Base", risk: "易揮發", defaultMat: "PFA" },
+            "IPA": { name: "異丙醇 (IPA)", sg: 0.78, visc: 2.0, type: "Solvent", risk: "易燃", defaultMat: "SUS316L_EP" },
+            "PGMEA": { name: "PGMEA", sg: 0.97, visc: 1.3, type: "Solvent", risk: "易燃", defaultMat: "SUS316L_EP" },
+            "DIW": { name: "純水 (Test Only)", sg: 1.0, visc: 1.0, type: "Water", risk: "參考用", defaultMat: "PVC" },
+        };
+
+        const PIPE_SIZES = [
+            { label: "15A (1/2\")", id_mm: 15.8 }, 
+            { label: "20A (3/4\")", id_mm: 20.9 }, 
+            { label: "25A (1\")", id_mm: 26.6 }, 
+            { label: "40A (1.5\")", id_mm: 40.9 }, 
+            { label: "50A (2\")", id_mm: 52.5 }, 
+            { label: "80A (3\")", id_mm: 77.9 }, 
+        ];
+
+        // --- Helper Components ---
+        const SectionHeader = ({ number, title, icon }) => (
+            <div className="flex items-center gap-3 mb-6">
+                <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-blue-50 text-blue-600 font-bold text-sm border border-blue-100">
+                    {number}
+                </div>
+                <h2 className="text-lg font-bold text-slate-800 tracking-tight">{title}</h2>
+            </div>
+        );
+
+        const PrimaryInputWrapper = ({ label, children, unit }) => (
+            <div className="relative group">
+                <label className="flex items-center justify-between text-xs font-bold text-slate-500 uppercase mb-2 tracking-wide">
+                    {label}
+                    <span className="text-[10px] bg-blue-50 text-blue-600 px-1.5 py-0.5 rounded font-bold">必填</span>
+                </label>
+                <div className="relative">
+                    {children}
+                    {unit && <span className="absolute right-3 top-3 text-xs text-slate-400 font-bold pointer-events-none">{unit}</span>}
+                </div>
+            </div>
+        );
+
+        const InputField = ({ label, value, onChange, unit, type="number", step="any", className="" }) => (
+            <div className={`group ${className}`}>
+                <label className="flex justify-between text-[11px] font-bold text-slate-400 uppercase mb-2 tracking-wider group-hover:text-indigo-600 transition-colors">
+                    {label}
+                </label>
+                <div className="relative">
+                    <input 
+                        type={type} 
+                        step={step}
+                        className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold text-slate-700 focus:bg-white focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 outline-none transition-all"
+                        value={value} 
+                        onChange={onChange}
+                    />
+                    {unit && <span className="absolute right-4 top-3 text-xs text-slate-400 font-bold pointer-events-none">{unit}</span>}
+                </div>
+            </div>
+        );
+
+        // --- Custom Tooltip for Engineering Data ---
+        const CustomTooltip = ({ active, payload, label }) => {
+            if (active && payload && payload.length) {
+                const data = payload[0].payload;
+                return (
+                    <div className="bg-slate-800/95 backdrop-blur-sm p-4 rounded-xl border border-slate-700 shadow-xl text-xs text-slate-300">
+                        <p className="font-bold text-white text-sm mb-2 border-b border-slate-600 pb-2">{label}</p>
+                        <div className="space-y-1.5">
+                            <div className="flex justify-between gap-4">
+                                <span>流速 (Velocity):</span>
+                                <span className={`font-mono font-bold ${data.vSafe ? 'text-emerald-400' : 'text-red-400'}`}>{data.v} m/s</span>
+                            </div>
+                            <div className="flex justify-between gap-4">
+                                <span>總揚程 (TDH):</span>
+                                <span className="font-mono font-bold text-white">{data.TDH_m} m</span>
+                            </div>
+                            <div className="flex justify-between gap-4">
+                                <span>雷諾數 (Re):</span>
+                                <span className="font-mono text-indigo-300">{data.Re}</span>
+                            </div>
+                            <div className="flex justify-between gap-4 mt-2 pt-2 border-t border-slate-700">
+                                <span>總壓損 (Pump Req):</span>
+                                <span className="font-mono font-bold text-amber-400">{data.P_pump_bar} Bar</span>
+                            </div>
+                        </div>
+                        {data.isRecommended && (
+                            <div className="mt-3 bg-emerald-500/20 text-emerald-300 px-2 py-1 rounded text-center font-bold border border-emerald-500/30">
+                                ⭐ Recommended
+                            </div>
+                        )}
+                    </div>
+                );
+            }
+            return null;
+        };
+
+        const HelpModal = ({ onClose }) => (
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 animate-in fade-in duration-200">
+                <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col relative overflow-hidden">
+                    <div className="bg-slate-900 text-white p-6 flex items-center justify-between shrink-0">
+                        <div className="flex items-center gap-3">
+                            <div className="bg-white/10 p-2 rounded-lg">
+                                <Beaker size={20} className="text-blue-400" />
+                            </div>
+                            <h3 className="text-lg font-bold">工程設計邏輯與警示說明</h3>
+                        </div>
+                        <button onClick={onClose} className="p-2 hover:bg-white/10 rounded-full transition-colors"><X size={20} /></button>
+                    </div>
+                    <div className="p-6 overflow-y-auto space-y-6 text-sm text-slate-600 leading-relaxed">
+                        <section>
+                            <h4 className="font-bold text-slate-900 text-base mb-2 flex items-center gap-2">
+                                <span className="w-1.5 h-6 bg-blue-500 rounded-full"></span>
+                                1. 流況判斷 (Flow Regime Logic)
+                            </h4>
+                            <p>依據 Reynolds Number (Re) 進行判斷：</p>
+                            <ul className="list-disc pl-5 mt-2 space-y-1">
+                                <li><strong>Re &lt; 2000 (Laminar):</strong> 使用層流公式 \( f = 64/Re \)。</li>
+                                <li><strong>2000 ≤ Re &lt; 4000 (Transition):</strong> 保守視為層流計算，標示為 Transition (Conservative)。</li>
+                                <li><strong>Re ≥ 4000 (Turbulent):</strong> 使用 Swamee-Jain 公式計算。</li>
+                            </ul>
+                        </section>
+                        <section>
+                            <h4 className="font-bold text-slate-900 text-base mb-2 flex items-center gap-2">
+                                <span className="w-1.5 h-6 bg-amber-500 rounded-full"></span>
+                                2. 管件與元件假設 (Fittings & Components)
+                            </h4>
+                            <ul className="list-disc pl-5 mt-2 space-y-1">
+                                <li><strong>Elbow (彎頭):</strong> 假設為 Long Radius 90° Elbow (K=0.9)。若是 Short Radius 或特殊管件，請自行保守評估。</li>
+                                <li><strong>Filter/Instrument:</strong> 假設為額定流量下的 Nominal ΔP。</li>
+                            </ul>
+                        </section>
+                        <section>
+                            <h4 className="font-bold text-slate-900 text-base mb-2 flex items-center gap-2">
+                                <span className="w-1.5 h-6 bg-emerald-500 rounded-full"></span>
+                                3. 安全警示 (Safety Check)
+                            </h4>
+                            <ul className="list-disc pl-5 space-y-1">
+                                <li><strong className="text-red-500">流速上限:</strong> 塑膠管 &gt; 2.0 m/s，金屬管 &gt; 2.5 m/s。</li>
+                                <li><strong className="text-amber-500">高黏度風險:</strong> 黏度 &gt; 20cP 時，需特別檢查吸入端 NPSHa > NPSHr。</li>
+                            </ul>
+                        </section>
+                    </div>
+                    <div className="bg-slate-50 p-4 border-t border-slate-200 text-right">
+                        <button onClick={onClose} className="px-6 py-2 bg-slate-900 text-white font-bold rounded-lg hover:bg-slate-800 transition-colors">了解</button>
+                    </div>
+                </div>
+            </div>
+        );
+
+        function App() {
+            const [chemKey, setChemKey] = useState("H2SO4");
+            const [materialKey, setMaterialKey] = useState("PFA");
+            const [showHelp, setShowHelp] = useState(false);
+            
+            const [params, setParams] = useState({
+                flowLPM: 40,      
+                length: 100,      
+                elevation: 10,    
+                elbows: 10,       
+                reqPressure: 2.5, 
+                filterQty: 1,
+                filterDP: 0.5,    
+                instrumentQty: 1,
+                instrumentDP: 0.2 
+            });
+
+            useEffect(() => {
+                const chem = CHEMICAL_DB[chemKey];
+                if (chem && chem.defaultMat) {
+                    setMaterialKey(chem.defaultMat);
+                }
+            }, [chemKey]);
+
+            // Core Calculation with Scoring
+            const calculation = useMemo(() => {
+                const chem = CHEMICAL_DB[chemKey];
+                const material = MATERIAL_DB[materialKey];
+                const densityKgM3 = chem.sg * 1000;
+                const viscosityPaS = chem.visc / 1000; 
+                const Q_m3s = params.flowLPM / 60000; 
+
+                // Material Velocity Limit
+                const maxV = material.type === "Metal" ? 2.5 : 2.0;
+
+                const results = PIPE_SIZES.map(pipe => {
+                    const D_m = pipe.id_mm / 1000;
+                    const Area = Math.PI * Math.pow(D_m/2, 2);
+                    const v = Q_m3s / Area; 
+                    const Re = (densityKgM3 * v * D_m) / viscosityPaS;
+
+                    // Friction Factor Logic
+                    let f = 0.02;
+                    let regime = "Turbulent";
+                    
+                    if (Re < 2000) {
+                        f = 64 / Re;
+                        regime = "Laminar";
+                    } else if (Re < 4000) {
+                        // Conservative Transition: Use Laminar calculation (typically yields lower f, but flow is unstable)
+                        // Per user request: "Conservatively use Laminar calculation method"
+                        f = 64 / Re;
+                        regime = "Transition (Conservative)";
+                    } else {
+                        // Swamee-Jain for Turbulent
+                        const epsilon = material.epsilon;
+                        f = 0.25 / Math.pow(Math.log10((epsilon/(3.7*D_m)) + (5.74/Math.pow(Re, 0.9))), 2);
+                    }
+
+                    // Head Loss Components
+                    const hf = f * (params.length / D_m) * (Math.pow(v, 2) / (2 * CONSTANTS.G));
+                    
+                    // Fitting Head (K=0.9 for Long Radius Elbows)
+                    const K_total = params.elbows * 0.9; 
+                    const hm = K_total * (Math.pow(v, 2) / (2 * CONSTANTS.G));
+                    
+                    const h_static = params.elevation; 
+                    const dP_components_bar = (params.filterQty * params.filterDP) + (params.instrumentQty * params.instrumentDP);
+                    const h_components = (dP_components_bar * 1e5) / (densityKgM3 * CONSTANTS.G);
+                    const h_pressure_end = (params.reqPressure * 1e5) / (densityKgM3 * CONSTANTS.G);
+                    
+                    const TDH_m = h_static + hf + hm + h_components + h_pressure_end;
+                    const P_pump_bar = (densityKgM3 * CONSTANTS.G * TDH_m) / 1e5;
+
+                    const dP_friction = (densityKgM3 * CONSTANTS.G * hf) / 1e5;
+                    const dP_elevation = (densityKgM3 * CONSTANTS.G * h_static) / 1e5;
+                    const dP_fitting = (densityKgM3 * CONSTANTS.G * hm) / 1e5;
+
+                    // Safety Checks
+                    const pSafe = P_pump_bar <= 6.0; 
+                    const vSafeCheck = v >= 0.4 && v <= maxV; // Safe range: 0.4 ~ Max
+                    
+                    // Velocity Zone Logic
+                    let vZone = "Safe";
+                    let vColor = "#10b981"; // Green
+                    if (v < 0.4) { vZone = "Risk (<0.4)"; vColor = "#ef4444"; } // Red
+                    else if (v > maxV) { vZone = "Exceeded Max"; vColor = "#ef4444"; } // Red
+                    else if (v < 0.5) { vZone = "Marginal"; vColor = "#f59e0b"; } // Amber
+
+                    // Scoring Algorithm
+                    let score = 100;
+                    score -= Math.abs(v - 1.0) * 30; // Preference: Velocity ~ 1.0 m/s
+                    if (P_pump_bar < 6.0) score += (6.0 - P_pump_bar) * 10; // Pressure margin bonus
+                    
+                    // Penalties
+                    if (v < 0.4) score -= 200; 
+                    if (v > maxV) score -= 500; // Violation of material limit
+                    if (!pSafe) score -= 1000; 
+
+                    return {
+                        ...pipe, v: parseFloat(v.toFixed(2)), Re: Math.round(Re), regime,
+                        TDH_m: parseFloat(TDH_m.toFixed(1)), P_pump_bar: parseFloat(P_pump_bar.toFixed(2)),
+                        dP_friction, dP_elevation, dP_fitting, dP_components: dP_components_bar,
+                        vSafe: vSafeCheck,
+                        pSafe,
+                        vZone, vColor, score
+                    };
+                });
+
+                // Select Best Pipe based on Score
+                const sortedResults = [...results].sort((a, b) => b.score - a.score);
+                const optimal = sortedResults[0];
+                
+                const finalResults = results.map(r => ({
+                    ...r,
+                    isRecommended: r.label === optimal.label
+                }));
+
+                // Warnings & Status
+                const warnings = [];
+                if (chem.type === "Acid" && optimal.v < 0.4) warnings.push("⚠️ 流速過低 (<0.4 m/s)：酸液可能有沉積或結晶風險。");
+                if (optimal.v >= 0.4 && optimal.v < 0.5) warnings.push("⚠️ 流速邊緣 (Marginal)：建議監控是否產生沉積。");
+                if (optimal.v > maxV) warnings.push(`⚠️ 流速過高 (>${maxV} m/s)：超過 ${material.type} 材質允許上限，有磨損或靜電風險。`);
+                
+                if (optimal.regime.includes("Laminar") && params.length > 100) warnings.push("⚠️ 長距離層流 (>100m)：可能有脈動或反應延遲風險。");
+                if (optimal.dP_components > optimal.dP_friction) warnings.push("⚠️ 元件壓損過大：請檢查過濾器尺寸，目前大於管路摩擦損耗。");
+                
+                if (chem.visc > 20) {
+                     warnings.push("⚠️ 高黏度流體 (>20cP)：請確認吸入管徑足夠，並檢查 NPSHa > NPSHr。");
+                }
+
+                let sysStatus = "PASS";
+                let statusColor = "bg-emerald-500";
+                let statusIcon = <CheckCircle size={16} />;
+                
+                if (!optimal.pSafe || optimal.v > maxV || optimal.v < 0.4) {
+                    sysStatus = "REVIEW REQUIRED";
+                    statusColor = "bg-red-500";
+                    statusIcon = <XCircle size={16} />;
+                } else if (warnings.length > 0) {
+                    sysStatus = "PASS WITH WARNING";
+                    statusColor = "bg-amber-500";
+                    statusIcon = <AlertTriangle size={16} />;
+                }
+
+                return { results: finalResults, optimal, chem, material, warnings, sysStatus, statusColor, statusIcon };
+            }, [chemKey, materialKey, params]);
+
+            const { results, optimal, chem, warnings, sysStatus, statusColor, statusIcon } = calculation;
+
+            return (
+                <div className="min-h-screen font-sans text-slate-800 pb-20 bg-slate-50">
+                    
+                    {/* Top Navigation / Hero Header */}
+                    <div className="w-full bg-slate-50 pt-6 px-4 md:px-8 pb-8">
+                        <div className="max-w-7xl mx-auto">
+                            <div className="bg-[#1e293b] rounded-2xl shadow-xl p-5 md:p-6 text-white flex flex-col md:flex-row items-start md:items-center justify-between gap-6 relative overflow-hidden">
+                                {/* Background decoration */}
+                                <div className="absolute top-0 right-0 w-64 h-64 bg-blue-500/10 rounded-full blur-3xl -mr-16 -mt-16 pointer-events-none"></div>
+
+                                <div className="flex items-center gap-5 relative z-10">
+                                    <div className="bg-white/10 p-3 rounded-xl border border-white/10 backdrop-blur-sm">
+                                        <Beaker size={28} className="text-blue-400" />
+                                    </div>
+                                    <div>
+                                        <h1 className="text-2xl font-bold tracking-tight">CDS 化學供應系統</h1>
+                                        <div className="flex items-center gap-2 text-xs font-medium text-slate-400 mt-1 uppercase tracking-wider">
+                                            <span className="text-emerald-400 font-bold">Phase 2.5</span>
+                                            <span className="w-1 h-1 bg-slate-500 rounded-full"></span>
+                                            <span>Engineering Edition</span>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div className="flex items-center gap-3 relative z-10">
+                                    <button 
+                                        onClick={() => setShowHelp(true)}
+                                        className="flex items-center gap-2 px-4 py-2.5 bg-white/5 border border-white/10 rounded-full text-slate-300 hover:bg-white/10 hover:text-white transition-all"
+                                    >
+                                        <HelpCircle size={18} />
+                                        <span className="text-xs font-bold">設計規範</span>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    {showHelp && <HelpModal onClose={() => setShowHelp(false)} />}
+
+                    <div className="max-w-7xl mx-auto px-4 md:px-8 space-y-8">
+                        
+                        {/* Hazard Alert */}
+                        {chem.risk && (
+                            <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 flex items-start gap-4">
+                                <div className="p-2 bg-amber-100 text-amber-700 rounded-lg shrink-0">
+                                    <AlertTriangle size={20} />
+                                </div>
+                                <div>
+                                    <h4 className="font-bold text-amber-900 uppercase tracking-wide text-xs mb-1">化學品特性提示 (Chemical Hazard)</h4>
+                                    <p className="text-sm text-amber-800 font-medium">{chem.risk}</p>
+                                </div>
+                            </div>
+                        )}
+
+                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                            
+                            {/* --- 01 Design Parameters --- */}
+                            <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 md:p-8">
+                                <SectionHeader number="01" title="化學品與材質設定 (Parameters)" />
+                                
+                                <div className="space-y-6">
+                                    <div>
+                                        <label className="block text-xs font-bold text-slate-500 uppercase mb-2">化學品種類 (Select Chemical)</label>
+                                        <select 
+                                            className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-semibold focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 transition-all cursor-pointer hover:bg-slate-100"
+                                            value={chemKey} onChange={e => setChemKey(e.target.value)}
+                                        >
+                                            {Object.entries(CHEMICAL_DB).map(([k, v]) => <option key={k} value={k}>{v.name}</option>)}
+                                        </select>
+                                    </div>
+
+                                    <div>
+                                        <label className="block text-xs font-bold text-slate-500 uppercase mb-2">管材材質 (Material)</label>
+                                        <select 
+                                            className="w-full px-4 py-3 bg-white border border-slate-300 rounded-xl text-sm font-semibold text-blue-700 outline-none focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 shadow-sm cursor-pointer"
+                                            value={materialKey} onChange={e => setMaterialKey(e.target.value)}
+                                        >
+                                            {Object.entries(MATERIAL_DB).map(([k, v]) => (
+                                                <option key={k} value={k}>{v.name} (ε: {v.epsilon}m)</option>
+                                            ))}
+                                        </select>
+                                        <div className="mt-2 text-[10px] text-slate-400 flex items-center gap-1">
+                                            <CheckCircle size={10} className="text-emerald-500"/>
+                                            建議材質: {CHEMICAL_DB[chemKey].defaultMat}
+                                        </div>
+                                    </div>
+
+                                    <div className="grid grid-cols-2 gap-6">
+                                        <PrimaryInputWrapper label="設計流量 (Flow Rate)" unit="LPM">
+                                            <input type="number" className="w-full p-3 bg-blue-50/50 border border-blue-200 focus:border-blue-500 rounded-xl text-xl font-mono text-blue-700 font-bold outline-none transition-all"
+                                                value={params.flowLPM} onChange={e => setParams({...params, flowLPM: parseFloat(e.target.value) || 0})}/>
+                                        </PrimaryInputWrapper>
+                                        <PrimaryInputWrapper label="需求壓力 (Req. Pressure)" unit="Bar">
+                                            <input type="number" step="0.1" className="w-full p-3 bg-white border border-slate-300 focus:border-blue-500 rounded-xl text-lg font-bold text-slate-800 outline-none transition-all"
+                                                value={params.reqPressure} onChange={e => setParams({...params, reqPressure: parseFloat(e.target.value) || 0})}/>
+                                        </PrimaryInputWrapper>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* --- 02 Piping & Components --- */}
+                            <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 md:p-8 flex flex-col">
+                                <SectionHeader number="02" title="管路與元件配置 (Config)" />
+                                
+                                <div className="space-y-6 flex-1">
+                                    <div className="grid grid-cols-2 gap-6">
+                                        <div className="col-span-2">
+                                            <label className="block text-xs font-bold text-slate-500 uppercase mb-2">管路總長度 (Total Length)</label>
+                                            <div className="relative">
+                                                <input type="number" className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-lg font-mono text-slate-700 outline-none"
+                                                    value={params.length} onChange={e => setParams({...params, length: parseFloat(e.target.value) || 0})}/>
+                                                <span className="absolute right-3 top-4 text-xs text-slate-400 font-bold pointer-events-none">m</span>
+                                            </div>
+                                        </div>
+                                        <div>
+                                            <label className="block text-xs font-bold text-slate-500 uppercase mb-2">爬升高度 (Elevation)</label>
+                                            <div className="relative">
+                                                <input type="number" className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-base font-mono text-center outline-none"
+                                                    value={params.elevation} onChange={e => setParams({...params, elevation: parseFloat(e.target.value) || 0})}/>
+                                                <span className="absolute right-3 top-3.5 text-xs text-slate-400 font-bold">m</span>
+                                            </div>
+                                        </div>
+                                        <div>
+                                            <label className="block text-xs font-bold text-slate-500 uppercase mb-2">彎頭數量 (Elbows)</label>
+                                            <input type="number" className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-base font-mono text-center outline-none"
+                                                value={params.elbows} onChange={e => setParams({...params, elbows: parseInt(e.target.value) || 0})}/>
+                                        </div>
+                                    </div>
+
+                                    {/* Components */}
+                                    <div className="bg-slate-50 p-4 rounded-xl border border-slate-100">
+                                        <label className="block text-[10px] font-bold text-slate-400 uppercase mb-3 flex items-center gap-1">
+                                            <FilterIcon size={10} /> 元件損耗 (Filter & Instrument)
+                                        </label>
+                                        <div className="grid grid-cols-2 gap-4">
+                                            <div>
+                                                <span className="text-xs text-slate-500 block mb-1">過濾器數量</span>
+                                                <input type="number" className="w-full p-2 bg-white border border-slate-200 rounded-lg text-sm font-mono text-center"
+                                                    value={params.filterQty} onChange={e => setParams({...params, filterQty: parseFloat(e.target.value) || 0})}/>
+                                            </div>
+                                            <div>
+                                                <span className="text-xs text-slate-500 block mb-1">單顆壓損 (Bar)</span>
+                                                <input type="number" step="0.1" className="w-full p-2 bg-white border border-slate-200 rounded-lg text-sm font-mono text-center"
+                                                    value={params.filterDP} onChange={e => setParams({...params, filterDP: parseFloat(e.target.value) || 0})}/>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* --- 03 Result (Dark Section) --- */}
+                        <div className="rounded-3xl overflow-hidden shadow-2xl bg-[#0f172a] text-white">
+                            <div className="p-6 md:p-8 border-b border-white/10 flex items-center justify-between">
+                                <h2 className="text-xl font-bold flex items-center gap-3">
+                                    <span className="bg-blue-600 text-white w-8 h-8 rounded-lg flex items-center justify-center text-sm font-bold">03</span>
+                                    計算結果 (Analysis Result)
+                                </h2>
+                                <div className={`px-4 py-1.5 ${statusColor}/20 border ${statusColor}/30 rounded-full text-xs font-bold ${statusColor === 'bg-red-500' ? 'text-red-300' : (statusColor === 'bg-amber-500' ? 'text-amber-300' : 'text-emerald-300')} flex items-center gap-2 uppercase tracking-wider`}>
+                                    {statusIcon} {sysStatus}
+                                </div>
+                            </div>
+
+                            <div className="grid grid-cols-1 lg:grid-cols-3">
+                                {/* Primary Result */}
+                                <div className="p-8 lg:border-r border-white/10 bg-[#1e293b]">
+                                    <div className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-4">建議管徑 (Recommended)</div>
+                                    <div className="flex items-baseline gap-4 mb-6">
+                                        <span className="text-6xl font-black text-white">{optimal.label.split(' ')[0]}</span>
+                                        <span className="text-sm text-slate-400 font-medium">{optimal.label.split(' ')[1]}</span>
+                                    </div>
+                                    
+                                    <div className="space-y-4">
+                                        <div className="flex justify-between items-center text-sm border-b border-white/5 pb-3">
+                                            <span className="text-slate-400">總揚程 (Total Head)</span>
+                                            <span className="font-mono font-bold text-2xl">{optimal.TDH_m} <span className="text-sm text-slate-500">m</span></span>
+                                        </div>
+                                        <div className="flex justify-between items-center text-sm border-b border-white/5 pb-3">
+                                            <span className="text-slate-400">幫浦出口壓力</span>
+                                            <span className="font-mono font-bold text-xl text-emerald-400">{optimal.P_pump_bar} <span className="text-sm text-emerald-600">Bar</span></span>
+                                        </div>
+                                        <div className="flex justify-between items-center text-sm">
+                                            <span className="text-slate-400">管內流速 (Score: {Math.round(optimal.score)})</span>
+                                            <span className="font-mono font-bold" style={{color: optimal.vColor}}>{optimal.v} m/s</span>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Chart & Metrics */}
+                                <div className="col-span-2 p-8 grid grid-cols-1 md:grid-cols-2 gap-8">
+                                    
+                                    {/* Chart */}
+                                    <div className="flex flex-col h-full justify-between">
+                                        <div className="text-xs font-bold text-slate-500 uppercase mb-4">壓損分佈 (Pressure Drop Breakdown)</div>
+                                        <div className="h-48 w-full">
+                                            <ResponsiveContainer width="100%" height="100%">
+                                                <BarChart data={results} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                                                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#334155" />
+                                                    <XAxis dataKey="label" tick={{fontSize: 10, fill: '#64748b'}} axisLine={{stroke: '#334155'}} tickLine={false} />
+                                                    <YAxis tick={{fontSize: 10, fill: '#64748b'}} axisLine={false} tickLine={false} />
+                                                    <RechartsTooltip content={<CustomTooltip />} cursor={{fill: '#334155'}} />
+                                                    
+                                                    <Bar dataKey="dP_elevation" name="高度損耗" stackId="a" fill="#6366f1" />
+                                                    <Bar dataKey="dP_components" name="元件損耗" stackId="a" fill="#f59e0b" />
+                                                    <Bar dataKey="dP_friction" name="摩擦損耗" stackId="a" fill="#3b82f6" />
+                                                    <Bar dataKey="dP_fitting" name="管件損耗" stackId="a" fill="#0ea5e9" />
+                                                    
+                                                    <ReferenceLine y={6.0} label={{ value: 'Pump Discharge Pressure Limit (6 bar)', fill: '#ef4444', fontSize: 11, position: 'insideTopRight' }} stroke="#ef4444" strokeDasharray="3 3" />
+                                                </BarChart>
+                                            </ResponsiveContainer>
+                                        </div>
+                                    </div>
+
+                                    {/* Engineering Log */}
+                                    <div className="bg-white/5 rounded-2xl p-5 border border-white/10">
+                                        <div className="flex items-center gap-2 mb-4">
+                                            <Activity size={16} className="text-blue-400"/>
+                                            <span className="text-xs font-bold text-slate-300 uppercase tracking-widest">Engineering Check</span>
+                                        </div>
+                                        
+                                        <div className="space-y-3">
+                                            {warnings.length > 0 ? (
+                                                warnings.map((warn, i) => (
+                                                    <div key={i} className="flex items-start gap-3 text-xs text-amber-300 bg-amber-500/10 p-2 rounded-lg border border-amber-500/20">
+                                                        <AlertTriangle size={14} className="shrink-0 mt-0.5" />
+                                                        <span>{warn}</span>
+                                                    </div>
+                                                ))
+                                            ) : (
+                                                <div className="flex items-center gap-3 text-xs text-emerald-400 bg-emerald-500/10 p-3 rounded-lg border border-emerald-500/20">
+                                                    <CheckCircle size={16} className="shrink-0" />
+                                                    <span>系統參數設計優良，無潛在風險。</span>
+                                                </div>
+                                            )}
+                                            
+                                            <div className="text-[10px] text-slate-500 mt-4 pt-4 border-t border-white/5">
+                                                <div>流速狀態: <span className="font-bold" style={{color: optimal.vColor}}>{optimal.vZone}</span></div>
+                                                <div>雷諾數 (Re): <span className="font-mono text-slate-300">{optimal.Re}</span></div>
+                                                <div>流況區間: <span className="font-mono text-slate-300">{optimal.regime}</span></div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                </div>
+                            </div>
+                        </div>
+
+                    </div>
+                </div>
+            );
+        }
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>
