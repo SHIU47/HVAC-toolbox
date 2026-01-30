@@ -2,29 +2,98 @@
 <html lang="zh-TW">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>網站搬家通知 | 東旭的空調工具箱</title>
-    <!-- 告訴搜尋引擎：這個網址已經永久搬家了 -->
     <link rel="canonical" href="https://hvac-pro-shiu.web.app/" />
     
-    <!-- 0秒後自動跳轉到新網址 -->
-    <meta http-equiv="refresh" content="0; url=https://hvac-pro-shiu.web.app/" />
+    <!-- 改成 5 秒後自動跳轉，讓您有時間確認舊網站還活著 -->
+    <meta http-equiv="refresh" content="5; url=https://hvac-pro-shiu.web.app/" />
     
     <script>
-        // 雙重保險：用 JavaScript 強制跳轉
-        window.location.href = "https://hvac-pro-shiu.web.app/";
+        // 顯示倒數計時的邏輯
+        let seconds = 5;
+        function countdown() {
+            seconds = seconds - 1;
+            if (seconds < 0) {
+                // 時間到，強制跳轉
+                window.location.href = "https://hvac-pro-shiu.web.app/";
+            } else {
+                // 更新畫面上的數字
+                const timerElement = document.getElementById("timer");
+                if (timerElement) {
+                    timerElement.innerText = seconds;
+                }
+                setTimeout(countdown, 1000);
+            }
+        }
+        // 啟動倒數
+        window.onload = countdown;
     </script>
     
     <style>
-        body { font-family: sans-serif; display: flex; justify-content: center; align-items: center; height: 100vh; text-align: center; background: #f0f9ff; color: #1e3a8a; }
-        .card { background: white; padding: 2rem; border-radius: 1rem; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
-        a { color: #2563eb; font-weight: bold; text-decoration: none; }
+        body { 
+            font-family: 'Microsoft JhengHei', -apple-system, BlinkMacSystemFont, sans-serif; 
+            display: flex; 
+            justify-content: center; 
+            align-items: center; 
+            height: 100vh; 
+            text-align: center; 
+            background: #f0f9ff; 
+            color: #1e3a8a; 
+            margin: 0; 
+        }
+        .card { 
+            background: white; 
+            padding: 3rem; 
+            border-radius: 1.5rem; 
+            box-shadow: 0 10px 25px rgba(0,0,0,0.1); 
+            max-width: 90%; 
+            width: 400px; 
+            border: 1px solid #e2e8f0;
+        }
+        h1 { margin-top: 0; color: #2563eb; font-size: 1.5rem; }
+        p { color: #64748b; line-height: 1.6; margin-bottom: 2rem; }
+        .btn { 
+            display: inline-block; 
+            padding: 12px 24px; 
+            background: #2563eb; 
+            color: white; 
+            text-decoration: none; 
+            border-radius: 99px; 
+            font-weight: bold; 
+            transition: all 0.3s; 
+            box-shadow: 0 4px 6px -1px rgba(37, 99, 235, 0.2);
+        }
+        .btn:hover { 
+            background: #1d4ed8; 
+            transform: translateY(-2px);
+            box-shadow: 0 6px 8px -1px rgba(37, 99, 235, 0.3);
+        }
+        .timer-box { font-size: 0.85rem; color: #94a3b8; margin-top: 2rem; font-weight: 500; }
+        .new-badge {
+            display: inline-block;
+            background: #dbeafe;
+            color: #2563eb;
+            font-size: 0.75rem;
+            padding: 4px 12px;
+            border-radius: 99px;
+            font-weight: 700;
+            margin-bottom: 1rem;
+            letter-spacing: 0.05em;
+        }
     </style>
 </head>
 <body>
     <div class="card">
-        <h1>我們搬新家囉！🚀</h1>
-        <p>正在將您導向新版「東旭的空調工具箱」...</p>
-        <p>如果沒有自動跳轉，<a href="https://hvac-pro-shiu.web.app/">請點擊這裡</a></p>
+        <span class="new-badge">SYSTEM MIGRATION</span>
+        <h1>🏠 我們搬新家囉！</h1>
+        <p>GitHub 舊站已停止更新。<br>現在所有的計算工具都在 Firebase 新平台。</p>
+        
+        <a href="https://hvac-pro-shiu.web.app/" class="btn">立即前往新網站</a>
+        
+        <div class="timer-box">
+            將在 <span id="timer" style="color: #ef4444; font-weight: bold;">5</span> 秒後自動跳轉...
+        </div>
     </div>
 </body>
 </html>
