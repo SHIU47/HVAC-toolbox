@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>CDS 化學系統水力計算器 (Engineering Edition)</title>
+    <title>CDS 化學系統流力計算器 (Engineering Calculation v2.1)</title>
     
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
@@ -28,6 +28,10 @@
         .prose-content::-webkit-scrollbar-track { background: transparent; }
         .prose-content::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; }
         .prose-content::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+        
+        /* Select Group Styling */
+        optgroup { font-weight: bold; color: #475569; background-color: #f1f5f9; }
+        option { color: #1e293b; background-color: #ffffff; padding: 4px; }
     </style>
 </head>
 <body class="bg-slate-50 text-slate-800">
@@ -49,8 +53,8 @@
         const X = (props) => <IconBase {...props}><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></IconBase>;
         const HelpCircle = (props) => <IconBase {...props}><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></IconBase>;
         const FilterIcon = (props) => <IconBase {...props}><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></IconBase>;
-        const Layers = (props) => <IconBase {...props}><polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/></IconBase>;
-        const Ruler = (props) => <IconBase {...props}><path d="M2 12h20"/><path d="M2 17h20"/><path d="M2 7h20"/><path d="M2 2h20"/><path d="M2 22h20"/></IconBase>;
+        const Info = (props) => <IconBase {...props}><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></IconBase>;
+        const Zap = (props) => <IconBase {...props}><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></IconBase>;
 
         // --- Constants & Database ---
         const CONSTANTS = { G: 9.81, BAR_TO_PA: 100000 };
@@ -62,15 +66,192 @@
             "PVDF": { name: "PVDF", epsilon: 1.5e-6, type: "Plastic" }
         };
 
+        // Updated Chemical Database v2.1
+        // Viscosity (cP) updated based on user data:
+        // PGMEA: 1.23 cSt * 0.967 = 1.19 cP
+        // RER 900: 2.133 cSt * 0.942 = 2.01 cP
         const CHEMICAL_DB = {
-            "H2SO4": { name: "硫酸 (H2SO4 96%)", sg: 1.84, visc: 25.0, type: "Acid", risk: "高黏度風險", defaultMat: "PFA" },
-            "H3PO4": { name: "磷酸 (H3PO4 85%)", sg: 1.69, visc: 45.0, type: "Acid", risk: "極高黏度", defaultMat: "PFA" },
-            "HF": { name: "氫氟酸 (HF 49%)", sg: 1.15, visc: 1.0, type: "Acid", risk: "劇毒/腐蝕", defaultMat: "PFA" },
-            "H2O2": { name: "雙氧水 (H2O2 31%)", sg: 1.11, visc: 1.2, type: "Oxidizer", risk: "產氣風險", defaultMat: "PFA" },
-            "NH4OH": { name: "氨水 (NH4OH 29%)", sg: 0.90, visc: 1.0, type: "Base", risk: "易揮發", defaultMat: "PFA" },
-            "IPA": { name: "異丙醇 (IPA)", sg: 0.78, visc: 2.0, type: "Solvent", risk: "易燃", defaultMat: "SUS316L_EP" },
-            "PGMEA": { name: "PGMEA", sg: 0.97, visc: 1.3, type: "Solvent", risk: "易燃", defaultMat: "SUS316L_EP" },
-            "DIW": { name: "純水 (Test Only)", sg: 1.0, visc: 1.0, type: "Water", risk: "參考用", defaultMat: "PVC" },
+            // --- Group 1: Organic Solvents ---
+            "PGMEA": { 
+                group: "Organic Solvents (有機溶劑)", name: "PGMEA (丙二醇甲醚乙酯)", 
+                sg: 0.967, visc: 1.19, type: "Solvent", 
+                risk: "易燃 / 刺激性", defaultMat: "SUS316L_EP",
+                note: "建議：鋁/錫/玻璃/HDPE/鋼。注意：需防靜電接地。" 
+            },
+            "PK_HUZ": { 
+                group: "Organic Solvents (有機溶劑)", name: "PK-HUZ (PGMEA 89-99%)", 
+                sg: 0.97, visc: 1.2, type: "Solvent", 
+                risk: "易燃 / 嚴重眼刺激 / 暈眩", defaultMat: "SUS316L_EP",
+                note: "注意：不可使用塑膠水桶 (易產生靜電)，金屬設備需接地。不相容：氧化性物質。"
+            },
+            "FN_DP001": { 
+                group: "Organic Solvents (有機溶劑)", name: "FN-DP001 (醋酸丁酯 >99%)", 
+                sg: 0.88, visc: 0.74, type: "Solvent", 
+                risk: "易燃 / 呼吸道刺激", defaultMat: "SUS316L_EP",
+                note: "建議：容器密閉。不相容：強氧化劑、強酸、強鹼、硝酸鹽。"
+            },
+            "FN_RP002": { 
+                group: "Organic Solvents (有機溶劑)", name: "FN-RP002 (MIBC >99%)", 
+                sg: 0.82, visc: 5.8, type: "Solvent", 
+                risk: "易燃 / 吸入有害 / 眼刺激", defaultMat: "SUS316L_EP",
+                note: "建議：儲存於陰涼黑暗處。不相容：強氧化劑。"
+            },
+            "IPA": { 
+                group: "Organic Solvents (有機溶劑)", name: "IPA (異丙醇 >99%)", 
+                sg: 0.785, visc: 2.0, type: "Solvent", 
+                risk: "高度易燃 / 暈眩", defaultMat: "SUS316L_EP",
+                note: "建議：需接地。不相容：強氧化劑、鐵鹽、氫-鈀、強酸。"
+            },
+            "RER_900": { 
+                group: "Organic Solvents (有機溶劑)", name: "RER 900 (環己酮 >95%)", 
+                sg: 0.942, visc: 2.01, type: "Solvent", 
+                risk: "易燃 / 吸入吞食有害", defaultMat: "SUS316L_EP",
+                note: "建議：密封的原始容器。不相容：強氧化劑、硝酸。"
+            },
+            "SST_A47": { 
+                group: "Organic Solvents (有機溶劑)", name: "SST-A47 (NMP 75%)", 
+                sg: 1.03, visc: 1.65, type: "Solvent", 
+                risk: "生殖毒性 / 眼刺激", defaultMat: "PFA",
+                note: "注意：金屬部份需接地。不相容：氧化劑、還原劑。"
+            },
+            "LA95": { 
+                group: "Organic Solvents (有機溶劑)", name: "LA95 THINNER (GBL 95%)", 
+                sg: 1.12, visc: 1.7, type: "Solvent", 
+                risk: "吞食有害 / 眼刺激", defaultMat: "SUS316L_EP",
+                note: "注意：金屬部份需接地以防靜電；避免接觸氧化劑。"
+            },
+
+            // --- Group 2: Acids ---
+            "H2SO4_96": { 
+                group: "Acids (酸類)", name: "硫酸 (H2SO4 96%)", 
+                sg: 1.839, visc: 25.0, type: "Acid", 
+                risk: "劇毒 / 嚴重灼傷 / 高黏度 / 油性", defaultMat: "PFA",
+                note: "建議：抗腐蝕材料。不相容：大部分金屬(不鏽鋼/鋁/鎳)、水(劇烈放熱)、有機物。"
+            },
+            "HNO3_70": { 
+                group: "Acids (酸類)", name: "硝酸 (HNO3 70%)", 
+                sg: 1.41, visc: 2.0, type: "Acid", 
+                risk: "氧化性 / 吸入致命 / 灼傷", defaultMat: "PFA",
+                note: "建議：抗蝕建材、合格貯櫃/玻璃瓶。不相容：金屬粉末、有機物(易燃/爆炸)、還原劑。"
+            },
+            "HCL_37": { 
+                group: "Acids (酸類)", name: "鹽酸 (HCl 36.5%)", 
+                sg: 1.18, visc: 1.9, type: "Acid", 
+                risk: "發煙 / 吸入有毒 / 金屬腐蝕", defaultMat: "PFA",
+                note: "建議：防蝕建材。不相容：金屬(生成氫氣)、鹼、氰化物。"
+            },
+            "H3PO4_86": { 
+                group: "Acids (酸類)", name: "磷酸 (H3PO4 86%)", 
+                sg: 1.71, visc: 45.0, type: "Acid", 
+                risk: "極高黏度 / 吞食有害", defaultMat: "PFA",
+                note: "建議：HDPE, 玻璃, 搪瓷, PP。不相容：金屬(生成氫氣)、鹼類。"
+            },
+            "HF_49": { 
+                group: "Acids (酸類)", name: "氫氟酸 (HF 49%)", 
+                sg: 1.185, visc: 1.0, type: "Acid", 
+                risk: "劇毒 / 蝕骨 / 致命", defaultMat: "PFA",
+                note: "建議：抗腐蝕材質(如塑膠)。絕對禁用：玻璃、陶器、含矽金屬 (溶解)。"
+            },
+            "LAL_6500": { 
+                group: "Acids (酸類)", name: "LAL 6500 (NH4F 57% / HF)", 
+                sg: 1.1, visc: 1.5, type: "Acid", 
+                risk: "劇毒 / 嚴重灼傷", defaultMat: "PFA",
+                note: "建議：抗腐蝕容器。不相容：玻璃、鋁、水泥、強酸/鹼。"
+            },
+            "LAL_30": { 
+                group: "Acids (酸類)", name: "LAL 30 (NH4F / HF)", 
+                sg: 1.1, visc: 1.2, type: "Acid", 
+                risk: "吞食有毒 / 骨骼傷害", defaultMat: "PFA",
+                note: "建議：抗腐蝕容器。不相容：玻璃、鋁、水泥、強酸/鹼。"
+            },
+            "CMP_M02": { 
+                group: "Acids (酸類)", name: "CMP-M02 (有機酸 <5%)", 
+                sg: 1.018, visc: 1.0, type: "Acid", 
+                risk: "皮膚灼傷 / 生殖危害疑慮", defaultMat: "PFA",
+                note: "不相容：鹼性物質、氧化劑、加熱的金屬。"
+            },
+
+            // --- Group 3: Bases, Developers & Plating ---
+            "TMAH_25": { 
+                group: "Bases/Plating (鹼/顯影/電鍍)", name: "TMAH 25% (顯影液)", 
+                sg: 1.014, visc: 3.13, type: "Base", 
+                risk: "皮膚吸收劇毒 / 嚴重灼傷", defaultMat: "PFA",
+                note: "建議：原容器(通常為塑膠)。不相容：鋁、銅、鋼、強氧化劑、強酸。"
+            },
+            "AD_10": { 
+                group: "Bases/Plating (鹼/顯影/電鍍)", name: "AD-10 (TMAH 2.38%)", 
+                sg: 1.0, visc: 1.0, type: "Base", 
+                risk: "神經毒性 / 嚴重灼傷", defaultMat: "PFA",
+                note: "建議：原容器(塑膠)。不相容：酸、含氯有機溶劑、金屬。"
+            },
+            "AD_1063": { 
+                group: "Bases/Plating (鹼/顯影/電鍍)", name: "AD-1063 (TMAH 0.063%)", 
+                sg: 1.0, visc: 1.0, type: "Base", 
+                risk: "皮膚接觸有毒 / 灼傷", defaultMat: "PFA",
+                note: "建議：塑膠瓶/塑膠袋。不相容：酸、金屬、氧化性物質。"
+            },
+            "NH4OH_29": { 
+                group: "Bases/Plating (鹼/顯影/電鍍)", name: "氨水 (NH4OH 29%)", 
+                sg: 0.9, visc: 1.0, type: "Base", 
+                risk: "刺鼻 / 嚴重灼傷 / 水生毒性", defaultMat: "PFA",
+                note: "建議：HDPE, 不鏽鋼。不相容：銅、銀、鋅(及合金)、鹵化物、酸。"
+            },
+            "NAOH_30": { 
+                group: "Bases/Plating (鹼/顯影/電鍍)", name: "氫氧化鈉 (NaOH 30%)", 
+                sg: 1.33, visc: 4.0, type: "Base", 
+                risk: "嚴重灼傷 / 金屬腐蝕", defaultMat: "PFA",
+                note: "建議：容器須密封防潮。不相容：鋁/輕金屬(產生氫氣)、酸、強氧化劑。"
+            },
+            "JSR_CMS": { 
+                group: "Bases/Plating (鹼/顯影/電鍍)", name: "JSR CMS-AC010 (KOH/Amine)", 
+                sg: 1.05, visc: 1.5, type: "Base", 
+                risk: "吸入危害 / 特定器官毒性", defaultMat: "PFA",
+                note: "建議：抗腐蝕材質容器。不相容：電解質溶液、強酸、強鹼。"
+            },
+            "BAKER_REZI": { 
+                group: "Bases/Plating (鹼/顯影/電鍍)", name: "BAKER REZI-38", 
+                sg: 1.0, visc: 1.2, type: "Base", 
+                risk: "嚴重灼傷 / 器官傷害", defaultMat: "PFA",
+                note: "注意：不得儲存於金屬容器中。不相容：酸、氧化劑、金屬。"
+            },
+            "MCPQ_66HD": { 
+                group: "Bases/Plating (鹼/顯影/電鍍)", name: "MCPQ-66HD-01 (CuSO4)", 
+                sg: 1.186, visc: 1.2, type: "Acidic Salt", 
+                risk: "嚴重灼傷 / 水生毒性", defaultMat: "PFA",
+                note: "不相容：強酸、強鹼、氧化劑。"
+            },
+            "MCPQ_71": { 
+                group: "Bases/Plating (鹼/顯影/電鍍)", name: "MCPQ-71-02 (CuSO4)", 
+                sg: 1.106, visc: 1.1, type: "Acidic Salt", 
+                risk: "嚴重眼損傷 / 水生毒性", defaultMat: "PFA",
+                note: "不相容：強酸、鹼、氧化劑。"
+            },
+            "MCPQ_45L": { 
+                group: "Bases/Plating (鹼/顯影/電鍍)", name: "MCPQ-45L (CuSO4)", 
+                sg: 1.141, visc: 1.1, type: "Acidic Salt", 
+                risk: "皮膚刺激 / 水生毒性", defaultMat: "PFA",
+                note: "建議：密封在乾燥通風處。"
+            },
+
+            // --- Group 4: Others ---
+            "H2O2_31": { 
+                group: "Others (其他)", name: "過氧化氫 (H2O2 31%)", 
+                sg: 1.11, visc: 1.1, type: "Oxidizer", 
+                risk: "氧化性 / 產氣風險 / 灼傷", defaultMat: "PFA",
+                note: "建議：HDPE, 玻璃, 鋁。不相容：紙、易燃物、鹼類、金屬粉末、銅合金。"
+            },
+            "OPD_4000": { 
+                group: "Others (其他)", name: "OPD 4000SC (界面活性劑)", 
+                sg: 0.98, visc: 5.0, type: "Surfactant", 
+                risk: "嚴重眼損傷 / 發泡風險", defaultMat: "PFA",
+                note: "不相容：氧化劑、醛類。"
+            },
+            "DIW": { 
+                group: "Others (其他)", name: "純水 (DIW - Test Only)", 
+                sg: 1.0, visc: 1.0, type: "Water", 
+                risk: "無", defaultMat: "PVC",
+                note: "標準測試介質。"
+            },
         };
 
         const PIPE_SIZES = [
@@ -101,24 +282,6 @@
                 <div className="relative">
                     {children}
                     {unit && <span className="absolute right-3 top-3 text-xs text-slate-400 font-bold pointer-events-none">{unit}</span>}
-                </div>
-            </div>
-        );
-
-        const InputField = ({ label, value, onChange, unit, type="number", step="any", className="" }) => (
-            <div className={`group ${className}`}>
-                <label className="flex justify-between text-[11px] font-bold text-slate-400 uppercase mb-2 tracking-wider group-hover:text-indigo-600 transition-colors">
-                    {label}
-                </label>
-                <div className="relative">
-                    <input 
-                        type={type} 
-                        step={step}
-                        className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold text-slate-700 focus:bg-white focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 outline-none transition-all"
-                        value={value} 
-                        onChange={onChange}
-                    />
-                    {unit && <span className="absolute right-4 top-3 text-xs text-slate-400 font-bold pointer-events-none">{unit}</span>}
                 </div>
             </div>
         );
@@ -213,7 +376,8 @@
         );
 
         function App() {
-            const [chemKey, setChemKey] = useState("H2SO4");
+            // Default to H2SO4 as it's a common critical chemical
+            const [chemKey, setChemKey] = useState("H2SO4_96");
             const [materialKey, setMaterialKey] = useState("PFA");
             const [showHelp, setShowHelp] = useState(false);
             
@@ -235,6 +399,16 @@
                     setMaterialKey(chem.defaultMat);
                 }
             }, [chemKey]);
+
+            // Group Chemicals for Select Dropdown
+            const groupedChemicals = useMemo(() => {
+                const groups = {};
+                Object.entries(CHEMICAL_DB).forEach(([key, chem]) => {
+                    if (!groups[chem.group]) groups[chem.group] = [];
+                    groups[chem.group].push({ key, ...chem });
+                });
+                return groups;
+            }, []);
 
             // Core Calculation with Scoring
             const calculation = useMemo(() => {
@@ -261,8 +435,7 @@
                         f = 64 / Re;
                         regime = "Laminar";
                     } else if (Re < 4000) {
-                        // Conservative Transition: Use Laminar calculation (typically yields lower f, but flow is unstable)
-                        // Per user request: "Conservatively use Laminar calculation method"
+                        // Conservative Transition
                         f = 64 / Re;
                         regime = "Transition (Conservative)";
                     } else {
@@ -340,7 +513,11 @@
                 if (optimal.dP_components > optimal.dP_friction) warnings.push("⚠️ 元件壓損過大：請檢查過濾器尺寸，目前大於管路摩擦損耗。");
                 
                 if (chem.visc > 20) {
-                     warnings.push("⚠️ 高黏度流體 (>20cP)：請確認吸入管徑足夠，並檢查 NPSHa > NPSHr。");
+                     warnings.push(`⚠️ 高黏度流體 (${chem.visc}cP)：請確認吸入管徑足夠，並檢查 NPSHa > NPSHr。`);
+                }
+
+                if (chem.group.includes("Solvent") && material.type !== "Metal") {
+                    warnings.push(`⚠️ 材質注意：有機溶劑建議優先使用金屬管 (SUS316L)，目前使用 ${material.name}。`);
                 }
 
                 let sysStatus = "PASS";
@@ -381,7 +558,7 @@
                                         <div className="flex items-center gap-2 text-xs font-medium text-slate-400 mt-1 uppercase tracking-wider">
                                             <span className="text-emerald-400 font-bold">Phase 2.5</span>
                                             <span className="w-1 h-1 bg-slate-500 rounded-full"></span>
-                                            <span>Engineering Edition</span>
+                                            <span>Engineering Edition v2.1</span>
                                         </div>
                                     </div>
                                 </div>
@@ -403,18 +580,33 @@
 
                     <div className="max-w-7xl mx-auto px-4 md:px-8 space-y-8">
                         
-                        {/* Hazard Alert */}
-                        {chem.risk && (
-                            <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 flex items-start gap-4">
-                                <div className="p-2 bg-amber-100 text-amber-700 rounded-lg shrink-0">
-                                    <AlertTriangle size={20} />
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            {/* Hazard Alert */}
+                            {chem.risk && (
+                                <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 flex items-start gap-4 h-full">
+                                    <div className="p-2 bg-amber-100 text-amber-700 rounded-lg shrink-0">
+                                        <AlertTriangle size={20} />
+                                    </div>
+                                    <div>
+                                        <h4 className="font-bold text-amber-900 uppercase tracking-wide text-xs mb-1">化學品特性提示 (Chemical Hazard)</h4>
+                                        <p className="text-sm text-amber-800 font-medium leading-relaxed">{chem.risk}</p>
+                                    </div>
                                 </div>
-                                <div>
-                                    <h4 className="font-bold text-amber-900 uppercase tracking-wide text-xs mb-1">化學品特性提示 (Chemical Hazard)</h4>
-                                    <p className="text-sm text-amber-800 font-medium">{chem.risk}</p>
+                            )}
+
+                            {/* Storage Compatibility Alert (NEW) */}
+                            {chem.note && (
+                                <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 flex items-start gap-4 h-full">
+                                    <div className="p-2 bg-blue-100 text-blue-700 rounded-lg shrink-0">
+                                        <Info size={20} />
+                                    </div>
+                                    <div>
+                                        <h4 className="font-bold text-blue-900 uppercase tracking-wide text-xs mb-1">儲存與相容性警示 (Storage & Compatibility)</h4>
+                                        <p className="text-sm text-blue-800 font-medium leading-relaxed">{chem.note}</p>
+                                    </div>
                                 </div>
-                            </div>
-                        )}
+                            )}
+                        </div>
 
                         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                             
@@ -429,7 +621,13 @@
                                             className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-semibold focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 transition-all cursor-pointer hover:bg-slate-100"
                                             value={chemKey} onChange={e => setChemKey(e.target.value)}
                                         >
-                                            {Object.entries(CHEMICAL_DB).map(([k, v]) => <option key={k} value={k}>{v.name}</option>)}
+                                            {Object.entries(groupedChemicals).map(([groupName, items]) => (
+                                                <optgroup key={groupName} label={groupName}>
+                                                    {items.map(item => (
+                                                        <option key={item.key} value={item.key}>{item.name}</option>
+                                                    ))}
+                                                </optgroup>
+                                            ))}
                                         </select>
                                     </div>
 
