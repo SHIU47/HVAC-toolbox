@@ -1,0 +1,595 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HVAC Pro - MAU 除濕性能計算器</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet">
+    
+    <!-- MathJax 配置：解決 typesetPromise 錯誤 -->
+    <script>
+        window.MathJax = {
+            tex: {
+                inlineMath: [['$', '$'], ['\\(', '\\)']],
+                displayMath: [['$$', '$$'], ['\\[', '\\]']],
+                processEscapes: true
+            },
+            options: {
+                processHtmlClass: 'tex2jax_process'
+            },
+            startup: {
+                ready: () => {
+                    MathJax.startup.defaultReady();
+                    console.log('MathJax 引擎載入完成');
+                }
+            }
+        };
+    </script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+
+    <style>
+        :root {
+            --brand-color: #0284c7;
+            --bg-color: #f8fafc;
+        }
+        body {
+            font-family: 'Inter', 'Noto Sans TC', sans-serif;
+            background-color: var(--bg-color);
+            color: #334155;
+            -webkit-font-smoothing: antialiased;
+        }
+        .app-container {
+            max-width: 1100px;
+            margin: 0 auto;
+        }
+        .glass-card {
+            background: #ffffff;
+            border: 1px solid #e2e8f0;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+        }
+        .input-focus-effect {
+            transition: all 0.3s ease;
+        }
+        .input-focus-effect:focus {
+            border-color: var(--brand-color);
+            box-shadow: 0 4px 0 -2px var(--brand-color);
+            outline: none;
+        }
+        .btn-toggle {
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .btn-toggle.active {
+            background-color: #f0f9ff;
+            border-color: var(--brand-color);
+            color: var(--brand-color);
+            box-shadow: 0 0 0 1px var(--brand-color);
+        }
+        input::-webkit-outer-spin-button,
+        input::-webkit-inner-spin-button {
+            -webkit-appearance: none;
+            margin: 0;
+        }
+        .result-value {
+            font-size: 3.5rem;
+            line-height: 1;
+        }
+    </style>
+</head>
+<body class="py-10 px-4 md:px-8 tex2jax_process">
+
+<div class="app-container">
+    <!-- 頁首設計 -->
+    <header class="flex flex-col md:flex-row items-center justify-between mb-12 gap-6 bg-white p-8 rounded-[2.5rem] border border-slate-200 shadow-sm">
+        <div class="flex items-center space-x-5">
+            <div class="w-16 h-16 bg-sky-600 rounded-2xl flex items-center justify-center text-white shadow-lg shadow-sky-100">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-10 w-10" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 15a4 4 0 004 4h9a5 5 0 10-.1-9.999 5.002 5.002 0 10-9.78 2.096A4.001 4.001 0 003 15z" />
+                </svg>
+            </div>
+            <div>
+                <h1 class="text-3xl font-extrabold text-slate-800 tracking-tight">MAU <span class="text-sky-600">Pro</span></h1>
+                <p class="text-slate-500 font-semibold text-lg" data-i18n="subtitle">外氣空調箱性能分析器</p>
+            </div>
+        </div>
+
+        <div class="flex items-center space-x-8 bg-slate-50 px-8 py-4 rounded-3xl border border-slate-100">
+            <div class="text-right">
+                <span class="text-xs font-black text-slate-400 uppercase tracking-widest block mb-1" data-i18n="label_pressure">大氣壓力</span>
+                <div class="flex items-center justify-end space-x-2">
+                    <input type="number" id="pressure" value="101.325" step="0.1" class="bg-transparent text-xl font-bold text-sky-600 text-right w-24 outline-none">
+                    <span class="text-sm font-bold text-slate-500">kPa</span>
+                </div>
+            </div>
+            <div class="h-10 w-px bg-slate-200"></div>
+            <div class="text-right">
+                <span class="text-xs font-black text-slate-400 uppercase tracking-widest block mb-1" data-i18n="label_airflow">處理風量</span>
+                <div class="flex items-center justify-end space-x-2">
+                    <input type="number" id="airFlow" value="1000" step="10" class="bg-transparent text-xl font-bold text-sky-600 text-right w-24 outline-none">
+                    <select id="flowUnit" class="bg-transparent text-sm font-bold text-slate-500 outline-none cursor-pointer">
+                        <option value="cmh">CMH</option>
+                        <option value="cfm">CFM</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- 狀態輸入區 -->
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-10">
+        <!-- 狀態 A: 入口 -->
+        <section class="glass-card rounded-[2.5rem] p-10 relative overflow-hidden">
+            <div class="absolute top-0 left-0 w-2 h-full bg-amber-400"></div>
+            <div class="flex items-center justify-between mb-8">
+                <div class="flex items-center space-x-3">
+                    <span class="w-10 h-10 rounded-full bg-amber-50 text-amber-600 flex items-center justify-center font-black text-lg">A</span>
+                    <h3 class="text-xl font-bold text-slate-800" data-i18n="title_inlet">入口空氣 (Inlet)</h3>
+                </div>
+                <div class="flex bg-slate-100 p-1 rounded-xl">
+                    <button onclick="setSecType('A', 'wb')" id="btn-A-wb" class="btn-A px-4 py-2 rounded-lg text-xs font-bold btn-toggle active" data-i18n="btn_wb">濕球</button>
+                    <button onclick="setSecType('A', 'rh')" id="btn-A-rh" class="btn-A px-4 py-2 rounded-lg text-xs font-bold btn-toggle" data-i18n="btn_rh">相對濕度</button>
+                    <button onclick="setSecType('A', 'dp')" id="btn-A-dp" class="btn-A px-4 py-2 rounded-lg text-xs font-bold btn-toggle" data-i18n="btn_dp">露點</button>
+                </div>
+            </div>
+
+            <div class="space-y-8">
+                <div>
+                    <label class="text-xs font-black text-slate-400 uppercase tracking-widest block mb-3 px-1" data-i18n="label_db">乾球溫度 Dry Bulb</label>
+                    <div class="relative">
+                        <input type="number" id="dbA" value="35" class="input-focus-effect w-full bg-transparent text-5xl font-bold text-slate-800 border-b-2 border-slate-100 pb-4 outline-none">
+                        <span class="absolute right-0 bottom-4 text-2xl font-bold text-slate-300">°C</span>
+                    </div>
+                </div>
+                <div>
+                    <label id="secLabelA" class="text-xs font-black text-slate-400 uppercase tracking-widest block mb-3 px-1" data-i18n="label_wb_full">濕球溫度 Wet Bulb</label>
+                    <div class="relative">
+                        <input type="number" id="secA" value="28" class="input-focus-effect w-full bg-transparent text-5xl font-bold text-slate-800 border-b-2 border-slate-100 pb-4 outline-none">
+                        <span id="secUnitA" class="absolute right-0 bottom-4 text-2xl font-bold text-slate-300">°C</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-3 gap-4 mt-10">
+                <div class="bg-slate-50 p-4 rounded-2xl text-center">
+                    <p class="text-[10px] font-black text-slate-400 uppercase mb-1" data-i18n="res_w">含濕量</p>
+                    <p id="wA" class="text-lg font-bold text-slate-700">--</p>
+                    <p class="text-[10px] text-slate-400 font-bold">g/kg</p>
+                </div>
+                <div class="bg-slate-50 p-4 rounded-2xl text-center">
+                    <p class="text-[10px] font-black text-slate-400 uppercase mb-1" data-i18n="res_h">比焓</p>
+                    <p id="hA" class="text-lg font-bold text-slate-700">--</p>
+                    <p class="text-[10px] text-slate-400 font-bold">kJ/kg</p>
+                </div>
+                <div class="bg-slate-50 p-4 rounded-2xl text-center">
+                    <p class="text-[10px] font-black text-slate-400 uppercase mb-1" data-i18n="res_rh">濕度</p>
+                    <p id="rhA" class="text-lg font-bold text-slate-700">--</p>
+                    <p class="text-[10px] text-slate-400 font-bold">% RH</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- 狀態 B: 出口 -->
+        <section class="glass-card rounded-[2.5rem] p-10 relative overflow-hidden">
+            <div class="absolute top-0 left-0 w-2 h-full bg-emerald-500"></div>
+            <div class="flex items-center justify-between mb-8">
+                <div class="flex items-center space-x-3">
+                    <span class="w-10 h-10 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center font-black text-lg">B</span>
+                    <h3 class="text-xl font-bold text-slate-800" data-i18n="title_outlet">出口空氣 (Outlet)</h3>
+                </div>
+                <div class="flex bg-slate-100 p-1 rounded-xl">
+                    <button onclick="setSecType('B', 'wb')" id="btn-B-wb" class="btn-B px-4 py-2 rounded-lg text-xs font-bold btn-toggle active" data-i18n="btn_wb">濕球</button>
+                    <button onclick="setSecType('B', 'rh')" id="btn-B-rh" class="btn-B px-4 py-2 rounded-lg text-xs font-bold btn-toggle" data-i18n="btn_rh">相對濕度</button>
+                    <button onclick="setSecType('B', 'dp')" id="btn-B-dp" class="btn-B px-4 py-2 rounded-lg text-xs font-bold btn-toggle" data-i18n="btn_dp">露點</button>
+                </div>
+            </div>
+
+            <div class="space-y-8">
+                <div>
+                    <label class="text-xs font-black text-slate-400 uppercase tracking-widest block mb-3 px-1" data-i18n="label_db">乾球溫度 Dry Bulb</label>
+                    <div class="relative">
+                        <input type="number" id="dbB" value="15" class="input-focus-effect w-full bg-transparent text-5xl font-bold text-slate-800 border-b-2 border-slate-100 pb-4 outline-none">
+                        <span class="absolute right-0 bottom-4 text-2xl font-bold text-slate-300">°C</span>
+                    </div>
+                </div>
+                <div>
+                    <label id="secLabelB" class="text-xs font-black text-slate-400 uppercase tracking-widest block mb-3 px-1" data-i18n="label_wb_full">濕球溫度 Wet Bulb</label>
+                    <div class="relative">
+                        <input type="number" id="secB" value="14.5" class="input-focus-effect w-full bg-transparent text-5xl font-bold text-slate-800 border-b-2 border-slate-100 pb-4 outline-none">
+                        <span id="secUnitB" class="absolute right-0 bottom-4 text-2xl font-bold text-slate-300">°C</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-3 gap-4 mt-10">
+                <div class="bg-slate-50 p-4 rounded-2xl text-center">
+                    <p class="text-[10px] font-black text-slate-400 uppercase mb-1" data-i18n="res_w">含濕量</p>
+                    <p id="wB" class="text-lg font-bold text-slate-700">--</p>
+                    <p class="text-[10px] text-slate-400 font-bold">g/kg</p>
+                </div>
+                <div class="bg-slate-50 p-4 rounded-2xl text-center">
+                    <p class="text-[10px] font-black text-slate-400 uppercase mb-1" data-i18n="res_h">比焓</p>
+                    <p id="hB" class="text-lg font-bold text-slate-700">--</p>
+                    <p class="text-[10px] text-slate-400 font-bold">kJ/kg</p>
+                </div>
+                <div class="bg-slate-50 p-4 rounded-2xl text-center">
+                    <p class="text-[10px] font-black text-slate-400 uppercase mb-1" data-i18n="res_rh">濕度</p>
+                    <p id="rhB" class="text-lg font-bold text-slate-700">--</p>
+                    <p class="text-[10px] text-slate-400 font-bold">% RH</p>
+                </div>
+            </div>
+        </section>
+    </div>
+
+    <!-- 性能摘要區 -->
+    <main class="glass-card rounded-[3rem] overflow-hidden shadow-2xl mb-12">
+        <div class="bg-slate-900 px-10 py-8 text-white flex justify-between items-center">
+            <div class="flex items-center space-x-4">
+                <div class="w-2 h-8 bg-sky-500 rounded-full"></div>
+                <h3 class="text-2xl font-bold tracking-tight" data-i18n="title_summary">MAU 處理性能摘要</h3>
+            </div>
+            <button onclick="copyResults()" class="bg-sky-600 hover:bg-sky-500 text-white px-6 py-3 rounded-2xl text-sm font-bold transition-all shadow-lg flex items-center gap-2" id="btn-copy">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" />
+                </svg>
+                <span data-i18n="btn_copy">複製設計報告</span>
+            </button>
+        </div>
+
+        <div class="p-10 md:p-14 grid grid-cols-1 md:grid-cols-2 gap-12">
+            <!-- 除濕量 -->
+            <div class="flex flex-col">
+                <span class="text-xs font-black text-slate-400 uppercase tracking-[0.2em] mb-4">Hourly Dehumidification</span>
+                <div class="flex items-baseline space-x-3">
+                    <span id="res-dehumid" class="result-value font-black text-slate-800">--</span>
+                    <span class="text-2xl font-bold text-slate-300">kg/h</span>
+                </div>
+                <div class="mt-4 flex items-center text-slate-500 font-medium bg-slate-50 w-fit px-4 py-2 rounded-full border border-slate-100">
+                    <span class="w-2 h-2 bg-blue-500 rounded-full mr-2"></span>
+                    <span data-i18n="desc_water_removal">每小時水分移除量</span>
+                </div>
+            </div>
+
+            <!-- 總冷量 -->
+            <div class="flex flex-col">
+                <span class="text-xs font-black text-slate-400 uppercase tracking-[0.2em] mb-4">Total Cooling Capacity</span>
+                <div class="flex items-baseline space-x-3">
+                    <span id="res-total-cap" class="result-value font-black text-sky-600">--</span>
+                    <span class="text-2xl font-bold text-sky-200">kW</span>
+                </div>
+                <div id="res-rt" class="mt-4 flex items-center text-sky-700 font-bold bg-sky-50 w-fit px-4 py-2 rounded-full border border-sky-100">
+                    約 -- RT (冷凍噸)
+                </div>
+            </div>
+
+            <!-- 顯熱能力 -->
+            <div class="flex flex-col pt-8 border-t border-slate-100">
+                <span class="text-xs font-black text-slate-400 uppercase tracking-[0.2em] mb-4">Sensible Capacity</span>
+                <div class="flex items-baseline space-x-3">
+                    <span id="res-sens-cap" class="text-4xl font-black text-slate-800">--</span>
+                    <span class="text-xl font-bold text-slate-300">kW</span>
+                </div>
+                <p id="res-shr" class="mt-2 text-sm font-bold text-slate-400 uppercase tracking-tighter">顯熱比 SHR: --</p>
+            </div>
+
+            <!-- 潛熱能力 -->
+            <div class="flex flex-col pt-8 border-t border-slate-100">
+                <span class="text-xs font-black text-slate-400 uppercase tracking-[0.2em] mb-4">Latent Capacity</span>
+                <div class="flex items-baseline space-x-3">
+                    <span id="res-lat-cap" class="text-4xl font-black text-slate-800">--</span>
+                    <span class="text-xl font-bold text-slate-300">kW</span>
+                </div>
+                <p class="mt-2 text-sm font-bold text-slate-400" data-i18n="desc_latent">除濕與潛熱負荷</p>
+            </div>
+        </div>
+    </main>
+
+    <!-- 腳部參考區 -->
+    <section class="bg-white rounded-[2rem] border border-slate-200 p-8 shadow-sm grid grid-cols-1 md:grid-cols-2 gap-10">
+        <div>
+            <div class="flex items-center space-x-3 mb-6">
+                <div class="w-1 h-6 bg-sky-500 rounded-full"></div>
+                <h3 class="text-slate-800 font-bold text-lg uppercase tracking-tight" data-i18n="footer_basis">計算依據 (Physics)</h3>
+            </div>
+            <ul class="space-y-4 text-sm text-slate-500 font-medium">
+                <li class="flex items-start">
+                    <span class="w-1.5 h-1.5 bg-slate-300 rounded-full mt-1.5 mr-3 shrink-0"></span>
+                    <span data-i18n="footer_p1">基於 $ASHRAE\ Fundamentals\ 2017$ 高精度空氣線圖公式。</span>
+                </li>
+                <li class="flex items-start">
+                    <span class="w-1.5 h-1.5 bg-slate-300 rounded-full mt-1.5 mr-3 shrink-0"></span>
+                    <span data-i18n="footer_p2">除濕量 $M_w = \rho \cdot Q \cdot (W_A - W_B)$，其中密度 $\rho$ 依入口狀態自動修正。</span>
+                </li>
+                <li class="flex items-start">
+                    <span class="w-1.5 h-1.5 bg-slate-300 rounded-full mt-1.5 mr-3 shrink-0"></span>
+                    <span data-i18n="footer_p3">總冷量包含顯熱與潛熱，採用比焓差公式 $Q_t = \rho \cdot Q \cdot (h_A - h_B)$ 進行計算。</span>
+                </li>
+            </ul>
+        </div>
+        <div class="bg-slate-50 rounded-2xl p-6 border border-slate-100">
+            <h4 class="text-slate-700 font-bold mb-3 flex items-center">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2 text-amber-500" viewBox="0 0 20 20" fill="currentColor">
+                    <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd" />
+                </svg>
+                <span data-i18n="footer_advice_title">MAU 設計建議</span>
+            </h4>
+            <p class="text-sm text-slate-500 leading-relaxed font-medium" data-i18n="footer_advice_text">
+                設計外氣空調箱時，出口溫度 (State B) 通常建議設定在露點 $12 \sim 14^\circ\text{C}$ 以利除濕。若該地區夏季極端潮濕，請確保冷卻盤管排數足夠（通常為 $6 \sim 8$ 排）以達成熱焓降。
+            </p>
+        </div>
+    </section>
+
+    <footer class="mt-16 text-center text-slate-400 text-sm font-medium">
+        HVAC Pro Engineering Suite • 2026 Version
+    </footer>
+</div>
+
+<script>
+    // Use var to prevent re-declaration errors
+    var urlParams = new URLSearchParams(window.location.search);
+    var lang = urlParams.get('lang') || 'zh'; // Default to Traditional Chinese
+    document.documentElement.lang = lang === 'en' ? 'en' : 'zh-TW';
+
+    var i18nData = {
+        zh: {
+            subtitle: "外氣空調箱性能分析器",
+            label_pressure: "大氣壓力",
+            label_airflow: "處理風量",
+            title_inlet: "入口空氣 (Inlet)",
+            title_outlet: "出口空氣 (Outlet)",
+            btn_wb: "濕球",
+            btn_rh: "相對濕度",
+            btn_dp: "露點",
+            label_db: "乾球溫度 Dry Bulb",
+            label_wb_full: "濕球溫度 Wet Bulb",
+            label_rh_full: "相對濕度 RH",
+            label_dp_full: "露點溫度 Dew Point",
+            res_w: "含濕量",
+            res_h: "比焓",
+            res_rh: "濕度",
+            title_summary: "MAU 處理性能摘要",
+            btn_copy: "複製設計報告",
+            btn_copy_done: "✅ 報告已複製",
+            desc_water_removal: "每小時水分移除量",
+            res_rt_prefix: "約 ",
+            res_rt_suffix: " RT (冷凍噸)",
+            res_shr_prefix: "顯熱比 SHR: ",
+            desc_latent: "除濕與潛熱負荷",
+            footer_basis: "計算依據 (Physics)",
+            footer_p1: "基於 $ASHRAE\\ Fundamentals\\ 2017$ 高精度空氣線圖公式。",
+            footer_p2: "除濕量 $M_w = \\rho \\cdot Q \\cdot (W_A - W_B)$，其中密度 $\\rho$ 依入口狀態自動修正。",
+            footer_p3: "總冷量包含顯熱與潛熱，採用比焓差公式 $Q_t = \\rho \\cdot Q \cdot (h_A - h_B)$ 進行計算。",
+            footer_advice_title: "MAU 設計建議",
+            footer_advice_text: "設計外氣空調箱時，出口溫度 (State B) 通常建議設定在露點 $12 \\sim 14^\\circ\\text{C}$ 以利除濕。若該地區夏季極端潮濕，請確保冷卻盤管排數足夠（通常為 $6 \\sim 8$ 排）以達成熱焓降。",
+            
+            // Report Text
+            rpt_title: "[MAU 性能設計報告]",
+            rpt_air: "風量",
+            rpt_press: "大氣壓力",
+            rpt_secA: "【狀態 A - 入口】",
+            rpt_secB: "【狀態 B - 出口】",
+            rpt_db: "乾球",
+            rpt_w: "含濕量",
+            rpt_h: "比焓",
+            rpt_sum: "【MAU 性能摘要】",
+            rpt_dehumid: "除濕量",
+            rpt_total: "總冷卻能力",
+            rpt_sens: "顯熱能力",
+            rpt_lat: "潛熱能力",
+            rpt_shr: "顯熱比 (SHR)"
+        },
+        en: {
+            subtitle: "MAU Performance Analyzer",
+            label_pressure: "Pressure",
+            label_airflow: "Airflow",
+            title_inlet: "Inlet Air (State A)",
+            title_outlet: "Outlet Air (State B)",
+            btn_wb: "Wet Bulb",
+            btn_rh: "RH %",
+            btn_dp: "Dew Point",
+            label_db: "Dry Bulb Temperature",
+            label_wb_full: "Wet Bulb Temperature",
+            label_rh_full: "Relative Humidity",
+            label_dp_full: "Dew Point Temperature",
+            res_w: "Hum. Ratio",
+            res_h: "Enthalpy",
+            res_rh: "Rel. Hum.",
+            title_summary: "MAU Performance Summary",
+            btn_copy: "Copy Design Report",
+            btn_copy_done: "✅ Report Copied",
+            desc_water_removal: "Moisture Removal Rate",
+            res_rt_prefix: "Approx. ",
+            res_rt_suffix: " RT",
+            res_shr_prefix: "Sensible Heat Ratio (SHR): ",
+            desc_latent: "Dehumidification Load",
+            footer_basis: "Engineering Basis (Physics)",
+            footer_p1: "Based on $ASHRAE\\ Fundamentals\\ 2017$ Psychrometric formulas.",
+            footer_p2: "Moisture $M_w = \\rho \\cdot Q \\cdot (W_A - W_B)$, density $\\rho$ corrected by inlet state.",
+            footer_p3: "Total cooling includes sensible & latent, calculated via Enthalpy diff $Q_t = \\rho \\cdot Q \\cdot (h_A - h_B)$.",
+            footer_advice_title: "Design Recommendation",
+            footer_advice_text: "For Makeup Air Units (MAU), it is generally recommended to set Outlet (State B) Dew Point to $12 \\sim 14^\\circ\\text{C}$ for effective dehumidification. Ensure sufficient coil rows ($6 \\sim 8$) for high enthalpy drop.",
+
+            // Report Text
+            rpt_title: "[MAU Performance Design Report]",
+            rpt_air: "Airflow",
+            rpt_press: "Pressure",
+            rpt_secA: "[State A - Inlet]",
+            rpt_secB: "[State B - Outlet]",
+            rpt_db: "DB",
+            rpt_w: "W",
+            rpt_h: "Enthalpy",
+            rpt_sum: "[Performance Summary]",
+            rpt_dehumid: "Dehumidification",
+            rpt_total: "Total Capacity",
+            rpt_sens: "Sensible Cap.",
+            rpt_lat: "Latent Cap.",
+            rpt_shr: "SHR"
+        }
+    };
+
+    let secTypeA = 'wb';
+    let secTypeB = 'wb';
+
+    const inputIds = ['pressure', 'airFlow', 'flowUnit', 'dbA', 'secA', 'dbB', 'secB'];
+
+    function updateStaticText() {
+        document.querySelectorAll('[data-i18n]').forEach(el => {
+            const key = el.getAttribute('data-i18n');
+            if (i18nData[lang][key]) {
+                el.innerHTML = i18nData[lang][key];
+            }
+        });
+    }
+
+    function setSecType(state, type) {
+        if (state === 'A') secTypeA = type; else secTypeB = type;
+        
+        document.querySelectorAll(`.btn-${state}`).forEach(b => b.classList.remove('active'));
+        document.getElementById(`btn-${state}-${type}`).classList.add('active');
+
+        const label = document.getElementById(`secLabel${state}`);
+        const unit = document.getElementById(`secUnit${state}`);
+
+        if (type === 'wb') { 
+            label.innerText = i18nData[lang].label_wb_full; 
+            unit.innerText = '°C'; 
+        }
+        if (type === 'rh') { 
+            label.innerText = i18nData[lang].label_rh_full; 
+            unit.innerText = '%'; 
+        }
+        if (type === 'dp') { 
+            label.innerText = i18nData[lang].label_dp_full; 
+            unit.innerText = '°C'; 
+        }
+        
+        calculate();
+    }
+
+    // --- API Configuration ---
+    const API_BASE = 'https://us-central1-hvac-pro-shiu.cloudfunctions.net';
+
+    // --- Physics Engine ---
+    function getPws(T_C) {
+        const T = T_C + 273.15;
+        let p;
+        if (T_C >= 0) {
+            const C8 = -5.8002206e3, C9 = 1.3914993, C10 = -4.8640239e-2, C11 = 4.1764768e-5, C12 = -1.4452093e-8, C13 = 6.5459673;
+            p = Math.exp(C8/T + C9 + C10*T + C11*T*T + C12*T*T*T + C13*Math.log(T));
+        } else {
+            const C1 = -5.6745359e3, C2 = 6.3925247, C3 = -9.677843e-3, C4 = 6.2215701e-7, C5 = 2.0747825e-9, C6 = -9.484024e-13, C7 = 4.1635019;
+            p = Math.exp(C1/T + C2 + C3*T + C4*T*T + C5*T*T*T + C6*T*T*T*T + C7*Math.log(T));
+        }
+        return p / 1000;
+    }
+
+    function getProperties(P, DB, val, type) {
+        let RH, W, H, VP, DP, WB;
+        const Pws_db = getPws(DB);
+
+        if (type === 'rh') {
+            RH = val / 100;
+            VP = RH * Pws_db;
+        } else if (type === 'dp') {
+            DP = val;
+            VP = getPws(DP);
+            RH = VP / Pws_db;
+        } else if (type === 'wb') {
+            WB = val;
+            const Pws_wb = getPws(WB);
+            const Ws_wb = 0.621945 * Pws_wb / (P - Pws_wb);
+            W = ((2501 - 2.326 * WB) * Ws_wb - 1.006 * (DB - WB)) / (2501 + 1.86 * DB - 4.186 * WB);
+            VP = P * W / (0.621945 + W);
+            RH = VP / Pws_db;
+        }
+
+        if (W === undefined) W = 0.621945 * VP / (P - VP);
+        H = 1.006 * DB + W * (2501 + 1.86 * DB);
+        
+        const volume = 0.287042 * (DB + 273.15) * (1 + 1.6078 * W) / P;
+        const density = (1 + W) / volume;
+
+        return { db: DB, rh: RH * 100, w: W, h: H, density: density };
+    }
+
+    async function calculate() {
+        const payload = {
+            pressure: document.getElementById('pressure').value,
+            airFlow: document.getElementById('airFlow').value,
+            flowUnit: document.getElementById('flowUnit').value,
+            dbA: document.getElementById('dbA').value,
+            secA: document.getElementById('secA').value,
+            secTypeA: secTypeA,
+            dbB: document.getElementById('dbB').value,
+            secB: document.getElementById('secB').value,
+            secTypeB: secTypeB,
+        };
+        try {
+            const resp = await fetch(`${API_BASE}/calculateAirProperties`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload),
+            });
+            const d = await resp.json();
+            document.getElementById('wA').innerText = (d.propA.w * 1000).toFixed(2);
+            document.getElementById('hA').innerText = d.propA.h.toFixed(1);
+            document.getElementById('rhA').innerText = d.propA.rh.toFixed(1);
+            document.getElementById('wB').innerText = (d.propB.w * 1000).toFixed(2);
+            document.getElementById('hB').innerText = d.propB.h.toFixed(1);
+            document.getElementById('rhB').innerText = d.propB.rh.toFixed(1);
+            document.getElementById('res-dehumid').innerText = d.dehumid.toFixed(2);
+            document.getElementById('res-total-cap').innerText = d.totalKW.toFixed(2);
+            document.getElementById('res-rt').innerText = `${i18nData[lang].res_rt_prefix}${d.totalRT.toFixed(2)}${i18nData[lang].res_rt_suffix}`;
+            document.getElementById('res-sens-cap').innerText = d.sensKW.toFixed(2);
+            document.getElementById('res-lat-cap').innerText = d.latentKW.toFixed(2);
+            document.getElementById('res-shr').innerText = `${i18nData[lang].res_shr_prefix}${d.shr.toFixed(3)}`;
+            if (window.MathJax && typeof MathJax.typesetPromise === 'function') {
+                MathJax.typesetPromise().catch((err) => console.log('MathJax typeset failed: ', err));
+            }
+        } catch(e) { console.warn("API calculation pending..."); }
+    }
+
+    function copyResults() {
+        const d = i18nData[lang];
+        const report = `
+${d.rpt_title}
+${d.rpt_air}: ${document.getElementById('airFlow').value} ${document.getElementById('flowUnit').value.toUpperCase()}
+${d.rpt_press}: ${document.getElementById('pressure').value} kPa
+---
+${d.rpt_secA}
+${d.rpt_db}: ${document.getElementById('dbA').value} °C | RH: ${document.getElementById('rhA').innerText} %
+${d.rpt_w}: ${document.getElementById('wA').innerText} g/kg | ${d.rpt_h}: ${document.getElementById('hA').innerText} kJ/kg
+---
+${d.rpt_secB}
+${d.rpt_db}: ${document.getElementById('dbB').value} °C | RH: ${document.getElementById('rhB').innerText} %
+${d.rpt_w}: ${document.getElementById('wB').innerText} g/kg | ${d.rpt_h}: ${document.getElementById('hB').innerText} kJ/kg
+---
+${d.rpt_sum}
+${d.rpt_dehumid}: ${document.getElementById('res-dehumid').innerText} kg/h
+${d.rpt_total}: ${document.getElementById('res-total-cap').innerText} kW
+${d.rpt_sens}: ${document.getElementById('res-sens-cap').innerText} kW
+${d.rpt_lat}: ${document.getElementById('res-lat-cap').innerText} kW
+${d.rpt_shr}: ${(parseFloat(document.getElementById('res-sens-cap').innerText) / parseFloat(document.getElementById('res-total-cap').innerText)).toFixed(3)}
+        `.trim();
+        
+        navigator.clipboard.writeText(report).then(() => {
+            const btnSpan = document.querySelector('#btn-copy span');
+            const originalText = btnSpan.innerText;
+            btnSpan.innerText = d.btn_copy_done;
+            setTimeout(() => { btnSpan.innerText = d.btn_copy; }, 2000);
+        });
+    }
+
+    inputIds.forEach(id => {
+        document.getElementById(id).addEventListener('input', calculate);
+        if (id === 'flowUnit') document.getElementById(id).addEventListener('change', calculate);
+    });
+
+    // 初始計算
+    window.onload = () => {
+        updateStaticText();
+        calculate();
+    };
+</script>
+
+</body>
+</html>

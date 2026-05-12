@@ -1,0 +1,1032 @@
+<!DOCTYPE html>
+<html lang="zh-TW" class="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Duct Material Estimator Pro V4.0</title>
+    
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Noto+Sans+TC:wght@400;500;700&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['"Plus Jakarta Sans"', '"Noto Sans TC"', 'sans-serif'],
+                        mono: ['"JetBrains Mono"', 'monospace'],
+                    },
+                    colors: {
+                        brand: { blue: '#1a73e8', dark: '#0f172a', accent: '#38bdf8' },
+                        gauge: {
+                            26: '#3b82f6', // blue
+                            24: '#10b981', // emerald
+                            22: '#eab308', // yellow
+                            20: '#f97316', // orange
+                            18: '#ef4444', // red
+                            16: '#8b5cf6'  // purple
+                        }
+                    },
+                    boxShadow: { 'card': '0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03)' }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        /* Base & Dark Mode Transitions */
+        body { background-color: #f8fafc; color: #1e293b; transition: background-color 0.3s, color 0.3s; }
+        html.dark body { background-color: #0f172a; color: #f8fafc; }
+        
+        /* Inputs */
+        .eng-input { width: 100%; border: 1px solid #e2e8f0; border-radius: 0.5rem; padding: 0.5rem 0.75rem; font-family: 'JetBrains Mono', monospace; font-size: 0.9rem; font-weight: 600; transition: all 0.2s; background: white; color: #1e293b;}
+        .eng-input:focus { outline: none; border-color: #3b82f6; box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1); }
+        
+        html.dark .eng-input { background: #1e293b; border-color: #334155; color: #f8fafc; }
+        html.dark .eng-input:focus { border-color: #38bdf8; box-shadow: 0 0 0 3px rgba(56, 189, 248, 0.1); }
+        
+        .input-label { font-size: 0.7rem; font-weight: 700; color: #64748b; text-transform: uppercase; margin-bottom: 0.25rem; display: block; }
+        html.dark .input-label { color: #94a3b8; }
+
+        /* Sections */
+        .section-card { background: white; border-color: #e2e8f0; transition: all 0.3s; }
+        html.dark .section-card { background: #1e293b; border-color: #334155; }
+
+        /* Editable Table Cells */
+        .inline-edit { background: transparent; border: 1px solid transparent; width: 100%; padding: 0.25rem; border-radius: 0.25rem; text-align: center; transition: all 0.2s; font-family: 'JetBrains Mono', monospace;}
+        .inline-edit:hover { border-color: #cbd5e1; background: rgba(255,255,255,0.5); }
+        .inline-edit:focus { border-color: #3b82f6; background: white; outline: none; box-shadow: 0 0 0 2px rgba(59,130,246,0.1); }
+        html.dark .inline-edit:hover { border-color: #475569; background: rgba(15,23,42,0.5); }
+        html.dark .inline-edit:focus { border-color: #38bdf8; background: #0f172a; }
+
+        /* Table Styles */
+        .data-table th { position: sticky; top: 0; z-index: 10; font-size: 10px; font-weight: 800; text-transform: uppercase; padding: 0.75rem; text-align: center; white-space: nowrap; background: #f8fafc; color: #64748b;}
+        html.dark .data-table th { background: #0f172a; color: #94a3b8; border-bottom: 1px solid #334155; }
+        .data-table td { padding: 0.25rem 0.5rem; border-bottom: 1px solid #f1f5f9; font-size: 0.875rem; vertical-align: middle; text-align: center;}
+        html.dark .data-table td { border-bottom-color: #1e293b; }
+        .data-table tbody tr { transition: background-color 0.2s; cursor: grab; }
+        .data-table tbody tr:active { cursor: grabbing; }
+        .data-table tbody tr:hover { background-color: #f0f9ff; }
+        html.dark .data-table tbody tr:hover { background-color: #1e293b; }
+        
+        .table-container::-webkit-scrollbar { height: 8px; width: 8px; }
+        .table-container::-webkit-scrollbar-track { background: transparent; }
+        .table-container::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+        html.dark .table-container::-webkit-scrollbar-thumb { background: #475569; }
+
+        /* Checkbox styling */
+        .custom-checkbox { width: 1.25rem; height: 1.25rem; border-radius: 0.25rem; border: 2px solid #cbd5e1; appearance: none; cursor: pointer; position: relative; transition: all 0.2s; background: white;}
+        .custom-checkbox:checked { background-color: #3b82f6; border-color: #3b82f6; }
+        .custom-checkbox:checked::after { content: ''; position: absolute; left: 5px; top: 1px; width: 6px; height: 12px; border: solid white; border-width: 0 2px 2px 0; transform: rotate(45deg); }
+        html.dark .custom-checkbox { background: #1e293b; border-color: #475569; }
+
+        /* Pie Chart */
+        .pie-chart { width: 100px; height: 100px; border-radius: 50%; background: conic-gradient(#334155 0% 100%); transition: background 0.5s ease; box-shadow: inset 0 0 10px rgba(0,0,0,0.5); }
+        
+        /* Progress Stack Bar */
+        .stack-bar { height: 6px; width: 100%; display: flex; border-radius: 3px; overflow: hidden; background: #e2e8f0; }
+        html.dark .stack-bar { background: #334155; }
+        .stack-segment { height: 100%; transition: width 0.5s ease; }
+
+        /* Toast */
+        #toast { position: fixed; bottom: -100px; right: 20px; transition: bottom 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55); z-index: 100; }
+        #toast.show { bottom: 20px; }
+
+        /* Print Mode */
+        @media print {
+            .no-print { display: none !important; }
+            .print-full { width: 100% !important; max-width: none !important; }
+            body, html { background: white !important; color: black !important; }
+            .section-card { box-shadow: none !important; border: 1px solid #ccc !important; }
+            .data-table th, .data-table td { color: black !important; border-bottom: 1px solid #eee !important; padding: 4px !important; }
+            .inline-edit { border: none !important; padding: 0 !important; color: black !important; }
+            .stack-bar { border: 1px solid #ccc; }
+        }
+    </style>
+</head>
+<body class="p-4 min-h-screen flex flex-col max-w-[1500px] mx-auto transition-colors duration-300 print-full">
+
+    <!-- Top Progress Bar -->
+    <div class="fixed top-0 left-0 w-full z-50 no-print">
+        <div class="stack-bar rounded-none" id="top-progress"></div>
+    </div>
+
+    <!-- Header -->
+    <header class="mb-6 mt-2 no-print">
+        <div class="bg-brand-dark rounded-2xl p-5 flex flex-col lg:flex-row justify-between items-center shadow-lg relative overflow-hidden">
+            <div class="absolute top-0 right-0 w-64 h-64 bg-blue-600/20 rounded-full blur-3xl -mr-16 -mt-16 pointer-events-none"></div>
+            
+            <div class="flex items-center gap-4 z-10 w-full lg:w-auto mb-4 lg:mb-0">
+                <div class="w-12 h-12 bg-slate-800 rounded-xl flex items-center justify-center shadow-inner border border-slate-700/50 shrink-0">
+                    <i class="fa-solid fa-layer-group text-xl text-brand-accent"></i>
+                </div>
+                <div>
+                    <h1 class="text-xl font-bold text-white tracking-tight">Duct Material Estimator <span class="text-brand-accent">V4.0</span></h1>
+                    <div class="flex items-center gap-3 mt-1 text-[10px] font-bold tracking-widest uppercase font-mono">
+                        <span class="text-slate-400" data-i18n="app_subtitle">Pro Sizing & BOM Builder</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Action Buttons -->
+            <div class="flex flex-wrap gap-2 z-10">
+                <button onclick="toggleDarkMode()" class="px-3 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg text-xs font-bold transition-colors border border-slate-700">
+                    <i class="fa-solid fa-moon" id="dark-icon"></i>
+                </button>
+                <button onclick="openBatchModal()" class="px-3 py-2 bg-indigo-900/50 hover:bg-indigo-800 text-indigo-300 rounded-lg text-xs font-bold transition-colors border border-indigo-700/50 flex items-center gap-2">
+                    <i class="fa-solid fa-paste"></i> <span data-i18n="btn_paste">批次貼上</span>
+                </button>
+                <button onclick="window.print()" class="px-3 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg text-xs font-bold transition-colors border border-slate-700 flex items-center gap-2">
+                    <i class="fa-solid fa-print"></i> <span data-i18n="btn_print">列印</span>
+                </button>
+                <button onclick="exportCSV()" class="px-3 py-2 bg-slate-800 hover:bg-slate-700 text-white rounded-lg text-xs font-bold transition-colors border border-slate-700 flex items-center gap-2">
+                    <i class="fa-solid fa-file-csv text-emerald-400"></i> <span data-i18n="btn_export">匯出料單</span>
+                </button>
+                <button onclick="clearAll()" class="px-3 py-2 bg-slate-800 hover:bg-red-900/50 text-slate-300 hover:text-red-400 rounded-lg text-xs font-bold transition-colors border border-slate-700 flex items-center gap-2">
+                    <i class="fa-solid fa-trash-can"></i>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <div class="grid grid-cols-1 xl:grid-cols-12 gap-6 print-full">
+        
+        <!-- Left Column: Inputs & Table -->
+        <div class="xl:col-span-8 flex flex-col gap-6 print-full">
+            
+            <!-- Project Info -->
+            <section class="section-card rounded-xl p-5 shadow-card border">
+                <h2 class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-4"><i class="fa-solid fa-folder-open mr-2"></i><span data-i18n="sec_project">專案設定與計算基礎</span></h2>
+                <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+                    <div class="col-span-2 md:col-span-2">
+                        <label class="input-label" data-i18n="lbl_proj_name">工程名稱</label>
+                        <input type="text" id="proj-name" class="eng-input" value="輸入專案名稱" onchange="saveData()">
+                    </div>
+                    <div>
+                        <label class="input-label" data-i18n="lbl_pressure">壓力等級 (SMACNA)</label>
+                        <select id="proj-pressure" class="eng-input cursor-pointer text-blue-600 font-bold" onchange="recalculateAll()">
+                            <option value="low" data-i18n="opt_low_pres">低壓 (Low)</option>
+                            <option value="mid" data-i18n="opt_mid_pres">中壓 (Medium)</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="input-label" data-i18n="lbl_mat">材質 (精確比重)</label>
+                        <select id="proj-mat" class="eng-input cursor-pointer" onchange="recalculateAll()">
+                            <option value="G" data-i18n="opt_galv">鍍鋅 (Galv)</option>
+                            <option value="SUS" data-i18n="opt_sus">不鏽鋼 (SUS)</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="input-label" data-i18n="lbl_waste">損耗係數 (Waste)</label>
+                        <input type="number" id="proj-waste" class="eng-input text-brand-blue" value="1.15" step="0.01" onchange="recalculateAll()">
+                    </div>
+                    <div class="flex flex-col justify-end pb-1 gap-1">
+                        <label class="flex items-center gap-2 text-xs font-bold text-slate-600 dark:text-slate-300 cursor-pointer">
+                            <input type="checkbox" id="proj-flange" class="custom-checkbox" onchange="recalculateAll()">
+                            <span data-i18n="lbl_flange">法蘭搭接補正</span>
+                        </label>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Quick Add Bar -->
+            <section class="section-card rounded-xl p-5 shadow-card border relative overflow-hidden no-print ring-1 ring-blue-500/20">
+                <div class="absolute top-0 left-0 w-1 h-full bg-blue-500"></div>
+                <div class="flex justify-between items-end mb-3">
+                    <h2 class="text-xs font-bold text-blue-500 uppercase tracking-widest"><i class="fa-solid fa-bolt mr-2"></i><span data-i18n="sec_quick">極速輸入區</span></h2>
+                    <!-- Shortcuts -->
+                    <div class="flex gap-2">
+                        <button onclick="applyShortcut(300, 300)" class="text-[10px] px-2 py-1 bg-slate-100 dark:bg-slate-700 rounded text-slate-500 hover:bg-blue-100 font-mono">300x300</button>
+                        <button onclick="applyShortcut(600, 300)" class="text-[10px] px-2 py-1 bg-slate-100 dark:bg-slate-700 rounded text-slate-500 hover:bg-blue-100 font-mono">600x300</button>
+                        <button onclick="applyShortcut(1200, 600)" class="text-[10px] px-2 py-1 bg-slate-100 dark:bg-slate-700 rounded text-slate-500 hover:bg-blue-100 font-mono">1200x600</button>
+                    </div>
+                </div>
+                
+                <div class="grid grid-cols-2 md:grid-cols-7 gap-3 items-end">
+                    <div>
+                        <label class="input-label" data-i18n="lbl_shape">形狀</label>
+                        <select id="qa-shape" class="eng-input cursor-pointer font-bold" onchange="updateShapeInput()">
+                            <option value="rect" data-i18n="opt_rect">矩形 (Rect)</option>
+                            <option value="round" data-i18n="opt_round">圓形 (Round)</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="input-label" id="qa-w-label" data-i18n="lbl_w">寬度 W</label>
+                        <input type="number" id="qa-w" class="eng-input" placeholder="mm">
+                    </div>
+                    <div id="qa-h-container">
+                        <label class="input-label" data-i18n="lbl_h">高度 H</label>
+                        <input type="number" id="qa-h" class="eng-input" placeholder="mm">
+                    </div>
+                    <div>
+                        <label class="input-label" data-i18n="lbl_l">長度 L</label>
+                        <input type="number" id="qa-l" class="eng-input" placeholder="m" step="0.1" value="1.2">
+                    </div>
+                    <div>
+                        <label class="input-label" data-i18n="lbl_qty">數量 Qty</label>
+                        <input type="number" id="qa-qty" class="eng-input font-bold" value="1" onkeypress="handleEnter(event)">
+                    </div>
+                    <div class="flex flex-col items-center pb-2">
+                        <label class="input-label text-center" data-i18n="lbl_insul">保溫</label>
+                        <input type="checkbox" id="qa-insul" class="custom-checkbox">
+                    </div>
+                    <div>
+                        <button onclick="addSegment()" class="w-full h-[38px] bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-bold text-sm shadow-md transition-all active:scale-95 flex items-center justify-center gap-2">
+                            <i class="fa-solid fa-plus"></i> <span class="md:hidden" data-i18n="btn_add">加入</span>
+                        </button>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Data Table -->
+            <section class="section-card rounded-xl shadow-card border overflow-hidden flex-1 flex flex-col print-full">
+                <div class="p-4 border-b border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50 flex justify-between items-center">
+                    <h2 class="text-sm font-bold"><i class="fa-solid fa-list-check mr-2"></i><span data-i18n="sec_list">風管清單 (可直接點擊修改 / 拖曳排序)</span></h2>
+                    <span class="text-xs text-slate-500 font-bold font-mono" id="row-count">0 筆</span>
+                </div>
+                
+                <div class="table-container overflow-y-auto max-h-[500px]">
+                    <table class="w-full data-table">
+                        <thead>
+                            <tr>
+                                <th class="w-8">≡</th>
+                                <th class="w-8">#</th>
+                                <th data-i18n="th_shape">形狀</th>
+                                <th data-i18n="th_w">W (mm)</th>
+                                <th data-i18n="th_h">H (mm)</th>
+                                <th data-i18n="th_l">L (m)</th>
+                                <th data-i18n="th_qty">數量</th>
+                                <th class="text-blue-500" data-i18n="th_gauge">厚度</th>
+                                <th class="text-emerald-500" data-i18n="th_area">面積(m²)</th>
+                                <th data-i18n="th_insul">保溫</th>
+                                <th class="w-10 no-print"></th>
+                            </tr>
+                        </thead>
+                        <tbody id="duct-table-body">
+                            <!-- JS Dynamic Rows -->
+                        </tbody>
+                        <tfoot class="sticky bottom-0 bg-slate-100 dark:bg-slate-800 border-t border-slate-300 dark:border-slate-600 font-bold text-sm z-10 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)]">
+                            <tr>
+                                <td colspan="6" class="text-right py-3 px-4 text-slate-500" data-i18n="tot_label">合計 (Totals)：</td>
+                                <td id="tf-qty" class="text-center font-mono text-brand-blue">0</td>
+                                <td></td>
+                                <td id="tf-area" class="text-center font-mono text-emerald-500">0.00</td>
+                                <td id="tf-insul" class="text-center font-mono text-amber-500">0</td>
+                                <td class="no-print"></td>
+                            </tr>
+                        </tfoot>
+                    </table>
+                    
+                    <div id="empty-state" class="py-16 flex flex-col items-center justify-center text-slate-400 dark:text-slate-600">
+                        <i class="fa-solid fa-inbox text-5xl mb-4 opacity-50"></i>
+                        <p class="text-sm font-bold" data-i18n="empty_list">目前無資料，請由上方輸入或點擊「批次貼上」</p>
+                    </div>
+                </div>
+            </section>
+        </div>
+
+        <!-- Right Column: BOM Dashboard -->
+        <div class="xl:col-span-4 print-full">
+            <div class="bg-slate-900 rounded-xl p-6 shadow-xl sticky top-4 border border-slate-700">
+                <div class="flex justify-between items-center mb-6 border-b border-slate-700 pb-4">
+                    <h2 class="text-sm font-bold text-white uppercase tracking-widest"><i class="fa-solid fa-file-invoice-dollar text-brand-accent mr-2"></i><span data-i18n="sec_bom">料單總表 (BOM)</span></h2>
+                    <div class="pie-chart" id="bom-pie"></div>
+                </div>
+                
+                <!-- Total Section -->
+                <div class="grid grid-cols-2 gap-4 mb-5">
+                    <div class="bg-slate-800/80 p-4 rounded-xl border border-slate-700">
+                        <p class="text-[10px] text-slate-400 font-bold uppercase mb-1" id="bom-tot-wt" data-i18n="bom_tot_wt">總重量 <span class="text-[8px]">(含損)</span></p>
+                        <div class="flex items-baseline gap-1">
+                            <span id="tot-weight" class="text-3xl font-black text-white font-mono transition-all duration-500">0</span>
+                            <span class="text-xs text-slate-500">kg</span>
+                        </div>
+                    </div>
+                    <div class="bg-slate-800/80 p-4 rounded-xl border border-slate-700">
+                        <p class="text-[10px] text-slate-400 font-bold uppercase mb-1" id="bom-tot-insul" data-i18n="bom_tot_insul">保溫面積 <span class="text-[8px]">(含損)</span></p>
+                        <div class="flex items-baseline gap-1">
+                            <span id="tot-insul" class="text-3xl font-black text-emerald-400 font-mono transition-all duration-500">0</span>
+                            <span class="text-xs text-slate-500">m²</span>
+                        </div>
+                    </div>
+                </div>
+
+                <h3 class="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-3 flex justify-between" id="bom-stat-title" data-i18n="bom_stat_title">
+                    <span>鐵皮厚度統計 (無條件進位張數)</span>
+                    <span class="text-[9px] text-slate-400">小數點為實際精算</span>
+                </h3>
+                
+                <div class="space-y-2" id="bom-list">
+                    <!-- Gauge Items (Populated by JS for all gauges) -->
+                </div>
+                
+            </div>
+        </div>
+
+    </div>
+
+    <!-- Batch Paste Modal -->
+    <div id="modal-batch" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl w-full max-w-2xl overflow-hidden border border-slate-200 dark:border-slate-700">
+            <div class="p-4 border-b border-slate-200 dark:border-slate-700 flex justify-between items-center bg-slate-50 dark:bg-slate-900/50">
+                <h3 class="font-bold"><i class="fa-solid fa-paste text-indigo-500 mr-2"></i><span data-i18n="modal_paste_title">從 Excel 批次貼上資料</span></h3>
+                <button onclick="closeBatchModal()" class="text-slate-400 hover:text-red-500"><i class="fa-solid fa-xmark text-lg"></i></button>
+            </div>
+            <div class="p-4">
+                <p class="text-xs text-slate-500 dark:text-slate-400 mb-2" data-i18n="modal_paste_desc">請複製 Excel 中的欄位並直接貼上。格式：<code>[形狀(rect/round)], [W], [H(圓管可空)], [L], [Qty], [保溫(Y/N)]</code></p>
+                <textarea id="batch-textarea" class="w-full h-48 eng-input text-sm p-3 font-mono leading-relaxed" placeholder="rect&#9;600&#9;300&#9;2.4&#9;5&#9;Y&#10;round&#9;400&#9;&#9;1.2&#9;2&#9;N"></textarea>
+            </div>
+            <div class="p-4 border-t border-slate-200 dark:border-slate-700 flex justify-end gap-3 bg-slate-50 dark:bg-slate-900/50">
+                <button onclick="closeBatchModal()" class="px-4 py-2 text-sm font-bold text-slate-500" data-i18n="btn_cancel">取消</button>
+                <button onclick="processBatchPaste()" class="px-6 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-sm font-bold shadow-md" data-i18n="btn_parse">解析並加入</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Notification -->
+    <div id="toast" class="bg-emerald-500 text-white px-6 py-3 rounded-xl shadow-lg font-bold flex items-center gap-3">
+        <i class="fa-solid fa-circle-check text-xl"></i>
+        <span id="toast-msg" data-i18n="toast_success">資料已成功加入</span>
+    </div>
+
+    <script>
+        // --- 語言字典與偵測 (i18n) ---
+        const i18nData = {
+            zh: {
+                app_subtitle: "Pro Sizing & BOM Builder",
+                sec_project: "專案設定與計算基礎",
+                lbl_proj_name: "工程名稱",
+                lbl_pressure: "壓力等級 (SMACNA)",
+                lbl_mat: "材質 (精確比重)",
+                lbl_waste: "損耗係數 (Waste)",
+                lbl_flange: "法蘭搭接補正",
+                opt_low_pres: "低壓 (Low)",
+                opt_mid_pres: "中壓 (Medium)",
+                opt_galv: "鍍鋅 (Galv)",
+                opt_sus: "不鏽鋼 (SUS)",
+                sec_quick: "極速輸入區",
+                lbl_shape: "形狀",
+                opt_rect: "矩形 (Rect)",
+                opt_round: "圓形 (Round)",
+                lbl_w: "寬度 W",
+                lbl_d: "直徑 Ø",
+                lbl_h: "高度 H",
+                lbl_l: "長度 L",
+                lbl_qty: "數量 Qty",
+                lbl_insul: "保溫",
+                btn_add: "加入",
+                sec_list: "風管清單 (可直接點擊修改 / 拖曳排序)",
+                th_shape: "形狀",
+                th_w: "W (mm)",
+                th_h: "H (mm)",
+                th_l: "L (m)",
+                th_qty: "數量",
+                th_gauge: "厚度",
+                th_area: "面積(m²)",
+                th_insul: "保溫",
+                row_count: "{n} 筆",
+                tot_label: "合計 (Totals)：",
+                empty_list: "目前無資料，請由上方輸入或點擊「批次貼上」",
+                sec_bom: "料單總表 (BOM)",
+                bom_tot_wt: "總重量 <span class='text-[8px]'>(含損)</span>",
+                bom_tot_insul: "保溫面積 <span class='text-[8px]'>(含損)</span>",
+                bom_stat_title: "<span>鐵皮厚度統計 (無條件進位張數)</span><span class='text-[9px] text-slate-400'>小數點為實際精算</span>",
+                sht: "張",
+                net: "淨",
+                wt: "重量",
+                btn_paste: "批次貼上",
+                btn_print: "列印",
+                btn_export: "匯出料單",
+                modal_paste_title: "從 Excel 批次貼上資料",
+                modal_paste_desc: "請複製 Excel 中的欄位並直接貼上。格式：<code>[形狀(rect/round)], [W], [H(圓管可空)], [L], [Qty], [保溫(Y/N)]</code>",
+                btn_cancel: "取消",
+                btn_parse: "解析並加入",
+                toast_success: "資料已成功加入",
+                alert_invalid: "請輸入有效的尺寸與長度！",
+                alert_parse_fail: "解析失敗，請確認格式正確。",
+                alert_clear: "確定要清空所有資料嗎？",
+                alert_no_data: "沒有資料可匯出！",
+                csv_proj: "專案名稱：",
+                csv_date: "日期：",
+                csv_mat: "材質：",
+                csv_pres: "壓力等級：",
+                csv_waste: "損耗係數：",
+                csv_bom_title: "---料單總表 (含損耗)---",
+                csv_bom_h1: "厚度",
+                csv_bom_h2: "淨面積(m2)",
+                csv_bom_h3: "3'x7'進位張數",
+                csv_bom_h4: "4'x8'進位張數",
+                csv_bom_h5: "總重量(kg)",
+                csv_tot_insul: "總保溫面積(m2)",
+                csv_list_title: "---管路清單---",
+                csv_th_idx: "項次",
+                csv_th_shape: "形狀",
+                csv_th_w: "W/D(mm)",
+                csv_th_h: "H(mm)",
+                csv_th_l: "L(m)",
+                csv_th_qty: "Qty",
+                csv_th_area: "淨面積(m2)",
+                csv_th_gauge: "厚度",
+                csv_th_insul: "保溫",
+                shape_rect: "矩形",
+                shape_rnd: "圓形",
+                yes: "是",
+                no: "否"
+            },
+            en: {
+                app_subtitle: "Pro Sizing & BOM Builder",
+                sec_project: "Project Settings & Basis",
+                lbl_proj_name: "Project Name",
+                lbl_pressure: "Pressure Class",
+                lbl_mat: "Material (Sp.Gr.)",
+                lbl_waste: "Waste Factor",
+                lbl_flange: "Flange Overlap Comp.",
+                opt_low_pres: "Low",
+                opt_mid_pres: "Medium",
+                opt_galv: "Galvanized",
+                opt_sus: "Stainless (SUS)",
+                sec_quick: "Quick Add",
+                lbl_shape: "Shape",
+                opt_rect: "Rectangular",
+                opt_round: "Round",
+                lbl_w: "Width W",
+                lbl_d: "Diameter Ø",
+                lbl_h: "Height H",
+                lbl_l: "Length L",
+                lbl_qty: "Qty",
+                lbl_insul: "Insul",
+                btn_add: "Add",
+                sec_list: "Duct List (Click to Edit / Drag to Reorder)",
+                th_shape: "Shape",
+                th_w: "W (mm)",
+                th_h: "H (mm)",
+                th_l: "L (m)",
+                th_qty: "Qty",
+                th_gauge: "Gauge",
+                th_area: "Area(m²)",
+                th_insul: "Insul.",
+                row_count: "{n} items",
+                tot_label: "Totals:",
+                empty_list: "No data available. Add from above or click 'Batch Paste'.",
+                sec_bom: "Bill of Materials (BOM)",
+                bom_tot_wt: "Total Weight <span class='text-[8px]'>(w/ waste)</span>",
+                bom_tot_insul: "Insul. Area <span class='text-[8px]'>(w/ waste)</span>",
+                bom_stat_title: "<span>Gauge Stats (Rounded Sheets)</span><span class='text-[9px] text-slate-400'>Decimals are exact</span>",
+                sht: "sht",
+                net: "Net",
+                wt: "Wt",
+                btn_paste: "Batch Paste",
+                btn_print: "Print",
+                btn_export: "Export BOM",
+                modal_paste_title: "Batch Paste from Excel",
+                modal_paste_desc: "Copy columns from Excel and paste here. Format: <code>[Shape(rect/round)], [W], [H(empty for round)], [L], [Qty], [Insul(Y/N)]</code>",
+                btn_cancel: "Cancel",
+                btn_parse: "Parse & Add",
+                toast_success: "Data added successfully",
+                alert_invalid: "Please enter valid dimensions and length!",
+                alert_parse_fail: "Parsing failed, please check the format.",
+                alert_clear: "Are you sure you want to clear all data?",
+                alert_no_data: "No data to export!",
+                csv_proj: "Project Name:",
+                csv_date: "Date:",
+                csv_mat: "Material:",
+                csv_pres: "Pressure Class:",
+                csv_waste: "Waste Factor:",
+                csv_bom_title: "--- Bill of Materials (w/ waste) ---",
+                csv_bom_h1: "Gauge",
+                csv_bom_h2: "Net Area(m2)",
+                csv_bom_h3: "3'x7' Sheets (Rounded)",
+                csv_bom_h4: "4'x8' Sheets (Rounded)",
+                csv_bom_h5: "Total Weight(kg)",
+                csv_tot_insul: "Total Insul. Area(m2)",
+                csv_list_title: "--- Duct List ---",
+                csv_th_idx: "No.",
+                csv_th_shape: "Shape",
+                csv_th_w: "W/D(mm)",
+                csv_th_h: "H(mm)",
+                csv_th_l: "L(m)",
+                csv_th_qty: "Qty",
+                csv_th_area: "Net Area(m2)",
+                csv_th_gauge: "Gauge",
+                csv_th_insul: "Insul",
+                shape_rect: "Rect",
+                shape_rnd: "Rnd",
+                yes: "Y",
+                no: "N"
+            }
+        };
+        let currentLang = 'zh';
+
+        function updateStaticText() {
+            document.querySelectorAll('[data-i18n]').forEach(el => {
+                const key = el.getAttribute('data-i18n');
+                if(i18nData[currentLang][key]) {
+                    el.innerHTML = i18nData[currentLang][key];
+                }
+            });
+        }
+
+        // --- 核心資料結構與工程常數 ---
+        let segments = [];
+        let autoId = 1;
+
+        const SHT_3X7_AREA = 1.95096; // 3'x7' ≈ 1.951 m²
+        const SHT_4X8_AREA = 2.97289; // 4'x8' ≈ 2.973 m²
+
+        // 精確的鋼板重量 (kg/m²)
+        const GAUGE_WEIGHTS = {
+            'G': { 26: 4.31, 24: 5.49, 22: 6.67, 20: 7.85, 18: 9.42, 16: 12.56 },
+            'SUS': { 26: 3.96, 24: 4.75, 22: 6.34, 20: 7.93, 18: 9.51, 16: 12.68 }
+        };
+
+        const GAUGE_COLORS = {
+            26: '#3b82f6', 24: '#10b981', 22: '#eab308', 20: '#f97316', 18: '#ef4444', 16: '#8b5cf6'
+        };
+
+        // 選型規則 (預設低壓)
+        const GAUGE_RULES = [
+            { id: 26, maxDim: 300, label: '≤ 300' },
+            { id: 24, maxDim: 750, label: '301 - 750' },
+            { id: 22, maxDim: 1500, label: '751 - 1500' },
+            { id: 20, maxDim: 2100, label: '1501 - 2100' },
+            { id: 18, maxDim: 9999, label: '> 2100' },
+            { id: 16, maxDim: 99999, label: 'Custom' } // 供中壓升級使用
+        ];
+
+        // --- 初始化與 localStorage ---
+        window.onload = () => {
+            const urlParams = new URLSearchParams(window.location.search);
+            if(urlParams.get('lang') === 'en') currentLang = 'en';
+            document.documentElement.lang = currentLang === 'en' ? 'en' : 'zh-TW';
+
+            updateStaticText();
+            loadData();
+            updateShapeInput();
+            renderTable();
+            recalculateAll();
+            
+            // 檢查深色模式
+            if(localStorage.getItem('theme') === 'dark') {
+                document.documentElement.classList.add('dark');
+                document.getElementById('dark-icon').className = "fa-solid fa-sun";
+            }
+        };
+
+        function saveData() {
+            const data = {
+                projName: document.getElementById('proj-name').value,
+                pressure: document.getElementById('proj-pressure').value,
+                mat: document.getElementById('proj-mat').value,
+                waste: document.getElementById('proj-waste').value,
+                flange: document.getElementById('proj-flange').checked,
+                segments: segments,
+                autoId: autoId
+            };
+            localStorage.setItem('ductEstimatorData', JSON.stringify(data));
+        }
+
+        function loadData() {
+            const saved = localStorage.getItem('ductEstimatorData');
+            if (saved) {
+                try {
+                    const data = JSON.parse(saved);
+                    document.getElementById('proj-name').value = data.projName || '';
+                    document.getElementById('proj-pressure').value = data.pressure || 'low';
+                    document.getElementById('proj-mat').value = data.mat || 'G';
+                    document.getElementById('proj-waste').value = data.waste || '1.15';
+                    document.getElementById('proj-flange').checked = data.flange || false;
+                    segments = data.segments || [];
+                    autoId = data.autoId || 1;
+                } catch(e) { console.error("Local storage parsing error"); }
+            }
+        }
+
+        // --- UI 操作 ---
+        function toggleDarkMode() {
+            const html = document.documentElement;
+            const icon = document.getElementById('dark-icon');
+            if (html.classList.contains('dark')) {
+                html.classList.remove('dark');
+                icon.className = "fa-solid fa-moon";
+                localStorage.setItem('theme', 'light');
+            } else {
+                html.classList.add('dark');
+                icon.className = "fa-solid fa-sun";
+                localStorage.setItem('theme', 'dark');
+            }
+            recalculateAll(); // 重繪圓餅圖顏色
+        }
+
+        function updateShapeInput() {
+            const shape = document.getElementById('qa-shape').value;
+            const wLabel = document.getElementById('qa-w-label');
+            const hContainer = document.getElementById('qa-h-container');
+            if(shape === 'round') {
+                wLabel.innerText = i18nData[currentLang].lbl_d;
+                hContainer.classList.add('hidden');
+                document.getElementById('qa-h').value = '';
+            } else {
+                wLabel.innerText = i18nData[currentLang].lbl_w;
+                hContainer.classList.remove('hidden');
+            }
+        }
+
+        function applyShortcut(w, h) {
+            document.getElementById('qa-shape').value = 'rect';
+            updateShapeInput();
+            document.getElementById('qa-w').value = w;
+            document.getElementById('qa-h').value = h;
+            document.getElementById('qa-qty').focus();
+        }
+
+        function handleEnter(e) { if(e.key === 'Enter') addSegment(); }
+
+        function showNotification() {
+            document.getElementById('toast-msg').innerText = i18nData[currentLang].toast_success;
+            const toast = document.getElementById('toast');
+            toast.classList.add('show');
+            setTimeout(() => toast.classList.remove('show'), 2500);
+        }
+
+        function openBatchModal() { document.getElementById('modal-batch').classList.remove('hidden'); }
+        function closeBatchModal() { document.getElementById('modal-batch').classList.add('hidden'); }
+
+        // --- 核心計算邏輯 ---
+        function getPressureShift() {
+            return document.getElementById('proj-pressure').value === 'mid' ? 1 : 0;
+        }
+
+        function determineGauge(w, h, shape) {
+            let maxDim = shape === 'round' ? w : Math.max(w, h);
+            let idx = GAUGE_RULES.findIndex(r => maxDim <= r.maxDim);
+            if(idx === -1) idx = GAUGE_RULES.length - 2; // Default cap at 18# if super large
+            
+            // 中壓模式：厚度升一級 (index 往後移)
+            idx += getPressureShift();
+            idx = Math.min(idx, GAUGE_RULES.length - 1); 
+            
+            return GAUGE_RULES[idx].id;
+        }
+
+        function calculateArea(w, h, l, qty, shape) {
+            let effL = parseFloat(l);
+            const useFlangeComp = document.getElementById('proj-flange').checked;
+            
+            // 法蘭搭接補正：每 1.2m 管段補 100mm (兩端各 50mm) - 僅限矩形
+            if(useFlangeComp && shape === 'rect') {
+                const joints = Math.ceil(effL / 1.2);
+                effL += (joints * 0.1); 
+            }
+
+            if (shape === 'round') return Math.PI * (w / 1000) * effL * qty;
+            return ((w + h) * 2 / 1000) * effL * qty;
+        }
+
+        function processRowUpdate(seg) {
+            seg.area = calculateArea(seg.w, seg.h, seg.l, seg.qty, seg.shape);
+            seg.gauge = determineGauge(seg.w, seg.h, seg.shape);
+            return seg;
+        }
+
+        // --- 資料異動 ---
+        function addSegment() {
+            const shape = document.getElementById('qa-shape').value;
+            const w = parseFloat(document.getElementById('qa-w').value) || 0;
+            const h = shape === 'rect' ? (parseFloat(document.getElementById('qa-h').value) || 0) : 0;
+            const l = parseFloat(document.getElementById('qa-l').value) || 0;
+            const qty = parseInt(document.getElementById('qa-qty').value) || 1;
+            const isInsul = document.getElementById('qa-insul').checked;
+            
+            if (w <= 0 || l <= 0 || qty <= 0 || (shape === 'rect' && h <= 0)) {
+                alert(i18nData[currentLang].alert_invalid); return;
+            }
+
+            let seg = { id: autoId++, shape, w, h, l, qty, isInsul };
+            segments.push(processRowUpdate(seg));
+
+            document.getElementById('qa-w').value = '';
+            if(shape === 'rect') document.getElementById('qa-h').value = '';
+            document.getElementById('qa-w').focus();
+
+            showNotification();
+            recalculateAll();
+        }
+
+        function processBatchPaste() {
+            const text = document.getElementById('batch-textarea').value;
+            const lines = text.split('\n');
+            let added = 0;
+            
+            lines.forEach(line => {
+                if(!line.trim()) return;
+                const cols = line.split(/[\t,]/).map(c => c.trim());
+                if(cols.length >= 4) {
+                    let shape = cols[0].toLowerCase().includes('round') || cols[0].includes('圓') ? 'round' : 'rect';
+                    let w = parseFloat(cols[1]) || 0;
+                    let h = parseFloat(cols[2]) || 0;
+                    let l = parseFloat(cols[3]) || 0;
+                    let qty = parseInt(cols[4]) || 1;
+                    let isInsul = cols[5] && (cols[5].toUpperCase() === 'Y' || cols[5].includes('是'));
+                    
+                    if(w > 0 && l > 0 && qty > 0) {
+                        let seg = { id: autoId++, shape, w, h, l, qty, isInsul };
+                        segments.push(processRowUpdate(seg));
+                        added++;
+                    }
+                }
+            });
+            
+            if(added > 0) {
+                document.getElementById('batch-textarea').value = '';
+                closeBatchModal();
+                showNotification();
+                recalculateAll();
+            } else {
+                alert(i18nData[currentLang].alert_parse_fail);
+            }
+        }
+
+        function updateInline(id, field, value) {
+            const seg = segments.find(s => s.id === id);
+            if(!seg) return;
+            
+            if(field === 'isInsul') seg[field] = value;
+            else seg[field] = parseFloat(value) || 0;
+            
+            processRowUpdate(seg);
+            recalculateAll();
+        }
+
+        function removeSegment(id) {
+            segments = segments.filter(s => s.id !== id);
+            recalculateAll();
+        }
+
+        function clearAll() {
+            if(confirm(i18nData[currentLang].alert_clear)) {
+                segments = [];
+                recalculateAll();
+            }
+        }
+
+        function recalculateAll() {
+            segments.forEach(seg => processRowUpdate(seg));
+            renderTable();
+            calculateBOM();
+            saveData();
+        }
+
+        // --- 拖曳排序 ---
+        let draggedIndex = null;
+        function dragStart(e, idx) { draggedIndex = idx; e.currentTarget.style.opacity = '0.5'; }
+        function dragEnd(e) { e.currentTarget.style.opacity = '1'; }
+        function dragOver(e) { e.preventDefault(); e.dataTransfer.dropEffect = 'move'; }
+        function drop(e, dropIndex) {
+            e.preventDefault();
+            if(draggedIndex === null || draggedIndex === dropIndex) return;
+            const realDragIdx = segments.length - 1 - draggedIndex;
+            const realDropIdx = segments.length - 1 - dropIndex;
+            
+            const item = segments.splice(realDragIdx, 1)[0];
+            segments.splice(realDropIdx, 0, item);
+            recalculateAll();
+        }
+
+        // --- 畫面渲染 ---
+        function renderTable() {
+            const tbody = document.getElementById('duct-table-body');
+            const emptyState = document.getElementById('empty-state');
+            document.getElementById('row-count').innerText = i18nData[currentLang].row_count.replace('{n}', segments.length);
+
+            let sumQty = 0, sumArea = 0, sumInsul = 0;
+
+            if (segments.length === 0) {
+                tbody.innerHTML = '';
+                emptyState.style.display = 'flex';
+                document.getElementById('tf-qty').innerText = '0';
+                document.getElementById('tf-area').innerText = '0.00';
+                document.getElementById('tf-insul').innerText = '0';
+                return;
+            }
+            emptyState.style.display = 'none';
+
+            let html = '';
+            const reversedSegments = [...segments].reverse();
+
+            reversedSegments.forEach((seg, displayIndex) => {
+                sumQty += seg.qty;
+                sumArea += seg.area;
+                if(seg.isInsul) sumInsul++;
+
+                const shapeStr = seg.shape === 'rect' ? i18nData[currentLang].shape_rect : i18nData[currentLang].shape_rnd;
+                const shapeIcon = seg.shape === 'rect' ? `<i class="fa-regular fa-square" title="${shapeStr}"></i>` : `<i class="fa-regular fa-circle" title="${shapeStr}"></i>`;
+                const color = GAUGE_COLORS[seg.gauge] || '#94a3b8';
+                
+                html += `
+                    <tr draggable="true" ondragstart="dragStart(event, ${displayIndex})" ondragend="dragEnd(event)" ondragover="dragOver(event)" ondrop="drop(event, ${displayIndex})" style="border-left: 4px solid ${color};">
+                        <td class="text-slate-300 cursor-grab hover:text-slate-500"><i class="fa-solid fa-grip-vertical"></i></td>
+                        <td class="text-slate-400 font-bold">${segments.length - displayIndex}</td>
+                        <td class="text-slate-500">${shapeIcon}</td>
+                        <td><input type="number" class="inline-edit" value="${seg.w}" onchange="updateInline(${seg.id}, 'w', this.value)"></td>
+                        <td>${seg.shape === 'rect' ? `<input type="number" class="inline-edit" value="${seg.h}" onchange="updateInline(${seg.id}, 'h', this.value)">` : `<span class="text-slate-300">-</span>`}</td>
+                        <td><input type="number" class="inline-edit" value="${seg.l}" step="0.1" onchange="updateInline(${seg.id}, 'l', this.value)"></td>
+                        <td><input type="number" class="inline-edit font-bold text-blue-600 dark:text-blue-400" value="${seg.qty}" onchange="updateInline(${seg.id}, 'qty', this.value)"></td>
+                        <td class="font-bold" style="color: ${color};">${seg.gauge}#</td>
+                        <td class="text-emerald-600 dark:text-emerald-400 font-bold font-mono">${seg.area.toFixed(2)}</td>
+                        <td><input type="checkbox" class="custom-checkbox w-4 h-4 rounded-sm" ${seg.isInsul ? 'checked' : ''} onchange="updateInline(${seg.id}, 'isInsul', this.checked)"></td>
+                        <td class="no-print"><button onclick="removeSegment(${seg.id})" class="text-slate-300 hover:text-red-500 w-6 h-6 rounded"><i class="fa-solid fa-trash-can"></i></button></td>
+                    </tr>
+                `;
+            });
+            tbody.innerHTML = html;
+            
+            document.getElementById('tf-qty').innerText = sumQty;
+            document.getElementById('tf-area').innerText = sumArea.toFixed(2);
+            document.getElementById('tf-insul').innerText = sumInsul;
+        }
+
+        // 數字動畫
+        function animateValue(obj, start, end, duration) {
+            let startTimestamp = null;
+            const step = (timestamp) => {
+                if (!startTimestamp) startTimestamp = timestamp;
+                const progress = Math.min((timestamp - startTimestamp) / duration, 1);
+                const ease = 1 - (1 - progress) * (1 - progress);
+                obj.innerText = (start + (end - start) * ease).toFixed(end % 1 !== 0 ? 1 : 0);
+                if (progress < 1) {
+                    window.requestAnimationFrame(step);
+                } else {
+                    obj.innerText = end.toFixed(end % 1 !== 0 ? 1 : 0);
+                }
+            };
+            window.requestAnimationFrame(step);
+        }
+
+        function calculateBOM() {
+            let bom = { 26: { area: 0 }, 24: { area: 0 }, 22: { area: 0 }, 20: { area: 0 }, 18: { area: 0 }, 16: { area: 0 }, insul: 0, weight: 0 };
+            
+            const wasteFactor = parseFloat(document.getElementById('proj-waste').value) || 1.0;
+            const matCode = document.getElementById('proj-mat').value; 
+            
+            segments.forEach(seg => {
+                if (bom[seg.gauge]) bom[seg.gauge].area += seg.area;
+                if (seg.isInsul) bom.insul += seg.area;
+            });
+
+            const bomContainer = document.getElementById('bom-list');
+            bomContainer.innerHTML = '';
+            
+            let totalArea = 0;
+            let gaugeAreas = [];
+
+            // 倒序顯示 (16#, 18#, 20#, 22#, 24#, 26#)
+            const sortedGauges = [16, 18, 20, 22, 24, 26];
+
+            sortedGauges.forEach(g => {
+                const netArea = bom[g].area;
+                if(netArea === 0 && g === 16) return; // 沒用到 16# 就不顯示
+                
+                totalArea += netArea;
+                if(netArea > 0) gaugeAreas.push({ g, area: netArea, color: GAUGE_COLORS[g] });
+
+                const grossArea = netArea * wasteFactor;
+                const weightPerM2 = GAUGE_WEIGHTS[matCode][g];
+                
+                const gSht37_raw = grossArea / SHT_3X7_AREA;
+                const gSht48_raw = grossArea / SHT_4X8_AREA;
+                const gSht37_ceil = Math.ceil(gSht37_raw);
+                const gSht48_ceil = Math.ceil(gSht48_raw);
+                const gKg = grossArea * weightPerM2;
+                
+                bom.weight += gKg;
+
+                // Build HTML
+                bomContainer.innerHTML += `
+                    <div class="bg-slate-800/50 border border-slate-700/50 rounded-lg p-3 flex flex-col gap-2 relative overflow-hidden">
+                        <div class="absolute left-0 top-0 w-1 h-full" style="background: ${GAUGE_COLORS[g]};"></div>
+                        <div class="flex justify-between items-center border-b border-slate-700/50 pb-2 pl-2">
+                            <div class="flex items-center gap-2">
+                                <div class="w-7 h-7 rounded bg-slate-800 border flex items-center justify-center font-black text-xs" style="color: ${GAUGE_COLORS[g]}; border-color: ${GAUGE_COLORS[g]}50;">${g}#</div>
+                            </div>
+                            <div class="font-mono text-white text-sm font-bold">${netArea.toFixed(2)} m² <span class="text-[9px] text-slate-500 font-sans ml-1">(${i18nData[currentLang].net})</span></div>
+                        </div>
+                        <div class="flex justify-between items-end pl-2">
+                            <div class="flex gap-5">
+                                <div>
+                                    <div class="text-[9px] text-slate-500 font-bold uppercase mb-0.5">3' x 7'</div>
+                                    <div class="text-brand-accent font-black font-mono text-base">${gSht37_ceil} <span class="text-[9px] text-slate-500 font-sans">(${gSht37_raw.toFixed(1)} ${i18nData[currentLang].sht})</span></div>
+                                </div>
+                                <div>
+                                    <div class="text-[9px] text-slate-500 font-bold uppercase mb-0.5">4' x 8'</div>
+                                    <div class="text-emerald-400 font-black font-mono text-base">${gSht48_ceil} <span class="text-[9px] text-slate-500 font-sans">(${gSht48_raw.toFixed(1)} ${i18nData[currentLang].sht})</span></div>
+                                </div>
+                            </div>
+                            <div class="text-right">
+                                <div class="text-[9px] text-slate-500 font-bold uppercase mb-0.5">${i18nData[currentLang].wt}</div>
+                                <div class="text-white font-mono text-sm">${gKg.toFixed(1)} <span class="text-[9px] text-slate-400 font-sans">kg</span></div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            });
+
+            // 總計更新 (帶動畫)
+            const wEl = document.getElementById('tot-weight');
+            const iEl = document.getElementById('tot-insul');
+            const oldW = parseFloat(wEl.innerText) || 0;
+            const oldI = parseFloat(iEl.innerText) || 0;
+            const newW = bom.weight;
+            const newI = bom.insul * wasteFactor;
+            
+            animateValue(wEl, oldW, newW, 500);
+            animateValue(iEl, oldI, newI, 500);
+
+            // 繪製圓餅圖與進度條
+            renderCharts(gaugeAreas, totalArea);
+        }
+
+        function renderCharts(gaugeAreas, totalArea) {
+            const pie = document.getElementById('bom-pie');
+            const topBar = document.getElementById('top-progress');
+            
+            if(totalArea === 0) {
+                pie.style.background = 'conic-gradient(#334155 0% 100%)';
+                topBar.innerHTML = '';
+                return;
+            }
+
+            let gradientStr = [];
+            let barHtml = '';
+            let currentPct = 0;
+
+            gaugeAreas.forEach(g => {
+                const pct = (g.area / totalArea) * 100;
+                gradientStr.push(`${g.color} ${currentPct}% ${currentPct + pct}%`);
+                barHtml += `<div class="stack-segment" style="width: ${pct}%; background: ${g.color};" title="${g.g}#: ${pct.toFixed(1)}%"></div>`;
+                currentPct += pct;
+            });
+
+            pie.style.background = `conic-gradient(${gradientStr.join(', ')})`;
+            topBar.innerHTML = barHtml;
+        }
+
+        // --- CSV 匯出 ---
+        function exportCSV() {
+            if(segments.length === 0) { alert(i18nData[currentLang].alert_no_data); return; }
+            
+            const projName = document.getElementById('proj-name').value || '未命名專案';
+            const waste = document.getElementById('proj-waste').value;
+            const pres = document.getElementById('proj-pressure').options[document.getElementById('proj-pressure').selectedIndex].text;
+            const mat = document.getElementById('proj-mat').options[document.getElementById('proj-mat').selectedIndex].text;
+            const dateStr = new Date().toISOString().split('T')[0];
+            const dict = i18nData[currentLang];
+            
+            let csv = "data:text/csv;charset=utf-8,\uFEFF";
+            
+            csv += `${dict.csv_proj},${projName},${dict.csv_date},${dateStr}\n`;
+            csv += `${dict.csv_mat},${mat},${dict.csv_pres},${pres}\n`;
+            csv += `${dict.csv_waste},${waste},,, \n\n`;
+            
+            csv += `${dict.csv_bom_title}\n`;
+            csv += `${dict.csv_bom_h1},${dict.csv_bom_h2},${dict.csv_bom_h3},${dict.csv_bom_h4},${dict.csv_bom_h5}\n`;
+            
+            const matCode = document.getElementById('proj-mat').value; 
+            const sortedGauges = [16, 18, 20, 22, 24, 26];
+            
+            sortedGauges.forEach(g => {
+                let netArea = segments.filter(s => s.gauge === g).reduce((a, b) => a + b.area, 0);
+                if(netArea === 0 && g === 16) return;
+                let grossArea = netArea * waste;
+                let s37 = Math.ceil(grossArea / SHT_3X7_AREA);
+                let s48 = Math.ceil(grossArea / SHT_4X8_AREA);
+                let kg = grossArea * GAUGE_WEIGHTS[matCode][g];
+                csv += `${g}#,${netArea.toFixed(2)},${s37},${s48},${kg.toFixed(1)}\n`;
+            });
+            
+            let insulGross = segments.filter(s => s.isInsul).reduce((a, b) => a + b.area, 0) * waste;
+            csv += `${dict.csv_tot_insul},${insulGross.toFixed(2)},,,\n\n`;
+
+            csv += `${dict.csv_list_title}\n`;
+            csv += `${dict.csv_th_idx},${dict.csv_th_shape},${dict.csv_th_w},${dict.csv_th_h},${dict.csv_th_l},${dict.csv_th_qty},${dict.csv_th_area},${dict.csv_th_gauge},${dict.csv_th_insul}\n`;
+            
+            segments.forEach((seg, i) => {
+                const shapeStr = seg.shape === 'rect' ? dict.shape_rect : dict.shape_rnd;
+                const insulStr = seg.isInsul ? dict.yes : dict.no;
+                csv += `${i+1},${shapeStr},${seg.w},${seg.h||''},${seg.l},${seg.qty},${seg.area.toFixed(2)},${seg.gauge}#,${insulStr}\n`;
+            });
+
+            const link = document.createElement("a");
+            link.href = encodeURI(csv);
+            link.download = `Duct_Estimator_${projName}_${dateStr}.csv`;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+    </script>
+</body>
+</html>

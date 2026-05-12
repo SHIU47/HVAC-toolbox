@@ -1,0 +1,1026 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Bulk Gas System — Engineering Sizing Tool v2.0</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script crossorigin src="https://unpkg.com/react@18.2.0/umd/react.production.min.js"></script>
+<script crossorigin src="https://unpkg.com/react-dom@18.2.0/umd/react-dom.production.min.js"></script>
+<script src="https://unpkg.com/prop-types/prop-types.min.js"></script>
+<script src="https://unpkg.com/recharts@2.12.7/umd/Recharts.js"></script>
+<script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;700&family=IBM+Plex+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  body { font-family: 'IBM Plex Sans', system-ui, sans-serif; background: #f0f4f8; }
+  .mono { font-family: 'IBM Plex Mono', monospace; }
+  input[type=number]::-webkit-inner-spin-button { -webkit-appearance: none; }
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track { background: #e2e8f0; border-radius: 3px; }
+  ::-webkit-scrollbar-thumb { background: #94a3b8; border-radius: 3px; }
+  .tag-flam  { background: #fef3c7; color: #92400e; border: 1px solid #fcd34d; }
+  .tag-oxid  { background: #fee2e2; color: #991b1b; border: 1px solid #fca5a5; }
+  .tag-inert { background: #e0f2fe; color: #0c4a6e; border: 1px solid #7dd3fc; }
+  .tag-asphx { background: #f5f3ff; color: #4c1d95; border: 1px solid #c4b5fd; }
+  .seg-row:nth-child(even) { background: #f8fafc; }
+  @keyframes slideUp { from { opacity:0; transform:translateY(8px); } to { opacity:1; transform:translateY(0); } }
+  .slide-up { animation: slideUp 0.3s ease-out forwards; }
+  @media print { .no-print { display:none !important; } }
+</style>
+</head>
+<body>
+<div id="root"></div>
+
+<script type="text/babel">
+const { useState, useMemo, useCallback, useEffect } = React;
+const { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip: RechartsTip, Legend, ResponsiveContainer, ReferenceLine } = window.Recharts || {};
+
+// ─── i18n Dictionary ──────────────────────────────────────────────────────────
+const i18nData = {
+  zh: {
+    appTitle: "大宗氣體系統",
+    appSubtitle: "工程計算模型",
+    appDesc: "等溫可壓縮流 · CRANE TP-410 · 專業版",
+    safetyMarginOn: "安全餘裕開啟 (80%)",
+    safetyMarginOff: "安全餘裕關閉",
+    sec1Title: "氣體 & 流量設定",
+    gasTypeLabel: "氣體種類 Gas Type",
+    molWeight: "分子量 M",
+    stdDensity: "標準密度",
+    dynViscosity: "動態黏度 μ",
+    heatRatio: "比熱比 γ",
+    soundSpeed: "音速 (25°C)",
+    recVlim: "建議 Vlim",
+    inletPressure: "入口壓力 Inlet Pressure",
+    tempLabel: "操作溫度 Temperature",
+    flowLabel: "設計流量 Flow Rate",
+    sec2Title: "管路配置 Pipe Routing",
+    pipeLength: "管路總長 Total Length",
+    pipeSchedule: "管壁厚度 Pipe Schedule",
+    fittingsQty: "管件數量 (CRANE TP-410)",
+    totalLeD: "總等效長度 Total Le/D equivalent =",
+    maxVelOverride: "自訂最大流速 Max Vel. Override",
+    gasDefault: "氣體預設",
+    maxAllowedDP: "最大容許壓降 Max Allow. ΔP",
+    minDeliveryP: "最低交貨壓力 Min Delivery P_out",
+    sec3Title: "計算結果",
+    pass: "通過",
+    fail: "失敗",
+    recSizeTitle: "推薦管徑 Recommended Size",
+    optimal: "最佳 OPTIMAL",
+    flowRegime: "流體狀態 Flow Regime",
+    reNumber: "雷諾數 Re Number",
+    frictionF: "摩擦係數 f",
+    machAvg: "馬赫數 Mach (avg)",
+    inletVel: "入口流速 Inlet vel.",
+    avgVel: "平均流速 Avg vel.",
+    outletVel: "出口流速 Outlet vel.",
+    avgVelocityTitle: "平均流速 Avg Velocity",
+    limit: "限制值 Limit:",
+    pressureDropTitle: "管路壓降 Pressure Drop",
+    pipeFricDetail: "直管摩擦 Pipe friction",
+    fitFricDetail: "管件損失 Fittings",
+    fromFittings: "來自管件",
+    outletPressureTitle: "出口壓力 Outlet Pressure P_out",
+    deliveryOk: "交貨壓力達標",
+    deliveryFail: "交貨壓力不足",
+    minReq: "最低要求 Min required:",
+    auditLogTitle: "工程稽核日誌 Engineering Audit Log",
+    auditPassMsg: "所有設計標準通過。物理參數符合等溫可壓縮流設計規範。",
+    sysCurveTitle: "系統特性曲線 — 流速與壓降 vs 管徑",
+    velAxis: "流速 Velocity",
+    dpAxis: "壓降 ΔP",
+    velLimitLine: "流速限制 Vel. Limit",
+    allSizesTitle: "全管徑對照表 — All Sizes Summary",
+    tblHeaders: ["DN", "內徑 ID (mm)", "流速 Vel (m/s)", "雷諾數 Re", "馬赫數 Ma", "壓降 ΔP (bar)", "出口壓 P_out (barg)", "摩擦係數 f", "狀態"],
+    statusOpt: "✓ 最佳",
+    statusOk: "✓ 可用",
+    statusFail: "✗ 不通過",
+    matSafetyTitle: "材質相容性 & 安全規範",
+    recMaterial: "推薦管路材質",
+    cleanReq: "清潔要求",
+    safetyNotes: "安全注意事項",
+    designCodes: "設計規範 Design Codes / Standards:",
+    reStatusMap: { Laminar: "層流 Laminar", Transition: "過渡流 Transition", Turbulent: "亂流 Turbulent" },
+    failReasons: {
+      vel: (v, limit) => `流速 ${v} m/s > 限值 ${limit} m/s`,
+      dp: (dp, limit) => `壓降 ${dp} bar > 限值 ${limit} bar`,
+      mach: (m) => `Mach ${m} > 0.3（Choked Flow 風險）`,
+      model: (ratio) => `ΔP/P_avg = ${ratio}% > 20%（模型適用邊界）`,
+      pout: (p, min) => `出口壓力 ${p} bar(g) < 最低交貨壓力 ${min} bar(g)`
+    },
+    suggestions: {
+      fitFrac: (pct) => `⚡ 管件損失佔比 ${pct}% 偏高。建議減少彎頭、截止閥，或改用 LR 彎頭取代 SR 彎頭。`,
+      modelLimit: "📊 ΔP/P_avg 超過 20%，等溫積分模型精度下降。建議使用 PIPESIM / HYSYS 進行精密分析。"
+    },
+    help: {
+      title: "工程計算模型說明書 v2.0",
+      close: "關閉",
+      s1: "01",
+      s1_t: "核心計算模型 — 等溫可壓縮流 (Isothermal Compressible Flow)",
+      s1_d: "適用條件：管路夠長使氣體與環境達到熱平衡（溫度維持常數）。",
+      s1_b1: "G：質量通量 kg/(m²·s)，定截面管中為常數，不受壓力影響。",
+      s1_b2: "P_avg：進出口平均絕對壓力（疊代求解），修正密度隨壓力的變化。",
+      s1_b3: "f：Swamee-Jain (1976) 公式，基於 P_avg 下的 Re 計算。",
+      s1_b4: "適用範圍：ΔP/P_avg < 20%（超過則進入 Fanno Flow 區域）",
+      s2: "02",
+      s2_t: "管件損失 — CRANE TP-410 等效長度法 (Le/D)",
+      s2_t1: "CRANE TP-410 係數表",
+      s2_t2: "工程意義",
+      s2_d1: "等效長度法（Le = n × D）將管件阻力換算為直管長度，再乘以管路摩擦係數 f 計算損失。相較固定 K 值法，此法可反映摩擦係數隨 Re 數的變化，在高流速場合更準確。",
+      s2_t3: "注意：Y 型過濾器",
+      s2_d2: "Le/D=400 為乾淨過濾器初始值。實際堵塞後阻力可達 2–5 倍，設計時應留有裕量或加入旁通閥。",
+      s3: "03",
+      s3_t: "設計驗證標準與工程限制",
+      s3_i1: "Mach Number < 0.3",
+      s3_d1: "可壓縮性顯著，可能造成管路振動與噪音。高流速氣體在閥門、管件局部段可能造成 Choked Flow。",
+      s3_i2: "ΔP/P_avg < 20%",
+      s3_d2: "等溫積分模型適用邊界。超過此值需進行更精密的 Fanno Flow 微分分析（如 HYSYS/PIPESIM）。",
+      s3_i3: "Velocity ≤ 氣體限值",
+      s3_d3: "依氣體服務標準設定。O₂/N₂O ≤6 m/s (CGA G-4.1)，H₂ ≤10 m/s (NFPA 2)，N₂/Ar/He ≤20-25 m/s。",
+      s3_i4: "P_out ≥ 最低交貨壓力",
+      s3_d4: "出口壓力需足夠驅動下游用氣點，確保 POC/POU 壓力滿足製程需求。",
+      s4: "04",
+      s4_t: "流量單位換算說明",
+      s4_d1: "標準條件 (SC): 15°C, 101.325 kPa (ISO 13443)",
+      s4_d2: "標準條件 (Nm³): 0°C, 101.325 kPa (German DIN standard)",
+      s4_d3: "⚠ 不同廠商採用不同基準，下單前請確認！"
+    }
+  },
+  en: {
+    appTitle: "Bulk Gas System",
+    appSubtitle: "Engineering Sizing Tool",
+    appDesc: "Isothermal Compressible Flow · CRANE TP-410 · Pro Edition",
+    safetyMarginOn: "Safety Margin ON (80%)",
+    safetyMarginOff: "Safety Margin OFF",
+    sec1Title: "Gas & Flow Settings",
+    gasTypeLabel: "Gas Type",
+    molWeight: "Mol. Wt. M",
+    stdDensity: "Std. Density",
+    dynViscosity: "Dyn. Viscosity μ",
+    heatRatio: "Heat Ratio γ",
+    soundSpeed: "Sound Spd (25°C)",
+    recVlim: "Rec. Vlim",
+    inletPressure: "Inlet Pressure",
+    tempLabel: "Operating Temperature",
+    flowLabel: "Design Flow Rate",
+    sec2Title: "Pipe Routing",
+    pipeLength: "Total Length",
+    pipeSchedule: "Pipe Schedule",
+    fittingsQty: "Fittings Qty (CRANE TP-410)",
+    totalLeD: "Total Le/D equivalent =",
+    maxVelOverride: "Max Velocity Override",
+    gasDefault: "Gas default",
+    maxAllowedDP: "Max Allow. ΔP",
+    minDeliveryP: "Min Delivery P_out",
+    sec3Title: "Calculation Results",
+    pass: "PASS",
+    fail: "FAIL",
+    recSizeTitle: "Recommended Size",
+    optimal: "OPTIMAL",
+    flowRegime: "Flow Regime",
+    reNumber: "Re Number",
+    frictionF: "Friction f",
+    machAvg: "Mach (avg)",
+    inletVel: "Inlet vel.",
+    avgVel: "Avg vel.",
+    outletVel: "Outlet vel.",
+    avgVelocityTitle: "Avg Velocity",
+    limit: "Limit:",
+    pressureDropTitle: "Pressure Drop",
+    pipeFricDetail: "Pipe friction",
+    fitFricDetail: "Fittings",
+    fromFittings: "from fittings",
+    outletPressureTitle: "Outlet Pressure P_out",
+    deliveryOk: "Delivery OK",
+    deliveryFail: "Delivery FAIL",
+    minReq: "Min required:",
+    auditLogTitle: "Engineering Audit Log",
+    auditPassMsg: "All design standards passed. Physical parameters comply with isothermal compressible flow limits.",
+    sysCurveTitle: "System Curve — Velocity & ΔP vs Pipe Size",
+    velAxis: "Velocity",
+    dpAxis: "ΔP",
+    velLimitLine: "Vel. Limit",
+    allSizesTitle: "All Sizes Summary",
+    tblHeaders: ["DN", "ID (mm)", "Vel (m/s)", "Re", "Ma", "ΔP (bar)", "P_out (barg)", "f", "Status"],
+    statusOpt: "✓ OPTIMAL",
+    statusOk: "✓ OK",
+    statusFail: "✗ FAIL",
+    matSafetyTitle: "Material Compatibility & Safety",
+    recMaterial: "Recommended Materials",
+    cleanReq: "Cleaning Requirements",
+    safetyNotes: "Safety Precautions",
+    designCodes: "Design Codes / Standards:",
+    reStatusMap: { Laminar: "Laminar", Transition: "Transition", Turbulent: "Turbulent" },
+    failReasons: {
+      vel: (v, limit) => `Velocity ${v} m/s > Limit ${limit} m/s`,
+      dp: (dp, limit) => `Pressure drop ${dp} bar > Limit ${limit} bar`,
+      mach: (m) => `Mach ${m} > 0.3 (Choked Flow risk)`,
+      model: (ratio) => `ΔP/P_avg = ${ratio}% > 20% (Model limit exceeded)`,
+      pout: (p, min) => `Outlet P. ${p} bar(g) < Min Delivery ${min} bar(g)`
+    },
+    suggestions: {
+      fitFrac: (pct) => `⚡ Fittings account for ${pct}% of total pressure drop. Consider using LR elbows or reducing valves.`,
+      modelLimit: "📊 ΔP/P_avg > 20%, isothermal model accuracy decreases. Advanced simulation (PIPESIM/HYSYS) is recommended."
+    },
+    help: {
+      title: "Engineering Calculation Model Manual v2.0",
+      close: "Close",
+      s1: "01",
+      s1_t: "Core Model — Isothermal Compressible Flow",
+      s1_d: "Applicability: Long pipelines where gas reaches thermal equilibrium with surroundings (constant temp).",
+      s1_b1: "G: Mass flux kg/(m²·s), constant in a uniform pipe, independent of pressure.",
+      s1_b2: "P_avg: Average absolute pressure (iterative), corrects density changes due to pressure drop.",
+      s1_b3: "f: Swamee-Jain (1976) equation, based on Re calculated at P_avg.",
+      s1_b4: "Limit: ΔP/P_avg < 20% (Beyond this, Fanno Flow analysis is required).",
+      s2: "02",
+      s2_t: "Fitting Losses — CRANE TP-410 Equivalent Length (Le/D)",
+      s2_t1: "CRANE TP-410 Coefficients",
+      s2_t2: "Engineering Context",
+      s2_d1: "Equivalent length method (Le = n × D) converts fitting resistance into straight pipe length, then multiplied by friction factor f. Compared to fixed K-factor, this reflects f variation with Re, more accurate for high-velocity gas.",
+      s2_t3: "Note: Y-Strainers",
+      s2_d2: "Le/D=400 is for a clean strainer. Actual clogged resistance can be 2-5x higher. Design with margins or bypass valves.",
+      s3: "03",
+      s3_t: "Design Validation Standards & Limits",
+      s3_i1: "Mach Number < 0.3",
+      s3_d1: "Compressibility becomes significant, causing vibration/noise. High velocity may cause Choked Flow at valves.",
+      s3_i2: "ΔP/P_avg < 20%",
+      s3_d2: "Isothermal boundary limit. Exceeding this requires Fanno Flow differential analysis.",
+      s3_i3: "Velocity ≤ Gas Limits",
+      s3_d3: "Set by gas service standards. O₂/N₂O ≤6 m/s (CGA G-4.1), H₂ ≤10 m/s (NFPA 2), N₂/Ar/He ≤20-25 m/s.",
+      s3_i4: "P_out ≥ Min Delivery P",
+      s3_d4: "Outlet pressure must be sufficient to drive downstream POC/POU requirements.",
+      s4: "04",
+      s4_t: "Flow Unit Conversion Notes",
+      s4_d1: "Standard Cond. (SC): 15°C, 101.325 kPa (ISO 13443)",
+      s4_d2: "Normal Cond. (Nm³): 0°C, 101.325 kPa (German DIN standard)",
+      s4_d3: "⚠ Different vendors use different baselines, verify before purchasing!"
+    }
+  }
+};
+
+// ─── Physical Constants ───────────────────────────────────────────────────────
+const C = {
+  P_STD: 101325,          // Pa, standard pressure
+  T_STD: 273.15,          // K
+  R_UNI: 8314.46,         // J/(kmol·K)
+  ROUGHNESS: 0.000045,    // m (commercial SS/carbon steel)
+  BAR_TO_PA: 100000,
+  PSI_TO_PA: 6894.76,
+  KGC_TO_PA: 98066.5,
+};
+
+// ─── Gas Library (i18n Supported) ─────────────────────────────────────────────
+const GASES = {
+  GN2: {
+    name: { zh: "GN₂ — 一般氮氣", en: "GN₂ — Nitrogen (General)" },
+    M:28.014, rhoStd:1.2506, mu:17.8e-6, gamma:1.4, limitV:25, hazardClass:'inert',
+    hazardNote: { zh: "惰性氣體，高濃度有窒息風險。低溫液氮接觸皮膚有凍傷危險。", en: "Inert gas, asphyxiation risk at high conc. Liquid N2 contact causes frostbite." },
+    material: { zh: "碳鋼 / SS304 / SS316L", en: "Carbon Steel / SS304 / SS316L" },
+    cleaning: { zh: "一般商業級清潔", en: "Standard commercial clean" },
+    color:"#3b82f6",
+  },
+  PN2: {
+    name: { zh: "PN₂ — 純氮氣 (≥99.999%)", en: "PN₂ — Nitrogen (Purity ≥99.999%)" },
+    M:28.014, rhoStd:1.2506, mu:17.8e-6, gamma:1.4, limitV:25, hazardClass:'inert',
+    hazardNote: { zh: "惰性氣體，高濃度有窒息風險。純化系統需採用 SS316L 電解拋光管路。", en: "Inert gas. Purified systems require SS316L EP piping." },
+    material: { zh: "SS316L EP (Ra ≤ 0.25 μm) / VCR / Orbital Weld", en: "SS316L EP (Ra ≤ 0.25 μm) / VCR / Orbital Weld" },
+    cleaning: { zh: "EP + BV (電解拋光 + 封裝管件)", en: "EP + BV (Electropolish + Bagged & Valved)" },
+    color:"#6366f1",
+  },
+  GH2: {
+    name: { zh: "GH₂ — 一般氫氣", en: "GH₂ — Hydrogen (General)" },
+    M:2.016, rhoStd:0.0899, mu:8.9e-6, gamma:1.41, limitV:10, hazardClass:'flammable',
+    hazardNote: { zh: "【高度易燃】爆炸極限 4–75%，最小點火能量極低。嚴格限制流速以防靜電。禁用含銅/鋅合金（氫脆）。", en: "【FLAMMABLE】LFL/UFL 4-75%. Low ignition energy. Restrict velocity to prevent static. No brass/zinc alloys (embrittlement)." },
+    material: { zh: "SS316L (自動軌道銲接) / 禁止黃銅、銅、含鋅合金", en: "SS316L (orbital weld) / No brass, copper, zinc alloys" },
+    cleaning: { zh: "脫脂洗淨、100% 氦氣測漏、N₂ 吹掃", en: "Degreased, 100% He leak-tested, N₂ purged" },
+    color:"#ef4444", codeRef:"NFPA 2 / IEC 60079 / CGA G-5",
+  },
+  GO2: {
+    name: { zh: "GO₂ — 一般氧氣", en: "GO₂ — Oxygen (General)" },
+    M:32.000, rhoStd:1.4289, mu:20.4e-6, gamma:1.4, limitV:6, hazardClass:'oxidizer',
+    hazardNote: { zh: "【氧化劑】嚴格禁油。管路材質限 SS316L 或無氧銅。流速 ≤6 m/s 防摩擦起火。管路需先行酸洗脫脂。", en: "【OXIDIZER】Strictly oil-free. SS316L or ASTM B88 Copper. Velocity ≤6 m/s. Piping must be cleaned for oxygen service." },
+    material: { zh: "SS316L 或 ASTM B88 銅管 / 禁碳鋼、禁含油管件", en: "SS316L or ASTM B88 Copper / No carbon steel, no oiled fittings" },
+    cleaning: { zh: "ASTM G93 / CGA G-4.1 氧氣級清潔", en: "ASTM G93 / CGA G-4.1 Oxygen Cleaning required" },
+    color:"#f97316", codeRef:"CGA G-4.1 / NFPA 55",
+  },
+  PAr: {
+    name: { zh: "PAr — 純氬氣 (≥99.999%)", en: "PAr — Argon (Purity ≥99.999%)" },
+    M:39.948, rhoStd:1.7839, mu:22.7e-6, gamma:1.67, limitV:20, hazardClass:'inert',
+    hazardNote: { zh: "惰性氣體。高密度，洩漏後沉積於低窪處造成窒息風險。", en: "Inert gas. High density, settles in low areas causing asphyxiation risk upon leak." },
+    material: { zh: "SS316L EP / 碳鋼（非潔淨製程可接受）", en: "SS316L EP / Carbon Steel (acceptable for non-cleanroom)" },
+    cleaning: { zh: "BV 或 EP+BV", en: "BV or EP+BV (purity grade)" },
+    color:"#8b5cf6",
+  },
+  PHe: {
+    name: { zh: "PHe — 純氦氣 (≥99.999%)", en: "PHe — Helium (Purity ≥99.999%)" },
+    M:4.003, rhoStd:0.1786, mu:19.9e-6, gamma:1.67, limitV:20, hazardClass:'inert',
+    hazardNote: { zh: "惰性氣體。分子極小易滲漏，接頭需採用 VCR 或 Orbital Weld，建議以 He Leak Test 驗收。", en: "Inert. Very small molecule, highly leak-prone. Requires VCR/Orbital weld. He Leak Test highly recommended." },
+    material: { zh: "SS316L EP + 壓縮接頭 (VCR) / 自動軌道銲接", en: "SS316L EP + Compression fittings (VCR) / Orbital Weld" },
+    cleaning: { zh: "EP+BV, 氦氣測漏要求", en: "EP+BV, He Leak Test required" },
+    color:"#06b6d4",
+  },
+};
+
+// ─── Pipe Sizes ───────────────────────────────────────────────────────────────
+const PIPE_SIZES = [
+  { label:"15A (½\")",  id40:15.80, id80:13.87 },
+  { label:"20A (¾\")",  id40:20.93, id80:18.85 },
+  { label:"25A (1\")",  id40:26.64, id80:24.30 },
+  { label:"40A (1½\")", id40:40.89, id80:38.10 },
+  { label:"50A (2\")",  id40:52.50, id80:49.25 },
+  { label:"65A (2½\")", id40:62.71, id80:59.00 },
+  { label:"80A (3\")",  id40:77.93, id80:73.66 },
+  { label:"100A (4\")", id40:102.26, id80:97.18 },
+  { label:"150A (6\")", id40:154.05, id80:146.33 },
+  { label:"200A (8\")", id40:202.72, id80:193.68 },
+  { label:"300A (12\")",id40:303.23, id80:288.93 },
+];
+
+// ─── Fittings (CRANE TP-410) ──────────────────────────────────────────────────
+const FITTING_DEFS = {
+  elbow90sr: { name: {zh:"90° 標準彎頭 (SR Elbow)", en:"90° Elbow (SR)"}, leD:30, color:"#3b82f6" },
+  elbow90lr: { name: {zh:"90° 長半徑彎頭 (LR Elbow)", en:"90° Elbow (LR)"}, leD:16, color:"#6366f1" },
+  elbow45:   { name: {zh:"45° 彎頭 (45° Elbow)", en:"45° Elbow"}, leD:16, color:"#8b5cf6" },
+  teeRun:    { name: {zh:"三通直通 (Tee Run)", en:"Tee Run/Through"}, leD:20, color:"#06b6d4" },
+  teeBranch: { name: {zh:"三通分流 (Tee Branch)", en:"Tee Branch"}, leD:60, color:"#0ea5e9" },
+  gateValve: { name: {zh:"閘閥/球閥 (Gate/Ball) 全開", en:"Gate/Ball Valve (Open)"}, leD:8, color:"#10b981" },
+  globeValve:{ name: {zh:"截止閥 (Globe) 全開", en:"Globe Valve (Open)"}, leD:340, color:"#f59e0b" },
+  checkValve:{ name: {zh:"逆止閥 (Swing Check)", en:"Swing Check Valve"}, leD:100, color:"#f97316" },
+  filter:    { name: {zh:"Y型過濾器 (Y-Strainer)", en:"Y-Strainer (Clean)"}, leD:400, color:"#ef4444" },
+};
+
+// ─── Unit Conversions ─────────────────────────────────────────────────────────
+const P_UNITS = {
+  bar:  { label:"bar(g)", toPA: v => v*C.BAR_TO_PA + C.P_STD, fromPA: v => (v-C.P_STD)/C.BAR_TO_PA, toBarG: v=>v },
+  psig: { label:"psig",   toPA: v => v*C.PSI_TO_PA + C.P_STD, fromPA: v => (v-C.P_STD)/C.PSI_TO_PA, toBarG: v=>v/14.5038 },
+  kgcm: { label:"kg/cm²(g)", toPA: v => v*C.KGC_TO_PA + C.P_STD, fromPA: v => (v-C.P_STD)/C.KGC_TO_PA, toBarG: v=>v*0.980665 },
+};
+
+const Q_UNITS = {
+  SCMH: { label:"Sm³/h",  toSCMH: v=>v,           fromSCMH: v=>v },
+  SLPM: { label:"SLM",    toSCMH: v=>v*60/1000,   fromSCMH: v=>v*1000/60 },
+  SCFM: { label:"SCFM",   toSCMH: v=>v*1.6990,    fromSCMH: v=>v/1.6990 },
+};
+
+const HAZARD_MAP = {
+  flammable:{ zh:"FLAMMABLE 易燃", en:"FLAMMABLE", css:"tag-flam" },
+  oxidizer: { zh:"OXIDIZER 氧化劑", en:"OXIDIZER", css:"tag-oxid" },
+  inert:    { zh:"INERT 惰性", en:"INERT", css:"tag-inert" },
+};
+
+// ─── Core Calculation Engine ──────────────────────────────────────────────────
+function calcPipeline({ gasKey, pInAbs, tempC, flowSCMH, pipeLength, fittings, schedule, maxV, maxDP, safetyMargin }) {
+  const gas = GASES[gasKey];
+  if (!gas) return null;
+  const margin = safetyMargin ? 0.8 : 1.0;
+  const R_sp = C.R_UNI / gas.M;
+  const tAbs = tempC + 273.15;
+  const a_sonic = Math.sqrt(gas.gamma * R_sp * tAbs);
+  const mDot = (flowSCMH / 3600) * gas.rhoStd;
+
+  const totalLeD = Object.entries(fittings).reduce((sum, [key, count]) => {
+    return sum + (FITTING_DEFS[key]?.leD || 0) * count;
+  }, 0);
+
+  const results = PIPE_SIZES.map(pipe => {
+    const id_mm = schedule === 'sch80' ? pipe.id80 : pipe.id40;
+    const D = id_mm / 1000;
+    const A = Math.PI * D * D / 4;
+    const relRough = C.ROUGHNESS / D;
+    const G = mDot / A;
+    const Re_in = (G * D) / gas.mu;
+
+    let f;
+    if (Re_in < 2000) f = 64 / Math.max(Re_in, 1);
+    else f = 0.25 / Math.pow(Math.log10(relRough/3.7 + 5.74/Math.pow(Re_in,0.9)), 2);
+
+    let pOut = pInAbs;
+    let pAvg = pInAbs;
+    let dpFric = 0, dpFit = 0;
+    for (let i = 0; i < 20; i++) {
+      pAvg = (pInAbs + pOut) / 2;
+      const dyn = (G * G * R_sp * tAbs) / (2 * pAvg);
+      dpFric = f * (pipeLength / D) * dyn;
+      dpFit  = f * totalLeD * dyn;
+      const dpNew = dpFric + dpFit;
+      const pOutNew = pInAbs - dpNew;
+      if (Math.abs(pOutNew - pOut) < 5 || pOutNew <= 1000 || isNaN(pOutNew)) {
+        pOut = Math.max(pOutNew || 1000, 1000);
+        break;
+      }
+      pOut = pOutNew;
+    }
+
+    const dpTot = pInAbs - pOut;
+    const rhoAvg = pAvg / (R_sp * tAbs);
+    const uAvg = G / rhoAvg;
+    const uIn  = mDot / (A * (pInAbs / (R_sp * tAbs)));
+    const uOut = pOut > 1000 ? mDot / (A * (pOut / (R_sp * tAbs))) : 999;
+    const machAvg = uAvg / a_sonic;
+    const dpBar = dpTot / C.BAR_TO_PA;
+    const dpRatio = dpTot / pAvg;
+
+    let reStatusKey = "Turbulent";
+    if (Re_in <= 2000) reStatusKey = "Laminar";
+    else if (Re_in <= 4000) reStatusKey = "Transition";
+
+    const limitV  = gas.limitV * margin;
+    const limitDP = maxDP * margin;
+    const vSafe     = uAvg <= (maxV || gas.limitV) * margin;
+    const pSafe     = dpBar <= limitDP;
+    const machSafe  = machAvg < 0.3;
+    const modelSafe = dpRatio < 0.2;
+
+    return {
+      ...pipe, id_mm,
+      G, Re: Math.round(Re_in), reStatusKey, f: +f.toFixed(4),
+      uAvg: +uAvg.toFixed(2), uIn: +uIn.toFixed(2), uOut: +uOut.toFixed(2),
+      machAvg: +machAvg.toFixed(3),
+      dpBar: +dpBar.toFixed(4), dpFricBar: +(dpFric/C.BAR_TO_PA).toFixed(4),
+      dpFitBar: +(dpFit/C.BAR_TO_PA).toFixed(4),
+      dpRatio: +(dpRatio*100).toFixed(1),
+      pOut, pOutBar: +((pOut-C.P_STD)/C.BAR_TO_PA).toFixed(3),
+      limitV, limitDP, vSafe, pSafe, machSafe, modelSafe,
+      isSafe: vSafe && pSafe && machSafe && modelSafe,
+      fitFrac: dpFit/(dpFric+dpFit)||0,
+    };
+  });
+
+  const recommended = results.find(r => r.isSafe) || null;
+  const best = recommended || results[results.length - 1];
+  const graphData = results.filter(r => r.uAvg < 200 && r.uAvg > 0);
+
+  return { results, recommended, best, graphData, totalLeD, a_sonic };
+}
+
+// ─── Icons ────────────────────────────────────────────────────────────────────
+const Ic = ({ d, size=16, className="" }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor"
+       strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+    {typeof d === 'string' ? <path d={d}/> : d}
+  </svg>
+);
+const ICONS = {
+  result: <><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></>,
+  check:  <><circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/></>,
+  warn:   <><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></>,
+  help:   <><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></>,
+  shield: <><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="m9 12 2 2 4-4"/></>,
+  close:  <><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></>,
+  book:   <><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></>,
+  bulb:   <><line x1="9" y1="18" x2="15" y2="18"/><line x1="10" y1="22" x2="14" y2="22"/><path d="M15.09 14c.18-.9.27-1.85.26-2.83a7 7 0 0 0-11.76-4.59 6.91 6.91 0 0 0-.25 2.82c-.1 2 .88 4.66 2.66 6.6H15.1z"/></>,
+  globe:  <><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></>
+};
+
+// ─── Help Modal Component ─────────────────────────────────────────────────────
+const HelpModal = ({ onClose, lang }) => {
+  const t = i18nData[lang].help;
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col">
+        <div className="flex items-center justify-between p-5 bg-slate-900 text-white rounded-t-2xl">
+          <div className="flex items-center gap-3">
+            <Ic d={ICONS.book} size={20} className="text-blue-400"/>
+            <span className="font-bold">{t.title}</span>
+          </div>
+          <button onClick={onClose} className="p-1.5 hover:bg-white/10 rounded-lg"><Ic d={ICONS.close} size={18}/></button>
+        </div>
+        <div className="overflow-y-auto p-6 space-y-6 text-sm text-slate-700 leading-relaxed">
+          <section>
+            <h4 className="font-bold text-slate-900 border-b pb-2 mb-3 flex items-center gap-2">
+              <span className="bg-blue-600 text-white text-xs rounded px-1.5 py-0.5 mono">{t.s1}</span>{t.s1_t}
+            </h4>
+            <p className="mb-2">{t.s1_d}</p>
+            <div className="bg-slate-50 rounded-lg p-3 mono text-xs border border-slate-200 my-3">
+              ΔP = f × (L/D + ΣLe/D) × G² × R × T / (2 × P_avg)<br/>P_out = P_in − ΔP
+            </div>
+            <ul className="space-y-1 text-slate-600 text-xs list-disc pl-4">
+              <li>{t.s1_b1}</li><li>{t.s1_b2}</li><li>{t.s1_b3}</li><li>{t.s1_b4}</li>
+            </ul>
+          </section>
+          <section>
+            <h4 className="font-bold text-slate-900 border-b pb-2 mb-3 flex items-center gap-2">
+              <span className="bg-blue-600 text-white text-xs rounded px-1.5 py-0.5 mono">{t.s2}</span>{t.s2_t}
+            </h4>
+            <div className="grid grid-cols-2 gap-3 text-xs">
+              <div className="bg-slate-50 rounded-lg p-3 border border-slate-200">
+                <p className="font-bold mb-2 text-slate-700">{t.s2_t1}</p>
+                {Object.entries(FITTING_DEFS).map(([k,v]) => (
+                  <div key={k} className="flex justify-between py-0.5 border-b border-slate-100 last:border-0">
+                    <span className="text-slate-600 truncate mr-2">{v.name[lang].split('(')[0]}</span>
+                    <span className="mono font-bold">{v.leD}</span>
+                  </div>
+                ))}
+              </div>
+              <div className="space-y-2">
+                <p className="font-bold text-slate-700">{t.s2_t2}</p><p className="text-slate-600">{t.s2_d1}</p>
+                <p className="font-bold text-slate-700 mt-3">{t.s2_t3}</p><p className="text-slate-600">{t.s2_d2}</p>
+              </div>
+            </div>
+          </section>
+          <section>
+            <h4 className="font-bold text-slate-900 border-b pb-2 mb-3 flex items-center gap-2">
+              <span className="bg-blue-600 text-white text-xs rounded px-1.5 py-0.5 mono">{t.s3}</span>{t.s3_t}
+            </h4>
+            <div className="space-y-3 text-xs">
+              {[ [t.s3_i1, t.s3_d1, "red"], [t.s3_i2, t.s3_d2, "amber"], [t.s3_i3, t.s3_d3, "blue"], [t.s3_i4, t.s3_d4, "green"] ].map(([title, desc, color]) => (
+                <div key={title} className="flex items-start gap-3 p-3 bg-slate-50 rounded-lg border border-slate-100">
+                  <div className={`w-2 h-2 mt-1 rounded-full bg-${color}-500 shrink-0`}/>
+                  <div><p className="font-bold text-slate-800 mb-0.5">{title}</p><p className="text-slate-500">{desc}</p></div>
+                </div>
+              ))}
+            </div>
+          </section>
+          <section>
+            <h4 className="font-bold text-slate-900 border-b pb-2 mb-3 flex items-center gap-2">
+              <span className="bg-blue-600 text-white text-xs rounded px-1.5 py-0.5 mono">{t.s4}</span>{t.s4_t}
+            </h4>
+            <div className="bg-slate-50 rounded-lg p-3 border border-slate-200 text-xs mono">
+              <div>1 SCMH (Sm³/h)  = 1000/60 SLM = 0.5886 SCFM</div>
+              <div className="mt-1">{t.s4_d1}</div>
+              <div className="mt-1">{t.s4_d2}</div>
+              <div className="mt-1 text-slate-500">{t.s4_d3}</div>
+            </div>
+          </section>
+        </div>
+        <div className="p-4 bg-slate-50 border-t rounded-b-2xl text-right">
+          <button onClick={onClose} className="px-5 py-2 bg-slate-900 text-white text-sm font-bold rounded-lg hover:bg-slate-800">{t.close}</button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// ─── Main App ─────────────────────────────────────────────────────────────────
+function App() {
+  // i18n State setup based on URL param
+  const [lang, setLang] = useState(() => {
+    const params = new URLSearchParams(window.location.search);
+    return params.get('lang') === 'en' ? 'en' : 'zh';
+  });
+  const t = i18nData[lang];
+
+  const toggleLang = () => {
+    const newLang = lang === 'zh' ? 'en' : 'zh';
+    setLang(newLang);
+    try {
+      const url = new URL(window.location);
+      url.searchParams.set('lang', newLang);
+      window.history.pushState({}, '', url);
+    } catch (error) {
+      console.warn("無法在此預覽環境中更新網址參數 (沙盒/Blob限制):", error);
+    }
+  };
+
+  const [showHelp, setShowHelp] = useState(false);
+  const [safetyMargin, setSafetyMargin] = useState(false);
+  const [pUnit, setPUnit] = useState('bar');
+  const [qUnit, setQUnit] = useState('SCMH');
+  const [schedule, setSchedule] = useState('sch40');
+
+  const [form, setForm] = useState({
+    gasKey: 'GN2', pressureVal: 8.0, tempC: 25, flowVal: 20000,
+    pipeLength: 300, minDeliveryPBar: 4.0, maxAllowedDPBar: 0.5, maxVelocityOverride: 0,
+    fittings: { elbow90sr: 8, elbow90lr: 0, elbow45: 2, teeRun: 3, teeBranch: 1, gateValve: 6, globeValve: 0, checkValve: 2, filter: 1 },
+  });
+
+  const set = useCallback((key, val) => setForm(f => ({...f, [key]: val})), []);
+  const setFit = useCallback((key, val) => setForm(f => ({...f, fittings:{...f.fittings, [key]:val}})), []);
+
+  const gas = GASES[form.gasKey];
+  const pInAbs = P_UNITS[pUnit].toPA(form.pressureVal);
+  const flowSCMH = Q_UNITS[qUnit].toSCMH(form.flowVal);
+  const maxV = form.maxVelocityOverride > 0 ? form.maxVelocityOverride : gas.limitV;
+
+  const calc = useMemo(() => calcPipeline({
+    gasKey: form.gasKey, pInAbs, tempC: form.tempC, flowSCMH, pipeLength: form.pipeLength,
+    fittings: form.fittings, schedule, maxV, maxDP: form.maxAllowedDPBar, safetyMargin,
+  }), [form, schedule, safetyMargin, pInAbs, flowSCMH, maxV]);
+
+  if (!calc) return null;
+  const { recommended, best, graphData, totalLeD } = calc;
+
+  const pOutBarG = best.pOutBar;
+  const deliveryOK = pOutBarG >= form.minDeliveryPBar;
+
+  const flowSLM = Q_UNITS.SLPM.fromSCMH(flowSCMH);
+  const flowSCFM = Q_UNITS.SCFM.fromSCMH(flowSCMH);
+  const pOutPsig = (best.pOut - C.P_STD) / C.PSI_TO_PA;
+
+  const failReasons = [];
+  if (!best.vSafe) failReasons.push(t.failReasons.vel(best.uAvg, best.limitV.toFixed(1)));
+  if (!best.pSafe) failReasons.push(t.failReasons.dp(best.dpBar, best.limitDP.toFixed(2)));
+  if (!best.machSafe) failReasons.push(t.failReasons.mach(best.machAvg));
+  if (!best.modelSafe) failReasons.push(t.failReasons.model(best.dpRatio));
+  if (!deliveryOK) failReasons.push(t.failReasons.pout(pOutBarG.toFixed(2), form.minDeliveryPBar));
+
+  return (
+    <div className="min-h-screen bg-slate-100 pb-16">
+      {showHelp && <HelpModal onClose={() => setShowHelp(false)} lang={lang}/>}
+
+      {/* ── Header ── */}
+      <div className="bg-slate-900 text-white">
+        <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <div className="bg-blue-600 rounded-xl p-2.5">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/></svg>
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="font-bold text-lg tracking-tight">{t.appTitle}</span>
+                <span className="bg-blue-600 text-white text-[10px] font-bold px-2 py-0.5 rounded mono">v2.0</span>
+              </div>
+              <p className="text-slate-400 text-xs mt-0.5">{t.appDesc}</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-3 no-print">
+            <button onClick={toggleLang} className="flex items-center gap-2 px-3 py-2 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 text-slate-400 hover:text-white transition text-xs font-bold">
+              <Ic d={ICONS.globe} size={14}/> {lang === 'zh' ? 'English' : '中文'}
+            </button>
+            <button onClick={() => setSafetyMargin(!safetyMargin)}
+              className={`flex items-center gap-2 px-3 py-2 rounded-xl border text-xs font-bold transition-all
+                ${safetyMargin ? 'bg-blue-500/20 border-blue-400/50 text-blue-200' : 'bg-white/5 border-white/10 text-slate-400 hover:bg-white/10'}`}>
+              <Ic d={ICONS.shield} size={14} className={safetyMargin?"text-blue-400":"text-slate-500"}/>
+              {safetyMargin ? t.safetyMarginOn : t.safetyMarginOff}
+            </button>
+            <button onClick={() => setShowHelp(true)} className="w-9 h-9 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center hover:bg-white/10 text-slate-400 hover:text-white transition">
+              <Ic d={ICONS.help} size={16}/>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div className="max-w-7xl mx-auto px-4 md:px-6 pt-6 space-y-6">
+        {/* ── Gas Hazard Banner ── */}
+        {(gas.hazardClass === 'flammable' || gas.hazardClass === 'oxidizer') && (
+          <div className={`rounded-xl p-4 flex gap-4 items-start border slide-up
+            ${gas.hazardClass === 'flammable' ? 'bg-red-50 border-red-200' : 'bg-orange-50 border-orange-200'}`}>
+            <div className={`p-2 rounded-lg shrink-0 ${gas.hazardClass==='flammable'?'bg-red-100':'bg-orange-100'}`}>
+              <Ic d={ICONS.warn} size={18} className={gas.hazardClass==='flammable'?'text-red-600':'text-orange-600'}/>
+            </div>
+            <div>
+              <div className="flex items-center gap-2 mb-1">
+                <span className={`text-[10px] font-bold px-2 py-0.5 rounded mono ${HAZARD_MAP[gas.hazardClass].css}`}>{HAZARD_MAP[gas.hazardClass][lang]}</span>
+                {gas.codeRef && <span className="mono text-[10px] text-slate-500">Ref: {gas.codeRef}</span>}
+              </div>
+              <p className="text-sm font-medium text-slate-800">{gas.hazardNote[lang]}</p>
+            </div>
+          </div>
+        )}
+
+        <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
+          {/* ── Col 1-2: Inputs ── */}
+          <div className="lg:col-span-2 space-y-5">
+            {/* Section 01 */}
+            <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-5">
+              <div className="flex items-center gap-2 mb-4">
+                <span className="bg-slate-900 text-white text-xs font-bold mono px-2 py-1 rounded-lg">01</span>
+                <h2 className="font-bold text-slate-800">{t.sec1Title}</h2>
+              </div>
+              <div className="mb-4">
+                <label className="block text-xs font-bold text-slate-500 uppercase mb-1.5 tracking-wide">{t.gasTypeLabel}</label>
+                <select value={form.gasKey} onChange={e => { set('gasKey',e.target.value); set('maxVelocityOverride',0); }}
+                  className="w-full p-2.5 border border-slate-200 rounded-xl text-sm font-semibold bg-white outline-none focus:border-blue-400">
+                  {Object.entries(GASES).map(([k,g]) => <option key={k} value={k}>{g.name[lang]}</option>)}
+                </select>
+              </div>
+              <div className="mb-4 bg-slate-50 rounded-xl p-3 border border-slate-100 grid grid-cols-3 gap-2">
+                {[
+                  [t.molWeight, gas.M.toFixed(3), "g/mol"],
+                  [t.stdDensity, gas.rhoStd.toFixed(4), "kg/Nm³"],
+                  [t.dynViscosity, (gas.mu*1e6).toFixed(1), "×10⁻⁶ Pa·s"],
+                  [t.heatRatio, gas.gamma.toFixed(2), "—"],
+                  [t.soundSpeed, Math.sqrt(gas.gamma*(C.R_UNI/gas.M)*(form.tempC+273.15)).toFixed(0), "m/s"],
+                  [t.recVlim, gas.limitV, "m/s"],
+                ].map(([label,val,unit]) => (
+                  <div key={label} className="text-center">
+                    <div className="text-[9px] text-slate-400 uppercase truncate" title={label}>{label}</div>
+                    <div className="mono text-sm font-bold text-slate-700">{val}</div>
+                    <div className="text-[9px] text-slate-400">{unit}</div>
+                  </div>
+                ))}
+              </div>
+              <div className="mb-4">
+                <label className="block text-xs font-bold text-slate-500 uppercase mb-1.5 tracking-wide">{t.inletPressure}</label>
+                <div className="flex gap-2">
+                  <input type="number" step="0.1" value={form.pressureVal} onChange={e => set('pressureVal', parseFloat(e.target.value)||0)}
+                    className="flex-1 p-2.5 bg-white border border-slate-300 focus:border-blue-400 rounded-xl text-lg font-bold mono outline-none"/>
+                  <select value={pUnit} onChange={e => {
+                    const newUnit = e.target.value;
+                    const newVal = P_UNITS[newUnit].fromPA(P_UNITS[pUnit].toPA(form.pressureVal));
+                    setPUnit(newUnit); set('pressureVal', +newVal.toFixed(3));
+                  }} className="w-28 p-2 border border-slate-200 rounded-xl text-sm font-bold bg-white outline-none">
+                    {Object.entries(P_UNITS).map(([k,v]) => <option key={k} value={k}>{v.label}</option>)}
+                  </select>
+                </div>
+              </div>
+              <div className="mb-4">
+                <label className="block text-xs font-bold text-slate-500 uppercase mb-1.5">{t.tempLabel}</label>
+                <div className="relative">
+                  <input type="number" value={form.tempC} onChange={e => set('tempC', parseFloat(e.target.value)||0)}
+                    className="w-full p-2.5 border border-slate-200 rounded-xl text-lg mono bg-slate-50 outline-none"/>
+                  <span className="absolute right-3 top-3 text-xs text-slate-400 font-bold">°C</span>
+                </div>
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-slate-500 uppercase mb-1.5">{t.flowLabel}</label>
+                <div className="flex gap-2">
+                  <input type="number" value={form.flowVal} onChange={e => set('flowVal', parseFloat(e.target.value)||0)}
+                    className="flex-1 p-2.5 bg-blue-50 border border-blue-200 focus:border-blue-500 rounded-xl text-lg font-bold mono outline-none text-blue-700"/>
+                  <select value={qUnit} onChange={e => {
+                    const scmh = Q_UNITS[qUnit].toSCMH(form.flowVal);
+                    const newUnit = e.target.value;
+                    set('flowVal', +Q_UNITS[newUnit].fromSCMH(scmh).toFixed(2)); setQUnit(newUnit);
+                  }} className="w-20 p-2 border border-slate-200 rounded-xl text-sm font-bold bg-white outline-none">
+                    {Object.entries(Q_UNITS).map(([k,v]) => <option key={k} value={k}>{v.label}</option>)}
+                  </select>
+                </div>
+                <div className="mt-1.5 grid grid-cols-3 gap-1 text-[10px] text-slate-400 mono">
+                  <span>= {flowSLM.toFixed(0)} SLM</span>
+                  <span>= {flowSCMH.toFixed(1)} Sm³/h</span>
+                  <span>= {flowSCFM.toFixed(1)} SCFM</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Section 02 */}
+            <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-5">
+              <div className="flex items-center gap-2 mb-4">
+                <span className="bg-slate-900 text-white text-xs font-bold mono px-2 py-1 rounded-lg">02</span>
+                <h2 className="font-bold text-slate-800">{t.sec2Title}</h2>
+              </div>
+              <div className="grid grid-cols-2 gap-3 mb-4">
+                <div className="col-span-2">
+                  <label className="block text-xs font-bold text-slate-500 uppercase mb-1.5">{t.pipeLength}</label>
+                  <div className="relative">
+                    <input type="number" value={form.pipeLength} onChange={e => set('pipeLength', parseFloat(e.target.value)||0)} className="w-full p-2.5 border border-slate-200 rounded-xl text-lg mono bg-slate-50 outline-none"/>
+                    <span className="absolute right-3 top-3 text-xs text-slate-400 font-bold">m</span>
+                  </div>
+                </div>
+                <div className="col-span-2">
+                  <label className="block text-xs font-bold text-slate-500 uppercase mb-1.5">{t.pipeSchedule}</label>
+                  <div className="grid grid-cols-2 gap-2">
+                    {[['sch40','Sch 40 (Standard)'],['sch80','Sch 80 (Heavy Wall)']].map(([v,l]) => (
+                      <button key={v} onClick={() => setSchedule(v)} className={`py-2 rounded-xl text-xs font-bold border transition-all ${schedule===v ? 'bg-slate-800 text-white border-slate-800' : 'bg-white text-slate-500 border-slate-200 hover:border-slate-400'}`}>{l}</button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+              <div className="mb-4">
+                <label className="text-xs font-bold text-slate-500 uppercase mb-2 block">{t.fittingsQty}</label>
+                <div className="border border-slate-100 rounded-xl overflow-hidden">
+                  {Object.keys(FITTING_DEFS).map(k => {
+                    const def = FITTING_DEFS[k];
+                    return (
+                      <div key={k} className="flex items-center gap-3 py-1.5 border-b border-slate-100 last:border-0 px-2">
+                        <div className="w-2 h-2 rounded-full shrink-0" style={{ background: def.color }}/>
+                        <span className="flex-1 text-xs text-slate-600 truncate" title={def.name[lang]}>{def.name[lang]}</span>
+                        <span className="mono text-[10px] text-slate-400 w-12 text-right">Le/D={def.leD}</span>
+                        <input type="number" min="0" value={form.fittings[k]||0} onChange={e => setFit(k, parseInt(e.target.value)||0)} className="w-14 text-center border border-slate-200 rounded-lg px-1 py-1 text-sm mono bg-white outline-none"/>
+                      </div>
+                    )
+                  })}
+                </div>
+                <div className="mt-2 text-right text-xs text-slate-500 mono">
+                  {t.totalLeD} <b className="text-slate-700">{totalLeD}</b>
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-[10px] font-bold text-blue-600 uppercase mb-1.5 truncate">{t.maxVelOverride}</label>
+                  <div className="relative">
+                    <input type="number" step="1" value={form.maxVelocityOverride||gas.limitV} onChange={e => set('maxVelocityOverride', parseFloat(e.target.value)||0)} className="w-full p-2.5 border border-blue-200 rounded-xl text-base font-bold mono text-blue-700 bg-blue-50 outline-none"/>
+                    <span className="absolute right-2 top-3 text-[10px] text-slate-400">m/s</span>
+                  </div>
+                  <p className="text-[10px] text-slate-400 mt-0.5">{t.gasDefault}: {gas.limitV} m/s</p>
+                </div>
+                <div>
+                  <label className="block text-[10px] font-bold text-red-600 uppercase mb-1.5 truncate">{t.maxAllowedDP}</label>
+                  <div className="relative">
+                    <input type="number" step="0.05" value={form.maxAllowedDPBar} onChange={e => set('maxAllowedDPBar', parseFloat(e.target.value)||0)} className="w-full p-2.5 border border-red-200 rounded-xl text-base font-bold mono text-red-700 bg-red-50 outline-none"/>
+                    <span className="absolute right-2 top-3 text-[10px] text-slate-400">bar</span>
+                  </div>
+                </div>
+                <div className="col-span-2">
+                  <label className="block text-xs font-bold text-emerald-600 uppercase mb-1.5">{t.minDeliveryP}</label>
+                  <div className="relative">
+                    <input type="number" step="0.1" value={form.minDeliveryPBar} onChange={e => set('minDeliveryPBar', parseFloat(e.target.value)||0)} className="w-full p-2.5 border border-emerald-200 rounded-xl text-base font-bold mono text-emerald-700 bg-emerald-50 outline-none"/>
+                    <span className="absolute right-2 top-3 text-[10px] text-slate-400">bar(g)</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* ── Col 3-5: Results ── */}
+          <div className="lg:col-span-3 space-y-5">
+            {/* Result Panel */}
+            <div className="bg-slate-900 rounded-2xl overflow-hidden shadow-xl slide-up">
+              <div className="px-6 py-4 border-b border-white/10 flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <span className="bg-blue-600 text-white text-xs font-bold mono px-2 py-1 rounded-lg">03</span>
+                  <h2 className="font-bold text-white">{t.sec3Title}</h2>
+                </div>
+                <div className="flex items-center gap-2">
+                  {(recommended && deliveryOK)
+                    ? <span className="flex items-center gap-1.5 bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 px-3 py-1 rounded-full text-xs font-bold"><Ic d={ICONS.check} size={13}/> {t.pass}</span>
+                    : <span className="flex items-center gap-1.5 bg-red-500/20 text-red-400 border border-red-500/30 px-3 py-1 rounded-full text-xs font-bold"><Ic d={ICONS.warn} size={13}/> {t.fail}</span>
+                  }
+                </div>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2">
+                <div className="p-6 border-b md:border-b-0 md:border-r border-white/10 bg-slate-800/50">
+                  <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">{t.recSizeTitle}</p>
+                  <div className="flex items-baseline gap-3 mb-3">
+                    <span className="text-5xl font-black text-white mono">{best.label}</span>
+                    {recommended && <span className="text-emerald-400 text-sm font-bold bg-emerald-500/10 px-2 py-0.5 rounded">{t.optimal}</span>}
+                  </div>
+                  <div className="mono text-xs text-slate-500 mb-3">
+                    ID = {best.id_mm.toFixed(1)} mm ({schedule.toUpperCase()})
+                  </div>
+                  <div className="space-y-2 text-sm">
+                    {[
+                      [t.flowRegime, t.reStatusMap[best.reStatusKey], best.reStatusKey==='Turbulent'?'text-blue-400':'text-amber-400'],
+                      [t.reNumber, best.Re.toLocaleString(), "text-slate-300 mono"],
+                      [t.frictionF, best.f, "text-slate-300 mono"],
+                      [t.machAvg, best.machAvg, best.machSafe?'text-slate-300 mono':'text-red-400 mono font-bold'],
+                      [t.inletVel, `${best.uIn} m/s`, "text-slate-300 mono"],
+                      [t.avgVel, `${best.uAvg} m/s`, "text-slate-300 mono"],
+                      [t.outletVel,`${best.uOut} m/s`, "text-slate-300 mono"],
+                    ].map(([k,v,cls]) => (
+                      <div key={k} className="flex justify-between items-center border-b border-white/5 pb-1.5">
+                        <span className="text-slate-400">{k}</span><span className={cls}>{v}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="p-6 space-y-4">
+                  <div className="bg-white/5 rounded-xl p-4 border border-white/10">
+                    <div className="flex justify-between mb-1">
+                      <span className="text-xs font-bold text-slate-400 uppercase">{t.avgVelocityTitle}</span>
+                      <span className={`inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded mono ${best.vSafe ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'}`}>{best.vSafe ? `✓ ${t.pass}` : `✗ ${t.fail}`}</span>
+                    </div>
+                    <div className="text-3xl font-black text-white mono">{best.uAvg} <span className="text-sm text-slate-500">m/s</span></div>
+                    <div className="mt-2 w-full bg-slate-700 h-1.5 rounded-full overflow-hidden">
+                      <div className={`h-full rounded-full transition-all ${best.vSafe?'bg-blue-500':'bg-red-500'}`} style={{width:`${Math.min((best.uAvg/best.limitV)*100,100)}%`}}/>
+                    </div>
+                    <div className="text-[10px] text-slate-500 mt-1 mono text-right">{t.limit} {best.limitV.toFixed(1)} m/s</div>
+                  </div>
+
+                  <div className="bg-white/5 rounded-xl p-4 border border-white/10">
+                    <div className="flex justify-between mb-1">
+                      <span className="text-xs font-bold text-slate-400 uppercase">{t.pressureDropTitle}</span>
+                      <span className={`inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded mono ${best.pSafe ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'}`}>{best.pSafe ? `✓ ${t.pass}` : `✗ ${t.fail}`}</span>
+                    </div>
+                    <div className="text-3xl font-black text-white mono">{best.dpBar.toFixed(3)} <span className="text-sm text-slate-500">bar</span></div>
+                    <div className="mt-1 text-xs text-slate-500 mono">
+                      {t.pipeFricDetail}: {best.dpFricBar.toFixed(3)} | {t.fitFricDetail}: {best.dpFitBar.toFixed(3)}
+                      <span className="ml-2 text-slate-600">({(best.fitFrac*100).toFixed(0)}% {t.fromFittings})</span>
+                    </div>
+                    <div className="mt-1 text-[10px] text-slate-500 mono">ΔP/P_avg = {best.dpRatio}% {best.modelSafe?'':'⚠ >20%'}</div>
+                  </div>
+
+                  <div className={`rounded-xl p-4 border ${deliveryOK?'bg-emerald-500/10 border-emerald-500/30':'bg-red-500/10 border-red-500/30'}`}>
+                    <div className="flex justify-between mb-1">
+                      <span className="text-xs font-bold text-slate-400 uppercase">{t.outletPressureTitle}</span>
+                      <span className={`inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded mono ${deliveryOK ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'}`}>{deliveryOK ? `✓ ${t.deliveryOk}` : `✗ ${t.deliveryFail}`}</span>
+                    </div>
+                    <div className={`text-3xl font-black mono ${deliveryOK?'text-emerald-400':'text-red-400'}`}>
+                      {pOutBarG.toFixed(3)} <span className="text-sm text-slate-500">bar(g)</span>
+                    </div>
+                    <div className="mono text-[10px] text-slate-400 mt-1">
+                      = {pOutPsig.toFixed(1)} psig &nbsp;|&nbsp; {t.minReq} {form.minDeliveryPBar} bar(g)
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="p-5 border-t border-white/10 bg-black/20">
+                <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-3">{t.auditLogTitle}</p>
+                {failReasons.length === 0 ? (
+                  <div className="flex items-center gap-3 bg-emerald-500/10 border border-emerald-500/20 px-4 py-3 rounded-xl">
+                    <Ic d={ICONS.check} size={15} className="text-emerald-400 shrink-0"/>
+                    <span className="text-sm text-emerald-300">{t.auditPassMsg}</span>
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    {failReasons.map((r,i) => (
+                      <div key={i} className="flex items-center gap-3 bg-red-500/10 border border-red-500/20 px-3 py-2 rounded-xl">
+                        <Ic d={ICONS.warn} size={13} className="text-red-400 shrink-0"/><span className="text-xs text-red-300">{r}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                {best.fitFrac > 0.4 && (
+                  <div className="mt-2 flex items-center gap-3 bg-amber-500/10 border border-amber-500/20 px-3 py-2 rounded-xl">
+                    <Ic d={ICONS.bulb} size={13} className="text-amber-400 shrink-0"/><span className="text-xs text-amber-300">{t.suggestions.fitFrac((best.fitFrac*100).toFixed(0))}</span>
+                  </div>
+                )}
+                {!best.modelSafe && (
+                  <div className="mt-2 flex items-center gap-3 bg-amber-500/10 border border-amber-500/20 px-3 py-2 rounded-xl">
+                    <Ic d={ICONS.bulb} size={13} className="text-amber-400 shrink-0"/><span className="text-xs text-amber-300">{t.suggestions.modelLimit}</span>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* System Curve Chart */}
+            <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-5">
+              <p className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-4 flex items-center gap-2">
+                <Ic d={ICONS.result} size={14} className="text-blue-500"/>{t.sysCurveTitle}
+              </p>
+              <div className="h-[260px]">
+                <ResponsiveContainer width="100%" height="100%">
+                  <LineChart data={graphData}>
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9"/>
+                    <XAxis dataKey="label" tick={{fontSize:9,fill:'#94a3b8'}} tickLine={false} axisLine={{stroke:'#e2e8f0'}}/>
+                    <YAxis yAxisId="v" tick={{fontSize:9,fill:'#3b82f6'}} tickLine={false} axisLine={false} label={{value:`${t.velAxis} (m/s)`,angle:-90,position:'insideLeft',fontSize:9,fill:'#3b82f6'}}/>
+                    <YAxis yAxisId="dp" orientation="right" tick={{fontSize:9,fill:'#ef4444'}} tickLine={false} axisLine={false} label={{value:`${t.dpAxis} (bar)`,angle:90,position:'insideRight',fontSize:9,fill:'#ef4444'}}/>
+                    <RechartsTip contentStyle={{borderRadius:'8px',fontSize:'11px',border:'1px solid #e2e8f0'}}/>
+                    <Legend wrapperStyle={{fontSize:'10px'}}/>
+                    <Line yAxisId="v" type="monotone" dataKey="uAvg" name={`${t.velAxis} (m/s)`} stroke="#3b82f6" strokeWidth={2.5} dot={{r:3,fill:'#fff',strokeWidth:2}} activeDot={{r:5}}/>
+                    <Line yAxisId="dp" type="monotone" dataKey="dpBar" name={`${t.dpAxis} (bar)`} stroke="#ef4444" strokeWidth={2} strokeDasharray="5 5" dot={false}/>
+                    <Line yAxisId="v" type="step" dataKey="limitV" name={t.velLimitLine} stroke="#94a3b8" strokeDasharray="2 2" dot={false} strokeWidth={1}/>
+                    {recommended && <ReferenceLine yAxisId="v" x={recommended.label} stroke="#10b981" strokeDasharray="3 3" label={{value:'Opt',position:'top',fontSize:9,fill:'#10b981'}}/>}
+                  </LineChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
+
+            {/* All Pipe Sizes Table */}
+            <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+              <div className="px-5 py-3 border-b border-slate-100 flex items-center gap-2">
+                <span className="text-xs font-bold text-slate-500 uppercase tracking-widest">{t.allSizesTitle}</span>
+              </div>
+              <div className="overflow-x-auto">
+                <table className="w-full text-xs">
+                  <thead>
+                    <tr className="bg-slate-50 border-b border-slate-100">
+                      {t.tblHeaders.map(h => <th key={h} className="px-3 py-2.5 text-left text-[10px] font-bold text-slate-500 uppercase tracking-wide">{h}</th>)}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {calc.results.map((r,i) => (
+                      <tr key={i} className={`seg-row border-b border-slate-50 ${r.isSafe ? '' : 'opacity-60'} ${recommended?.label===r.label?'bg-emerald-50 opacity-100':''}`}>
+                        <td className="px-3 py-2 font-bold mono text-slate-800">{r.label}</td>
+                        <td className="px-3 py-2 mono text-slate-600">{r.id_mm.toFixed(1)}</td>
+                        <td className={`px-3 py-2 mono font-bold ${r.vSafe?'text-slate-700':'text-red-600'}`}>{r.uAvg}</td>
+                        <td className="px-3 py-2 mono text-slate-600">{r.Re.toLocaleString()}</td>
+                        <td className={`px-3 py-2 mono ${r.machSafe?'text-slate-600':'text-red-600 font-bold'}`}>{r.machAvg}</td>
+                        <td className={`px-3 py-2 mono font-bold ${r.pSafe?'text-slate-700':'text-red-600'}`}>{r.dpBar.toFixed(3)}</td>
+                        <td className={`px-3 py-2 mono font-bold ${r.pOutBar>=form.minDeliveryPBar?'text-emerald-700':'text-red-600'}`}>{r.pOutBar.toFixed(2)}</td>
+                        <td className="px-3 py-2 mono text-slate-500">{r.f}</td>
+                        <td className="px-3 py-2">
+                          {r.isSafe ? recommended?.label===r.label ? <span className="bg-emerald-100 text-emerald-700 font-bold px-2 py-0.5 rounded text-[10px]">{t.statusOpt}</span> : <span className="bg-blue-50 text-blue-600 px-2 py-0.5 rounded text-[10px]">{t.statusOk}</span> : <span className="bg-red-50 text-red-500 px-2 py-0.5 rounded text-[10px]">{t.statusFail}</span>}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            {/* Material & Safety Card */}
+            <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-5">
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center gap-2">
+                  <Ic d={ICONS.shield} size={16} className="text-slate-600"/>
+                  <span className="text-xs font-bold text-slate-600 uppercase tracking-widest">{t.matSafetyTitle} — {gas.name[lang].split('—')[0]}</span>
+                </div>
+                <span className={`text-[10px] font-bold px-2 py-0.5 rounded mono ${HAZARD_MAP[gas.hazardClass].css}`}>{HAZARD_MAP[gas.hazardClass][lang]}</span>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">
+                <div className="bg-slate-50 rounded-xl p-3 border border-slate-100">
+                  <p className="font-bold text-slate-700 mb-1.5 flex items-center gap-1.5"><span className="w-1.5 h-1.5 rounded-full bg-blue-500 inline-block"/>{t.recMaterial}</p>
+                  <p className="text-slate-600 leading-relaxed">{gas.material[lang]}</p>
+                </div>
+                <div className="bg-slate-50 rounded-xl p-3 border border-slate-100">
+                  <p className="font-bold text-slate-700 mb-1.5 flex items-center gap-1.5"><span className="w-1.5 h-1.5 rounded-full bg-amber-500 inline-block"/>{t.cleanReq}</p>
+                  <p className="text-slate-600 leading-relaxed">{gas.cleaning[lang]}</p>
+                </div>
+                <div className="bg-slate-50 rounded-xl p-3 border border-slate-100">
+                  <p className="font-bold text-slate-700 mb-1.5 flex items-center gap-1.5"><span className="w-1.5 h-1.5 rounded-full bg-red-500 inline-block"/>{t.safetyNotes}</p>
+                  <p className="text-slate-600 leading-relaxed">{gas.hazardNote[lang]}</p>
+                </div>
+              </div>
+              {gas.codeRef && (
+                <div className="mt-3 bg-blue-50 rounded-lg px-3 py-2 border border-blue-100 flex items-center gap-2">
+                  <Ic d={ICONS.book} size={13} className="text-blue-500 shrink-0"/>
+                  <span className="text-[11px] text-blue-700 mono">{t.designCodes} {gas.codeRef}</span>
+                </div>
+              )}
+            </div>
+
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App/>);
+</script>
+</body>
+</html>

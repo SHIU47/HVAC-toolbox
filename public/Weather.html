@@ -1,0 +1,997 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Climate & Cooling Intelligence Pro</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/globe.gl"></script>
+
+    <style>
+        :root {
+            --font-main: 'Inter', sans-serif;
+            --font-heading: 'Space Grotesk', sans-serif;
+        }
+        body { font-family: var(--font-main); background: #05050a; overflow-x: hidden; color: #f8fafc; }
+        .heading { font-family: var(--font-heading); letter-spacing: -0.04em; }
+        
+        .bg-mesh {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: -1;
+            background: radial-gradient(circle at 10% 0%, rgba(14, 165, 233, 0.12) 0%, transparent 40%),
+                        radial-gradient(circle at 90% 20%, rgba(99, 102, 241, 0.1) 0%, transparent 40%),
+                        radial-gradient(circle at 50% 100%, rgba(244, 63, 94, 0.08) 0%, transparent 50%),
+                        #05050a;
+        }
+        .blur-orb {
+            position: fixed; width: 500px; height: 500px; filter: blur(140px); border-radius: 50%; z-index: -1; 
+            animation: float 25s infinite alternate ease-in-out; opacity: 0.5; mix-blend-mode: screen;
+        }
+        @keyframes float { 0% { transform: translate(0, 0) scale(1); } 100% { transform: translate(80px, 40px) scale(1.1); } }
+
+        /* Premium Glassmorphism */
+        .glass-card { 
+            background: linear-gradient(145deg, rgba(255, 255, 255, 0.03) 0%, rgba(255, 255, 255, 0.01) 100%);
+            backdrop-filter: blur(32px); -webkit-backdrop-filter: blur(32px);
+            border: 1px solid rgba(255, 255, 255, 0.08); 
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2), inset 0 1px 0 rgba(255,255,255,0.05); 
+            transition: all 0.4s ease;
+        }
+        .glass-panel { 
+            background: linear-gradient(180deg, rgba(15, 23, 42, 0.4) 0%, rgba(15, 23, 42, 0.2) 100%);
+            backdrop-filter: blur(40px); -webkit-backdrop-filter: blur(40px);
+            border: 1px solid rgba(255, 255, 255, 0.08); 
+            box-shadow: 0 24px 48px rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(255,255,255,0.05); 
+        }
+        
+        /* Floating table rows fix */
+        table { border-collapse: separate; border-spacing: 0 8px; }
+        tr.table-row td { background: rgba(255,255,255,0.02); border-top: 1px solid rgba(255,255,255,0.04); border-bottom: 1px solid rgba(255,255,255,0.04); transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1); }
+        tr.table-row td:first-child { border-left: 1px solid rgba(255,255,255,0.04); border-top-left-radius: 1rem; border-bottom-left-radius: 1rem; }
+        tr.table-row td:last-child { border-right: 1px solid rgba(255,255,255,0.04); border-top-right-radius: 1rem; border-bottom-right-radius: 1rem; }
+        tr.table-row:hover td { background: rgba(255,255,255,0.06); border-color: rgba(255,255,255,0.15); box-shadow: 0 10px 20px -5px rgba(0,0,0,0.3); }
+        tr.table-row:hover { transform: translateY(-2px); }
+
+        ::-webkit-scrollbar { width: 4px; height: 4px;}
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 10px; }
+        ::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.2); }
+
+        .kpi-value { font-family: var(--font-heading); letter-spacing: -0.04em; }
+        
+        .thermal-cold { background: linear-gradient(135deg, #38bdf8, #818cf8); }
+        .thermal-hot { background: linear-gradient(135deg, #fbbf24, #f43f5e); }
+        
+        .globe-container canvas { outline: none; }
+        @keyframes customPing { 0% { transform: scale(1); opacity: 0.8; box-shadow: 0 0 10px currentColor; } 75%, 100% { transform: scale(3); opacity: 0; } }
+        .globe-marker-ping { animation: customPing 2s cubic-bezier(0.2, 0.8, 0.2, 1) infinite; }
+        
+        /* --- Light Theme Overrides --- */
+        body.light-theme { background: #f8fafc; color: #0f172a; }
+        body.light-theme .bg-mesh {
+            background: radial-gradient(circle at 10% 0%, rgba(14, 165, 233, 0.12) 0%, transparent 40%),
+                        radial-gradient(circle at 90% 20%, rgba(99, 102, 241, 0.1) 0%, transparent 40%),
+                        radial-gradient(circle at 50% 100%, rgba(244, 63, 94, 0.08) 0%, transparent 50%),
+                        #f8fafc;
+        }
+        body.light-theme .blur-orb { mix-blend-mode: multiply; opacity: 0.3; }
+        body.light-theme .text-white { color: #0f172a !important; }
+        body.light-theme .text-slate-300 { color: #475569 !important; }
+        body.light-theme .text-slate-400 { color: #64748b !important; }
+        body.light-theme .text-slate-500 { color: #94a3b8 !important; }
+        body.light-theme .border-white\/5, body.light-theme .border-white\/10, body.light-theme .border-white\/20, body.light-theme .border-white\/30, body.light-theme .border-white\/40 {
+            border-color: rgba(0, 0, 0, 0.08) !important;
+        }
+        body.light-theme .glass-card {
+            background: linear-gradient(145deg, rgba(255, 255, 255, 0.8) 0%, rgba(255, 255, 255, 0.5) 100%);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.05), inset 0 1px 0 rgba(255,255,255,1);
+        }
+        body.light-theme .glass-panel {
+            background: linear-gradient(180deg, rgba(255, 255, 255, 0.9) 0%, rgba(255, 255, 255, 0.7) 100%);
+            box-shadow: 0 24px 48px rgba(0, 0, 0, 0.08), inset 0 1px 0 rgba(255,255,255,1);
+        }
+        body.light-theme .bg-\[\#05050a\]\/80 { background-color: rgba(255, 255, 255, 0.8) !important; }
+        body.light-theme .bg-\[\#05050a\] { background-color: #e2e8f0 !important; }
+        body.light-theme .bg-\[\#05050a\]\/60 { background-color: rgba(255, 255, 255, 0.6) !important; }
+        body.light-theme .bg-slate-800\/80 { background-color: rgba(0,0,0,0.1) !important; }
+        body.light-theme .bg-white\/10 { background-color: rgba(0,0,0,0.05) !important; }
+        body.light-theme tr.table-row td { background: rgba(255,255,255,0.6); border-top-color: rgba(0,0,0,0.05); border-bottom-color: rgba(0,0,0,0.05); }
+        body.light-theme tr.table-row td:first-child { border-left-color: rgba(0,0,0,0.05); }
+        body.light-theme tr.table-row td:last-child { border-right-color: rgba(0,0,0,0.05); }
+        body.light-theme tr.table-row:hover td { background: rgba(255,255,255,0.95); border-color: rgba(0,0,0,0.1); box-shadow: 0 10px 20px -5px rgba(0,0,0,0.1); }
+        body.light-theme .hover\:bg-white\/10:hover { background-color: rgba(0,0,0,0.05) !important; }
+        body.light-theme .hover\:text-white:hover { color: #0f172a !important; }
+        body.light-theme select option { background-color: #ffffff !important; color: #0f172a !important; }
+        body.light-theme .bg-slate-800\/95 { background-color: rgba(255,255,255,0.95) !important; color: #0f172a !important; border-color: rgba(0,0,0,0.1) !important; }
+        body.light-theme .bg-slate-900\/90 { background-color: rgba(255,255,255,0.9) !important; color: #0f172a !important; border-color: rgba(0,0,0,0.1) !important; }
+    </style>
+</head>
+<body class="light-theme">
+
+    <div class="bg-mesh"></div>
+    <div class="blur-orb top-[-10%] left-[-10%]"></div>
+    <div class="blur-orb bottom-[-10%] right-[-10%] bg-rose-100/50" style="animation-delay: -5s;"></div>
+
+    <div class="max-w-[1440px] mx-auto px-4 sm:px-8 py-10 relative">
+        
+        <!-- Top Nav Area -->
+        <nav class="flex flex-col lg:flex-row lg:items-end justify-between mb-12 gap-8 relative z-20">
+            <div>
+                <div class="flex items-center gap-3 mb-4">
+                    <span class="inline-block w-2.5 h-2.5 bg-emerald-400 rounded-full animate-pulse shadow-[0_0_12px_#34d399]"></span>
+                    <span class="font-mono text-[12px] font-bold text-slate-400 tracking-[0.3em] uppercase" id="t-subtitle">Global AI Infrastructure Data Feed</span>
+                </div>
+                <h1 class="heading text-5xl md:text-6xl lg:text-[4.5rem] font-black tracking-tighter leading-[0.95] text-transparent bg-clip-text bg-gradient-to-br from-slate-800 to-slate-500 dark:from-white dark:to-slate-400 drop-shadow-2xl" id="t-title">Climate Engineering<br/>Intelligence</h1>
+            </div>
+            
+            <div class="flex flex-wrap items-center gap-4">
+                <div class="relative">
+                    <select id="regionFilter" class="glass-card pl-4 pr-10 py-2.5 rounded-[1rem] text-sm font-bold text-slate-300 outline-none cursor-pointer border-white/10 hover:border-white/30 hover:text-white focus:border-blue-400 appearance-none bg-transparent transition-all shadow-lg">
+                        <option value="All" class="bg-slate-900 text-white">🌍 All Regions</option>
+                        <option value="Americas" class="bg-slate-900 text-white">🌎 Americas</option>
+                        <option value="Europe" class="bg-slate-900 text-white">🌍 Europe</option>
+                        <option value="Asia" class="bg-slate-900 text-white">🌏 Asia</option>
+                        <option value="MEA" class="bg-slate-900 text-white">🌍 Middle East & Africa</option>
+                    </select>
+                    <svg class="absolute right-3.5 top-3 text-slate-400 pointer-events-none" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"></path></svg>
+                </div>
+                <div class="relative group">
+                    <input type="text" id="searchInput" placeholder="Search..." 
+                        class="glass-card pl-10 pr-6 py-2.5 rounded-[1rem] text-sm outline-none w-48 focus:w-64 transition-all border-white/10 hover:border-white/30 focus:border-blue-400 focus:ring-2 focus:ring-blue-500/20 text-white placeholder-slate-500 bg-transparent shadow-lg">
+                    <svg class="absolute left-3.5 top-3 text-slate-400 group-hover:text-blue-400 transition-colors" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+                </div>
+                <button onclick="toggleTheme()" class="glass-card w-10 h-10 rounded-[1rem] flex items-center justify-center hover:bg-white/10 transition-all border-white/10 shadow-lg text-slate-400 group" title="Toggle Theme">
+                    <!-- Sun Icon (shows in dark mode) -->
+                    <svg id="icon-sun" class="w-5 h-5 group-hover:text-amber-400 transition-colors hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"></path></svg>
+                    <!-- Moon Icon (shows in light mode) -->
+                    <svg id="icon-moon" class="w-5 h-5 group-hover:text-blue-500 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"></path></svg>
+                </button>
+                <button onclick="toggleLang()" class="glass-card px-4 py-2.5 rounded-[1rem] text-sm font-bold text-slate-300 hover:text-white hover:bg-white/10 transition-all border-white/10 flex items-center gap-2 group shadow-lg">
+                    <svg class="w-4 h-4 group-hover:text-blue-400 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 5h12M9 3v2m1.048 9.5A18.022 18.022 0 016.412 9m6.088 9h7M11 21l5-10 5 10M12.751 5C11.783 10.77 8.07 15.61 3 18.129"></path></svg>
+                    <span id="langLabel">ZH</span>
+                </button>
+            </div>
+        </nav>
+
+        <!-- KPI Section -->
+        <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-6 mb-10 relative z-10" id="kpiSection">
+            <div class="glass-card p-6 sm:p-8 rounded-[2rem] border-t border-l border-white/5 hover:border-white/20 transition-all duration-500 group overflow-hidden relative shadow-lg">
+                <div class="absolute -right-8 -top-8 w-32 h-32 bg-blue-500/10 rounded-full blur-3xl group-hover:bg-blue-500/20 transition-all duration-500"></div>
+                <p class="text-[11px] font-mono text-slate-400 uppercase tracking-[0.2em] mb-3 relative z-10" id="t-kpi1">Global Avg PUE</p>
+                <div class="flex items-end gap-2 relative z-10">
+                    <span class="heading text-5xl md:text-6xl font-black text-transparent bg-clip-text bg-gradient-to-b from-blue-300 to-indigo-500 drop-shadow-md tracking-tighter" id="kpiAvgPue">--</span>
+                    <span class="text-[11px] text-emerald-400 font-mono font-bold uppercase tracking-widest mb-1.5" id="t-kpi1-sub">Optimal</span>
+                </div>
+            </div>
+            <div class="glass-card p-6 sm:p-8 rounded-[2rem] border-t border-l border-white/5 hover:border-white/20 transition-all duration-500 group overflow-hidden relative shadow-lg">
+                <div class="absolute -right-8 -top-8 w-32 h-32 bg-rose-500/10 rounded-full blur-3xl group-hover:bg-rose-500/20 transition-all duration-500"></div>
+                <p class="text-[11px] font-mono text-slate-400 uppercase tracking-[0.2em] mb-3 relative z-10" id="t-kpi2">Extreme WB Node</p>
+                <div class="flex items-end gap-2 relative z-10">
+                    <span class="heading text-5xl md:text-6xl font-black text-transparent bg-clip-text bg-gradient-to-b from-rose-400 to-orange-500 drop-shadow-md tracking-tighter" id="kpiMaxWb">--</span>
+                    <span class="text-[11px] text-slate-500 font-mono font-bold uppercase tracking-widest max-w-[80px] truncate mb-1.5" id="kpiMaxWbCity"></span>
+                </div>
+            </div>
+            <div class="glass-card p-6 sm:p-8 rounded-[2rem] border-t border-l border-white/5 hover:border-white/20 transition-all duration-500 group overflow-hidden relative shadow-lg">
+                <div class="absolute -right-8 -top-8 w-32 h-32 bg-emerald-500/10 rounded-full blur-3xl group-hover:bg-emerald-500/20 transition-all duration-500"></div>
+                <p class="text-[11px] font-mono text-slate-400 uppercase tracking-[0.2em] mb-3 relative z-10" id="t-kpi3">Free Cooling Peak</p>
+                <div class="flex items-end gap-2 relative z-10">
+                    <span class="heading text-5xl md:text-6xl font-black text-transparent bg-clip-text bg-gradient-to-b from-emerald-300 to-cyan-500 drop-shadow-md tracking-tighter" id="kpiMaxFreeCooling">--</span>
+                    <span class="text-[11px] text-slate-400 font-mono font-bold uppercase tracking-widest mb-1.5" id="t-kpi3-sub">Hours/Yr</span>
+                </div>
+            </div>
+            <div class="glass-card p-6 sm:p-8 rounded-[2rem] border-t border-l border-white/5 hover:border-white/20 transition-all duration-500 group overflow-hidden relative shadow-lg">
+                <div class="absolute -right-8 -top-8 w-32 h-32 bg-purple-500/10 rounded-full blur-3xl group-hover:bg-purple-500/20 transition-all duration-500"></div>
+                <p class="text-[11px] font-mono text-slate-400 uppercase tracking-[0.2em] mb-3 relative z-10" id="t-kpi4">Liquid Necessity</p>
+                <div class="flex items-end gap-2 relative z-10">
+                    <span class="heading text-5xl md:text-6xl font-black text-transparent bg-clip-text bg-gradient-to-b from-indigo-300 to-purple-500 drop-shadow-md tracking-tighter" id="kpiLiquidNecessity">--</span>
+                    <span class="text-[11px] text-slate-400 font-mono font-bold uppercase tracking-widest mb-1.5" id="t-kpi4-sub">Of Nodes</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Command Center Area (Globe + Details) -->
+        <div class="flex flex-col lg:flex-row gap-6 mb-12 relative z-10">
+            <div class="flex-1 glass-panel rounded-[2.5rem] relative overflow-hidden flex flex-col items-center justify-center min-h-[500px] shadow-[0_0_50px_rgba(0,0,0,0.5)] border-t border-l border-white/5">
+                <div class="absolute top-8 left-8 z-20 pointer-events-none">
+                    <h2 class="heading text-3xl font-bold text-white drop-shadow-lg tracking-tight" id="t-globe-title">Global Topology</h2>
+                    <p class="text-[12px] font-bold text-blue-400 uppercase tracking-[0.2em] mt-2 drop-shadow-md" id="t-globe-sub">Real-time 3D Interactive Map</p>
+                </div>
+                
+                <!-- 3D Globe Loading Mask -->
+                <div id="globeLoading" class="absolute inset-0 z-10 flex flex-col items-center justify-center bg-[#05050a]/80 backdrop-blur-xl transition-opacity duration-500">
+                    <svg class="animate-spin h-10 w-10 text-blue-500 mb-6 drop-shadow-[0_0_15px_rgba(59,130,246,0.5)]" fill="none" viewBox="0 0 24 24">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    <p class="text-[12px] font-bold text-slate-300 uppercase tracking-[0.2em]" id="t-globe-loading">Loading 3D Engine...</p>
+                </div>
+
+                <div id="globeViz" class="w-full h-full cursor-move globe-container relative z-0"></div>
+                <div class="absolute bottom-6 left-6 z-20 pointer-events-none flex flex-col gap-1.5">
+                    <div class="flex items-center gap-2"><span class="w-2.5 h-2.5 rounded-full bg-rose-500 shrink-0 shadow-[0_0_6px_rgba(239,68,68,0.8)]"></span><span class="text-[11px] font-bold text-slate-300 uppercase tracking-widest">High Thermal Risk</span></div>
+                    <div class="flex items-center gap-2"><span class="w-2.5 h-2.5 rounded-full bg-amber-400 shrink-0 shadow-[0_0_6px_rgba(251,191,36,0.8)]"></span><span class="text-[11px] font-bold text-slate-300 uppercase tracking-widest">Moderate Risk</span></div>
+                    <div class="flex items-center gap-2"><span class="w-2.5 h-2.5 rounded-full bg-cyan-400 shrink-0 shadow-[0_0_6px_rgba(34,211,238,0.8)]"></span><span class="text-[11px] font-bold text-slate-300 uppercase tracking-widest">Low Risk / Free Cooling</span></div>
+                </div>
+            </div>
+
+            <div id="detailPanel" class="w-full lg:w-[420px] glass-panel rounded-[2.5rem] p-6 sm:p-7 shrink-0 flex flex-col min-h-[550px] lg:max-h-[85vh] shadow-[0_0_50px_rgba(0,0,0,0.5)] border-t border-l border-white/5 overflow-y-auto relative">
+                <div class="text-center text-slate-500 animate-pulse">
+                    <svg class="w-12 h-12 mx-auto mb-4 text-slate-600 drop-shadow-md" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                    <p class="font-bold text-[12px] uppercase tracking-[0.2em]" id="t-init">Initializing Data...</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Table Component Area -->
+        <div class="w-full overflow-x-auto pb-10 relative z-10">
+            <table class="w-full text-left min-w-[1100px]">
+                <thead class="text-[11px] font-mono font-bold text-slate-500 uppercase tracking-[0.2em] border-b border-white/5">
+                    <tr>
+                        <th class="px-6 py-4 cursor-pointer hover:text-white transition-colors" onclick="sortData('city')">
+                            <span id="t-col-region">Region / Hub</span> <span id="sort-city" class="sort-icon"></span>
+                        </th>
+                        <th class="px-4 py-4 text-center cursor-pointer hover:text-white transition-colors" onclick="sortData('zone')">
+                            <span id="t-col-zone">Zone</span> <span id="sort-zone" class="sort-icon"></span>
+                        </th>
+                        <th class="px-4 py-4 text-right cursor-pointer hover:text-white transition-colors" onclick="sortData('extWB')">
+                            <span id="t-col-wb">Wet Bulb</span> <span id="sort-extWB" class="sort-icon"></span>
+                        </th>
+                        <th class="px-4 py-4 cursor-pointer hover:text-white transition-colors" onclick="sortData('freeCooling')">
+                            <span id="t-col-fc">Free Cooling</span> <span id="sort-freeCooling" class="sort-icon"></span>
+                        </th>
+                        <th class="px-4 py-4 text-right cursor-pointer hover:text-white transition-colors" onclick="sortData('waterRisk')">
+                            <span id="t-col-water">Water Risk</span> <span id="sort-waterRisk" class="sort-icon"></span>
+                        </th>
+                        <th class="px-4 py-4 text-right cursor-pointer hover:text-white transition-colors" onclick="sortData('pue')">
+                            <span id="t-col-pue">Est. PUE</span> <span id="sort-pue" class="sort-icon"></span>
+                        </th>
+                        <th class="px-6 py-4 text-right" id="t-col-req">Requirement</th>
+                    </tr>
+                </thead>
+                <tbody id="tableBody">
+                    <!-- Rows injected here -->
+                </tbody>
+            </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- 報告彈出視窗 (Modal) -->
+    <div id="reportModal" class="fixed inset-0 z-50 hidden flex-col items-center justify-center p-4 sm:p-8 opacity-0 transition-opacity duration-500">
+        <div class="absolute inset-0 bg-slate-900/60 backdrop-blur-md" onclick="closeReportModal()"></div>
+        <div id="reportModalContent" class="relative w-full max-w-6xl max-h-[90vh] flex flex-col glass-panel rounded-[2rem] sm:rounded-[3rem] shadow-2xl transform scale-95 transition-transform duration-500 bg-white/95 border border-white/60 overflow-hidden">
+            <!-- Modal Content Injected Here -->
+        </div>
+    </div>
+
+    <!-- Engineering Footer -->
+    <footer class="max-w-[1440px] mx-auto px-8 pb-10 mt-8 flex justify-between items-center text-[12px] font-bold text-slate-400 uppercase tracking-[0.2em]">
+        <div class="flex gap-6">
+            <span>© 2026 THERMAL INTEL SYSTEM</span>
+            <span class="text-slate-300">|</span>
+            <span>DATA SOURCE: ASHRAE CLIMATE</span>
+        </div>
+        <div class="flex gap-4 items-center">
+            <span class="w-2 h-2 rounded-full bg-blue-400 shadow-[0_0_8px_rgba(96,165,250,0.8)] animate-pulse"></span>
+            SYNCED WITH GLOBAL HUB
+        </div>
+    </footer>
+    <script>
+        // --- 1. i18n Dictionary ---
+        const i18n = {
+            en: {
+                title: "GLOBAL AI CLIMATE",
+                subtitle: "INFRASTRUCTURE INTELLIGENCE",
+                search: "Search Region, Zone...",
+                kpi1: "Global Avg PUE", kpi1_sub: "Optimal",
+                kpi2: "Extreme WB Node",
+                kpi3: "Free Cooling Peak", kpi3_sub: "Hours/Yr",
+                kpi4: "Liquid Necessity", kpi4_sub: "Of Nodes",
+                globe_title: "Global Topology", globe_sub: "Real-time 3D Interactive Map",
+                globe_loading: "Loading 3D Engine...",
+                col_region: "Region / Hub", col_zone: "Zone", col_wb: "Wet Bulb",
+                col_fc: "Free Cooling", col_water: "Water Risk", col_pue: "Est. PUE", col_req: "Requirement",
+                btn_report: "View Complete Infrastructure Report",
+                req_immersion: "Immersion Preferred", req_d2c: "D2C Required", req_hybrid: "Hybrid Recommended",
+                term_score: "Thermal Complexity Score", term_maxDB: "Ext High DB", term_minDB: "Ext Low DB",
+                term_verdict: "Architecture Verdict",
+                tooltip_score: "Weights: Wet Bulb 35% | Dry Bulb 15% | Free Cooling 30% | Water Risk 20%",
+                modal_env: "Environmental Profile", modal_fc: "Free Cooling Potential",
+                modal_risk: "Water Risk Level", modal_hyperscalers: "Major Hyperscalers",
+                modal_saturation: "Cluster Saturation", modal_ashrae: "ASHRAE Design Guidelines",
+                modal_cost: "Est. Opex (10MW IT)", modal_cue: "Est. CUE (Carbon)",
+                modal_cdd: "Annual CDD", modal_grid: "Grid Renewable",
+                reco_1: "Chiller + D2C", reco_2: "Dry Cooler + D2C", reco_3: "100% Dry Cooling",
+                reco_4: "Hybrid D2C + RDHx", reco_5: "Air Econ + Liquid", reco_6: "Heat Reuse + D2C",
+                reco_7: "Hybrid D2C Retrofit", reco_8: "Liquid w/ Heat Reuse", reco_9: "Air Side Econ + D2C",
+                reco_10: "District Heat Reuse", reco_11: "Direct Air Free Cool", reco_12: "100% Free Cooling",
+                reco_13: "RDHx / Modular Liquid", reco_14: "D2C + Air Econ", reco_15: "Immersion / W40",
+                reco_16: "Water-Cooled Chiller", reco_17: "Liquid-only", reco_18: "Hybrid (D2C/Air)",
+                reco_19: "W45 Liquid + Dry", reco_20: "Chiller + Cold Plate", reco_21: "Dry Cooling + Air Econ"
+            },
+            zh: {
+                title: "GLOBAL AI CLIMATE",
+                subtitle: "INFRASTRUCTURE INTELLIGENCE",
+                search: "搜尋地區、氣候區...",
+                kpi1: "全球平均 PUE", kpi1_sub: "基準",
+                kpi2: "極端濕球節點",
+                kpi3: "自然冷卻峰值", kpi3_sub: "小時/年",
+                kpi4: "液冷需求佔比", kpi4_sub: "節點比例",
+                globe_title: "全球拓樸網路", globe_sub: "即時 3D 互動地圖",
+                globe_loading: "正在載入 3D 地球引擎...",
+                col_region: "地區 / 基礎設施", col_zone: "氣候區", col_wb: "極端濕球",
+                col_fc: "自然冷卻 (Free Cooling)", col_water: "水資源風險", col_pue: "預估 PUE", col_req: "散熱需求",
+                btn_report: "檢視完整工程基礎設施報告",
+                req_immersion: "強烈建議浸沒式", req_d2c: "必須採用 D2C 液冷", req_hybrid: "建議風液冷混合",
+                term_score: "熱複雜度評分", term_maxDB: "極端高溫 (乾球)", term_minDB: "極端低溫 (乾球)",
+                term_verdict: "架構工程建議",
+                tooltip_score: "評分權重：濕球 35% | 乾球 15% | 自然冷卻 30% | 水資源 20%",
+                modal_env: "環境與氣候特徵", modal_fc: "自然冷卻潛力",
+                modal_risk: "水資源壓力等級", modal_hyperscalers: "主要雲端與 AI 設施營運商",
+                modal_saturation: "聚落飽和度", modal_ashrae: "ASHRAE 設計標準與能耗分析",
+                modal_cost: "預估年化能源成本 (以 10MW 基準)", modal_cue: "預估 CUE (碳排強度)",
+                modal_cdd: "年化冷卻度日 (CDD)", modal_grid: "綠電佔比",
+                reco_1: "冰水主機 + D2C", reco_2: "乾式冷卻器 + D2C", reco_3: "100% 乾式冷卻",
+                reco_4: "混合 D2C + RDHx", reco_5: "自然進風 + 液冷", reco_6: "廢熱回收 + D2C",
+                reco_7: "混合 D2C 改建", reco_8: "液冷 + 廢熱回收", reco_9: "風側自然冷卻 + D2C",
+                reco_10: "區域供熱回收", reco_11: "直接外氣冷卻", reco_12: "100% 自然冷卻",
+                reco_13: "背門熱交換器 / 模組化液冷", reco_14: "D2C + 自然進風", reco_15: "浸沒式 / W40 溫水",
+                reco_16: "水冷式冰水主機", reco_17: "純液冷架構", reco_18: "混合架構 (D2C/風冷)",
+                reco_19: "W45 溫水液冷 + 乾式", reco_20: "冰水主機 + 水冷板", reco_21: "乾式冷卻 + 自然進風"
+            }
+        };
+
+        let currentLang = 'en';
+
+        // --- 2. Data Source ---
+        const data = [
+            { continent: "Americas", lat: 39.0438, lng: -77.4874, flag: "🇺🇸", country: "USA", city: "Ashburn, VA", zone: "4A", maxDB: 33.7, minDB: -10.2, extWB: 25.8, freeCooling: 4200, waterRisk: 3, heatWave: 3, seismic: 1, recoKey: "reco_1", pue: 1.25, carbonIntensity: 350, electricityCost: 0.08, gridRenewable: 15, annualCDD: 1200, coolingWaterTemp: "W32", latency: 2, hyperscalers: ["AWS", "Google Cloud", "Meta", "Microsoft Azure", "Equinix"] },
+            { continent: "Americas", lat: 39.9612, lng: -82.9988, flag: "🇺🇸", country: "USA", city: "Columbus, OH", zone: "5A", maxDB: 31.5, minDB: -17.4, extWB: 22.8, freeCooling: 6200, waterRisk: 2, heatWave: 2, seismic: 1, recoKey: "reco_2", pue: 1.15, carbonIntensity: 600, electricityCost: 0.07, gridRenewable: 10, annualCDD: 900, coolingWaterTemp: "W32", latency: 8, hyperscalers: ["AWS", "Google Cloud", "Meta", "Intel Foundry"] },
+            { continent: "Americas", lat: 33.4484, lng: -112.0740, flag: "🇺🇸", country: "USA", city: "Phoenix, AZ", zone: "2B", maxDB: 43.1, minDB: 1.2, extWB: 22.4, freeCooling: 3100, waterRisk: 5, heatWave: 5, seismic: 2, recoKey: "reco_2", pue: 1.35, carbonIntensity: 420, electricityCost: 0.06, gridRenewable: 25, annualCDD: 3500, coolingWaterTemp: "W40", latency: 12, hyperscalers: ["TSMC", "Intel", "Microsoft Azure", "Google Cloud"] },
+            { continent: "Americas", lat: 37.3541, lng: -121.9552, flag: "🇺🇸", country: "USA", city: "Santa Clara, CA", zone: "3C", maxDB: 29.4, minDB: 0.5, extWB: 18.2, freeCooling: 5800, waterRisk: 4, heatWave: 2, seismic: 5, recoKey: "reco_5", pue: 1.18, carbonIntensity: 200, electricityCost: 0.15, gridRenewable: 40, annualCDD: 400, coolingWaterTemp: "W32", latency: 1, hyperscalers: ["NVIDIA", "Intel", "Equinix", "Vantage"] },
+            { continent: "Europe", lat: 51.5074, lng: -0.1278, flag: "🇬🇧", country: "UK", city: "London", zone: "4C", maxDB: 28.5, minDB: -3.5, extWB: 20.8, freeCooling: 6800, waterRisk: 3, heatWave: 3, seismic: 1, recoKey: "reco_7", pue: 1.18, carbonIntensity: 180, electricityCost: 0.22, gridRenewable: 45, annualCDD: 150, coolingWaterTemp: "W32", latency: 2, hyperscalers: ["AWS", "Google Cloud", "Microsoft Azure", "Equinix"] },
+            { continent: "Europe", lat: 50.1109, lng: 8.6821, flag: "🇩🇪", country: "Germany", city: "Frankfurt", zone: "5A", maxDB: 31.4, minDB: -9.5, extWB: 21.4, freeCooling: 6400, waterRisk: 2, heatWave: 3, seismic: 1, recoKey: "reco_8", pue: 1.20, carbonIntensity: 350, electricityCost: 0.18, gridRenewable: 50, annualCDD: 300, coolingWaterTemp: "W35", latency: 3, hyperscalers: ["AWS", "Google Cloud", "Microsoft Azure", "Digital Realty"] },
+            { continent: "Europe", lat: 59.3293, lng: 18.0686, flag: "🇸🇪", country: "Sweden", city: "Stockholm", zone: "6A", maxDB: 26.5, minDB: -16.8, extWB: 19.2, freeCooling: 8400, waterRisk: 1, heatWave: 1, seismic: 1, recoKey: "reco_12", pue: 1.05, carbonIntensity: 20, electricityCost: 0.05, gridRenewable: 98, annualCDD: 50, coolingWaterTemp: "W27", latency: 15, hyperscalers: ["AWS", "Microsoft Azure", "EcoDataCenter"] },
+            { continent: "Europe", lat: 52.2297, lng: 21.0122, flag: "🇵🇱", country: "Poland", city: "Warsaw", zone: "5A", maxDB: 32.1, minDB: -12.5, extWB: 22.1, freeCooling: 6000, waterRisk: 2, heatWave: 3, seismic: 1, recoKey: "reco_2", pue: 1.21, carbonIntensity: 750, electricityCost: 0.14, gridRenewable: 15, annualCDD: 350, coolingWaterTemp: "W35", latency: 12, hyperscalers: ["Google Cloud", "Microsoft Azure", "Equinix"] },
+            { continent: "Asia", lat: 25.0330, lng: 121.5654, flag: "🇹🇼", country: "Taiwan", city: "Taipei", zone: "1A", maxDB: 34.8, minDB: 8.5, extWB: 27.2, freeCooling: 1800, waterRisk: 4, heatWave: 4, seismic: 5, recoKey: "reco_15", pue: 1.32, carbonIntensity: 480, electricityCost: 0.09, gridRenewable: 8, annualCDD: 2500, coolingWaterTemp: "W40", latency: 3, hyperscalers: ["NVIDIA (Taipei-1)", "Google Cloud", "Microsoft Azure", "Foxconn"] },
+            { continent: "Asia", lat: 39.9042, lng: 116.4074, flag: "🇨🇳", country: "China", city: "Beijing", zone: "4A", maxDB: 36.5, minDB: -15.2, extWB: 26.5, freeCooling: 4500, waterRisk: 5, heatWave: 4, seismic: 3, recoKey: "reco_17", pue: 1.28, carbonIntensity: 600, electricityCost: 0.10, gridRenewable: 20, annualCDD: 1400, coolingWaterTemp: "W35", latency: 5, hyperscalers: ["Alibaba Cloud", "Tencent", "Baidu"] },
+            { continent: "Asia", lat: 31.2304, lng: 121.4737, flag: "🇨🇳", country: "China", city: "Shanghai", zone: "3A", maxDB: 37.8, minDB: -3.5, extWB: 28.5, freeCooling: 2800, waterRisk: 3, heatWave: 5, seismic: 2, recoKey: "reco_15", pue: 1.35, carbonIntensity: 550, electricityCost: 0.12, gridRenewable: 15, annualCDD: 1800, coolingWaterTemp: "W40", latency: 4, hyperscalers: ["Alibaba Cloud", "Tencent", "AWS"] },
+            { continent: "Asia", lat: 35.6762, lng: 139.6503, flag: "🇯🇵", country: "Japan", city: "Tokyo", zone: "3A", maxDB: 33.1, minDB: -1.5, extWB: 26.5, freeCooling: 3800, waterRisk: 3, heatWave: 4, seismic: 5, recoKey: "reco_17", pue: 1.25, carbonIntensity: 450, electricityCost: 0.18, gridRenewable: 22, annualCDD: 1100, coolingWaterTemp: "W35", latency: 2, hyperscalers: ["AWS", "Google Cloud", "Microsoft Azure", "NTT"] },
+            { continent: "Asia", lat: 1.3521, lng: 103.8198, flag: "🇸🇬", country: "Singapore", city: "Singapore", zone: "0A", maxDB: 33.2, minDB: 22.5, extWB: 28.1, freeCooling: 0, waterRisk: 5, heatWave: 3, seismic: 1, recoKey: "reco_15", pue: 1.38, carbonIntensity: 400, electricityCost: 0.20, gridRenewable: 5, annualCDD: 3500, coolingWaterTemp: "W45", latency: 1, hyperscalers: ["AWS", "Google Cloud", "Microsoft Azure", "ST Telemedia"] },
+            { continent: "Asia", lat: -6.2088, lng: 106.8456, flag: "🇮🇩", country: "Indonesia", city: "Jakarta", zone: "0A", maxDB: 34.5, minDB: 23.1, extWB: 28.5, freeCooling: 0, waterRisk: 4, heatWave: 3, seismic: 4, recoKey: "reco_17", pue: 1.42, carbonIntensity: 700, electricityCost: 0.08, gridRenewable: 12, annualCDD: 3600, coolingWaterTemp: "W45", latency: 10, hyperscalers: ["AWS", "Google Cloud", "Alibaba Cloud", "Equinix"] },
+            { continent: "MEA", lat: 25.2854, lng: 51.5310, flag: "🇶🇦", country: "Qatar", city: "Doha", zone: "1B", maxDB: 46.5, minDB: 10.5, extWB: 31.5, freeCooling: 1000, waterRisk: 5, heatWave: 5, seismic: 1, recoKey: "reco_15", pue: 1.48, carbonIntensity: 490, electricityCost: 0.04, gridRenewable: 2, annualCDD: 4200, coolingWaterTemp: "W45", latency: 20, hyperscalers: ["Microsoft Azure", "Google Cloud", "Meeza"] },
+            { continent: "MEA", lat: 25.2048, lng: 55.2708, flag: "🇦🇪", country: "UAE", city: "Dubai", zone: "1B", maxDB: 43.3, minDB: 11.9, extWB: 30.4, freeCooling: 1500, waterRisk: 5, heatWave: 5, seismic: 2, recoKey: "reco_15", pue: 1.45, carbonIntensity: 450, electricityCost: 0.08, gridRenewable: 15, annualCDD: 3900, coolingWaterTemp: "W45", latency: 15, hyperscalers: ["Microsoft Azure", "AWS", "Equinix"] },
+            { continent: "MEA", lat: -1.2921, lng: 36.8219, flag: "🇰🇪", country: "Kenya", city: "Nairobi", zone: "3B", maxDB: 28.5, minDB: 10.5, extWB: 19.5, freeCooling: 7500, waterRisk: 3, heatWave: 1, seismic: 2, recoKey: "reco_21", pue: 1.18, carbonIntensity: 90, electricityCost: 0.15, gridRenewable: 90, annualCDD: 100, coolingWaterTemp: "W32", latency: 40, hyperscalers: ["AWS (Local)", "Africa Data Centres", "Icolo"] },
+            { continent: "Americas", lat: 20.5881, lng: -100.3899, flag: "🇲🇽", country: "Mexico", city: "Queretaro", zone: "3B", maxDB: 32.5, minDB: 5.2, extWB: 20.1, freeCooling: 5200, waterRisk: 5, heatWave: 3, seismic: 3, recoKey: "reco_2", pue: 1.25, carbonIntensity: 420, electricityCost: 0.11, gridRenewable: 25, annualCDD: 800, coolingWaterTemp: "W32", latency: 18, hyperscalers: ["Microsoft Azure", "AWS", "Google Cloud", "ODATA"] },
+            { continent: "Europe", lat: 53.3498, lng: -6.2603, flag: "🇮🇪", country: "Ireland", city: "Dublin", zone: "4C", maxDB: 24.5, minDB: -2.1, extWB: 18.5, freeCooling: 7200, waterRisk: 2, heatWave: 1, seismic: 1, recoKey: "reco_12", pue: 1.12, carbonIntensity: 300, electricityCost: 0.25, gridRenewable: 40, annualCDD: 50, coolingWaterTemp: "W32", latency: 3, hyperscalers: ["AWS", "Microsoft Azure", "Google Cloud", "Equinix"] },
+            { continent: "Europe", lat: 52.3676, lng: 4.9041, flag: "🇳🇱", country: "Netherlands", city: "Amsterdam", zone: "4C", maxDB: 29.5, minDB: -5.4, extWB: 21.0, freeCooling: 6500, waterRisk: 1, heatWave: 2, seismic: 1, recoKey: "reco_11", pue: 1.16, carbonIntensity: 320, electricityCost: 0.18, gridRenewable: 35, annualCDD: 180, coolingWaterTemp: "W32", latency: 1, hyperscalers: ["Google Cloud", "Microsoft Azure", "Digital Realty"] },
+            { continent: "Europe", lat: 48.8566, lng: 2.3522, flag: "🇫🇷", country: "France", city: "Paris", zone: "4C", maxDB: 34.5, minDB: -4.5, extWB: 22.5, freeCooling: 5800, waterRisk: 2, heatWave: 4, seismic: 1, recoKey: "reco_2", pue: 1.22, carbonIntensity: 60, electricityCost: 0.20, gridRenewable: 25, annualCDD: 350, coolingWaterTemp: "W32", latency: 2, hyperscalers: ["AWS", "Google Cloud", "Scaleway"] },
+            { continent: "Europe", lat: 45.4642, lng: 9.1900, flag: "🇮🇹", country: "Italy", city: "Milan", zone: "4A", maxDB: 35.1, minDB: -3.2, extWB: 24.5, freeCooling: 4500, waterRisk: 3, heatWave: 4, seismic: 3, recoKey: "reco_1", pue: 1.28, carbonIntensity: 250, electricityCost: 0.24, gridRenewable: 40, annualCDD: 900, coolingWaterTemp: "W35", latency: 5, hyperscalers: ["AWS", "Microsoft Azure", "Aruba"] },
+            { continent: "Europe", lat: 60.1695, lng: 24.9354, flag: "🇫🇮", country: "Finland", city: "Helsinki", zone: "6A", maxDB: 25.5, minDB: -20.5, extWB: 19.5, freeCooling: 8200, waterRisk: 1, heatWave: 1, seismic: 1, recoKey: "reco_10", pue: 1.08, carbonIntensity: 50, electricityCost: 0.08, gridRenewable: 85, annualCDD: 20, coolingWaterTemp: "W27", latency: 12, hyperscalers: ["Google Cloud", "Equinix"] },
+            { continent: "Americas", lat: 45.5017, lng: -73.5673, flag: "🇨🇦", country: "Canada", city: "Montreal", zone: "6A", maxDB: 28.5, minDB: -25.5, extWB: 22.5, freeCooling: 7000, waterRisk: 1, heatWave: 2, seismic: 2, recoKey: "reco_14", pue: 1.15, carbonIntensity: 10, electricityCost: 0.05, gridRenewable: 99, annualCDD: 400, coolingWaterTemp: "W32", latency: 6, hyperscalers: ["AWS", "Google Cloud", "Microsoft Azure"] },
+            { continent: "Americas", lat: 43.6510, lng: -79.3470, flag: "🇨🇦", country: "Canada", city: "Toronto", zone: "5A", maxDB: 31.5, minDB: -18.5, extWB: 23.5, freeCooling: 6000, waterRisk: 1, heatWave: 3, seismic: 1, recoKey: "reco_2", pue: 1.18, carbonIntensity: 40, electricityCost: 0.08, gridRenewable: 95, annualCDD: 600, coolingWaterTemp: "W32", latency: 8, hyperscalers: ["AWS", "Google Cloud", "Microsoft Azure"] },
+            { continent: "Americas", lat: 32.7767, lng: -96.7970, flag: "🇺🇸", country: "USA", city: "Dallas, TX", zone: "3A", maxDB: 39.5, minDB: -5.5, extWB: 26.5, freeCooling: 3500, waterRisk: 4, heatWave: 4, seismic: 1, recoKey: "reco_17", pue: 1.30, carbonIntensity: 400, electricityCost: 0.08, gridRenewable: 30, annualCDD: 2800, coolingWaterTemp: "W40", latency: 5, hyperscalers: ["AWS", "Google Cloud", "Microsoft Azure", "Equinix"] },
+            { continent: "Americas", lat: 47.6062, lng: -122.3321, flag: "🇺🇸", country: "USA", city: "Seattle, WA", zone: "4C", maxDB: 30.5, minDB: -2.5, extWB: 20.5, freeCooling: 6800, waterRisk: 1, heatWave: 2, seismic: 4, recoKey: "reco_12", pue: 1.16, carbonIntensity: 120, electricityCost: 0.07, gridRenewable: 80, annualCDD: 250, coolingWaterTemp: "W32", latency: 3, hyperscalers: ["AWS", "Microsoft Azure", "Sabey"] },
+            { continent: "Americas", lat: -23.5505, lng: -46.6333, flag: "🇧🇷", country: "Brazil", city: "Sao Paulo", zone: "2A", maxDB: 34.5, minDB: 8.5, extWB: 25.5, freeCooling: 2500, waterRisk: 3, heatWave: 3, seismic: 1, recoKey: "reco_1", pue: 1.40, carbonIntensity: 150, electricityCost: 0.14, gridRenewable: 85, annualCDD: 2200, coolingWaterTemp: "W35", latency: 15, hyperscalers: ["AWS", "Google Cloud", "Microsoft Azure", "Ascenty"] },
+            { continent: "Americas", lat: -33.4489, lng: -70.6693, flag: "🇨🇱", country: "Chile", city: "Santiago", zone: "3C", maxDB: 33.5, minDB: -1.5, extWB: 19.5, freeCooling: 5500, waterRisk: 5, heatWave: 3, seismic: 5, recoKey: "reco_3", pue: 1.28, carbonIntensity: 250, electricityCost: 0.12, gridRenewable: 55, annualCDD: 900, coolingWaterTemp: "W32", latency: 25, hyperscalers: ["Google Cloud", "AWS", "Microsoft Azure"] },
+            { continent: "Asia", lat: 37.5665, lng: 126.9780, flag: "🇰🇷", country: "South Korea", city: "Seoul", zone: "4A", maxDB: 34.5, minDB: -12.5, extWB: 26.5, freeCooling: 4500, waterRisk: 2, heatWave: 3, seismic: 2, recoKey: "reco_17", pue: 1.26, carbonIntensity: 450, electricityCost: 0.11, gridRenewable: 10, annualCDD: 1200, coolingWaterTemp: "W35", latency: 4, hyperscalers: ["AWS", "Google Cloud", "Microsoft Azure", "KT"] },
+            { continent: "Asia", lat: -33.8688, lng: 151.2093, flag: "🇦🇺", country: "Australia", city: "Sydney", zone: "3A", maxDB: 35.5, minDB: 6.5, extWB: 25.5, freeCooling: 3500, waterRisk: 4, heatWave: 4, seismic: 1, recoKey: "reco_1", pue: 1.32, carbonIntensity: 650, electricityCost: 0.16, gridRenewable: 35, annualCDD: 1500, coolingWaterTemp: "W35", latency: 1, hyperscalers: ["AWS", "Google Cloud", "Microsoft Azure", "NextDC"] },
+            { continent: "Asia", lat: 19.0760, lng: 72.8777, flag: "🇮🇳", country: "India", city: "Mumbai", zone: "0A", maxDB: 36.5, minDB: 15.5, extWB: 30.5, freeCooling: 500, waterRisk: 4, heatWave: 4, seismic: 3, recoKey: "reco_15", pue: 1.45, carbonIntensity: 700, electricityCost: 0.10, gridRenewable: 25, annualCDD: 3800, coolingWaterTemp: "W45", latency: 12, hyperscalers: ["AWS", "Google Cloud", "Microsoft Azure", "CtrlS"] },
+            { continent: "Asia", lat: 3.1390, lng: 101.6869, flag: "🇲🇾", country: "Malaysia", city: "Kuala Lumpur", zone: "0A", maxDB: 34.5, minDB: 22.5, extWB: 28.5, freeCooling: 0, waterRisk: 2, heatWave: 3, seismic: 1, recoKey: "reco_17", pue: 1.38, carbonIntensity: 550, electricityCost: 0.09, gridRenewable: 20, annualCDD: 3500, coolingWaterTemp: "W45", latency: 8, hyperscalers: ["AWS", "Microsoft Azure", "Google Cloud", "YTL"] },
+            { continent: "Asia", lat: 22.3193, lng: 114.1694, flag: "🇭🇰", country: "Hong Kong", city: "Hong Kong", zone: "2A", maxDB: 34.5, minDB: 10.5, extWB: 28.5, freeCooling: 1200, waterRisk: 3, heatWave: 3, seismic: 1, recoKey: "reco_15", pue: 1.35, carbonIntensity: 600, electricityCost: 0.15, gridRenewable: 5, annualCDD: 2800, coolingWaterTemp: "W40", latency: 2, hyperscalers: ["AWS", "Google Cloud", "Microsoft Azure", "Equinix"] },
+            { continent: "MEA", lat: 32.0853, lng: 34.7818, flag: "🇮🇱", country: "Israel", city: "Tel Aviv", zone: "2B", maxDB: 35.5, minDB: 7.5, extWB: 25.5, freeCooling: 3000, waterRisk: 5, heatWave: 4, seismic: 4, recoKey: "reco_1", pue: 1.30, carbonIntensity: 450, electricityCost: 0.14, gridRenewable: 15, annualCDD: 2200, coolingWaterTemp: "W35", latency: 8, hyperscalers: ["AWS", "Google Cloud", "Microsoft Azure"] },
+            { continent: "MEA", lat: -26.2041, lng: 28.0473, flag: "🇿🇦", country: "South Africa", city: "Johannesburg", zone: "3B", maxDB: 32.5, minDB: -1.5, extWB: 19.5, freeCooling: 6000, waterRisk: 4, heatWave: 2, seismic: 1, recoKey: "reco_3", pue: 1.25, carbonIntensity: 850, electricityCost: 0.12, gridRenewable: 15, annualCDD: 800, coolingWaterTemp: "W32", latency: 35, hyperscalers: ["AWS", "Microsoft Azure", "Teraco"] }
+        ];
+
+        // 動態計算 Score (熱複雜度): 綜合評估濕球、乾球、水資源與缺乏自然冷卻時間
+        data.forEach(d => {
+            const wbScore = Math.max(0, Math.min(10, (d.extWB - 5) / 25 * 10));
+            const dbScore = Math.max(0, Math.min(10, (d.maxDB - 15) / 30 * 10));
+            const fcScore = (8760 - d.freeCooling) / 8760 * 10;
+            const wrScore = (d.waterRisk - 1) / 4 * 10;
+            let score = wbScore * 0.35 + dbScore * 0.15 + fcScore * 0.30 + wrScore * 0.20;
+            d.score = parseFloat(Math.max(1, Math.min(10, score)).toFixed(1));
+        });
+
+        let currentSort = { key: 'pue', dir: 1 };
+        let selectedCity = null;
+        let myGlobe = null;
+
+        // --- 3. 核心邏輯 ---
+        function setLanguage(lang) {
+            currentLang = lang;
+            document.getElementById('langLabel').innerText = lang.toUpperCase();
+            document.getElementById('searchInput').placeholder = i18n[lang].search;
+            
+            // 靜態 UI 替換
+            ['title', 'subtitle', 'kpi1', 'kpi2', 'kpi3', 'kpi4', 'globe_title', 'globe_sub',
+             'col_region', 'col_zone', 'col_wb', 'col_fc', 'col_water', 'col_pue', 'col_req', 'globe_loading'].forEach(key => {
+                const el = document.getElementById(`t-${key}`);
+                const dictKey = key;
+                if(el && i18n[lang][dictKey]) {
+                    el.innerText = i18n[lang][dictKey];
+                }
+            });
+            
+            document.getElementById('t-kpi1-sub').innerText = i18n[lang].kpi1_sub;
+            document.getElementById('t-kpi3-sub').innerText = i18n[lang].kpi3_sub;
+            document.getElementById('t-kpi4-sub').innerText = i18n[lang].kpi4_sub;
+
+            renderTable();
+            if(selectedCity) updateDetailPanel(selectedCity);
+            if(myGlobe) updateGlobeMarkers();
+        }
+
+        function toggleLang() { setLanguage(currentLang === 'en' ? 'zh' : 'en'); }
+
+        function toggleTheme() {
+            const body = document.body;
+            const isLight = body.classList.toggle('light-theme');
+            document.getElementById('icon-sun').classList.toggle('hidden', isLight);
+            document.getElementById('icon-moon').classList.toggle('hidden', !isLight);
+        }
+
+        function getCoolingRequirement(wb) {
+            if (wb > 26) return { textKey: "req_immersion", class: "bg-rose-500/10 text-rose-400 border-rose-500/20" };
+            if (wb > 22) return { textKey: "req_d2c", class: "bg-orange-500/10 text-orange-400 border-orange-500/20" };
+            return { textKey: "req_hybrid", class: "bg-blue-500/10 text-blue-400 border-blue-500/20" };
+        }
+
+        function getHeatColor(wb) {
+            if (wb > 28) return 'text-rose-400 bg-rose-500/10 border-rose-500/20';
+            if (wb > 24) return 'text-orange-400 bg-orange-500/10 border-orange-500/20';
+            return 'text-cyan-400 bg-cyan-500/10 border-cyan-500/20';
+        }
+
+        function getHeatColorBg(wb) {
+            if (wb > 28) return 'bg-rose-500';
+            if (wb > 24) return 'bg-orange-500';
+            return 'bg-cyan-500';
+        }
+
+        function getFilteredData() {
+            const filterText = document.getElementById('searchInput').value.toLowerCase();
+            const regionFilter = document.getElementById('regionFilter').value;
+            
+            return data.filter(item => {
+                const textMatch = item.city.toLowerCase().includes(filterText) || 
+                                  item.country.toLowerCase().includes(filterText) ||
+                                  item.zone.toLowerCase().includes(filterText);
+                const regionMatch = regionFilter === 'All' || item.continent === regionFilter;
+                return textMatch && regionMatch;
+            });
+        }
+
+        function renderTable() {
+            const body = document.getElementById('tableBody');
+            let filteredData = getFilteredData();
+
+            filteredData.sort((a, b) => {
+                let valA = a[currentSort.key]; let valB = b[currentSort.key];
+                if (typeof valA === 'string') return valA.localeCompare(valB) * currentSort.dir;
+                return (valA > valB ? 1 : (valA < valB ? -1 : 0)) * currentSort.dir;
+            });
+
+            document.querySelectorAll('.sort-icon').forEach(icon => { icon.innerHTML = ''; icon.classList.remove('sort-active'); });
+            const activeIcon = document.getElementById(`sort-${currentSort.key}`);
+            if(activeIcon) {
+                activeIcon.innerHTML = currentSort.dir === 1 ? '↑' : '↓';
+                activeIcon.classList.add('sort-active');
+            }
+
+            body.innerHTML = filteredData.map((item, i) => {
+                const req = getCoolingRequirement(item.extWB);
+                const isSelected = selectedCity && selectedCity.city === item.city;
+                const reqText = i18n[currentLang][req.textKey];
+                
+                const waterRiskDots = [1,2,3,4,5].map(j => {
+                    let color = 'bg-slate-200';
+                    if (j <= item.waterRisk) {
+                        color = item.waterRisk >= 4 ? 'bg-rose-500' : (item.waterRisk === 3 ? 'bg-amber-400' : 'bg-emerald-400');
+                    }
+                    return `<div class="w-1.5 h-3 rounded-sm ${color}"></div>`;
+                }).join('');
+
+                return `
+                    <tr class="table-row group cursor-pointer ${isSelected ? 'bg-blue-500/10' : ''}" onclick="selectNode('${item.city}')">
+                        <td class="px-6 py-4">
+                            <div class="flex items-center gap-4">
+                                <span class="text-3xl drop-shadow-[0_0_10px_rgba(255,255,255,0.2)] group-hover:scale-110 transition-transform">${item.flag}</span>
+                                <div class="flex flex-col">
+                                    <span class="text-sm font-bold text-white group-hover:text-blue-400 transition-colors drop-shadow-sm">${item.city}</span>
+                                    <span class="text-[11px] text-slate-500 font-bold uppercase tracking-[0.2em] font-mono mt-0.5">${item.country}</span>
+                                </div>
+                            </div>
+                        </td>
+                        <td class="px-4 py-4 text-center">
+                            <span class="text-[12px] font-mono font-bold tracking-widest bg-white/5 text-slate-300 px-2.5 py-1.5 rounded-lg shadow-inner group-hover:border-white/20 transition-all">${item.zone}</span>
+                        </td>
+                        <td class="px-4 py-4 text-right">
+                            <div class="text-[11px] text-slate-500 uppercase tracking-widest font-mono mb-1">Max ${item.maxDB.toFixed(1)}°C</div>
+                            <span class="text-sm font-bold tracking-tight text-white drop-shadow-sm">${item.extWB.toFixed(1)}°C</span>
+                        </td>
+                        <td class="px-4 py-4">
+                            <div class="flex flex-col gap-1.5">
+                                <div class="flex items-center gap-3">
+                                    <div class="w-32 h-1 bg-slate-800/80 rounded-full overflow-hidden shadow-inner">
+                                        <div class="h-full ${item.freeCooling > 6000 ? 'bg-emerald-500 shadow-[0_0_10px_#10b981]' : 'bg-blue-500 shadow-[0_0_10px_#3b82f6]'} transition-all duration-1000" style="width: ${(item.freeCooling/8760)*100}%"></div>
+                                    </div>
+                                    <span class="text-[12px] font-mono font-bold text-slate-400 group-hover:text-white transition-colors">${item.freeCooling}h</span>
+                                </div>
+                            </div>
+                        </td>
+                        <td class="px-4 py-4 text-right">
+                            <div class="flex justify-end gap-1" title="Risk Level: ${item.waterRisk}/5">${waterRiskDots}</div>
+                        </td>
+                        <td class="px-4 py-4 text-right font-mono font-bold text-slate-300 group-hover:text-white transition-colors text-lg tracking-tighter">${item.pue.toFixed(2)}</td>
+                        <td class="px-6 py-4 text-right">
+                            <span class="text-[12px] font-bold tracking-[0.1em] px-3 py-1.5 rounded-md border shadow-inner ${req.class}">${reqText}</span>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+
+            updateKPIs(filteredData);
+            if(myGlobe) updateGlobeMarkers(); 
+        }
+
+        function updateKPIs(filteredData) {
+            const region = document.getElementById('regionFilter').value;
+            const kpiTitle = document.getElementById('t-kpi1');
+            const isZh = currentLang === 'zh';
+            
+            if (region === 'All') {
+                kpiTitle.innerText = isZh ? '全球平均 PUE' : 'Global Avg PUE';
+            } else {
+                let regionName = region;
+                if (isZh) {
+                    if (region === 'Americas') regionName = '美洲';
+                    else if (region === 'Europe') regionName = '歐洲';
+                    else if (region === 'Asia') regionName = '亞洲';
+                    else if (region === 'MEA') regionName = '中東與非洲';
+                }
+                kpiTitle.innerText = `${regionName} ${isZh ? '平均 PUE' : 'Avg PUE'}`;
+            }
+
+            if (filteredData.length > 0) {
+                const avgPue = filteredData.reduce((a, b) => a + b.pue, 0) / filteredData.length;
+                document.getElementById('kpiAvgPue').innerText = avgPue.toFixed(2);
+                
+                const maxWbNode = filteredData.reduce((prev, current) => (prev.extWB > current.extWB) ? prev : current);
+                document.getElementById('kpiMaxWb').innerText = maxWbNode.extWB.toFixed(1) + '°C';
+                document.getElementById('kpiMaxWbCity').innerText = `(${maxWbNode.city})`;
+
+                const maxFc = Math.max(...filteredData.map(d => d.freeCooling));
+                document.getElementById('kpiMaxFreeCooling').innerText = (maxFc / 1000).toFixed(1) + 'k';
+                
+                const liquidNodesCount = filteredData.filter(d => d.extWB > 22).length;
+                const liquidPct = Math.round((liquidNodesCount / filteredData.length) * 100);
+                document.getElementById('kpiLiquidNecessity').innerText = liquidPct + '%';
+            } else {
+                ['kpiAvgPue', 'kpiMaxWb', 'kpiMaxFreeCooling', 'kpiLiquidNecessity'].forEach(id => document.getElementById(id).innerText = '--');
+                document.getElementById('kpiMaxWbCity').innerText = '';
+            }
+        }
+
+        function updateDetailPanel(cityData) {
+            const panel = document.getElementById('detailPanel');
+            const lang = i18n[currentLang];
+            const req = getCoolingRequirement(cityData.extWB);
+            const reqText = i18n[currentLang][req.textKey];
+            
+            panel.innerHTML = `
+                <div class="flex flex-col animate-fade-in relative z-10">
+                    <!-- Ambient glowing orb specific to panel -->
+                    <div class="absolute -top-20 -right-20 w-64 h-64 ${cityData.extWB > 24 ? 'bg-rose-500/10' : 'bg-cyan-500/10'} rounded-full blur-[80px] pointer-events-none mix-blend-screen transition-colors duration-1000"></div>
+
+                    <div class="relative z-10">
+                        <!-- Hero Region Tag -->
+                        <div class="mb-8">
+                            <div class="flex items-center gap-2 mb-3">
+                                <div class="w-1.5 h-1.5 rounded-full ${cityData.score > 7 ? 'bg-rose-500 animate-pulse' : 'bg-cyan-500'} shadow-[0_0_8px_currentColor]"></div>
+                                <p class="text-[11px] font-bold text-slate-400 uppercase tracking-[0.3em] font-mono">NODE_ID: ${cityData.city.toUpperCase().replace(/\s+/g, '_')}_01</p>
+                            </div>
+                            <div class="flex items-end gap-4">
+                                <h2 class="heading text-5xl md:text-[4rem] font-black text-slate-800 dark:text-white tracking-tighter drop-shadow-sm leading-none flex items-center gap-3">
+                                    ${cityData.city}
+                                </h2>
+                            </div>
+                            <div class="flex items-center gap-3 mt-5 flex-wrap">
+                                <span class="px-2 py-1 rounded border border-white/20 bg-white/5 backdrop-blur font-mono text-[11px] font-bold tracking-widest uppercase">${cityData.country}</span>
+                                <span class="text-slate-400 text-[12px] tracking-widest font-mono uppercase">ZONE ${cityData.zone}</span>
+                                <span class="w-1 h-1 rounded-full bg-slate-300 opacity-30"></span>
+                                <span class="text-[11px] font-bold tracking-[0.2em] uppercase ${req.class.replace('bg-', 'text-').replace('border-', '')}">${reqText}</span>
+                            </div>
+                        </div>
+
+                        <!-- Giant Thermal Metric & Radial Gauge (Visualized via Cinematic Linear or SVG) -->
+                        <div class="glass-card rounded-[2rem] p-6 sm:p-8 mb-6 relative group border border-white/10 shadow-2xl transition-all hover:shadow-[0_20px_40px_rgba(0,0,0,0.1)] overflow-hidden">
+                            <!-- Telemetry background texture -->
+                            <div class="absolute inset-0 opacity-[0.03] pointer-events-none" style="background-image: radial-gradient(circle at 2px 2px, currentColor 1px, transparent 0); background-size: 16px 16px;"></div>
+                            <div class="absolute inset-0 bg-gradient-to-br ${cityData.extWB > 24 ? 'from-rose-500/10 to-transparent' : 'from-cyan-500/10 to-transparent'} opacity-30"></div>
+
+                            <p class="text-[12px] font-medium text-slate-400 uppercase tracking-[0.25em] mb-2 flex items-center gap-2 relative z-10">
+                                ${lang.term_score} // GLOBAL RANKING
+                            </p>
+                            
+                            <div class="flex justify-between items-end relative z-10">
+                                <div class="flex items-baseline gap-1">
+                                    <span class="heading text-[5.5rem] font-black text-transparent bg-clip-text ${cityData.score > 7 ? 'bg-gradient-to-b from-orange-400 to-rose-600' : 'bg-gradient-to-b from-cyan-400 to-blue-600'} tracking-tighter leading-none drop-shadow-lg">${cityData.score.toFixed(1)}</span>
+                                    <span class="text-xs font-bold text-slate-500 tracking-[0.2em] uppercase ml-1">/ 10</span>
+                                </div>
+                                <div class="text-right pb-2">
+                                    <p class="text-[11px] text-slate-400 tracking-[0.2em] uppercase mb-1">Density Cap</p>
+                                    <p class="text-xl font-bold text-white tracking-tight font-mono">${cityData.score > 7 ? '120' : '40'}<span class="text-[12px] text-slate-500 ml-1">kW/R</span></p>
+                                </div>
+                            </div>
+                            
+                            <!-- Cinematic Glowing Gauge -->
+                            <div class="mt-8 relative h-1.5 w-full bg-slate-800/50 dark:bg-[#05050a] rounded-full overflow-hidden shadow-inner">
+                                <div class="absolute top-0 left-0 h-full ${cityData.score > 7 ? 'bg-gradient-to-r from-orange-500 to-rose-500' : 'bg-gradient-to-r from-cyan-500 to-blue-500'} shadow-[0_0_15px_currentColor] transition-all duration-1500 ease-out" style="width: ${cityData.score*10}%"></div>
+                            </div>
+                        </div>
+
+                        <!-- Giant Wet Bulb & Free Cooling -->
+                        <div class="flex gap-4 mb-6">
+                            <div class="flex-1 glass-card rounded-[1.5rem] p-5 border border-white/10 shadow-lg relative overflow-hidden group">
+                                <div class="absolute inset-0 bg-gradient-to-t from-black/5 to-transparent pointer-events-none opacity-50"></div>
+                                <p class="text-[11px] font-medium text-slate-400 uppercase tracking-[0.2em] mb-3">Extreme WB</p>
+                                <div class="flex items-baseline gap-1">
+                                    <p class="heading text-4xl font-bold ${cityData.extWB > 24 ? 'text-rose-500' : 'text-cyan-500'} tracking-tighter">${cityData.extWB.toFixed(1)}</p>
+                                    <span class="text-xs font-medium text-slate-500 tracking-widest">°C</span>
+                                </div>
+                                <p class="text-[12px] font-mono text-slate-500 mt-2 tracking-wider">MAX_DB: ${cityData.maxDB.toFixed(1)}°C</p>
+                            </div>
+                            
+                            <div class="flex-1 glass-card rounded-[1.5rem] p-5 border border-white/10 shadow-lg relative overflow-hidden group">
+                                <p class="text-[11px] font-medium text-slate-400 uppercase tracking-[0.2em] mb-3">${lang.modal_fc}</p>
+                                <div class="flex items-baseline gap-1">
+                                    <p class="heading text-4xl font-bold text-white tracking-tighter drop-shadow-sm">${(cityData.freeCooling/1000).toFixed(1)}K</p>
+                                    <span class="text-xs font-medium text-slate-500 tracking-widest uppercase">Hrs</span>
+                                </div>
+                                <div class="mt-3 flex items-center gap-2">
+                                    <div class="h-1 flex-1 bg-slate-800/50 dark:bg-[#05050a] rounded-full overflow-hidden">
+                                        <div class="h-full bg-emerald-500" style="width: ${(cityData.freeCooling/8760)*100}%"></div>
+                                    </div>
+                                    <span class="text-[11px] font-mono font-bold text-emerald-400 tracking-wider">${Math.round((cityData.freeCooling/8760)*100)}%</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Cinematic Button -->
+                    <button onclick="generateReport('${cityData.city}')"
+                        class="relative w-full group overflow-hidden rounded-[1.5rem] border border-blue-500/30 bg-blue-500/5 backdrop-blur hover:bg-blue-500/10 transition-all duration-500 p-5 mt-6 shadow-[0_0_40px_rgba(59,130,246,0.1)] hover:shadow-[0_0_60px_rgba(59,130,246,0.2)] hover:-translate-y-1">
+                        <div class="absolute inset-0 bg-gradient-to-r from-blue-600/20 to-indigo-600/20 opacity-0 group-hover:opacity-100 transition-opacity duration-700"></div>
+                        <div class="absolute top-0 left-0 w-full h-[1px] bg-gradient-to-r from-transparent via-blue-400/50 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-700"></div>
+                        <div class="flex items-center justify-between relative z-10">
+                            <span class="font-mono text-[12px] tracking-[0.25em] uppercase text-blue-400 font-bold group-hover:text-blue-300 transition-colors drop-shadow-md">Compile Infrastructure Report</span>
+                            <svg class="w-4 h-4 text-blue-400 group-hover:text-blue-300 group-hover:translate-x-1 transition-all" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 8l4 4m0 0l-4 4m4-4H3"></path></svg>
+                        </div>
+                    </button>
+                </div>
+            `;
+        }
+
+        // --- 4. 3D Globe Implementation ---
+        function updateGlobeMarkers() {
+            if(!myGlobe) return;
+            const filtered = getFilteredData();
+            myGlobe.htmlElementsData(filtered);
+        }
+
+        function initGlobe() {
+            const container = document.getElementById('globeViz');
+            if (!container) return;
+            
+            if (typeof Globe === 'undefined') {
+                container.innerHTML = '<div class="w-full h-full flex items-center justify-center text-slate-400 font-bold">3D Library Loading Failed.</div>';
+                return;
+            }
+
+            try {
+                myGlobe = Globe()(container)
+                    // 初始長寬會由 ResizeObserver 接手處理
+                    .backgroundColor('rgba(0,0,0,0)')
+                    .showAtmosphere(true).atmosphereColor('#bae6fd').atmosphereAltitude(0.2)
+                    .globeImageUrl('https://unpkg.com/three-globe/example/img/earth-blue-marble.jpg') 
+                    .bumpImageUrl('https://unpkg.com/three-globe/example/img/earth-topology.png')
+                    .htmlElementsData(data)
+                    .htmlElement(d => {
+                        const el = document.createElement('div');
+                        const colorClass = getHeatColorBg(d.extWB);
+                        el.innerHTML = `
+                            <div class="flex items-center gap-2 cursor-pointer group pointer-events-auto" style="transform: translate(-50%, -50%);">
+                                <div class="relative flex h-3 w-3 sm:h-4 sm:w-4">
+                                    <span class="absolute inline-flex h-full w-full rounded-full ${colorClass} globe-marker-ping"></span>
+                                    <span class="relative inline-flex rounded-full h-3 w-3 sm:h-4 sm:w-4 ${colorClass} shadow-[0_0_8px_rgba(255,255,255,0.8)] border border-white/80"></span>
+                                </div>
+                                <div class="hidden group-hover:block px-2.5 py-1 bg-slate-900/90 backdrop-blur-md text-white text-[11px] font-bold rounded-lg whitespace-nowrap border border-white/20 transition-all shadow-xl">
+                                    ${d.city}
+                                </div>
+                            </div>
+                        `;
+                        el.onclick = () => selectNode(d.city);
+                        return el;
+                    })
+                    .htmlAltitude(0.02);
+
+                // 註冊地圖載入完成的事件，淡出 Loading 遮罩
+                myGlobe.onGlobeReady(() => {
+                    const loader = document.getElementById('globeLoading');
+                    if(loader) {
+                        loader.style.opacity = '0';
+                        setTimeout(() => { loader.style.display = 'none'; }, 500);
+                    }
+                });
+
+                myGlobe.controls().autoRotate = true;
+                myGlobe.controls().autoRotateSpeed = 0.8;
+                myGlobe.controls().enableZoom = true;
+
+                // 導入 ResizeObserver 確保自適應容器調整
+                const resizeObserver = new ResizeObserver(entries => {
+                    for (let entry of entries) {
+                        const { width, height } = entry.contentRect;
+                        if (width && height && myGlobe) {
+                            myGlobe.width(width);
+                            myGlobe.height(height);
+                        }
+                    }
+                });
+                resizeObserver.observe(container);
+
+            } catch (error) {
+                console.error("Globe init error:", error);
+            }
+        }
+
+        // --- 自動旋轉與閒置偵測 ---
+        let idleTimeout = null;
+        function resetIdleTimer() {
+            clearTimeout(idleTimeout);
+            idleTimeout = setTimeout(() => {
+                if (myGlobe) {
+                    myGlobe.controls().autoRotate = true;
+                    myGlobe.controls().autoRotateSpeed = 0.8;
+                }
+            }, 10000); // 10秒無操作後恢復旋轉
+        }
+
+        // 監聽使用者操作來重置計時器
+        ['mousemove', 'mousedown', 'keydown', 'touchstart', 'wheel'].forEach(evt => 
+            window.addEventListener(evt, () => {
+                resetIdleTimer();
+            }, { passive: true })
+        );
+
+        function selectNode(cityName) {
+            selectedCity = data.find(d => d.city === cityName);
+            updateDetailPanel(selectedCity);
+            renderTable();
+
+            if (myGlobe) {
+                myGlobe.controls().autoRotate = false;
+                myGlobe.controls().autoRotateSpeed = 0;
+                myGlobe.pointOfView({ lat: selectedCity.lat, lng: selectedCity.lng, altitude: 1.2 }, 1200);
+                setTimeout(() => {
+                    if (myGlobe) { myGlobe.controls().autoRotate = false; myGlobe.controls().autoRotateSpeed = 0; }
+                }, 1250);
+                resetIdleTimer();
+            }
+        }
+
+        // --- 5. Deep Engineering Modal Report ---
+        function generateReport(cityName) {
+            const cityData = data.find(d => d.city === cityName);
+            const modal = document.getElementById('reportModal');
+            const modalContent = document.getElementById('reportModalContent');
+            const lang = i18n[currentLang];
+            const req = getCoolingRequirement(cityData.extWB);
+            
+            // Engineering Calculations (assuming 10MW IT Load)
+            const itLoadKW = 10000;
+            const annualEnergyKwh = itLoadKW * 8760 * cityData.pue;
+            const annualCost = (annualEnergyKwh * cityData.electricityCost).toLocaleString('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 });
+            // CUE = PUE * CarbonIntensity (kgCO2/kWh)
+            const cue = (cityData.pue * (cityData.carbonIntensity / 1000)).toFixed(3);
+
+            modalContent.innerHTML = `
+                <!-- 透過 Flex Layout 與相對位置實現不遮擋的 Header -->
+                <div class="shrink-0 bg-[#0d0d1a]/95 backdrop-blur-md px-6 sm:px-10 py-6 sm:py-8 border-b border-white/10 flex flex-col sm:flex-row justify-between items-start z-20 relative">
+                    <div class="flex items-center gap-5">
+                        <div class="w-16 h-16 sm:w-20 sm:h-20 bg-slate-800/50 rounded-[1.5rem] flex items-center justify-center text-4xl sm:text-5xl shadow-inner border border-white/10">
+                            ${cityData.flag}
+                        </div>
+                        <div>
+                            <h2 class="heading text-3xl sm:text-4xl font-bold text-white tracking-tight leading-tight">${cityData.city}</h2>
+                            <p class="text-[12px] sm:text-xs font-bold text-slate-400 uppercase tracking-[0.2em] mt-2">${cityData.country} • ASHRAE Zone ${cityData.zone}</p>
+                        </div>
+                    </div>
+                    <button onclick="closeReportModal()" class="w-10 h-10 bg-slate-700 hover:bg-slate-600 text-slate-300 rounded-full flex items-center justify-center transition-colors shrink-0 shadow-sm border border-white/10 mt-4 sm:mt-0">
+                        <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"></path></svg>
+                    </button>
+                </div>
+
+                <!-- 可捲動的 Body -->
+                <div class="p-6 sm:p-10 overflow-y-auto w-full flex-1 bg-[#0d0d1a]">
+                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                    <!-- Left Column: Engineering Metrics -->
+                    <div class="space-y-6">
+                        <div>
+                            <h3 class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-3 flex items-center gap-2">
+                                <svg class="w-4 h-4 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.673.337a4 4 0 01-4.827-.714l-.064-.064a4 4 0 01-.714-4.827l.337-.673a6 6 0 00.517-3.86l-.477-2.387a2 2 0 00-.547-1.022L7.414 2a2 2 0 00-2.828 0L2 4.586a2 2 0 000 2.828l2.828 2.828a2 2 0 01.586 1.414V17a5 5 0 005 5h6a2 2 0 002-2v-1.586a2 2 0 01.586-1.414l2.828-2.828a2 2 0 000-2.828l-2.586-2.586z"></path></svg>
+                                ${lang.modal_env}
+                            </h3>
+                            <div class="grid grid-cols-2 gap-3">
+                                <div class="bg-slate-800/50 border border-white/5 p-4 rounded-2xl">
+                                    <p class="text-[12px] font-bold text-slate-400 uppercase mb-1">Max Dry Bulb / Ext Wet Bulb</p>
+                                    <p class="text-lg font-bold text-rose-500">${cityData.maxDB}°C <span class="text-slate-300 mx-1">|</span> <span class="text-blue-600">${cityData.extWB}°C</span></p>
+                                </div>
+                                <div class="bg-slate-800/50 border border-white/5 p-4 rounded-2xl">
+                                    <p class="text-[12px] font-bold text-slate-400 uppercase mb-1">${lang.modal_fc} / ${lang.modal_cdd}</p>
+                                    <p class="text-lg font-bold text-emerald-500">${cityData.freeCooling}h <span class="text-slate-300 mx-1">|</span> <span class="text-slate-700">${cityData.annualCDD}</span></p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div>
+                            <h3 class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-3 flex items-center gap-2">
+                                <svg class="w-4 h-4 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
+                                ${lang.modal_ashrae}
+                            </h3>
+                            <div class="bg-slate-900 rounded-[1.5rem] p-6 text-white relative overflow-hidden">
+                                <div class="absolute -right-10 -top-10 w-32 h-32 bg-blue-500/20 blur-2xl rounded-full"></div>
+                                <div class="flex justify-between items-end mb-4 relative z-10">
+                                    <div>
+                                        <p class="text-[12px] font-bold text-blue-300 uppercase tracking-widest mb-1">${lang.term_verdict}</p>
+                                        <p class="text-lg font-bold leading-tight">${lang[cityData.recoKey]}</p>
+                                    </div>
+                                    <span class="text-[12px] font-bold uppercase tracking-tight px-3 py-1 rounded-lg border ${req.class}">${lang[req.textKey]}</span>
+                                </div>
+                                <div class="grid grid-cols-2 gap-4 pt-4 border-t border-slate-700/50 relative z-10">
+                                    <div>
+                                        <p class="text-[12px] text-slate-400 uppercase mb-1">CDU Supply Temp</p>
+                                        <p class="font-mono text-sm font-bold text-emerald-400">ASHRAE ${cityData.coolingWaterTemp}</p>
+                                    </div>
+                                    <div>
+                                        <p class="text-[12px] text-slate-400 uppercase mb-1">Estimated PUE</p>
+                                        <p class="font-mono text-sm font-bold text-amber-400">${cityData.pue.toFixed(2)}</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Financial & Carbon Projection -->
+                        <div class="grid grid-cols-2 gap-3">
+                            <div class="bg-slate-800/50 border border-white/5 p-4 rounded-2xl">
+                                <p class="text-[12px] font-bold text-slate-400 uppercase mb-1">${lang.modal_cost}</p>
+                                <p class="text-xl font-bold text-white font-mono">${annualCost}</p>
+                                <p class="text-[12px] text-slate-400 mt-1">@ $${cityData.electricityCost}/kWh</p>
+                            </div>
+                            <div class="bg-slate-800/50 border border-white/5 p-4 rounded-2xl relative overflow-hidden">
+                                <p class="text-[12px] font-bold text-slate-400 uppercase mb-1">${lang.modal_cue}</p>
+                                <p class="text-xl font-bold text-white font-mono">${cue} <span class="text-xs text-slate-400 font-sans">kgCO₂/kWh</span></p>
+                                <p class="text-[12px] text-emerald-400 font-bold mt-1">${lang.modal_grid}: ${cityData.gridRenewable}%</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Right Column: Business & Risks -->
+                    <div class="space-y-6">
+                        <div>
+                            <h3 class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-3 flex items-center gap-2">
+                                <svg class="w-4 h-4 text-orange-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>
+                                Risk Matrix & Connectivity
+                            </h3>
+                            <div class="bg-slate-800/50 border border-white/10 rounded-[1.5rem] p-5">
+                                <div class="grid grid-cols-3 gap-y-4 gap-x-2">
+                                    <div class="text-center">
+                                        <p class="text-[12px] text-slate-400 font-bold uppercase mb-1">Heatwave Risk</p>
+                                        <span class="text-sm font-bold ${cityData.heatWave >=4 ? 'text-rose-500' : 'text-slate-200'}">Level ${cityData.heatWave}</span>
+                                    </div>
+                                    <div class="text-center border-l border-white/5">
+                                        <p class="text-[12px] text-slate-400 font-bold uppercase mb-1">Water Risk</p>
+                                        <span class="text-sm font-bold ${cityData.waterRisk >=4 ? 'text-rose-500' : 'text-slate-200'}">Level ${cityData.waterRisk}</span>
+                                    </div>
+                                    <div class="text-center border-l border-white/5">
+                                        <p class="text-[12px] text-slate-400 font-bold uppercase mb-1">Seismic Risk</p>
+                                        <span class="text-sm font-bold ${cityData.seismic >=4 ? 'text-rose-500' : 'text-slate-200'}">Level ${cityData.seismic}</span>
+                                    </div>
+                                </div>
+                                <div class="mt-4 pt-4 border-t border-white/5 flex justify-between items-center">
+                                    <p class="text-[12px] text-slate-400 font-bold uppercase">IXP Network Latency</p>
+                                    <p class="text-sm font-mono font-bold text-indigo-400">${cityData.latency} ms</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div>
+                            <h3 class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-3 flex items-center gap-2">
+                                <svg class="w-4 h-4 text-purple-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"></path></svg>
+                                ${lang.modal_hyperscalers}
+                            </h3>
+                            <div class="bg-slate-800/50 border border-white/10 rounded-[1.5rem] p-5 h-full">
+                                <div class="flex flex-wrap gap-2 mb-6">
+                                    ${cityData.hyperscalers.map(company => `
+                                        <div class="px-3 py-1.5 bg-slate-700/50 border border-white/10 text-slate-200 font-bold text-xs rounded-xl flex items-center gap-2">
+                                            <div class="w-1.5 h-1.5 rounded-full ${company.includes('NVIDIA') ? 'bg-green-500' : (company.includes('AWS') ? 'bg-orange-500' : 'bg-blue-500')}"></div>
+                                            ${company}
+                                        </div>
+                                    `).join('')}
+                                </div>
+                                <div>
+                                    <div class="flex justify-between items-center mb-1.5">
+                                        <p class="text-[12px] text-slate-400 font-bold uppercase tracking-wider">${lang.modal_saturation}</p>
+                                        <span class="text-[12px] font-bold text-indigo-400">${Math.min(100, cityData.hyperscalers.length * 20)}%</span>
+                                    </div>
+                                    <div class="w-full bg-slate-700 h-1.5 rounded-full overflow-hidden">
+                                        <div class="h-full bg-gradient-to-r from-blue-400 to-indigo-500" style="width: ${Math.min(100, cityData.hyperscalers.length * 20)}%"></div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+
+            modal.classList.remove('hidden'); modal.classList.add('flex');
+            requestAnimationFrame(() => {
+                modal.classList.remove('opacity-0'); modalContent.classList.remove('scale-95');
+            });
+        }
+
+        function closeReportModal() {
+            const modal = document.getElementById('reportModal');
+            const modalContent = document.getElementById('reportModalContent');
+            if (modal && !modal.classList.contains('hidden')) {
+                modal.classList.add('opacity-0'); modalContent.classList.add('scale-95');
+                setTimeout(() => { modal.classList.add('hidden'); modal.classList.remove('flex'); }, 500);
+            }
+        }
+
+        function sortData(key) {
+            if (currentSort.key === key) { currentSort.dir *= -1; } else { currentSort.key = key; currentSort.dir = 1; }
+            renderTable();
+        }
+
+        // --- 全局快捷鍵綁定 (Esc 關閉 Modal) ---
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                closeReportModal();
+            }
+        });
+
+        // Event Listeners
+        document.getElementById('searchInput').addEventListener('input', renderTable);
+        document.getElementById('regionFilter').addEventListener('change', (e) => {
+            renderTable();
+            const region = e.target.value;
+            if (myGlobe) {
+                let coords = { lat: 20, lng: 0, altitude: 2.5 }; // All Regions 預設視角
+                if (region === 'Americas') coords = { lat: 39, lng: -95, altitude: 1.8 };
+                else if (region === 'Europe') coords = { lat: 50, lng: 10, altitude: 1.5 };
+                else if (region === 'Asia') coords = { lat: 25, lng: 110, altitude: 1.8 };
+                else if (region === 'MEA') coords = { lat: 20, lng: 40, altitude: 1.8 };
+                
+                myGlobe.controls().autoRotate = false;
+                myGlobe.pointOfView(coords, 1200);
+                resetIdleTimer();
+            }
+        });
+
+        window.addEventListener('DOMContentLoaded', () => {
+            setLanguage('zh'); 
+            setTimeout(() => { initGlobe(); }, 150);
+            
+            // Fix: Wait for data array to be available and select the first node by default.
+            setTimeout(() => { 
+                if(data && data.length > 0) {
+                    selectNode(data[0].city); 
+                }
+            }, 600);
+        });
+
+    </script>
+</body>
+</html>

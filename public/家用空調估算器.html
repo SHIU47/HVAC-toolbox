@@ -1,0 +1,1131 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Residential HVAC Pro v5.3</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700;900&display=swap');
+        body { font-family: 'Noto Sans TC', sans-serif; }
+        
+        /* Custom Scrollbar */
+        .custom-scroll::-webkit-scrollbar { width: 6px; }
+        .custom-scroll::-webkit-scrollbar-track { background: #f1f5f9; }
+        .custom-scroll::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; }
+        .custom-scroll::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+
+        /* Animation */
+        .fade-in { animation: fadeIn 0.3s ease-in-out; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        
+        /* Range Slider Styling */
+        input[type=range]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            height: 16px;
+            width: 16px;
+            border-radius: 50%;
+            background: #4f46e5;
+            cursor: pointer;
+            margin-top: -4px;
+        }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-800 min-h-screen p-4 md:p-8">
+
+    <div class="max-w-7xl mx-auto space-y-6">
+        
+        <!-- Header -->
+        <header class="bg-slate-900 rounded-[2rem] p-6 md:p-8 text-white shadow-2xl relative overflow-hidden flex flex-col md:flex-row justify-between items-start md:items-center">
+            <div class="relative z-10 space-y-2">
+                <div class="flex items-center gap-3">
+                    <i data-lucide="shield-check" class="w-8 h-8 text-emerald-400"></i>
+                    <h1 class="text-2xl md:text-3xl font-black tracking-tight" data-i18n="app_title">台灣住宅空調工程顧問系統</h1>
+                </div>
+                <p class="text-slate-400 text-sm font-medium flex items-center gap-2">
+                    <span class="bg-slate-800 px-2 py-1 rounded text-xs text-blue-300 border border-slate-700" data-i18n="version">工程版 v5.3</span>
+                    Residential HVAC Engineering & LCC Analysis
+                </p>
+            </div>
+            
+            <!-- System Mode Toggle -->
+            <div class="mt-4 md:mt-0 flex bg-slate-800 p-1 rounded-xl border border-slate-700">
+                <button onclick="switchSystemMode('split')" id="tab-split" class="px-4 py-2 rounded-lg text-sm font-bold transition-all flex items-center gap-2 bg-blue-600 text-white shadow-lg">
+                    <i data-lucide="wind" class="w-4 h-4"></i> <span data-i18n="tab_split">單機一對一 (Split)</span>
+                </button>
+                <button onclick="switchSystemMode('vrf')" id="tab-vrf" class="px-4 py-2 rounded-lg text-sm font-bold transition-all flex items-center gap-2 text-slate-400 hover:text-white">
+                    <i data-lucide="server" class="w-4 h-4"></i> <span data-i18n="tab_vrf">多聯變頻系統 (VRV/VRF)</span>
+                </button>
+            </div>
+        </header>
+
+        <!-- ==================== SPLIT SYSTEM VIEW ==================== -->
+        <div id="splitSystemView" class="grid grid-cols-1 xl:grid-cols-12 gap-8 fade-in">
+            <!-- Left Panel: Input Parameters -->
+            <div class="xl:col-span-4 space-y-6">
+                <div class="bg-white rounded-[2rem] shadow-lg p-6 md:p-8 border border-slate-200">
+                    <h2 class="text-lg font-bold flex items-center gap-2 mb-6 text-slate-800 border-b border-slate-100 pb-4">
+                        <i data-lucide="activity" class="w-5 h-5 text-blue-600"></i>
+                        <span data-i18n="split_input_title">單機現場參數設定</span>
+                    </h2>
+
+                    <!-- Room Type -->
+                    <section class="space-y-3 mb-6">
+                        <label class="text-xs font-bold text-slate-500 uppercase tracking-wider" data-i18n="label_room_type">房型與使用情境</label>
+                        <div class="grid grid-cols-2 gap-2" id="roomTypeContainer"></div>
+                        <p id="roomDesc" class="text-[10px] text-slate-400 bg-slate-50 p-2 rounded-lg flex items-center gap-1"></p>
+                    </section>
+
+                    <!-- Area Input -->
+                    <section class="space-y-3 mb-6">
+                        <div class="flex items-center justify-between">
+                            <label class="text-xs font-bold text-slate-500 uppercase tracking-wider" data-i18n="label_area">空間實坪 / 面積</label>
+                            <div class="flex bg-slate-100 rounded-lg p-1">
+                                <button onclick="updateSplitState('unit', 'ping')" id="btn-ping" class="px-3 py-1 rounded-md text-xs font-bold transition-all bg-white shadow text-blue-600" data-i18n="unit_ping">坪數</button>
+                                <button onclick="updateSplitState('unit', 'm2')" id="btn-m2" class="px-3 py-1 rounded-md text-xs font-bold transition-all text-slate-500">m²</button>
+                            </div>
+                        </div>
+                        <div class="relative">
+                            <input type="number" id="areaInput" oninput="updateSplitState('area', this.value)" class="w-full text-4xl p-4 bg-slate-50 border-2 border-slate-200 rounded-2xl focus:border-blue-500 focus:outline-none font-black text-slate-800" placeholder="0" />
+                            <span id="unitLabel" class="absolute right-6 top-1/2 -translate-y-1/2 text-slate-400 font-bold">坪</span>
+                        </div>
+                    </section>
+
+                    <!-- Environment -->
+                    <section class="space-y-4">
+                        <label class="text-xs font-bold text-slate-500 uppercase tracking-wider" data-i18n="label_env">熱源修正 & 區域</label>
+                        <select id="regionSelect" onchange="updateSplitState('region', this.value)" class="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold text-slate-700 outline-none focus:border-blue-500"></select>
+                        <div id="regionDesc" class="text-[10px] text-slate-400 px-1 -mt-2 mb-2"></div>
+
+                        <div class="space-y-2">
+                            <button onclick="toggleSplitFactor('topFloor')" id="btn-topFloor" class="w-full text-left p-3 rounded-xl border transition-all duration-200 flex items-center gap-3 bg-white border-slate-200 text-slate-600 hover:border-slate-300">
+                                <div class="p-1.5 rounded-lg bg-slate-100 text-slate-400 factor-icon"><i data-lucide="arrow-up" class="w-3.5 h-3.5"></i></div>
+                                <span class="text-xs font-bold" data-i18n="fac_top">頂樓層 (+20%)</span>
+                            </button>
+                            <button onclick="toggleSplitFactor('westExposed')" id="btn-westExposed" class="w-full text-left p-3 rounded-xl border transition-all duration-200 flex items-center gap-3 bg-white border-slate-200 text-slate-600 hover:border-slate-300">
+                                <div class="p-1.5 rounded-lg bg-slate-100 text-slate-400 factor-icon"><i data-lucide="sun" class="w-3.5 h-3.5"></i></div>
+                                <span class="text-xs font-bold" data-i18n="fac_west">嚴重西曬 (+20%)</span>
+                            </button>
+                            <button onclick="toggleSplitFactor('highCeiling')" id="btn-highCeiling" class="w-full text-left p-3 rounded-xl border transition-all duration-200 flex items-center gap-3 bg-white border-slate-200 text-slate-600 hover:border-slate-300">
+                                <div class="p-1.5 rounded-lg bg-slate-100 text-slate-400 factor-icon"><i data-lucide="zap" class="w-3.5 h-3.5"></i></div>
+                                <span class="text-xs font-bold" data-i18n="fac_high">挑高 > 3.2m (+10%)</span>
+                            </button>
+                        </div>
+                    </section>
+
+                    <button onclick="resetSplitCalculator()" class="mt-8 w-full py-3 text-slate-400 hover:text-slate-600 flex items-center justify-center gap-2 text-sm border border-slate-100 rounded-xl hover:bg-slate-50 transition-colors">
+                        <i data-lucide="rotate-ccw" class="w-4 h-4"></i> <span data-i18n="btn_reset">重置計算機</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Right Panel: Results -->
+            <div class="xl:col-span-8 space-y-6">
+                <!-- Empty State -->
+                <div id="splitEmptyState" class="h-full min-h-[500px] flex flex-col items-center justify-center bg-white border-2 border-dashed border-slate-200 rounded-[2rem] p-8 text-center space-y-4">
+                    <div class="w-20 h-20 bg-slate-50 rounded-full flex items-center justify-center">
+                        <i data-lucide="calculator" class="w-10 h-10 text-slate-300"></i>
+                    </div>
+                    <div>
+                        <h3 class="text-lg font-bold text-slate-400" data-i18n="empty_title">等待現場參數輸入</h3>
+                        <p class="text-sm text-slate-400 mt-2 max-w-xs mx-auto" data-i18n="empty_desc">請設定房型、面積與環境熱源因子。</p>
+                    </div>
+                </div>
+
+                <!-- Result Content -->
+                <div id="splitResultState" class="hidden animate-in fade-in slide-in-from-bottom-4 duration-500 space-y-6">
+                    
+                    <!-- Basic Cooling/Heating -->
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div class="bg-white rounded-[2rem] p-6 shadow-sm border border-blue-100 relative overflow-hidden group">
+                            <div class="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity"><i data-lucide="wind" class="w-20 h-20 text-blue-600"></i></div>
+                            <div class="relative z-10">
+                                <h3 class="text-sm font-bold text-blue-900 mb-1 flex items-center gap-2"><i data-lucide="wind" class="w-4 h-4"></i> <span data-i18n="res_cool">建議冷氣能力</span></h3>
+                                <div class="flex items-baseline gap-2 mb-2"><span id="resKW" class="text-5xl font-black text-blue-600">0.0</span><span class="text-lg font-bold text-blue-400">kW</span></div>
+                                <div class="flex gap-4 text-xs font-medium text-slate-500"><span><span data-i18n="res_approx">約</span> <span id="resTon">0.0</span> <span data-i18n="res_ton">噸</span></span><span>|</span><span><span id="resKcal">0</span> kcal/hr</span></div>
+                            </div>
+                        </div>
+                        <div class="bg-white rounded-[2rem] p-6 shadow-sm border border-orange-100 relative overflow-hidden group">
+                            <div class="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity"><i data-lucide="thermometer" class="w-20 h-20 text-orange-600"></i></div>
+                            <div class="relative z-10">
+                                <h3 class="text-sm font-bold text-orange-900 mb-1 flex items-center gap-2"><i data-lucide="thermometer" class="w-4 h-4"></i> <span data-i18n="res_heat">有效暖房能力</span></h3>
+                                <div class="flex items-baseline gap-2 mb-2"><span id="resHeatingKW" class="text-5xl font-black text-orange-500">0.0</span><span class="text-lg font-bold text-orange-300">kW</span></div>
+                                <div class="text-xs font-medium text-slate-500"><span class="bg-orange-50 text-orange-600 px-2 py-0.5 rounded"><span data-i18n="res_region_fac">區域修正係數</span> <span id="resRegionFactor">0.0</span></span></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Advice Box -->
+                    <div id="adviceBox" class="hidden bg-amber-50 rounded-2xl p-5 border border-amber-200 shadow-sm flex items-start gap-4">
+                        <div class="bg-amber-100 p-2 rounded-full flex-shrink-0"><i data-lucide="alert-triangle" class="w-6 h-6 text-amber-600"></i></div>
+                        <div>
+                            <h4 class="font-bold text-amber-900 text-sm mb-1" data-i18n="adv_title">規格升級建議</h4>
+                            <p id="adviceReason" class="text-xs text-amber-800 leading-relaxed mb-2"></p>
+                            <div class="inline-flex items-center gap-2 bg-white px-3 py-1 rounded-lg border border-amber-200 text-amber-700 text-xs font-bold shadow-sm"><span data-i18n="adv_sugg">建議：</span><span id="adviceSize">0.0</span> kW</div>
+                        </div>
+                    </div>
+
+                    <!-- Price Dashboard Table -->
+                    <div class="bg-white rounded-[2rem] border border-slate-200 shadow-sm overflow-hidden">
+                        <div class="bg-slate-800 p-4 flex items-center justify-between text-white">
+                            <div class="flex items-center gap-2"><i data-lucide="wallet" class="w-5 h-5 text-emerald-400"></i> <h3 class="font-bold" data-i18n="price_title">各品牌預算總覽 (含標準安裝)</h3></div>
+                            <span class="text-xs bg-slate-700 px-2 py-1 rounded text-slate-300" data-i18n="price_note">價格由低至高</span>
+                        </div>
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-sm text-left">
+                                <thead class="bg-slate-50 text-slate-500 font-bold text-xs uppercase border-b border-slate-100">
+                                    <tr>
+                                        <th class="px-6 py-3" data-i18n="col_brand">品牌</th>
+                                        <th class="px-6 py-3" data-i18n="col_tier">定位</th>
+                                        <th class="px-6 py-3 text-right" data-i18n="col_price">預估總價</th>
+                                        <th class="px-6 py-3 text-center">CSPF</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="priceTableBody" class="divide-y divide-slate-100">
+                                    <!-- Injected by JS -->
+                                </tbody>
+                            </table>
+                        </div>
+                        <div class="p-3 bg-slate-50 text-[10px] text-slate-400 text-center border-t border-slate-100" data-i18n="price_disclaimer">
+                            * 價格僅供參考，實際費用視現場銅管長度、洗洞數量與施工難易度而定
+                        </div>
+                    </div>
+
+                    <!-- Brand Detail Cards -->
+                    <div class="space-y-4">
+                        <div class="flex items-center justify-between px-2">
+                            <h3 class="text-lg font-bold text-slate-700 flex items-center gap-2">
+                                <i data-lucide="list-ordered" class="w-5 h-5"></i> <span data-i18n="detail_title">詳細規格與分析</span>
+                            </h3>
+                        </div>
+                        <div id="brandList" class="grid grid-cols-1 gap-4">
+                            <!-- Injected by JS -->
+                        </div>
+                    </div>
+
+                    <!-- Disclaimer -->
+                    <div class="bg-slate-100 rounded-xl p-5 text-[11px] text-slate-500 space-y-3 leading-relaxed border border-slate-200">
+                        <p class="font-bold text-slate-700 flex items-center gap-2 text-xs">
+                            <i data-lucide="shield-check" class="w-4 h-4"></i> <span data-i18n="disclaimer_title">工程顧問免責與技術說明：</span>
+                        </p>
+                        <ul class="list-disc pl-4 space-y-2">
+                            <li><strong class="text-slate-600" data-i18n="dis_p1_t">價格說明：</strong> <span data-i18n="dis_p1_c">顯示之金額為「單機 + 5米內標準安裝」之市場預估均價。</span></li>
+                            <li><strong class="text-slate-600" data-i18n="dis_p2_t">「買大不買小」工程解釋：</strong> <span data-i18n="dis_p2_c">變頻壓縮機在 30~60% 低負載區間運轉效率最高 (COP最高)。選擇略大噸數可讓機器快速降溫後，長期維持在低頻高效率區運轉。</span></li>
+                        </ul>
+                    </div>
+
+                </div>
+            </div>
+        </div>
+
+        <!-- ==================== VRV / VRF SYSTEM VIEW ==================== -->
+        <div id="vrfSystemView" class="hidden grid grid-cols-1 xl:grid-cols-12 gap-8 fade-in">
+            <!-- Left Panel: Zone Configuration -->
+            <div class="xl:col-span-5 space-y-6">
+                <div class="bg-white rounded-[2rem] shadow-lg p-6 md:p-8 border border-slate-200">
+                    <div class="flex justify-between items-center mb-6 border-b border-slate-100 pb-4">
+                        <h2 class="text-lg font-bold flex items-center gap-2 text-slate-800">
+                            <i data-lucide="layout-grid" class="w-5 h-5 text-indigo-600"></i>
+                            <span data-i18n="vrf_config_title">VRF 系統分區配置</span>
+                        </h2>
+                        <button onclick="addVRFZone()" class="text-xs font-bold bg-indigo-600 text-white px-3 py-1.5 rounded-lg hover:bg-indigo-700 transition flex items-center gap-1">
+                            <i data-lucide="plus" class="w-3 h-3"></i> <span data-i18n="btn_add_zone">新增區域</span>
+                        </button>
+                    </div>
+
+                    <!-- System Parameters -->
+                    <section class="mb-6 bg-slate-50 p-4 rounded-xl border border-slate-100 space-y-4">
+                        <label class="text-xs font-bold text-slate-500 uppercase tracking-wider block" data-i18n="label_sys_param">系統全域參數</label>
+                        
+                        <!-- Diversity -->
+                        <div>
+                            <div class="flex justify-between mb-1">
+                                <span class="text-xs font-bold text-slate-700" data-i18n="label_diversity">同時使用率 (Diversity)</span>
+                                <span class="text-xs font-black text-indigo-600" id="diversityDisplay">100%</span>
+                            </div>
+                            <input type="range" min="50" max="130" value="100" step="5" oninput="updateVRFSetting('diversity', this.value)" class="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-indigo-600">
+                        </div>
+
+                        <!-- Installation Conditions -->
+                        <div>
+                            <label class="text-xs font-bold text-slate-700 mb-1 block" data-i18n="label_install">管路與安裝條件 (De-rating)</label>
+                            <select onchange="updateVRFSetting('condition', this.value)" class="w-full p-2 text-xs rounded border border-slate-200 bg-white font-bold text-slate-600" id="vrfConditionSelect">
+                                <!-- Populated by JS -->
+                            </select>
+                        </div>
+
+                        <!-- Heat Recovery -->
+                        <div class="flex items-center justify-between pt-2 border-t border-slate-200">
+                            <span class="text-xs font-bold text-slate-700 flex items-center gap-1">
+                                <span data-i18n="label_hr">Heat Recovery (熱回收)</span>
+                                <span class="text-[9px] text-slate-400 bg-slate-100 px-1 rounded">-5% Cap</span>
+                            </span>
+                            <input type="checkbox" onchange="updateVRFSetting('heatRecovery', this.checked)" class="w-5 h-5 accent-indigo-600 rounded">
+                        </div>
+                    </section>
+
+                    <!-- Zone List -->
+                    <div id="vrfZoneList" class="space-y-3 max-h-[500px] overflow-y-auto custom-scroll pr-2">
+                        <!-- Dynamic Zones Injected Here -->
+                    </div>
+
+                    <div class="mt-4 pt-4 border-t border-slate-100 flex justify-between items-center text-xs text-slate-500">
+                        <span><span data-i18n="zone_count">目前區域數</span>：<span id="zoneCount" class="font-bold text-slate-800">0</span></span>
+                        <span><span data-i18n="total_area">總面積</span>：<span id="totalArea" class="font-bold text-slate-800">0</span> <span data-i18n="unit_ping_simple">坪</span></span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right Panel: System Calculation -->
+            <div class="xl:col-span-7 space-y-6">
+                <!-- Empty State -->
+                <div id="vrfEmptyState" class="h-full min-h-[500px] flex flex-col items-center justify-center bg-white border-2 border-dashed border-slate-200 rounded-[2rem] p-8 text-center space-y-4">
+                    <div class="w-20 h-20 bg-slate-50 rounded-full flex items-center justify-center">
+                        <i data-lucide="server" class="w-10 h-10 text-indigo-200"></i>
+                    </div>
+                    <div>
+                        <h3 class="text-lg font-bold text-slate-400" data-i18n="vrf_empty_title">尚未建立 VRF 系統模型</h3>
+                        <p class="text-sm text-slate-400 mt-2 max-w-xs mx-auto" data-i18n="vrf_empty_desc">請由左側「新增區域」開始建立多聯系統架構。</p>
+                    </div>
+                </div>
+
+                <!-- VRF Results (FIXED STRUCTURE) -->
+                <div id="vrfResultState" class="hidden animate-in fade-in slide-in-from-bottom-4 duration-500 space-y-6">
+                    
+                    <!-- VRF System Dashboard -->
+                    <div class="bg-indigo-900 rounded-[2rem] p-8 text-white shadow-xl relative overflow-hidden">
+                        <div class="absolute -right-20 -top-20 w-80 h-80 bg-indigo-500/20 rounded-full blur-3xl"></div>
+                        
+                        <div class="relative z-10 grid grid-cols-1 md:grid-cols-2 gap-8">
+                            <!-- Indoor Demand -->
+                            <div class="space-y-4 border-b md:border-b-0 md:border-r border-indigo-700/50 pb-6 md:pb-0">
+                                <div>
+                                    <h3 class="text-indigo-300 text-xs font-bold uppercase tracking-widest mb-2" data-i18n="res_indoor_total">室內機總需求 (Total Indoor)</h3>
+                                    <div class="flex items-baseline gap-2">
+                                        <span id="vrfTotalIndoorKW" class="text-4xl font-black">0.0</span>
+                                        <span class="text-sm text-indigo-300">kW</span>
+                                    </div>
+                                    <div class="text-xs text-indigo-400 mt-1">
+                                        <span data-i18n="res_approx">約</span> <span id="vrfTotalIndoorHP">0</span> HP
+                                    </div>
+                                </div>
+                                <div class="bg-indigo-800/30 p-3 rounded-xl border border-indigo-700/50">
+                                    <div class="flex justify-between text-xs mb-1">
+                                        <span class="text-indigo-300" data-i18n="res_load_ratio">系統實際運轉負載</span>
+                                        <span class="font-bold" id="vrfLoadRatio">0%</span>
+                                    </div>
+                                    <div class="w-full bg-indigo-950 h-1.5 rounded-full overflow-hidden">
+                                        <div id="vrfLoadBar" class="bg-emerald-400 h-full w-[0%] transition-all duration-500"></div>
+                                    </div>
+                                    <p class="text-[9px] text-indigo-400 mt-1 text-right">Min Requirement: 15%</p>
+                                </div>
+                            </div>
+
+                            <!-- Outdoor Selection -->
+                            <div class="space-y-2">
+                                <h3 class="text-indigo-300 text-xs font-bold uppercase tracking-widest mb-2" data-i18n="res_outdoor_sugg">建議室外機組合 (Outdoor)</h3>
+                                <div class="flex items-baseline gap-2">
+                                    <span id="vrfOutdoorHP" class="text-5xl font-black text-white">0</span>
+                                    <span class="text-xl font-bold text-indigo-300">HP</span>
+                                </div>
+                                <div class="text-xs text-indigo-100 font-mono mb-2 bg-indigo-800/50 px-2 py-1 rounded inline-block">
+                                    <span id="vrfOutdoorCombo">Single Unit</span>
+                                </div>
+                                <div class="space-y-1 text-xs text-indigo-300 border-t border-indigo-700/50 pt-2">
+                                    <div class="flex justify-between">
+                                        <span data-i18n="res_rated">額定總容量 (Rated):</span>
+                                        <span class="text-white"><span id="vrfOutdoorRated">0.0</span> kW</span>
+                                    </div>
+                                    <div class="flex justify-between">
+                                        <span data-i18n="res_effective">有效容量 (Effective):</span>
+                                        <span class="text-emerald-300 font-bold"><span id="vrfOutdoorEffective">0.0</span> kW</span>
+                                    </div>
+                                    <div class="flex justify-between">
+                                        <span data-i18n="res_conn_ratio">連接率 (Connection Ratio):</span>
+                                        <span id="vrfRatio" class="font-bold text-white">0%</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- System Alerts -->
+                        <div id="vrfAlertsContainer" class="mt-6 space-y-2">
+                            <!-- Alerts Injected Here -->
+                        </div>
+                    </div>
+
+                    <!-- Comparison & Analysis -->
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div class="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm">
+                            <h4 class="font-bold text-slate-700 mb-4 flex items-center gap-2">
+                                <i data-lucide="bar-chart-3" class="w-4 h-4 text-slate-400"></i> <span data-i18n="eff_title">工程能效估算 (IPLV)</span>
+                            </h4>
+                            <div class="space-y-5">
+                                <div class="flex items-center justify-between">
+                                    <span class="text-xs font-bold text-slate-500" data-i18n="eff_est">VRF 系統預估效率</span>
+                                    <span class="text-2xl font-black text-indigo-600" id="vrfIPLV">0.0</span>
+                                </div>
+                                <div class="text-xs text-slate-600 space-y-2 bg-slate-50 p-3 rounded-lg">
+                                    <div class="flex justify-between">
+                                        <span data-i18n="eff_zone">負載效率區間：</span>
+                                        <span id="vrfEfficiencyZone" class="font-bold">標準區</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm">
+                            <h4 class="font-bold text-slate-700 mb-4 flex items-center gap-2">
+                                <i data-lucide="wrench" class="w-4 h-4 text-slate-400"></i> <span data-i18n="sum_title">工程設計摘要</span>
+                            </h4>
+                            <ul class="space-y-2 text-xs text-slate-600">
+                                <li class="flex gap-2">
+                                    <span class="font-bold text-slate-800 flex-shrink-0 w-24" data-i18n="sum_install">安裝條件：</span>
+                                    <span id="summaryCondition">標準安裝</span>
+                                </li>
+                                <li class="flex gap-2">
+                                    <span class="font-bold text-slate-800 flex-shrink-0 w-24" data-i18n="sum_type">系統類型：</span>
+                                    <span id="summaryType">Standard Heat Pump</span>
+                                </li>
+                                <li class="flex gap-2">
+                                    <span class="font-bold text-slate-800 flex-shrink-0 w-24" data-i18n="sum_derate">容量折減：</span>
+                                    <span id="summaryDerating">0%</span>
+                                </li>
+                            </ul>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- LOGIC SCRIPT -->
+    <script>
+        // --- Localization ---
+        var urlParams = new URLSearchParams(window.location.search);
+        var lang = urlParams.get('lang') || 'zh'; // Default to Traditional Chinese
+        document.documentElement.lang = lang === 'en' ? 'en' : 'zh-TW';
+
+        var i18nData = {
+            zh: {
+                app_title: "台灣住宅空調工程顧問系統",
+                version: "工程版 v5.3",
+                tab_split: "單機一對一 (Split)",
+                tab_vrf: "多聯變頻系統 (VRV/VRF)",
+                // Split Input
+                split_input_title: "單機現場參數設定",
+                label_room_type: "房型與使用情境",
+                label_area: "空間實坪 / 面積",
+                unit_ping: "坪數",
+                label_env: "熱源修正 & 區域",
+                fac_top: "頂樓層 (+20%)",
+                fac_west: "嚴重西曬 (+20%)",
+                fac_high: "挑高 > 3.2m (+10%)",
+                btn_reset: "重置計算機",
+                empty_title: "等待現場參數輸入",
+                empty_desc: "請設定房型、面積與環境熱源因子。",
+                // Split Result
+                res_cool: "建議冷氣能力",
+                res_heat: "有效暖房能力",
+                res_approx: "約",
+                res_ton: "噸",
+                res_region_fac: "區域修正係數",
+                adv_title: "規格升級建議",
+                adv_sugg: "建議：",
+                price_title: "各品牌預算總覽 (含標準安裝)",
+                price_note: "價格由低至高",
+                col_brand: "品牌",
+                col_tier: "定位",
+                col_price: "預估總價",
+                price_disclaimer: "* 價格僅供參考，實際費用視現場銅管長度、洗洞數量與施工難易度而定",
+                detail_title: "詳細規格與分析",
+                disclaimer_title: "工程顧問免責與技術說明：",
+                dis_p1_t: "價格說明：",
+                dis_p1_c: "顯示之金額為「單機 + 5米內標準安裝」之市場預估均價。",
+                dis_p2_t: "「買大不買小」工程解釋：",
+                dis_p2_c: "變頻壓縮機在 30~60% 低負載區間運轉效率最高 (COP最高)。選擇略大噸數可讓機器快速降溫後，長期維持在低頻高效率區運轉。",
+                // VRF
+                vrf_config_title: "VRF 系統分區配置",
+                btn_add_zone: "新增區域",
+                label_sys_param: "系統全域參數",
+                label_diversity: "同時使用率 (Diversity)",
+                label_install: "管路與安裝條件 (De-rating)",
+                label_hr: "Heat Recovery (熱回收)",
+                zone_count: "目前區域數",
+                total_area: "總面積",
+                unit_ping_simple: "坪",
+                vrf_empty_title: "尚未建立 VRF 系統模型",
+                vrf_empty_desc: "請由左側「新增區域」開始建立多聯系統架構。",
+                res_indoor_total: "室內機總需求 (Total Indoor)",
+                res_load_ratio: "系統實際運轉負載",
+                res_outdoor_sugg: "建議室外機組合 (Outdoor)",
+                res_rated: "額定總容量 (Rated):",
+                res_effective: "有效容量 (Effective):",
+                res_conn_ratio: "連接率 (Connection Ratio):",
+                eff_title: "工程能效估算 (IPLV)",
+                eff_est: "VRF 系統預估效率",
+                eff_zone: "負載效率區間：",
+                sum_title: "工程設計摘要",
+                sum_install: "安裝條件：",
+                sum_type: "系統類型：",
+                sum_derate: "容量折減：",
+                // Dynamic
+                room_bedroom: "主臥 / 客房",
+                room_bedroom_desc: "低顯熱負載",
+                room_living: "客廳 / 開放空間",
+                room_living_desc: "高人員活動量",
+                room_study: "書房 / 兒童房",
+                room_study_desc: "間歇性使用",
+                room_top: "頂樓 / 鐵皮",
+                room_top_desc: "高輻射熱",
+                reg_north: "北部 (濕冷)",
+                reg_central: "中南部 (乾冷)",
+                reg_mountain: "山區",
+                brand_tier_jp: "日系旗艦",
+                brand_pos_daikin: "溫濕雙控專家",
+                brand_target_daikin: "主臥室、對聲音敏感者",
+                brand_pos_hitachi: "潔淨科技領航",
+                brand_target_hitachi: "客廳、重視空氣品質",
+                brand_tier_high: "高規節能",
+                brand_pos_pana: "極致省電與抑菌",
+                brand_target_pana: "長時間運轉用戶",
+                brand_tier_pro: "專業性能",
+                brand_pos_mhi: "長氣流工程首選",
+                brand_target_mhi: "長型空間、挑高空間",
+                brand_tier_local: "國產經典",
+                brand_pos_teco: "高耐用商用導向",
+                brand_target_teco: "出租套房、店面",
+                brand_tier_global: "全球大廠",
+                brand_pos_gree: "結構設計優化",
+                brand_target_gree: "注重CP值",
+                brand_tier_budget: "經濟平價",
+                brand_pos_heran: "在地適應性強",
+                brand_target_heran: "預算有限者",
+                brand_tier_eng: "工程實用",
+                brand_pos_maxe: "純粹冷房工具",
+                brand_target_maxe: "工廠辦公室",
+                base_cal: "基準",
+                est_price: "預估完工價",
+                est_elec: "預估年電費",
+                rec: "推薦：",
+                view_spec: "查看規格表",
+                cond_std: "標準安裝 (無折減)",
+                cond_long: "管長偏長 (-5%)",
+                cond_high: "高低差偏大 (-5%)",
+                alert_crit: "工程設計嚴重警告 (Critical)",
+                alert_warn: "系統運轉警告 (Warning)",
+                alert_conn_high: "總連接率 ({val}%) 超過 130%，超出保固範圍。",
+                alert_cap_low: "修正後有效容量 ({val}kW) 不足。",
+                alert_load_low: "運轉負載 ({val}%) 低於 15%，易導致回油不良。",
+                zone_std: "標準區",
+                zone_high: "高效率區",
+                zone_rated: "額定負載區",
+                zone_low: "低負載低效區",
+                est_load: "預估負荷:",
+                lowest_price: "最低價"
+            },
+            en: {
+                app_title: "Residential HVAC Eng. System",
+                version: "Pro v5.3",
+                tab_split: "Split System (1-to-1)",
+                tab_vrf: "VRF System (Multi)",
+                // Split Input
+                split_input_title: "Site Parameters (Split)",
+                label_room_type: "Room Type & Scenario",
+                label_area: "Area Size",
+                unit_ping: "Ping",
+                label_env: "Heat Load Factors & Region",
+                fac_top: "Top Floor (+20%)",
+                fac_west: "West Facing (+20%)",
+                fac_high: "High Ceiling > 3.2m (+10%)",
+                btn_reset: "Reset Calculator",
+                empty_title: "Waiting for Input",
+                empty_desc: "Please set room type, area, and environmental factors.",
+                // Split Result
+                res_cool: "Suggested Cooling Cap.",
+                res_heat: "Effective Heating Cap.",
+                res_approx: "Approx.",
+                res_ton: "Ton",
+                res_region_fac: "Region Factor",
+                adv_title: "Capacity Upgrade Advice",
+                adv_sugg: "Suggest:",
+                price_title: "Budget Overview (w/ Install)",
+                price_note: "Low to High",
+                col_brand: "Brand",
+                col_tier: "Tier",
+                col_price: "Est. Price",
+                price_disclaimer: "* Prices are estimates including standard installation (5m pipe). Actual cost may vary.",
+                detail_title: "Detailed Specs & Analysis",
+                disclaimer_title: "Engineering Disclaimer:",
+                dis_p1_t: "Pricing:",
+                dis_p1_c: "Includes unit + standard installation within 5 meters.",
+                dis_p2_t: "Oversizing Rationale:",
+                dis_p2_c: "Inverters differ from on/off types. They are most efficient at 30-60% load. Slightly oversizing allows the unit to run in this high-efficiency zone.",
+                // VRF
+                vrf_config_title: "VRF Zoning Config",
+                btn_add_zone: "Add Zone",
+                label_sys_param: "Global Parameters",
+                label_diversity: "Diversity Ratio",
+                label_install: "Piping Condition (De-rating)",
+                label_hr: "Heat Recovery",
+                zone_count: "Zones",
+                total_area: "Total Area",
+                unit_ping_simple: "Ping",
+                vrf_empty_title: "VRF Model Not Created",
+                vrf_empty_desc: "Start by adding zones from the left panel.",
+                res_indoor_total: "Total Indoor Demand",
+                res_load_ratio: "System Operation Load",
+                res_outdoor_sugg: "Suggested Outdoor Unit",
+                res_rated: "Rated Capacity:",
+                res_effective: "Effective Capacity:",
+                res_conn_ratio: "Connection Ratio:",
+                eff_title: "Efficiency Est. (IPLV)",
+                eff_est: "Est. System Efficiency",
+                eff_zone: "Efficiency Zone:",
+                sum_title: "Design Summary",
+                sum_install: "Install Cond:",
+                sum_type: "System Type:",
+                sum_derate: "Derating:",
+                // Dynamic
+                room_bedroom: "Master / Guest Room",
+                room_bedroom_desc: "Low Sensible Load",
+                room_living: "Living / Open Space",
+                room_living_desc: "High Activity",
+                room_study: "Study / Kids Room",
+                room_study_desc: "Intermittent Use",
+                room_top: "Top Floor / Metal Roof",
+                room_top_desc: "High Radiant Heat",
+                reg_north: "North (Humid)",
+                reg_central: "Central/South (Dry)",
+                reg_mountain: "Mountain",
+                brand_tier_jp: "JP Flagship",
+                brand_pos_daikin: "Humidity Control Expert",
+                brand_target_daikin: "Master Bedroom, Noise Sensitive",
+                brand_pos_hitachi: "Clean Tech Leader",
+                brand_target_hitachi: "Living Room, Air Quality",
+                brand_tier_high: "High Efficiency",
+                brand_pos_pana: "Energy Saving & Hygiene",
+                brand_target_pana: "Long Operation Hours",
+                brand_tier_pro: "Professional",
+                brand_pos_mhi: "Long Airflow Expert",
+                brand_target_mhi: "Long/High Ceiling Rooms",
+                brand_tier_local: "Local Classic",
+                brand_pos_teco: "Durable Commercial",
+                brand_target_teco: "Rental, Shop",
+                brand_tier_global: "Global Giant",
+                brand_pos_gree: "Structure Optimized",
+                brand_target_gree: "High CP Value",
+                brand_tier_budget: "Budget Friendly",
+                brand_pos_heran: "Local Adaptation",
+                brand_target_heran: "Limited Budget",
+                brand_tier_eng: "Engineering",
+                brand_pos_maxe: "Pure Cooling Tool",
+                brand_target_maxe: "Factory Office",
+                base_cal: "Base",
+                est_price: "Est. Total Price",
+                est_elec: "Est. Annual Elec.",
+                rec: "Target:",
+                view_spec: "View Specs",
+                cond_std: "Standard (No Derating)",
+                cond_long: "Long Piping (-5%)",
+                cond_high: "High Elevation (-5%)",
+                alert_crit: "Critical Warning",
+                alert_warn: "Operation Warning",
+                alert_conn_high: "Connection Ratio ({val}%) > 130%, warranty void.",
+                alert_cap_low: "Effective capacity ({val}kW) insufficient.",
+                alert_load_low: "Op Load ({val}%) < 15%, oil return risk.",
+                zone_std: "Standard Zone",
+                zone_high: "High Eff. Zone",
+                zone_rated: "Rated Zone",
+                zone_low: "Low Load Zone",
+                est_load: "Est. Load:",
+                lowest_price: "Lowest"
+            }
+        };
+
+        // === COMMON DATA ===
+        const PING_TO_M2 = 3.305;
+        const KCAL_TO_KW = 860; 
+        const TAIWAN_TON_KCAL = 2500;
+        const ELEC_RATE = 4.8; // Updated from 3.0 to 4.8
+
+        // Data that depends on language will be updated dynamically
+        var ROOM_TYPES = {
+            bedroom: { label: 'room_bedroom', baseKcal: 500, hours: 2000, desc: 'room_bedroom_desc' }, // Updated to 2000
+            living: { label: 'room_living', baseKcal: 600, hours: 1500, desc: 'room_living_desc' },   // Updated to 1500
+            study: { label: 'room_study', baseKcal: 500, hours: 800, desc: 'room_study_desc' },       // Updated to 800
+            top_floor: { label: 'room_top', baseKcal: 750, hours: 2400, desc: 'room_top_desc' }       // Updated to 2400
+        };
+        
+        var REGIONS = {
+            north: { label: 'reg_north', heatingFactor: 0.75 },
+            central: { label: 'reg_central', heatingFactor: 0.9 },
+            mountain: { label: 'reg_mountain', heatingFactor: 0.65 },
+        };
+
+        var BRANDS_DATA = [
+            { name: '大金 (Daikin)', tier: 'brand_tier_jp', position: 'brand_pos_daikin', cspf: 7.2, target: 'brand_target_daikin', priceFactor: 14500, catalog: 'https://www.daikin.com.tw/' },
+            { name: '日立 (Hitachi)', tier: 'brand_tier_jp', position: 'brand_pos_hitachi', cspf: 7.1, target: 'brand_target_hitachi', priceFactor: 14000, catalog: 'https://www.jci-hitachi.tw/' },
+            { name: '國際 (Panasonic)', tier: 'brand_tier_high', position: 'brand_pos_pana', cspf: 7.6, target: 'brand_target_pana', priceFactor: 13200, catalog: 'https://www.panasonic.com/tw/' },
+            { name: '三菱重工 (MHI)', tier: 'brand_tier_pro', position: 'brand_pos_mhi', cspf: 6.5, target: 'brand_target_mhi', priceFactor: 15200, catalog: 'https://www.mhi-th.com/tw/' },
+            { name: '東元 (TECO)', tier: 'brand_tier_local', position: 'brand_pos_teco', cspf: 5.6, target: 'brand_target_teco', priceFactor: 9800, catalog: 'https://www.tecohome.com.tw/' },
+            { name: '格力 (Gree)', tier: 'brand_tier_global', position: 'brand_pos_gree', cspf: 6.1, target: 'brand_target_gree', priceFactor: 8800, catalog: 'https://www.gree.com.tw/' },
+            { name: '禾聯 (Heran)', tier: 'brand_tier_budget', position: 'brand_pos_heran', cspf: 5.2, target: 'brand_target_heran', priceFactor: 7800, catalog: 'https://www.heran.com.tw/' },
+            { name: '萬事益 (MAXE)', tier: 'brand_tier_eng', position: 'brand_pos_maxe', cspf: 5.0, target: 'brand_target_maxe', priceFactor: 7800, catalog: 'https://www.maxe.com.tw/' }
+        ];
+
+        const VRF_SINGLE_UNITS = [
+            { hp: 4, kw: 11.2 }, { hp: 5, kw: 14.0 }, { hp: 6, kw: 15.5 },
+            { hp: 8, kw: 22.4 }, { hp: 10, kw: 28.0 }, { hp: 12, kw: 33.5 },
+            { hp: 14, kw: 40.0 }, { hp: 16, kw: 45.0 }, { hp: 18, kw: 50.4 }, { hp: 20, kw: 56.0 }
+        ];
+
+        // === APP STATE ===
+        const appState = {
+            mode: 'split', // 'split' | 'vrf'
+            // Split Data
+            split: {
+                area: '', unit: 'ping', roomType: 'bedroom', region: 'north',
+                factors: { topFloor: false, westExposed: false, highCeiling: false },
+                results: null
+            },
+            // VRF Data
+            vrf: {
+                zones: [], 
+                settings: { diversity: 100, heatRecovery: false, condition: 'standard' },
+                results: null
+            }
+        };
+
+        // === INIT ===
+        document.addEventListener('DOMContentLoaded', () => {
+            updateStaticText();
+            lucide.createIcons();
+            initSplitUI();
+            updateDOM();
+        });
+
+        function updateStaticText() {
+            document.querySelectorAll('[data-i18n]').forEach(el => {
+                const key = el.getAttribute('data-i18n');
+                if (i18nData[lang][key]) {
+                    el.innerHTML = i18nData[lang][key];
+                }
+            });
+            
+            // Update VRF Condition Select
+            const condSel = document.getElementById('vrfConditionSelect');
+            condSel.innerHTML = `
+                <option value="standard">${i18nData[lang].cond_std}</option>
+                <option value="longPipe">${i18nData[lang].cond_long}</option>
+                <option value="highDiff">${i18nData[lang].cond_high}</option>
+            `;
+        }
+
+        // === SYSTEM MODE SWITCHING ===
+        window.switchSystemMode = function(mode) {
+            appState.mode = mode;
+            updateDOM();
+        }
+
+        // === SPLIT LOGIC ===
+        function initSplitUI() {
+            const container = document.getElementById('roomTypeContainer');
+            container.innerHTML = Object.entries(ROOM_TYPES).map(([key, data]) => `
+                <button onclick="updateSplitState('roomType', '${key}')" class="room-btn p-3 rounded-xl border text-left transition-all bg-slate-50" data-key="${key}">
+                    <div class="text-sm font-bold">${i18nData[lang][data.label]}</div>
+                    <div class="text-[10px] text-slate-400">${i18nData[lang].base_cal} ${data.baseKcal} kcal</div>
+                </button>
+            `).join('');
+            
+            const regionSelect = document.getElementById('regionSelect');
+            regionSelect.innerHTML = Object.entries(REGIONS).map(([key, data]) => `<option value="${key}">${i18nData[lang][data.label]}</option>`).join('');
+        }
+
+        window.updateSplitState = function(key, value) {
+            if (key === 'factors') { /* handled by toggle */ }
+            else { appState.split[key] = value; }
+            calculateSplit();
+            updateDOM();
+        }
+        window.toggleSplitFactor = function(key) {
+            appState.split.factors[key] = !appState.split.factors[key];
+            calculateSplit();
+            updateDOM();
+        }
+        window.resetSplitCalculator = function() {
+            appState.split.area = '';
+            appState.split.factors = { topFloor: false, westExposed: false, highCeiling: false };
+            appState.split.results = null;
+            document.getElementById('areaInput').value = '';
+            updateDOM();
+        }
+
+        const API_BASE = 'https://us-central1-hvac-pro-shiu.cloudfunctions.net';
+
+        async function calculateSplit() {
+            const s = appState.split;
+            if (!s.area || s.area <= 0) { s.results = null; return; }
+            try {
+                const resp = await fetch(`${API_BASE}/calculateACLoad`, {
+                    method: 'POST', headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ mode: 'split', area: s.area, unit: s.unit,
+                        roomType: s.roomType, region: s.region,
+                        topFloor: s.factors.topFloor, westExposed: s.factors.westExposed,
+                        highCeiling: s.factors.highCeiling }),
+                });
+                const d = await resp.json();
+                let advice = null;
+                const sizes = [2.2, 2.8, 3.6, 4.1, 5.0, 6.3, 7.1];
+                for (let sz of sizes) {
+                    if (d.kw > sz * 0.95 && d.kw <= sz) {
+                        const reason = lang === 'en'
+                            ? `Calculated ${d.kw}kW is close to limit of ${sz}kW. Suggest upgrade.`
+                            : `計算值 ${d.kw}kW 接近 ${sz}kW 極限，建議升級。`;
+                        advice = { reason, size: sizes[sizes.indexOf(sz)+1] || sz+1 };
+                    }
+                }
+                s.results = { kw: d.kw, ton: d.ton, kcal: d.kcal, hKw: d.hKw,
+                    regionFactor: d.regionFactor, multiplier: d.multiplier, advice,
+                    hours: d.hours };
+            } catch(e) { console.error('API Error:', e); }
+        }
+
+        // === VRF LOGIC ===
+        window.addVRFZone = function() {
+            const id = Date.now();
+            appState.vrf.zones.push({
+                id,
+                roomType: 'bedroom',
+                area: 5,
+                factors: { topFloor: false, westExposed: false }
+            });
+            calculateVRF();
+            updateDOM();
+        }
+
+        window.removeVRFZone = function(id) {
+            appState.vrf.zones = appState.vrf.zones.filter(z => z.id !== id);
+            calculateVRF();
+            updateDOM();
+        }
+
+        window.updateVRFZone = function(id, key, value) {
+            const z = appState.vrf.zones.find(z => z.id === id);
+            if (z) {
+                if (key === 'topFloor' || key === 'westExposed') z.factors[key] = !z.factors[key];
+                else z[key] = value;
+                calculateVRF();
+                updateDOM();
+            }
+        }
+
+        window.updateVRFSetting = function(key, value) {
+            if(key === 'diversity') appState.vrf.settings.diversity = parseInt(value);
+            if(key === 'heatRecovery') appState.vrf.settings.heatRecovery = value;
+            if(key === 'condition') appState.vrf.settings.condition = value;
+            calculateVRF();
+            updateDOM();
+        }
+
+        function calculateVRF() {
+            const v = appState.vrf;
+            if (v.zones.length === 0) { v.results = null; return; }
+
+            let totalIndoorKW = 0;
+            let totalArea = 0;
+
+            v.zones.forEach(z => {
+                let base = ROOM_TYPES[z.roomType].baseKcal;
+                let mult = 1 + (z.factors.topFloor?0.2:0) + (z.factors.westExposed?0.2:0);
+                let kw = z.area * base * mult / KCAL_TO_KW; 
+                z.calculatedKW = kw;
+                totalIndoorKW += kw;
+                totalArea += parseFloat(z.area);
+            });
+
+            // Corrected Load
+            const diversity = v.settings.diversity / 100;
+            const requiredOutdoorKW = totalIndoorKW * diversity;
+
+            // Select Outdoor Unit
+            let outdoorConfig = { hp: 0, kw: 0, count: 1, comboText: '' };
+            const maxSingleKW = 56.0; 
+            if (requiredOutdoorKW <= maxSingleKW) {
+                let unit = VRF_SINGLE_UNITS.find(u => u.kw >= requiredOutdoorKW);
+                if (!unit) unit = VRF_SINGLE_UNITS[VRF_SINGLE_UNITS.length - 1]; 
+                outdoorConfig = { hp: unit.hp, kw: unit.kw, count: 1, comboText: `Single ${unit.hp}HP` };
+            } else {
+                const count = Math.ceil(requiredOutdoorKW / maxSingleKW);
+                const targetPerUnit = requiredOutdoorKW / count;
+                let unit = VRF_SINGLE_UNITS.find(u => u.kw >= targetPerUnit);
+                if (!unit) unit = VRF_SINGLE_UNITS[VRF_SINGLE_UNITS.length - 1];
+                outdoorConfig = { hp: unit.hp * count, kw: unit.kw * count, count: count, comboText: `${count} x ${unit.hp}HP Modules` };
+            }
+
+            // De-rating
+            let deRatingFactor = 1.0;
+            if (v.settings.condition === 'longPipe') deRatingFactor -= 0.05;
+            if (v.settings.condition === 'highDiff') deRatingFactor -= 0.05;
+            if (v.settings.heatRecovery) deRatingFactor -= 0.05;
+
+            const effectiveOutdoorKW = outdoorConfig.kw * deRatingFactor;
+
+            // Checks
+            const connectionRatio = (totalIndoorKW / effectiveOutdoorKW) * 100;
+            const opLoadRatio = (requiredOutdoorKW / effectiveOutdoorKW) * 100; 
+            
+            let alerts = [];
+            if (connectionRatio > 130) alerts.push({ level: 'critical', msg: i18nData[lang].alert_conn_high.replace('{val}', Math.round(connectionRatio)) });
+            if (effectiveOutdoorKW < requiredOutdoorKW) alerts.push({ level: 'critical', msg: i18nData[lang].alert_cap_low.replace('{val}', effectiveOutdoorKW.toFixed(1)) });
+            if (opLoadRatio < 15) alerts.push({ level: 'warning', msg: i18nData[lang].alert_load_low.replace('{val}', Math.round(opLoadRatio)) });
+
+            // IPLV
+            let iplv = 6.0;
+            let efficiencyZone = i18nData[lang].zone_std;
+            if (opLoadRatio >= 40 && opLoadRatio <= 75) { iplv = 8.2; efficiencyZone = i18nData[lang].zone_high; }
+            else if (opLoadRatio > 75) { iplv = 6.5; efficiencyZone = i18nData[lang].zone_rated; }
+            else if (opLoadRatio < 30) { iplv = 4.5; efficiencyZone = i18nData[lang].zone_low; }
+
+            v.results = {
+                totalIndoorKW: totalIndoorKW.toFixed(1),
+                totalIndoorHP: (totalIndoorKW / 2.8).toFixed(1),
+                outdoorHP: outdoorConfig.hp,
+                outdoorKW: outdoorConfig.kw, 
+                outdoorEffectiveKW: effectiveOutdoorKW.toFixed(1),
+                outdoorCombo: outdoorConfig.comboText,
+                outdoorRated: outdoorConfig.kw.toFixed(1),
+                connectionRatio: Math.round(connectionRatio),
+                opLoadRatio: Math.round(opLoadRatio),
+                totalArea: totalArea,
+                alerts: alerts,
+                iplv: iplv.toFixed(1),
+                efficiencyZone: efficiencyZone,
+                deratingSummary: `${((1-deRatingFactor)*100).toFixed(0)}%`
+            };
+        }
+
+        // === DOM UPDATE ===
+        function updateDOM() {
+            const s = appState.split;
+            const v = appState.vrf;
+
+            // View Toggle
+            const splitView = document.getElementById('splitSystemView');
+            const vrfView = document.getElementById('vrfSystemView');
+            const tabSplit = document.getElementById('tab-split');
+            const tabVrf = document.getElementById('tab-vrf');
+
+            if (appState.mode === 'split') {
+                splitView.classList.remove('hidden');
+                vrfView.classList.add('hidden');
+                tabSplit.className = "px-4 py-2 rounded-lg text-sm font-bold transition-all flex items-center gap-2 bg-blue-600 text-white shadow-lg";
+                tabVrf.className = "px-4 py-2 rounded-lg text-sm font-bold transition-all flex items-center gap-2 text-slate-400 hover:text-white";
+                renderSplitResults();
+            } else {
+                splitView.classList.add('hidden');
+                vrfView.classList.remove('hidden');
+                tabSplit.className = "px-4 py-2 rounded-lg text-sm font-bold transition-all flex items-center gap-2 text-slate-400 hover:text-white";
+                tabVrf.className = "px-4 py-2 rounded-lg text-sm font-bold transition-all flex items-center gap-2 bg-indigo-600 text-white shadow-lg";
+                renderVRFUI();
+            }
+        }
+
+        function renderSplitResults() {
+            const s = appState.split;
+            
+            // UI Updates (Buttons, Inputs)
+            document.querySelectorAll('.room-btn').forEach(btn => {
+                const key = btn.dataset.key;
+                if(key === s.roomType) btn.className = "room-btn p-3 rounded-xl border text-left transition-all bg-blue-600 text-white border-blue-600 shadow-md ring-2 ring-blue-200";
+                else btn.className = "room-btn p-3 rounded-xl border text-left transition-all bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100";
+            });
+            document.getElementById('btn-ping').className = s.unit === 'ping' ? "px-3 py-1 rounded-md text-xs font-bold transition-all bg-white shadow text-blue-600" : "px-3 py-1 rounded-md text-xs font-bold transition-all text-slate-500";
+            document.getElementById('btn-m2').className = s.unit === 'm2' ? "px-3 py-1 rounded-md text-xs font-bold transition-all bg-white shadow text-blue-600" : "px-3 py-1 rounded-md text-xs font-bold transition-all text-slate-500";
+            document.getElementById('unitLabel').innerText = s.unit === 'ping' ? '坪' : 'm²';
+            
+            const updateFac = (id, k) => {
+                const btn = document.getElementById(id);
+                if(s.factors[k]) btn.className = "w-full text-left p-3 rounded-xl border transition-all duration-200 flex items-center gap-3 bg-blue-50 border-blue-500 shadow-sm text-blue-800";
+                else btn.className = "w-full text-left p-3 rounded-xl border transition-all duration-200 flex items-center gap-3 bg-white border-slate-200 text-slate-600 hover:border-slate-300";
+            }
+            updateFac('btn-topFloor', 'topFloor');
+            updateFac('btn-westExposed', 'westExposed');
+            updateFac('btn-highCeiling', 'highCeiling');
+
+            // Show/Hide Results
+            if(s.results) {
+                document.getElementById('splitEmptyState').classList.add('hidden');
+                document.getElementById('splitResultState').classList.remove('hidden');
+                document.getElementById('resKW').innerText = s.results.kw;
+                document.getElementById('resTon').innerText = s.results.ton;
+                document.getElementById('resKcal').innerText = s.results.kcal;
+                document.getElementById('resHeatingKW').innerText = s.results.hKw;
+                document.getElementById('resRegionFactor').innerText = s.results.regionFactor;
+                
+                // Advice
+                const advBox = document.getElementById('adviceBox');
+                if(s.results.advice) {
+                    advBox.classList.remove('hidden'); advBox.classList.add('flex');
+                    document.getElementById('adviceReason').innerText = s.results.advice.reason;
+                    document.getElementById('adviceSize').innerText = s.results.advice.size;
+                } else { advBox.classList.add('hidden'); advBox.classList.remove('flex'); }
+
+                // --- PRICE & BRAND GENERATION ---
+                const calcKw = s.results.advice ? s.results.advice.size : s.results.kw;
+                
+                const sortedBrands = BRANDS_DATA.map(brand => {
+                    const estPrice = Math.round((calcKw * brand.priceFactor) / 100) * 100;
+                    // Updated logic here as requested
+                    const annualKWh = Math.round((calcKw * s.results.hours) / brand.cspf);
+                    const annualCost = Math.round(annualKWh * ELEC_RATE);
+                    return { ...brand, estPrice, annualKWh, annualCost };
+                }).sort((a, b) => a.estPrice - b.estPrice);
+
+                // 1. Price Table
+                document.getElementById('priceTableBody').innerHTML = sortedBrands.map((b, i) => `
+                    <tr class="hover:bg-slate-50">
+                        <td class="px-6 py-3 font-medium text-slate-700 flex items-center gap-2">
+                            ${i === 0 ? `<span class="text-[10px] bg-red-100 text-red-600 px-1.5 py-0.5 rounded font-bold">${i18nData[lang].lowest_price}</span>` : ''}
+                            ${b.name.split(' ')[0]}
+                        </td>
+                        <td class="px-6 py-3 text-xs text-slate-500">${i18nData[lang][b.tier]}</td>
+                        <td class="px-6 py-3 text-right font-black text-emerald-600">NT$ ${b.estPrice.toLocaleString()}</td>
+                        <td class="px-6 py-3 text-center text-xs font-bold text-slate-600 bg-slate-100 rounded">${b.cspf}</td>
+                    </tr>
+                `).join('');
+
+                // 2. Detail Cards
+                document.getElementById('brandList').innerHTML = sortedBrands.map(b => `
+                    <div class="bg-white rounded-2xl p-5 border border-slate-200 shadow-sm hover:shadow-md transition-all flex flex-col md:flex-row gap-6 relative overflow-hidden">
+                        <div class="absolute top-0 right-0 bg-slate-100 px-4 py-2 rounded-bl-2xl border-l border-b border-slate-200">
+                            <span class="text-[10px] text-slate-400 block text-right mb-0.5">${i18nData[lang].est_price}</span>
+                            <span class="text-xl font-black text-slate-800">NT$ ${b.estPrice.toLocaleString()}</span>
+                        </div>
+                        <div class="w-full md:w-1/4 pt-8 md:pt-0">
+                            <div class="h-8 mb-2 flex items-center font-black text-lg text-slate-800">${b.name.split(' ')[0]}</div>
+                            <span class="inline-block bg-blue-50 text-blue-600 text-[10px] font-bold px-2 py-0.5 rounded mb-2">${i18nData[lang][b.tier]}</span>
+                            <p class="text-xs font-bold text-slate-600">${i18nData[lang][b.position]}</p>
+                        </div>
+                        <div class="w-full md:w-1/3 flex flex-col justify-center gap-3">
+                            <div class="bg-emerald-50 rounded-xl p-3 border border-emerald-100">
+                                <div class="flex justify-between items-end mb-1">
+                                    <span class="text-[10px] text-emerald-700 font-bold">${i18nData[lang].est_elec}</span>
+                                    <span class="text-lg font-black text-emerald-600">NT$ ${b.annualCost.toLocaleString()}</span>
+                                </div>
+                                <div class="w-full bg-emerald-200 h-1.5 rounded-full overflow-hidden">
+                                    <div class="bg-emerald-500 h-full rounded-full" style="width: ${(5 / b.cspf) * 100}%"></div>
+                                </div>
+                                <div class="flex justify-between mt-1">
+                                    <span class="text-[10px] text-emerald-600/70">CSPF ${b.cspf}</span>
+                                    <span class="text-[10px] text-emerald-600/70">約 ${b.annualKWh} 度/年</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="flex-1 text-xs flex flex-col justify-between">
+                            <div class="space-y-2">
+                                <div class="flex gap-2"><span class="font-bold text-slate-400 flex-shrink-0">${i18nData[lang].rec}</span><span class="text-slate-600">${i18nData[lang][b.target]}</span></div>
+                            </div>
+                            <a href="${b.catalog}" target="_blank" class="mt-3 text-right text-blue-500 hover:text-blue-700 font-bold flex items-center justify-end gap-1">${i18nData[lang].view_spec} <i data-lucide="chevron-right" class="w-4 h-4"></i></a>
+                        </div>
+                    </div>
+                `).join('');
+
+            } else {
+                document.getElementById('splitEmptyState').classList.remove('hidden');
+                document.getElementById('splitResultState').classList.add('hidden');
+            }
+        }
+
+        function renderVRFUI() {
+            const v = appState.vrf;
+            
+            // Render Zone List
+            const list = document.getElementById('vrfZoneList');
+            list.innerHTML = v.zones.map((z, idx) => `
+                <div class="bg-slate-50 p-3 rounded-xl border border-slate-200 relative group animate-in fade-in">
+                    <div class="flex justify-between items-start mb-2">
+                        <span class="text-xs font-bold bg-slate-200 text-slate-600 px-2 py-0.5 rounded">Zone ${idx+1}</span>
+                        <button onclick="removeVRFZone(${z.id})" class="text-slate-400 hover:text-red-500"><i data-lucide="trash-2" class="w-4 h-4"></i></button>
+                    </div>
+                    <div class="grid grid-cols-2 gap-2 mb-2">
+                        <select onchange="updateVRFZone(${z.id}, 'roomType', this.value)" class="p-2 text-xs rounded border border-slate-200 bg-white">
+                            ${Object.entries(ROOM_TYPES).map(([k, d]) => `<option value="${k}" ${z.roomType===k?'selected':''}>${i18nData[lang][d.label]}</option>`).join('')}
+                        </select>
+                        <div class="relative">
+                            <input type="number" value="${z.area}" oninput="updateVRFZone(${z.id}, 'area', this.value)" class="w-full p-2 text-xs rounded border border-slate-200 bg-white font-bold pl-2 pr-6">
+                            <span class="absolute right-2 top-2 text-[10px] text-slate-400">坪</span>
+                        </div>
+                    </div>
+                    <div class="flex gap-2">
+                        <button onclick="updateVRFZone(${z.id}, 'topFloor')" class="flex-1 py-1 text-[10px] rounded border ${z.factors.topFloor ? 'bg-indigo-100 border-indigo-300 text-indigo-700 font-bold' : 'bg-white border-slate-200 text-slate-400'}">${lang === 'en' ? 'Top' : '頂樓'}</button>
+                        <button onclick="updateVRFZone(${z.id}, 'westExposed')" class="flex-1 py-1 text-[10px] rounded border ${z.factors.westExposed ? 'bg-indigo-100 border-indigo-300 text-indigo-700 font-bold' : 'bg-white border-slate-200 text-slate-400'}">${lang === 'en' ? 'West' : '西曬'}</button>
+                    </div>
+                    <div class="mt-2 text-right text-[10px] text-indigo-500 font-bold">
+                        ${i18nData[lang].est_load} ${z.calculatedKW ? z.calculatedKW.toFixed(2) : '0.00'} kW
+                    </div>
+                </div>
+            `).join('');
+
+            document.getElementById('zoneCount').innerText = v.zones.length;
+            document.getElementById('diversityDisplay').innerText = v.settings.diversity + '%';
+
+            // Results
+            if(v.results) {
+                document.getElementById('vrfEmptyState').classList.add('hidden');
+                document.getElementById('vrfResultState').classList.remove('hidden');
+                
+                document.getElementById('vrfTotalIndoorKW').innerText = v.results.totalIndoorKW;
+                document.getElementById('vrfTotalIndoorHP').innerText = v.results.totalIndoorHP;
+                document.getElementById('vrfOutdoorHP').innerText = v.results.outdoorHP;
+                
+                document.getElementById('vrfOutdoorCombo').innerText = v.results.outdoorCombo;
+                document.getElementById('vrfOutdoorRated').innerText = v.results.outdoorRated;
+                document.getElementById('vrfOutdoorEffective').innerText = v.results.outdoorEffectiveKW;
+                
+                document.getElementById('vrfRatio').innerText = v.results.connectionRatio + '%';
+
+                document.getElementById('vrfLoadRatio').innerText = v.results.opLoadRatio + '%';
+                const bar = document.getElementById('vrfLoadBar');
+                bar.style.width = Math.min(v.results.opLoadRatio, 100) + '%';
+                if (v.results.opLoadRatio < 15) bar.className = "bg-red-400 h-full transition-all duration-500";
+                else if (v.results.opLoadRatio > 100) bar.className = "bg-amber-400 h-full transition-all duration-500";
+                else bar.className = "bg-emerald-400 h-full transition-all duration-500";
+
+                document.getElementById('totalArea').innerText = v.results.totalArea;
+
+                const alertsContainer = document.getElementById('vrfAlertsContainer');
+                alertsContainer.innerHTML = v.results.alerts.map(a => `
+                    <div class="${a.level === 'critical' ? 'bg-red-500/20 border-red-500/50 text-red-100' : 'bg-amber-500/20 border-amber-500/50 text-amber-100'} border rounded-xl p-3 flex items-start gap-3">
+                        <i data-lucide="${a.level === 'critical' ? 'alert-octagon' : 'alert-triangle'}" class="w-5 h-5 flex-shrink-0 mt-0.5"></i>
+                        <div class="text-xs">
+                            <span class="font-bold block mb-1">${a.level === 'critical' ? i18nData[lang].alert_crit : i18nData[lang].alert_warn}：</span>
+                            <span>${a.msg}</span>
+                        </div>
+                    </div>
+                `).join('');
+
+                document.getElementById('vrfIPLV').innerText = v.results.iplv;
+                document.getElementById('vrfEfficiencyZone').innerText = v.results.efficiencyZone;
+                
+                const settingLabels = { standard: i18nData[lang].cond_std, longPipe: i18nData[lang].cond_long, highDiff: i18nData[lang].cond_high };
+                document.getElementById('summaryCondition').innerText = settingLabels[v.settings.condition];
+                document.getElementById('summaryType').innerText = v.settings.heatRecovery ? 'Heat Recovery (HR)' : 'Standard Heat Pump';
+                document.getElementById('summaryDerating').innerText = v.results.deratingSummary;
+
+            } else {
+                document.getElementById('vrfEmptyState').classList.remove('hidden');
+                document.getElementById('vrfResultState').classList.add('hidden');
+                document.getElementById('totalArea').innerText = '0';
+            }
+            
+            lucide.createIcons();
+        }
+    </script>
+</body>
+</html>
