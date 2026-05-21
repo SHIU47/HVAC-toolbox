@@ -1,0 +1,1716 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <!-- 安全防護 -->
+    <script src="./security.js"></script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Cleanroom Flow Designer Pro (v61.0) — Engineering Decision Simulation</title>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tween.js/18.6.4/tween.umd.js"></script>
+
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        brand: { 50: '#eff6ff', 100: '#dbeafe', 500: '#3b82f6', 600: '#2563eb', 900: '#1e3a8a' },
+                    },
+                    boxShadow: {
+                        'floating': '0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1)'
+                    },
+                    animation: {
+                        'pulse-fast': 'pulse 1.5s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        /* 修復：使用 100dvh 解決移動端網址列高度溢出問題 */
+        body { font-family: 'Inter', system-ui, -apple-system, sans-serif; background-color: #f1f5f9; overflow: hidden; user-select: none; margin: 0; padding: 0; }
+        
+        /* Layout Structure */
+        .app-shell { display: flex; flex-direction: column; height: 100dvh; width: 100vw; overflow: hidden; }
+        .workspace-area { flex: 1; display: flex; position: relative; overflow: hidden; background: #f8fafc; }
+        
+        /* Sidebar Styling 修復：增加滾動條隱藏與安全間距 */
+        .sidebar-left { width: 72px; background: white; border-right: 1px solid #e2e8f0; display: flex; flex-direction: column; align-items: center; padding-top: 16px; padding-bottom: 20px; gap: 12px; z-index: 20; box-shadow: 4px 0 24px rgba(0,0,0,0.02); overflow-y: auto; overflow-x: hidden; }
+        .sidebar-left::-webkit-scrollbar { display: none; }
+        .sidebar-right { width: 340px; background: white; border-left: 1px solid #e2e8f0; display: flex; flex-direction: column; z-index: 20; position: absolute; right: 0; top: 0; bottom: 0; box-shadow: -4px 0 24px rgba(0,0,0,0.02); transition: transform 0.3s ease; max-width: 100%; }
+
+        /* Icon Buttons */
+        .icon-btn { width: 44px; min-height: 44px; flex-shrink: 0; border-radius: 12px; display: flex; flex-direction: column; align-items: center; justify-content: center; color: #64748b; cursor: pointer; transition: all 0.2s; position: relative; border: 1px solid transparent; }
+        .icon-btn:hover { background-color: #f1f5f9; color: #3b82f6; transform: translateY(-1px); }
+        .icon-btn.active { background-color: #eff6ff; color: #2563eb; border-color: #bfdbfe; box-shadow: 0 2px 4px rgba(37,99,235,0.1); }
+        .icon-btn i { font-size: 22px; margin-bottom: 0px; }
+        .icon-btn span { font-size: 9px; font-weight: 600; margin-top: 2px; }
+        .icon-btn .tooltip { position: absolute; left: 56px; background: #1e293b; color: white; padding: 6px 10px; border-radius: 6px; font-size: 12px; opacity: 0; pointer-events: none; transition: opacity 0.2s; white-space: nowrap; z-index: 50; font-weight: 500; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+        .icon-btn:hover .tooltip { opacity: 1; transform: translateX(5px); }
+
+        /* Form Elements */
+        .input-group { margin-bottom: 16px; }
+        .input-label { display: block; font-size: 11px; font-weight: 700; color: #64748b; margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.05em; }
+        .input-field { width: 100%; border: 1px solid #e2e8f0; border-radius: 8px; padding: 8px 12px; font-size: 13px; color: #1e293b; transition: 0.2s; background: #f8fafc; }
+        .input-field:focus { border-color: #3b82f6; background: white; box-shadow: 0 0 0 3px rgba(59,130,246,0.1); outline: none; }
+        .select-field { width: 100%; border: 1px solid #e2e8f0; border-radius: 8px; padding: 8px 12px; font-size: 13px; color: #1e293b; background-color: white; }
+        
+        /* Canvas */
+        .canvas-wrapper { flex: 1; background-color: #f8fafc; position: relative; overflow: hidden; cursor: none; background-image: radial-gradient(#e2e8f0 1px, transparent 1px); background-size: 20px 20px; }
+        canvas { display: block; width: 100%; height: 100%; outline: none; }
+
+        /* HUD & Overlays - 修復：最大寬高限制以防止移動端破版 */
+        .hud-panel { position: absolute; top: 20px; left: 20px; width: 300px; max-width: calc(100vw - 40px); background: rgba(255,255,255,0.95); backdrop-filter: blur(12px); border: 1px solid #e2e8f0; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1), 0 8px 10px -6px rgba(0,0,0,0.1); border-radius: 16px; padding: 20px; z-index: 40; max-height: calc(100% - 40px); overflow-y: auto; }
+        .hud-panel-right { position: absolute; top: 20px; right: 20px; width: 320px; max-width: calc(100vw - 40px); background: rgba(255,255,255,0.95); backdrop-filter: blur(12px); border: 1px solid #e2e8f0; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1), 0 8px 10px -6px rgba(0,0,0,0.1); border-radius: 16px; padding: 20px; z-index: 40; max-height: calc(100% - 40px); overflow-y: auto; }
+        .layer-indicator { width: 4px; border-radius: 2px; margin-right: 12px; height: 100%; position: absolute; left: 0; top: 0; }
+        
+        .warn-badge { position: absolute; top: 20px; left: 340px; background: #fef2f2; color: #ef4444; border: 1px solid #fecaca; padding: 8px 12px; border-radius: 8px; font-size: 12px; font-weight: bold; display: flex; align-items: center; gap: 6px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); z-index: 50; animation: slideIn 0.3s ease-out; max-width: calc(100vw - 40px); }
+        @keyframes slideIn { from { transform: translateY(-10px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; }
+        ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+
+        .vel-legend { display: flex; align-items: center; gap: 8px; font-size: 10px; color: #64748b; margin-top: 6px; }
+        .vel-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
+
+        .toggle-checkbox:checked { right: 0; border-color: #3b82f6; }
+        .toggle-checkbox:checked + .toggle-label { background-color: #3b82f6; }
+
+        .cam-btn { background: #f8fafc; border: 1px solid #e2e8f0; color: #64748b; transition: all 0.2s; }
+        .cam-btn:hover { background: #eff6ff; color: #3b82f6; border-color: #bfdbfe; }
+        .cam-btn.active { background: #3b82f6; color: white; border-color: #2563eb; box-shadow: 0 4px 6px rgba(59,130,246,0.2); }
+        
+        /* RWD 增強：確保在各種裝置上都不會破版 */
+        @media (max-width: 1024px) {
+            .sidebar-right { width: 280px; }
+            .hud-panel { width: 260px; padding: 15px; }
+            .hud-panel-right { width: 280px; padding: 15px; }
+        }
+        @media (max-width: 768px) {
+            .sidebar-left { width: 60px; }
+            .sidebar-right { width: 260px; }
+            .canvas-wrapper { min-width: 0; } /* 確保 Flex 不會溢出 */
+        }
+        @media (max-width: 640px) {
+            .sidebar-right { width: 220px; }
+            .hud-panel, .hud-panel-right { width: calc(100% - 40px); left: 20px; right: 20px; }
+            .hud-panel-right { top: auto; bottom: 20px; max-height: 40dvh; }
+        }
+
+        /* ═══ D: Dark glass HUD panels (t3 3D view only) ═══ */
+        .hud-panel, .hud-panel-right {
+            background: rgba(15, 23, 42, 0.88) !important;
+            backdrop-filter: blur(20px) saturate(160%) !important;
+            border: 1px solid rgba(148, 163, 184, 0.14) !important;
+            box-shadow: 0 24px 64px rgba(0,0,0,0.55), inset 0 1px 0 rgba(255,255,255,0.05) !important;
+        }
+        .hud-panel .text-slate-800, .hud-panel-right .text-slate-800 { color: #f1f5f9 !important; }
+        .hud-panel .text-slate-700, .hud-panel-right .text-slate-700 { color: #e2e8f0 !important; }
+        .hud-panel .text-slate-600, .hud-panel-right .text-slate-600 { color: #cbd5e1 !important; }
+        .hud-panel .text-slate-500, .hud-panel-right .text-slate-500 { color: #94a3b8 !important; }
+        .hud-panel .text-slate-400, .hud-panel-right .text-slate-400 { color: #64748b !important; }
+        .hud-panel .bg-slate-50, .hud-panel-right .bg-slate-50,
+        .hud-panel .bg-slate-100, .hud-panel-right .bg-slate-100 { background: rgba(255,255,255,0.05) !important; }
+        .hud-panel .bg-slate-200, .hud-panel-right .bg-slate-200 { background: rgba(255,255,255,0.10) !important; }
+        .hud-panel .bg-white, .hud-panel-right .bg-white { background: rgba(255,255,255,0.07) !important; }
+        .hud-panel .bg-indigo-50, .hud-panel-right .bg-indigo-50 { background: rgba(99,102,241,0.18) !important; }
+        .hud-panel .bg-blue-50, .hud-panel-right .bg-blue-50 { background: rgba(59,130,246,0.15) !important; }
+        .hud-panel .border-slate-200, .hud-panel-right .border-slate-200,
+        .hud-panel .border-slate-100, .hud-panel-right .border-slate-100 { border-color: rgba(255,255,255,0.09) !important; }
+        .hud-panel .border-indigo-100, .hud-panel-right .border-indigo-100 { border-color: rgba(99,102,241,0.35) !important; }
+        .hud-panel .border-blue-100, .hud-panel-right .border-blue-100 { border-color: rgba(59,130,246,0.3) !important; }
+        .cam-btn { background: rgba(255,255,255,0.06) !important; border-color: rgba(148,163,184,0.2) !important; color: #94a3b8 !important; }
+        .cam-btn:hover { background: rgba(59,130,246,0.2) !important; color: #93c5fd !important; border-color: rgba(59,130,246,0.35) !important; }
+        .cam-btn.active { background: #3b82f6 !important; color: white !important; border-color: #2563eb !important; box-shadow: 0 4px 12px rgba(59,130,246,0.35) !important; }
+
+        /* ═══ C: Toast notifications ═══ */
+        #toast_container { position: fixed; bottom: 24px; right: 24px; z-index: 9999; display: flex; flex-direction: column; gap: 10px; pointer-events: none; }
+        #toast_container > div { animation: toastIn 0.3s ease-out; }
+        @keyframes toastIn { from { opacity:0; transform:translateY(14px); } to { opacity:1; transform:translateY(0); } }
+
+        /* ═══ B: Cursor coordinates ═══ */
+        #cursor_pos { opacity: 0; transition: opacity 0.2s; }
+        .canvas-wrapper:hover #cursor_pos { opacity: 1; }
+    </style>
+</head>
+<body>
+
+<div id="toast_container"></div>
+
+<div class="app-shell">
+    <!-- 修復：Header 改為支援換行與橫向滾動，防止小螢幕溢出 -->
+    <header class="min-h-[4rem] h-auto py-2 md:py-0 bg-white border-b border-slate-200 flex flex-wrap lg:flex-nowrap items-center justify-between px-3 md:px-6 z-30 shadow-sm flex-shrink-0 gap-y-2">
+        <div class="flex items-center gap-3">
+            <div class="w-10 h-10 flex-shrink-0 bg-gradient-to-br from-blue-600 to-indigo-700 rounded-xl flex items-center justify-center text-white shadow-lg shadow-blue-500/30">
+                <i class="ph-bold ph-wind text-2xl"></i>
+            </div>
+            <div>
+                <h1 class="font-bold text-slate-800 text-sm md:text-base leading-tight">Fab Designer Pro</h1>
+                <div class="text-[10px] md:text-[11px] text-slate-500 font-medium tracking-wide hidden sm:block">V61.0 — 設備精確定位與熱尾流模擬</div>
+            </div>
+        </div>
+
+        <div class="flex items-center bg-slate-100 p-1 rounded-lg border border-slate-200 flex-shrink-0 overflow-x-auto">
+            <button onclick="App.switch('t1')" id="btn_t1" class="px-3 md:px-4 py-2 rounded-md text-sm font-bold text-slate-600 hover:text-slate-900 transition flex items-center gap-2 bg-white shadow-sm whitespace-nowrap">
+                <i class="ph-bold ph-pencil-ruler"></i> <span class="hidden sm:inline">平面 Layout</span>
+            </button>
+            <button onclick="App.switch('t2')" id="btn_t2" class="px-3 md:px-4 py-2 rounded-md text-sm font-bold text-slate-500 hover:text-slate-900 transition flex items-center gap-2 hover:bg-white/50 whitespace-nowrap">
+                <i class="ph-bold ph-rows"></i> <span class="hidden sm:inline">剖面 Section</span>
+            </button>
+            <button onclick="App.switch('t3')" id="btn_t3" class="px-3 md:px-4 py-2 rounded-md text-sm font-bold text-slate-500 hover:text-slate-900 transition flex items-center gap-2 hover:bg-white/50 whitespace-nowrap">
+                <i class="ph-bold ph-cube-transparent"></i> <span class="hidden sm:inline">工程模擬 CFD</span>
+            </button>
+        </div>
+
+        <div class="flex items-center gap-1 md:gap-3 flex-shrink-0">
+             <div class="items-center gap-2 mr-2 bg-slate-50 px-3 py-1.5 rounded-lg border border-slate-200 hidden md:flex">
+                <label class="text-xs font-bold text-slate-600 cursor-pointer select-none" for="snap_toggle">Grid Snap</label>
+                <div class="relative inline-block w-8 mr-2 align-middle select-none transition duration-200 ease-in">
+                    <input type="checkbox" id="snap_toggle" class="toggle-checkbox absolute block w-4 h-4 rounded-full bg-white border-4 appearance-none cursor-pointer" style="top:2px; left:2px; transition: all 0.3s;" onclick="CAD.toggleGrid()" checked/>
+                    <label for="snap_toggle" class="toggle-label block overflow-hidden h-5 rounded-full bg-slate-300 cursor-pointer"></label>
+                </div>
+            </div>
+            <button onclick="App.confirmReset()" class="text-slate-400 hover:text-red-500 transition p-2 hover:bg-red-50 rounded-lg" title="重置專案">
+                <i class="ph-bold ph-arrow-counter-clockwise text-xl"></i>
+            </button>
+            <button onclick="App.saveProject()" class="text-slate-400 hover:text-blue-500 transition p-2 hover:bg-blue-50 rounded-lg" title="儲存專案">
+                <i class="ph-bold ph-floppy-disk text-xl"></i>
+            </button>
+            <button onclick="App.loadProject()" class="text-slate-400 hover:text-green-500 transition p-2 hover:bg-green-50 rounded-lg" title="讀取專案">
+                <i class="ph-bold ph-folder-open text-xl"></i>
+            </button>
+        </div>
+    </header>
+
+    <div class="workspace-area">
+        
+        <!-- SIDEBAR LEFT -->
+        <div class="sidebar-left">
+            <div class="icon-btn active" id="tool_select" onclick="CAD.setTool('select')">
+                <i class="ph-bold ph-cursor-click"></i>
+                <span>選取</span>
+                <div class="tooltip">選取物件 (V)</div>
+            </div>
+            
+            <div class="w-10 h-[1px] bg-slate-200 my-1 flex-shrink-0"></div>
+            
+            <div class="icon-btn" id="tool_ffu" onclick="CAD.activateLayer('ceiling'); CAD.setTool('ffu')">
+                <i class="ph-bold ph-fan"></i>
+                <span>FFU</span>
+                <div class="tooltip">風機過濾組</div>
+            </div>
+            
+            <div class="icon-btn" id="tool_dcc" onclick="CAD.activateLayerDCC()">
+                <i class="ph-bold ph-snowflake"></i>
+                <span>DCC</span>
+                <div class="tooltip">DCC 乾盤管</div>
+            </div>
+
+            <div class="w-10 h-[1px] bg-slate-200 my-1 flex-shrink-0"></div>
+
+            <div class="icon-btn" id="tool_mach" onclick="CAD.activateLayer('room'); CAD.setTool('mach')">
+                <i class="ph-bold ph-hard-drives"></i>
+                <span>機台</span>
+                <div class="tooltip">生產設備 (碰撞體與熱源)</div>
+            </div>
+
+            <div class="icon-btn" id="tool_pillar" onclick="CAD.setTool('pillar')">
+                <i class="ph-bold ph-columns"></i>
+                <span>柱子</span>
+                <div class="tooltip">結構柱 (全樓層)</div>
+            </div>
+
+            <div class="icon-btn" id="tool_obs" onclick="CAD.setTool('obs')">
+                <i class="ph-bold ph-wall"></i>
+                <span>阻礙</span>
+                <div class="tooltip">管線/障礙 (Obstacle)</div>
+            </div>
+
+            <div class="w-10 h-[1px] bg-slate-200 my-1 flex-shrink-0"></div>
+
+            <div class="icon-btn" id="tool_shaft" onclick="CAD.activateLayer('subfab'); CAD.setTool('shaft')">
+                <i class="ph-bold ph-columns-plus-right"></i>
+                <span>回風</span>
+                <div class="tooltip">回風井 (Return Shaft)</div>
+            </div>
+
+            <div class="icon-btn" id="tool_mau" onclick="CAD.activateLayer('ceiling'); CAD.setTool('mau')">
+                <i class="ph-bold ph-arrow-fat-line-down" style="color:#f97316"></i>
+                <span style="color:#f97316;font-size:8px">MAU</span>
+                <div class="tooltip">MAU 新風風管 (Supply Duct)</div>
+            </div>
+
+            <div class="icon-btn" id="tool_exhaust" onclick="CAD.setTool('exhaust')">
+                <i class="ph-bold ph-arrow-fat-line-up" style="color:#10b981"></i>
+                <span style="color:#10b981;font-size:8px">排氣</span>
+                <div class="tooltip">排氣風管 (Exhaust Duct)</div>
+            </div>
+
+            <div class="w-10 h-[1px] bg-slate-200 my-1 flex-shrink-0"></div>
+
+             <div class="mt-auto mb-2 icon-btn" id="tool_cut" onclick="CAD.setTool('cut')">
+                <i class="ph-bold ph-scissors"></i>
+                <span>剖面</span>
+                <div class="tooltip">繪製剖面線</div>
+            </div>
+        </div>
+
+        <div id="view-t1" class="flex-1 flex w-full relative">
+            <div class="canvas-wrapper" id="cad_container">
+                <!-- 2D 畫布 -->
+                <canvas id="c_cad"></canvas>
+                
+                <div class="absolute bottom-6 md:bottom-8 left-1/2 transform -translate-x-1/2 bg-white/95 backdrop-blur border border-slate-200 p-1.5 rounded-full shadow-floating flex gap-1 z-30 overflow-x-auto max-w-[90vw]">
+                    <button class="px-3 md:px-5 py-2 rounded-full text-xs font-bold transition flex items-center gap-2 layer-pill active whitespace-nowrap" id="pill_ceiling" onclick="CAD.activateLayer('ceiling')">
+                        <span class="w-2.5 h-2.5 rounded-full bg-blue-500"></span> <span>天花板</span>
+                    </button>
+                    <button class="px-3 md:px-5 py-2 rounded-full text-xs font-bold transition flex items-center gap-2 layer-pill text-slate-500 hover:bg-slate-100 whitespace-nowrap" id="pill_room" onclick="CAD.activateLayer('room')">
+                        <span class="w-2.5 h-2.5 rounded-full bg-green-500"></span> <span>無塵室</span>
+                    </button>
+                    <button class="px-3 md:px-5 py-2 rounded-full text-xs font-bold transition flex items-center gap-2 layer-pill text-slate-500 hover:bg-slate-100 whitespace-nowrap" id="pill_subfab" onclick="CAD.activateLayer('subfab')">
+                        <span class="w-2.5 h-2.5 rounded-full bg-slate-500"></span> <span>下夾層</span>
+                    </button>
+                </div>
+
+                <div class="absolute top-4 right-4 md:top-6 md:right-6 flex gap-2">
+                     <button onclick="CAD.zoomFit()" class="bg-white p-2.5 rounded-xl shadow-md border border-slate-100 text-slate-500 hover:text-blue-600 hover:shadow-lg transition" title="縮放至適合大小">
+                        <i class="ph-bold ph-corners-out text-lg"></i>
+                    </button>
+                </div>
+                
+                <div id="layer_hint" class="absolute top-4 left-4 md:top-6 md:left-6 bg-slate-800 text-white px-3 py-1.5 rounded-lg text-xs font-bold shadow-lg opacity-0 transition-opacity pointer-events-none">
+                    當前層級: 天花板
+                </div>
+                <div id="cursor_pos" class="absolute bottom-20 left-4 bg-slate-800/80 text-white/50 px-2.5 py-1 rounded-lg text-[10px] font-mono pointer-events-none select-none">
+                    X: 0 &nbsp; Y: 0 mm
+                </div>
+            </div>
+
+            <!-- 右側屬性面板 -->
+            <div class="sidebar-right flex flex-col">
+                <div class="h-14 border-b border-slate-100 flex items-center px-4 md:px-6 font-bold text-xs text-slate-800 uppercase tracking-widest bg-slate-50/50 flex-shrink-0">
+                    屬性 Properties
+                </div>
+                <div class="p-4 md:p-6 overflow-y-auto flex-1 custom-scrollbar">
+                    
+                    <div id="props_selection" class="hidden mb-6 bg-blue-50/50 p-4 rounded-xl border border-blue-100">
+                        <div class="text-xs font-bold text-blue-600 mb-4 flex items-center gap-2">
+                            <i class="ph-fill ph-check-circle text-lg"></i> <span>已選取物件</span>
+                        </div>
+                        <div class="grid grid-cols-2 gap-3">
+                            <div class="input-group mb-0">
+                                <label class="input-label text-blue-800">寬 Width</label>
+                                <input type="number" id="sel_w" class="input-field border-blue-200 focus:border-blue-500" onchange="CAD.updateSel()">
+                            </div>
+                            <div class="input-group mb-0">
+                                <label class="input-label text-blue-800">深 Depth</label>
+                                <input type="number" id="sel_d" class="input-field border-blue-200 focus:border-blue-500" onchange="CAD.updateSel()">
+                            </div>
+                        </div>
+                        
+                        <div id="prop_h_container" class="hidden input-group mt-3 mb-0">
+                            <label class="input-label text-green-700">高度 Height (Y)</label>
+                            <input type="number" id="sel_h" class="input-field border-green-200 focus:border-green-500 text-green-800 font-bold" onchange="CAD.updateSel()">
+                        </div>
+
+                        <!-- 機台專屬：局部熱排設定 -->
+                        <div id="prop_mach_panel" class="hidden mt-4 space-y-3 bg-red-50 p-3 rounded-lg border border-red-200">
+                            <div class="text-[10px] font-black uppercase tracking-widest mb-1 pb-1 border-b" style="color:#dc2626;border-color:#fca5a5">
+                                🔥 局部熱排 (LHE)
+                            </div>
+                            <div class="grid grid-cols-2 gap-2">
+                                <div>
+                                    <label class="input-label" style="color:#dc2626">強度(%)</label>
+                                    <input type="number" id="mach_heat" class="input-field" value="0" min="0" max="100" onchange="CAD.updateSel()" style="border-color:#fca5a5;font-weight:bold;">
+                                </div>
+                                <div>
+                                    <label class="input-label" style="color:#dc2626">發熱位置</label>
+                                    <select id="mach_heat_pos" class="select-field" onchange="CAD.updateSel()" style="border-color:#fca5a5; padding: 6px;">
+                                        <option value="whole">全表面</option>
+                                        <option value="center">中心</option>
+                                        <option value="rear">後方</option>
+                                        <option value="front">前方</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div id="prop_dcc_loc" class="hidden input-group mt-3 mb-0">
+                            <label class="input-label text-cyan-700">DCC 安裝位置</label>
+                            <select id="sel_dcc_layer" class="select-field border-cyan-200 text-cyan-800 font-bold" onchange="CAD.updateSel()">
+                                <option value="subfab">下夾層 (Sub-Fab)</option>
+                                <option value="plenum">上夾層 (Plenum)</option>
+                            </select>
+                            <div class="text-[10px] text-cyan-600 mt-1">影響 CFD 解析</div>
+                        </div>
+
+                        <!-- MAU Duct Full Properties -->
+                        <div id="prop_mau_panel" class="hidden mt-3 space-y-3">
+                            <div class="text-[10px] font-black uppercase tracking-widest mb-2 pb-1 border-b" style="color:#f97316;border-color:#fed7aa">
+                                🟠 MAU 新風管
+                            </div>
+                            <div class="grid grid-cols-2 gap-2">
+                                <div class="col-span-2">
+                                    <label class="input-label" style="color:#ea580c">層級 Type</label>
+                                    <select id="mau_duct_type" class="select-field" onchange="CAD.changeDuctType('mau')" style="border-color:#fed7aa;font-weight:bold;">
+                                        <option value="main">主幹管 (Main)</option>
+                                        <option value="branch">支線管 (Branch)</option>
+                                    </select>
+                                </div>
+                                <div class="col-span-2">
+                                    <label class="input-label" style="color:#ea580c">風量 CMH</label>
+                                    <input type="number" id="mau_cmh" class="input-field" value="5000" min="0" step="100" onchange="CAD.updateSel()" style="border-color:#fed7aa;color:#c2410c;font-weight:800">
+                                </div>
+                                <div>
+                                    <label class="input-label" style="color:#ea580c">截面高(mm)</label>
+                                    <input type="number" id="mau_duct_h" class="input-field" value="800" min="100" step="50" onchange="CAD.updateSel()" style="border-color:#fed7aa">
+                                </div>
+                                <div>
+                                    <label class="input-label" style="color:#ea580c">高程 Elev</label>
+                                    <input type="number" id="mau_elev" class="input-field" placeholder="預設頂" onchange="CAD.updateSel()" style="border-color:#fed7aa">
+                                </div>
+                            </div>
+
+                            <!-- 出風口詳細設定 -->
+                            <div id="mau_outlet_wrapper" class="space-y-3 pt-3 border-t border-orange-200">
+                                <div class="grid grid-cols-2 gap-2">
+                                    <div>
+                                        <label class="input-label" style="color:#ea580c">風口寬</label>
+                                        <input type="number" id="mau_outlet_w" class="input-field" value="600" min="50" step="50" onchange="CAD.updateSel()" style="border-color:#fed7aa">
+                                    </div>
+                                    <div>
+                                        <label class="input-label" style="color:#ea580c">風口深</label>
+                                        <input type="number" id="mau_outlet_d" class="input-field" value="600" min="50" step="50" onchange="CAD.updateSel()" style="border-color:#fed7aa">
+                                    </div>
+                                </div>
+                                <div class="grid grid-cols-2 gap-2">
+                                    <div>
+                                        <label class="input-label" style="color:#ea580c">方向</label>
+                                        <select id="mau_outlet_dir" class="select-field px-1" onchange="CAD.updateSel()" style="border-color:#fed7aa">
+                                            <option value="down">向下 ↓</option><option value="up">向上 ↑</option><option value="north">北側 ↑</option><option value="south">南側 ↓</option><option value="east">東側 →</option><option value="west">西側 ←</option>
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label class="input-label" style="color:#ea580c">間距模式</label>
+                                        <select id="mau_spacing_mode" class="select-field px-1" onchange="CAD.updateSel();CAD.toggleMauSpacing()" style="border-color:#fed7aa">
+                                            <option value="auto">自動</option><option value="manual">手動</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div id="mau_spacing_input" class="hidden">
+                                    <label class="input-label" style="color:#ea580c">間距(mm)</label>
+                                    <input type="number" id="mau_spacing" class="input-field" value="2000" min="200" step="100" onchange="CAD.updateSel()" style="border-color:#fed7aa">
+                                </div>
+                                <div class="bg-orange-50 rounded-lg p-2 text-[10px] border border-orange-100">
+                                    <div class="flex justify-between mb-1"><span class="text-orange-700 font-bold">數量</span><span class="font-mono font-black text-orange-900" id="mau_outlet_count">—</span></div>
+                                    <div class="flex justify-between"><span class="text-orange-700 font-bold">面速</span><span class="font-mono font-black text-orange-900" id="mau_outlet_vel">—</span></div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Exhaust Duct Full Properties -->
+                        <div id="prop_exhaust_panel" class="hidden mt-3 space-y-3">
+                            <div class="text-[10px] font-black uppercase tracking-widest mb-2 pb-1 border-b" style="color:#059669;border-color:#a7f3d0">
+                                🟢 排氣風管
+                            </div>
+                            <div class="grid grid-cols-2 gap-2">
+                                <div class="col-span-2">
+                                    <label class="input-label" style="color:#059669">層級 Type</label>
+                                    <select id="exh_duct_type" class="select-field" onchange="CAD.changeDuctType('exh')" style="border-color:#a7f3d0;font-weight:bold;">
+                                        <option value="main">主幹管 (Main)</option>
+                                        <option value="branch">支線管 (Branch)</option>
+                                    </select>
+                                </div>
+                                <div class="col-span-2">
+                                    <label class="input-label" style="color:#059669">排氣量 CMH</label>
+                                    <input type="number" id="exh_cmh" class="input-field" value="4500" min="0" step="100" onchange="CAD.updateSel()" style="border-color:#a7f3d0;color:#065f46;font-weight:800">
+                                </div>
+                                <div>
+                                    <label class="input-label" style="color:#059669">截面高(mm)</label>
+                                    <input type="number" id="exh_duct_h" class="input-field" value="800" min="100" step="50" onchange="CAD.updateSel()" style="border-color:#a7f3d0">
+                                </div>
+                                <div>
+                                    <label class="input-label" style="color:#059669">高程 Elev</label>
+                                    <input type="number" id="exh_elev" class="input-field" placeholder="預設底" onchange="CAD.updateSel()" style="border-color:#a7f3d0">
+                                </div>
+                            </div>
+
+                            <div id="exh_outlet_wrapper" class="space-y-3 pt-3 border-t border-emerald-200">
+                                <div class="grid grid-cols-2 gap-2">
+                                    <div><label class="input-label" style="color:#059669">風口寬</label><input type="number" id="exh_inlet_w" class="input-field" value="600" min="50" step="50" onchange="CAD.updateSel()" style="border-color:#a7f3d0"></div>
+                                    <div><label class="input-label" style="color:#059669">風口深</label><input type="number" id="exh_inlet_d" class="input-field" value="600" min="50" step="50" onchange="CAD.updateSel()" style="border-color:#a7f3d0"></div>
+                                </div>
+                                <div class="grid grid-cols-2 gap-2">
+                                    <div><label class="input-label" style="color:#059669">方向</label><select id="exh_inlet_dir" class="select-field px-1" onchange="CAD.updateSel()" style="border-color:#a7f3d0"><option value="up">向上 ↑</option><option value="down">向下 ↓</option><option value="north">北側 ↑</option><option value="south">南側 ↓</option><option value="east">東側 →</option><option value="west">西側 ←</option></select></div>
+                                    <div><label class="input-label" style="color:#059669">間距模式</label><select id="exh_spacing_mode" class="select-field px-1" onchange="CAD.updateSel();CAD.toggleExhSpacing()" style="border-color:#a7f3d0"><option value="auto">自動</option><option value="manual">手動</option></select></div>
+                                </div>
+                                <div id="exh_spacing_input" class="hidden"><label class="input-label" style="color:#059669">間距(mm)</label><input type="number" id="exh_spacing" class="input-field" value="2000" min="200" step="100" onchange="CAD.updateSel()" style="border-color:#a7f3d0"></div>
+                                <div class="bg-emerald-50 rounded-lg p-2 text-[10px] border border-emerald-100">
+                                    <div class="flex justify-between mb-1"><span class="text-emerald-700 font-bold">數量</span><span class="font-mono font-black text-emerald-900" id="exh_inlet_count">—</span></div>
+                                    <div class="flex justify-between"><span class="text-emerald-700 font-bold">面速</span><span class="font-mono font-black text-emerald-900" id="exh_inlet_vel">—</span></div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="text-[10px] text-slate-500 mt-2">
+                            ID: <span id="sel_id" class="font-mono"></span>
+                        </div>
+                        <button onclick="CAD.delSelected()" class="w-full mt-4 py-2.5 text-xs font-bold text-red-500 bg-white border border-red-100 hover:bg-red-50 rounded-lg transition-all duration-300 ease-in-out flex items-center justify-center gap-2">
+                            <i class="ph-bold ph-trash"></i> <span>刪除物件</span>
+                        </button>
+                    </div>
+
+                    <div class="mb-6">
+                        <div class="text-xs font-bold text-slate-800 mb-3 border-b border-slate-100 pb-2">Step 1: 淨面積尺寸</div>
+                        <div class="grid grid-cols-2 gap-3">
+                            <div class="input-group mb-0"><label class="input-label">全長(m)</label><input id="room_w" class="input-field" value="40" type="number" onchange="CAD.updateSize()"></div>
+                            <div class="input-group mb-0"><label class="input-label">全寬(m)</label><input id="room_d" class="input-field" value="30" type="number" onchange="CAD.updateSize()"></div>
+                        </div>
+                    </div>
+
+                    <div id="props_ffu" class="mb-6">
+                         <div class="text-xs font-bold text-slate-800 mb-3 flex items-center justify-between border-b border-slate-100 pb-2">
+                            <span>Step 3: FFU 自動佈置</span>
+                        </div>
+                        <div class="bg-yellow-50 text-yellow-800 p-3 rounded-lg text-[10px] mb-3 border border-yellow-200 leading-relaxed">
+                            <i class="ph-bold ph-warning"></i> <span>避開回風道(Shaft)與柱子(Pillar)。</span>
+                        </div>
+                        <div class="space-y-3">
+                            <div class="grid grid-cols-2 gap-3">
+                                <div class="input-group mb-0"><label class="input-label">面風速(m/s)</label><input id="ffu_vel" class="input-field" value="0.45" step="0.05" type="number"></div>
+                                <div class="input-group mb-0"><label class="input-label">覆蓋率(%)</label><input id="ffu_cov" class="input-field font-bold text-blue-600" value="50" min="1" max="100" type="number"></div>
+                            </div>
+                            <button onclick="CAD.autoLayoutFFU()" class="w-full py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-sm font-bold shadow-md shadow-blue-500/20 transition-all duration-300 flex items-center justify-center gap-2">
+                                <i class="ph-bold ph-grid-four"></i> <span>執行佈置</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="flex-1">
+                        <div class="text-xs font-bold text-slate-800 mb-3 flex justify-between items-center">
+                            <span>物件清單</span>
+                            <span class="text-slate-400 font-mono bg-slate-100 px-2 rounded-full text-[10px]" id="obj_count">0</span>
+                        </div>
+                        <div id="obj_list" class="space-y-2 max-h-[250px] overflow-y-auto pr-1 custom-scrollbar"></div>
+                        <button onclick="App.confirmClear()" class="w-full mt-4 py-2 text-xs text-slate-400 hover:text-slate-600 transition border border-dashed border-slate-300 rounded-lg hover:border-slate-400">
+                            清空所有物件
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="view-t2" class="flex-1 w-full hidden relative bg-slate-100" style="cursor: default;">
+             <div class="absolute left-6 top-6 bottom-6 w-72 lg:w-80 bg-white rounded-2xl shadow-floating p-5 lg:p-6 z-20 hidden md:flex flex-col">
+                <div class="text-sm font-bold text-slate-800 mb-6 pb-4 border-b border-slate-100 flex items-center gap-2">
+                    <i class="ph-fill ph-ruler-vertical text-blue-500"></i>
+                    <span>樓層高度設定</span>
+                </div>
+                
+                <div class="space-y-5 lg:space-y-6 flex-1 overflow-y-auto">
+                    <div class="relative pl-6">
+                        <div class="layer-indicator bg-blue-200"></div>
+                        <label class="input-label text-blue-600 text-xs">上夾層 (Plenum)</label>
+                        <div class="flex items-center gap-2">
+                            <input id="h_upper" class="input-field text-base lg:text-lg font-bold text-slate-700" value="2500" type="number" onchange="Section.render()">
+                            <span class="text-xs text-slate-400">mm</span>
+                        </div>
+                    </div>
+
+                    <div class="relative pl-6">
+                         <div class="layer-indicator bg-slate-800"></div>
+                        <label class="input-label text-slate-800 text-xs">無塵室 (Cleanroom)</label>
+                         <div class="flex items-center gap-2">
+                            <input id="h_room" class="input-field text-base lg:text-lg font-bold text-slate-700" value="4000" type="number" onchange="Section.render()">
+                            <span class="text-xs text-slate-400">mm</span>
+                        </div>
+                    </div>
+
+                    <div class="relative pl-6">
+                         <div class="layer-indicator bg-yellow-400"></div>
+                        <label class="input-label text-yellow-600 text-xs">高架地板 (Raised Floor)</label>
+                         <div class="flex items-center gap-2">
+                            <input id="h_rf" class="input-field text-base lg:text-lg font-bold text-slate-700" value="800" type="number" onchange="Section.render()">
+                            <span class="text-xs text-slate-400">mm</span>
+                        </div>
+                    </div>
+
+                    <div class="relative pl-6">
+                         <div class="layer-indicator bg-slate-400"></div>
+                        <label class="input-label text-slate-600 text-xs">下夾層 (Sub-Fab)</label>
+                         <div class="flex items-center gap-2">
+                            <input id="h_sub" class="input-field text-base lg:text-lg font-bold text-slate-700" value="3500" type="number" onchange="Section.render()">
+                            <span class="text-xs text-slate-400">mm</span>
+                        </div>
+                    </div>
+                </div>
+             </div>
+
+             <div class="absolute inset-0 flex items-center justify-center md:pl-[320px] px-4 py-4 md:px-6 md:py-6">
+                 <div class="w-full h-full bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden relative">
+                     <!-- 2D 畫布 -->
+                     <canvas id="c_sec"></canvas>
+                      <div id="sec_msg" class="absolute top-8 left-1/2 transform -translate-x-1/2 bg-yellow-50 text-yellow-700 px-4 py-2 rounded-full text-xs border border-yellow-200 shadow-sm flex items-center gap-2 font-bold whitespace-nowrap">
+                        <i class="ph-fill ph-warning-circle text-lg"></i> <span>請先使用剪刀繪製剖面線</span>
+                    </div>
+                 </div>
+             </div>
+        </div>
+
+        <div id="view-t3" class="flex-1 w-full hidden relative bg-slate-900" style="cursor: default;">
+            <div id="three_target" class="w-full h-full outline-none cursor-move"></div>
+            <div id="sim_stats" class="absolute bottom-6 left-6 text-[10px] text-slate-600 font-mono leading-5 pointer-events-none select-none">
+                <div>粒子 <span id="stat_pcount" class="text-slate-500">—</span></div>
+                <div>均速 <span id="stat_avgvel" class="text-blue-500 font-bold">—</span> mm/s</div>
+            </div>
+            
+            <div class="hud-panel hidden sm:block">
+                <div class="flex items-center justify-between mb-4 pb-3 border-b border-slate-100">
+                    <div class="flex items-center gap-2 font-bold text-slate-800 text-sm">
+                        <i class="ph-fill ph-wind text-blue-600 text-xl"></i>
+                        <span>CFD 物理模擬</span>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <span class="text-[10px] text-slate-400">Real-time</span>
+                        <span class="w-2 h-2 rounded-full bg-green-500 animate-pulse-fast"></span>
+                    </div>
+                </div>
+
+                <div class="bg-slate-50 rounded-xl p-3 mb-4 border border-slate-200 space-y-2">
+                    <div class="flex justify-between items-center text-xs border-b border-slate-200 pb-1.5 mb-1.5">
+                        <span class="text-slate-500 font-medium">循環風量 (FFU)</span>
+                        <span class="font-bold text-blue-600 font-mono"><span id="val_cmh">0</span> CMH</span>
+                    </div>
+                    <div class="flex justify-between items-center text-xs">
+                        <span class="text-slate-500 font-medium">MAU 新風量</span>
+                        <span class="font-bold text-orange-600 font-mono"><span id="val_mau_cmh">0</span> CMH</span>
+                    </div>
+                    <div class="flex justify-between items-center text-xs">
+                        <span class="text-slate-500 font-medium">EXH 排氣量</span>
+                        <span class="font-bold text-emerald-600 font-mono"><span id="val_exh_cmh">0</span> CMH</span>
+                    </div>
+                </div>
+
+                <div class="mb-4">
+                    <div class="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-2">流場可視化模式</div>
+                    <div class="grid grid-cols-3 gap-2">
+                        <button onclick="Sim3D.setViewMode('particle')" id="btn_mode_particle" class="py-1.5 rounded-lg bg-blue-100 text-blue-700 text-xs font-bold border border-blue-200 transition">粒子流</button>
+                        <button onclick="Sim3D.setViewMode('slice')" id="btn_mode_slice" class="py-1.5 rounded-lg bg-slate-100 text-slate-600 text-xs border border-slate-200 hover:bg-slate-200 transition">切片</button>
+                        <button onclick="Sim3D.setViewMode('thermal')" id="btn_mode_thermal" class="py-1.5 rounded-lg bg-slate-100 text-slate-600 text-xs border border-slate-200 hover:bg-slate-200 transition">熱流場</button>
+                    </div>
+                </div>
+
+                <div class="mb-4 pt-3 border-t border-slate-100">
+                    <div class="text-[10px] font-bold text-slate-600 mb-2">速度熱圖 / 狀態</div>
+                    <div class="grid grid-cols-1 gap-1">
+                        <div class="vel-legend"><span class="vel-dot bg-blue-500"></span> <span>正常流場 (Normal)</span></div>
+                        <div class="vel-legend"><span class="vel-dot bg-cyan-400"></span> <span>DCC 冷卻後 (Cooled)</span></div>
+                        <div class="vel-legend"><span class="vel-dot" style="background:#ea580c"></span> <span>新鮮外氣 / 設備熱尾流</span></div>
+                    </div>
+                </div>
+
+                <div class="space-y-4">
+                    <div>
+                        <div class="flex justify-between text-xs mb-2 font-bold text-slate-700">
+                            <span>高架地板開孔率</span>
+                            <span id="txt_ratio" class="text-blue-600">25%</span>
+                        </div>
+                        <input type="range" min="10" max="60" value="25" class="w-full h-1.5 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-blue-600" oninput="Sim3D.updateParams(this.value)">
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-3">
+                        <button onclick="Sim3D.init()" class="py-2.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold shadow-md shadow-blue-500/20 transition">重啟 (Resim)</button>
+                        <button onclick="Sim3D.togglePause()" id="btn_pause" class="py-2.5 rounded-lg bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 text-xs font-bold transition">暫停</button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="hud-panel-right flex flex-col space-y-3 hidden sm:flex" style="overflow-y:auto;">
+                <!-- Header -->
+                <div class="flex items-center justify-between pb-3 border-b border-slate-200 flex-shrink-0">
+                    <div class="flex items-center gap-2 font-bold text-slate-800 text-sm">
+                        <i class="ph-fill ph-chart-line-up text-indigo-500 text-xl"></i>
+                        <span>工程決策 (Engineering)</span>
+                    </div>
+                </div>
+
+                <!-- ACH + ISO -->
+                <div class="grid grid-cols-2 gap-3">
+                    <div class="bg-indigo-50 p-3 rounded-lg border border-indigo-100 relative overflow-hidden">
+                        <div class="absolute -right-2 -bottom-2 opacity-10"><i class="ph-fill ph-arrows-clockwise text-5xl text-indigo-600"></i></div>
+                        <div class="text-[10px] text-indigo-500 font-bold uppercase mb-1">ACH 換氣次數</div>
+                        <div class="text-2xl font-black text-indigo-700" id="eng_ach">0</div>
+                        <div class="text-[10px] text-indigo-400 mt-1">Times / Hour</div>
+                    </div>
+                    <div class="bg-blue-50 p-3 rounded-lg border border-blue-100 relative overflow-hidden">
+                        <div class="absolute -right-2 -bottom-2 opacity-10"><i class="ph-fill ph-certificate text-5xl text-blue-600"></i></div>
+                        <div class="text-[10px] text-blue-500 font-bold uppercase mb-1">預測潔淨度</div>
+                        <div class="text-2xl font-black text-blue-700" id="eng_iso">ISO ?</div>
+                        <div class="text-[9px] text-blue-400 mt-1 leading-tight" id="eng_iso_basis">ACH + Coverage Est.</div>
+                    </div>
+                </div>
+
+                <!-- Pressure Model -->
+                <div class="bg-slate-50 p-3 rounded-lg border border-slate-200 space-y-1.5">
+                    <div class="text-[10px] text-slate-500 font-bold uppercase tracking-widest border-b border-slate-200 pb-1 flex justify-between items-center">
+                        <span>壓力場模型 (ΔP)</span>
+                        <span id="eng_balance_status" class="text-emerald-500 text-[10px] font-bold"><i class="ph-fill ph-check-circle"></i> Balanced</span>
+                    </div>
+                    <div class="flex justify-between items-center text-xs"><span class="text-blue-600 font-medium">Plenum (上夾層)</span><span class="font-mono font-bold text-slate-700" id="eng_p_plenum">+0 Pa</span></div>
+                    <div class="flex justify-between items-center text-xs"><span class="text-slate-800 font-bold">Cleanroom (無塵室)</span><span class="font-mono font-bold text-emerald-600" id="eng_p_room">+15 Pa</span></div>
+                    <div class="flex justify-between items-center text-xs"><span class="text-slate-500 font-medium">Sub-Fab (下夾層)</span><span class="font-mono font-bold text-amber-600" id="eng_p_sub">0 Pa</span></div>
+                    <div class="flex justify-between items-center text-xs"><span class="text-slate-400 font-medium">Shaft (回風井)</span><span class="font-mono font-bold text-red-500" id="eng_p_shaft">0 Pa</span></div>
+                </div>
+
+                <!-- Richardson Number (replaces non-physical momentum ratio) -->
+                <div class="bg-slate-50 p-3 rounded-lg border border-slate-200 space-y-1.5">
+                    <div class="text-[10px] text-slate-500 font-bold uppercase tracking-widest border-b border-slate-200 pb-1">熱浮力分析 (Richardson No.)</div>
+                    <div class="flex justify-between items-center text-xs">
+                        <span class="text-slate-500 font-medium">Ri = g·β·ΔT·L / v²</span>
+                        <span class="font-mono font-bold text-slate-700" id="eng_ri">0.00</span>
+                    </div>
+                    <div class="flex justify-between items-center text-xs">
+                        <span class="text-slate-600 font-medium">等效機台溫差 ΔT</span>
+                        <span class="font-mono text-orange-500 font-bold" id="eng_delta_t">— °C</span>
+                    </div>
+                    <div class="flex justify-between items-center text-xs">
+                        <span class="text-slate-600 font-medium">對流狀態</span>
+                        <span class="font-bold text-blue-600" id="eng_conv_mode">判定中...</span>
+                    </div>
+                    <div class="text-[9px] text-slate-400 leading-tight">Ri&lt;0.1 強制 | 0.1–1 混合 | &gt;1 浮力主導</div>
+                </div>
+
+                <!-- Coverage + Turbulence Intensity -->
+                <div class="space-y-2">
+                    <div class="flex justify-between items-center text-xs">
+                        <span class="text-slate-600 font-medium">FFU 幾何覆蓋率</span>
+                        <span class="font-bold text-blue-600" id="eng_cov">0%</span>
+                    </div>
+                    <div class="w-full bg-slate-200 rounded-full h-1.5"><div class="bg-blue-500 h-1.5 rounded-full transition-all" id="bar_cov" style="width:0%"></div></div>
+
+                    <div class="flex justify-between items-center text-xs mt-2">
+                        <span class="text-slate-600 font-medium">紊流強度 TI</span>
+                        <span class="font-bold text-amber-500" id="eng_turb">—</span>
+                    </div>
+                    <div class="w-full bg-slate-200 rounded-full h-1.5"><div class="bg-amber-400 h-1.5 rounded-full transition-all" id="bar_turb" style="width:0%"></div></div>
+                    <div class="text-[9px] text-slate-400">層流 TI&lt;10% | 混合 10–25% | 紊流 &gt;25%</div>
+                </div>
+
+                <!-- Air Balance -->
+                <div class="bg-slate-50 p-3 rounded-lg border border-slate-200 space-y-1.5">
+                    <div class="text-[10px] text-slate-500 font-bold uppercase tracking-widest border-b border-slate-200 pb-1">風量平衡 (Air Balance)</div>
+                    <div class="flex justify-between items-center text-xs">
+                        <span class="text-orange-600 font-medium">MAU 新風</span>
+                        <span class="font-mono font-bold" id="eng_mau_disp">0 CMH</span>
+                    </div>
+                    <div class="flex justify-between items-center text-xs">
+                        <span class="text-emerald-600 font-medium">EXH 排氣</span>
+                        <span class="font-mono font-bold" id="eng_exh_disp">0 CMH</span>
+                    </div>
+                    <div class="flex justify-between items-center text-xs border-t border-slate-200 pt-1">
+                        <span class="text-slate-600 font-medium">新風補充率</span>
+                        <span class="font-bold" id="eng_fresh_ratio">—</span>
+                    </div>
+                    <div id="eng_balance_warn" class="hidden text-[10px] text-red-600 bg-red-50 border border-red-200 px-2 py-1 rounded font-bold">⚠️ 風量不平衡，請確認 MAU / EXH 設定</div>
+                </div>
+
+                <!-- Heat Load vs DCC -->
+                <div class="bg-slate-50 p-3 rounded-lg border border-slate-200 space-y-1.5">
+                    <div class="text-[10px] text-slate-500 font-bold uppercase tracking-widest border-b border-slate-200 pb-1">熱負荷 vs 冷卻能力</div>
+                    <div class="flex justify-between items-center text-xs">
+                        <span class="text-red-500 font-medium">機台總發熱 (est.)</span>
+                        <span class="font-mono font-bold text-red-600" id="eng_mach_kw">— kW</span>
+                    </div>
+                    <div class="flex justify-between items-center text-xs">
+                        <span class="text-cyan-600 font-medium">DCC 冷卻能力 (est.)</span>
+                        <span class="font-mono font-bold text-cyan-600" id="eng_dcc_kw">— kW</span>
+                    </div>
+                    <div class="flex justify-between items-center text-xs">
+                        <span class="text-blue-500 font-medium">FFU 馬達散熱</span>
+                        <span class="font-mono font-bold text-blue-500" id="eng_ffu_heat">— kW</span>
+                    </div>
+                    <div class="w-full bg-slate-200 rounded-full h-2 mt-1">
+                        <div id="bar_heat" class="bg-green-400 h-2 rounded-full transition-all" style="width:0%"></div>
+                    </div>
+                    <div class="flex justify-between text-[9px] text-slate-500 mt-0.5">
+                        <span>DCC 負載率</span><span class="font-bold" id="eng_dcc_load_pct">—</span>
+                    </div>
+                    <div id="eng_heat_warn" class="hidden text-[10px] text-red-600 bg-red-50 border border-red-200 px-2 py-1 rounded font-bold">🔴 DCC 冷卻能力不足，請增加 DCC 或降低熱負荷</div>
+                </div>
+
+                <!-- System Efficiency -->
+                <div class="bg-slate-50 p-3 rounded-lg border border-slate-200 space-y-1.5">
+                    <div class="text-[10px] text-slate-500 font-bold uppercase tracking-widest border-b border-slate-200 pb-1">系統能效 & 流型判定</div>
+                    <div class="flex justify-between items-center text-xs">
+                        <span class="text-slate-600 font-medium">FFU 台數 / 總耗電</span>
+                        <span class="font-mono font-bold text-slate-700" id="eng_ffu_power">—</span>
+                    </div>
+                    <div class="flex justify-between items-center text-xs">
+                        <span class="text-slate-600 font-medium">送風均勻性</span>
+                        <span class="font-bold text-green-600" id="eng_uniformity">—</span>
+                    </div>
+                    <div class="flex justify-between items-center text-xs">
+                        <span class="text-slate-600 font-medium">單向流判定 (UDF)</span>
+                        <span class="font-bold text-slate-600" id="eng_udf">—</span>
+                    </div>
+                </div>
+
+                <!-- Camera Buttons -->
+                <div class="pt-3 border-t border-slate-200">
+                    <div class="text-[10px] text-slate-500 font-bold uppercase mb-2">工程鏡頭視角</div>
+                    <div class="grid grid-cols-2 gap-2">
+                        <button onclick="Sim3D.setCamera('iso')" class="cam-btn active py-2 rounded-lg text-xs font-bold flex items-center justify-center gap-1" id="cam_iso"><i class="ph-bold ph-cube"></i> 等角</button>
+                        <button onclick="Sim3D.setCamera('section')" class="cam-btn py-2 rounded-lg text-xs font-bold flex items-center justify-center gap-1" id="cam_section"><i class="ph-bold ph-scissors"></i> 剖面</button>
+                        <button onclick="Sim3D.setCamera('shaft')" class="cam-btn py-2 rounded-lg text-xs font-bold flex items-center justify-center gap-1" id="cam_shaft"><i class="ph-bold ph-columns"></i> 管道</button>
+                        <button onclick="Sim3D.toggleExplode()" class="cam-btn py-2 rounded-lg text-xs font-bold flex items-center justify-center gap-1 text-indigo-600 border-indigo-200 hover:bg-indigo-50" id="cam_explode"><i class="ph-bold ph-stack"></i> 分層</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// 全域視窗自適應邏輯
+window.addEventListener('resize', () => {
+    if(App.ui.activeTab === 't1') CAD.resize();
+    if(App.ui.activeTab === 't2') Section.resize();
+    if(App.ui.activeTab === 't3' && Sim3D.renderer) {
+        const con = document.getElementById('three_target');
+        Sim3D.camera.aspect = con.clientWidth / con.clientHeight;
+        Sim3D.camera.updateProjectionMatrix();
+        Sim3D.renderer.setSize(con.clientWidth, con.clientHeight);
+    }
+});
+
+const App = {
+    data: { w: 40000, d: 30000, cut: null, objs: [], heights: { u: 2500, r: 4000, f: 800, s: 3500 }, sim: { ratio: 25, viewMode: 'particle' }, gridSize: 600, isSnap: true },
+    ui: { activeTab: 't1', activeLayer: 'ceiling' },
+    init: () => { if(App.data.objs.length === 0) App.loadDemoLayout(); CAD.init(); Section.init(); },
+    confirmReset: () => { if(confirm('確定重置專案 (將載入預設配置)？')) { localStorage.removeItem('fab_data'); location.reload(); } },
+    confirmClear: () => { if(confirm('清除所有物件？')) { App.data.objs=[]; CAD.draw(); CAD.updateList(); } },
+    toast: (msg, type = 'success') => {
+        const c = document.getElementById('toast_container'); if (!c) return;
+        const icons = { success: 'check-circle', error: 'warning-circle', info: 'info' };
+        const bgs   = { success: '#059669', error: '#dc2626', info: '#2563eb' };
+        const t = document.createElement('div');
+        t.style.cssText = `display:flex;align-items:center;gap:10px;padding:12px 18px;border-radius:12px;background:${bgs[type]||bgs.success};color:white;font-size:13px;font-weight:700;box-shadow:0 8px 24px rgba(0,0,0,0.35);transition:opacity 0.3s,transform 0.3s;`;
+        t.innerHTML = `<i class="ph-fill ph-${icons[type]||icons.success}" style="font-size:18px;flex-shrink:0"></i>${msg}`;
+        c.appendChild(t);
+        setTimeout(() => { t.style.opacity = '0'; t.style.transform = 'translateY(10px)'; setTimeout(() => t.remove(), 320); }, 3000);
+    },
+    saveProject: () => { localStorage.setItem('fab_designer_save', JSON.stringify(App.data)); App.toast('專案已儲存至瀏覽器'); },
+    loadProject: () => {
+        const raw = localStorage.getItem('fab_designer_save');
+        if(raw) {
+            App.data = JSON.parse(raw);
+            document.getElementById('room_w').value = App.data.w / 1000;
+            document.getElementById('room_d').value = App.data.d / 1000;
+            document.getElementById('h_upper').value = App.data.heights.u;
+            document.getElementById('h_room').value = App.data.heights.r;
+            document.getElementById('h_rf').value = App.data.heights.f;
+            document.getElementById('h_sub').value = App.data.heights.s;
+            CAD.updateList(); CAD.draw();
+            App.toast('已讀取上次儲存的專案進度');
+        } else { App.toast('找不到已儲存的專案記錄', 'error'); }
+    },
+    loadDemoLayout: () => {
+        let id = Date.now();
+        App.data.objs.push({id: id++, type: 'shaft', layer: 'subfab', x: -18500, y: 0, w: 2000, d: 24000, col: '#64748b'});
+        App.data.objs.push({id: id++, type: 'shaft', layer: 'subfab', x: 18500, y: 0, w: 2000, d: 24000, col: '#64748b'});
+        App.data.objs.push({id: id++, type: 'mach', layer: 'room', x: -6000, y: 0, w: 4000, d: 12000, h: 3000, col: '#22c55e', heat: 80, heatPos: 'rear'});
+        App.data.objs.push({id: id++, type: 'mach', layer: 'room', x: 6000, y: 0, w: 4000, d: 12000, h: 2500, col: '#22c55e', heat: 50, heatPos: 'center'});
+        App.data.objs.push({id: id++, type: 'dcc', layer: 'subfab', x: -16000, y: 0, w: 800, d: 22000, h: 2400, col: '#06b6d4', dccLoc: 'subfab'});
+        App.data.objs.push({id: id++, type: 'dcc', layer: 'subfab', x: 16000, y: 0, w: 800, d: 22000, h: 2400, col: '#06b6d4', dccLoc: 'subfab'});
+        
+        App.ui.activeLayer = 'ceiling'; CAD.autoLayoutFFU(true); 
+        App.data.cut = { p1: {x: -20000, y: 0}, p2: {x: 20000, y: 0} };
+
+        App.data.objs.push({id: id++, type: 'mau', layer: 'ceiling', x: 0, y: -13000, w: 28000, d: 2000, col: '#f97316', label: 'MAU', h:0, dccLoc:null, mauCMH:8000, outletW:600, outletD:600, outletDir:'down', spacingMode:'auto', spacing:2000, ductH:800, ductType:'main', hasOutlets: false});
+        App.data.objs.push({id: id++, type: 'mau', layer: 'ceiling', x: -6000, y: -8000, w: 2000, d: 8000, col: '#f97316', label: 'MAU', h:0, dccLoc:null, mauCMH:2000, outletW:300, outletD:300, outletDir:'down', spacingMode:'auto', spacing:1500, ductH:300, ductType:'branch', hasOutlets: true});
+        App.data.objs.push({id: id++, type: 'exhaust', layer: 'subfab', x: 0, y: 13000, w: 28000, d: 2000, col: '#10b981', label: 'EXH', h:0, dccLoc:null, exhCMH:7500, inletW:600, inletD:600, inletDir:'up', spacingMode:'auto', spacing:2000, ductH:800, ductType:'main', hasOutlets: false});
+        
+        CAD.updateList();
+    },
+    switch: (tabId) => {
+        if(App.ui.activeTab === 't3' && tabId !== 't3') Sim3D.stop();
+        App.ui.activeTab = tabId;
+        ['t1','t2','t3'].forEach(t => document.getElementById('view-'+t).classList.toggle('hidden', t !== tabId));
+        
+        const baseClass = "px-3 md:px-4 py-2 rounded-md text-sm font-bold transition flex items-center gap-2 whitespace-nowrap";
+        const activeClass = "text-slate-600 bg-white shadow-sm border border-slate-200";
+        const inactiveClass = "text-slate-500 hover:text-slate-900 hover:bg-white/50";
+
+        document.getElementById('btn_t1').className = `${baseClass} ${tabId==='t1' ? activeClass : inactiveClass}`;
+        document.getElementById('btn_t2').className = `${baseClass} ${tabId==='t2' ? activeClass : inactiveClass}`;
+        document.getElementById('btn_t3').className = `${baseClass} ${tabId==='t3' ? activeClass : inactiveClass}`;
+
+        if(tabId === 't1') setTimeout(() => CAD.resize(), 50);
+        if(tabId === 't2') setTimeout(() => Section.resize(), 50);
+        if(tabId === 't3') setTimeout(() => Sim3D.init(), 100);
+    }
+};
+
+/** MODULE: CAD EDITOR - 增強高清渲染支援 (Retina) */
+const CAD = {
+    ctx: null, scale: 0.015, offset: {x:0, y:0}, tool: 'select', mode: 'select', isPan: false, isDrag: false, isDraw: false, startPos: {x:0,y:0}, selected: null, ghost: null, currM: {x:0, y:0}, 
+    init: () => {
+        const c = document.getElementById('c_cad'); const p = document.getElementById('cad_container');
+        CAD.ctx = c.getContext('2d');
+        c.onmousedown = CAD.onDown; window.onmousemove = CAD.onMove; window.onmouseup = CAD.onUp; c.onwheel = CAD.onWheel; c.oncontextmenu = e => e.preventDefault();
+        
+        // 觸控支援
+        c.addEventListener('touchstart', CAD.onTouchDown, {passive: false});
+        window.addEventListener('touchmove', CAD.onTouchMove, {passive: false});
+        window.addEventListener('touchend', CAD.onTouchUp, {passive: false});
+
+        CAD.resize(); CAD.centerView(); CAD.activateLayer('ceiling'); CAD.updateList();
+    },
+    resize: () => { 
+        const c = document.getElementById('c_cad'), p = document.getElementById('cad_container'); 
+        if(c && p) { 
+            const dpr = window.devicePixelRatio || 1;
+            c.width = p.clientWidth * dpr; 
+            c.height = p.clientHeight * dpr;
+            c.style.width = p.clientWidth + 'px'; 
+            c.style.height = p.clientHeight + 'px';
+            CAD.ctx.scale(dpr, dpr);
+            CAD.draw(); 
+        } 
+    },
+    toggleGrid: () => { App.data.isSnap = document.getElementById('snap_toggle').checked; CAD.draw(); },
+    snap: (val) => App.data.isSnap ? Math.round(val/App.data.gridSize)*App.data.gridSize : val,
+    activateLayerDCC: () => { CAD.activateLayer('subfab'); CAD.setTool('dcc'); },
+    activateLayer: (layer) => {
+        App.ui.activeLayer = layer;
+        document.querySelectorAll('.layer-pill').forEach(el => { el.classList.remove('active', 'bg-white', 'text-slate-800', 'shadow-sm', 'border-slate-200'); el.classList.add('text-slate-500'); if(el.id === 'pill_'+layer) { el.classList.add('active', 'bg-white', 'text-slate-800', 'shadow-sm', 'border-slate-200'); el.classList.remove('text-slate-500'); } });
+        const h = document.getElementById('layer_hint'); let hintText = layer === 'ceiling' ? "當前層級: 天花板" : layer === 'room' ? "當前層級: 無塵室" : "當前層級: 下夾層";
+        h.innerText = hintText; h.style.opacity = '1'; setTimeout(() => h.style.opacity = '0', 2000);
+        document.getElementById('props_ffu').classList.toggle('hidden', layer !== 'ceiling'); CAD.setTool('select'); CAD.draw();
+    },
+    setTool: (t) => {
+        CAD.tool = t; CAD.mode = (t === 'select') ? 'select' : 'draw';
+        document.querySelectorAll('.icon-btn').forEach(b => b.classList.remove('active'));
+        const btn = document.getElementById('tool_'+t); if(btn) btn.classList.add('active');
+        CAD.selected = null; document.getElementById('props_selection').classList.add('hidden'); CAD.draw();
+    },
+    updateSize: () => { App.data.w = parseInt(document.getElementById('room_w').value)*1000; App.data.d = parseInt(document.getElementById('room_d').value)*1000; CAD.draw(); },
+    toWorld: (sx, sy) => ({ x: (sx - CAD.offset.x)/CAD.scale, y: (sy - CAD.offset.y)/CAD.scale }),
+    toScreen: (wx, wy) => ({ x: wx*CAD.scale + CAD.offset.x, y: wy*CAD.scale + CAD.offset.y }),
+    
+    changeDuctType: (type) => {
+        if(!CAD.selected) return;
+        const isBranch = document.getElementById(type + '_duct_type').value === 'branch';
+        CAD.selected.ductType = isBranch ? 'branch' : 'main';
+        CAD.selected.hasOutlets = isBranch;
+
+        if(isBranch) { document.getElementById(type + '_duct_h').value = 300; if(type === 'mau') { document.getElementById('mau_outlet_w').value = 300; document.getElementById('mau_outlet_d').value = 300; } else { document.getElementById('exh_inlet_w').value = 300; document.getElementById('exh_inlet_d').value = 300; } } else { document.getElementById(type + '_duct_h').value = 800; }
+        
+        const wrapper = document.getElementById(type + '_outlet_wrapper');
+        if (wrapper) wrapper.classList.toggle('hidden', !isBranch);
+        CAD.updateSel();
+    },
+
+    processPointerDown: (clientX, clientY, isPanOverride) => {
+        const r = CAD.ctx.canvas.getBoundingClientRect(); const mx = clientX - r.left, my = clientY - r.top; const w = CAD.toWorld(mx, my);
+        if(isPanOverride) { CAD.isPan = true; CAD.startPos = {x:mx, y:my}; return; }
+        if(CAD.mode === 'select') {
+            const hit = App.data.objs.slice().reverse().find(o => (o.layer === App.ui.activeLayer || o.type === 'pillar') && Math.abs(w.x - o.x) < o.w/2 && Math.abs(w.y - o.y) < o.d/2);
+            CAD.selected = hit || null;
+            if(hit) {
+                CAD.isDrag = true; CAD.startPos = {x:w.x, y:w.y}; CAD.objPos = {x:hit.x, y:hit.y};
+                document.getElementById('props_selection').classList.remove('hidden');
+                document.getElementById('sel_w').value = hit.w; document.getElementById('sel_d').value = hit.d; document.getElementById('sel_id').innerText = hit.id.toString().substr(-4);
+                
+                const hContainer = document.getElementById('prop_h_container'); const machPanel = document.getElementById('prop_mach_panel');
+                if(hit.type === 'mach' || hit.type === 'obs' || hit.type === 'dcc') { hContainer.classList.remove('hidden'); document.getElementById('sel_h').value = hit.h || (hit.type==='dcc'?1800:1000); } else { hContainer.classList.add('hidden'); }
+                
+                const dccContainer = document.getElementById('prop_dcc_loc'), mauPanel = document.getElementById('prop_mau_panel'), exhaustPanel = document.getElementById('prop_exhaust_panel');
+                dccContainer.classList.add('hidden'); mauPanel.classList.add('hidden'); exhaustPanel.classList.add('hidden'); machPanel.classList.add('hidden');
+
+                if(hit.type === 'mach') { machPanel.classList.remove('hidden'); document.getElementById('mach_heat').value = hit.heat || 0; document.getElementById('mach_heat_pos').value = hit.heatPos || 'whole'; }
+                else if(hit.type === 'dcc') { dccContainer.classList.remove('hidden'); document.getElementById('sel_dcc_layer').value = hit.dccLoc || 'subfab'; }
+                else if(hit.type === 'mau') { 
+                    mauPanel.classList.remove('hidden'); const isBranch = hit.ductType === 'branch';
+                    document.getElementById('mau_duct_type').value = hit.ductType || 'main'; document.getElementById('mau_outlet_wrapper').classList.toggle('hidden', !isBranch);
+                    document.getElementById('mau_cmh').value = hit.mauCMH||5000; document.getElementById('mau_outlet_w').value = hit.outletW||600; document.getElementById('mau_outlet_d').value = hit.outletD||600; document.getElementById('mau_outlet_dir').value = hit.outletDir||'down'; document.getElementById('mau_spacing_mode').value= hit.spacingMode||'auto'; document.getElementById('mau_spacing').value = hit.spacing||2000; document.getElementById('mau_duct_h').value = hit.ductH||800; document.getElementById('mau_spacing_input').classList.toggle('hidden', (hit.spacingMode||'auto') === 'auto'); 
+                    document.getElementById('mau_elev').value = (hit.elev !== undefined && hit.elev !== null) ? hit.elev : ""; CAD.refreshMauInfo(hit); 
+                }
+                else if(hit.type === 'exhaust') { 
+                    exhaustPanel.classList.remove('hidden'); const isBranch = hit.ductType === 'branch';
+                    document.getElementById('exh_duct_type').value = hit.ductType || 'main'; document.getElementById('exh_outlet_wrapper').classList.toggle('hidden', !isBranch);
+                    document.getElementById('exh_cmh').value = hit.exhCMH||4500; document.getElementById('exh_inlet_w').value = hit.inletW||600; document.getElementById('exh_inlet_d').value = hit.inletD||600; document.getElementById('exh_inlet_dir').value = hit.inletDir||'up'; document.getElementById('exh_spacing_mode').value = hit.spacingMode||'auto'; document.getElementById('exh_spacing').value = hit.spacing||2000; document.getElementById('exh_duct_h').value = hit.ductH||800; document.getElementById('exh_spacing_input').classList.toggle('hidden', (hit.spacingMode||'auto') === 'auto'); 
+                    document.getElementById('exh_elev').value = (hit.elev !== undefined && hit.elev !== null) ? hit.elev : ""; CAD.refreshExhInfo(hit); 
+                }
+            } else { document.getElementById('props_selection').classList.add('hidden'); }
+            CAD.draw();
+        } else if (CAD.mode === 'draw') { CAD.isDraw = true; const sn = { x: CAD.snap(w.x), y: CAD.snap(w.y) }; CAD.startPos = (CAD.tool === 'cut') ? w : sn; CAD.ghost = { x: sn.x, y: sn.y, w: 0, d: 0 }; }
+    },
+    
+    processPointerMove: (clientX, clientY) => {
+        if(App.ui.activeTab !== 't1') return; const r = CAD.ctx.canvas.getBoundingClientRect(); const mx = clientX - r.left, my = clientY - r.top; CAD.currM = {x: mx, y: my}; const w = CAD.toWorld(mx, my);
+        const cp = document.getElementById('cursor_pos'); if(cp) cp.textContent = `X: ${Math.round(w.x).toLocaleString()}  Y: ${Math.round(w.y).toLocaleString()} mm`;
+        if(CAD.isPan) { CAD.offset.x += mx - CAD.startPos.x; CAD.offset.y += my - CAD.startPos.y; CAD.startPos = {x:mx, y:my}; CAD.draw(); }
+        else if(CAD.isDrag && CAD.selected) { let nx = CAD.objPos.x + (w.x - CAD.startPos.x); let ny = CAD.objPos.y + (w.y - CAD.startPos.y); if(App.data.isSnap) { nx = CAD.snap(nx); ny = CAD.snap(ny); } CAD.selected.x = nx; CAD.selected.y = ny; CAD.draw(); }
+        else if(CAD.isDraw) { if(CAD.tool === 'cut') { CAD.ghost = { x1: CAD.startPos.x, y1: CAD.startPos.y, x2: w.x, y2: w.y }; } else { const cur = { x: CAD.snap(w.x), y: CAD.snap(w.y) }; CAD.ghost = { x: (CAD.startPos.x + cur.x)/2, y: (CAD.startPos.y + cur.y)/2, w: Math.abs(cur.x - CAD.startPos.x), d: Math.abs(cur.y - CAD.startPos.y) }; } CAD.draw(); } else { CAD.draw(); }
+    },
+
+    onDown: (e) => { CAD.processPointerDown(e.clientX, e.clientY, e.button === 1 || e.button === 2 || (e.button===0 && e.altKey)); },
+    onMove: (e) => { CAD.processPointerMove(e.clientX, e.clientY); },
+    onTouchDown: (e) => { if(e.touches.length===1) { CAD.processPointerDown(e.touches[0].clientX, e.touches[0].clientY, false); } else if(e.touches.length===2) { CAD.isPan = true; CAD.startPos = {x: e.touches[0].clientX, y: e.touches[0].clientY}; } },
+    onTouchMove: (e) => { if(e.touches.length>0) CAD.processPointerMove(e.touches[0].clientX, e.touches[0].clientY); },
+    onTouchUp: (e) => { CAD.onUp(); },
+
+    onUp: () => {
+        if(CAD.isDraw && CAD.ghost) {
+            if(CAD.tool === 'cut') { App.data.cut = { p1: {x: CAD.ghost.x1, y: CAD.ghost.y1}, p2: {x: CAD.ghost.x2, y: CAD.ghost.y2} }; } else {
+                if(CAD.ghost.w < 100) CAD.ghost.w = 600; if(CAD.ghost.d < 100) CAD.ghost.d = 600;
+                let col = '#94a3b8'; let label = CAD.tool.toUpperCase(); let h = 0; let dccLoc = null;
+                if(CAD.tool==='ffu') { col = '#60a5fa'; } if(CAD.tool==='dcc') { col = '#06b6d4'; dccLoc = 'subfab'; h=2400; } if(CAD.tool==='mach') { col = '#22c55e'; h=2500; } if(CAD.tool==='shaft') { col = '#64748b'; } if(CAD.tool==='obs') { col = '#64748b'; label='OBS'; h=1000; } if(CAD.tool==='pillar') { col = '#94a3b8'; label='COL'; h=0; }
+                if(CAD.tool==='mau') { col = '#f97316'; label='MAU'; App.data.objs.push({ id:Date.now(), type:'mau', layer:App.ui.activeLayer, x:CAD.ghost.x, y:CAD.ghost.y, w:CAD.ghost.w, d:CAD.ghost.d, col, label, h:0, dccLoc:null, mauCMH:5000, outletW:600, outletD:600, outletDir:'down', spacingMode:'auto', spacing:2000, ductH:800, ductType:'main', hasOutlets: false }); CAD.updateList(); CAD.draw(); CAD.isPan=false; CAD.isDrag=false; CAD.isDraw=false; CAD.ghost=null; CAD.setTool('select'); return; }
+                if(CAD.tool==='exhaust') { col = '#10b981'; label='EXH'; App.data.objs.push({ id:Date.now(), type:'exhaust', layer:App.ui.activeLayer, x:CAD.ghost.x, y:CAD.ghost.y, w:CAD.ghost.w, d:CAD.ghost.d, col, label, h:0, dccLoc:null, exhCMH:4500, inletW:600, inletD:600, inletDir:'up', spacingMode:'auto', spacing:2000, ductH:800, ductType:'main', hasOutlets: false }); CAD.updateList(); CAD.draw(); CAD.isPan=false; CAD.isDrag=false; CAD.isDraw=false; CAD.ghost=null; CAD.setTool('select'); return; }
+                
+                let heat = 0, heatPos = 'whole';
+                App.data.objs.push({ id: Date.now(), type: CAD.tool, layer: App.ui.activeLayer, x: CAD.ghost.x, y: CAD.ghost.y, w: CAD.ghost.w, d: CAD.ghost.d, col, label, h, dccLoc, heat, heatPos }); CAD.updateList();
+            }
+        }
+        CAD.isPan = false; CAD.isDrag = false; CAD.isDraw = false; CAD.ghost = null; if(CAD.tool !== 'select') CAD.setTool('select'); CAD.draw();
+    },
+    onWheel: (e) => { const zoom = e.deltaY < 0 ? 1.1 : 0.9; const r = CAD.ctx.canvas.getBoundingClientRect(); const mx = e.clientX - r.left, my = e.clientY - r.top; const wx = (mx - CAD.offset.x) / CAD.scale; const wy = (my - CAD.offset.y) / CAD.scale; CAD.scale *= zoom; CAD.offset.x = mx - wx * CAD.scale; CAD.offset.y = my - wy * CAD.scale; CAD.draw(); },
+    zoomFit: () => { const cw = CAD.ctx.canvas.clientWidth, ch = CAD.ctx.canvas.clientHeight; const scW = (cw-100)/App.data.w; const scH = (ch-100)/App.data.d; CAD.scale = Math.min(scW, scH); CAD.centerView(); },
+    centerView: () => { const cw = CAD.ctx.canvas.clientWidth, ch = CAD.ctx.canvas.clientHeight; CAD.offset.x = cw/2; CAD.offset.y = ch/2; CAD.draw(); },
+    updateSel: () => {
+        if(!CAD.selected) return; const o = CAD.selected; o.w = parseFloat(document.getElementById('sel_w').value) || o.w; o.d = parseFloat(document.getElementById('sel_d').value) || o.d;
+        if(o.type === 'mach' || o.type === 'obs' || o.type === 'dcc') o.h = parseFloat(document.getElementById('sel_h').value) || o.h;
+        if(o.type === 'mach') { o.heat = parseFloat(document.getElementById('mach_heat').value) || 0; o.heatPos = document.getElementById('mach_heat_pos').value; }
+        if(o.type === 'dcc') o.dccLoc = document.getElementById('sel_dcc_layer').value;
+        if(o.type === 'mau') { o.ductType = document.getElementById('mau_duct_type').value; o.mauCMH = parseFloat(document.getElementById('mau_cmh').value)||5000; o.outletW = parseFloat(document.getElementById('mau_outlet_w').value)||600; o.outletD = parseFloat(document.getElementById('mau_outlet_d').value)||600; o.outletDir = document.getElementById('mau_outlet_dir').value; o.spacingMode= document.getElementById('mau_spacing_mode').value; o.spacing = parseFloat(document.getElementById('mau_spacing').value)||2000; o.ductH = parseFloat(document.getElementById('mau_duct_h').value)||800; const mev = document.getElementById('mau_elev').value; o.elev = mev === "" ? null : parseFloat(mev); CAD.refreshMauInfo(o); }
+        if(o.type === 'exhaust') { o.ductType = document.getElementById('exh_duct_type').value; o.exhCMH = parseFloat(document.getElementById('exh_cmh').value)||4500; o.inletW = parseFloat(document.getElementById('exh_inlet_w').value)||600; o.inletD = parseFloat(document.getElementById('exh_inlet_d').value)||600; o.inletDir = document.getElementById('exh_inlet_dir').value; o.spacingMode= document.getElementById('exh_spacing_mode').value; o.spacing = parseFloat(document.getElementById('exh_spacing').value)||2000; o.ductH = parseFloat(document.getElementById('exh_duct_h').value)||800; const eev = document.getElementById('exh_elev').value; o.elev = eev === "" ? null : parseFloat(eev); CAD.refreshExhInfo(o); }
+        CAD.draw();
+    },
+    toggleMauSpacing: () => { const mode = document.getElementById('mau_spacing_mode').value; document.getElementById('mau_spacing_input').classList.toggle('hidden', mode === 'auto'); },
+    toggleExhSpacing: () => { const mode = document.getElementById('exh_spacing_mode').value; document.getElementById('exh_spacing_input').classList.toggle('hidden', mode === 'auto'); },
+    refreshMauInfo: (o) => { const pts = CAD.computeOutlets(o); const n = pts.length; const aM2 = (o.outletW||600) * (o.outletD||600) / 1e6; const vel = n > 0 ? (o.mauCMH||5000) / 3600 / (n * aM2) : 0; document.getElementById('mau_outlet_count').innerText = n + ' 個'; document.getElementById('mau_outlet_vel').innerText   = vel.toFixed(2) + ' m/s'; document.getElementById('mau_outlet_vel').style.color = vel > 3.5 ? '#ef4444' : '#c2410c'; },
+    refreshExhInfo: (o) => { const pts = CAD.computeOutlets(o); const n = pts.length; const aM2 = (o.inletW||600) * (o.inletD||600) / 1e6; const vel = n > 0 ? (o.exhCMH||4500) / 3600 / (n * aM2) : 0; document.getElementById('exh_inlet_count').innerText = n + ' 個'; document.getElementById('exh_inlet_vel').innerText   = vel.toFixed(2) + ' m/s'; document.getElementById('exh_inlet_vel').style.color = vel > 5 ? '#ef4444' : '#059669'; },
+    computeOutlets: (o) => {
+        if (o.ductType === 'main' || o.hasOutlets === false) return [];
+        const isLong = o.w >= o.d; const ductLen = isLong ? o.w : o.d; const openW = (o.type==='mau') ? (o.outletW||600) : (o.inletW||600); let spacing;
+        if((o.spacingMode||'auto') === 'auto') { const n = Math.max(1, Math.floor(ductLen / Math.max(openW, 1))); spacing = ductLen / n; } else { spacing = Math.max(openW, o.spacing||2000); }
+        const n = Math.max(1, Math.floor(ductLen / spacing)); const pts = [];
+        for(let i = 0; i < n; i++) { const t = (i + 0.5) / n; pts.push(isLong ? { x: o.x + (t - 0.5)*o.w, y: o.y } : { x: o.x, y: o.y + (t - 0.5)*o.d }); }
+        return pts;
+    },
+    delSelected: () => { if(CAD.selected) { App.data.objs = App.data.objs.filter(o => o !== CAD.selected); CAD.selected = null; document.getElementById('props_selection').classList.add('hidden'); CAD.draw(); CAD.updateList(); } },
+    updateList: () => {
+        const list = document.getElementById('obj_list');
+        list.innerHTML = App.data.objs.map(o => `<div class="flex items-center justify-between p-2 bg-white rounded-lg border border-slate-200 hover:border-blue-300 transition group shadow-sm"><div class="flex items-center gap-2"><div class="w-3 h-3 rounded-full shadow-sm" style="background:${o.col}"></div><div><div class="text-[11px] font-bold text-slate-700 leading-none mb-1">${o.type.toUpperCase()}</div><div class="text-[9px] text-slate-400 leading-none">ID: ${o.id.toString().substr(-4)}</div></div></div><button onclick="CAD.delId(${o.id})" class="text-slate-300 hover:text-red-500 p-1 rounded hover:bg-red-50 transition opacity-100 md:opacity-0 group-hover:opacity-100"><i class="ph-bold ph-trash"></i></button></div>`).join('');
+        document.getElementById('obj_count').innerText = App.data.objs.length;
+    },
+    delId: (id) => { App.data.objs = App.data.objs.filter(o => o.id !== id); CAD.draw(); CAD.updateList(); },
+    autoLayoutFFU: (silent=false) => {
+        if(App.ui.activeLayer !== 'ceiling') { if(!silent) alert("請切換至天花板層級"); return; }
+        let cov = parseInt(document.getElementById('ffu_cov').value); if(isNaN(cov) || cov < 1) cov = 1; if(cov > 100) cov = 100;
+        const fSize = 1200; App.data.objs = App.data.objs.filter(o => o.type !== 'ffu');
+        const exclusionZones = App.data.objs.filter(o => o.type === 'shaft' || o.type === 'pillar');
+        const cols = Math.floor(App.data.w / fSize), rows = Math.floor(App.data.d / fSize);
+        const startX = -(cols * fSize) / 2 + (fSize/2), startY = -(rows * fSize) / 2 + (fSize/2);
+        let placed = 0;
+        for(let r=0; r<rows; r++) {
+            for(let c=0; c<cols; c++) {
+                if(Math.random() * 100 > cov) continue;
+                const cx = startX + c * fSize, cy = startY + r * fSize; let hitObj = false;
+                for(let s of exclusionZones) { if(cx-fSize/2 < s.x+s.w/2 && cx+fSize/2 > s.x-s.w/2 && cy-fSize/2 < s.y+s.d/2 && cy+fSize/2 > s.y-s.d/2) { hitObj = true; break; } }
+                if(!hitObj) { App.data.objs.push({ id: Date.now() + Math.random(), type: 'ffu', layer: 'ceiling', x: cx, y: cy, w: fSize, d: fSize, col: '#60a5fa' }); placed++; }
+            }
+        }
+        CAD.updateList(); CAD.draw(); if(!silent) alert("已完成佈置。\n共放置 " + placed + " 個 FFU。");
+    },
+    draw: () => {
+        if(!CAD.ctx) return; const ctx = CAD.ctx; 
+        const cw = ctx.canvas.clientWidth, ch = ctx.canvas.clientHeight; 
+        ctx.clearRect(0,0,cw,ch); ctx.save();
+        const step = 2000 * CAD.scale; const offX = CAD.offset.x % step; const offY = CAD.offset.y % step;
+        
+        ctx.strokeStyle = '#e2e8f0'; ctx.lineWidth = 1; ctx.beginPath();
+        for(let x=offX; x<cw; x+=step) { ctx.moveTo(x,0); ctx.lineTo(x,ch); } for(let y=offY; y<ch; y+=step) { ctx.moveTo(0,y); ctx.lineTo(cw,y); } ctx.stroke();
+        
+        if(App.data.isSnap && CAD.scale > 0.01) { const snapStep = App.data.gridSize * CAD.scale; const snapOffX = (CAD.offset.x) % snapStep; const snapOffY = (CAD.offset.y) % snapStep; ctx.fillStyle = '#f1f5f9'; for(let x=snapOffX; x<cw; x+=snapStep) { for(let y=snapOffY; y<ch; y+=snapStep) { ctx.fillRect(x-1, y-1, 2, 2); } } }
+        const p1 = CAD.toScreen(-App.data.w/2, -App.data.d/2); const p2 = CAD.toScreen(App.data.w/2, App.data.d/2);
+        
+        ctx.shadowColor = 'rgba(0,0,0,0.05)'; ctx.shadowBlur = 30; ctx.shadowOffsetY = 10; ctx.fillStyle = '#ffffff'; ctx.fillRect(p1.x, p1.y, p2.x-p1.x, p2.y-p1.y); ctx.shadowBlur = 0; ctx.shadowOffsetY = 0;
+        ctx.strokeStyle = '#94a3b8'; ctx.lineWidth = 2; ctx.strokeRect(p1.x, p1.y, p2.x-p1.x, p2.y-p1.y);
+
+        App.data.objs.forEach(o => {
+            const isActive = (o.layer === App.ui.activeLayer); let isGhost = false; if(App.ui.activeLayer === 'ceiling' && o.type === 'shaft') isGhost = true; let isGlobal = (o.type === 'pillar');
+            const p = CAD.toScreen(o.x, o.y); const sw = o.w * CAD.scale; const sd = o.d * CAD.scale;
+            if(isActive || isGhost || isGlobal) {
+                if(o.type === 'mach' && isActive && (o.heat || 0) > 0) {
+                    ctx.fillStyle = `rgba(239, 68, 68, ${0.15 + (o.heat/100)*0.5})`; let hw = sw, hd = sd, hy = p.y, hx = p.x;
+                    if(o.heatPos === 'center') { hw /= 2; hd /= 2; } else if(o.heatPos === 'rear') { hd /= 3; hy = p.y - sd/2 + hd/2; } else if(o.heatPos === 'front') { hd /= 3; hy = p.y + sd/2 - hd/2; }
+                    ctx.fillRect(hx - hw/2, hy - hd/2, hw, hd); ctx.fillStyle = '#991b1b'; ctx.font = 'bold 10px sans-serif'; ctx.textAlign = 'center'; ctx.fillText('🔥', hx, hy + 4);
+                }
+
+                ctx.globalAlpha = isActive ? 1.0 : (isGlobal ? 0.6 : 0.1); ctx.fillStyle = o.col; if(o.type === 'ffu') ctx.globalAlpha = isActive ? 0.7 : 0.1;
+                
+                if((o.type === 'mau' || o.type === 'exhaust') && o.ductType === 'branch') { ctx.setLineDash([5, 5]); ctx.globalAlpha = isActive ? 0.6 : 0.15; } else { ctx.setLineDash([]); }
+
+                ctx.fillRect(p.x-sw/2, p.y-sd/2, sw, sd); ctx.strokeStyle = 'rgba(0,0,0,0.2)'; ctx.lineWidth = 1; ctx.strokeRect(p.x-sw/2, p.y-sd/2, sw, sd);
+                if(o.type === 'shaft') { ctx.beginPath(); ctx.moveTo(p.x-sw/2, p.y-sd/2); ctx.lineTo(p.x+sw/2, p.y+sd/2); ctx.moveTo(p.x+sw/2, p.y-sd/2); ctx.lineTo(p.x-sw/2, p.y+sd/2); ctx.stroke(); }
+                
+                ctx.setLineDash([]); 
+
+                if(o.type === 'mau') {
+                    ctx.save(); ctx.beginPath(); ctx.rect(p.x-sw/2, p.y-sd/2, sw, sd); ctx.clip();
+                    ctx.strokeStyle = '#f97316'; ctx.lineWidth = 1.2; ctx.globalAlpha = isActive ? (o.ductType==='branch'?0.4:0.85) : 0.2; 
+                    const stepM = 12; const maxD = Math.max(sw, sd); ctx.beginPath(); for(let qi=-maxD; qi<sw+maxD; qi+=stepM){ ctx.moveTo(p.x-sw/2+qi, p.y-sd/2); ctx.lineTo(p.x-sw/2+qi+sd, p.y+sd/2); } ctx.stroke();
+                    ctx.restore(); 
+
+                    ctx.fillStyle = '#c2410c'; ctx.font = `bold ${Math.max(9, Math.min(sw,sd)*0.18)}px sans-serif`; ctx.textAlign = 'center'; ctx.globalAlpha = isActive ? 0.9 : 0.2; ctx.fillText(`MAU ${o.mauCMH||5000}CMH`, p.x, p.y + 4);
+                    
+                    if (o.ductType !== 'main') {
+                        ctx.save(); ctx.globalAlpha = isActive ? 1.0 : 0.25; const outPts = CAD.computeOutlets(o); const owS = (o.outletW||600) * CAD.scale; const odS = (o.outletD||600) * CAD.scale; const dir = o.outletDir || 'down';
+                        outPts.forEach(op => { 
+                            const ps = CAD.toScreen(op.x, op.y); ctx.strokeStyle = '#c2410c'; ctx.lineWidth = o.ductType==='branch'?1:2; ctx.fillStyle = 'rgba(254,215,170,0.7)'; ctx.fillRect(ps.x - owS/2, ps.y - odS/2, owS, odS); ctx.strokeRect(ps.x - owS/2, ps.y - odS/2, owS, odS); const aw = Math.min(owS, odS) * 0.32; ctx.fillStyle = '#ea580c'; 
+                            if(dir === 'up') { ctx.beginPath(); ctx.arc(ps.x, ps.y, aw*0.6, 0, Math.PI*2); ctx.fill(); ctx.fillStyle = 'white'; ctx.beginPath(); ctx.arc(ps.x, ps.y, aw*0.3, 0, Math.PI*2); ctx.fill(); }
+                            else if(dir === 'down') { ctx.beginPath(); ctx.arc(ps.x, ps.y, aw*0.6, 0, Math.PI*2); ctx.fill(); }
+                            else { ctx.save(); ctx.translate(ps.x, ps.y); if(dir === 'north') ctx.rotate(Math.PI); else if(dir === 'south') ctx.rotate(0); else if(dir === 'east') ctx.rotate(-Math.PI/2); else if(dir === 'west') ctx.rotate(Math.PI/2); ctx.beginPath(); ctx.moveTo(0, aw*0.5); ctx.lineTo(-aw*0.45, -aw*0.4); ctx.lineTo(aw*0.45, -aw*0.4); ctx.closePath(); ctx.fill(); ctx.restore(); }
+                        });
+                        ctx.restore();
+                    }
+                }
+                if(o.type === 'exhaust') {
+                    ctx.save(); ctx.beginPath(); ctx.rect(p.x-sw/2, p.y-sd/2, sw, sd); ctx.clip();
+                    ctx.strokeStyle = '#10b981'; ctx.lineWidth = 1.2; ctx.globalAlpha = isActive ? (o.ductType==='branch'?0.4:0.85) : 0.2; 
+                    const stepE = 12; const maxD = Math.max(sw, sd); ctx.beginPath(); for(let qi=-maxD; qi<sw+maxD; qi+=stepE){ ctx.moveTo(p.x-sw/2+qi, p.y-sd/2); ctx.lineTo(p.x-sw/2+qi+sd, p.y+sd/2); } ctx.stroke();
+                    ctx.restore();
+
+                    ctx.fillStyle = '#065f46'; ctx.font = `bold ${Math.max(9, Math.min(sw,sd)*0.18)}px sans-serif`; ctx.textAlign = 'center'; ctx.globalAlpha = isActive ? 0.9 : 0.2; ctx.fillText(`EXH ${o.exhCMH||4500}CMH`, p.x, p.y + 4);
+                    
+                    if (o.ductType !== 'main') {
+                        ctx.save(); ctx.globalAlpha = isActive ? 1.0 : 0.25; const inPts = CAD.computeOutlets(o); const iwS = (o.inletW||600) * CAD.scale; const idS = (o.inletD||600) * CAD.scale;
+                        inPts.forEach(ip => { const ps = CAD.toScreen(ip.x, ip.y); ctx.strokeStyle = '#059669'; ctx.lineWidth = o.ductType==='branch'?1:2; ctx.fillStyle = 'rgba(167,243,208,0.7)'; ctx.fillRect(ps.x - iwS/2, ps.y - idS/2, iwS, idS); ctx.strokeRect(ps.x - iwS/2, ps.y - idS/2, iwS, idS); const aw = Math.min(iwS, idS) * 0.32; ctx.fillStyle = '#10b981'; ctx.beginPath(); ctx.moveTo(ps.x, ps.y - aw*0.5); ctx.lineTo(ps.x - aw*0.45, ps.y + aw*0.4); ctx.lineTo(ps.x + aw*0.45, ps.y + aw*0.4); ctx.closePath(); ctx.fill(); });
+                        ctx.restore();
+                    }
+                }
+                if(CAD.selected === o) {
+                    ctx.strokeStyle = '#2563eb'; ctx.lineWidth = 2; ctx.strokeRect(p.x-sw/2-2, p.y-sd/2-2, sw+4, sd+4); ctx.fillStyle = 'white'; 
+                    const corners = [ {x: p.x-sw/2-2, y: p.y-sd/2-2}, {x: p.x+sw/2+2, y: p.y-sd/2-2}, {x: p.x+sw/2+2, y: p.y+sd/2+2}, {x: p.x-sw/2-2, y: p.y+sd/2+2} ];
+                    corners.forEach(c => { ctx.beginPath(); ctx.arc(c.x, c.y, 3, 0, Math.PI*2); ctx.fill(); ctx.stroke(); });
+                }
+            }
+        });
+
+        ctx.globalAlpha = 1;
+        if(CAD.isDraw && CAD.ghost) {
+            const p = CAD.toScreen(CAD.ghost.x, CAD.ghost.y);
+            if(CAD.tool === 'cut') { const s = CAD.toScreen(CAD.ghost.x1, CAD.ghost.y1); const e = CAD.toScreen(CAD.ghost.x2, CAD.ghost.y2); ctx.strokeStyle = '#ef4444'; ctx.lineWidth = 2; ctx.setLineDash([5,5]); ctx.beginPath(); ctx.moveTo(s.x, s.y); ctx.lineTo(e.x, e.y); ctx.stroke(); ctx.setLineDash([]); }
+            else { const sw = CAD.ghost.w * CAD.scale; const sd = CAD.ghost.d * CAD.scale; ctx.fillStyle = 'rgba(37, 99, 235, 0.2)'; ctx.fillRect(p.x-sw/2, p.y-sd/2, sw, sd); ctx.strokeStyle = '#2563eb'; ctx.strokeRect(p.x-sw/2, p.y-sd/2, sw, sd); }
+        }
+        if(App.data.cut) {
+            const c1 = CAD.toScreen(App.data.cut.p1.x, App.data.cut.p1.y); const c2 = CAD.toScreen(App.data.cut.p2.x, App.data.cut.p2.y);
+            ctx.strokeStyle = '#ef4444'; ctx.lineWidth = 2; ctx.setLineDash([6,4]); ctx.beginPath(); ctx.moveTo(c1.x, c1.y); ctx.lineTo(c2.x, c2.y); ctx.stroke(); ctx.setLineDash([]);
+            ctx.fillStyle = '#ef4444'; ctx.beginPath(); ctx.arc(c1.x, c1.y, 4, 0, Math.PI*2); ctx.fill(); ctx.beginPath(); ctx.arc(c2.x, c2.y, 4, 0, Math.PI*2); ctx.fill();
+            ctx.font = "bold 12px sans-serif"; ctx.fillStyle = "#ef4444"; ctx.fillText("A", c1.x + 8, c1.y + 8); ctx.fillText("A'", c2.x + 8, c2.y + 8);
+        }
+        if(CAD.currM.x !== 0 && CAD.currM.y !== 0) { ctx.strokeStyle = '#f97316'; ctx.lineWidth = 1; ctx.setLineDash([4, 4]); ctx.beginPath(); ctx.moveTo(CAD.currM.x, 0); ctx.lineTo(CAD.currM.x, ch); ctx.stroke(); ctx.beginPath(); ctx.moveTo(0, CAD.currM.y); ctx.lineTo(cw, CAD.currM.y); ctx.stroke(); ctx.setLineDash([]); }
+        ctx.restore();
+    }
+};
+
+/** MODULE: SECTION VIEW - 增強高清渲染支援 (Retina) */
+const Section = {
+    ctx: null, scale: 0.1,
+    init: () => { const c = document.getElementById('c_sec'); Section.ctx = c.getContext('2d'); Section.resize(); },
+    resize: () => {
+        const c = document.getElementById('c_sec');
+        const dpr = window.devicePixelRatio || 1;
+        c.width = c.clientWidth * dpr; c.height = c.clientHeight * dpr;
+        Section.ctx.scale(dpr, dpr);
+        Section.render();
+    },
+    project: (p, a, b) => { const atob = { x: b.x - a.x, y: b.y - a.y }; const atop = { x: p.x - a.x, y: p.y - a.y }; const len2 = atob.x * atob.x + atob.y * atob.y; let dot = atop.x * atob.x + atop.y * atob.y; let t = Math.min(1, Math.max(0, dot / len2)); const closest = { x: a.x + atob.x * t, y: a.y + atob.y * t }; return { point: closest, t: t, dist: Math.hypot(p.x - closest.x, p.y - closest.y) }; },
+    render: () => {
+        const ctx = Section.ctx; if(!ctx) return; const H = App.data.heights;
+        H.u = parseInt(document.getElementById('h_upper').value) || 2500; H.r = parseInt(document.getElementById('h_room').value) || 4000; H.f = parseInt(document.getElementById('h_rf').value) || 800; H.s = parseInt(document.getElementById('h_sub').value) || 3500;
+        const w = ctx.canvas.clientWidth, h = ctx.canvas.clientHeight; ctx.clearRect(0,0,w,h);
+        let cutLen = App.data.w; const msg = document.getElementById('sec_msg');
+        if(!App.data.cut) { msg.classList.remove('hidden'); return; }
+        msg.classList.add('hidden'); const p1 = App.data.cut.p1; const p2 = App.data.cut.p2; const dx = p2.x - p1.x; const dy = p2.y - p1.y; cutLen = Math.sqrt(dx*dx + dy*dy);
+        const totalH = H.u + H.r + H.f + H.s; const pad = 40; const scale = Math.min((h - pad*2)/totalH, (w - pad*2)/cutLen); const Ox = (w - cutLen*scale)/2; const Oy = h - (h - totalH*scale)/2; 
+
+        const drawLayer = (bottomY, height, col, label) => { const sy = Oy - (bottomY + height) * scale; const sh = height * scale; ctx.fillStyle = col; ctx.fillRect(Ox, sy, cutLen*scale, sh); ctx.strokeStyle = '#cbd5e1'; ctx.lineWidth = 1; ctx.strokeRect(Ox, sy, cutLen*scale, sh); ctx.fillStyle = '#475569'; ctx.font = 'bold 12px sans-serif'; ctx.textAlign = 'left'; ctx.fillText(label, Ox - 5, sy + sh/2); ctx.textAlign = 'right'; ctx.fillStyle = '#64748b'; ctx.fillText(height + 'mm', Ox + cutLen*scale + 50, sy + sh/2 + 4); };
+        drawLayer(-(H.f+H.s), H.s, '#f1f5f9', '下夾層 (Sub-Fab)'); drawLayer(-H.f, H.f, '#fefce8', '高架地板 (RF)'); drawLayer(0, H.r, '#ffffff', '無塵室 (Room)'); drawLayer(H.r, H.u, '#eff6ff', '上夾層 (Plenum)');
+
+        App.data.objs.forEach(o => {
+            const proj = Section.project({x:o.x, y:o.y}, p1, p2); const radius = Math.max(o.w, o.d) / 2;
+            if (proj.dist < radius && proj.t >= 0 && proj.t <= 1) {
+                let objBottomY = 0; let objH = 0; let col = o.col;
+                if (o.type === 'mach') { objBottomY = 0; objH = o.h || 2500; } 
+                else if (o.type === 'ffu') { objBottomY = H.r; objH = 300; } 
+                else if (o.type === 'dcc') { if(o.dccLoc === 'subfab') objBottomY = -(H.f+H.s); else objBottomY = H.r + 200; objH = o.h || 2400;  } 
+                else if (o.type === 'pillar') { objBottomY = -(H.f + H.s); objH = H.s + H.f + H.r + H.u; } 
+                else if (o.type === 'obs') { if(o.layer === 'subfab') objBottomY = -(H.f + H.s) + (H.s/2) - (o.h/2); else if(o.layer === 'room') objBottomY = 0; else if(o.layer === 'ceiling') objBottomY = H.r + (H.u/2) - (o.h/2); objH = o.h || 1000; } 
+                else if (o.type === 'mau') { const dh = o.ductH || 800; objBottomY = (o.elev !== undefined && o.elev !== null) ? o.elev : (H.r + H.u - dh); objH = dh; col = '#f97316'; } 
+                else if (o.type === 'exhaust') { const dh = o.ductH || 800; if (o.elev !== undefined && o.elev !== null) { objBottomY = o.elev; } else { if(o.layer === 'ceiling') objBottomY = H.r + H.u - dh; else if(o.layer === 'room') objBottomY = 0; else objBottomY = -(H.f + H.s); } objH = dh; col = '#10b981'; } 
+                else { return; }
+                const screenX = Ox + (proj.t * cutLen * scale); const drawW = (o.w * scale); const screenY = Oy - (objBottomY + objH) * scale; const drawH = objH * scale;
+                ctx.fillStyle = o.col; ctx.globalAlpha = 0.8; ctx.fillRect(screenX - drawW/2, screenY, drawW, drawH); ctx.strokeRect(screenX - drawW/2, screenY, drawW, drawH); ctx.fillStyle = '#1e293b'; ctx.font = '9px sans-serif'; ctx.textAlign = 'center'; ctx.globalAlpha = 1.0; if(drawW > 20) ctx.fillText(o.type.toUpperCase(), screenX, screenY + drawH/2 + 3);
+            }
+        });
+    }
+};
+
+/** MODULE: CFD ENGINE (Three.js) - 增強立體光影支援 (MeshLambertMaterial + Light) */
+const Sim3D = {
+    scene: null, renderer: null, frameId: null, paused: false,
+    camera: null, controls: null, isExploded: false, meshes: [], 
+    
+    stop: () => {
+        if(Sim3D.frameId) cancelAnimationFrame(Sim3D.frameId);
+        if(Sim3D.renderer) { Sim3D.renderer.dispose(); Sim3D.renderer = null; }
+        if(window.TWEEN) TWEEN.removeAll();
+    },
+    togglePause: () => { Sim3D.paused = !Sim3D.paused; document.getElementById('btn_pause').innerText = Sim3D.paused ? "繼續" : "暫停"; },
+    updateParams: (v) => { App.data.sim.ratio = v; document.getElementById('txt_ratio').innerText = v + '%'; Sim3D.recalcPhysics(); },
+    setViewMode: (mode) => {
+        App.data.sim.viewMode = mode;
+        ['particle', 'slice', 'thermal'].forEach(m => {
+            const btn = document.getElementById('btn_mode_' + m);
+            if(m === mode) btn.classList.replace('bg-slate-100', 'bg-blue-100'); else btn.classList.replace('bg-blue-100', 'bg-slate-100');
+            if(m === mode) btn.classList.replace('text-slate-600', 'text-blue-700'); else btn.classList.replace('text-blue-700', 'text-slate-600');
+        });
+    },
+    setCamera: (viewType) => {
+        const H = App.data.heights; const W = App.data.w, D = App.data.d;
+        let targetPos = new THREE.Vector3(0, H.r/2, 0); let camPos = new THREE.Vector3();
+
+        if (viewType === 'iso') { camPos.set(W*0.8, H.r*3, D*1.5); } 
+        else if (viewType === 'section') { camPos.set(W*1.2, H.r*0.5, 0); targetPos.set(0, H.r*0.5, 0); } 
+        else if (viewType === 'shaft') { camPos.set(-W*0.4, -(H.f+H.s)*0.5, D*0.8); targetPos.set(-W*0.4, -(H.f+H.s)*0.5, 0); }
+
+        ['iso', 'section', 'shaft', 'explode'].forEach(v => { const btn = document.getElementById('cam_' + v); if(btn) btn.classList.remove('active'); });
+        document.getElementById('cam_' + viewType).classList.add('active');
+        new TWEEN.Tween(Sim3D.camera.position).to(camPos, 1500).easing(TWEEN.Easing.Cubic.Out).start();
+        new TWEEN.Tween(Sim3D.controls.target).to(targetPos, 1500).easing(TWEEN.Easing.Cubic.Out).start();
+    },
+    toggleExplode: () => {
+        Sim3D.isExploded = !Sim3D.isExploded; const btn = document.getElementById('cam_explode');
+        if(Sim3D.isExploded) btn.classList.add('active', 'bg-indigo-600', 'text-white'); else btn.classList.remove('active', 'bg-indigo-600', 'text-white');
+
+        Sim3D.meshes.forEach(m => {
+            let offset = 0; if(Sim3D.isExploded) { if(m.userData.layer === 'plenum') offset = 8000; else if(m.userData.layer === 'subfab') offset = -8000; }
+            new TWEEN.Tween(m.position).to({ y: m.userData.originY + offset }, 1000).easing(TWEEN.Easing.Back.Out).start();
+        });
+    },
+
+    recalcPhysics: () => {
+        const H = App.data.heights; const W = App.data.w, D = App.data.d;
+        const ffuLocs  = App.data.objs.filter(o => o.type === 'ffu');
+        const dccLocs  = App.data.objs.filter(o => o.type === 'dcc');
+        const machLocs = App.data.objs.filter(o => o.type === 'mach');
+
+        // ── 1. 面積 & 循環風量 ────────────────────────────────────────
+        const FFU_W = 1.2, FFU_D = 1.2; // m (1200×1200mm 標準 FFU)
+        const ffuArea  = ffuLocs.length * FFU_W * FFU_D;
+        const roomArea = (W / 1000) * (D / 1000);
+        const cov      = roomArea > 0 ? Math.min((ffuArea / roomArea) * 100, 100) : 0;
+
+        const ffuVel   = parseFloat(document.getElementById('ffu_vel').value) || 0.45;
+        const totalCMS = ffuArea * ffuVel;
+        const totalCMH = totalCMS * 3600;
+
+        let totalMauCMH = 0, totalExhCMH = 0;
+        App.data.objs.forEach(o => {
+            if (o.type === 'mau')     totalMauCMH += (parseFloat(o.mauCMH) || 0);
+            if (o.type === 'exhaust') totalExhCMH += (parseFloat(o.exhCMH) || 0);
+        });
+
+        // ── 2. DCC 面積（修正：用實際面寬 w，非 max(w,d)） ───────────
+        // DCC 為垂直盤管，氣流通過面 = 寬(w) × 高(h)
+        let dccArea = 0;
+        dccLocs.forEach(o => { dccArea += (o.w / 1000) * ((o.h || 2400) / 1000); });
+        const vDCC = dccArea > 0 ? totalCMS / dccArea : 0;
+
+        // ── 3. 壓損計算 ───────────────────────────────────────────────
+        const rho = 1.2; // kg/m³ (空氣，22°C)
+        // FFU 壓損：HEPA 黏性損失（線性 in v）+ 框體動壓損失 + 夾層分佈損失
+        // 參考 ASHRAE Handbook 2020；潔淨室 HEPA 典型 120–200 Pa @0.45 m/s
+        const dpFFU_filter = 120 * (ffuVel / 0.45);           // 濾材黏性損失 (線性)
+        const dpFFU_frame  = 0.5 * rho * ffuVel * ffuVel * 5;  // 框體/導流板 K=5
+        const dpFFU_dist   = 30;                                // 夾層分佈固定損失
+        const dpFFU = dpFFU_filter + dpFFU_frame + dpFFU_dist;
+
+        const ratioDec = App.data.sim.ratio / 100;
+        const vRF  = roomArea > 0 ? totalCMS / (roomArea * ratioDec) : 0;
+        const dpRF  = 0.5 * rho * vRF  * vRF  * 2.5;  // 高架地板阻力係數 K=2.5
+        const dpDCC = 0.5 * rho * vDCC * vDCC * 50;    // DCC 盤管迎面阻力 K=50
+
+        // ── 4. 壓力場 ─────────────────────────────────────────────────
+        // 無塵室設計正壓 +15 Pa（對走廊），符合 ISO 14644-4 建議 ≥+5 Pa
+        const pRoom   = 15;
+        const pPlenum = pRoom + dpFFU;   // 上夾層 = 無塵室 + FFU 全壓損
+        const pSub    = pRoom - dpRF;    // 下夾層 = 無塵室 - 地板壓損
+        const pShaft  = pSub  - dpDCC;  // 回風井 = 下夾層 - DCC 壓損
+
+        // ── 5. ACH & ISO 潔淨等級 (ISO 14644-1:2015 ACH proxy method) ─
+        // 同時考量 ACH 與覆蓋率：高 ISO 等級需高覆蓋率以實現單向流
+        const roomVol = roomArea * (H.r / 1000);
+        const ACH = roomVol > 0 ? totalCMH / roomVol : 0;
+
+        let isoClass, isoBasis;
+        if      (ACH >= 400 && cov >= 80) { isoClass = "ISO 4"; isoBasis = "ACH≥400 & Cov≥80%"; }
+        else if (ACH >= 200 && cov >= 60) { isoClass = "ISO 5"; isoBasis = "ACH≥200 & Cov≥60%"; }
+        else if (ACH >= 80  && cov >= 25) { isoClass = "ISO 6"; isoBasis = "ACH≥80 & Cov≥25%";  }
+        else if (ACH >= 20)               { isoClass = "ISO 7"; isoBasis = "ACH≥20";              }
+        else if (ACH >= 5)                { isoClass = "ISO 8"; isoBasis = "ACH≥5";               }
+        else                              { isoClass = "ISO 9"; isoBasis = "ACH<5";               }
+
+        // ── 6. Richardson Number 熱浮力分析 ──────────────────────────
+        // Ri = g·β·ΔT·L / v²   (無因次，判斷強制/自然對流主導)
+        // β = 1/T_abs ≈ 1/295 K⁻¹ (22°C)，L = 無塵室高度
+        // ΔT 由機台熱強度自動推算：2°C 基礎梯度 + 0–6°C (熱強度 0–100%)
+        let totalHeatPct = 0, machCount = 0;
+        machLocs.forEach(o => { totalHeatPct += (parseFloat(o.heat) || 0); machCount++; });
+        const avgHeatPct  = machCount > 0 ? totalHeatPct / machCount : 20;
+        const deltaT_eff  = 2.0 + avgHeatPct * 0.06; // °C
+        const L_room = H.r / 1000; // m
+        const Ri = ffuVel > 0 ? (9.81 * (1 / 295) * deltaT_eff * L_room) / (ffuVel * ffuVel) : 999;
+
+        let convMode, convClass;
+        if      (Ri < 0.1) { convMode = "強制對流 (Forced)";       convClass = "font-bold text-blue-600"; }
+        else if (Ri < 1.0) { convMode = "混合對流 (Mixed)";        convClass = "font-bold text-amber-500"; }
+        else               { convMode = "浮力主導 (Buoyancy) ⚠️";  convClass = "font-bold text-red-500"; }
+
+        // ── 7. 紊流強度 TI (Turbulence Intensity) ────────────────────
+        // 基礎 TI 由覆蓋率決定（ASHRAE 62.1 / IEST-RP-CC012 參考值）
+        // 熱浮力 (Ri) 增加額外紊流貢獻
+        const TI_base     = cov >= 80 ? 5 : cov >= 60 ? 10 : cov >= 40 ? 18 : 28;
+        const TI_buoyancy = Math.min(20, Ri * 6);
+        const TI          = Math.min(50, Math.round(TI_base + TI_buoyancy));
+
+        let tiLabel, tiBarColor;
+        if      (TI < 10) { tiLabel = TI + "% (層流 Laminar)";    tiBarColor = "bg-green-400"; }
+        else if (TI < 25) { tiLabel = TI + "% (混合 Mixed)";      tiBarColor = "bg-amber-400"; }
+        else              { tiLabel = TI + "% (紊流 Turbulent)";   tiBarColor = "bg-red-400"; }
+
+        // ── 8. 風量平衡 ───────────────────────────────────────────────
+        const freshRatio = totalCMH > 0 ? (totalMauCMH / totalCMH) * 100 : 0;
+        // MAU 應略大於 EXH（正壓維持）；差距 >25% 視為設計不平衡
+        const airImbalancePct  = totalMauCMH > 0 ? Math.abs(totalMauCMH - totalExhCMH) / totalMauCMH * 100 : 0;
+        const isAirBalanced    = totalMauCMH === 0 || airImbalancePct <= 25;
+
+        // ── 9. 熱負荷 vs DCC 冷卻能力 ────────────────────────────────
+        // 機台發熱：依底面積 × 熱密度估算 (100% → ~30 kW/m²，半導體設備典型)
+        let totalMachKW = 0;
+        machLocs.forEach(o => {
+            const floorArea  = (o.w / 1000) * (o.d / 1000); // m²
+            const heatDensity = (parseFloat(o.heat) || 0) / 100 * 30; // kW/m²
+            totalMachKW += floorArea * heatDensity;
+        });
+        // FFU 馬達散熱：EC FFU 典型 250 W/台，大部分進入迴風氣流
+        const ffuMotorHeat = ffuLocs.length * 0.25; // kW
+        const totalHeatKW  = totalMachKW + ffuMotorHeat;
+
+        // DCC 冷卻能力：Q = ρ × A_face × v_face × Cp × ΔT_air
+        // 假設：面風速 1.5 m/s，送回水 ΔT 7°C，顯熱效率 90%
+        let totalDCCkW = 0;
+        dccLocs.forEach(o => {
+            const faceArea = (o.w / 1000) * ((o.h || 2400) / 1000); // m² (修正後)
+            totalDCCkW += rho * faceArea * 1.5 * 1.006 * 7 * 0.9;   // kW
+        });
+        const dccLoadPct = totalDCCkW > 0 ? (totalHeatKW / totalDCCkW) * 100 : 0;
+        const isHeatOK   = totalDCCkW === 0 || dccLoadPct <= 90;
+
+        // ── 10. FFU 能效 & 單向流判定 ────────────────────────────────
+        const ffuPowerKW = ffuLocs.length * 0.25; // kW (EC FFU 250W/台)
+
+        // 單向流 (UDF)：ISO 14644-4 要求覆蓋率 ≥80% 且 ACH ≥200
+        let udfText, udfClass;
+        if      (cov >= 80 && ACH >= 200) { udfText = "✅ 符合 (Unidirectional)";      udfClass = "font-bold text-green-600"; }
+        else if (cov >= 80)               { udfText = "⚠️ 覆蓋率足但 ACH 不足";        udfClass = "font-bold text-amber-500"; }
+        else                              { udfText = "❌ 非單向流 (Mixing Flow)";       udfClass = "font-bold text-red-500"; }
+
+        let uniformText, uniformClass;
+        if      (cov >= 80) { uniformText = "優良 (Cov ≥80%)";  uniformClass = "font-bold text-green-600"; }
+        else if (cov >= 50) { uniformText = "合格 (Cov 50–80%)"; uniformClass = "font-bold text-amber-500"; }
+        else                { uniformText = "不足 (Cov <50%)";   uniformClass = "font-bold text-red-500"; }
+
+        // ── 11. 更新 UI ───────────────────────────────────────────────
+        const safelySet      = (id, v) => { const el = document.getElementById(id); if(el) el.innerText = v; };
+        const safelySetWidth = (id, w) => { const el = document.getElementById(id); if(el) el.style.width = w; };
+        const safelySetClass = (id, c) => { const el = document.getElementById(id); if(el) el.className = c; };
+
+        // 頂部風量
+        safelySet('val_cmh',     Math.round(totalCMH).toLocaleString());
+        safelySet('val_mau_cmh', Math.round(totalMauCMH).toLocaleString());
+        safelySet('val_exh_cmh', Math.round(totalExhCMH).toLocaleString());
+
+        // ACH + ISO
+        safelySet('eng_ach',      Math.round(ACH));
+        safelySet('eng_iso',      isoClass);
+        safelySet('eng_iso_basis', isoBasis);
+
+        // 壓力
+        const fmt = v => (v >= 0 ? '+' : '') + Math.round(v) + ' Pa';
+        safelySet('eng_p_plenum', fmt(pPlenum));
+        safelySet('eng_p_room',   fmt(pRoom));
+        safelySet('eng_p_sub',    fmt(pSub));
+        safelySet('eng_p_shaft',  fmt(pShaft));
+
+        // 壓力層級順序驗算（Plenum > Room > Sub > Shaft）
+        const pBalOK = pPlenum > pRoom && pRoom > 0 && pRoom > pSub;
+        const balEl  = document.getElementById('eng_balance_status');
+        if (balEl) {
+            if (pBalOK) { balEl.innerHTML = '<i class="ph-fill ph-check-circle"></i> Balanced'; balEl.className = 'text-emerald-500 text-[10px] font-bold'; }
+            else        { balEl.innerHTML = '<i class="ph-fill ph-warning-circle"></i> Check ΔP'; balEl.className = 'text-red-500 text-[10px] font-bold'; }
+        }
+
+        // Richardson Number
+        safelySet('eng_ri',       Ri.toFixed(2));
+        safelySet('eng_delta_t',  deltaT_eff.toFixed(1) + ' °C');
+        safelySet('eng_conv_mode', convMode);
+        safelySetClass('eng_conv_mode', convClass);
+
+        // 覆蓋率 + TI
+        safelySet('eng_cov', Math.round(cov) + '%');
+        safelySetWidth('bar_cov', Math.min(cov, 100) + '%');
+        safelySet('eng_turb', tiLabel);
+        safelySetWidth('bar_turb', TI + '%');
+        const tiBarEl = document.getElementById('bar_turb');
+        if (tiBarEl) tiBarEl.className = tiBarColor + ' h-1.5 rounded-full transition-all';
+
+        // 風量平衡
+        safelySet('eng_mau_disp',    Math.round(totalMauCMH).toLocaleString() + ' CMH');
+        safelySet('eng_exh_disp',    Math.round(totalExhCMH).toLocaleString() + ' CMH');
+        safelySet('eng_fresh_ratio', freshRatio.toFixed(1) + '%');
+        const bwEl = document.getElementById('eng_balance_warn');
+        if (bwEl) bwEl.classList.toggle('hidden', isAirBalanced);
+
+        // 熱負荷
+        safelySet('eng_mach_kw',     totalMachKW.toFixed(1) + ' kW');
+        safelySet('eng_dcc_kw',      totalDCCkW.toFixed(1)  + ' kW');
+        safelySet('eng_ffu_heat',    ffuMotorHeat.toFixed(1) + ' kW');
+        safelySetWidth('bar_heat', Math.min(dccLoadPct, 100) + '%');
+        const hBarEl = document.getElementById('bar_heat');
+        if (hBarEl) hBarEl.className = (dccLoadPct > 90 ? 'bg-red-500' : dccLoadPct > 75 ? 'bg-amber-400' : 'bg-green-400') + ' h-2 rounded-full transition-all';
+        safelySet('eng_dcc_load_pct', totalDCCkW === 0 ? 'N/A (無DCC)' : dccLoadPct.toFixed(1) + '%');
+        const hwEl = document.getElementById('eng_heat_warn');
+        if (hwEl) hwEl.classList.toggle('hidden', isHeatOK);
+
+        // 能效 & 流型
+        safelySet('eng_ffu_power',  ffuLocs.length + ' 台 / ' + ffuPowerKW.toFixed(1) + ' kW');
+        safelySet('eng_uniformity', uniformText);
+        safelySetClass('eng_uniformity', uniformClass);
+        safelySet('eng_udf',        udfText);
+        safelySetClass('eng_udf',   udfClass);
+    },
+
+    init: () => {
+        Sim3D.stop(); Sim3D.isExploded = false; Sim3D.meshes = [];
+        const con = document.getElementById('three_target'); con.innerHTML = '';
+        
+        const H = App.data.heights;
+        H.u = parseInt(document.getElementById('h_upper').value) || 2500; H.r = parseInt(document.getElementById('h_room').value) || 4000; H.f = parseInt(document.getElementById('h_rf').value) || 800; H.s = parseInt(document.getElementById('h_sub').value) || 3500;
+        const W = App.data.w, D = App.data.d;
+
+        const scene = new THREE.Scene(); scene.background = new THREE.Color(0x0f172a); scene.fog = new THREE.FogExp2(0x0f172a, 0.000012);
+        const cam = new THREE.PerspectiveCamera(50, con.clientWidth/con.clientHeight, 100, 300000);
+        cam.position.set(W*0.8, H.r*3, D*1.5); Sim3D.camera = cam;
+
+        const ren = new THREE.WebGLRenderer({antialias:true}); 
+        // 修復：啟用高解析度支援，讓 3D 畫面不模糊
+        ren.setPixelRatio(window.devicePixelRatio || 1);
+        ren.setSize(con.clientWidth, con.clientHeight);
+        con.appendChild(ren.domElement);
+
+        // F: HemisphereLight 天地漸層光，取代單一 AmbientLight
+        const hemiLight = new THREE.HemisphereLight(0x6699cc, 0x1a2a3a, 0.9);
+        scene.add(hemiLight);
+        const dirLight = new THREE.DirectionalLight(0xffffff, 0.7);
+        dirLight.position.set(W, H.r*2, D);
+        scene.add(dirLight);
+        const fillLight = new THREE.DirectionalLight(0xe2e8f0, 0.3);
+        fillLight.position.set(-W, H.r, -D);
+        scene.add(fillLight);
+
+        const controls = new THREE.OrbitControls(cam, ren.domElement);
+        controls.target.set(0, H.r/2, 0); controls.enableDamping = true; Sim3D.controls = controls;
+
+        const addZone = (minY, height, color, opacity, layerName) => { const geo = new THREE.BoxGeometry(W, height, D); const mat = new THREE.MeshLambertMaterial({ color: color, transparent: true, opacity: opacity, side: THREE.BackSide, depthWrite: false }); const mesh = new THREE.Mesh(geo, mat); mesh.position.y = minY + height/2; mesh.userData = { layer: layerName, originY: mesh.position.y }; scene.add(mesh); Sim3D.meshes.push(mesh); };
+        addZone(-(H.f+H.s), H.s, 0x475569, 0.15, 'subfab'); addZone(-H.f, H.f, 0xfefce8, 0.15, 'rf'); addZone(0, H.r, 0xffffff, 0.05, 'room'); addZone(H.r, H.u, 0x3b82f6, 0.1, 'plenum'); 
+
+        const addGrid = (y, col, layerName) => { const g = new THREE.GridHelper(Math.max(W,D), 20, col, 0x1e293b); g.position.y = y; g.userData = { layer: layerName, originY: y }; scene.add(g); Sim3D.meshes.push(g); };
+        addGrid(H.r, 0x60a5fa, 'plenum'); addGrid(0, 0x94a3b8, 'room'); addGrid(-H.f, 0x475569, 'rf'); addGrid(-(H.f+H.s), 0x1e293b, 'subfab');
+
+        // G: 分層邊界線框
+        const _addEdge = (geoW, geoH, geoD, posY, col, op) => { const e = new THREE.LineSegments(new THREE.EdgesGeometry(new THREE.BoxGeometry(geoW, geoH, geoD)), new THREE.LineBasicMaterial({color:col, opacity:op, transparent:true})); e.position.y = posY; scene.add(e); Sim3D.meshes.push(e); };
+        _addEdge(W, H.r,       D, H.r/2,             0x94a3b8, 0.22);
+        _addEdge(W, H.u,       D, H.r + H.u/2,       0x60a5fa, 0.18);
+        _addEdge(W, H.f + H.s, D, -(H.f + H.s)/2,   0x475569, 0.18);
+
+        const ffuLocs = [], shafts = [], machines = [], obstacles = [], dccsSub = [], dccsPlenum = [], mauDucts = [], exhaustDucts = [];
+
+        App.data.objs.forEach(o => {
+            let h=1000, y=0, col=0xffffff, op=0.4, layerName = 'room';
+            if(o.type === 'ffu') { h=300; y=H.r + h/2; col=0x60a5fa; ffuLocs.push(o); op=0.85; layerName = 'plenum'; } 
+            else if (o.type === 'dcc') {
+                h=o.h || 2400; col=0x06b6d4; op=0.75; 
+                let dccData = {x:o.x, z:o.y, w:o.w, d:o.d, h:h, yCenter:0, id:o.id};
+                if(o.dccLoc === 'plenum') { y = H.r + 200 + h/2; dccData.yCenter = y; dccsPlenum.push(dccData); layerName = 'plenum'; } 
+                else { y = -(H.f + H.s) + h/2; dccData.yCenter = y; dccsSub.push(dccData); layerName = 'subfab'; }
+            } 
+            else if (o.type === 'mau') {
+                layerName = 'plenum'; const dh = o.ductH || 800; let baseBottom = H.r + H.u - dh;
+                if(o.elev !== undefined && o.elev !== null && !isNaN(o.elev)) baseBottom = o.elev; const ductY = baseBottom + dh/2;
+
+                const meshMau = new THREE.Mesh(new THREE.BoxGeometry(o.w, dh, o.d), new THREE.MeshLambertMaterial({ color: 0xf97316, transparent: true, opacity: o.ductType==='branch'?0.4:0.85 }));
+                meshMau.position.set(o.x, ductY, o.y); meshMau.userData = { layer: layerName, originY: ductY }; scene.add(meshMau); Sim3D.meshes.push(meshMau);
+                const wire = new THREE.LineSegments(new THREE.EdgesGeometry(meshMau.geometry), new THREE.LineBasicMaterial({color:0xea580c, opacity:0.5, transparent:true})); wire.position.copy(meshMau.position); wire.userData = { layer: layerName, originY: ductY }; scene.add(wire); Sim3D.meshes.push(wire);
+
+                if (o.ductType !== 'main') {
+                    const outPts = CAD.computeOutlets(o); const ow3 = o.outletW || 600; const od3 = o.outletD || 600; const outletMat = new THREE.MeshLambertMaterial({ color: 0xfbbf24, transparent: true, opacity: 0.95 }); const dir = o.outletDir || 'down';
+                    outPts.forEach(op => {
+                        let bx = op.x, by = ductY, bz = op.y; let sx = op.x, sy = ductY, sz = op.y; let bw = ow3, bh = 100, bd = od3;
+                        if(dir === 'down') { by = ductY - dh/2; sy = by - 10; bw=ow3; bh=20; bd=od3; } else if(dir === 'up') { by = ductY + dh/2; sy = by + 10; bw=ow3; bh=20; bd=od3; } else if(dir === 'north') { bz = op.y - o.d/2; sz = bz - 10; bw=ow3; bh=dh*0.8; bd=20; } else if(dir === 'south') { bz = op.y + o.d/2; sz = bz + 10; bw=ow3; bh=dh*0.8; bd=20; } else if(dir === 'east') { bx = op.x + o.w/2; sx = bx + 10; bw=20; bh=dh*0.8; bd=od3; } else if(dir === 'west') { bx = op.x - o.w/2; sx = bx - 10; bw=20; bh=dh*0.8; bd=od3; }
+                        const outBox = new THREE.Mesh(new THREE.BoxGeometry(bw, bh, bd), outletMat); outBox.position.set(bx, by, bz); outBox.userData = { layer: layerName, originY: by }; scene.add(outBox); Sim3D.meshes.push(outBox);
+                        mauDucts.push({ x: sx, y: sy, z: sz, dir });
+                    });
+                }
+            } 
+            else if (o.type === 'exhaust') {
+                const dh = o.ductH || 800; let sinkY; let baseBottom = -(H.f + H.s); layerName = 'subfab';
+                if(o.layer === 'ceiling') { baseBottom = H.r + H.u - dh; layerName = 'plenum'; } else if(o.layer === 'room') { baseBottom = 0; layerName = 'room'; }
+                if(o.elev !== undefined && o.elev !== null && !isNaN(o.elev)) baseBottom = o.elev; sinkY = baseBottom + dh/2;
+
+                const meshExh = new THREE.Mesh(new THREE.BoxGeometry(o.w, dh, o.d), new THREE.MeshLambertMaterial({ color: 0x10b981, transparent: true, opacity: o.ductType==='branch'?0.4:0.85 }));
+                meshExh.position.set(o.x, sinkY, o.y); meshExh.userData = { layer: layerName, originY: sinkY }; scene.add(meshExh); Sim3D.meshes.push(meshExh);
+                const wire = new THREE.LineSegments(new THREE.EdgesGeometry(meshExh.geometry), new THREE.LineBasicMaterial({color:0x059669, opacity:0.5, transparent:true})); wire.position.copy(meshExh.position); wire.userData = { layer: layerName, originY: sinkY }; scene.add(wire); Sim3D.meshes.push(wire);
+
+                if (o.ductType !== 'main') {
+                    const inPts = CAD.computeOutlets(o); const iw3 = o.inletW || 600; const id3 = o.inletD || 600; const inletMat = new THREE.MeshLambertMaterial({ color: 0x34d399, transparent: true, opacity: 0.95 }); const dir = o.inletDir || 'up';
+                    inPts.forEach(ip => {
+                        let bx = ip.x, by = sinkY, bz = ip.y; let sx = ip.x, sy = sinkY, sz = ip.y; let bw = iw3, bh = 100, bd = id3;
+                        if(dir === 'up') { by = sinkY + dh/2; sy = by + 20; bw=iw3; bh=20; bd=id3; } else if(dir === 'down') { by = sinkY - dh/2; sy = by - 20; bw=iw3; bh=20; bd=id3; } else if(dir === 'north') { bz = ip.y - o.d/2; sz = bz - 20; bw=iw3; bh=dh*0.8; bd=20; } else if(dir === 'south') { bz = ip.y + o.d/2; sz = bz + 20; bw=iw3; bh=dh*0.8; bd=20; } else if(dir === 'east') { bx = ip.x + o.w/2; sx = bx + 20; bw=20; bh=dh*0.8; bd=id3; } else if(dir === 'west') { bx = ip.x - o.w/2; sx = bx - 20; bw=20; bh=dh*0.8; bd=id3; }
+                        const inBox = new THREE.Mesh(new THREE.BoxGeometry(bw, bh, bd), inletMat); inBox.position.set(bx, by, bz); inBox.userData = { layer: layerName, originY: by }; scene.add(inBox); Sim3D.meshes.push(inBox);
+                        const captureR = Math.max(iw3, id3) * 2.5 + 1000; exhaustDucts.push({ x: sx, y: sy, z: sz, sinkY: sy, captureR, dir });
+                    });
+                }
+            } 
+            else if (o.type === 'shaft') { h=H.u + H.r + H.f + H.s; y=((H.u+H.r)-(H.f+H.s))/2; col=0x475569; shafts.push(o); op=0.25; layerName = 'global'; } 
+            else if (o.type === 'mach') { h = o.h || 2500; y=h/2; col=0x22c55e; op=0.7; layerName = 'room'; machines.push({x:o.x, z:o.y, w:o.w, d:o.d, h:h, heat: o.heat||0, heatPos: o.heatPos||'whole'}); } 
+            else if (o.type === 'pillar') { const yMin = -(H.f + H.s); const yMax = H.r + H.u; h = yMax - yMin; y = yMin + h/2; col = 0x94a3b8; op = 0.9; layerName = 'global'; obstacles.push({x:o.x, yCenter:y, z:o.y, w:o.w, d:o.d, h:h}); } 
+            else if (o.type === 'obs') {
+                h = o.h || 1000; col = 0x64748b; op = 0.6;
+                if(o.layer === 'subfab') { y = -(H.f + H.s) + (H.s/2); layerName = 'subfab'; } else if(o.layer === 'room') { y = h/2; layerName = 'room'; } else if(o.layer === 'ceiling') { y = H.r + (H.u/2); layerName = 'plenum'; }
+                obstacles.push({x:o.x, yCenter:y, z:o.y, w:o.w, d:o.d, h:h});
+            }
+            
+            if(['dcc', 'shaft', 'mach', 'pillar', 'obs', 'ffu'].includes(o.type)) { 
+                 const mesh = new THREE.Mesh(new THREE.BoxGeometry(o.w, h, o.d), new THREE.MeshLambertMaterial({color:col, transparent:true, opacity:op}));
+                 mesh.position.set(o.x, y, o.y); mesh.userData = { layer: layerName, originY: y }; scene.add(mesh); Sim3D.meshes.push(mesh);
+                 if(o.type === 'obs' || o.type === 'pillar' || o.type === 'mach') { const wire = new THREE.LineSegments(new THREE.EdgesGeometry(mesh.geometry), new THREE.LineBasicMaterial({color:0x1e293b, opacity:0.3, transparent:true})); wire.position.copy(mesh.position); wire.userData = { layer: layerName, originY: y }; scene.add(wire); Sim3D.meshes.push(wire); }
+            }
+        });
+
+        Sim3D.recalcPhysics(); 
+
+        let pCount = ffuLocs.length * 80; if(pCount < 1000) pCount = 1000; if(pCount > 15000) pCount = 15000;
+        const posArr = new Float32Array(pCount * 3); const colArr = new Float32Array(pCount * 3); const meta = [];
+
+        const spawnAtMAU = (i) => {
+            const m = meta[i];
+            if(mauDucts.length > 0) {
+                const md = mauDucts[Math.floor(Math.random() * mauDucts.length)];
+                posArr[i*3]   = md.x + (Math.random()-0.5)*20; posArr[i*3+1] = md.y + (Math.random()-0.5)*20; posArr[i*3+2] = md.z + (Math.random()-0.5)*20;
+                m.vx = 0; m.vy = 0; m.vz = 0; const spd = 800 + Math.random()*300;
+                if(md.dir === 'down')  m.vy = -spd; else if(md.dir === 'up') m.vy = spd; else if(md.dir === 'north') m.vz = -spd; else if(md.dir === 'south') m.vz =  spd; else if(md.dir === 'east')  m.vx =  spd; else if(md.dir === 'west')  m.vx = -spd;
+            } else { posArr[i*3] = (Math.random()-0.5)*W; posArr[i*3+1] = H.r + H.u * 0.85; posArr[i*3+2] = (Math.random()-0.5)*D; m.vx = 0; m.vy = -800; m.vz = 0; }
+            m.state = 'mau_jet'; m.freshness = 1.0; m.timer = 50; m.target = null; m.shaftObj = null; m.cooled = true; 
+        };
+
+        for(let i = 0; i < pCount; i++) {
+            meta.push({ state:'room', vx:0, vy:0, vz:0, ax:0, ay:0, az:0, target:null, cooled:false, shaftObj:null, freshness: 0, timer:0, heat:0 });
+            const zone = Math.random();
+            if(zone < 0.15 && mauDucts.length > 0) { spawnAtMAU(i); } else {
+                let ix, iy, iz;
+                if(zone < 0.5) { ix=(Math.random()-0.5)*W; iy=Math.random()*H.r; iz=(Math.random()-0.5)*D; } else if(zone < 0.8) { ix=(Math.random()-0.5)*W; iy=H.r+Math.random()*H.u; iz=(Math.random()-0.5)*D; } else { ix=(Math.random()-0.5)*W; iy=-(H.f+H.s)+Math.random()*(H.f+H.s); iz=(Math.random()-0.5)*D; }
+                posArr[i*3]=ix; posArr[i*3+1]=iy; posArr[i*3+2]=iz;
+                let initState = 'room'; if(iy > H.r) initState = 'plenum'; else if(iy < -H.f) initState = 'sub'; else if(iy < 0) initState = 'rf';
+                meta[i].state = initState; meta[i].freshness = Math.random()*0.2;
+            }
+            colArr[i*3]=0.2; colArr[i*3+1]=0.5; colArr[i*3+2]=1.0;
+        }
+
+        const geo = new THREE.BufferGeometry(); geo.setAttribute('position', new THREE.BufferAttribute(posArr, 3)); geo.setAttribute('color', new THREE.BufferAttribute(colArr, 3));
+        // E: 縮小粒子、加法混合讓流場發光、關閉 depthWrite 避免遮擋
+        const pMat = new THREE.PointsMaterial({ vertexColors:true, size:180, transparent:true, opacity:0.80, sizeAttenuation:true, blending:THREE.AdditiveBlending, depthWrite:false });
+        const particles = new THREE.Points(geo, pMat); scene.add(particles);
+
+        let _sf = 0;
+        const animate = () => {
+            Sim3D.frameId = requestAnimationFrame(animate); if(window.TWEEN) TWEEN.update(); if(Sim3D.paused) { controls.update(); return; }
+            // H: 每 45 幀更新一次粒子統計
+            if(++_sf % 45 === 0) { let _tv = 0; for(let _i=0;_i<pCount;_i++) _tv+=Math.sqrt(meta[_i].vx**2+meta[_i].vy**2+meta[_i].vz**2); const _pc=document.getElementById('stat_pcount'),_pv=document.getElementById('stat_avgvel'); if(_pc) _pc.textContent=pCount.toLocaleString(); if(_pv) _pv.textContent=Math.round(_tv/pCount).toLocaleString(); }
+            const ffuVel = parseFloat(document.getElementById('ffu_vel').value) || 0.45;
+            // Richardson Number: Ri = g·β·ΔT·L / v²；Ri < 1 視為強制對流主導
+            const _avgHeatPct = machines.length > 0 ? machines.reduce((s,m)=>s+(m.heat||0),0)/machines.length : 20;
+            const _deltaT = 2.0 + _avgHeatPct * 0.06;
+            const _Ri = ffuVel > 0 ? (9.81 * (1/295) * _deltaT * (H.r/1000)) / (ffuVel * ffuVel) : 999;
+            const isForcedConvection = _Ri < 1.0;
+            const pa = particles.geometry.attributes.position.array; const ca = particles.geometry.attributes.color.array;
+            const floorY = -(H.f + H.s); const viewMode = App.data.sim.viewMode || 'particle';
+
+            for(let i = 0; i < pCount; i++) {
+                let x = pa[i*3], y = pa[i*3+1], z = pa[i*3+2]; const m = meta[i]; let r=0.2, g=0.5, b=1.0; let skipVelocityWrite = false;
+                m.ax = 0; m.ay = 0; m.az = 0;
+
+                if(m.freshness > 0 && (m.state==='shaft' || m.state==='plenum')) { m.freshness = Math.max(0, m.freshness - 0.006); }
+                if (m.heat > 0) { m.heat *= 0.995; if (m.heat < 0.01) m.heat = 0; }
+
+                for(let mach of machines) {
+                    if(mach.heat > 0) {
+                        let hw = mach.w, hd = mach.d, hz = mach.z;
+                        if(mach.heatPos === 'center') { hw /= 2; hd /= 2; } else if(mach.heatPos === 'rear') { hd /= 3; hz -= mach.d/2 - hd/2; } else if(mach.heatPos === 'front') { hd /= 3; hz += mach.d/2 - hd/2; }
+                        if(y > mach.h - 100 && y < mach.h + 500 && Math.abs(x-mach.x) < hw/2 + 200 && Math.abs(z-hz) < hd/2 + 200) { m.heat = mach.heat / 100; }
+                    }
+                }
+
+                if (m.heat > 0) {
+                    // 熱氣只對機台頂部附近的粒子有效（y < 機台高度 + 800mm 範圍內）
+                    const nearMachTop = machines.some(mach => y > mach.h - 200 && y < mach.h + 800 && Math.abs(x - mach.x) < mach.w / 2 + 300 && Math.abs(z - mach.z) < mach.d / 2 + 300);
+                    if (nearMachTop) {
+                        if (isForcedConvection) {
+                            // FFU 主導：熱氣輕微上浮，但 FFU 下壓应在存心停在機台頂部
+                            m.ay += 8 * m.heat;
+                            m.ax += (Math.random()-0.5) * 60 * m.heat;
+                            m.az += (Math.random()-0.5) * 60 * m.heat;
+                        } else {
+                            // 浮力主導：熱氣較強上浮，但仍受天花板限制
+                            m.ay += 50 * m.heat;
+                            m.ax += (Math.random()-0.5) * 15 * m.heat;
+                            m.az += (Math.random()-0.5) * 15 * m.heat;
+                        }
+                    }
+                }
+
+                for(let obs of obstacles) {
+                    const oTop=obs.yCenter+obs.h/2, oBot=obs.yCenter-obs.h/2;
+                    if(y<oTop&&y>oBot&&Math.abs(x-obs.x)<obs.w/2&&Math.abs(z-obs.z)<obs.d/2) {
+                        const dx=x-obs.x, dz=z-obs.z, dist=Math.sqrt(dx*dx+dz*dz)||1;
+                        m.vx+=(dx/dist)*350+(Math.random()-0.5)*300; m.vz+=(dz/dist)*350+(Math.random()-0.5)*300; m.vy*=0.6;
+                    }
+                }
+
+                if(exhaustDucts.length > 0 && m.state !== 'exhaust_capture' && m.state !== 'in_exhaust' && m.state !== 'mau_jet' && (m.timer||0) <= 0) {
+                    let nearestSink=null, nearestDist=Infinity;
+                    for(let sink of exhaustDucts) { const ddx=sink.x-x, ddz=sink.z-z, ddy=sink.sinkY-y; const ddd=Math.sqrt(ddx*ddx+ddy*ddy+ddz*ddz); if(ddd < sink.captureR && ddd < nearestDist) { nearestDist=ddd; nearestSink=sink; } }
+                    if(nearestSink) { const pullProb = 0.20 * (1 - (nearestDist / nearestSink.captureR)); if(Math.random() < pullProb) { m.state = 'exhaust_capture'; m.target = { x:nearestSink.x, y:nearestSink.sinkY, z:nearestSink.z, dir: nearestSink.dir }; } }
+                }
+
+                if(m.state === 'mau_jet') {
+                    if(m.timer > 0) m.timer--; m.vx += (Math.random()-0.5)*20; m.vx *= 0.95; m.vz += (Math.random()-0.5)*20; m.vz *= 0.95;
+                    for(let s of shafts) {
+                        if(Math.abs(x - s.x) < s.w/2 + 200 && Math.abs(z - s.y) < s.d/2 + 200) {
+                            const relX = x - s.x, relZ = z - s.y;
+                            if(relX < -s.w/2){ x = s.x - s.w/2; m.vx = Math.abs(m.vx)*0.5; } else if(relX > s.w/2){ x = s.x + s.w/2; m.vx = -Math.abs(m.vx)*0.5; }
+                            if(relZ < -s.d/2){ z = s.y - s.d/2; m.vz = Math.abs(m.vz)*0.5; } else if(relZ > s.d/2){ z = s.y + s.d/2; m.vz = -Math.abs(m.vz)*0.5; }
+                            break;
+                        }
+                    }
+                    if(m.timer <= 0) { 
+                        let inShaft = false; for(let s of shafts) { if(Math.abs(x - s.x) < s.w/2 && Math.abs(z - s.y) < s.d/2) { inShaft = true; m.shaftObj = s; break; } }
+                        if(inShaft) { m.state = 'shaft'; } else { if(y > H.r) m.state = 'plenum'; else if(y > 0) m.state = 'room'; else if(y > -H.f) m.state = 'rf'; else m.state = 'sub'; }
+                        m.target = null; 
+                    }
+                } else if(m.state === 'plenum') {
+                    const plenumTop=H.r+H.u, plenumBottom=H.r;
+                    if(y > plenumTop) { y=plenumTop; m.vy*=-0.7; }
+                    if(y < plenumBottom+10) { y=plenumBottom+10; m.vy=Math.abs(m.vy)*0.5+50; }
+                    m.vx+=(Math.random()-0.5)*140; m.vz+=(Math.random()-0.5)*140; m.vy+=(Math.random()-0.5)*100;
+                    const needsCP = dccsPlenum.length>0 && !m.cooled;
+                    if(needsCP) {
+                        if(!m.target){ let best=dccsPlenum[0], minD=Infinity; for(let dcc of dccsPlenum){const d=(x-dcc.x)**2+(z-dcc.z)**2;if(d<minD){minD=d;best=dcc;}} m.target={x:best.x+(Math.random()-0.5)*best.w*0.9, z:best.z+(Math.random()-0.5)*best.d*0.9, y:best.yCenter+(Math.random()-0.5)*best.h*0.9,obj:best}; }
+                        const dx=m.target.x-x,dz=m.target.z-z,dy=m.target.y-y; const dist=Math.sqrt(dx*dx+dz*dz)||1;
+                        if(m.target.obj&&Math.abs(x-m.target.obj.x)<m.target.obj.w/2+50&&Math.abs(z-m.target.obj.z)<m.target.obj.d/2+50&&Math.abs(y-m.target.obj.yCenter)<m.target.obj.h/2+50){ m.cooled=true; m.target=null; } else { m.vx=(dx/dist)*800; m.vz=(dz/dist)*800; m.vy=dy*2; }
+                    } else {
+                        if(!m.target&&ffuLocs.length>0){ const f=ffuLocs[Math.floor(Math.random()*ffuLocs.length)]; m.target={x:f.x,z:f.y}; }
+                        if(m.target){ const dx=m.target.x-x,dz=m.target.z-z,d=Math.sqrt(dx*dx+dz*dz)||1; m.vx+=((dx/d)*300-m.vx)*0.05; m.vz+=((dz/d)*300-m.vz)*0.05; if(y>H.r+H.u*0.8) m.vy-=10; if(d<800&&Math.abs(y-H.r)<400){ m.state='room'; x=m.target.x+(Math.random()-0.5)*1000; z=m.target.z+(Math.random()-0.5)*1000; y=H.r-50; m.target=null; m.cooled=false; } }
+                    }
+                } else if(m.state === 'room') {
+                    // FFU 下壓力：強制導向向下
+                    const targetVy = -100 - ffuVel * 250;
+                    m.ay += (targetVy - m.vy) * 0.2;
+                    m.vx *= 0.96; m.vz *= 0.96;
+                    // 機台碰撞偵測
+                    for(let mach of machines){ if(y < mach.h + 100 && y > 0 && Math.abs(x-mach.x) < mach.w/2 + 100 && Math.abs(z-mach.z) < mach.d/2 + 100){ if(y < mach.h) { m.vy *= 0.5; const dx=x-mach.x, dz=z-mach.z, len=Math.sqrt(dx*dx+dz*dz)||1; m.ax += (dx/len)*300; m.az += (dz/len)*300; } } }
+                    // 天花板硬邊界：FFU 就是天花板，粓子不得越過
+                    if (y >= H.r - 80) {
+                        y = H.r - 80;
+                        // 被 FFU 氣流推回下方，加上橫向散開模擬天花板氣流分層
+                        m.vy = -Math.abs(m.vy) * 0.5 - 150;
+                        m.vx += (Math.random()-0.5) * 300;
+                        m.az += (Math.random()-0.5) * 300;
+                        m.heat *= 0.8; // 接觸 FFU 冷風後熱量散逸
+                    }
+                    if(y < 0){ m.state='rf'; }
+                } else if(m.state === 'rf') { if(y<-H.f){ m.state='sub'; m.cooled=false; m.target=null; m.vy=-200; } else m.vy=-80; }
+                else if(m.state === 'sub') {
+                    if(y>floorY+300) m.vy-=20; else if(y<floorY+50){ y=floorY+50; m.vy=0; m.vx*=0.8; m.vz*=0.8; }
+                    if(y>-H.f){ y=-H.f; m.vy*=-0.5; }
+                    const needsCS = dccsSub.length>0 && !m.cooled;
+                    if(needsCS){
+                        if(!m.target){ let best=dccsSub[0], minD=Infinity; for(let dcc of dccsSub){const d=(x-dcc.x)**2+(z-dcc.z)**2;if(d<minD){minD=d;best=dcc;}} m.target={x:best.x+(Math.random()-0.5)*best.w*0.9, z:best.z+(Math.random()-0.5)*best.d*0.9, y:best.yCenter+(Math.random()-0.5)*best.h*0.9,obj:best}; }
+                        const dx=m.target.x-x,dz=m.target.z-z,dist=Math.sqrt(dx*dx+dz*dz)||1; if(m.target.obj&&Math.abs(x-m.target.obj.x)<m.target.obj.w/2+50&&Math.abs(z-m.target.obj.z)<m.target.obj.d/2+50&&Math.abs(y-m.target.obj.yCenter)<m.target.obj.h/2+50){ m.cooled=true; m.target=null; } else { m.vx=(dx/dist)*1000; m.vz=(dz/dist)*1000; m.vy+=(m.target.y-y)*0.1; }
+                    } else {
+                        if(!m.target&&shafts.length>0){ let best=shafts[0], minD=Infinity; for(let s of shafts){const d=(x-s.x)**2+(z-s.y)**2;if(d<minD){minD=d;best=s;}} m.target={x:best.x+(Math.random()-0.5)*best.w*0.9, z:best.y+(Math.random()-0.5)*best.d*0.9,obj:best}; }
+                        if(m.target){ const dx=m.target.x-x,dz=m.target.z-z,d=Math.sqrt(dx*dx+dz*dz)||1; const spd=800+2000000/(d+100); let seek=1.0; if(dccsSub.length>0&&y>floorY+H.s*0.6) seek=0.1; m.vx=(dx/d)*spd*seek; m.vz=(dz/d)*spd*seek; if(m.target.obj&&Math.abs(x-m.target.obj.x)<m.target.obj.w/2+200&&Math.abs(z-m.target.obj.y)<m.target.obj.d/2+200){ m.state='shaft'; m.shaftObj=m.target.obj; m.target=null; } }
+                    }
+                } else if(m.state === 'shaft') {
+                    m.vy=800+Math.random()*600;
+                    if(m.shaftObj){ const s=m.shaftObj; const relX=x-s.x,relZ=z-s.y; if(relX<-s.w/2){x=s.x-s.w/2;m.vx=Math.abs(m.vx)*0.5+50;} else if(relX>s.w/2){x=s.x+s.w/2;m.vx=-Math.abs(m.vx)*0.5-50;} if(relZ<-s.d/2){z=s.y-s.d/2;m.vz=Math.abs(m.vz)*0.5+50;} else if(relZ>s.d/2){z=s.y+s.d/2;m.vz=-Math.abs(m.vz)*0.5-50;} m.vx+=(Math.random()-0.5)*10; m.vz+=(Math.random()-0.5)*10; }
+                    if(y>H.r+Math.random()*H.u){ m.state='plenum'; m.shaftObj=null; if(dccsPlenum.length>0 && m.freshness < 0.1) m.cooled=false; }
+                } else if(m.state === 'exhaust_capture') {
+                    if(m.target) {
+                        const ddx=m.target.x-x, ddz=m.target.z-z, ddy=m.target.y-y; const ddd=Math.sqrt(ddx*ddx+ddz*ddy+ddy*ddy)+1; const spd = 400 + 800000/(ddd+50); m.vx=(ddx/ddd)*spd; m.vz=(ddz/ddd)*spd; m.vy=(ddy/ddd)*spd;
+                        if(ddd < 150) { m.state = 'in_exhaust'; m.timer = 15; x = m.target.x; y = m.target.y; z = m.target.z; const pSpd = 1200; m.vx = 0; m.vy = 0; m.vz = 0; if(m.target.dir === 'up') m.vy = -pSpd; else if(m.target.dir === 'down') m.vy = pSpd; else if(m.target.dir === 'north') m.vz = pSpd; else if(m.target.dir === 'south') m.vz = -pSpd; else if(m.target.dir === 'east') m.vx = -pSpd; else if(m.target.dir === 'west') m.vx = pSpd; else m.vy = -pSpd; }
+                    } else { m.state='sub'; }
+                } else if(m.state === 'in_exhaust') {
+                    m.timer--; if(m.timer <= 0) { spawnAtMAU(i); pa[i*3] = posArr[i*3]; pa[i*3+1] = posArr[i*3+1]; pa[i*3+2] = posArr[i*3+2]; ca[i*3]=1.0; ca[i*3+1]=0.55; ca[i*3+2]=0.05; skipVelocityWrite = true; }
+                }
+
+                if(!skipVelocityWrite) {
+                    m.vx += m.ax * 0.16; m.vy += m.ay * 0.16; m.vz += m.az * 0.16;
+                    if(x<-W/2){x=-W/2;m.vx*=-0.5;} if(x>W/2){x=W/2;m.vx*=-0.5;} if(z<-D/2){z=-D/2;m.vz*=-0.5;} if(z>D/2){z=D/2;m.vz*=-0.5;} if(y<floorY) y=floorY+10;
+                    const fr = m.freshness;
+
+                    if(viewMode === 'slice') {
+                        if(Math.abs(x) > 2000) { y = -999999; } else { const speed = Math.sqrt(m.vx*m.vx + m.vy*m.vy + m.vz*m.vz); r = speed / 800; g = 1.0 - (speed/1000); b = 0.2; if (m.heat > 0.1) { r = Math.min(1, r+m.heat); g = Math.max(0, g-m.heat*0.5); b = Math.max(0, b-m.heat); } }
+                    } else if (viewMode === 'thermal') {
+                        let T = 0.5; if (m.state === 'mau_jet') T = 0.1; else if (m.cooled) T = 0.2; else if (m.state === 'sub' || m.state === 'shaft') T = 0.6; else if (m.state === 'plenum') T = 0.4;
+                        if (m.heat > 0) T = Math.min(1.0, T + m.heat);
+                        if (T < 0.25) { r=0; g=T*4; b=1; } else if (T < 0.5) { r=0; g=1; b=1-(T-0.25)*4; } else if (T < 0.75) { r=(T-0.5)*4; g=1; b=0; } else { r=1; g=1-(T-0.75)*4; b=0; }
+                    } else {
+                        if(m.heat > 0.05) { r = 1.0; g = 0.6 - m.heat*0.4; b = 0.1; } else if(m.state==='mau_jet'){ r=1.0; g=0.60; b=0.05; } else if(m.state==='exhaust_capture'){ r=0.1; g=1.0; b=0.3; } else if(m.state==='in_exhaust'){ const ratio = Math.max(0, m.timer / 15); r=0.1*ratio; g=1.0*ratio; b=0.3*ratio; } else if(m.cooled){ r=0.05+fr*0.8; g=0.85+fr*0.1; b=1.0-fr*0.5; } else { r=0.2+fr*0.80; g=0.5+fr*0.08; b=1.0-fr*0.95; if(m.state==='plenum'){ r=Math.min(1,r*1.1); g=Math.min(1,g*1.05); } }
+                    }
+
+                    pa[i*3]=x+m.vx*0.16; pa[i*3+1]=y+m.vy*0.16; pa[i*3+2]=z+m.vz*0.16; ca[i*3]=Math.min(1,r); ca[i*3+1]=Math.min(1,g); ca[i*3+2]=Math.min(1,b);
+                }
+            }
+
+            particles.geometry.attributes.position.needsUpdate = true; particles.geometry.attributes.color.needsUpdate = true;
+            controls.update(); ren.render(scene, cam);
+        };
+        animate();
+    }
+};
+window.onload = () => App.init();
+</script>
+</body>
+</html>

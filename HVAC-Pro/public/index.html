@@ -1,0 +1,1790 @@
+<!DOCTYPE html>
+<html lang="zh-TW" class="scroll-smooth">
+<head>
+    <!-- 安全防護 -->
+    <script src="./security.js"></script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>東旭的空調工具箱 | HVAC Pro-Suite</title>
+    
+    <!-- SEO & Social Sharing -->
+    <meta name="description" content="東旭的空調工具箱為專業 HVAC 工程師提供冰機水泵換算、風管尺寸檢核、無塵室大師 Pro 等精準計算工具。">
+    <meta property="og:title" content="東旭的空調工具箱 | HVAC Pro-Suite">
+    <meta property="og:type" content="website">
+    <meta property="og:image" content="https://hvac-pro-shiu.web.app/icon-192.png">
+    <meta name="theme-color" content="#2563eb">
+    
+    <!-- Icons -->
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='20' fill='%231a73e8'/><text x='50%' y='55%' dominant-baseline='central' text-anchor='middle' font-family='sans-serif' font-size='60' font-weight='bold' fill='white'>H</text></svg>">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=Noto+Sans+TC:wght@400;500;700&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+
+    
+
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class', // 啟用 Dark Mode
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['"Plus Jakarta Sans"', '"Noto Sans TC"', 'sans-serif'],
+                        mono: ['"JetBrains Mono"', 'monospace'],
+                    },
+                    colors: {
+                        google: {
+                            blue: '#1a73e8',
+                            red: '#ea4335',
+                            yellow: '#fbbc04',
+                            green: '#34a853',
+                            grey: '#f1f3f4',
+                            text: '#202124',
+                            sub: '#5f6368'
+                        }
+                    },
+                    animation: {
+                        'float': 'float 6s ease-in-out infinite',
+                        'fade-in-up': 'fadeInUp 0.8s ease-out forwards',
+                        'icon-bounce': 'iconBounce 0.5s cubic-bezier(0.25, 0.46, 0.45, 0.94) both',
+                        'spin-slow': 'spin 15s linear infinite',
+                        'pulse-fast': 'pulse 1s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+                    },
+                    keyframes: {
+                        float: {
+                            '0%, 100%': { transform: 'translateY(0)' },
+                            '50%': { transform: 'translateY(-20px)' },
+                        },
+                        fadeInUp: {
+                            '0%': { opacity: '0', transform: 'translateY(20px)' },
+                            '100%': { opacity: '1', transform: 'translateY(0)' },
+                        },
+                        iconBounce: {
+                            '0%, 100%': { transform: 'translateY(0)' },
+                            '50%': { transform: 'translateY(-6px)' }
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+
+    <!-- Clerk Auth -->
+    <script crossorigin="anonymous" data-clerk-publishable-key="pk_test_ZGlzY3JldGUtZmlsbHktNTkuY2xlcmsuYWNjb3VudHMuZGV2JA" src="https://discrete-filly-59.clerk.accounts.dev/npm/@clerk/clerk-js@latest/dist/clerk.browser.js" type="text/javascript"></script>
+
+    <style>
+        /* === Theme 系統與覆蓋 === */
+        :root {
+            --bg-base: #ffffff;
+            --bg-alt: #f8fafc;
+            --text-main: #0f172a;
+            --text-muted: #64748b;
+            --border-light: #f1f5f9;
+            --card-bg: #ffffff;
+            --canvas-overlay: rgba(255, 255, 255, 0.8);
+            --radius: 138px;
+        }
+        @media(min-width:768px){ :root{--radius:310px} }
+
+        html.dark {
+            --bg-base: #0b1220;
+            --bg-alt: #0f172a;
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+            --border-light: #1e293b;
+            --card-bg: #1e293b;
+            --canvas-overlay: rgba(11, 18, 32, 0.8);
+            color-scheme: dark;
+        }
+
+        body { background-color: var(--bg-base) !important; color: var(--text-main) !important; transition: background-color 0.4s ease, color 0.4s ease; overflow-x: hidden; }
+        .bg-white { background-color: var(--card-bg) !important; transition: background-color 0.4s ease; }
+        .bg-slate-50, .bg-\[\#f8f9fa\] { background-color: var(--bg-alt) !important; transition: background-color 0.4s ease; }
+        .text-slate-900, .text-slate-800 { color: var(--text-main) !important; }
+        .text-slate-500, .text-slate-600, .text-slate-400 { color: var(--text-muted) !important; }
+        .border-slate-100, .border-slate-200 { border-color: var(--border-light) !important; transition: border-color 0.4s ease; }
+        nav, #main-header { background-color: var(--canvas-overlay) !important; }
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        
+        /* === Boot Loader === */
+        #boot-loader {
+            position: fixed; inset: 0; z-index: 9999;
+            background: linear-gradient(160deg, #ffffff 0%, #eef4ff 40%, #dbeafe 100%);
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            overflow: hidden;
+        }
+        #boot-loader::before {
+            content: ''; position: absolute; width: 600px; height: 600px;
+            background: radial-gradient(circle, rgba(59,130,246,0.12) 0%, transparent 70%);
+            top: 50%; left: 50%; transform: translate(-50%,-50%);
+            animation: boot-glow 2s ease-in-out infinite alternate;
+        }
+        @keyframes boot-glow { 0%{transform:translate(-50%,-50%) scale(0.8);opacity:0.5} 100%{transform:translate(-50%,-50%) scale(1.2);opacity:1} }
+
+        .boot-brand { position: relative; z-index: 2; display: flex; flex-direction: column; align-items: center; gap: 16px; }
+        .boot-logo-ring {
+            width: 110px; height: 110px; border-radius: 28px; position: relative;
+            background: linear-gradient(135deg, #1a73e8, #3b82f6, #60a5fa);
+            display: flex; align-items: center; justify-content: center;
+            box-shadow: 0 20px 60px -10px rgba(26,115,232,0.45), 0 0 0 1px rgba(255,255,255,0.6) inset;
+            animation: boot-logo-in 0.6s cubic-bezier(0.34,1.56,0.64,1) both;
+        }
+        .boot-logo-ring::after {
+            content: ''; position: absolute; inset: -4px; border-radius: 32px;
+            background: conic-gradient(from 0deg, transparent 0%, #3b82f6 25%, transparent 50%);
+            animation: boot-ring-spin 1.5s linear infinite; opacity: 0.4; z-index: -1;
+        }
+        @keyframes boot-ring-spin { to { transform: rotate(360deg); } }
+        @keyframes boot-logo-in { 0%{opacity:0;transform:scale(0.5) rotate(-10deg)} 100%{opacity:1;transform:scale(1) rotate(0deg)} }
+
+        .boot-logo-text { font-family: 'Plus Jakarta Sans','Noto Sans TC',sans-serif; font-size: 44px; font-weight: 900; color: white; line-height: 1; letter-spacing: -1px; text-shadow: 0 2px 8px rgba(0,0,0,0.15); }
+        .boot-title { font-family: 'Plus Jakarta Sans',sans-serif; font-size: 15px; font-weight: 800; color: #1a73e8; letter-spacing: 6px; text-transform: uppercase; animation: boot-text-in 0.5s 0.3s both; }
+        .boot-subtitle { font-family: 'JetBrains Mono',monospace; font-size: 11px; color: #94a3b8; letter-spacing: 2px; animation: boot-text-in 0.5s 0.45s both; }
+        @keyframes boot-text-in { 0%{opacity:0;transform:translateY(10px)} 100%{opacity:1;transform:translateY(0)} }
+
+        .boot-bar { width: 200px; height: 3px; background: #e2e8f0; border-radius: 99px; margin-top: 28px; position: relative; overflow: hidden; animation: boot-text-in 0.5s 0.5s both; }
+        .boot-progress { position: absolute; height: 100%; width: 0%; background: linear-gradient(90deg,#3b82f6,#60a5fa); border-radius: 99px; transition: width 0.15s linear; box-shadow: 0 0 12px rgba(59,130,246,0.5); }
+        .terminal-text { display:none; }
+        .cursor-blink { display:none; }
+        .terminal-box { background:transparent; border:none; padding:0; width:auto; box-shadow:none; display:flex; flex-direction:column; align-items:center; }
+
+        /* View Transitions */
+        .view-section { width: 100%; min-height: 100vh; transition: opacity 0.3s ease, transform 0.3s ease; position: absolute; top: 0; left: 0; }
+        .view-hidden { opacity: 0; pointer-events: none; transform: scale(0.98); display: none; }
+        .view-active { opacity: 1; pointer-events: auto; transform: scale(1); display: block; position: relative; }
+        .reveal { opacity: 0; transform: translateY(40px); transition: all 0.6s cubic-bezier(0.5, 0, 0, 1); }
+        .reveal.active { opacity: 1; transform: translateY(0); }
+
+        #module-container { position: fixed; inset: 0; z-index: 9999; display: none; flex-direction: column; transform-origin: center bottom; transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
+        .module-active { animation: expandOverlay 0.4s cubic-bezier(0.4, 0, 0.2, 1) forwards; }
+        @keyframes expandOverlay { from { opacity: 0; transform: scale(0.95) translateY(20px); border-radius: 40px; } to { opacity: 1; transform: scale(1) translateY(0); border-radius: 0; } }
+        
+        .weather-widget { display: flex; align-items: center; gap: 12px; border: 1px solid var(--border-light); padding: 6px 20px; border-radius: 99px; }
+        .weather-value { font-family: 'JetBrains Mono', monospace; font-size: 14px; font-weight: 700; color: #1a73e8; }
+        html.dark .weather-value { color: #38bdf8; }
+        
+        .feature-card { transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
+        .feature-card:hover { transform: translateY(-8px); box-shadow: 0 20px 40px rgba(0,0,0,0.1); border-color: #3b82f6 !important; }
+
+        /* === Hero Floating Elements === */
+        .hero-float-element { position: absolute; pointer-events: none; z-index: 0; opacity: 0; animation: heroElementIn 1s cubic-bezier(0.34,1.56,0.64,1) forwards; }
+        .hero-float-element:nth-child(1) { top: 12%; left: 8%; animation-delay: 0.3s; }
+        .hero-float-element:nth-child(2) { top: 20%; right: 10%; animation-delay: 0.5s; }
+        .hero-float-element:nth-child(3) { bottom: 25%; left: 12%; animation-delay: 0.7s; }
+        .hero-float-element:nth-child(4) { bottom: 15%; right: 8%; animation-delay: 0.9s; }
+        .hero-float-element:nth-child(5) { top: 45%; left: 3%; animation-delay: 0.4s; }
+        .hero-float-element:nth-child(6) { top: 35%; right: 4%; animation-delay: 0.6s; }
+        @keyframes heroElementIn { 0%{opacity:0;transform:scale(0.3) translateY(40px)} 100%{opacity:1;transform:scale(1) translateY(0)} }
+
+        .hero-geo {
+            border-radius: 20px; backdrop-filter: blur(8px);
+            border: 1.5px solid rgba(59,130,246,0.15);
+            background: linear-gradient(135deg, rgba(59,130,246,0.06), rgba(147,197,253,0.08));
+            box-shadow: 0 8px 32px rgba(59,130,246,0.08);
+        }
+        .hero-geo-1 { width: 140px; height: 140px; border-radius: 32px; animation: heroElementIn 1s 0.3s cubic-bezier(0.34,1.56,0.64,1) forwards, heroFloat1 8s 1.3s ease-in-out infinite; }
+        .hero-geo-2 { width: 100px; height: 100px; border-radius: 50%; animation: heroElementIn 1s 0.5s cubic-bezier(0.34,1.56,0.64,1) forwards, heroFloat2 10s 1.5s ease-in-out infinite; }
+        .hero-geo-3 { width: 120px; height: 80px; border-radius: 24px; animation: heroElementIn 1s 0.7s cubic-bezier(0.34,1.56,0.64,1) forwards, heroFloat3 9s 1.7s ease-in-out infinite; }
+        .hero-geo-4 { width: 90px; height: 90px; border-radius: 28px; transform: rotate(15deg); animation: heroElementIn 1s 0.9s cubic-bezier(0.34,1.56,0.64,1) forwards, heroFloat1 11s 1.9s ease-in-out infinite; }
+        .hero-geo-5 { width: 60px; height: 60px; border-radius: 16px; animation: heroElementIn 1s 0.4s cubic-bezier(0.34,1.56,0.64,1) forwards, heroFloat2 7s 1.4s ease-in-out infinite; }
+        .hero-geo-6 { width: 160px; height: 50px; border-radius: 25px; animation: heroElementIn 1s 0.6s cubic-bezier(0.34,1.56,0.64,1) forwards, heroFloat3 12s 1.6s ease-in-out infinite; }
+
+        @keyframes heroFloat1 { 0%,100%{transform:translateY(0) rotate(0deg)} 25%{transform:translateY(-20px) rotate(3deg)} 50%{transform:translateY(-8px) rotate(-2deg)} 75%{transform:translateY(-25px) rotate(1deg)} }
+        @keyframes heroFloat2 { 0%,100%{transform:translateY(0) rotate(0deg)} 33%{transform:translateY(-30px) rotate(-4deg)} 66%{transform:translateY(-12px) rotate(3deg)} }
+        @keyframes heroFloat3 { 0%,100%{transform:translateY(0) rotate(0deg)} 50%{transform:translateY(-22px) rotate(5deg)} }
+
+        .hero-geo-icon { display: flex; align-items: center; justify-content: center; width: 100%; height: 100%; color: rgba(59,130,246,0.35); font-size: 28px; }
+        .hero-geo-label { position: absolute; bottom: 8px; left: 0; right: 0; text-align: center; font-family: 'JetBrains Mono',monospace; font-size: 8px; font-weight: 700; color: rgba(59,130,246,0.4); text-transform: uppercase; letter-spacing: 1px; }
+
+        .hero-mesh { position: absolute; inset: 0; pointer-events: none; z-index: -1; overflow: hidden; }
+        .hero-mesh::before { content: ''; position: absolute; width: 500px; height: 500px; background: radial-gradient(circle, rgba(59,130,246,0.08) 0%, transparent 70%); top: -10%; right: -5%; animation: meshDrift1 15s ease-in-out infinite; }
+        .hero-mesh::after { content: ''; position: absolute; width: 400px; height: 400px; background: radial-gradient(circle, rgba(6,182,212,0.06) 0%, transparent 70%); bottom: -10%; left: -5%; animation: meshDrift2 18s ease-in-out infinite; }
+        @keyframes meshDrift1 { 0%,100%{transform:translate(0,0)} 50%{transform:translate(-40px,30px)} }
+        @keyframes meshDrift2 { 0%,100%{transform:translate(0,0)} 50%{transform:translate(30px,-40px)} }
+
+        .hero-title-line { opacity: 0; transform: translateY(50px); animation: heroTitleIn 0.8s cubic-bezier(0.16,1,0.3,1) forwards; }
+        .hero-title-line:nth-child(1) { animation-delay: 0.15s; }
+        .hero-title-line:nth-child(2) { animation-delay: 0.35s; }
+        @keyframes heroTitleIn { 0%{opacity:0;transform:translateY(50px) skewY(2deg)} 100%{opacity:1;transform:translateY(0) skewY(0deg)} }
+        .hero-badge-anim { opacity:0; animation: heroBadgeIn 0.6s 0.05s cubic-bezier(0.34,1.56,0.64,1) forwards; }
+        @keyframes heroBadgeIn { 0%{opacity:0;transform:translateY(20px) scale(0.9)} 100%{opacity:1;transform:translateY(0) scale(1)} }
+
+        @keyframes flowLine { 0% { transform: translateX(-100%); opacity: 0; } 50% { opacity: 1; } 100% { transform: translateX(100%); opacity: 0; } }
+        .flow-animate { animation: flowLine 1.5s cubic-bezier(0.4, 0, 0.2, 1) forwards; }
+
+        /* Tools Grid Cards */
+        .tool-card .tool-icon { transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1); }
+        .tool-card:hover .tool-icon { transform: scale(1.2) rotate(10deg); }
+        .tool-bg-image { transition: opacity 0.5s ease, transform 8s ease; transform: scale(1.1); filter: grayscale(100%); }
+        .group:hover .tool-bg-image { transform: scale(1); filter: grayscale(0%); }
+        .tech-overlay { position: absolute; inset: 0; opacity: 0; transition: opacity 0.3s ease; background: linear-gradient(0deg, rgba(255,255,255,0) 0%, rgba(255,255,255,0.8) 100%); pointer-events: none; z-index: 5; overflow: hidden; }
+        .dark-card .tech-overlay { background: linear-gradient(0deg, rgba(0,0,0,0) 0%, rgba(59,130,246,0.3) 100%); }
+        .group:hover .tech-overlay { opacity: 1; }
+        .tech-overlay::after { content: ''; position: absolute; top: -50%; left: 0; right: 0; height: 50%; background: linear-gradient(to bottom, transparent, rgba(59,130,246,0.2) 90%, rgba(59,130,246,0.8) 100%); animation: scanLine 2s linear infinite; opacity: 0; transition: opacity 0.3s; }
+        .group:hover .tech-overlay::after { opacity: 1; }
+        @keyframes scanLine { 0% { transform: translateY(-100%); } 100% { transform: translateY(400%); } }
+
+        /* ── Background FX (Swiss Knife) ─────────────────────────────────────────────────── */
+        .swiss-bg-fx{position:absolute;inset:0;z-index:1;pointer-events:none;transition:opacity .5s,background .5s;opacity:0;overflow:hidden}
+        .swiss-bg-fx.active{opacity:1}
+        .swiss-bg-fx::before{content:'';position:absolute;inset:0;transition:all .5s}
+        .swiss-bg-fx[data-active="hydraulic"]{background:radial-gradient(ellipse at center,rgba(59,130,246,.08) 0%,transparent 70%)}
+        .swiss-bg-fx[data-active="hydraulic"]::before{background:repeating-linear-gradient(0deg,transparent,transparent 30px,rgba(59,130,246,.03) 30px,rgba(59,130,246,.03) 31px);animation:swissWave 3s linear infinite}
+        @keyframes swissWave{to{transform:translateY(31px)}}
+        .swiss-bg-fx[data-active="power"]{background:radial-gradient(ellipse at center,rgba(234,179,8,.1) 0%,transparent 60%)}
+        .swiss-bg-fx[data-active="power"]::before{background:radial-gradient(circle at 50%,rgba(234,179,8,.15),transparent 40%);animation:swissPulse 1s ease-in-out infinite alternate}
+        @keyframes swissPulse{0%{transform:scale(.8);opacity:.5}100%{transform:scale(1.3);opacity:1}}
+        .swiss-bg-fx[data-active="heat"]{background:radial-gradient(ellipse at center,rgba(239,68,68,.08) 0%,transparent 60%)}
+        .swiss-bg-fx[data-active="heat"]::before{background:linear-gradient(0deg,rgba(239,68,68,.06),transparent 50%);animation:swissHeatRise 2s ease-in-out infinite}
+        @keyframes swissHeatRise{0%,100%{transform:translateY(20%);opacity:.5}50%{transform:translateY(-10%);opacity:1}}
+        .swiss-bg-fx[data-active="ducting"]{background:linear-gradient(90deg,transparent,rgba(6,182,212,.05),transparent)}
+        .swiss-bg-fx[data-active="ducting"]::before{background:repeating-linear-gradient(90deg,transparent,transparent 60px,rgba(6,182,212,.06) 60px,rgba(6,182,212,.06) 62px);animation:swissFlow 2s linear infinite}
+        @keyframes swissFlow{0%{transform:translateX(-62px)}to{transform:translateX(0)}}
+        .swiss-bg-fx[data-active="sim"],.swiss-bg-fx[data-active="cfd"]{background:radial-gradient(ellipse at center,rgba(99,102,241,.08) 0%,transparent 60%)}
+        .swiss-bg-fx[data-active="sim"]::before,.swiss-bg-fx[data-active="cfd"]::before{background:linear-gradient(0deg,transparent,rgba(99,102,241,.08) 50%,transparent);background-size:100% 200%;animation:swissScan 1.5s linear infinite}
+        @keyframes swissScan{0%{background-position:0 200%}to{background-position:0 -200%}}
+        .swiss-bg-fx[data-active="specs"],.swiss-bg-fx[data-active="maint"],
+        .swiss-bg-fx[data-active="sizing"],.swiss-bg-fx[data-active="calc"]{background:radial-gradient(ellipse at center,rgba(59,130,246,.06) 0%,transparent 60%)}
+
+        /* ── Floating particles (Kept subtle for idle/base state) ──────────── */
+        .swiss-particles{position:absolute;inset:0;pointer-events:none;z-index:2;overflow:hidden;opacity:0;transition:opacity .5s}
+        .swiss-particles.active{opacity:1}
+        .swiss-particle{position:absolute;border-radius:50%;background:rgba(59,130,246,.3);animation:swissParticleFloat 4s ease-in-out infinite}
+        @keyframes swissParticleFloat{0%,100%{transform:translateY(0) scale(1);opacity:.3}50%{transform:translateY(-40px) scale(1.5);opacity:.7}}
+
+        /* ── Section container (Swiss Knife) ──────────────────────────────────────────────── */
+        .swiss-knife-container{
+            position:relative;width:100%;height:320px;
+            display:flex;align-items:center;justify-content:center;
+            overflow:hidden;z-index:10;
+        }
+        @media(min-width:768px){.swiss-knife-container{height:480px;overflow:visible}}
+
+        /* Elliptical orbit ring — tilt matches JS TILT_MD (73°) */
+        .swiss-knife-container::before{
+            content:'';position:absolute;
+            width:calc(var(--radius)*2.1);height:calc(var(--radius)*2.1);
+            border:1.5px dashed rgba(59,130,246,.28);
+            border-radius:50%;left:50%;top:50%;
+            transform:translate(-50%,-50%) perspective(700px) rotateX(73deg);
+            pointer-events:none;z-index:1;
+        }
+        /* Second faint ring */
+        .swiss-knife-container::after{
+            content:'';position:absolute;
+            width:calc(var(--radius)*1.92);height:calc(var(--radius)*1.92);
+            border:1px solid rgba(59,130,246,.10);
+            border-radius:50%;left:50%;top:50%;
+            transform:translate(-50%,-50%) perspective(700px) rotateX(73deg);
+            pointer-events:none;z-index:1;
+        }
+
+        /* ── Planet centre ──────────────────────────────────────────────────── */
+        .core-circle{
+            width:140px;height:140px;
+            background:radial-gradient(circle at 30% 30%,#3b82f6,#1d4ed8);
+            border-radius:50%;position:absolute;z-index:50;top:50%;left:50%;
+            transform:translate(-50%,-50%);
+            border:6px solid rgba(255,255,255,.3);
+            display:flex;flex-direction:column;align-items:center;justify-content:center;
+            text-align:center;cursor:pointer;
+            transition:transform .3s,box-shadow .3s;
+            box-shadow:
+                inset 0 0 20px rgba(255,255,255,.4),
+                0 0 0 14px rgba(59,130,246,.07),
+                0 0 0 30px rgba(59,130,246,.04),
+                0 0 55px rgba(37,99,235,.55);
+            animation:planetSpin 20s linear infinite;
+        }
+        @keyframes planetSpin{to{filter:hue-rotate(8deg) brightness(1.02)}}
+        /* Atmosphere belt */
+        .core-circle::after{
+            content:'';border-radius:50%;position:absolute;inset:-4px;
+            border-top:3px solid rgba(255,255,255,.13);
+            border-bottom:3px solid rgba(30,64,175,.45);
+            transform:perspective(300px) rotateX(74deg);
+            pointer-events:none;
+        }
+        .core-circle:hover{
+            transform:translate(-50%,-50%) scale(1.05);
+            box-shadow:
+                inset 0 0 24px rgba(255,255,255,.8),
+                0 0 0 16px rgba(59,130,246,.10),
+                0 0 0 34px rgba(59,130,246,.06),
+                0 0 75px rgba(37,99,235,.85);
+        }
+        @media(min-width:768px){.core-circle{width:200px;height:200px;border-width:8px}}
+
+        /* ── Orbit system ───────────────────────────────────────────────────── */
+        .orbit-system{position:absolute;top:50%;left:50%;width:0;height:0}
+        .spoke{
+            position:absolute;top:0;left:0;height:2px;
+            transform-origin:left center;
+            transform:rotate(calc(var(--i)*40deg));
+            width:var(--radius);
+            pointer-events:none;
+        }
+        .spoke-line{
+            position:absolute;left:70px;right:0;top:0;bottom:0;
+            background:linear-gradient(90deg,transparent 0%,#94a3b8 50%,transparent 100%);
+            opacity:.22;
+        }
+        @media(min-width:768px){.spoke-line{left:100px}}
+        .item-wrapper{
+            position:absolute;right:-60px;top:-22px;
+            width:128px;height:44px;pointer-events:auto;
+        }
+        @media(min-width:768px){.item-wrapper{right:-95px;top:-28px;width:192px;height:56px}}
+        .counter-rotator{width:100%;height:100%;display:flex;align-items:center;justify-content:center}
+        .orientation-fixer{
+            width:100%;height:100%;
+            transform:rotate(calc(var(--i)*-40deg));
+            display:flex;align-items:center;justify-content:center;
+            will-change:transform,opacity,filter;
+        }
+
+        /* ── Blade cards ────────────────────────────────────────────────────── */
+        .blade-card{
+            width:100%;height:100%;
+            background:var(--card-bg);
+            backdrop-filter:blur(12px);
+            border:1px solid rgba(226,232,240,.8);
+            border-radius:99px;
+            display:flex;align-items:center;padding:0 16px;
+            transition:border-color .25s,box-shadow .25s,transform .28s cubic-bezier(.34,1.56,.64,1);
+            cursor:pointer;white-space:nowrap;overflow:hidden;position:relative;
+        }
+        .blade-card::before{content:'';position:absolute;inset:0;z-index:0;opacity:0;transition:opacity .3s;border-radius:inherit}
+        .blade-content{position:relative;z-index:10;display:flex;align-items:center;width:100%}
+
+        .blade-card:hover{
+            transform:scale(1.13)!important;
+            border-color:#3b82f6!important;
+            box-shadow:0 12px 32px rgba(37,99,235,.30)!important;
+        }
+
+        /* Per-type hover FX */
+        .blade-card[data-type="hydraulic"]:hover::before{opacity:1;background:linear-gradient(90deg,transparent,rgba(59,130,246,.2),transparent);background-size:200% 100%;animation:fx-flow 1s linear infinite}
+        .blade-card[data-type="power"]:hover::before{opacity:1;box-shadow:inset 0 0 15px rgba(234,179,8,.4);animation:fx-pulse .5s ease-in-out infinite alternate}
+        .blade-card[data-type="heat"]:hover::before{opacity:1;background:radial-gradient(circle at left,rgba(239,68,68,.2),transparent 70%);animation:fx-heat 1.5s ease-in-out infinite alternate}
+        .blade-card[data-type="ducting"]:hover::before{opacity:1;background:repeating-linear-gradient(90deg,transparent,transparent 5px,rgba(6,182,212,.2) 5px,rgba(6,182,212,.2) 10px);background-size:200% 100%;animation:fx-flow 10s linear infinite reverse}
+        .blade-card[data-type="sim"]:hover::before{opacity:1;background:linear-gradient(0deg,transparent,rgba(99,102,241,.2) 50%,transparent);background-size:100% 200%;animation:fx-scan 1s linear infinite}
+        @keyframes fx-flow{0%{background-position:100% 0}to{background-position:-100% 0}}
+        @keyframes fx-pulse{from{opacity:.5}to{opacity:1}}
+        @keyframes fx-heat{from{transform:scale(1);opacity:.8}to{transform:scale(1.5);opacity:1}}
+        @keyframes fx-scan{0%{background-position:0 200%}to{background-position:0 -200%}}
+
+        .blade-icon{
+            font-size:18px;margin-right:9px;transition:transform .3s;
+            width:32px;height:32px;border-radius:9px;
+            display:flex;align-items:center;justify-content:center;
+            flex-shrink:0;
+        }
+        .blade-card:hover .blade-icon{transform:scale(1.14)}
+        .blade-card[data-type="hydraulic"] .blade-icon{background:rgba(59,130,246,.10)}
+        .blade-card[data-type="power"]     .blade-icon{background:rgba(234,179,8,.10)}
+        .blade-card[data-type="heat"]      .blade-icon{background:rgba(239,68,68,.10)}
+        .blade-card[data-type="ducting"]   .blade-icon{background:rgba(6,182,212,.10)}
+        .blade-card[data-type="sim"]       .blade-icon{background:rgba(99,102,241,.10)}
+        .blade-card[data-type="specs"]     .blade-icon{background:rgba(59,130,246,.10)}
+        .blade-card[data-type="maint"]     .blade-icon{background:rgba(100,116,139,.10)}
+        .blade-card[data-type="sizing"]    .blade-icon{background:rgba(249,115,22,.10)}
+        .blade-card[data-type="calc"]      .blade-icon{background:rgba(16,185,129,.10)}
+
+        .blade-card[data-type="hydraulic"]{border-color:rgba(59,130,246,.25)}
+        .blade-card[data-type="power"]    {border-color:rgba(234,179,8,.25)}
+        .blade-card[data-type="heat"]     {border-color:rgba(239,68,68,.22)}
+        .blade-card[data-type="ducting"]  {border-color:rgba(6,182,212,.25)}
+        .blade-card[data-type="sim"]      {border-color:rgba(99,102,241,.25)}
+        .blade-card[data-type="maint"]    {border-color:rgba(100,116,139,.22)}
+        .blade-card[data-type="sizing"]   {border-color:rgba(249,115,22,.25)}
+        .blade-card[data-type="calc"]     {border-color:rgba(16,185,129,.25)}
+        .blade-card[data-type="specs"]    {border-color:rgba(59,130,246,.22)}
+
+        .blade-text{font-family:'JetBrains Mono','Courier New',monospace;font-size:12px;font-weight:800;color:var(--text-main);text-transform:uppercase;letter-spacing:.04em}
+    </style>
+</head>
+<body class="bg-white text-slate-900 antialiased selection:bg-blue-100 selection:text-blue-900">
+
+    <!-- BOOT LOADER — 白藍品牌 Splash -->
+    <div id="boot-loader">
+        <div class="boot-brand">
+            <div class="boot-logo-ring">
+                <span class="boot-logo-text">東旭</span>
+            </div>
+            <div class="boot-title">HVAC Pro-Suite</div>
+            <div class="boot-subtitle">Engineering Precision</div>
+            <div class="boot-bar"><div class="boot-progress" id="boot-bar-progress" style="width: 0%"></div></div>
+        </div>
+        <!-- hidden elements kept for JS compatibility -->
+        <div style="display:none"><div class="terminal-box"><div id="terminal-lines"></div><span id="typing-text"></span></div></div>
+    </div>
+
+    <!-- ============================================== -->
+    <!-- 1. LANDING PAGE VIEW                            -->
+    <!-- ============================================== -->
+    <div id="landing-view" class="view-section view-active z-10">
+        
+        <!-- Sticky Nav -->
+        <nav class="sticky top-0 z-50 bg-white/80 backdrop-blur-md border-b border-slate-100 px-6 py-4 flex justify-between items-center">
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 bg-google-blue rounded-xl flex items-center justify-center text-white font-black shadow-lg shadow-blue-200">東旭</div>
+                <div class="flex flex-col justify-center">
+                    <span class="text-lg font-black text-slate-800 leading-none tracking-tight">HVAC <span class="text-google-blue">PRO</span></span>
+                    <span class="text-[10px] text-slate-400 font-bold tracking-wider" data-i18n="nav-subtitle">專業空調工具箱</span>
+                </div>
+            </div>
+            <div class="hidden md:flex gap-8 text-sm font-bold text-slate-500">
+                <a href="#swiss-knife-section" class="hover:text-google-blue transition-colors" data-i18n="nav-tools">工具庫</a>
+                <a href="#why-choose" class="hover:text-google-blue transition-colors" data-i18n="nav-features">特點</a>
+                <a href="#standards" class="hover:text-google-blue transition-colors" data-i18n="nav-standards">標準</a>
+            </div>
+            
+            <div class="flex items-center gap-4">
+                <!-- Theme Toggle Button -->
+                <button onclick="toggleTheme()" class="flex items-center justify-center w-10 h-10 rounded-full bg-slate-100 text-slate-600 hover:bg-slate-200 transition-colors font-bold text-xs theme-btn">
+                    <i class="fa-solid fa-moon"></i>
+                </button>
+                <button onclick="toggleLanguage()" class="flex items-center justify-center w-10 h-10 rounded-full bg-slate-100 text-slate-600 hover:bg-slate-200 transition-colors font-bold text-xs" id="lang-btn">
+                    <i class="fa-solid fa-globe"></i>
+                </button>
+                <button onclick="enterDashboard()" class="bg-slate-900 text-white px-6 py-2 rounded-full font-bold text-sm shadow-lg hover:bg-google-blue transition-all hover:scale-105 active:scale-95">
+                    <span id="landing-cta-text" data-i18n="nav-enter">進入工具箱</span>
+                </button>
+            </div>
+        </nav>
+
+        <!-- Hero Section -->
+        <header class="relative pt-32 pb-20 px-6 text-center overflow-hidden min-h-[85vh] flex flex-col justify-center">
+            <!-- Dynamic Vector Field Background -->
+            <canvas id="hero-canvas" class="absolute inset-0 w-full h-full pointer-events-none -z-10"></canvas>
+            
+            <!-- Gradient Mesh Atmosphere -->
+            <div class="hero-mesh"></div>
+            <div class="absolute inset-0 bg-gradient-to-b from-transparent via-[var(--canvas-overlay)] to-[var(--bg-base)] pointer-events-none -z-10"></div>
+
+            <!-- Floating Geometric Elements — Figma-grade decorators -->
+            <div class="hero-float-element hero-geo hero-geo-1" style="top:12%;left:6%">
+                <div class="hero-geo-icon"><i class="fa-solid fa-droplet"></i></div>
+                <div class="hero-geo-label">Hydraulic</div>
+            </div>
+            <div class="hero-float-element hero-geo hero-geo-2" style="top:18%;right:9%">
+                <div class="hero-geo-icon"><i class="fa-solid fa-temperature-half"></i></div>
+            </div>
+            <div class="hero-float-element hero-geo hero-geo-3" style="bottom:28%;left:10%">
+                <div class="hero-geo-icon"><i class="fa-solid fa-wind"></i></div>
+                <div class="hero-geo-label">Ducting</div>
+            </div>
+            <div class="hero-float-element hero-geo hero-geo-4" style="bottom:18%;right:7%">
+                <div class="hero-geo-icon"><i class="fa-solid fa-bolt"></i></div>
+            </div>
+            <div class="hero-float-element hero-geo hero-geo-5" style="top:50%;left:2%">
+                <div class="hero-geo-icon" style="font-size:20px"><i class="fa-solid fa-cube"></i></div>
+            </div>
+            <div class="hero-float-element hero-geo hero-geo-6" style="top:32%;right:3%">
+                <div class="hero-geo-icon" style="font-size:18px;gap:8px;display:flex">
+                    <i class="fa-solid fa-gauge-high"></i>
+                    <span style="font-family:'JetBrains Mono';font-size:10px;font-weight:700;letter-spacing:1px;opacity:0.7">CFD</span>
+                </div>
+            </div>
+
+            <div class="max-w-5xl mx-auto relative z-10 mt-[-5vh]">
+                <div class="hero-badge-anim inline-flex items-center gap-2 bg-blue-50/80 backdrop-blur border border-blue-100 text-google-blue px-4 py-1.5 rounded-full text-xs font-bold mb-8 tracking-widest">
+                    <div class="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse-fast"></div>
+                    NEXT-GEN HVAC ENGINE
+                </div>
+                
+                <h1 class="text-5xl md:text-8xl font-black text-slate-900 mb-6 leading-tight tracking-tight overflow-hidden">
+                    <span class="hero-title-line block" data-i18n="hero-title-1">專業空調工程師的</span><span class="hero-title-line block text-transparent bg-clip-text bg-gradient-to-r from-google-blue to-cyan-600" data-i18n="hero-title-2">數位瑞士刀</span>
+                </h1>
+                
+                <div class="flex flex-col md:flex-row items-center justify-center gap-2 md:gap-6 text-xs md:text-sm font-mono text-slate-400 mb-10" style="opacity:0;animation:heroTitleIn 0.6s 0.55s cubic-bezier(0.16,1,0.3,1) forwards">
+                    <div class="flex items-center gap-2"><i class="fa-solid fa-code-commit text-slate-300"></i> BUILT BY 東旭</div>
+                    <div class="hidden md:block w-1 h-1 rounded-full bg-slate-300"></div>
+                    <div>MEP ENGINEER | CLEANROOM DESIGNER</div>
+                    <div class="hidden md:block w-1 h-1 rounded-full bg-slate-300"></div>
+                    <div class="text-google-blue font-bold">SITE → DESIGN → SIMULATION</div>
+                </div>
+
+                <p class="text-slate-500 text-lg md:text-xl mb-12 leading-relaxed max-w-2xl mx-auto" style="opacity:0;animation:heroTitleIn 0.6s 0.7s cubic-bezier(0.16,1,0.3,1) forwards" data-i18n="hero-desc">
+                    整合負荷計算、系統模擬與規範校核。我們不只提供計算結果，更為您的設計方案提供公信力與精確度。
+                </p>
+
+                <div class="flex flex-col md:flex-row justify-center gap-4" style="opacity:0;animation:heroTitleIn 0.6s 0.85s cubic-bezier(0.16,1,0.3,1) forwards">
+                    <button onclick="enterDashboard()" class="bg-google-blue text-white px-10 py-5 rounded-full font-bold text-lg shadow-[0_10px_40px_-10px_rgba(26,115,232,0.8)] hover:bg-blue-700 hover:-translate-y-1 transition-all flex items-center justify-center gap-3 group">
+                        <i class="fa-solid fa-rocket group-hover:translate-x-1 group-hover:-translate-y-1 transition-transform"></i> <span data-i18n="hero-btn-start">開始系統計算</span>
+                    </button>
+                    <a href="#swiss-knife-section" class="bg-white/80 backdrop-blur border border-slate-200 text-slate-600 px-10 py-5 rounded-full font-bold text-lg hover:bg-slate-50 transition-all flex items-center justify-center">
+                        <span data-i18n="hero-btn-learn">了解更多</span>
+                    </a>
+                </div>
+            </div>
+        </header>
+
+        <!-- SWISS ARMY KNIFE SECTION (3D PLANET ORBIT) -->
+        <section id="swiss-knife-section" class="py-24 bg-white relative overflow-hidden border-t border-slate-100">
+            <!-- Full-size background animation layer -->
+            <canvas id="swiss-canvas" class="absolute inset-0 w-full h-full pointer-events-none z-0"></canvas>
+            
+            <!-- CSS-based dramatic background FX -->
+            <div id="swiss-bg-fx" class="swiss-bg-fx"></div>
+            <div id="swiss-particles-layer" class="swiss-particles"></div>
+            
+            <div class="max-w-7xl mx-auto text-center reveal active relative z-10">
+                <div class="inline-block px-3 py-1 bg-slate-100 text-slate-500 rounded-md text-[10px] font-mono font-bold mb-4 tracking-widest uppercase">System Deployed</div>
+                <h2 class="text-3xl md:text-5xl font-black text-slate-900 mb-12" data-i18n="swiss-title">滿足你的所有需求</h2>
+                
+                <div class="swiss-knife-container group" id="knife-demo">
+                    <div class="core-circle" onclick="enterDashboard()">
+                        <i class="fa-solid fa-cube text-white text-3xl md:text-5xl mb-2 drop-shadow-lg"></i>
+                        <div class="text-white font-black text-sm md:text-xl leading-tight drop-shadow-lg">東旭<br>HVAC Core</div>
+                    </div>
+
+                    <div class="orbit-system">
+                        <div class="spoke" style="--i:0"><div class="spoke-line"></div><div class="item-wrapper"><div class="counter-rotator"><div class="orientation-fixer" style="--i:0"><div class="blade-card" data-type="hydraulic"><div class="blade-content"><i class="fa-solid fa-droplet text-blue-500 blade-icon"></i><span class="blade-text">HYDRAULIC</span></div></div></div></div></div></div>
+                        <div class="spoke" style="--i:1"><div class="spoke-line"></div><div class="item-wrapper"><div class="counter-rotator"><div class="orientation-fixer" style="--i:1"><div class="blade-card" data-type="power"><div class="blade-content"><i class="fa-solid fa-bolt text-yellow-500 blade-icon"></i><span class="blade-text">POWER</span></div></div></div></div></div></div>
+                        <div class="spoke" style="--i:2"><div class="spoke-line"></div><div class="item-wrapper"><div class="counter-rotator"><div class="orientation-fixer" style="--i:2"><div class="blade-card" data-type="heat"><div class="blade-content"><i class="fa-solid fa-fire-flame-curved text-red-500 blade-icon"></i><span class="blade-text">HEAT LOAD</span></div></div></div></div></div></div>
+                        <div class="spoke" style="--i:3"><div class="spoke-line"></div><div class="item-wrapper"><div class="counter-rotator"><div class="orientation-fixer" style="--i:3"><div class="blade-card" data-type="specs"><div class="blade-content"><i class="fa-solid fa-file-lines text-blue-400 blade-icon"></i><span class="blade-text">SPECS</span></div></div></div></div></div></div>
+                        <div class="spoke" style="--i:4"><div class="spoke-line"></div><div class="item-wrapper"><div class="counter-rotator"><div class="orientation-fixer" style="--i:4"><div class="blade-card" data-type="ducting"><div class="blade-content"><i class="fa-solid fa-wind text-cyan-500 blade-icon"></i><span class="blade-text">DUCTING</span></div></div></div></div></div></div>
+                        <div class="spoke" style="--i:5"><div class="spoke-line"></div><div class="item-wrapper"><div class="counter-rotator"><div class="orientation-fixer" style="--i:5"><div class="blade-card" data-type="sim"><div class="blade-content"><i class="fa-solid fa-hurricane text-purple-500 blade-icon"></i><span class="blade-text">SIMULATION</span></div></div></div></div></div></div>
+                        <div class="spoke" style="--i:6"><div class="spoke-line"></div><div class="item-wrapper"><div class="counter-rotator"><div class="orientation-fixer" style="--i:6"><div class="blade-card" data-type="maint"><div class="blade-content"><i class="fa-solid fa-screwdriver-wrench text-slate-500 blade-icon"></i><span class="blade-text">MAINTENANCE</span></div></div></div></div></div></div>
+                        <div class="spoke" style="--i:7"><div class="spoke-line"></div><div class="item-wrapper"><div class="counter-rotator"><div class="orientation-fixer" style="--i:7"><div class="blade-card" data-type="sizing"><div class="blade-content"><i class="fa-solid fa-ruler-combined text-orange-400 blade-icon"></i><span class="blade-text">SIZING</span></div></div></div></div></div></div>
+                        <div class="spoke" style="--i:8"><div class="spoke-line"></div><div class="item-wrapper"><div class="counter-rotator"><div class="orientation-fixer" style="--i:8"><div class="blade-card" data-type="calc"><div class="blade-content"><i class="fa-solid fa-calculator text-emerald-500 blade-icon"></i><span class="blade-text">CALC</span></div></div></div></div></div></div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- "Why Choose" Features Grid -->
+        <section id="why-choose" class="py-24 px-6 bg-slate-50 relative z-10">
+            <div class="max-w-6xl mx-auto">
+                <div class="text-center mb-16 reveal">
+                    <h2 class="text-3xl md:text-4xl font-black text-slate-900 mb-4" data-i18n="features-title">為什麼選擇 HVAC Pro ?</h2>
+                    <p class="text-slate-400" data-i18n="features-sub">專為工程實務優化的核心優勢</p>
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-4 gap-8">
+                    <div class="feature-card p-8 rounded-[2rem] bg-white border border-slate-100 shadow-sm reveal">
+                        <div class="w-14 h-14 bg-blue-50 rounded-2xl flex items-center justify-center text-google-blue mb-6 text-2xl"><i class="fa-solid fa-bolt"></i></div>
+                        <h4 class="font-bold text-xl mb-3 text-slate-800" data-i18n="feat-1-title">極速運算</h4>
+                        <p class="text-slate-500 text-sm leading-relaxed" data-i18n="feat-1-desc">輸入參數即刻反應結果，無需等待。支援多參數連動變更分析。</p>
+                    </div>
+                    <div class="feature-card p-8 rounded-[2rem] bg-white border border-slate-100 shadow-sm reveal" style="transition-delay: 0.1s">
+                        <div class="w-14 h-14 bg-purple-50 rounded-2xl flex items-center justify-center text-purple-600 mb-6 text-2xl"><i class="fa-solid fa-chart-area"></i></div>
+                        <h4 class="font-bold text-xl mb-3 text-slate-800" data-i18n="feat-2-title">視覺化物理量</h4>
+                        <p class="text-slate-500 text-sm leading-relaxed" data-i18n="feat-2-desc">動態空氣線圖與壓力損失曲線，讓抽象的工程數值變成直觀的圖表。</p>
+                    </div>
+                    <div class="feature-card p-8 rounded-[2rem] bg-white border border-slate-100 shadow-sm reveal" style="transition-delay: 0.2s">
+                        <div class="w-14 h-14 bg-green-50 rounded-2xl flex items-center justify-center text-google-green mb-6 text-2xl"><i class="fa-solid fa-file-pdf"></i></div>
+                        <h4 class="font-bold text-xl mb-3 text-slate-800" data-i18n="feat-3-title">專業報告產出</h4>
+                        <p class="text-slate-500 text-sm leading-relaxed" data-i18n="feat-3-desc">一鍵生成符合送審格式的計算書，包含完整公式細節與引用來源。</p>
+                    </div>
+                    <div class="feature-card p-8 rounded-[2rem] bg-white border border-slate-100 shadow-sm reveal" style="transition-delay: 0.3s">
+                        <div class="w-14 h-14 bg-orange-50 rounded-2xl flex items-center justify-center text-orange-500 mb-6 text-2xl"><i class="fa-solid fa-mobile-screen"></i></div>
+                        <h4 class="font-bold text-xl mb-3 text-slate-800" data-i18n="feat-4-title">第一現場支持</h4>
+                        <p class="text-slate-500 text-sm leading-relaxed" data-i18n="feat-4-desc">完美的行動裝置適配。不論在辦公室或工區現場，專業如影隨形。</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Interactive UX Section -->
+        <section id="interactive-ux" class="py-24 px-6 bg-white">
+            <div class="max-w-6xl mx-auto">
+                <div class="text-center mb-16 reveal">
+                    <h2 class="text-4xl font-black text-slate-900 mb-4" data-i18n="interactive-title">互動力：讓工具變聰明</h2>
+                    <p class="text-slate-400" data-i18n="interactive-sub">滑動數值，即時預覽計算結果，無需等待重整</p>
+                </div>
+                
+                <div class="flex flex-col lg:flex-row gap-12 items-center reveal">
+                    <div class="w-full lg:w-1/2 space-y-6">
+                        <div class="p-6 bg-white rounded-3xl border border-l-4 border-l-google-blue shadow-sm hover:shadow-md transition-all feature-card">
+                            <h5 class="font-bold text-slate-800 flex items-center gap-3 text-lg"><i class="fa-solid fa-wave-square text-google-blue"></i> <span data-i18n="ux-1-title">動態空氣線圖</span></h5>
+                            <p class="text-slate-500 text-sm mt-2 leading-relaxed" data-i18n="ux-1-desc">支持滑鼠點位拖動，即時反映混風狀態與加熱/冷卻路徑線段。</p>
+                        </div>
+                        <div class="p-6 bg-white rounded-3xl border border-l-4 border-l-purple-500 shadow-sm hover:shadow-md transition-all feature-card">
+                            <h5 class="font-bold text-slate-800 flex items-center gap-3 text-lg"><i class="fa-solid fa-wind text-purple-500"></i> <span data-i18n="ux-2-title">CFD 流體動態展示</span></h5>
+                            <p class="text-slate-500 text-sm mt-2 leading-relaxed" data-i18n="ux-2-desc">輕量化的 3D 渲染技術，直接在瀏覽器展示無塵室內的氣流向量分布。</p>
+                        </div>
+                        <div class="p-6 bg-white rounded-3xl border border-l-4 border-l-red-500 shadow-sm hover:shadow-md transition-all feature-card">
+                            <h5 class="font-bold text-slate-800 flex items-center gap-3 text-lg"><i class="fa-solid fa-magnifying-glass-chart text-red-500"></i> <span data-i18n="ux-3-title">智慧負載預警</span></h5>
+                            <p class="text-slate-500 text-sm mt-2 leading-relaxed" data-i18n="ux-3-desc">輸入數據後，系統自動分析並給予「優化建議」或「警示」，而非僅產出冷冰冰的數值。</p>
+                        </div>
+                    </div>
+                    
+                    <div class="w-full lg:w-1/2 bg-white rounded-[2.5rem] border border-slate-200 p-8 shadow-xl flex flex-col items-center justify-center relative overflow-hidden">
+                        <div class="flex items-end gap-3 h-40 w-full max-w-sm mb-8" id="demo-chart">
+                            <div class="flex-1 bg-blue-100 rounded-t-lg transition-all duration-300 ease-out" style="height: 40%" id="bar-1"></div>
+                            <div class="flex-1 bg-blue-300 rounded-t-lg transition-all duration-300 ease-out" style="height: 60%" id="bar-2"></div>
+                            <div class="flex-1 bg-google-blue rounded-t-xl shadow-lg shadow-blue-200/50 relative transition-all duration-100 ease-linear group-hover:scale-105" style="height: 50%" id="bar-3">
+                                 <div class="absolute -top-10 left-1/2 -translate-x-1/2 bg-slate-800 text-white px-3 py-1.5 rounded-lg text-xs font-bold whitespace-nowrap opacity-100" id="bar-tooltip">50 RT → 60% Load</div>
+                            </div>
+                            <div class="flex-1 bg-blue-300 rounded-t-lg transition-all duration-300 ease-out" style="height: 55%" id="bar-4"></div>
+                            <div class="flex-1 bg-blue-100 rounded-t-lg transition-all duration-300 ease-out" style="height: 30%" id="bar-5"></div>
+                        </div>
+
+                        <div class="w-full max-w-xs relative z-10">
+                            <div class="flex justify-between text-xs font-bold text-slate-400 mb-3 uppercase tracking-wider">
+                                <span>Input Load</span>
+                                <span id="demo-value" class="text-google-blue font-black bg-blue-50 px-2 py-0.5 rounded">50 RT</span>
+                            </div>
+                            <input type="range" min="10" max="100" value="50" class="w-full h-2 bg-slate-100 rounded-lg appearance-none cursor-pointer accent-google-blue" oninput="updateLiveChart(this.value)">
+                            <div class="mt-6 flex justify-between items-center bg-slate-50 p-4 rounded-xl border border-slate-100 shadow-inner">
+                                <div class="text-center w-1/2">
+                                    <div class="text-[10px] text-slate-400 font-bold uppercase mb-1">Flow (LPM)</div>
+                                    <div class="text-xl font-black text-slate-800 tracking-tight" id="demo-flow-2">120.0</div>
+                                </div>
+                                <div class="w-px h-8 bg-slate-200"></div>
+                                <div class="text-center w-1/2">
+                                    <div class="text-[10px] text-slate-400 font-bold uppercase mb-1">Head (m)</div>
+                                    <div class="text-xl font-black text-emerald-500 tracking-tight" id="demo-head-2">27.5</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Live Demo Window Section -->
+        <section class="py-24 px-6 overflow-hidden relative bg-slate-50">
+            <div class="max-w-6xl mx-auto relative z-10">
+                <div class="text-center mb-12 reveal">
+                    <span class="text-google-blue font-bold tracking-widest uppercase text-xs mb-2 block">Live Simulation</span>
+                    <h2 class="text-3xl font-black text-slate-900" data-i18n="demo-title">工程核心演示</h2>
+                </div>
+
+                <div class="relative rounded-3xl overflow-hidden shadow-2xl bg-slate-900 ring-1 ring-white/10 group cursor-pointer perspective-1000 mx-auto max-w-5xl reveal" onclick="playDemo()">
+                    <div class="h-12 bg-slate-950/50 backdrop-blur-md border-b border-white/5 flex items-center px-6 justify-between relative z-20">
+                        <div class="flex gap-2"><div class="w-3 h-3 rounded-full bg-red-500/80"></div><div class="w-3 h-3 rounded-full bg-yellow-500/80"></div><div class="w-3 h-3 rounded-full bg-green-500/80"></div></div>
+                        <div class="text-[10px] text-slate-400 font-mono">hvac-pro-engine.core</div><div class="w-10"></div>
+                    </div>
+
+                    <div class="relative bg-slate-900 aspect-[16/9] md:aspect-[21/9] overflow-hidden">
+                        <div class="absolute inset-0 bg-[linear-gradient(to_right,#80808012_1px,transparent_1px),linear-gradient(to_bottom,#80808012_1px,transparent_1px)] bg-[size:24px_24px]"></div>
+                        <div class="absolute inset-0 flex items-center justify-center p-8 md:p-16">
+                            <div id="demo-input-card" class="relative z-10 w-64 bg-slate-800/80 backdrop-blur-xl border border-white/10 rounded-2xl p-5 shadow-2xl transition-all duration-500">
+                                <div class="flex items-center justify-between mb-4 border-b border-white/5 pb-2">
+                                    <span class="text-xs font-bold text-slate-400 uppercase">Input</span><div class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></div>
+                                </div>
+                                <div class="space-y-3">
+                                    <div class="bg-slate-900/50 rounded-lg p-3 border border-white/5 flex justify-between items-center">
+                                        <span class="text-xs text-slate-400 font-mono">LOAD</span><span id="demo-load-text" class="text-sm font-bold text-emerald-400 font-mono">100 RT</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="flex-1 h-[2px] bg-slate-800 relative mx-4 max-w-[200px] hidden md:block">
+                                <div id="flow-particle" class="absolute top-1/2 -translate-y-1/2 left-0 w-16 h-[2px] bg-gradient-to-r from-transparent via-blue-400 to-transparent opacity-0"></div>
+                                <div id="demo-play-overlay" class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-16 h-16 rounded-full bg-google-blue/20 border border-google-blue/50 flex items-center justify-center hover:scale-110 transition-all z-30">
+                                    <i class="fa-solid fa-play text-google-blue text-xl ml-1"></i>
+                                </div>
+                            </div>
+                            <div id="demo-result-card" class="relative z-10 w-72 bg-gradient-to-br from-google-blue to-indigo-700 rounded-2xl p-1 shadow-2xl transition-all duration-500 opacity-50 scale-95 grayscale">
+                                <div class="bg-slate-900/20 h-full w-full rounded-xl p-5 relative overflow-hidden">
+                                    <div class="text-[10px] text-blue-200 uppercase font-bold mb-1">Flow Rate (GPM)</div>
+                                    <div class="flex items-baseline gap-2 mb-4"><span id="demo-result-flow" class="text-4xl font-black text-white">--</span></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Full Standards Section -->
+        <section id="standards" class="py-24 px-6 bg-slate-900 text-white relative overflow-hidden">
+            <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-google-blue rounded-full blur-[150px] opacity-10 pointer-events-none"></div>
+            <div class="max-w-6xl mx-auto relative z-10 text-center">
+                <h2 class="text-3xl md:text-5xl font-black mb-12" data-i18n="standards-title">對標國際工程標準</h2>
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-4 text-left">
+                    <div class="p-4 bg-white/5 rounded-2xl border border-white/10 hover:bg-white/10 transition-colors"><div class="text-xs text-blue-400 font-bold uppercase mb-1">General HVAC</div><div class="font-bold text-slate-200">ASHRAE Fundamentals</div></div>
+                    <div class="p-4 bg-white/5 rounded-2xl border border-white/10 hover:bg-white/10 transition-colors"><div class="text-xs text-blue-400 font-bold uppercase mb-1">National Std</div><div class="font-bold text-slate-200">CNS 國家標準</div></div>
+                    <div class="p-4 bg-white/5 rounded-2xl border border-white/10 hover:bg-white/10 transition-colors"><div class="text-xs text-blue-400 font-bold uppercase mb-1">Cleanroom</div><div class="font-bold text-slate-200">ISO 14644</div></div>
+                    <div class="p-4 bg-white/5 rounded-2xl border border-white/10 hover:bg-white/10 transition-colors"><div class="text-xs text-blue-400 font-bold uppercase mb-1">Hydronics</div><div class="font-bold text-slate-200">Hazen-Williams eq.</div></div>
+                    <div class="p-4 bg-white/5 rounded-2xl border border-white/10 hover:bg-white/10 transition-colors"><div class="text-xs text-blue-400 font-bold uppercase mb-1">Pipe Friction</div><div class="font-bold text-slate-200">Darcy-Weisbach</div></div>
+                    <div class="p-4 bg-white/5 rounded-2xl border border-white/10 hover:bg-white/10 transition-colors"><div class="text-xs text-blue-400 font-bold uppercase mb-1">Process Gas</div><div class="font-bold text-slate-200">Bulk Gas / SEMI</div></div>
+                    <div class="p-4 bg-white/5 rounded-2xl border border-white/10 hover:bg-white/10 transition-colors"><div class="text-xs text-blue-400 font-bold uppercase mb-1">Process Cooling</div><div class="font-bold text-slate-200">Facility Design</div></div>
+                    <div class="p-4 bg-white/5 rounded-2xl border border-white/10 hover:bg-white/10 transition-colors"><div class="text-xs text-blue-400 font-bold uppercase mb-1">Ductwork</div><div class="font-bold text-slate-200">SMACNA Standards</div></div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Footer -->
+        <footer class="py-12 px-6 border-t border-slate-100 bg-white text-center">
+            <p class="text-slate-400 text-xs font-bold uppercase tracking-widest mb-4">© 2026 HVAC Pro-Suite • Enterprise Edition</p>
+            <div class="flex justify-center gap-6 text-slate-300 text-xl">
+                <a href="https://www.instagram.com/shiu_orz/" target="_blank" rel="noopener noreferrer" class="hover:text-pink-500 transition-colors transform hover:scale-110"><i class="fa-brands fa-instagram"></i></a>
+                <a href="/cdn-cgi/l/email-protection#f68585c4c5c6cec5cfc5c1b6919b979f9ad895999b" class="hover:text-red-500 transition-colors transform hover:scale-110"><i class="fa-solid fa-envelope"></i></a>
+                <a href="https://www.linkedin.com/in/shiu47/" target="_blank" rel="noopener noreferrer" class="hover:text-blue-700 transition-colors transform hover:scale-110"><i class="fa-brands fa-linkedin"></i></a>
+            </div>
+        </footer>
+    </div>
+
+    <!-- ============================================== -->
+    <!-- 2. DASHBOARD VIEW                              -->
+    <!-- ============================================== -->
+    <div id="dashboard-view" class="view-section view-hidden bg-[#f8f9fa]">
+        <header id="main-header" class="sticky top-0 z-40 bg-white/90 backdrop-blur-md border-b border-slate-200 px-6 py-4 flex items-center justify-between">
+            <div class="flex items-center gap-6">
+                <button onclick="exitDashboard()" class="w-10 h-10 rounded-full hover:bg-slate-100 flex items-center justify-center text-slate-500 transition-colors"><i class="fa-solid fa-house"></i></button>
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 bg-google-blue rounded-xl flex items-center justify-center text-white font-black text-sm">東旭</div>
+                    <div class="hidden md:block">
+                        <h1 class="text-lg font-black text-slate-800 leading-none">HVAC <span class="text-google-blue">Pro</span></h1>
+                        <div class="text-[9px] text-slate-400 font-bold uppercase tracking-wider">ENGINE RUNNING</div>
+                    </div>
+                </div>
+                <div class="hidden lg:flex items-center gap-4 ml-4 pl-4 border-l border-slate-200">
+                    <div class="flex items-center gap-1.5 bg-slate-50 px-2 py-1 rounded-md border border-slate-100"><div class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></div><span class="text-[9px] font-mono text-slate-500 font-bold uppercase">Flow Engine: Active</span></div>
+                    <div class="flex items-center gap-1.5 bg-slate-50 px-2 py-1 rounded-md border border-slate-100"><div class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" style="animation-delay: 0.2s"></div><span class="text-[9px] font-mono text-slate-500 font-bold uppercase">CFD Solver: Ready</span></div>
+                    <div class="flex items-center gap-1.5 bg-slate-50 px-2 py-1 rounded-md border border-slate-100"><div class="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse" style="animation-delay: 0.4s"></div><span class="text-[9px] font-mono text-slate-500 font-bold uppercase">Load Sync: On</span></div>
+                </div>
+            </div>
+            
+            <div class="flex items-center gap-4">
+                <div class="hidden md:flex gap-1 p-1 bg-slate-100 rounded-full border border-slate-200">
+                    <button onclick="filterTools('all')" class="filter-btn active px-6 py-1.5 rounded-full text-xs font-bold bg-white text-slate-800 shadow-sm transition-all" data-filter="all" data-i18n="filter-all">全部</button>
+                    <button onclick="filterTools('general')" class="filter-btn px-6 py-1.5 rounded-full text-xs font-bold text-slate-500 hover:text-slate-900 transition-all" data-filter="general" data-i18n="filter-general">基礎</button>
+                    <button onclick="filterTools('advanced')" class="filter-btn px-6 py-1.5 rounded-full text-xs font-bold text-slate-500 hover:text-slate-900 transition-all" data-filter="advanced" data-i18n="filter-advanced">進階</button>
+                    <button onclick="filterTools('others')" class="filter-btn px-6 py-1.5 rounded-full text-xs font-bold text-slate-500 hover:text-slate-900 transition-all" data-filter="others" data-i18n="filter-others">其他</button>
+                </div>
+                
+                <!-- Theme Toggle -->
+                <button onclick="toggleTheme()" class="flex items-center justify-center w-10 h-10 rounded-full bg-slate-100 text-slate-600 hover:bg-slate-200 transition-colors font-bold text-xs theme-btn">
+                    <i class="fa-solid fa-moon"></i>
+                </button>
+                <button onclick="toggleLanguage()" class="flex items-center justify-center w-10 h-10 rounded-full bg-slate-100 text-slate-600 hover:bg-slate-200 transition-colors font-bold text-xs" id="lang-btn">
+                    <i class="fa-solid fa-globe"></i>
+                </button>
+                
+                <div class="weather-widget hidden sm:flex">
+                    <div class="flex flex-col items-center"><span class="text-[8px] text-slate-400 font-bold uppercase">Temp</span><span id="live-temp" class="weather-value">--.-°C</span></div>
+                    <div class="w-px h-6 bg-slate-100"></div>
+                    <div class="flex flex-col items-center"><span class="text-[8px] text-slate-400 font-bold uppercase">Rh%</span><span id="live-rh" class="weather-value">--%</span></div>
+                </div>
+                <div id="user-button"></div>
+            </div>
+        </header>
+
+        <main class="max-w-[1600px] mx-auto px-6 py-10">
+            <div class="md:hidden mb-8 overflow-x-auto pb-2 no-scrollbar flex gap-2">
+                <button onclick="filterTools('all')" class="whitespace-nowrap px-4 py-2 bg-google-blue text-white rounded-full text-sm font-bold shadow-md" data-i18n="filter-all">全部</button>
+                <button onclick="filterTools('general')" class="whitespace-nowrap px-4 py-2 bg-white border border-slate-200 text-slate-600 rounded-full text-sm font-bold" data-i18n="filter-general">基礎</button>
+                <button onclick="filterTools('advanced')" class="whitespace-nowrap px-4 py-2 bg-white border border-slate-200 text-slate-600 rounded-full text-sm font-bold" data-i18n="filter-advanced">進階</button>
+                <button onclick="filterTools('others')" class="whitespace-nowrap px-4 py-2 bg-white border border-slate-200 text-slate-600 rounded-full text-sm font-bold" data-i18n="filter-others">其他</button>
+            </div>
+
+            <div class="mb-10 animate-fade-in-up">
+                 <div id="welcome-badge" class="inline-block px-4 py-1.5 bg-blue-100 text-google-blue text-[10px] font-bold uppercase tracking-widest rounded-full mb-4">GUEST MODE</div>
+                 <h2 class="text-3xl font-bold text-slate-800" data-i18n="dash-title">工程師工作台</h2>
+                 <p class="text-slate-500 mt-2" data-i18n="dash-sub">選擇計算模組以開始。所有工具均支援即時運算。</p>
+            </div>
+
+            <div id="tools-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 pb-20"></div>
+        </main>
+    </div>
+
+    <!-- APP MODULE OVERLAY -->
+    <div id="module-container">
+        <div class="h-16 bg-slate-900 text-white flex items-center px-4 md:px-8 justify-between shrink-0 shadow-xl relative z-50">
+            <button onclick="closeModule()" class="flex items-center gap-3 px-4 py-2 rounded-full bg-white/10 hover:bg-white/20 text-white font-bold text-xs transition-all">
+                <i class="fa-solid fa-arrow-left"></i> <span data-i18n="overlay-exit">EXIT</span>
+            </button>
+            <div class="flex flex-col items-center">
+                <span id="active-tool-title" class="text-lg font-black tracking-widest uppercase text-blue-400">LOADING...</span>
+                <span class="text-[8px] opacity-50 font-bold uppercase tracking-[0.2em]" data-i18n="overlay-status">CORE LOGIC ACTIVE</span>
+            </div>
+            <button onclick="iframeReload()" class="w-10 h-10 rounded-full bg-white/5 hover:bg-white/10 flex items-center justify-center"><i class="fa-solid fa-rotate-right"></i></button>
+        </div>
+        <div class="flex-1 relative bg-white">
+             <div id="loader" class="absolute inset-0 flex items-center justify-center bg-white z-10">
+                <div class="w-10 h-10 border-4 border-slate-100 border-t-google-blue rounded-full animate-spin"></div>
+            </div>
+            <iframe id="module-viewport" class="w-full h-full border-0" src="about:blank"></iframe>
+        </div>
+    </div>
+
+    <!-- LOGIC -->
+    <script data-cfasync="false" src="/cdn-cgi/scripts/5c5dd728/cloudflare-static/email-decode.min.js"></script>
+    <script>
+        // === Task 5: Theme System ===
+        function toggleTheme() {
+            const html = document.documentElement;
+            html.classList.toggle('dark');
+            const isDark = html.classList.contains('dark');
+            
+            document.querySelectorAll('.theme-btn i').forEach(icon => {
+                icon.className = isDark ? 'fa-solid fa-sun' : 'fa-solid fa-moon';
+            });
+        }
+
+        // === Hero Particle Animator (保留原有的 Hero 區塊粒子邏輯) ===
+        class HVACAnimator {
+            constructor(canvasId) {
+                this.canvas = document.getElementById(canvasId);
+                this.ctx = this.canvas.getContext('2d');
+                this.mode = 'idle'; 
+                this.particles = [];
+                this.time = 0;
+                
+                this.resize = this.resize.bind(this);
+                window.addEventListener('resize', this.resize);
+                this.resize();
+                
+                this.animate = this.animate.bind(this);
+                requestAnimationFrame(this.animate);
+            }
+            
+            resize() {
+                this.width = this.canvas.width = this.canvas.parentElement.offsetWidth || window.innerWidth;
+                this.height = this.canvas.height = this.canvas.parentElement.offsetHeight || window.innerHeight;
+                this.initParticles();
+            }
+            
+            initParticles() {
+                this.particles = [];
+                const count = window.innerWidth < 768 ? 80 : 200;
+                for(let i = 0; i < count; i++) {
+                    this.particles.push({
+                        x: Math.random() * this.width,
+                        y: Math.random() * this.height,
+                        vx: 0, vy: 0,
+                        baseSize: Math.random() * 2 + 1,
+                        angle: Math.random() * Math.PI * 2
+                    });
+                }
+            }
+            
+            setMode(mode) {
+                this.mode = mode;
+            }
+            
+            animate() {
+                this.ctx.clearRect(0, 0, this.width, this.height);
+                this.time += 0.01;
+                const isDark = document.documentElement.classList.contains('dark');
+                
+                let baseColor = isDark ? 'rgba(56, 189, 248, ' : 'rgba(59, 130, 246, ';
+                
+                this.particles.forEach((p, idx) => {
+                    let color = baseColor + '0.2)';
+                    
+                    if (this.mode === 'cfd' || this.mode === 'sim') {
+                        let flowAngle = Math.sin(p.x * 0.005) + Math.cos(p.y * 0.005 + this.time);
+                        p.vx = Math.cos(flowAngle) * 2;
+                        p.vy = Math.sin(flowAngle) * 2;
+                        color = isDark ? 'rgba(16, 185, 129, 0.4)' : 'rgba(6, 182, 212, 0.3)';
+                    } else if (this.mode === 'heat') {
+                        let dx = p.x - this.width/2; let dy = p.y - this.height/2;
+                        let dist = Math.sqrt(dx*dx + dy*dy) || 1;
+                        p.vx = (dx/dist) * 1.5; p.vy = (dy/dist) * 1.5;
+                        color = 'rgba(239, 68, 68, 0.3)';
+                    } else if (this.mode === 'hydraulic') {
+                        p.vx = 1;
+                        p.vy = Math.sin(p.x * 0.02 + this.time * 5) * 1.5;
+                        color = 'rgba(59, 130, 246, 0.4)';
+                    } else if (this.mode === 'ducting') {
+                        p.vx = (Math.random() * 5) + 5;
+                        p.vy = 0;
+                        color = isDark ? 'rgba(203, 213, 225, 0.2)' : 'rgba(148, 163, 184, 0.2)';
+                    } else {
+                        p.vx = (Math.random() - 0.5) * 0.5;
+                        p.vy = -0.5;
+                    }
+
+                    p.x += p.vx; p.y += p.vy;
+
+                    if (p.x > this.width) p.x = 0; if (p.x < 0) p.x = this.width;
+                    if (p.y > this.height) p.y = 0; if (p.y < 0) p.y = this.height;
+
+                    this.ctx.beginPath();
+                    if (this.mode === 'ducting') {
+                        this.ctx.moveTo(p.x, p.y);
+                        this.ctx.lineTo(p.x - p.vx * 3, p.y);
+                        this.ctx.strokeStyle = color;
+                        this.ctx.stroke();
+                    } else {
+                        this.ctx.arc(p.x, p.y, p.baseSize, 0, Math.PI * 2);
+                        this.ctx.fillStyle = color;
+                        this.ctx.fill();
+                    }
+                });
+                
+                requestAnimationFrame(this.animate);
+            }
+        }
+
+        // ======================================================================
+        // === PHYSICS-BASED MULTI-MODE VISUAL ENGINE (Canvas 2D) ===
+        // === 適用於 Swiss Knife 背景的新視覺引擎 ===
+        // ======================================================================
+        class VisualEngine {
+            constructor(id) {
+                this.canvas = document.getElementById(id);
+                this.ctx = this.canvas.getContext('2d');
+                this.activeMode = 'idle';
+                this.w = 0; this.h = 0;
+                
+                // Define unique simulation systems
+                this.systems = {
+                    idle:      new SystemIdle(),
+                    hydraulic: new SystemHydraulic(),
+                    power:     new SystemPower(),
+                    heat:      new SystemHeat(),
+                    ducting:   new SystemDucting(),
+                    sim:       new SystemCFD(),
+                    cfd:       new SystemCFD(),
+                    maint:     new SystemMaintenance(),
+                    sizing:    new SystemSizing(),
+                    calc:      new SystemCalc(),
+                    specs:     new SystemSpecs()
+                };
+
+                // Opacity tracking for smooth cross-fading
+                this.opacities = {};
+                for(let key in this.systems) this.opacities[key] = (key === 'idle') ? 1 : 0;
+
+                window.addEventListener('resize', () => this.resize());
+                this.resize();
+
+                this.lastFrame = performance.now();
+                requestAnimationFrame((ts) => this.render(ts));
+            }
+
+            resize() {
+                this.w = this.canvas.width = this.canvas.parentElement.offsetWidth || innerWidth;
+                this.h = this.canvas.height = this.canvas.parentElement.offsetHeight || innerHeight;
+                for(let key in this.systems) {
+                    if(this.systems[key].resize) this.systems[key].resize(this.w, this.h);
+                }
+            }
+
+            setMode(m) {
+                this.activeMode = m;
+            }
+
+            render(ts) {
+                let dt = ts - this.lastFrame;
+                this.lastFrame = ts;
+
+                this.ctx.clearRect(0, 0, this.w, this.h);
+
+                // Update opacities & draw active layers
+                for(let key in this.systems) {
+                    let target = (key === this.activeMode) ? 1 : 0;
+                    // Smooth lerp for fade-in / fade-out
+                    this.opacities[key] += (target - this.opacities[key]) * 0.08; 
+
+                    if(this.opacities[key] > 0.01) {
+                        this.ctx.save();
+                        this.ctx.globalAlpha = this.opacities[key];
+                        this.systems[key].draw(this.ctx, this.w, this.h, ts, dt, this.opacities[key]);
+                        this.ctx.restore();
+                    }
+                }
+                requestAnimationFrame((ts) => this.render(ts));
+            }
+        }
+
+        /* ── 1. IDLE (Subtle ambient) ───────────────────────────────────────── */
+        class SystemIdle {
+            constructor() { this.p = []; }
+            resize(w, h) {
+                this.p = Array.from({length: innerWidth < 768 ? 40 : 100}, () => ({
+                    x: Math.random() * w, y: Math.random() * h, 
+                    vx: (Math.random()-0.5)*0.2, vy: -0.2 - Math.random()*0.3, 
+                    s: Math.random()*2+0.5
+                }));
+            }
+            draw(ctx, w, h) {
+                ctx.fillStyle = 'rgba(59, 130, 246, 0.15)';
+                this.p.forEach(p => {
+                    p.x += p.vx; p.y += p.vy;
+                    if(p.x > w) p.x = 0; if(p.x < 0) p.x = w;
+                    if(p.y > h) p.y = 0; if(p.y < 0) p.y = h;
+                    ctx.beginPath(); ctx.arc(p.x, p.y, p.s, 0, Math.PI*2); ctx.fill();
+                });
+            }
+        }
+
+        /* ── 2. HYDRAULIC (Fluid Flow & Pressure Lines) ─────────────────────── */
+        class SystemHydraulic {
+            constructor() { this.lines = []; }
+            resize(w, h) {
+                this.lines = Array.from({length: 12}, () => ({
+                    y: h * 0.1 + Math.random() * h * 0.8,
+                    amp: 10 + Math.random() * 20,
+                    freq: 0.005 + Math.random() * 0.005,
+                    speed: 0.001 + Math.random() * 0.002,
+                    pulse: Math.random() // Pulse position (0-1)
+                }));
+            }
+            draw(ctx, w, h, ts) {
+                ctx.lineWidth = 2;
+                this.lines.forEach(l => {
+                    // Draw flowing streamline
+                    ctx.beginPath();
+                    ctx.strokeStyle = `rgba(59, 130, 246, 0.2)`;
+                    for(let x = 0; x <= w; x += 30) {
+                        let y = l.y + Math.sin(x * l.freq + ts * l.speed) * l.amp;
+                        if(x === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+                    }
+                    ctx.stroke();
+
+                    // Draw traveling pressure pulse
+                    l.pulse = (l.pulse + 0.005) % 1;
+                    let px = l.pulse * w;
+                    let py = l.y + Math.sin(px * l.freq + ts * l.speed) * l.amp;
+                    
+                    ctx.beginPath();
+                    ctx.arc(px, py, 4, 0, Math.PI*2);
+                    ctx.fillStyle = '#60a5fa';
+                    ctx.shadowBlur = 12; ctx.shadowColor = '#3b82f6';
+                    ctx.fill();
+                    ctx.shadowBlur = 0;
+                });
+            }
+        }
+
+        /* ── 3. POWER (3-Phase Electrical Waves) ────────────────────────────── */
+        class SystemPower {
+            draw(ctx, w, h, ts) {
+                let cy = h / 2;
+                let phases = [0, Math.PI * (2/3), Math.PI * (4/3)]; // 三相電 120度相位差
+                // 採用高科技黃金能量配色：淺黃、主黃、深琥珀
+                let colors = ['#fef08a', '#eab308', '#d97706'];
+                
+                ctx.globalCompositeOperation = 'lighter'; // 能量疊加發光
+                
+                phases.forEach((phaseOffset, i) => {
+                    ctx.beginPath();
+                    ctx.lineWidth = 3;
+                    ctx.strokeStyle = colors[i];
+                    ctx.shadowBlur = 15;
+                    ctx.shadowColor = colors[i];
+                    
+                    let freq = 0.006;
+                    let speed = 0.003;
+                    let amp = h * 0.25;
+
+                    // 繪製正弦波
+                    for (let x = 0; x <= w; x += 10) {
+                        let y = cy + Math.sin(x * freq - ts * speed + phaseOffset) * amp;
+                        if (x === 0) ctx.moveTo(x, y);
+                        else ctx.lineTo(x, y);
+                    }
+                    ctx.stroke();
+
+                    // 繪製波上的電子脈衝
+                    let pulseX = (ts * 0.4 + i * (w / 3)) % w;
+                    let pulseY = cy + Math.sin(pulseX * freq - ts * speed + phaseOffset) * amp;
+                    
+                    ctx.beginPath();
+                    ctx.arc(pulseX, pulseY, 5, 0, Math.PI * 2);
+                    ctx.fillStyle = '#ffffff';
+                    ctx.shadowBlur = 20;
+                    ctx.shadowColor = '#ffffff';
+                    ctx.fill();
+                });
+                
+                ctx.shadowBlur = 0;
+                ctx.globalCompositeOperation = 'source-over';
+            }
+        }
+
+        /* ── 4. HEAT (Volumetric Thermal Plume) ─────────────────────────────── */
+        class SystemHeat {
+            constructor() { this.p = []; }
+            resize(w, h) {
+                this.p = Array.from({length: 80}, () => this.spawn(w, h));
+            }
+            spawn(w, h) {
+                return {
+                    x: w / 2 + (Math.random() - 0.5) * w * 0.9, // 散佈在底部
+                    y: h + 20 + Math.random() * 50,
+                    vx: (Math.random() - 0.5) * 0.8,
+                    vy: -0.5 - Math.random() * 1.5,
+                    life: 1,
+                    decay: 0.004 + Math.random() * 0.008,
+                    size: 20 + Math.random() * 45
+                };
+            }
+            draw(ctx, w, h, ts) {
+                ctx.globalCompositeOperation = 'lighter'; // 疊加出中心高溫的白/黃色
+                
+                this.p.forEach(p => {
+                    // 熱對流：向上飄浮並帶有熱浪扭曲
+                    p.x += p.vx + Math.sin(p.y * 0.01 + ts * 0.002) * 0.8;
+                    p.y += p.vy;
+                    p.life -= p.decay;
+                    
+                    if(p.life <= 0 || p.y < -50) Object.assign(p, this.spawn(w, h));
+
+                    // 動態溫度色彩：越熱(life接近1)越黃白，越冷越紅並透明
+                    let r = 255;
+                    let g = Math.floor(255 * p.life);
+                    let b = Math.floor(100 * Math.pow(p.life, 2));
+                    let a = p.life * 0.5; // 最大透明度
+
+                    let grad = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, p.size);
+                    grad.addColorStop(0, `rgba(${r}, ${g}, ${b}, ${a})`);
+                    grad.addColorStop(1, 'rgba(0,0,0,0)');
+                    
+                    ctx.beginPath();
+                    ctx.arc(p.x, p.y, p.size, 0, Math.PI*2);
+                    ctx.fillStyle = grad;
+                    ctx.fill();
+                });
+                
+                ctx.globalCompositeOperation = 'source-over';
+            }
+        }
+
+        /* ── 5. DUCTING (Vector Airflow Arrows) ─────────────────────────────── */
+        class SystemDucting {
+            draw(ctx, w, h, ts) {
+                let spacing = 80;
+                ctx.strokeStyle = 'rgba(6, 182, 212, 0.4)';
+                ctx.lineWidth = 1.5;
+                
+                for(let y = spacing/2; y < h; y += spacing) {
+                    for(let x = 0; x < w + spacing; x += spacing) {
+                        // Flowing X coordinate
+                        let flowX = (x + ts * 0.05) % (w + spacing) - spacing;
+                        // Turbulence via sine wave
+                        let yOffset = Math.sin(flowX * 0.01 + y + ts * 0.002) * 15;
+                        let actualY = y + yOffset;
+                        
+                        // Draw Arrow
+                        ctx.beginPath();
+                        ctx.moveTo(flowX, actualY);
+                        ctx.lineTo(flowX - 15, actualY - 6);
+                        ctx.moveTo(flowX, actualY);
+                        ctx.lineTo(flowX - 15, actualY + 6);
+                        ctx.moveTo(flowX, actualY);
+                        ctx.lineTo(flowX - 30, actualY); // tail
+                        ctx.stroke();
+                    }
+                }
+            }
+        }
+
+        /* ── 6. SIMULATION / CFD (Vector Field Vortex) ──────────────────────── */
+        class SystemCFD {
+            draw(ctx, w, h, ts) {
+                let cx = w/2, cy = h/2;
+                let spacing = 40;
+                ctx.lineWidth = 2;
+
+                for(let x = spacing/2; x < w; x += spacing) {
+                    for(let y = spacing/2; y < h; y += spacing) {
+                        let dx = x - cx, dy = y - cy;
+                        let dist = Math.sqrt(dx*dx + dy*dy) || 1;
+                        
+                        // Vortex tangent velocity
+                        let vx = -dy / dist * 40;
+                        let vy = dx / dist * 40;
+                        
+                        // Add noise/turbulence
+                        let noise = Math.sin(x*0.01 + ts*0.001) * Math.cos(y*0.01 + ts*0.001) * 20;
+                        vx += noise; vy -= noise;
+                        
+                        let mag = Math.sqrt(vx*vx + vy*vy);
+                        // Color mapping: Blue (slow) -> Green -> Red (fast)
+                        let hue = 240 - Math.min(mag * 3, 240);
+                        
+                        ctx.strokeStyle = `hsla(${hue}, 80%, 60%, 0.5)`;
+                        ctx.beginPath();
+                        ctx.moveTo(x, y);
+                        ctx.lineTo(x + vx*0.6, y + vy*0.6);
+                        ctx.stroke();
+                    }
+                }
+            }
+        }
+
+        /* ── 7. MAINTENANCE (Diagnostic Grid & Scanline) ────────────────────── */
+        class SystemMaintenance {
+            draw(ctx, w, h, ts) {
+                let grid = 50;
+                ctx.strokeStyle = 'rgba(100, 116, 139, 0.15)';
+                ctx.lineWidth = 1;
+
+                // Static Grid
+                ctx.beginPath();
+                for(let x = 0; x < w; x += grid) { ctx.moveTo(x, 0); ctx.lineTo(x, h); }
+                for(let y = 0; y < h; y += grid) { ctx.moveTo(0, y); ctx.lineTo(w, y); }
+                ctx.stroke();
+
+                // Horizontal Scanline
+                let scanY = (ts * 0.15) % h;
+                
+                // Scanline glow
+                let grad = ctx.createLinearGradient(0, scanY - 20, 0, scanY);
+                grad.addColorStop(0, 'rgba(56, 189, 248, 0)');
+                grad.addColorStop(1, 'rgba(56, 189, 248, 0.3)');
+                ctx.fillStyle = grad;
+                ctx.fillRect(0, scanY - 20, w, 20);
+
+                ctx.strokeStyle = 'rgba(56, 189, 248, 0.8)';
+                ctx.beginPath();
+                ctx.moveTo(0, scanY); ctx.lineTo(w, scanY);
+                ctx.stroke();
+
+                // Random Diagnostic Flicker Points
+                if(Math.random() > 0.8) {
+                    let rx = Math.floor(Math.random()*w/grid)*grid;
+                    let ry = Math.floor(Math.random()*h/grid)*grid;
+                    ctx.fillStyle = 'rgba(239, 68, 68, 0.6)';
+                    ctx.fillRect(rx-2, ry-2, 4, 4);
+                }
+            }
+        }
+
+        /* ── 8. SIZING (Animated Bounding Boxes & Dimensions) ───────────────── */
+        class SystemSizing {
+            constructor() { this.boxes = []; }
+            resize(w, h) {
+                this.boxes = Array.from({length: 6}, () => this.resetBox(w, h));
+            }
+            resetBox(w, h) {
+                return {
+                    x: Math.random() * w, y: Math.random() * h,
+                    w: 50, h: 50,
+                    targetW: 100 + Math.random() * 150,
+                    targetH: 100 + Math.random() * 150,
+                    progress: 0,
+                    speed: 0.005 + Math.random() * 0.01
+                };
+            }
+            draw(ctx, w, h) {
+                ctx.strokeStyle = 'rgba(249, 115, 22, 0.5)';
+                ctx.lineWidth = 1;
+                ctx.setLineDash([4, 4]);
+
+                this.boxes.forEach(b => {
+                    b.progress += b.speed;
+                    if(b.progress > 1.2) Object.assign(b, this.resetBox(w, h));
+                    
+                    // Ease out expansion
+                    let ease = Math.min(1, b.progress * (2 - b.progress));
+                    let curW = b.w + (b.targetW - b.w) * ease;
+                    let curH = b.h + (b.targetH - b.h) * ease;
+                    let alphaFade = Math.max(0, 1 - (b.progress - 0.8)*2.5); // Fade out at end
+
+                    ctx.globalAlpha = alphaFade * ctx.globalAlpha;
+                    
+                    let bx = b.x - curW/2, by = b.y - curH/2;
+                    ctx.strokeRect(bx, by, curW, curH);
+
+                    // Corner markers
+                    ctx.setLineDash([]);
+                    ctx.fillStyle = 'rgba(249, 115, 22, 0.8)';
+                    ctx.fillRect(bx-2, by-2, 5, 5);
+                    ctx.fillRect(bx+curW-3, by-2, 5, 5);
+                    ctx.fillRect(bx-2, by+curH-3, 5, 5);
+                    ctx.fillRect(bx+curW-3, by+curH-3, 5, 5);
+                    ctx.setLineDash([4, 4]);
+                });
+                ctx.setLineDash([]);
+            }
+        }
+
+        /* ── 9. CALC (Floating Data & Matrix Math) ──────────────────────────── */
+        class SystemCalc {
+            constructor() { this.chars = []; }
+            resize(w, h) {
+                let mathSymbols = ['Σ', '∫', 'Δx', 'π', 'Ω', 'μ', '0.00', '1.01', 'T₁', 'P₂'];
+                this.chars = Array.from({length: 30}, () => ({
+                    text: mathSymbols[Math.floor(Math.random() * mathSymbols.length)],
+                    x: Math.random() * w, y: Math.random() * h,
+                    speed: 0.2 + Math.random() * 0.5
+                }));
+            }
+            draw(ctx, w, h) {
+                ctx.font = "14px 'JetBrains Mono', monospace";
+                ctx.fillStyle = 'rgba(16, 185, 129, 0.6)';
+                ctx.textAlign = "center";
+                
+                this.chars.forEach(c => {
+                    c.y -= c.speed;
+                    if(c.y < -20) { c.y = h + 20; c.x = Math.random() * w; }
+                    ctx.fillText(c.text, c.x, c.y);
+                });
+            }
+        }
+
+        /* ── 10. SPECS (Blueprint Circles) ──────────────────────────────────── */
+        class SystemSpecs {
+            draw(ctx, w, h, ts) {
+                let cx = w/2, cy = h/2;
+                ctx.strokeStyle = 'rgba(59, 130, 246, 0.3)';
+                ctx.lineWidth = 1;
+                
+                for(let r = 100; r <= 400; r += 80) {
+                    ctx.save();
+                    ctx.translate(cx, cy);
+                    ctx.rotate(ts * 0.0002 * (r % 160 === 0 ? 1 : -1));
+                    ctx.setLineDash([r * 0.1, r * 0.05]);
+                    ctx.beginPath();
+                    ctx.arc(0, 0, r, 0, Math.PI*2);
+                    ctx.stroke();
+                    ctx.restore();
+                }
+            }
+        }
+
+
+        // --- i18n & Data logic ---
+        let currentLang = 'zh'; 
+        const translations = { 
+            zh: { 'nav-subtitle': '專業空調工具箱', 'nav-tools': '工具庫', 'nav-features': '特點', 'nav-standards': '標準', 'nav-enter': '進入工具箱', 'hero-title-1': '專業空調工程師的', 'hero-title-2': '數位瑞士刀', 'hero-desc': '整合負荷計算、系統模擬與規範校核。我們不只提供計算結果，更為您的設計方案提供公信力與精確度。', 'hero-btn-start': '開始系統計算', 'hero-btn-learn': '了解更多', 'swiss-title': '滿足你的所有需求', 'features-title': '為什麼選擇 HVAC Pro ?', 'features-sub': '專為工程實務優化的核心優勢', 'feat-1-title': '極速運算', 'feat-1-desc': '輸入參數即刻反應結果，無需等待。支援多參數連動變更分析。', 'feat-2-title': '視覺化物理量', 'feat-2-desc': '動態空氣線圖與壓力損失曲線，讓抽象的工程數值變成直觀的圖表。', 'feat-3-title': '專業報告產出', 'feat-3-desc': '一鍵生成符合送審格式的計算書，包含完整公式細節與引用來源。', 'feat-4-title': '第一現場支持', 'feat-4-desc': '完美的行動裝置適配。不論在辦公室或工區現場，專業如影隨形。', 'interactive-title': '互動力：讓工具變聰明', 'interactive-sub': '滑動數值，即時預覽計算結果，無需等待重整', 'ux-1-title': '動態空氣線圖', 'ux-1-desc': '支持滑鼠點位拖動，即時反映混風狀態與加熱/冷卻路徑線段。', 'ux-2-title': 'CFD 流體動態展示', 'ux-2-desc': '輕量化的 3D 渲染技術，直接在瀏覽器展示無塵室內的氣流向量分布。', 'ux-3-title': '智慧負載預警', 'ux-3-desc': '輸入數據後，系統自動分析並給予「優化建議」或「警示」，而非僅產出冷冰冰的數值。', 'demo-title': '工程核心演示', 'standards-title': '對標國際工程標準', 'dash-title': '工程師工作台', 'dash-sub': '選擇計算模組以開始。所有工具均支援即時運算。', 'filter-all': '全部', 'filter-general': '基礎', 'filter-advanced': '進階', 'filter-others': '其他', 'overlay-exit': 'EXIT', 'overlay-status': 'CORE LOGIC ACTIVE' },
+            en: { 'nav-subtitle': 'Pro HVAC Toolkit', 'nav-tools': 'Tools', 'nav-features': 'Features', 'nav-standards': 'Standards', 'nav-enter': 'Dashboard', 'hero-title-1': 'The Engineer\'s', 'hero-title-2': 'Digital Swiss Knife', 'hero-desc': 'Integrated load calculation, system simulation, and code verification. We provide precision and credibility for your HVAC designs.', 'hero-btn-start': 'Start Calculation', 'hero-btn-learn': 'Learn More', 'swiss-title': 'All Your Needs Covered', 'features-title': 'Why HVAC Pro?', 'features-sub': 'Core advantages optimized for engineering practice', 'feat-1-title': 'Instant Calculation', 'feat-1-desc': 'Instant results upon input. No waiting required.', 'feat-2-title': 'Visualized Physics', 'feat-2-desc': 'Dynamic psychrometric charts and pressure loss curves turn abstract values into intuitive graphs.', 'feat-3-title': 'Pro Reporting', 'feat-3-desc': 'One-click generation of submission-ready calculation reports.', 'feat-4-title': 'On-Site Support', 'feat-4-desc': 'Perfect mobile adaptation. Professional tools with you, whether in the office or on site.', 'interactive-title': 'Interactive Intelligence', 'interactive-sub': 'Slide values, preview results instantly, no refresh needed', 'ux-1-title': 'Dynamic Psychrometrics', 'ux-1-desc': 'Drag points to see instant mixing states and heating/cooling processes.', 'ux-2-title': 'CFD Fluid Dynamics', 'ux-2-desc': 'Lightweight 3D rendering to visualize airflow vectors.', 'ux-3-title': 'Smart Load Alert', 'ux-3-desc': 'System analyzes inputs to give "optimization tips".', 'demo-title': 'Core Engine Demo', 'standards-title': 'International Standards', 'dash-title': 'Engineer Workbench', 'dash-sub': 'Select a module to begin. All tools support real-time calculation.', 'filter-all': 'All', 'filter-general': 'Basic', 'filter-advanced': 'Advanced', 'filter-others': 'Others', 'overlay-exit': 'EXIT', 'overlay-status': 'CORE LOGIC ACTIVE' }
+        };
+
+        function toggleLanguage() {
+            currentLang = currentLang === 'zh' ? 'en' : 'zh';
+            updateContent();
+            renderTools('all'); 
+        }
+
+        function updateContent() {
+            document.querySelectorAll('[data-i18n]').forEach(el => {
+                const key = el.getAttribute('data-i18n');
+                if (translations[currentLang][key]) el.innerText = translations[currentLang][key];
+            });
+        }
+
+        const toolsData = {
+            general: [
+                { id: 'PMP-01', type: 'hydraulic', name: { zh: '冰機水泵換算', en: 'Chiller Pump Calc' }, desc: { zh: 'RT 同步推算 CHW/CW 流量耗電與揚程。', en: 'Calculate Flow, Power & Head from RT.' }, icon: 'fa-bolt', color: 'text-yellow-600', bg: 'bg-yellow-50', file: '冰機換算水泵.html', theme: 'light', bgImage: '/assets/bg/PMP-01.jpg' },
+                { id: 'TNK-02', type: 'hydraulic', name: { zh: '膨脹水箱選型', en: 'Expansion Tank' }, desc: { zh: '密閉系統膨脹體積核算與安全係數審查。', en: 'Closed loop expansion volume & safety check.' }, icon: 'fa-box-open', color: 'text-indigo-600', bg: 'bg-indigo-50', file: '膨脹水箱計算.html', theme: 'light', bgImage: '/assets/bg/TNK-02.jpg' },
+                { id: 'WT-03', type: 'hydraulic', name: { zh: '冷卻塔補水量', en: 'Cooling Tower Water' }, desc: { zh: '蒸發、飛散與排放損耗精準水平衡核算。', en: 'Evaporation, drift & blowdown balance calc.' }, icon: 'fa-droplet', color: 'text-blue-600', bg: 'bg-blue-50', file: '冷卻水塔補水量計算.html', theme: 'light', bgImage: '/assets/bg/WT-03.jpg' },
+                { id: 'CDA-07', type: 'ducting', name: { zh: 'CDA 加濕計算', en: 'CDA Humidification' }, desc: { zh: '製程 CDA 噴霧加濕需求與絕對濕度分析。', en: 'Process CDA spray demand.' }, icon: 'fa-wind', color: 'text-purple-600', bg: 'bg-purple-50', file: 'CDA加濕需求計算機.html', theme: 'light', bgImage: '/assets/bg/CDA-07.jpg' },
+                { id: 'CON-04', type: 'calc', name: { zh: '工程換算器', en: 'Unit Converter' }, desc: { zh: 'RT, KW, GPM, CFM 多單位精準連動。', en: 'Precise conversion for RT, KW, GPM, CFM.' }, icon: 'fa-arrow-right-arrow-left', color: 'text-slate-600', bg: 'bg-slate-100', file: '空調工程專業換算工具.html', theme: 'light', bgImage: '/assets/bg/CON-04.jpg' },
+                { id: 'PSY-05', type: 'sim', name: { zh: '空氣性質分析', en: 'Psychrometrics' }, desc: { zh: '含濕量、焓值、露點高精度核算。', en: 'High precision humidity, enthalpy, dew point.' }, icon: 'fa-cloud', color: 'text-sky-600', bg: 'bg-sky-50', file: '空氣性質分析.html', theme: 'light', bgImage: '/assets/bg/PSY-05.jpg' },
+                { id: 'RES-00', type: 'heat', name: { zh: '家用空調估算器', en: 'Home AC Estimator' }, desc: { zh: '住宅冷氣噸數估算與 VRF 多聯系統規劃顧問。', en: 'Residential sizing & VRF planning advisor.' }, icon: 'fa-house', color: 'text-emerald-600', bg: 'bg-emerald-50', file: '家用空調估算器.html', theme: 'light', bgImage: '/assets/bg/RES-00.png' },
+                // 👇 新增：天氣與外氣條件 (基礎)
+                { id: 'WEA-01', type: 'sim', name: { zh: '全球天氣與外氣條件', en: 'Global Weather Conditions' }, desc: { zh: '全球各地外氣設計條件與即時溫濕度分析。', en: 'Global outdoor design conditions & real-time weather.' }, icon: 'fa-cloud-sun', color: 'text-amber-500', bg: 'bg-amber-50', file: 'Weather.html', theme: 'light', bgImage: '/assets/bg/WEA-01.png' }
+            ],
+            advanced: [
+                { id: 'DC-01', type: 'sim', name: { zh: 'AI資料中心數位展廳', en: 'AI Data Center Sim' }, desc: { zh: 'NVIDIA GB200 NVL72 液冷資料中心 3D 模擬。', en: 'NVIDIA GB200 NVL72 Liquid Cooling 3D Simulation.' }, icon: 'fa-server', color: 'text-white', bg: 'bg-gradient-to-br from-[#76b900] to-[#080c14]', file: 'Data center.html', theme: 'dark', bgImage: '/assets/bg/DC-01.png' },
+                // 👇 新增：資料中心計算器 (進階)
+                { id: 'DC-02', type: 'calc', name: { zh: '資料中心計算器', en: 'AI Data Center Calc' }, desc: { zh: 'AIDC 快速熱負荷計算與設備選型評估。', en: 'AIDC rapid heat load calculation and equipment sizing.' }, icon: 'fa-calculator', color: 'text-white', bg: 'bg-gradient-to-br from-teal-500 to-emerald-800', file: 'Data center Cal.html', theme: 'dark', bgImage: '/assets/bg/DC-02.png' },
+                { id: 'FAB-50', type: 'cfd', name: { zh: '無塵室模擬器 Lite', en: 'Cleanroom Sim Lite' }, desc: { zh: '無塵室 3D 氣流模擬與佈置分析。', en: '3D airflow sim & layout analysis.' }, icon: 'fa-hurricane', color: 'text-white', bg: 'bg-gradient-to-br from-google-blue to-blue-700', file: '無塵室氣流模擬.html', theme: 'dark', bgImage: '/assets/bg/FAB-50.jpg' },
+                { id: 'PRL-01', type: 'hydraulic', name: { zh: '專業壓損計算書', en: 'Pro Pressure Loss' }, desc: { zh: '最不利環路壓力損失計算。', en: 'Critical path calculation.' }, icon: 'fa-file-invoice', color: 'text-white', bg: 'bg-gradient-to-br from-slate-700 to-black', file: '水管風管壓損計算.html', theme: 'dark', bgImage: '/assets/bg/PRL-01.jpg' },
+                { id: 'PSY-PRO', type: 'heat', name: { zh: '空氣線圖 Pro', en: 'Psychrometrics Pro' }, desc: { zh: '混風系統與盤管負荷 Mapping 邏輯分析。', en: 'Mixing system & coil load mapping logic.' }, icon: 'fa-chart-area', color: 'text-white', bg: 'bg-gradient-to-br from-emerald-500 to-teal-700', file: '空氣線圖Pro 計算器.html', theme: 'dark', bgImage: '/assets/bg/PSY-PRO.jpg' },
+                { id: 'CRM-03', type: 'cfd', name: { zh: '無塵室大師 Pro', en: 'Cleanroom Master' }, desc: { zh: 'MAU、FFU、DCC 熱平衡與氣流平衡。', en: 'MAU, FFU, RCU heat & airflow balance.' }, icon: 'fa-industry', color: 'text-white', bg: 'bg-gradient-to-br from-purple-600 to-indigo-800', file: 'Clean room master.html', theme: 'dark', bgImage: '/assets/bg/CRM-03.png' },
+                { id: 'CHW-04', type: 'hydraulic', name: { zh: '冰水管路計算', en: 'CHW Piping Calc' }, desc: { zh: '自動計算壓損與等效管徑。', en: 'Puzzle modeling, auto pressure drop calc.' }, icon: 'fa-snowflake', color: 'text-white', bg: 'bg-gradient-to-br from-blue-400 to-cyan-600', file: '冰水管路計算.html', theme: 'dark', bgImage: '/assets/bg/CHW-04.png' },
+                { id: 'DCT-06', type: 'ducting', name: { zh: '風管尺寸檢核', en: 'Duct Sizing Check' }, desc: { zh: '等摩擦法與等流速自動計算選型。', en: 'Equal friction & velocity method sizing.' }, icon: 'fa-ruler-combined', color: 'text-white', bg: 'bg-gradient-to-br from-orange-500 to-red-600', file: '風管計算.html', theme: 'dark', bgImage: '/assets/bg/DCT-06.png' },
+                { id: 'DCT-09', type: 'ducting', name: { zh: '風管鐵皮計算', en: 'Duct Material Estimator' }, desc: { zh: '精算風管鐵皮重量、保溫面積與板材用量。', en: 'Precise calc for duct weight.' }, icon: 'fa-layer-group', color: 'text-white', bg: 'bg-gradient-to-br from-slate-600 to-slate-900', file: '風管鐵皮計算.html', theme: 'dark', bgImage: '/assets/bg/DCT-09.png' }
+            ],
+            others: [
+                { id: 'PCW-08', type: 'hydraulic', name: { zh: 'PCW 系統估算', en: 'PCW Estimation' }, desc: { zh: '製程冷卻水系統需求分析與設備選型。', en: 'Process cooling water demand & selection.' }, icon: 'fa-microchip', color: 'text-rose-600', bg: 'bg-rose-50', file: 'PCW計算.html', theme: 'light', bgImage: '/assets/bg/PCW-08.png' },
+                { id: 'GAS-09', type: 'ducting', name: { zh: 'Bulk Gas 系統', en: 'Bulk Gas System' }, desc: { zh: '大宗氣體管路壓損與流速工程審查。', en: 'Bulk gas piping pressure drop & velocity.' }, icon: 'fa-gas-pump', color: 'text-green-600', bg: 'bg-green-50', file: 'Bulk gas system.html', theme: 'light', bgImage: '/assets/bg/GAS-09.png' },
+                { id: 'CDS-10', type: 'hydraulic', name: { zh: 'CDS 化學系統', en: 'CDS Chemical Sys' }, desc: { zh: 'CDS 化學系統水力計算與管徑選型分析。', en: 'Chemical delivery system hydraulic calc.' }, icon: 'fa-flask', color: 'text-teal-600', bg: 'bg-teal-50', file: 'CDS 化學系統.html', theme: 'light', bgImage: '/assets/bg/CDS-10.png' },
+                { id: 'PEX-11', type: 'ducting', name: { zh: '製程排氣壓損計算', en: 'Process Exhaust Calc' }, desc: { zh: '管徑選型與壓損模擬 (Sizing & Loss)。', en: 'Duct sizing and pressure loss simulation.' }, icon: 'fa-fan', color: 'text-slate-600', bg: 'bg-slate-100', file: '製程排氣計算.html', theme: 'light', bgImage: '/assets/bg/PEX-11.png' },
+                { id: 'WBAL-12', type: 'hydraulic', name: { zh: '用水平衡圖計算', en: 'Water Balance Diagram' }, desc: { zh: '工廠用水流向、回收率與平衡計算。', en: 'Water flow, recovery rate & balance calc.' }, icon: 'fa-droplet', color: 'text-blue-500', bg: 'bg-blue-50', file: '用水平衡圖.html', theme: 'light', bgImage: '/assets/bg/WBAL-12.png' }
+            ]
+        };
+
+        function enterDashboard() {
+            const landing = document.getElementById('landing-view');
+            const dashboard = document.getElementById('dashboard-view');
+            landing.style.opacity = '0'; landing.style.transform = 'scale(0.98)';
+            setTimeout(() => {
+                landing.classList.add('view-hidden'); landing.classList.remove('view-active');
+                dashboard.classList.remove('view-hidden'); dashboard.classList.add('view-active');
+                requestAnimationFrame(() => { dashboard.style.opacity = '1'; dashboard.style.transform = 'scale(1)'; });
+                renderTools('all');
+            }, 300);
+        }
+
+        function exitDashboard() {
+            const landing = document.getElementById('landing-view');
+            const dashboard = document.getElementById('dashboard-view');
+            dashboard.style.opacity = '0'; dashboard.style.transform = 'scale(0.98)';
+            setTimeout(() => {
+                dashboard.classList.add('view-hidden'); dashboard.classList.remove('view-active');
+                landing.classList.remove('view-hidden'); landing.classList.add('view-active');
+                landing.style.display = ''; landing.style.opacity = '0'; 
+                requestAnimationFrame(() => { landing.style.opacity = '1'; landing.style.transform = 'scale(1)'; });
+            }, 300);
+        }
+
+        function renderTools(category) {
+            const grid = document.getElementById('tools-grid');
+            grid.innerHTML = ''; 
+            let toolsToRender = category === 'all' ? [...toolsData.general, ...toolsData.advanced, ...toolsData.others] : toolsData[category] || [];
+
+            toolsToRender.forEach((tool, index) => {
+                const card = document.createElement('div');
+                card.className = "tool-card opacity-0 translate-y-4 group relative rounded-[2rem] p-6 h-72 cursor-pointer overflow-hidden flex flex-col justify-between transition-all duration-300";
+                
+                const isDark = tool.theme === 'dark';
+                card.classList.add(isDark ? 'dark-card' : 'light-card');
+                
+                if (isDark) { card.classList.add(...tool.bg.split(' '), 'text-white', 'shadow-lg', 'hover:scale-[1.02]'); } 
+                else { card.classList.add('bg-white', 'border', 'border-slate-100', 'shadow-sm', 'hover:-translate-y-1', 'hover:shadow-xl'); }
+
+                card.style.animation = `fadeInUp 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards ${index * 0.05}s`;
+                card.onclick = () => openModule(tool);
+
+                // Hover Background Logic
+                card.onmouseenter = () => { if(heroAnim) heroAnim.setMode(tool.type || 'cfd'); };
+                card.onmouseleave = () => { if(heroAnim) heroAnim.setMode('idle'); };
+
+                let cardHTML = `
+                    <div class="absolute inset-0 bg-cover bg-center opacity-10 group-hover:opacity-30 transition-all duration-700 tool-bg-image ${isDark ? 'mix-blend-overlay' : ''}" style="background-image: url('${tool.bgImage}');"></div>
+                    <div class="tech-overlay"></div>
+                `;
+
+                if (isDark) {
+                    cardHTML += `
+                        <div class="absolute top-0 right-0 p-24 bg-white opacity-5 rounded-full -mr-10 -mt-10 transition-transform group-hover:scale-150 duration-700"></div>
+                        <div class="relative z-10 pointer-events-none">
+                            <div class="w-12 h-12 bg-white/20 backdrop-blur-md rounded-xl flex items-center justify-center text-xl mb-4 shadow-inner tool-icon group-hover:animate-icon-bounce">
+                                <i class="fa-solid ${tool.icon}"></i>
+                            </div>
+                            <h3 class="text-2xl font-bold mb-2 tracking-tight">${tool.name[currentLang]}</h3>
+                            <p class="text-white/80 text-sm font-medium leading-relaxed">${tool.desc[currentLang]}</p>
+                        </div>
+                    `;
+                } else {
+                    cardHTML += `
+                        <div class="relative z-10 pointer-events-none">
+                            <div class="w-14 h-14 ${tool.bg} ${tool.color} rounded-2xl flex items-center justify-center text-2xl mb-4 transition-transform tool-icon group-hover:scale-110 group-hover:rotate-12">
+                                <i class="fa-solid ${tool.icon}"></i>
+                            </div>
+                            <h3 class="text-xl font-bold text-slate-800 mb-2">${tool.name[currentLang]}</h3>
+                            <p class="text-slate-500 text-sm leading-relaxed">${tool.desc[currentLang]}</p>
+                        </div>
+                    `;
+                }
+                card.innerHTML = cardHTML;
+                grid.appendChild(card);
+            });
+        }
+
+        function filterTools(category) {
+            document.querySelectorAll('.filter-btn').forEach(btn => {
+                if(btn.dataset.filter === category) {
+                    btn.classList.remove('text-slate-500'); btn.classList.add('bg-white', 'text-slate-800', 'shadow-sm');
+                } else {
+                    btn.classList.remove('bg-white', 'text-slate-800', 'shadow-sm'); btn.classList.add('text-slate-500');
+                }
+            });
+            renderTools(category);
+        }
+
+        function openModule(tool) {
+            if (!Clerk.user) { Clerk.openSignIn({ afterSignInUrl: window.location.href }); return; }
+            const container = document.getElementById('module-container');
+            const iframe = document.getElementById('module-viewport');
+            document.getElementById('active-tool-title').innerText = tool.name[currentLang];
+            iframe.src = encodeURI(tool.file) + '?v=' + Date.now() + '&lang=' + currentLang;
+            container.style.display = 'flex'; requestAnimationFrame(() => container.classList.add('module-active'));
+            document.body.style.overflow = 'hidden';
+            document.getElementById('loader').style.display = 'flex';
+            iframe.onload = () => document.getElementById('loader').style.display = 'none';
+        }
+
+        function closeModule() {
+            const container = document.getElementById('module-container');
+            container.classList.remove('module-active');
+            setTimeout(() => { container.style.display = 'none'; document.getElementById('module-viewport').src = 'about:blank'; document.body.style.overflow = 'auto'; }, 300);
+        }
+        function iframeReload() { document.getElementById('module-viewport').contentWindow.location.reload(); }
+
+        window.updateLiveChart = function(val) {
+            const valEl = document.getElementById('demo-value'); if (valEl) valEl.innerText = val + " RT";
+            const flow = (val * 2.4).toFixed(1); const head = (15 + (val * 0.25)).toFixed(1);
+            const flow2 = document.getElementById('demo-flow-2'); const head2 = document.getElementById('demo-head-2');
+            if(flow2) flow2.innerText = flow; if(head2) head2.innerText = head;
+            const h1 = 20 + (val * 0.3); const h2 = 40 + (val * 0.4); const h3 = 30 + (val * 0.6); const h4 = 35 + (val * 0.2); const h5 = 15 + (val * 0.5);
+            ['1','2','3','4','5'].forEach((id, i) => { const el = document.getElementById(`bar-${id}`); const h = [h1, h2, h3, h4, h5][i]; if(el) el.style.height = h + '%'; });
+            const tt = document.getElementById('bar-tooltip'); if(tt) { tt.innerText = val + ' RT → ' + h3.toFixed(0) + '% Load'; tt.style.opacity = 1; }
+        }
+
+        window.playDemo = function() {
+            const playBtn = document.getElementById('demo-play-overlay');
+            if(playBtn) { playBtn.style.opacity = '0'; playBtn.style.pointerEvents = 'none'; }
+            let rtValue = 100;
+            const interval = setInterval(() => {
+                rtValue += 100; if (rtValue > 600) rtValue = 100;
+                const inputCard = document.getElementById('demo-input-card');
+                if(inputCard) { inputCard.classList.add('scale-105', 'border-blue-500/50'); setTimeout(() => inputCard.classList.remove('scale-105', 'border-blue-500/50'), 200); }
+                const loadText = document.getElementById('demo-load-text'); if(loadText) loadText.innerText = `${rtValue} RT`;
+                const flowParticle = document.getElementById('flow-particle');
+                if(flowParticle) { flowParticle.classList.add('flow-animate'); setTimeout(() => flowParticle.classList.remove('flow-animate'), 1500); }
+                setTimeout(() => {
+                    const resultCard = document.getElementById('demo-result-card'); const resFlow = document.getElementById('demo-result-flow');
+                    if(resultCard) { resultCard.classList.remove('opacity-50', 'scale-95', 'grayscale'); resultCard.classList.add('scale-105', 'shadow-blue-500/50'); }
+                    if(resFlow) resFlow.innerText = (rtValue * 2.4).toFixed(0);
+                    setTimeout(() => {
+                        if(resultCard) { resultCard.classList.remove('scale-105', 'shadow-blue-500/50'); if (rtValue === 600) setTimeout(() => resultCard.classList.add('opacity-50', 'scale-95', 'grayscale'), 1000); }
+                    }, 300);
+                }, 600);
+            }, 2000);
+            setTimeout(() => { clearInterval(interval); if(playBtn) { playBtn.style.opacity = '1'; playBtn.style.pointerEvents = 'auto'; } }, 12000);
+        }
+
+        function initObservers() {
+             const observer = new IntersectionObserver((entries) => { entries.forEach(entry => { if (entry.isIntersecting) { entry.target.classList.add('active'); } }); }, { threshold: 0.1 });
+             document.querySelectorAll('.reveal').forEach(el => observer.observe(el));
+        }
+
+        let heroAnim, visualEngine; // 宣告全域動畫實例
+
+        // === Boot Loader 與 Canvas / Orbit 初始化 ===
+        window.onload = async () => {
+            // 初始化 Hero 背景 Canvas
+            heroAnim = new HVACAnimator('hero-canvas');
+            
+            // 初始化 3D 視覺引擎 (Swiss Knife)
+            visualEngine = new VisualEngine('swiss-canvas');
+            
+            const swissBgFx = document.getElementById('swiss-bg-fx');
+            const swissParticles = document.getElementById('swiss-particles-layer');
+            
+            // Generate floating particles for swiss section
+            if (swissParticles) {
+                for (let i = 0; i < 20; i++) {
+                    const p = document.createElement('div');
+                    p.className = 'swiss-particle';
+                    const size = Math.random() * 6 + 2;
+                    p.style.cssText = `width:${size}px;height:${size}px;left:${Math.random()*100}%;top:${Math.random()*100}%;animation-delay:${Math.random()*4}s;animation-duration:${3+Math.random()*4}s;`;
+                    swissParticles.appendChild(p);
+                }
+            }
+            
+            const colorMap = {
+                hydraulic:'rgba(59,130,246,.4)', power:'rgba(234,179,8,.4)',
+                heat:'rgba(239,68,68,.4)',       ducting:'rgba(6,182,212,.4)',
+                sim:'rgba(99,102,241,.4)',       cfd:'rgba(99,102,241,.4)',
+                specs:'rgba(59,130,246,.3)', 
+                maint:'rgba(100,116,139,.3)',    sizing:'rgba(249,115,22,.3)',     
+                calc:'rgba(16,185,129,.3)'
+            };
+
+            // ==========================================
+            // 3D PLANET ORBIT ENGINE STATE (NEW LOGIC)
+            // ==========================================
+            const TOTAL  = 9;
+            const PERIOD = 60000;
+            const TILT_MD = 73 * Math.PI / 180;
+            const TILT_SM = 22 * Math.PI / 180;
+            let orbitRad = 0;
+            let prevTs   = null;
+            let orbitPaused   = false;
+
+            const spokeEls = [...document.querySelectorAll('.spoke')].map(spoke => ({
+                root:    spoke,
+                line:    spoke.querySelector('.spoke-line'),
+                counter: spoke.querySelector('.counter-rotator'),
+                fixer:   spoke.querySelector('.orientation-fixer'),
+                wrapper: spoke.querySelector('.item-wrapper'),
+                blade:   spoke.querySelector('.blade-card'),
+            }));
+
+            // Stop any leftover CSS animations on counter rotators
+            spokeEls.forEach(({counter}) => {
+                if (counter) { counter.style.animation = 'none'; counter.style.transform = 'none'; }
+            });
+
+            // 綁定 Swiss Knife 刀片 Hover 事件
+            document.querySelectorAll('.blade-card').forEach(blade => {
+                blade.addEventListener('mouseenter', () => {
+                    orbitPaused = true;
+                    const type = blade.dataset.type || blade.getAttribute('data-type');
+                    
+                    if (heroAnim) heroAnim.setMode(type); // 連動 Hero 區塊粒子
+                    
+                    visualEngine.setMode(type); // 觸發新版物理視覺引擎
+                    visualEngine.canvas.style.opacity = '1';
+
+                    if (swissBgFx) { swissBgFx.setAttribute('data-active', type); swissBgFx.classList.add('active'); }
+                    if (swissParticles) {
+                        swissParticles.classList.add('active');
+                        swissParticles.querySelectorAll('.swiss-particle').forEach(p => p.style.background = colorMap[type] ?? 'rgba(59,130,246,.3)');
+                    }
+                });
+                blade.addEventListener('mouseleave', () => {
+                    orbitPaused = false;
+                    prevTs = null;
+                    
+                    if (heroAnim) heroAnim.setMode('idle'); // 恢復 Hero 區塊閒置狀態
+                    
+                    visualEngine.setMode('idle'); // 讓新版物理引擎處理 idle 動畫
+                    
+                    if (swissBgFx) swissBgFx.classList.remove('active');
+                    if (swissParticles) swissParticles.classList.remove('active');
+                });
+            });
+
+            function orbitFrame(ts) {
+                if (prevTs === null) prevTs = ts;
+                if (!orbitPaused) {
+                    orbitRad = (orbitRad + ((ts - prevTs) / PERIOD) * Math.PI * 2) % (Math.PI * 2);
+                }
+                prevTs = ts;
+
+                const isMd  = innerWidth >= 768;
+                const R     = isMd ? 310 : 138;
+                const tilt  = isMd ? TILT_MD : TILT_SM;
+                const RY    = R * Math.cos(tilt);
+                const cOff  = isMd ? 105 : 72;
+                const maxV  = R - cOff;
+
+                spokeEls.forEach(({root, line, fixer, wrapper, blade}, idx) => {
+                    const theta = idx * (2 * Math.PI / TOTAL) + orbitRad;
+                    const sx    = R  * Math.cos(theta);
+                    const sy    = RY * Math.sin(theta);
+                    const sinT  = Math.sin(theta);
+                    const depth = (sinT + 1) / 2;
+
+                    const dist    = Math.sqrt(sx*sx + sy*sy);
+                    const lineDeg = Math.atan2(sy, sx) * (180 / Math.PI);
+
+                    root.style.transform = `rotate(${lineDeg}deg)`;
+                    root.style.width     = `${dist}px`;
+
+                    if (line) {
+                        const vis = Math.max(0, dist - cOff);
+                        line.style.opacity = maxV > 0 ? (0.04 + (vis / maxV) * 0.30).toFixed(3) : '0';
+                    }
+
+                    const isHov = blade?.matches(':hover') ?? false;
+
+                    const scale = isHov ? 1.0
+                        : (isMd
+                            ? 0.62 + depth * 0.48
+                            : 0.85 + depth * 0.22);
+
+                    const opacity = isHov ? 1.0
+                        : (isMd
+                            ? 0.25 + depth * 0.75
+                            : 0.52 + depth * 0.48);
+
+                    const blur = (!isHov && isMd && depth < 0.15) ? (0.15 - depth) * 8 : 0;
+                    const zi = Math.round(5 + depth * 90) + (isHov ? 200 : 0);
+
+                    if (fixer) {
+                        fixer.style.transform = `rotate(${-lineDeg}deg) scale(${scale.toFixed(3)})`;
+                        fixer.style.opacity   = opacity.toFixed(3);
+                        fixer.style.filter    = blur > 0 ? `blur(${blur.toFixed(2)}px)` : '';
+                    }
+
+                    root.style.zIndex   = zi;
+                    root.style.position = 'absolute';
+
+                    if (blade && !isHov) {
+                        if (depth > 0.52) {
+                            const s = (depth - 0.52) / 0.48;
+                            blade.style.boxShadow =
+                                `0 ${Math.round(3+s*11)}px ${Math.round(8+s*24)}px rgba(37,99,235,${(s*0.24).toFixed(2)})`;
+                        } else {
+                            blade.style.boxShadow = 'none';
+                        }
+                    }
+                });
+                requestAnimationFrame(orbitFrame);
+            }
+            requestAnimationFrame(orbitFrame);
+
+            // Boot Loader 快速載入邏輯
+            const loader = document.getElementById('boot-loader');
+            const progress = document.getElementById('boot-bar-progress');
+            const terminalLines = document.getElementById('terminal-lines');
+            const typingText = document.getElementById('typing-text');
+            
+            const bootSequence = [
+                { msg: "Initializing HVAC Core...", delay: 200, prog: 33 },
+                { msg: "Loading CFD Engine...", delay: 200, prog: 66 },
+                { msg: "Calibrating Airflow Model...", delay: 200, prog: 100 }
+            ];
+
+            let sequencePromise = Promise.resolve();
+            const typeText = async (text, delay) => {
+                typingText.innerText = '';
+                return new Promise(resolve => {
+                    let i = 0;
+                    const typeInterval = setInterval(() => {
+                        typingText.innerText += text.charAt(i); i++;
+                        if (i >= text.length) { clearInterval(typeInterval); setTimeout(() => resolve(), delay); }
+                    }, 10); 
+                });
+            };
+            const pushLine = (text) => {
+                const div = document.createElement('div'); div.innerText = "> " + text;
+                terminalLines.appendChild(div);
+                if (terminalLines.children.length > 3) terminalLines.removeChild(terminalLines.firstChild);
+            };
+
+            for (const step of bootSequence) {
+                sequencePromise = sequencePromise.then(async () => {
+                    await typeText(step.msg, step.delay);
+                    pushLine(step.msg);
+                    progress.style.width = step.prog + '%';
+                });
+            }
+
+            try {
+                await Promise.all([ sequencePromise, Clerk.load({ afterSignInUrl: window.location.href, afterSignOutUrl: window.location.href }) ]);
+                
+                if (Clerk.user) {
+                    const userName = Clerk.user.firstName || "Engineer";
+                    document.getElementById('landing-cta-text').innerText = `進入系統 (${userName})`;
+                    document.getElementById('welcome-badge').innerHTML = `WELCOME BACK, ${userName.toUpperCase()}`;
+                    Clerk.mountUserButton(document.getElementById('user-button'), { afterSignOutUrl: window.location.href });
+
+                    const landing = document.getElementById('landing-view');
+                    const dashboard = document.getElementById('dashboard-view');
+                    landing.classList.remove('view-active'); landing.classList.add('view-hidden');
+                    landing.style.display = 'none'; landing.style.opacity = '0';
+                    dashboard.classList.remove('view-hidden'); dashboard.classList.add('view-active');
+                    dashboard.style.display = 'block'; dashboard.style.opacity = '1'; dashboard.style.transform = 'scale(1)';
+                    renderTools('all');
+                }
+                
+                // 平滑淡出 Boot Loader
+                loader.style.transition = 'opacity 0.4s ease, transform 0.4s ease';
+                loader.style.opacity = '0';
+                loader.style.transform = 'scale(1.05)';
+                setTimeout(() => { loader.style.display = 'none'; }, 400);
+                initObservers();
+                
+                // Weather
+                fetch('https://api.open-meteo.com/v1/forecast?latitude=25.0375&longitude=121.5637&current=temperature_2m,relative_humidity_2m')
+                    .then(res => res.json()).then(data => {
+                        document.getElementById('live-temp').innerText = `${data.current.temperature_2m}°C`;
+                        document.getElementById('live-rh').innerText = `${data.current.relative_humidity_2m}%`;
+                    }).catch(()=>{});
+
+            } catch (err) {
+                console.error(err);
+                typingText.innerText = "CRITICAL ERROR: OFFLINE MODE"; typingText.style.color = "#ef4444";
+                setTimeout(() => loader.style.display = 'none', 800);
+            }
+        };
+    </script>
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+  // 暫停載入 Analytics 模組以避免 404 報錯
+  // import { getAnalytics } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-analytics.js";
+  
+  const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : { apiKey: "", authDomain: "", projectId: "hvac-pro-shiu", storageBucket: "", messagingSenderId: "", appId: "" };
+  
+  try { 
+      const app = initializeApp(firebaseConfig); 
+      // 註解掉 getAnalytics 呼叫，不影響其他功能
+      // getAnalytics(app); 
+  } catch(e) { 
+      console.log('Firebase optional'); 
+  }
+</script>
+</body>
+</html>
