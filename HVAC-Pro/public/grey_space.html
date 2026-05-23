@@ -1,0 +1,1044 @@
+<!DOCTYPE html>
+<html lang="zh-TW" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>機電灰區 (MEP Room) 數位展廳 | 高精度電力基礎設施</title>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tween.js/18.6.4/tween.umd.js"></script>
+
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: { 
+                extend: { 
+                    colors: { 
+                        dc: { 950:'#010205', 900:'#080c14', 800:'#0f172a', 700:'#1e293b' },
+                        nv: { 500:'#76b900', 400:'#8add12' }
+                    },
+                    fontFamily: { sans: ['Inter', 'Segoe UI', 'sans-serif'], mono: ['JetBrains Mono', 'monospace'] }
+                } 
+            }
+        }
+    </script>
+
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700;800&family=Inter:wght@400;600;800&display=swap');
+        body { background-color: #080c14; color: #e2e8f0; overflow: hidden; margin: 0; }
+        
+        #canvas-container { width: 100vw; height: 100vh; position: absolute; top: 0; left: 0; z-index: 1; cursor: grab; }
+        #canvas-container:active { cursor: grabbing; }
+        
+        #ui-layer { position: absolute; inset: 0; pointer-events: none; z-index: 10; display: flex; flex-direction: column; }
+        
+        .glass-panel {
+            background: rgba(8, 12, 20, 0.75); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(51, 65, 85, 0.4); box-shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.8);
+            pointer-events: auto;
+        }
+
+        .hud-left { 
+            position: absolute; top: 80px; left: 20px; width: 320px; border-radius: 16px; padding: 20px; z-index: 40;
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .hud-right { 
+            position: absolute; top: 80px; right: 20px; width: 340px; border-radius: 16px; padding: 20px; z-index: 50;
+            opacity: 0; transform: translateX(20px); transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1); pointer-events: none;
+        }
+        .hud-right.active { opacity: 1; transform: translateX(0); pointer-events: auto; }
+
+        @media (max-width: 768px) {
+            .hud-left, .hud-right { left: 5%; right: 5%; width: auto; top: 76px; transform: translateY(-10px) scale(0.98); opacity: 0; pointer-events: none; }
+            .hud-left.active, .hud-right.active { opacity: 1; pointer-events: auto; transform: translateY(0) scale(1); }
+        }
+
+        #sim-modal-overlay {
+            position: fixed; inset: 0; z-index: 100;
+            background: rgba(2, 6, 23, 0.85); backdrop-filter: blur(16px);
+            display: flex; align-items: center; justify-content: center;
+            opacity: 0; pointer-events: none; transition: opacity 0.3s ease;
+        }
+        :root {
+            --primary: #f59e0b;
+            --primary-hover: #d97706;
+            --bg-dark: #090d16;
+            --panel-bg: rgba(15, 23, 42, 0.75);
+            --border: rgba(245, 158, 11, 0.2);
+        }    
+        #sim-modal-overlay.active { opacity: 1; pointer-events: auto; }
+        .sim-modal {
+            background: rgba(15, 23, 42, 0.85); border: 1px solid rgba(51, 65, 85, 0.6);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.8), 0 0 0 1px rgba(118, 185, 0, 0.1);
+            width: 95%; max-width: 900px; max-height: 90vh; border-radius: 24px; display: flex; flex-direction: column;
+            transform: translateY(20px) scale(0.95); transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        #sim-modal-overlay.active .sim-modal { transform: translateY(0) scale(1); }
+        .sim-modal-body { overflow-y: auto; padding: 24px; }
+        
+        .sim-modal input[type="number"] { -moz-appearance: textfield; background-color: rgba(15, 23, 42, 0.8); }
+        .sim-modal input::-webkit-outer-spin-button, .sim-modal input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+
+        .hud-bottom { 
+            position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%);
+            border-radius: 100px; padding: 8px; display: flex; gap: 8px; z-index: 40;
+            width: max-content; max-width: 95vw; overflow-x: auto; scrollbar-width: none;
+        }
+        .btn-tool { 
+            background: rgba(30, 41, 59, 0.6); border: 1px solid rgba(51, 65, 85, 0.8); 
+            color: #94a3b8; transition: all .2s; border-radius: 99px; padding: 10px 20px;
+            font-size: 13px; font-weight: 600; display: flex; align-items: center; gap: 8px; cursor: pointer; pointer-events: auto;
+            white-space: nowrap; flex-shrink: 0; 
+        }
+        .btn-tool:hover { background: rgba(51, 65, 85, 0.8); color: #fff; }
+        .btn-tool.active { background: rgba(118, 185, 0, 0.2); color: #8add12; border-color: #76b900; }
+
+        @media (min-width: 768px) { .hide-on-desktop { display: none !important; } }
+        .metric-box { background: rgba(0, 0, 0, 0.4); border: 1px solid rgba(51, 65, 85, 0.4); border-radius: 12px; padding: 12px; }
+        .data-value { font-family: 'JetBrains Mono', monospace; font-weight: 800; font-size: 1.25rem; }
+        
+        .tooltip {
+            position: absolute; background: rgba(0,0,0,0.85); color: #fff; padding: 6px 10px; border-radius: 6px;
+            font-size: 12px; font-family: monospace; border: 1px solid #76b900; pointer-events: none; opacity: 0;
+            transition: opacity 0.2s; z-index: 20; transform: translate(-50%, -150%); white-space: nowrap; font-weight: bold;
+        }
+    </style>
+</head>
+<body class="antialiased">
+
+    <div id="canvas-container"></div>
+    <div id="hover-tooltip" class="tooltip">Equipment</div>
+
+    <div id="ui-layer">
+        <header class="glass-panel w-full p-4 flex justify-between items-center border-b-0 rounded-b-xl max-w-[1800px] mx-auto mt-2">
+            <div class="flex items-center gap-3 md:gap-4">
+                <div class="bg-nv-500 p-2 rounded-lg shadow-[0_0_15px_rgba(118,185,0,0.4)]"><i class="ph-fill ph-lightning text-black text-xl md:text-2xl"></i></div>
+                <div>
+                    <h1 class="text-sm md:text-lg font-black text-white flex items-center gap-2">
+                        <span class="hidden md:inline">機電灰區 (Grey Space) <span class="text-nv-400 font-normal">|</span></span> 關鍵電力基礎設施
+                    </h1>
+                    <div class="text-[9px] md:text-[10px] text-slate-400 tracking-widest font-bold uppercase mt-0.5">High-Fidelity Power Topology</div>
+                </div>
+            </div>
+            <div class="flex items-center gap-3">
+                <div class="text-[10px] md:text-xs font-bold text-nv-400 bg-nv-500/10 px-3 md:px-4 py-2 rounded-full border border-nv-500/30 flex items-center gap-2">
+                    <span class="w-2 h-2 rounded-full bg-nv-500 animate-pulse"></span> <span class="hidden md:inline">2N POWER </span>SECURED
+                </div>
+            </div>
+        </header>
+
+        <!-- 左側 HUD -->
+        <div id="hud-left" class="hud-left glass-panel active">
+            <h2 class="text-sm font-black text-white flex items-center gap-2 mb-4 pb-2 border-b border-slate-700">
+                <i class="ph-fill ph-lightning text-nv-400 text-lg"></i> 電氣營運指標 (Power Metrics)
+            </h2>
+            
+            <div class="space-y-3 mb-5">
+                <div class="metric-box flex justify-between items-end border-l-2 border-nv-500">
+                    <span class="text-xs text-slate-400 font-bold">總市電進線 (Total Grid)</span>
+                    <div class="text-right"><span id="hud_val_grid" class="data-value text-white live-val" data-base="1450" data-var="15">1450</span><span class="text-[10px] text-nv-400 ml-1">kW</span></div>
+                </div>
+                <div class="metric-box flex justify-between items-end border-l-2 border-yellow-500">
+                    <span class="text-xs text-slate-400 font-bold">UPS 輸出總載 (UPS Load)</span>
+                    <div class="text-right"><span id="hud_val_ups" class="data-value text-yellow-400 live-val" data-base="1250" data-var="10">1250</span><span class="text-[10px] text-yellow-400 ml-1">kW</span></div>
+                </div>
+                <div class="metric-box flex justify-between items-end border-l-2 border-green-500">
+                    <span class="text-xs text-slate-400 font-bold">電池組健康度 (Battery SOC)</span>
+                    <div class="text-right"><span class="data-value text-green-400">100</span><span class="text-[10px] text-green-400 ml-1">%</span></div>
+                </div>
+                <div class="flex gap-3">
+                    <div class="metric-box flex-1 text-center">
+                        <div class="text-[10px] text-slate-400 mb-1">輸出電壓 (A-Feed)</div>
+                        <div class="data-value text-white"><span class="live-val" data-base="380.2" data-var="0.5">380.2</span> <span class="text-[9px]">V</span></div>
+                    </div>
+                    <div class="metric-box flex-1 text-center">
+                        <div class="text-[10px] text-slate-400 mb-1">系統效率</div>
+                        <div class="data-value text-nv-400"><span class="live-val" data-base="96.8" data-var="0.1">96.8</span> <span class="text-[9px]">%</span></div>
+                    </div>
+                </div>
+            </div>
+            <div class="text-[10px] text-slate-500 leading-relaxed border-t border-slate-700 pt-3">
+                <p>💡 提示：點擊 <b class="text-yellow-400">UPS 模組</b> 或 <b class="text-blue-400">配電盤</b> 以檢視詳細電氣參數與狀態。</p>
+            </div>
+        </div>
+
+        <!-- 右側 HUD -->
+        <div id="hud-detail" class="hud-right glass-panel">
+            <div class="flex justify-between items-start mb-4 pb-2 border-b border-slate-700">
+                <div>
+                    <h2 id="detail-title" class="text-sm font-black text-white flex items-center gap-2">設備名稱</h2>
+                    <div id="detail-subtitle" class="text-[10px] text-nv-400 font-mono mt-1">MODEL_ID</div>
+                </div>
+                <button onclick="APP.closeDetail()" class="text-slate-500 hover:text-white p-1 bg-slate-800 rounded-lg"><i class="ph ph-x"></i></button>
+            </div>
+
+            <div id="detail-content-ups" class="hidden space-y-3">
+                <div class="metric-box bg-slate-900/50">
+                    <div class="text-[10px] text-slate-400 uppercase mb-2 flex justify-between">
+                        <span>運行模式</span><span class="text-nv-400 flex items-center gap-1"><span class="w-1.5 h-1.5 rounded-full bg-nv-500 animate-pulse"></span> 在線雙轉換 (Double Conv.)</span>
+                    </div>
+                    <div class="flex justify-between items-center mb-1">
+                        <span class="text-xs text-slate-300">模組負載率</span>
+                        <div class="font-mono text-yellow-400"><span class="live-val" data-base="62.5" data-var="1.5">62.5</span> %</div>
+                    </div>
+                    <div class="w-full bg-slate-800 rounded-full h-1.5 mb-3"><div class="bg-yellow-500 h-full rounded-full" style="width: 62.5%"></div></div>
+                    
+                    <div class="grid grid-cols-2 gap-2 mt-3">
+                        <div class="bg-slate-800/50 p-2 rounded">
+                            <div class="text-[9px] text-slate-400 mb-1">逆變器溫度</div>
+                            <div class="font-mono text-white text-sm"><span class="live-val" data-base="45.2" data-var="0.5">45.2</span> °C</div>
+                        </div>
+                        <div class="bg-slate-800/50 p-2 rounded">
+                            <div class="text-[9px] text-slate-400 mb-1">輸出頻率</div>
+                            <div class="font-mono text-white text-sm"><span class="live-val" data-base="60.01" data-var="0.02">60.01</span> Hz</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="detail-content-batt" class="hidden space-y-3">
+                <div class="metric-box bg-slate-900/50">
+                    <div class="text-[10px] text-slate-400 uppercase mb-2 flex justify-between">
+                        <span>電池組狀態</span><span class="text-blue-400 flex items-center gap-1"> 浮充 (Float Charge)</span>
+                    </div>
+                    <div class="flex justify-between items-center mb-1">
+                        <span class="text-xs text-slate-300">總電壓 (String Vol.)</span>
+                        <div class="font-mono text-white"><span class="live-val" data-base="482" data-var="1">482</span> VDC</div>
+                    </div>
+                    <div class="flex justify-between items-center mb-1">
+                        <span class="text-xs text-slate-300">充放電電流</span>
+                        <div class="font-mono text-green-400">+ <span class="live-val" data-base="2.5" data-var="0.2">2.5</span> A</div>
+                    </div>
+                    <div class="flex justify-between items-center mt-3 pt-3 border-t border-slate-700">
+                        <span class="text-xs text-slate-300">最高單體溫度</span>
+                        <div class="font-mono text-orange-400"><span class="live-val" data-base="26.8" data-var="0.3">26.8</span> °C</div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="detail-content-pdu" class="hidden space-y-3">
+                <div class="metric-box bg-slate-900/50">
+                    <div class="text-[10px] text-slate-400 uppercase mb-2 flex justify-between">
+                        <span>總盤狀態</span><span class="text-nv-400 flex items-center gap-1"> 正常供電</span>
+                    </div>
+                    <div class="space-y-2 font-mono text-sm">
+                        <div class="flex justify-between"><span class="text-xs text-slate-400">L1 電流</span><span class="text-white"><span class="live-val" data-base="1850" data-var="10">1850</span> A</span></div>
+                        <div class="flex justify-between"><span class="text-xs text-slate-400">L2 電流</span><span class="text-white"><span class="live-val" data-base="1845" data-var="10">1845</span> A</span></div>
+                        <div class="flex justify-between"><span class="text-xs text-slate-400">L3 電流</span><span class="text-white"><span class="live-val" data-base="1860" data-var="10">1860</span> A</span></div>
+                        <div class="flex justify-between pt-2 border-t border-slate-700"><span class="text-xs text-slate-400">THDi</span><span class="text-nv-400">2.1 %</span></div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="detail-content-generator" class="hidden space-y-3">
+                <div class="metric-box bg-slate-900/50">
+                    <div class="text-[10px] text-slate-400 uppercase mb-2 flex justify-between">
+                        <span>機組狀態</span>
+                        <span class="text-slate-400 flex items-center gap-1">待機 (Standby)</span>
+                    </div>
+                    <div class="flex justify-between items-center mb-1">
+                        <span class="text-xs text-slate-300">額定功率</span>
+                        <div class="font-mono text-yellow-400">2,500 kW</div>
+                    </div>
+                    <div class="flex justify-between items-center mb-1">
+                        <span class="text-xs text-slate-300">燃料容量</span>
+                        <div class="font-mono text-white">5,000 L</div>
+                    </div>
+                    <div class="flex justify-between items-center border-t border-slate-700 pt-2">
+                        <span class="text-xs text-slate-300">起動時間 (ATS)</span>
+                        <div class="font-mono text-nv-400">≤ 10 sec</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 專業彈出式計算視窗 -->
+        <div id="sim-modal-overlay">
+            <div class="sim-modal">
+                <div class="flex justify-between items-center px-6 py-5 border-b border-slate-700/60">
+                    <h2 class="text-lg font-black text-white flex items-center gap-3">
+                        <div class="p-2 bg-yellow-500/20 rounded-lg"><i class="ph-fill ph-battery-charging text-yellow-500 text-xl"></i></div>
+                        UPS 電池後備時間計算器
+                    </h2>
+                    <button onclick="APP.toggleSimPanel()" class="text-slate-400 hover:text-white p-2 rounded-xl transition"><i class="ph ph-x text-xl font-bold"></i></button>
+                </div>
+                <div class="sim-modal-body grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div class="space-y-4 bg-slate-900/40 p-5 rounded-xl border border-slate-700/50">
+                        <h3 class="text-xs text-slate-400 font-bold uppercase mb-3">負載與系統參數</h3>
+                        <div class="flex justify-between items-center">
+                            <label class="text-sm text-slate-300">實際 IT 負載 (kW)</label>
+                            <input type="number" id="calc_load" value="500" class="w-24 bg-slate-800 border border-slate-600 rounded px-2 py-1 text-right text-white font-mono">
+                        </div>
+                        <div class="flex justify-between items-center">
+                            <label class="text-sm text-slate-300">UPS 逆變效率 (%)</label>
+                            <input type="number" id="calc_eff" value="96" class="w-24 bg-slate-800 border border-slate-600 rounded px-2 py-1 text-right text-white font-mono">
+                        </div>
+                        <div class="flex justify-between items-center">
+                            <label class="text-sm text-slate-300">電池單體容量 (Ah)</label>
+                            <input type="number" id="calc_ah" value="100" class="w-24 bg-slate-800 border border-slate-600 rounded px-2 py-1 text-right text-white font-mono">
+                        </div>
+                        <div class="flex justify-between items-center">
+                            <label class="text-sm text-slate-300">電池單組串聯數 (顆)</label>
+                            <input type="number" id="calc_series" value="40" class="w-24 bg-slate-800 border border-slate-600 rounded px-2 py-1 text-right text-white font-mono">
+                        </div>
+                        <div class="flex justify-between items-center">
+                            <label class="text-sm text-slate-300">並聯組數 (組)</label>
+                            <input type="number" id="calc_parallel" value="4" class="w-24 bg-slate-800 border border-slate-600 rounded px-2 py-1 text-right text-white font-mono">
+                        </div>
+                        <button onclick="APP.calculateBattery()" class="w-full mt-4 py-2 bg-yellow-600 hover:bg-yellow-500 text-white font-bold rounded transition">執行計算</button>
+                    </div>
+                    
+                    <div class="bg-slate-800/40 p-5 rounded-xl border border-slate-700/50 flex flex-col justify-center items-center relative overflow-hidden">
+                        <i class="ph-fill ph-clock-countdown absolute -right-4 -bottom-4 text-8xl text-slate-700/30"></i>
+                        <div class="text-sm text-slate-400 mb-2 z-10">預估後備時間 (Backup Time)</div>
+                        <div class="text-5xl font-black text-yellow-400 font-mono z-10 mb-6"><span id="res_time">15.2</span> <span class="text-xl">min</span></div>
+                        
+                        <div class="w-full grid grid-cols-2 gap-4 z-10 border-t border-slate-600 pt-4">
+                            <div>
+                                <div class="text-xs text-slate-400 mb-1">直流放電電流</div>
+                                <div class="text-lg font-mono text-white"><span id="res_current">1085</span> A</div>
+                            </div>
+                            <div>
+                                <div class="text-xs text-slate-400 mb-1">電池總電量</div>
+                                <div class="text-lg font-mono text-white"><span id="res_kwh">192</span> kWh</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 底部工具列 -->
+        <div class="hud-bottom glass-panel">
+            <button onclick="APP.toggleLeftHud()" class="btn-tool hide-on-desktop" id="btn_toggle_hud"><i class="ph ph-chart-bar"></i> 營運數據</button>
+            <div class="w-px h-6 bg-slate-700 mx-1 self-center hide-on-desktop flex-shrink-0"></div>
+
+            <button onclick="APP.setCamera('overview')" class="btn-tool active" id="cam_overview"><i class="ph ph-cube"></i> 灰區全景</button>
+            <button onclick="APP.setCamera('ups')" class="btn-tool" id="cam_ups"><i class="ph ph-lightning"></i> UPS 系統</button>
+            <button onclick="APP.setCamera('battery')" class="btn-tool" id="cam_battery"><i class="ph ph-battery-full"></i> 電池陣列</button>
+            <button onclick="APP.setCamera('pdu')" class="btn-tool" id="cam_pdu"><i class="ph ph-plug"></i> 主配電盤</button>
+            <button onclick="APP.setCamera('tray')" class="btn-tool" id="cam_tray"><i class="ph ph-git-branch"></i> 頂部橋架</button>
+            <button onclick="APP.setCamera('generator')" class="btn-tool" id="cam_generator"><i class="ph ph-engine"></i> 發電機</button>
+            
+            <div class="w-px h-6 bg-slate-700 mx-1 self-center flex-shrink-0"></div>
+            <button onclick="APP.toggleSimPanel()" class="btn-tool" id="btn_sim"><i class="ph ph-calculator"></i> 電池計算</button>
+        </div>
+    </div>
+
+    <script>
+        const APP = {
+            scene: null, camera: null, renderer: null, controls: null,
+            clock: new THREE.Clock(), raycaster: new THREE.Raycaster(), mouse: new THREE.Vector2(),
+            interactables: [], materials: {}, textures: {}, leftHudVisible: true, simPanelOpen: false,
+
+            init() {
+                const con = document.getElementById('canvas-container');
+                this.scene = new THREE.Scene();
+                this.scene.background = new THREE.Color(0x080c14); 
+                this.scene.fog = new THREE.FogExp2(0x080c14, 0.012);
+
+                this.camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 1000);
+                this.camera.position.set(15, 12, 18);
+
+                this.renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: "high-performance" });
+                this.renderer.setSize(window.innerWidth, window.innerHeight);
+                this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+                this.renderer.shadowMap.enabled = true;
+                this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+                this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
+                this.renderer.toneMappingExposure = 1.1;
+                con.appendChild(this.renderer.domElement);
+
+                this.controls = new THREE.OrbitControls(this.camera, this.renderer.domElement);
+                this.controls.enableDamping = true; this.controls.dampingFactor = 0.05;
+                this.controls.maxPolarAngle = Math.PI / 2 - 0.01;
+
+                this.createMaterials();
+                this.setupLighting();
+                this.buildEnvironment();
+                this.buildGreySpace();
+
+                window.addEventListener('resize', () => this.resize());
+                con.addEventListener('mousemove', (e) => this.onMouseMove(e));
+                con.addEventListener('click', (e) => this.onClick(e));
+
+                this.animate();
+                setInterval(this.updateLiveValues, 1500);
+                this.calculateBattery();
+            },
+
+            createMaterials() {
+                this.materials.floor = new THREE.MeshStandardMaterial({ color: 0x020408, metalness: 0.3, roughness: 0.7 });
+                this.materials.cabinet = new THREE.MeshStandardMaterial({ color: 0x1e293b, metalness: 0.7, roughness: 0.4 });
+                this.materials.darkMetal = new THREE.MeshStandardMaterial({ color: 0x0f172a, metalness: 0.85, roughness: 0.35 });
+                this.materials.greenLed = new THREE.MeshBasicMaterial({ color: 0x22c55e });
+                this.materials.yellowLed = new THREE.MeshBasicMaterial({ color: 0xfbbf24 });
+                this.materials.redLed = new THREE.MeshBasicMaterial({ color: 0xef4444 });
+                this.materials.tray = new THREE.MeshStandardMaterial({ color: 0x475569, metalness: 0.8, roughness: 0.3 });
+                this.materials.copper = new THREE.MeshStandardMaterial({ color: 0xb87333, metalness: 0.95, roughness: 0.15 });
+                this.materials.aluminum = new THREE.MeshStandardMaterial({ color: 0xcbd5e1, metalness: 0.75, roughness: 0.35 });
+                this.materials.yellowGreen = new THREE.MeshStandardMaterial({ color: 0x84cc16, roughness: 0.8 });
+                this.materials.generatorYellow = new THREE.MeshStandardMaterial({ color: 0xd97706, metalness: 0.6, roughness: 0.3 });
+                this.materials.exhaustPipe = new THREE.MeshStandardMaterial({ color: 0x334155, metalness: 0.8, roughness: 0.5 });
+
+                // 高精度 UPS LCD 螢幕貼圖
+                const c = document.createElement('canvas'); c.width = 512; c.height = 256;
+                const ctx = c.getContext('2d');
+                ctx.fillStyle = '#010c1a'; ctx.fillRect(0,0,512,256);
+                // 標題列
+                ctx.fillStyle = '#1e293b'; ctx.fillRect(0,0,512,40);
+                ctx.fillStyle = '#f59e0b'; ctx.font = 'bold 20px monospace'; ctx.fillText('● UPS ONLINE — DOUBLE CONVERSION', 14, 27);
+                // 數據
+                ctx.fillStyle = '#fbbf24'; ctx.font = 'bold 32px monospace'; ctx.fillText('LOAD: 62.5 %', 20, 90);
+                ctx.fillStyle = '#38bdf8'; ctx.fillText('BATT: 100 %  SOH: 98%', 20, 135);
+                ctx.fillStyle = '#e2e8f0'; ctx.font = '20px monospace'; ctx.fillText('OUT: 380V  60.01Hz', 20, 180);
+                ctx.fillStyle = '#22c55e'; ctx.font = 'bold 18px monospace'; ctx.fillText('● ALL SYSTEMS NOMINAL', 20, 225);
+                this.textures.upsScreen = new THREE.CanvasTexture(c);
+            },
+
+            setupLighting() {
+                // 環境基礎光（壓暗，對齊白區風格）
+                this.scene.add(new THREE.AmbientLight(0x4a5568, 2.0));
+
+                // 主方向光
+                const mainLight = new THREE.DirectionalLight(0xffffff, 1.2);
+                mainLight.position.set(4, 10, 5); mainLight.castShadow = true;
+                mainLight.shadow.mapSize.set(2048, 2048);
+                mainLight.shadow.camera.left = -14; mainLight.shadow.camera.right = 14;
+                mainLight.shadow.camera.top = 14; mainLight.shadow.camera.bottom = -14;
+                mainLight.shadow.bias = -0.001;
+                this.scene.add(mainLight);
+
+                // 補光
+                const fillLight = new THREE.DirectionalLight(0xffffff, 0.6);
+                fillLight.position.set(-6, 8, -4); this.scene.add(fillLight);
+
+                // SpotLight — 照 UPS A 排
+                const spot1 = new THREE.SpotLight(0xffffff, 2.0, 18, 0.55, 0.5, 1.2);
+                spot1.position.set(-3.5, 5, 2); spot1.target.position.set(-3.5, 1, 0);
+                this.scene.add(spot1); this.scene.add(spot1.target);
+
+                // SpotLight — 照 UPS B 排
+                const spot2 = new THREE.SpotLight(0xffffff, 2.0, 18, 0.55, 0.5, 1.2);
+                spot2.position.set(3.5, 5, 2); spot2.target.position.set(3.5, 1, 0);
+                this.scene.add(spot2); this.scene.add(spot2.target);
+
+                // SpotLight — 照配電盤區
+                const spot3 = new THREE.SpotLight(0xffd700, 1.2, 12, 0.5, 0.6, 1.5);
+                spot3.position.set(0, 5, -3); spot3.target.position.set(0, 1, -5);
+                this.scene.add(spot3); this.scene.add(spot3.target);
+
+                // UPS 面板黃金色發光輝光
+                const upsGlowA = new THREE.PointLight(0xf59e0b, 0.8, 4);
+                upsGlowA.position.set(-3.5, 1.8, 0.6); this.scene.add(upsGlowA);
+                const upsGlowB = new THREE.PointLight(0xf59e0b, 0.8, 4);
+                upsGlowB.position.set(3.5, 1.8, 0.6); this.scene.add(upsGlowB);
+            },
+
+            buildEnvironment() {
+                // 深色環氧地板（對齊白區）
+                const floor = new THREE.Mesh(
+                    new THREE.PlaneGeometry(34, 26),
+                    new THREE.MeshStandardMaterial({ color: 0x020408, metalness: 0.3, roughness: 0.7 })
+                );
+                floor.rotation.x = -Math.PI / 2; floor.receiveShadow = true;
+                this.scene.add(floor);
+
+                // 地面電力分區標線（黃色）
+                const lineMat = new THREE.MeshBasicMaterial({ color: 0xfbbf24, transparent: true, opacity: 0.5 });
+                [[-4.8, 0.01, 0], [4.8, 0.01, 0]].forEach(p => {
+                    const line = new THREE.Mesh(new THREE.PlaneGeometry(0.1, 12), lineMat);
+                    line.rotation.x = -Math.PI / 2; line.position.set(p[0], p[1], p[2]);
+                    this.scene.add(line);
+                });
+
+                // 天花板
+                const ceil = new THREE.Mesh(
+                    new THREE.PlaneGeometry(34, 26),
+                    new THREE.MeshStandardMaterial({ color: 0x1e293b, roughness: 0.9 })
+                );
+                ceil.rotation.x = Math.PI / 2; ceil.position.y = 5.5; this.scene.add(ceil);
+
+                // 自發光天花板燈管 Mesh（對齊白區的 emissive fixture）
+                const fixtureMat = new THREE.MeshStandardMaterial({ color: 0xffffff, emissive: 0xffffff, emissiveIntensity: 0.9 });
+                [[-4, 5.45, 0], [0, 5.45, 0], [4, 5.45, 0], [0, 5.45, -4]].forEach(p => {
+                    const fx = new THREE.Mesh(new THREE.BoxGeometry(2.0, 0.04, 0.18), fixtureMat);
+                    fx.position.set(p[0], p[1], p[2]); this.scene.add(fx);
+                    const pt = new THREE.PointLight(0xffffff, 1.0, 8);
+                    pt.position.set(p[0], p[1] - 0.1, p[2]); this.scene.add(pt);
+                });
+
+                // 結構柱
+                const colGeo = new THREE.BoxGeometry(0.4, 5.5, 0.4);
+                const colMat = new THREE.MeshStandardMaterial({ color: 0x0f172a, roughness: 0.8 });
+                [[-7, 2.75, 6], [7, 2.75, 6], [-7, 2.75, -7], [7, 2.75, -7]].forEach(p => {
+                    const col = new THREE.Mesh(colGeo, colMat);
+                    col.position.set(p[0], p[1], p[2]); this.scene.add(col);
+                });
+
+                // 右側牆面（x=9.5，室內外分界）
+                const rightWall = new THREE.Mesh(
+                    new THREE.PlaneGeometry(14, 5.5),
+                    new THREE.MeshStandardMaterial({ 
+                        color: 0x1e293b, roughness: 0.8, 
+                        transparent: true, opacity: 0.55,
+                        side: THREE.DoubleSide
+                    })
+                );
+                rightWall.rotation.y = -Math.PI / 2;
+                rightWall.position.set(9.5, 2.75, -1.0);
+                this.scene.add(rightWall);
+
+                // 穿牆開口框架
+                const openingFrame = new THREE.Mesh(
+                    new THREE.BoxGeometry(0.12, 0.4, 0.8),
+                    new THREE.MeshStandardMaterial({ color: 0x94a3b8, metalness: 0.7 })
+                );
+                openingFrame.position.set(9.5, 1.5, -1.0);
+                this.scene.add(openingFrame);
+
+                // 接地排（銅排 + 黃綠斑馬紋）
+                const earthBar = new THREE.Mesh(new THREE.BoxGeometry(10, 0.05, 0.18), this.materials.copper);
+                earthBar.position.set(0, 0.03, -4.5); this.scene.add(earthBar);
+                for(let i = 0; i < 20; i++) {
+                    const stripe = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.06, 0.19), this.materials.yellowGreen);
+                    stripe.position.set(-4.8 + i * 0.5, 0.03, -4.5); this.scene.add(stripe);
+                }
+            },
+
+            buildGreySpace() {
+                // 建立 UPS 與 電池櫃 (2N 架構：左排 A-Feed, 右排 B-Feed)
+                const createUPSGroup = (xOffset, labelPrefix) => {
+                    for(let i=0; i<2; i++) {
+                        const zPos = -1.5 + i * 3.5;
+                        
+                        // UPS 主機
+                        const ups = new THREE.Group();
+                        
+                        // 主體加一點基座厚度
+                        const upsBase = new THREE.Mesh(new THREE.BoxGeometry(0.82, 0.08, 1.02), this.materials.darkMetal);
+                        upsBase.position.y = 0.04; upsBase.castShadow = true;
+                        ups.add(upsBase);
+
+                        const upsBody = new THREE.Mesh(new THREE.BoxGeometry(0.8, 2.12, 1.0), this.materials.cabinet);
+                        upsBody.position.y = 1.14; upsBody.castShadow = true;
+                        ups.add(upsBody);
+                        
+                        // 前控制面板框
+                        const screenFrame = new THREE.Mesh(new THREE.BoxGeometry(0.48, 0.28, 0.02), this.materials.darkMetal);
+                        screenFrame.position.set(0, 1.6, 0.5);
+                        ups.add(screenFrame);
+
+                        const screen = new THREE.Mesh(new THREE.PlaneGeometry(0.44, 0.24), new THREE.MeshBasicMaterial({ map: this.textures.upsScreen }));
+                        screen.position.set(0, 1.6, 0.512);
+                        ups.add(screen);
+
+                        const led = new THREE.Mesh(new THREE.PlaneGeometry(0.5, 0.02), this.materials.greenLed);
+                        led.position.set(0, 1.8, 0.512);
+                        ups.add(led);
+
+                        // 細緻通風散熱孔（雙側金屬網格質感）
+                        for(let j=0; j<12; j++) {
+                            const vent = new THREE.Mesh(new THREE.BoxGeometry(0.64, 0.015, 0.01), this.materials.darkMetal);
+                            vent.position.set(0, 0.3 + j*0.05, 0.502);
+                            ups.add(vent);
+                        }
+
+                        // 頂部排氣風扇口 (圓柱片模擬風扇)
+                        const fanGrate = new THREE.Mesh(new THREE.CylinderGeometry(0.25, 0.25, 0.02, 16), this.materials.darkMetal);
+                        fanGrate.position.set(0, 2.21, 0);
+                        ups.add(fanGrate);
+
+                        ups.position.set(xOffset, 0, zPos);
+                        
+                        const upsHit = new THREE.Mesh(new THREE.BoxGeometry(0.8, 2.2, 1.0), new THREE.MeshBasicMaterial({visible:false}));
+                        upsHit.position.y = 1.1;
+                        upsHit.userData = { type: 'UPS', name: `${labelPrefix} UPS Module ${i+1}` };
+                        ups.add(upsHit);
+                        this.interactables.push(upsHit);
+                        this.scene.add(ups);
+
+                        // 電池櫃 (每台 UPS 配 2 台) - 視覺細節化
+                        for(let b=0; b<2; b++) {
+                            const batt = new THREE.Group();
+                            const bBase = new THREE.Mesh(new THREE.BoxGeometry(0.62, 0.08, 1.02), this.materials.darkMetal);
+                            bBase.position.y = 0.04; bBase.castShadow = true;
+                            batt.add(bBase);
+
+                            const bBody = new THREE.Mesh(new THREE.BoxGeometry(0.6, 2.12, 1.0), this.materials.cabinet);
+                            bBody.position.y = 1.14; bBody.castShadow = true;
+                            batt.add(bBody);
+
+                            // 電池抽屜與內部發亮接頭與銅排
+                            for(let draw=0; draw<6; draw++) {
+                                const yPos = 0.35 + draw*0.28;
+                                const drawer = new THREE.Mesh(new THREE.BoxGeometry(0.52, 0.22, 0.02), this.materials.darkMetal);
+                                drawer.position.set(0, yPos, 0.501);
+                                batt.add(drawer);
+
+                                // 模擬電池把手與小 LED 指示燈
+                                const handle = new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.02, 0.02), this.materials.aluminum);
+                                handle.position.set(0, yPos, 0.512);
+                                batt.add(handle);
+
+                                const indicator = new THREE.Mesh(new THREE.SphereGeometry(0.012, 8, 8), this.materials.greenLed);
+                                indicator.position.set(-0.2, yPos, 0.512);
+                                batt.add(indicator);
+                            }
+
+                            const bX = xOffset > 0 ? xOffset + 0.85 + b*0.7 : xOffset - 0.85 - b*0.7;
+                            batt.position.set(bX, 0, zPos);
+
+                            const battHit = new THREE.Mesh(new THREE.BoxGeometry(0.6, 2.2, 1.0), new THREE.MeshBasicMaterial({visible:false}));
+                            battHit.position.y = 1.1;
+                            battHit.userData = { type: 'Battery', name: `${labelPrefix} Battery String ${i+1}-${b+1}` };
+                            batt.add(battHit);
+                            this.interactables.push(battHit);
+                            this.scene.add(batt);
+                        }
+                    }
+                };
+
+                createUPSGroup(-3.5, 'Feed-A');
+                createUPSGroup(3.5, 'Feed-B');
+
+                // 建立主配電盤 (PDU / MSB) - 放在後方，增加細緻開關與發光警示燈
+                const createPDU = (xPos, label) => {
+                    const pdu = new THREE.Group();
+                    
+                    const pBase = new THREE.Mesh(new THREE.BoxGeometry(1.22, 0.08, 0.82), this.materials.darkMetal);
+                    pBase.position.y = 0.04; pdu.add(pBase);
+
+                    const body = new THREE.Mesh(new THREE.BoxGeometry(1.2, 2.12, 0.8), this.materials.cabinet);
+                    body.position.y = 1.14; body.castShadow = true;
+                    pdu.add(body);
+
+                    // 斷路器開關排 (Breakers)
+                    for(let r=0; r<4; r++) {
+                        for(let c=0; c<3; c++) {
+                            const xVal = -0.36 + c*0.36;
+                            const yVal = 1.6 - r*0.35;
+                            const breaker = new THREE.Mesh(new THREE.BoxGeometry(0.22, 0.22, 0.04), this.materials.darkMetal);
+                            breaker.position.set(xVal, yVal, 0.402);
+                            pdu.add(breaker);
+                            
+                            // 紅/綠雙色切換手柄
+                            const toggleColor = (r % 2 === 0) ? 0xef4444 : 0x22c55e;
+                            const toggleMat = new THREE.MeshStandardMaterial({color: toggleColor, roughness: 0.3});
+                            const toggle = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.1, 0.04), toggleMat);
+                            toggle.position.set(xVal, yVal + 0.02, 0.43);
+                            toggle.rotation.x = (r % 2 === 0) ? -0.4 : 0.4;
+                            pdu.add(toggle);
+                            
+                            // 小指示燈
+                            const pduLed = new THREE.Mesh(new THREE.SphereGeometry(0.015, 8, 8), (r % 2 === 0) ? this.materials.redLed : this.materials.greenLed);
+                            pduLed.position.set(xVal - 0.07, yVal + 0.07, 0.42);
+                            pdu.add(pduLed);
+                        }
+                    }
+
+                    pdu.position.set(xPos, 0, -5);
+                    const pduHit = new THREE.Mesh(new THREE.BoxGeometry(1.2, 2.2, 0.8), new THREE.MeshBasicMaterial({visible:false}));
+                    pduHit.position.y = 1.1;
+                    pduHit.userData = { type: 'PDU', name: label };
+                    pdu.add(pduHit);
+                    this.interactables.push(pduHit);
+                    this.scene.add(pdu);
+                };
+
+                createPDU(-3, 'MSB-A (Main Switch Board)');
+                createPDU(0, 'Tie Panel');
+                createPDU(3, 'MSB-B (Main Switch Board)');
+
+                // 電纜橋架 (Cable Tray) - 懸空
+                const createTraySegment = (w, l, x, y, z, rotY) => {
+                    const tray = new THREE.Group();
+                    // 側邊
+                    const side1 = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.1, l), this.materials.tray);
+                    side1.position.set(-w/2, 0, 0); tray.add(side1);
+                    const side2 = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.1, l), this.materials.tray);
+                    side2.position.set(w/2, 0, 0); tray.add(side2);
+                    // 橫向梯階
+                    for(let i=0; i<l/0.3; i++) {
+                        const step = new THREE.Mesh(new THREE.BoxGeometry(w, 0.02, 0.05), this.materials.tray);
+                        step.position.set(0, -0.04, -l/2 + i*0.3 + 0.15);
+                        tray.add(step);
+                    }
+                    tray.position.set(x, y, z);
+                    tray.rotation.y = rotY;
+                    this.scene.add(tray);
+                };
+
+                // PDU 上方的橫向橋架
+                createTraySegment(0.8, 10, 0, 3.5, -5, Math.PI/2);
+                // 連接到 UPS 的縱向橋架
+                // 修正後：長度從 6 改為 9，中心從 z=-1 移至 z=-1，使橋架覆蓋 z=[-5.5, 3.5]
+                createTraySegment(0.6, 9, -3.5, 3.5, -1, 0);
+                createTraySegment(0.6, 9, 3.5, 3.5, -1, 0);
+                
+                // 垂直落線架
+                const dropA = new THREE.Mesh(new THREE.BoxGeometry(0.6, 1.3, 0.1), this.materials.tray);
+                dropA.position.set(-3.0, 2.85, -5); this.scene.add(dropA);
+                const dropB = new THREE.Mesh(new THREE.BoxGeometry(0.6, 1.3, 0.1), this.materials.tray);
+                dropB.position.set(3.0, 2.85, -5); this.scene.add(dropB);
+
+                // ============================================================================
+                // [NEW] Fix 05 - 電纜線束可視化 (TubeGeometry)
+                // 沿著電纜架鋪設三色動力粗電纜 (紅/黃/藍/綠) 與 輸出電纜
+                // ============================================================================
+                const createPowerCables = (points, offsetArray, customColors) => {
+                    const defaultColors = [0xef4444, 0xfbbf24, 0x3b82f6, 0x22c55e]; // 紅 黃 藍 綠
+                    const colors = customColors || defaultColors;
+                    offsetArray.forEach((offset, idx) => {
+                        const shiftedPoints = points.map(p => new THREE.Vector3(p.x + offset.x, p.y + offset.y, p.z + offset.z));
+                        const curve = new THREE.CatmullRomCurve3(shiftedPoints);
+                        const tubeGeo = new THREE.TubeGeometry(curve, 64, 0.024, 8, false);
+                        const color = colors[idx % colors.length];
+                        const tubeMat = new THREE.MeshStandardMaterial({
+                            color: color,
+                            metalness: 0.6,
+                            roughness: 0.3,
+                            emissive: color,
+                            emissiveIntensity: 0.12 // 讓電纜在暗處有微微的高科技光澤
+                        });
+                        const tube = new THREE.Mesh(tubeGeo, tubeMat);
+                        this.scene.add(tube);
+                    });
+                };
+
+                // 微調 4 條電纜的間距，使其排排站
+                const offsets = [
+                    { x: -0.15, y: 0.02, z: 0 },
+                    { x: -0.05, y: 0.02, z: 0 },
+                    { x: 0.05, y: 0.02, z: 0 },
+                    { x: 0.15, y: 0.02, z: 0 }
+                ];
+
+                // A排輸入電纜路徑 (從 MSB-A 頂部 -> 橫向架 -> 縱向架 -> UPS A-Feed)
+                const pathAPoints = [
+                    new THREE.Vector3(-3.0, 2.2, -5.0),
+                    new THREE.Vector3(-3.0, 3.44, -5.0),
+                    new THREE.Vector3(-3.5, 3.46, -4.8),
+                    new THREE.Vector3(-3.5, 3.46, 2.8)   // 延伸至 UPS-2 (z=2.0) 之後
+                ];
+                createPowerCables(pathAPoints, offsets);
+
+                // B排輸入電纜路徑 (從 MSB-B 頂部 -> 橫向架 -> 縱向架 -> UPS B-Feed)
+                const pathBPoints = [
+                    new THREE.Vector3(3.0, 2.2, -5.0),
+                    new THREE.Vector3(3.0, 3.44, -5.0),
+                    new THREE.Vector3(3.5, 3.46, -4.8),
+                    new THREE.Vector3(3.5, 3.46, 2.8)   // 延伸至 UPS-2 (z=2.0) 之後
+                ];
+                createPowerCables(pathBPoints, offsets);
+
+                // UPS-A 輸出電纜（每台 UPS 各一條，從底部出線往 MSB-A 出線端）
+                // UPS-A-1 (z=-1.5) 輸出
+                const pathA_out1 = [
+                    new THREE.Vector3(-3.5, 0.15, -1.5),
+                    new THREE.Vector3(-3.5, 0.15, -3.5),
+                    new THREE.Vector3(-3.0, 0.15, -4.5),
+                    new THREE.Vector3(-3.0, 0.15, -5.0)
+                ];
+                createPowerCables(pathA_out1, offsets, [0x1e3a8a]);
+
+                // UPS-A-2 (z=2.0) 輸出
+                const pathA_out2 = [
+                    new THREE.Vector3(-3.5, 0.15, 2.0),
+                    new THREE.Vector3(-3.5, 0.15, -0.5),
+                    new THREE.Vector3(-3.0, 0.15, -4.5),
+                    new THREE.Vector3(-3.0, 0.15, -5.0)
+                ];
+                createPowerCables(pathA_out2, offsets, [0x1e3a8a]);
+
+                // UPS-B 輸出電纜（Feed-B 同理）
+                const pathB_out1 = [
+                    new THREE.Vector3(3.5, 0.15, -1.5),
+                    new THREE.Vector3(3.5, 0.15, -3.5),
+                    new THREE.Vector3(3.0, 0.15, -4.5),
+                    new THREE.Vector3(3.0, 0.15, -5.0)
+                ];
+                createPowerCables(pathB_out1, offsets, [0x064e3b]);
+
+                const pathB_out2 = [
+                    new THREE.Vector3(3.5, 0.15, 2.0),
+                    new THREE.Vector3(3.5, 0.15, -0.5),
+                    new THREE.Vector3(3.0, 0.15, -4.5),
+                    new THREE.Vector3(3.0, 0.15, -5.0)
+                ];
+                createPowerCables(pathB_out2, offsets, [0x064e3b]);
+
+                // ============================================================================
+                // [NEW] Fix 06 - 柴油緊急發電機組 (Diesel Generator) - 霸氣硬核工業設備
+                // 放置在右後方空地 [7.5, 0, -4.5] -> 戶外發電機主體 (位於 x=11.5，在牆外)
+                // ============================================================================
+                const genGroup = new THREE.Group();
+
+                // ── 室內 ATS 面板 (Automatic Transfer Switch) x=7.2 ──
+                const atsPanel = new THREE.Mesh(new THREE.BoxGeometry(0.6, 1.8, 0.4), this.materials.cabinet);
+                atsPanel.position.set(7.2, 0.9, -1.0);
+                genGroup.add(atsPanel);
+
+                const atsLabel = new THREE.Mesh(new THREE.BoxGeometry(0.35, 0.25, 0.02), this.materials.darkMetal);
+                atsLabel.position.set(7.2, 1.5, -0.79);
+                genGroup.add(atsLabel);
+
+                const atsGreen = new THREE.Mesh(new THREE.SphereGeometry(0.03, 8, 8), this.materials.greenLed);
+                atsGreen.position.set(7.2, 1.3, -0.79);
+                genGroup.add(atsGreen);
+
+                // ── 戶外發電機主體（位於 x=12.5，在牆外，避免與牆面穿牆重疊） ──
+                const genX = 12.5, genZ = -1.0;
+
+                // ── 穿牆銅排組 (3條，排在 z=-0.8 ~ z=-1.2) ──
+                // 動態計算銅排長度與位置，使其完美連接室內 ATS 面板 (x=7.2) 與戶外發電機接線箱面 (x=genX-2.0)
+                const barLength = (genX - 2.0) - 7.2;
+                const barX = (7.2 + (genX - 2.0)) / 2;
+                [-0.85, -1.0, -1.15].forEach(zOff => {
+                    const bar = new THREE.Mesh(new THREE.BoxGeometry(barLength, 0.05, 0.04), this.materials.copper);
+                    bar.position.set(barX, 1.5, zOff);
+                    genGroup.add(bar);
+                });
+
+                // 主機殼（工業黃色隔音外殼）
+                const genBody = new THREE.Mesh(new THREE.BoxGeometry(4.0, 1.8, 1.6), this.materials.generatorYellow);
+                genBody.position.set(genX, 0.9, genZ);
+                genGroup.add(genBody);
+
+                // 底盤基座
+                const genBase = new THREE.Mesh(new THREE.BoxGeometry(4.2, 0.15, 1.8), this.materials.darkMetal);
+                genBase.position.set(genX, 0.075, genZ);
+                genGroup.add(genBase);
+
+                // 側邊散熱百葉窗（前後各一側）
+                [[-0.8, 1], [0.8, 1]].forEach(([zDir]) => {
+                    for(let i=0; i<6; i++) {
+                        const louver = new THREE.Mesh(new THREE.BoxGeometry(3.2, 0.08, 0.02), this.materials.darkMetal);
+                        louver.position.set(genX, 0.5 + i * 0.2, genZ + zDir * 0.8);
+                        genGroup.add(louver);
+                    }
+                });
+
+                // 控制面板門（左端，面向 -x 側）
+                const ctrlPanel = new THREE.Mesh(new THREE.BoxGeometry(0.04, 1.4, 0.9), this.materials.darkMetal);
+                ctrlPanel.position.set(genX - 2.0, 0.8, genZ);
+                genGroup.add(ctrlPanel);
+
+                // 控制面板儀表
+                [[0, 1.3], [0.2, 1.1], [-0.2, 1.1]].forEach(([dz, dy]) => {
+                    const dial = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 0.02, 12), this.materials.aluminum);
+                    dial.rotation.z = Math.PI/2;
+                    dial.position.set(genX - 2.02, dy, genZ + dz);
+                    genGroup.add(dial);
+                });
+
+                // 排氣煙囪（頂部，垂直）
+                const exhaust = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.14, 1.8, 12), this.materials.exhaustPipe);
+                exhaust.position.set(genX + 1.2, 1.8 + 0.9, genZ);
+                genGroup.add(exhaust);
+
+                // 煙囪頂部風帽
+                const cap = new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.16, 0.15, 12), this.materials.darkMetal);
+                cap.position.set(genX + 1.2, 1.8 + 1.9, genZ);
+                genGroup.add(cap);
+
+                // 散熱水箱百葉（右端，面向 +x）
+                for(let i=0; i<5; i++) {
+                    const fin = new THREE.Mesh(new THREE.BoxGeometry(0.02, 1.2, 1.2), this.materials.aluminum);
+                    fin.position.set(genX + 2.0, 0.8, genZ - 0.4 + i * 0.2);
+                    genGroup.add(fin);
+                }
+
+                // 油箱（機殼下方可見）
+                const fuelTank = new THREE.Mesh(new THREE.BoxGeometry(1.5, 0.35, 1.2), new THREE.MeshStandardMaterial({color: 0x1c1c1c, metalness:0.7, roughness:0.4}));
+                fuelTank.position.set(genX - 0.8, 0.22, genZ);
+                genGroup.add(fuelTank);
+
+                // 機身警示斑馬紋（黃黑斜線條）
+                const stripeMatY = new THREE.MeshBasicMaterial({ color: 0xfbbf24, transparent: true, opacity: 0.8 });
+                const stripeMatB = new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.8 });
+                for(let i=0; i<8; i++) {
+                    const col = (i % 2 === 0) ? stripeMatY : stripeMatB;
+                    const stripe = new THREE.Mesh(new THREE.BoxGeometry(0.25, 1.82, 0.01), col);
+                    stripe.position.set(genX - 1.7 + i * 0.28, 0.91, genZ + 0.805);
+                    genGroup.add(stripe);
+                }
+
+                // 互動透明框
+                const genHit = new THREE.Mesh(new THREE.BoxGeometry(4.0, 1.8, 1.6), new THREE.MeshBasicMaterial({visible:false}));
+                genHit.position.set(genX, 0.9, genZ);
+                genHit.userData = { type: 'Generator', name: 'Emergency Diesel Generator (2.5MW)' };
+                genGroup.add(genHit);
+                this.interactables.push(genHit);
+
+                 // 戶外地坪（統一深色，與機房深色地板完美對齊）
+                 const outdoorFloor = new THREE.Mesh(
+                     new THREE.PlaneGeometry(8, 10),
+                     new THREE.MeshStandardMaterial({ color: 0x020408, roughness: 0.8, metalness: 0.3 })
+                 );
+                 outdoorFloor.rotation.x = -Math.PI/2;
+                 outdoorFloor.position.set(genX, 0.01, genZ);
+                 genGroup.add(outdoorFloor);
+
+                // Billboard 標籤
+                const lblC = document.createElement('canvas'); lblC.width=512; lblC.height=128;
+                const lblX = lblC.getContext('2d');
+                lblX.fillStyle='rgba(8,12,20,0.9)'; lblX.fillRect(4,4,504,120);
+                lblX.strokeStyle='#f59e0b'; lblX.lineWidth=4; lblX.strokeRect(4,4,504,120);
+                lblX.fillStyle='#fbbf24'; lblX.font='bold 26px "Segoe UI",sans-serif';
+                lblX.textAlign='center'; lblX.textBaseline='middle';
+                lblX.fillText('EDG-01  緊急柴油發電機  2,500 kW', 256, 64);
+                const lblTex = new THREE.CanvasTexture(lblC);
+                const lblSprite = new THREE.Sprite(new THREE.SpriteMaterial({map:lblTex, transparent:true}));
+                lblSprite.position.set(genX, 3.2, genZ);
+                lblSprite.scale.set(4.0, 1.0, 1.0);
+                genGroup.add(lblSprite);
+
+                this.scene.add(genGroup);
+            },
+
+            updateLiveValues() {
+                document.querySelectorAll('.live-val').forEach(el => {
+                    let base = parseFloat(el.getAttribute('data-base'));
+                    let variance = parseFloat(el.getAttribute('data-var'));
+                    let val = base + (Math.random() * variance * 2 - variance);
+                    let decimals = base > 1000 ? 0 : (base > 100 ? 1 : 2);
+                    el.innerText = val.toFixed(decimals);
+                });
+            },
+
+            calculateBattery() {
+                const loadKW = parseFloat(document.getElementById('calc_load').value) || 500;
+                const eff = (parseFloat(document.getElementById('calc_eff').value) || 96) / 100;
+                const ah = parseFloat(document.getElementById('calc_ah').value) || 100;
+                const series = parseFloat(document.getElementById('calc_series').value) || 40;
+                const parallel = parseFloat(document.getElementById('calc_parallel').value) || 4;
+                
+                // 假設單體電池 12V
+                const cellV = 12;
+                const totalV = series * cellV; // 480V
+                
+                // 總儲能 kWh
+                const totalKWh = (totalV * ah * parallel) / 1000;
+                
+                // 逆變器端需要的直流功率 (W)
+                const dcPowerReq = (loadKW * 1000) / eff;
+                
+                // 直流放電電流 (A)
+                const dischargeCurrent = dcPowerReq / totalV;
+                
+                // 簡化版 Peukert 效應估算後備時間 (非線性放電)
+                // 假設 1C 放電率下容量剩餘 60%
+                const cRate = dischargeCurrent / (ah * parallel);
+                let efficiencyFactor = 1.0;
+                if (cRate > 1) efficiencyFactor = 0.5;
+                else if (cRate > 0.5) efficiencyFactor = 0.7;
+                else efficiencyFactor = 0.9; // 淺放電
+                
+                const backupTimeHours = (totalKWh * efficiencyFactor) / loadKW;
+                const backupTimeMins = backupTimeHours * 60;
+
+                document.getElementById('res_time').innerText = backupTimeMins.toFixed(1);
+                document.getElementById('res_current').innerText = dischargeCurrent.toFixed(0);
+                document.getElementById('res_kwh').innerText = totalKWh.toFixed(0);
+            },
+
+            onMouseMove(e) {
+                this.mouse.x = (e.clientX / window.innerWidth) * 2 - 1;
+                this.mouse.y = -(e.clientY / window.innerHeight) * 2 + 1;
+                this.raycaster.setFromCamera(this.mouse, this.camera);
+                const intersects = this.raycaster.intersectObjects(this.interactables);
+                const tooltip = document.getElementById('hover-tooltip');
+                
+                if (intersects.length > 0) {
+                    document.body.style.cursor = 'pointer';
+                    tooltip.style.opacity = 1;
+                    tooltip.innerText = intersects[0].object.userData.name;
+                    tooltip.style.left = e.clientX + 'px';
+                    tooltip.style.top = e.clientY + 'px';
+                } else {
+                    document.body.style.cursor = 'grab';
+                    tooltip.style.opacity = 0;
+                }
+            },
+
+            onClick(e) {
+                this.raycaster.setFromCamera(this.mouse, this.camera);
+                const intersects = this.raycaster.intersectObjects(this.interactables);
+                if (intersects.length > 0) {
+                    this.showDetail(intersects[0].object.userData);
+                }
+            },
+
+            showDetail(data) {
+                document.getElementById('hud-detail').classList.add('active');
+                document.getElementById('detail-title').innerText = data.name;
+                
+                document.getElementById('detail-content-ups').style.display = data.type === 'UPS' ? 'block' : 'none';
+                document.getElementById('detail-content-batt').style.display = data.type === 'Battery' ? 'block' : 'none';
+                document.getElementById('detail-content-pdu').style.display = data.type === 'PDU' ? 'block' : 'none';
+                document.getElementById('detail-content-generator').style.display = data.type === 'Generator' ? 'block' : 'none';
+                
+                if(data.type === 'UPS') document.getElementById('detail-subtitle').innerText = '500kVA MODULAR UPS';
+                if(data.type === 'Battery') document.getElementById('detail-subtitle').innerText = 'VRLA 12V 100Ah STRING';
+                if(data.type === 'PDU') document.getElementById('detail-subtitle').innerText = '4000A MAIN SWITCH BOARD';
+                if(data.type === 'Generator') document.getElementById('detail-subtitle').innerText = 'STANDBY DIESEL GENERATOR';
+            },
+
+            closeDetail() { document.getElementById('hud-detail').classList.remove('active'); },
+
+            toggleLeftHud() {
+                this.leftHudVisible = !this.leftHudVisible;
+                document.getElementById('hud-left').classList.toggle('active', this.leftHudVisible);
+            },
+
+            toggleSimPanel() {
+                this.simPanelOpen = !this.simPanelOpen;
+                document.getElementById('sim-modal-overlay').classList.toggle('active', this.simPanelOpen);
+            },
+
+            setCamera(preset) {
+                document.querySelectorAll('.btn-tool').forEach(b => { if(b.id !== 'btn_sim') b.classList.remove('active'); });
+                if(document.getElementById('cam_' + preset)) document.getElementById('cam_' + preset).classList.add('active');
+                
+                let cp, ct;
+                if(preset === 'overview')    { cp = new THREE.Vector3(12, 10, 15); ct = new THREE.Vector3(0, 1, 0); }
+                else if(preset === 'ups')    { cp = new THREE.Vector3(-3.5, 1.5, 4); ct = new THREE.Vector3(-3.5, 1.5, -1.5); }
+                else if(preset === 'battery'){ cp = new THREE.Vector3(-7, 1.5, 1); ct = new THREE.Vector3(-4.8, 1.0, -1.5); }
+                else if(preset === 'pdu')    { cp = new THREE.Vector3(0, 1.5, -1); ct = new THREE.Vector3(0, 1.5, -5); }
+                else if(preset === 'tray')   { cp = new THREE.Vector3(0, 6, 2); ct = new THREE.Vector3(0, 3.5, -3); }
+                else if(preset === 'generator') { cp = new THREE.Vector3(9, 4, 5); ct = new THREE.Vector3(12.5, 1.0, -1.0); }
+                
+                if(cp && ct) this.tweenCamera(cp, ct);
+            },
+
+            tweenCamera(pos, target) {
+                if(window.TWEEN) {
+                    new TWEEN.Tween(this.camera.position).to(pos, 1500).easing(TWEEN.Easing.Cubic.InOut).start();
+                    new TWEEN.Tween(this.controls.target).to(target, 1500).easing(TWEEN.Easing.Cubic.InOut).start();
+                } else {
+                    this.camera.position.copy(pos); this.controls.target.copy(target);
+                }
+            },
+
+            resize() {
+                this.camera.aspect = window.innerWidth / window.innerHeight;
+                this.camera.updateProjectionMatrix();
+                this.renderer.setSize(window.innerWidth, window.innerHeight);
+            },
+
+            animate() {
+                requestAnimationFrame(() => this.animate());
+                if(window.TWEEN) TWEEN.update();
+                this.controls.update();
+                this.renderer.render(this.scene, this.camera);
+            }
+        };
+
+        window.onload = () => APP.init();
+    </script>
+</body>
+</html>

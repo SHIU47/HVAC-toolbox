@@ -1,0 +1,305 @@
+<!DOCTYPE html>
+<html lang="zh-TW" class="dark">
+<head>
+    <!-- 安全防護 -->
+    <script src="./security.js"></script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NVIDIA GB200 液冷資料中心數位孿生 | 總合控制門戶</title>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    
+    <link rel="stylesheet" href="./portal.css">
+</head>
+<body>
+
+    <div id="portal-container">
+        <!-- Main Workspace -->
+        <div id="main-view">
+            <!-- Sidebar navigation -->
+            <aside class="glass-panel">
+                <!-- Brand logo and collapse button -->
+                <div class="sidebar-logo-section">
+                    <div class="sidebar-brand">
+                        <div class="sidebar-logo-badge">
+                            <i class="ph-fill ph-layout text-lg text-black"></i>
+                        </div>
+                        <div class="sidebar-title-text">
+                            <h1>資料中心數位孿生</h1>
+                            <div class="sidebar-title-desc">Integrated Control Center</div>
+                        </div>
+                    </div>
+                    <button onclick="toggleSidebar()" class="p-1.5 bg-slate-800/80 hover:bg-slate-700 text-slate-400 hover:text-white rounded-lg transition-all flex items-center justify-center" id="btn_toggle_sidebar" title="收折側邊欄">
+                        <i class="ph ph-caret-double-left text-xs" id="sidebar_toggle_icon"></i>
+                    </button>
+                </div>
+
+                <!-- Global Operations KPI Dashboard Metrics -->
+                <div class="kpi-group">
+                    <div class="kpi-title">
+                        <i class="ph-fill ph-chart-line-up text-[#76b900]"></i>
+                        全局核心營運指標
+                    </div>
+                    
+                    <!-- Hero PUE Card -->
+                    <div class="kpi-hero-card">
+                        <div>
+                            <span class="kpi-hero-label">全局運行 PUE</span>
+                            <div class="kpi-hero-value"><span id="global_pue">1.266</span></div>
+                        </div>
+                        <div class="text-right flex items-center justify-end h-full">
+                            <span id="pue-status-badge" class="text-[8px] bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 px-1.5 py-0.5 rounded font-black uppercase">運轉良好</span>
+                        </div>
+                    </div>
+                    
+                    <!-- 2x2 Telemetry Grid -->
+                    <div class="kpi-grid">
+                        <div class="kpi-sub-card">
+                            <span class="kpi-sub-label">總 IT 負載</span>
+                            <span class="kpi-sub-value"><span id="global_load">1200</span> kW</span>
+                        </div>
+                        <div class="kpi-sub-card">
+                            <span class="kpi-sub-label">冰機總製冷</span>
+                            <span class="kpi-sub-value sky"><span id="global_chiller_rt">850</span> RT</span>
+                        </div>
+                        <div class="kpi-sub-card">
+                            <span class="kpi-sub-label">二次側供水</span>
+                            <span class="kpi-sub-value cyan"><span id="global_supply">45.0</span> °C</span>
+                        </div>
+                        <div class="kpi-sub-card">
+                            <span class="kpi-sub-label">二次側流量</span>
+                            <span class="kpi-sub-value text-slate-300"><span id="status_flow">165</span> m³/h</span>
+                        </div>
+                    </div>
+
+                    <!-- Full Width Grid Status Card -->
+                    <div class="kpi-hero-card border-slate-700/60 bg-slate-950/30 py-2.5">
+                        <div class="flex flex-col w-full">
+                            <span class="kpi-hero-label text-[8px] text-slate-500 mb-0.5">系統供電迴路狀態</span>
+                            <div class="text-[11px] font-black tracking-wide text-green-400" id="global_grid_status">正常供電 (2N Grid Secured)</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Scene Navigation -->
+                <div class="nav-group">
+                    <div class="nav-title">孿生場景導覽</div>
+                    <button class="nav-btn active" data-module="whitespace" onclick="switchModule('whitespace')">
+                        <i class="ph-fill ph-cpu"></i>
+                        <div>
+                            <div>GB200 液冷機房</div>
+                            <div class="text-[9px] text-slate-400">White Space (IT Load)</div>
+                        </div>
+                    </button>
+                    <button class="nav-btn" data-module="mep-room" onclick="switchModule('mep-room')">
+                        <i class="ph-fill ph-lightning"></i>
+                        <div>
+                            <div>2N 關鍵機電灰區</div>
+                            <div class="text-[9px] text-slate-400">Grey Space (Power MSB)</div>
+                        </div>
+                    </button>
+                    <button class="nav-btn" data-module="chiller-plant" onclick="switchModule('chiller-plant')">
+                        <i class="ph-fill ph-drop"></i>
+                        <div>
+                            <div>冰水動力中心</div>
+                            <div class="text-[9px] text-slate-400">Chiller Plant (Hydronic Loop)</div>
+                        </div>
+                    </button>
+                </div>
+
+                <!-- Global Command Status summary -->
+                <div class="status-card">
+                    <div class="status-title">
+                        <span class="w-2.5 h-2.5 rounded-full bg-green-500 animate-pulse"></span>
+                        指揮中心系統監控
+                    </div>
+                    <div class="status-row">
+                        <span class="status-k">伺服器節點</span>
+                        <span class="status-v text-green-400">144 Nodes</span>
+                    </div>
+                    <div class="status-row">
+                        <span class="status-k">二次側流量</span>
+                        <span class="status-v text-white"><span id="status_flow_secondary">165</span> m³/h</span>
+                    </div>
+                    <div class="status-row">
+                        <span class="status-k">電壓饋線 SOC</span>
+                        <span class="status-v text-yellow-400"><span id="status_soc">100</span>% (正常)</span>
+                    </div>
+                    <div class="status-row">
+                        <span class="status-k">冷卻塔 approach</span>
+                        <span class="status-v text-sky-400">3.5 °C</span>
+                    </div>
+                </div>
+
+                <!-- Global Sizing Audit Trigger Card -->
+                <div class="status-card border border-slate-700/60 shadow-lg mt-0 flex flex-col gap-2">
+                    <div class="status-title text-nv-green flex justify-between items-center w-full mb-2">
+                        <span class="flex items-center gap-1.5 text-[11px] font-black text-slate-300">
+                            <i class="ph-fill ph-shield-check text-green-400 text-xs"></i>
+                            容量與能效診斷
+                        </span>
+                        <span id="audit-badge" class="text-[9px] bg-red-500/20 text-red-400 border border-red-500/30 px-1.5 py-0.2 rounded font-bold animate-pulse">❌ 警報</span>
+                    </div>
+                    <p class="text-[10px] text-slate-400 leading-relaxed">
+                        白區 1.2 MW 負載 sizing 容量安全與 PUE 精細化模型診斷評估。
+                    </p>
+                    <button onclick="toggleAuditModal()" class="w-full py-1.5 bg-slate-800 hover:bg-slate-700 text-white font-bold text-[11px] rounded-lg border border-slate-700 transition flex items-center justify-center gap-1.5 mt-1">
+                        <i class="ph ph-shield-warning text-yellow-400 text-xs" id="audit-btn-icon"></i>
+                        <span>開啟容量安全評估</span>
+                    </button>
+                </div>
+            </aside>
+
+            <!-- 3D simulation Viewport Wrapper -->
+            <main class="glass-panel">
+                <!-- Floating Expand Button (only visible when sidebar is collapsed) -->
+                <button id="floating-expand-btn" onclick="toggleSidebar()" title="展開控制面板">
+                    <i class="ph-fill ph-layout text-sm"></i>
+                    <span>展開控制面板</span>
+                </button>
+
+                <div id="loader-overlay">
+                    <div class="spinner"></div>
+                    <div class="load-text" id="loader-text">載入中...</div>
+                </div>
+                
+                <iframe id="viewport-iframe" src="./whitespace/whitespace.html"></iframe>
+            </main>
+        </div>
+    </div>
+
+    <!-- Sizing Sizing Audit Modal -->
+    <div id="audit-modal-overlay" class="fixed inset-0 bg-black/85 backdrop-blur-md z-[200] hidden items-center justify-center p-4">
+        <div class="glass-panel w-full max-w-[850px] border border-green-500/40 shadow-[0_0_50px_rgba(34,197,94,0.15)] rounded-2xl overflow-hidden flex flex-col bg-slate-950/95">
+            <!-- Modal Header -->
+            <div class="flex justify-between items-center px-6 py-4 border-b border-slate-800/80 bg-slate-900/30">
+                <h2 class="text-base font-black text-white flex items-center gap-2.5">
+                    <div class="p-1.5 bg-green-500/20 rounded-lg"><i class="ph-fill ph-shield-check text-green-400 text-lg animate-pulse"></i></div>
+                    機房設備容量安全與能效診斷 (Sizing & PUE Audit)
+                </h2>
+                <button onclick="toggleAuditModal()" class="text-slate-400 hover:text-white p-1.5 rounded-lg bg-slate-800/50 hover:bg-slate-800 transition"><i class="ph ph-x text-lg"></i></button>
+            </div>
+            
+            <!-- Modal Content -->
+            <div class="p-6 overflow-y-auto max-h-[70vh] space-y-5 text-xs text-slate-300">
+                
+                <!-- Intro -->
+                <div class="bg-slate-900/40 border border-slate-800 p-4 rounded-xl">
+                    <p class="leading-relaxed">
+                        本診斷基於白區液冷機房的實際運轉負載（當前 <b>1200 kW</b> IT 負載，含 80% 液冷與 20% 空冷）對關鍵基礎設施進行熱力與電氣容量設計驗算。本數據中心採用 N+1/2N 綠色標準設計，以下為詳細審計結果：
+                    </p>
+                </div>
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    
+                    <!-- UPS Card -->
+                    <div class="bg-red-500/5 border border-red-500/25 p-4 rounded-xl flex flex-col justify-between">
+                        <div>
+                            <div class="flex justify-between items-center mb-3">
+                                <h4 class="font-bold text-red-400 flex items-center gap-1.5"><i class="ph-fill ph-warning-octagon"></i> 2N UPS 容量審計</h4>
+                                <span class="text-[9px] bg-red-500/20 text-red-400 border border-red-500/30 px-2 py-0.5 rounded-full font-bold">❌ 容錯不足</span>
+                            </div>
+                            <div class="space-y-2 text-[11px]">
+                                <div class="flex justify-between"><span>IT 臨界負載需求</span><span class="font-mono font-bold text-white">1200 kW</span></div>
+                                <div class="flex justify-between"><span>現有 UPS 單側配置</span><span class="font-mono text-slate-400">2台 * 500kVA (900 kW)</span></div>
+                                <div class="flex justify-between"><span>單側滿載率 (Feed Fault)</span><span class="font-mono font-bold text-red-400">133.3% (超載!)</span></div>
+                            </div>
+                        </div>
+                        <p class="text-[10px] text-red-300/80 border-t border-red-500/10 pt-3 mt-3 leading-relaxed">
+                            <b>🚨 安全風險</b>：各 Feed A/B 側需擴容至 3 台 500kVA (共 1500kVA / 1350kW)，以確保單側斷電時剩餘 UPS 負載率在 88.8% 的安全範圍內！
+                        </p>
+                    </div>
+                    
+                    <!-- Chiller Plant Card -->
+                    <div class="bg-green-500/5 border border-green-500/25 p-4 rounded-xl flex flex-col justify-between">
+                        <div>
+                            <div class="flex justify-between items-center mb-3">
+                                <h4 class="font-bold text-green-400 flex items-center gap-1.5"><i class="ph-fill ph-check-circle"></i> N+1 冰機容量審計</h4>
+                                <span class="text-[9px] bg-green-500/20 text-green-400 border border-green-500/30 px-2 py-0.5 rounded-full font-bold">✅ 安全符合</span>
+                            </div>
+                            <div class="space-y-2 text-[11px]">
+                                <div class="flex justify-between"><span>資料中心總熱負荷需求</span><span class="font-mono font-bold text-white">355 RT</span></div>
+                                <div class="flex justify-between"><span>現有離心冰機配置</span><span class="font-mono text-slate-400">2台 * 800 RT (N+1)</span></div>
+                                <div class="flex justify-between"><span>運轉冰機負載率 (1台運轉)</span><span class="font-mono font-bold text-green-400">44.4% (高能效區)</span></div>
+                            </div>
+                        </div>
+                        <p class="text-[10px] text-green-300/80 border-t border-green-500/10 pt-3 mt-3 leading-relaxed">
+                            <b>🟢 審計結論</b>：單台 800 RT 冰機可完全支撐 full 1.2 MW IT 散熱，且運轉於 44% 的部分負載區，使 COP 效率曲線達到最佳峰值！
+                        </p>
+                    </div>
+                    
+                    <!-- EDG Card -->
+                    <div class="bg-green-500/5 border border-green-500/25 p-4 rounded-xl">
+                        <div class="flex justify-between items-center mb-3">
+                            <h4 class="font-bold text-green-400 flex items-center gap-1.5"><i class="ph-fill ph-engine"></i> 柴油發電機組審計</h4>
+                            <span class="text-[9px] bg-green-500/20 text-green-400 border border-green-500/30 px-2 py-0.5 rounded-full font-bold">✅ 安全符合</span>
+                        </div>
+                        <div class="space-y-2 text-[11px]">
+                            <div class="flex justify-between"><span>全廠總負載需求 (滿載)</span><span class="font-mono font-bold text-white">約 1550 kW</span></div>
+                            <div class="flex justify-between"><span>發電機組 (EDG-01)</span><span class="font-mono text-slate-400">2,500 kW Standby</span></div>
+                            <div class="flex justify-between"><span>應急滿載率</span><span class="font-mono font-bold text-green-400">62.0% (運轉極佳)</span></div>
+                        </div>
+                    </div>
+                    
+                    <!-- Cooling Tower Card -->
+                    <div class="bg-green-500/5 border border-green-500/25 p-4 rounded-xl">
+                        <div class="flex justify-between items-center mb-3">
+                            <h4 class="font-bold text-green-400 flex items-center gap-1.5"><i class="ph-fill ph-wind"></i> N+1 冷卻水塔審計</h4>
+                            <span class="text-[9px] bg-green-500/20 text-green-400 border border-green-500/30 px-2 py-0.5 rounded-full font-bold">✅ 安全符合</span>
+                        </div>
+                        <div class="space-y-2 text-[11px]">
+                            <div class="flex justify-between"><span>冷卻水排熱量需求</span><span class="font-mono font-bold text-white">410 RT</span></div>
+                            <div class="flex justify-between"><span>冷卻水塔配置</span><span class="font-mono text-slate-400">2台 * 900 RT (N+1)</span></div>
+                            <div class="flex justify-between"><span>單塔運行負載率</span><span class="font-mono font-bold text-green-400">45.6% (節能省電)</span></div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- PUE Audit -->
+                <div class="bg-sky-500/5 border border-sky-500/20 p-5 rounded-xl space-y-3">
+                    <h4 class="font-bold text-sky-400 flex items-center gap-1.5"><i class="ph-fill ph-activity"></i> 全局 PUE 能效精細化 model 修正</h4>
+                    <p class="leading-relaxed text-slate-300">
+                        原 PUE 計算值為 <b>1.090</b>，僅計入 2% 的簡易靜態耗損，低估了水泵、冷卻塔、PDU、UPS 及輔助設施能耗，不符工程實踐。經建立熱力與電氣綜合損耗模型後，各分項 overhead 如下表：
+                    </p>
+                    <div class="grid grid-cols-2 md:grid-cols-4 gap-3 text-center mt-2 font-mono">
+                        <div class="bg-slate-900/60 p-2 rounded-lg border border-slate-800">
+                            <div class="text-[10px] text-slate-400 mb-1">UPS 損耗 (4%)</div>
+                            <div class="text-[13px] font-bold text-white">50.0 kW</div>
+                        </div>
+                        <div class="bg-slate-900/60 p-2 rounded-lg border border-slate-800">
+                            <div class="text-[10px] text-slate-400 mb-1">PDU / 線路 (1.5%)</div>
+                            <div class="text-[13px] font-bold text-white">18.0 kW</div>
+                        </div>
+                        <div class="bg-slate-900/60 p-2 rounded-lg border border-slate-800">
+                            <div class="text-[10px] text-slate-400 mb-1">CRAH風扇 / CDU</div>
+                            <div class="text-[13px] font-bold text-white">16.4 kW</div>
+                        </div>
+                        <div class="bg-slate-900/60 p-2 rounded-lg border border-slate-800">
+                            <div class="text-[10px] text-slate-400 mb-1">水泵 / 冷卻塔</div>
+                            <div class="text-[13px] font-bold text-white">48.0 kW</div>
+                        </div>
+                    </div>
+                    <div class="flex justify-between items-center bg-slate-900/80 p-3 rounded-lg border border-slate-800 text-[11px] mt-3">
+                        <div>
+                            <span class="text-slate-400">當前 <b>1200 kW</b> IT 負載總能效值：</span>
+                        </div>
+                        <div class="text-right">
+                            <span class="text-slate-400 mr-2">運行 PUE:</span>
+                            <span class="font-mono text-base font-black text-green-400"><span id="audit_pue">1.266</span></span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Modal Footer -->
+            <div class="px-6 py-4 bg-slate-900/60 border-t border-slate-800/80 flex justify-end gap-3">
+                <button onclick="toggleAuditModal()" class="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-white font-bold rounded-lg transition">關閉診斷</button>
+                <button onclick="applyUpsUpgrade()" id="btn-upgrade-ups" class="px-4 py-2 bg-green-500 hover:bg-green-600 text-slate-950 font-black rounded-lg transition flex items-center gap-1"><i class="ph-fill ph-plus-circle"></i> 實施 UPS N+1 擴容</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="./portal.js"></script>
+</body>
+</html>

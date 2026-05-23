@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html lang="zh-TW" class="dark">
+<head>
+    <!-- 安全防護 -->
+    <script src="./security.js"></script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>機電灰區 (MEP Room) 數位展廳 | 高精度電力基礎設施</title>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tween.js/18.6.4/tween.umd.js"></script>
+
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: { 
+                extend: { 
+                    colors: { 
+                        dc: { 950:'#010205', 900:'#080c14', 800:'#0f172a', 700:'#1e293b' },
+                        nv: { 500:'#76b900', 400:'#8add12' }
+                    },
+                    fontFamily: { sans: ['Inter', 'Segoe UI', 'sans-serif'], mono: ['JetBrains Mono', 'monospace'] }
+                } 
+            }
+        }
+    </script>
+
+    <link rel="stylesheet" href="./style.css">
+</head>
+<body class="antialiased">
+
+    <div id="canvas-container"></div>
+    <div id="hover-tooltip" class="tooltip">Equipment</div>
+
+    <div id="ui-layer">
+        <header class="glass-panel w-full p-4 flex justify-between items-center border-b-0 rounded-b-xl max-w-[1800px] mx-auto mt-2">
+            <div class="flex items-center gap-3 md:gap-4">
+                <div class="bg-nv-500 p-2 rounded-lg shadow-[0_0_15px_rgba(118,185,0,0.4)]"><i class="ph-fill ph-lightning text-black text-xl md:text-2xl"></i></div>
+                <div>
+                    <h1 class="text-sm md:text-lg font-black text-white flex items-center gap-2">
+                        <span class="hidden md:inline">機電灰區 (Grey Space) <span class="text-nv-400 font-normal">|</span></span> 關鍵電力基礎設施
+                    </h1>
+                    <div class="text-[9px] md:text-[10px] text-slate-400 tracking-widest font-bold uppercase mt-0.5">High-Fidelity Power Topology</div>
+                </div>
+            </div>
+            <div class="flex items-center gap-3">
+                <div class="text-[10px] md:text-xs font-bold text-nv-400 bg-nv-500/10 px-3 md:px-4 py-2 rounded-full border border-nv-500/30 flex items-center gap-2">
+                    <span class="w-2 h-2 rounded-full bg-nv-500 animate-pulse"></span> <span class="hidden md:inline">2N POWER </span>SECURED
+                </div>
+            </div>
+        </header>
+
+        <div id="scenario-banner" class="glass-panel">
+            <div class="scenario-title">
+                <i id="scenario-icon" class="ph ph-check-circle"></i>
+                <span id="scenario-title">正常供電</span>
+                <span id="scenario-source" class="ml-auto text-[10px] font-mono text-nv-400">UTILITY A/B ONLINE</span>
+            </div>
+            <div id="scenario-note" class="scenario-note">市電雙路供應至 MSB，UPS 在線雙轉換供電，電池維持浮充，發電機待命。</div>
+        </div>
+
+        <!-- 左側 HUD -->
+        <div id="hud-left" class="hud-left glass-panel active">
+            <div class="flex justify-between items-center mb-4 pb-2 border-b border-slate-700">
+                <h2 class="text-sm font-black text-white flex items-center gap-2">
+                    <i class="ph-fill ph-lightning text-nv-400 text-lg"></i> 電氣營運指標 (Power Metrics)
+                </h2>
+                <button onclick="APP.toggleLeftHud()" class="text-slate-500 hover:text-white p-1 bg-slate-800/80 rounded-lg transition"><i class="ph ph-x"></i></button>
+            </div>
+            
+            <div class="space-y-3 mb-5">
+                <div class="metric-box flex justify-between items-end border-l-2 border-nv-500">
+                    <span class="text-xs text-slate-400 font-bold">總市電進線 (Total Grid)</span>
+                    <div class="text-right"><span id="hud_val_grid" class="data-value text-white live-val" data-base="1450" data-var="15">1450</span><span class="text-[10px] text-nv-400 ml-1">kW</span></div>
+                </div>
+                <div class="metric-box flex justify-between items-end border-l-2 border-yellow-500">
+                    <span class="text-xs text-slate-400 font-bold">UPS 輸出總載 (UPS Load)</span>
+                    <div class="text-right"><span id="hud_val_ups" class="data-value text-yellow-400 live-val" data-base="1250" data-var="10">1250</span><span class="text-[10px] text-yellow-400 ml-1">kW</span></div>
+                </div>
+                <div class="metric-box flex justify-between items-end border-l-2 border-green-500">
+                    <span class="text-xs text-slate-400 font-bold">電池組健康度 (Battery SOC)</span>
+                    <div class="text-right"><span id="hud_val_soc" class="data-value text-green-400 live-val" data-base="100" data-var="0">100</span><span class="text-[10px] text-green-400 ml-1">%</span></div>
+                </div>
+                <div class="flex gap-3">
+                    <div class="metric-box flex-1 text-center">
+                        <div class="text-[10px] text-slate-400 mb-1">輸出電壓 (A-Feed)</div>
+                        <div class="data-value text-white"><span class="live-val" data-base="380.2" data-var="0.5">380.2</span> <span class="text-[9px]">V</span></div>
+                    </div>
+                    <div class="metric-box flex-1 text-center">
+                        <div class="text-[10px] text-slate-400 mb-1">系統效率</div>
+                        <div class="data-value text-nv-400"><span class="live-val" data-base="96.8" data-var="0.1">96.8</span> <span class="text-[9px]">%</span></div>
+                    </div>
+                </div>
+            </div>
+            <div class="text-[10px] text-slate-500 leading-relaxed border-t border-slate-700 pt-3">
+                <p>💡 提示：點擊設備可檢視 Tag、容量、上下游與維修資訊；下方情境按鈕可切換供電故事線。</p>
+            </div>
+        </div>
+
+        <!-- 右側 HUD -->
+        <div id="hud-detail" class="hud-right glass-panel">
+            <div class="flex justify-between items-start mb-4 pb-2 border-b border-slate-700">
+                <div>
+                    <h2 id="detail-title" class="text-sm font-black text-white flex items-center gap-2">設備名稱</h2>
+                    <div id="detail-subtitle" class="text-[10px] text-nv-400 font-mono mt-1">MODEL_ID</div>
+                </div>
+                <button onclick="APP.closeDetail()" class="text-slate-500 hover:text-white p-1 bg-slate-800 rounded-lg"><i class="ph ph-x"></i></button>
+            </div>
+
+            <div id="detail-profile" class="metric-box bg-slate-950/50 mb-3">
+                <div class="grid grid-cols-2 gap-x-4 gap-y-1">
+                    <div class="detail-row"><span class="detail-k">Tag</span><span id="detail-tag" class="detail-v">--</span></div>
+                    <div class="detail-row"><span class="detail-k">Status</span><span id="detail-status" class="detail-v text-nv-400">--</span></div>
+                    <div class="detail-row"><span class="detail-k">Rating</span><span id="detail-rating" class="detail-v">--</span></div>
+                    <div class="detail-row col-span-2"><span class="detail-k">Role</span><span id="detail-role" class="detail-v">--</span></div>
+                    <div class="detail-row col-span-2"><span class="detail-k">Upstream</span><span id="detail-upstream" class="detail-v">--</span></div>
+                    <div class="detail-row col-span-2"><span class="detail-k">Downstream</span><span id="detail-downstream" class="detail-v">--</span></div>
+                    <div class="detail-row col-span-2"><span class="detail-k">Maintenance</span><span id="detail-maintenance" class="detail-v">--</span></div>
+                </div>
+                <div id="detail-scenario-note" class="mt-3 pt-3 border-t border-slate-700 text-[10px] text-slate-400 leading-relaxed"></div>
+            </div>
+
+            <div id="detail-content-ups" class="hidden space-y-3">
+                <div class="metric-box bg-slate-900/50">
+                    <div class="text-[10px] text-slate-400 uppercase mb-2 flex justify-between">
+                        <span>運行模式</span><span id="ups-mode-label" class="text-nv-400 flex items-center gap-1"><span class="w-1.5 h-1.5 rounded-full bg-nv-500 animate-pulse"></span> 在線雙轉換 (Double Conv.)</span>
+                    </div>
+                    <div class="flex justify-between items-center mb-1">
+                        <span class="text-xs text-slate-300">模組負載率</span>
+                        <div class="font-mono text-yellow-400"><span class="live-val" data-base="62.5" data-var="1.5">62.5</span> %</div>
+                    </div>
+                    <div class="w-full bg-slate-800 rounded-full h-1.5 mb-3"><div class="bg-yellow-500 h-full rounded-full" style="width: 62.5%"></div></div>
+                    
+                    <div class="grid grid-cols-2 gap-2 mt-3">
+                        <div class="bg-slate-800/50 p-2 rounded">
+                            <div class="text-[9px] text-slate-400 mb-1">逆變器溫度</div>
+                            <div class="font-mono text-white text-sm"><span class="live-val" data-base="45.2" data-var="0.5">45.2</span> °C</div>
+                        </div>
+                        <div class="bg-slate-800/50 p-2 rounded">
+                            <div class="text-[9px] text-slate-400 mb-1">輸出頻率</div>
+                            <div class="font-mono text-white text-sm"><span class="live-val" data-base="60.01" data-var="0.02">60.01</span> Hz</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="detail-content-batt" class="hidden space-y-3">
+                <div class="metric-box bg-slate-900/50">
+                    <div class="text-[10px] text-slate-400 uppercase mb-2 flex justify-between">
+                        <span>電池組狀態</span><span id="battery-mode-label" class="text-blue-400 flex items-center gap-1"> 浮充 (Float Charge)</span>
+                    </div>
+                    <div class="flex justify-between items-center mb-1">
+                        <span class="text-xs text-slate-300">總電壓 (String Vol.)</span>
+                        <div class="font-mono text-white"><span class="live-val" data-base="482" data-var="1">482</span> VDC</div>
+                    </div>
+                    <div class="flex justify-between items-center mb-1">
+                        <span class="text-xs text-slate-300">充放電電流</span>
+                        <div class="font-mono text-green-400">+ <span class="live-val" data-base="2.5" data-var="0.2">2.5</span> A</div>
+                    </div>
+                    <div class="flex justify-between items-center mt-3 pt-3 border-t border-slate-700">
+                        <span class="text-xs text-slate-300">最高單體溫度</span>
+                        <div class="font-mono text-orange-400"><span class="live-val" data-base="26.8" data-var="0.3">26.8</span> °C</div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="detail-content-pdu" class="hidden space-y-3">
+                <div class="metric-box bg-slate-900/50">
+                    <div class="text-[10px] text-slate-400 uppercase mb-2 flex justify-between">
+                        <span>總盤狀態</span><span id="pdu-mode-label" class="text-nv-400 flex items-center gap-1"> 正常供電</span>
+                    </div>
+                    <div class="space-y-2 font-mono text-sm">
+                        <div class="flex justify-between"><span class="text-xs text-slate-400">L1 電流</span><span class="text-white"><span class="live-val" data-base="1850" data-var="10">1850</span> A</span></div>
+                        <div class="flex justify-between"><span class="text-xs text-slate-400">L2 電流</span><span class="text-white"><span class="live-val" data-base="1845" data-var="10">1845</span> A</span></div>
+                        <div class="flex justify-between"><span class="text-xs text-slate-400">L3 電流</span><span class="text-white"><span class="live-val" data-base="1860" data-var="10">1860</span> A</span></div>
+                        <div class="flex justify-between pt-2 border-t border-slate-700"><span class="text-xs text-slate-400">THDi</span><span class="text-nv-400">2.1 %</span></div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="detail-content-generator" class="hidden space-y-3">
+                <div class="metric-box bg-slate-900/50">
+                    <div class="text-[10px] text-slate-400 uppercase mb-2 flex justify-between">
+                        <span>機組狀態</span>
+                        <span id="generator-mode-label" class="text-slate-400 flex items-center gap-1">待機 (Standby)</span>
+                    </div>
+                    <div class="flex justify-between items-center mb-1">
+                        <span class="text-xs text-slate-300">額定功率</span>
+                        <div class="font-mono text-yellow-400">2,500 kW</div>
+                    </div>
+                    <div class="flex justify-between items-center mb-1">
+                        <span class="text-xs text-slate-300">燃料容量</span>
+                        <div class="font-mono text-white">5,000 L</div>
+                    </div>
+                    <div class="flex justify-between items-center border-t border-slate-700 pt-2">
+                        <span class="text-xs text-slate-300">起動時間 (ATS)</span>
+                        <div class="font-mono text-nv-400">≤ 10 sec</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 專業彈出式計算視窗 -->
+        <div id="sim-modal-overlay">
+            <div class="sim-modal">
+                <div class="flex justify-between items-center px-6 py-5 border-b border-slate-700/60">
+                    <h2 class="text-lg font-black text-white flex items-center gap-3">
+                        <div class="p-2 bg-yellow-500/20 rounded-lg"><i class="ph-fill ph-battery-charging text-yellow-500 text-xl"></i></div>
+                        UPS 電池後備時間計算器
+                    </h2>
+                    <button onclick="APP.toggleSimPanel()" class="text-slate-400 hover:text-white p-2 rounded-xl transition"><i class="ph ph-x text-xl font-bold"></i></button>
+                </div>
+                <div class="sim-modal-body grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div class="space-y-4 bg-slate-900/40 p-5 rounded-xl border border-slate-700/50">
+                        <h3 class="text-xs text-slate-400 font-bold uppercase mb-3">負載與系統參數</h3>
+                        <div class="flex justify-between items-center">
+                            <label class="text-sm text-slate-300">實際 IT 負載 (kW)</label>
+                            <input type="number" id="calc_load" value="500" class="w-24 bg-slate-800 border border-slate-600 rounded px-2 py-1 text-right text-white font-mono">
+                        </div>
+                        <div class="flex justify-between items-center">
+                            <label class="text-sm text-slate-300">UPS 逆變效率 (%)</label>
+                            <input type="number" id="calc_eff" value="96" class="w-24 bg-slate-800 border border-slate-600 rounded px-2 py-1 text-right text-white font-mono">
+                        </div>
+                        <div class="flex justify-between items-center">
+                            <label class="text-sm text-slate-300">電池單體容量 (Ah)</label>
+                            <input type="number" id="calc_ah" value="100" class="w-24 bg-slate-800 border border-slate-600 rounded px-2 py-1 text-right text-white font-mono">
+                        </div>
+                        <div class="flex justify-between items-center">
+                            <label class="text-sm text-slate-300">電池單組串聯數 (顆)</label>
+                            <input type="number" id="calc_series" value="40" class="w-24 bg-slate-800 border border-slate-600 rounded px-2 py-1 text-right text-white font-mono">
+                        </div>
+                        <div class="flex justify-between items-center">
+                            <label class="text-sm text-slate-300">並聯組數 (組)</label>
+                            <input type="number" id="calc_parallel" value="4" class="w-24 bg-slate-800 border border-slate-600 rounded px-2 py-1 text-right text-white font-mono">
+                        </div>
+                        <button onclick="APP.calculateBattery()" class="w-full mt-4 py-2 bg-yellow-600 hover:bg-yellow-500 text-white font-bold rounded transition">執行計算</button>
+                    </div>
+                    
+                    <div class="bg-slate-800/40 p-5 rounded-xl border border-slate-700/50 flex flex-col justify-center items-center relative overflow-hidden">
+                        <i class="ph-fill ph-clock-countdown absolute -right-4 -bottom-4 text-8xl text-slate-700/30"></i>
+                        <div class="text-sm text-slate-400 mb-2 z-10">預估後備時間 (Backup Time)</div>
+                        <div class="text-5xl font-black text-yellow-400 font-mono z-10 mb-6"><span id="res_time">15.2</span> <span class="text-xl">min</span></div>
+                        
+                        <div class="w-full grid grid-cols-2 gap-4 z-10 border-t border-slate-600 pt-4">
+                            <div>
+                                <div class="text-xs text-slate-400 mb-1">直流放電電流</div>
+                                <div class="text-lg font-mono text-white"><span id="res_current">1085</span> A</div>
+                            </div>
+                            <div>
+                                <div class="text-xs text-slate-400 mb-1">電池總電量</div>
+                                <div class="text-lg font-mono text-white"><span id="res_kwh">192</span> kWh</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 底部工具列 -->
+        <div class="hud-bottom glass-panel">
+            <button onclick="APP.toggleLeftHud()" class="btn-tool" id="btn_toggle_hud"><i class="ph ph-chart-bar"></i> 營運數據</button>
+            <div class="w-px h-6 bg-slate-700 mx-1 self-center flex-shrink-0"></div>
+
+            <button onclick="APP.setCamera('overview')" class="btn-tool active" id="cam_overview"><i class="ph ph-cube"></i> 灰區全景</button>
+            <button onclick="APP.setCamera('ups')" class="btn-tool" id="cam_ups"><i class="ph ph-lightning"></i> UPS 系統</button>
+            <button onclick="APP.setCamera('battery')" class="btn-tool" id="cam_battery"><i class="ph ph-battery-full"></i> 電池陣列</button>
+            <button onclick="APP.setCamera('pdu')" class="btn-tool" id="cam_pdu"><i class="ph ph-plug"></i> 主配電盤</button>
+            <button onclick="APP.setCamera('tray')" class="btn-tool" id="cam_tray"><i class="ph ph-git-branch"></i> 頂部橋架</button>
+            <button onclick="APP.setCamera('generator')" class="btn-tool" id="cam_generator"><i class="ph ph-engine"></i> 發電機</button>
+            
+            <div class="w-px h-6 bg-slate-700 mx-1 self-center flex-shrink-0"></div>
+            <button onclick="APP.toggleSimPanel()" class="btn-tool" id="btn_sim"><i class="ph ph-calculator"></i> 電池計算</button>
+
+            <div class="w-px h-6 bg-slate-700 mx-1 self-center flex-shrink-0"></div>
+            <button onclick="APP.setScenario('normal')" class="btn-tool scenario-btn active" data-state-color="green" id="scenario_normal"><i class="ph ph-check-circle"></i> 正常供電</button>
+            <button onclick="APP.setScenario('utilityFail')" class="btn-tool scenario-btn" data-state-color="red" id="scenario_utilityFail"><i class="ph ph-warning"></i> 市電中斷</button>
+            <button onclick="APP.setScenario('generator')" class="btn-tool scenario-btn" data-state-color="orange" id="scenario_generator"><i class="ph ph-engine"></i> 發電機供電</button>
+            <button onclick="APP.setScenario('bypass')" class="btn-tool scenario-btn" data-state-color="yellow" id="scenario_bypass"><i class="ph ph-wrench"></i> 維修旁路</button>
+        </div>
+    </div>
+
+    <script src="./app.js"></script>
+</body>
+</html>

@@ -1,0 +1,435 @@
+<!DOCTYPE html>
+<html lang="zh-TW" class="dark">
+<head>
+    <!-- 安全防護 -->
+    <script src="./security.js"></script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>NVIDIA GB200 NVL72 數位展廳 | 高精度液冷資料中心 (專家修正版)</title>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tween.js/18.6.4/tween.umd.js"></script>
+
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: { 
+                extend: { 
+                    colors: { 
+                        dc: { 950:'#010205', 900:'#080c14', 800:'#0f172a', 700:'#1e293b' },
+                        nv: { 500:'#76b900', 400:'#8add12' }
+                    },
+                    fontFamily: { sans: ['Inter', 'Segoe UI', 'sans-serif'], mono: ['JetBrains Mono', 'monospace'] }
+                } 
+            }
+        }
+    </script>
+
+    <link rel="stylesheet" href="./style.css">
+</head>
+<body class="antialiased">
+
+    <div id="canvas-container"></div>
+    <div id="hover-tooltip" class="tooltip">Equipment</div>
+
+    <div id="ui-layer">
+        <header class="glass-panel w-full p-4 flex justify-between items-center border-b-0 rounded-b-xl max-w-[1800px] mx-auto mt-2">
+            <div class="flex items-center gap-3 md:gap-4">
+                <div class="bg-nv-500 p-2 rounded-lg shadow-[0_0_15px_rgba(118,185,0,0.4)]"><i class="ph-fill ph-cpu text-black text-xl md:text-2xl"></i></div>
+                <div>
+                    <h1 class="text-sm md:text-lg font-black text-white flex items-center gap-2">
+                        <span class="hidden md:inline">NVIDIA GB200 NVL72 <span class="text-nv-400 font-normal">|</span></span> 液冷資料中心數位孿生
+                    </h1>
+                    <div class="text-[9px] md:text-[10px] text-slate-400 tracking-widest font-bold uppercase mt-0.5">High-Fidelity Thermodynamic Engine</div>
+                </div>
+            </div>
+            <div class="flex items-center gap-3">
+                <div class="text-[10px] md:text-xs font-bold text-nv-400 bg-nv-500/10 px-3 md:px-4 py-2 rounded-full border border-nv-500/30 flex items-center gap-2">
+                    <span class="w-2 h-2 rounded-full bg-nv-500 animate-pulse"></span> <span class="hidden md:inline">SYSTEM </span>ONLINE
+                </div>
+            </div>
+        </header>
+
+        <!-- 左側 HUD -->
+        <div id="hud-left" class="hud-left glass-panel active">
+            <div class="flex justify-between items-center mb-4 pb-2 border-b border-slate-700">
+                <h2 class="text-sm font-black text-white flex items-center gap-2">
+                    <i class="ph-fill ph-activity text-nv-400 text-lg"></i> 總體營運指標 (Global Metrics)
+                </h2>
+                <button onclick="DTC.toggleLeftHud()" class="text-slate-500 hover:text-white p-1 bg-slate-800 hover:bg-slate-750 transition rounded-lg" title="關閉營運指標"><i class="ph ph-x text-sm"></i></button>
+            </div>
+            
+            <div class="space-y-3 mb-5">
+                <div class="metric-box flex justify-between items-end border-l-2 border-nv-500">
+                    <span class="text-xs text-slate-400 font-bold">總 IT 負載 (Total Load)</span>
+                    <div class="text-right"><span id="hud_val_load" class="data-value text-white live-val" data-base="1200" data-var="5">1200</span><span class="text-[10px] text-nv-400 ml-1">kW</span></div>
+                </div>
+                <div class="metric-box flex justify-between items-end border-l-2 border-cyan-500">
+                    <span class="text-xs text-slate-400 font-bold">冷卻水供應 (Supply Temp)</span>
+                    <div class="text-right"><span id="hud_val_supply" class="data-value text-cyan-400 live-val" data-base="45.0" data-var="0.2">45.0</span><span class="text-[10px] text-cyan-400 ml-1">°C</span></div>
+                </div>
+                <div class="metric-box flex justify-between items-end border-l-2 border-red-500">
+                    <span class="text-xs text-slate-400 font-bold">冷卻水回流 (Return Temp)</span>
+                    <div class="text-right"><span id="hud_val_return" class="data-value text-red-400 live-val" data-base="55.0" data-var="0.4">55.0</span><span class="text-[10px] text-red-400 ml-1">°C</span></div>
+                </div>
+                <div class="flex gap-3">
+                    <div class="metric-box flex-1 text-center">
+                        <div class="text-[10px] text-slate-400 mb-1">系統 PUE</div>
+                        <div id="hud_val_pue" class="data-value text-nv-400 live-val" data-base="1.266" data-var="0.01">1.266</div>
+                    </div>
+                    <div class="metric-box flex-1 text-center">
+                        <div class="text-[10px] text-slate-400 mb-1">冷卻液流量</div>
+                        <div class="data-value text-white"><span id="hud_val_flow" class="live-val" data-base="165" data-var="2">165</span> <span class="text-[9px]">m³/h</span></div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="text-[10px] text-slate-500 leading-relaxed border-t border-slate-700 pt-3">
+                <p>💡 提示：在 3D 場景中點擊任一 <b class="text-nv-400">機櫃 (Rack)</b> 或 <b class="text-cyan-400">冷卻單元 (CDU)</b> 以檢視設備詳細狀態。</p>
+            </div>
+        </div>
+
+        <!-- 右側 HUD -->
+        <div id="hud-detail" class="hud-right glass-panel">
+            <div class="flex justify-between items-start mb-4 pb-2 border-b border-slate-700">
+                <div>
+                    <h2 id="detail-title" class="text-sm font-black text-white flex items-center gap-2">設備名稱</h2>
+                    <div id="detail-subtitle" class="text-[10px] text-nv-400 font-mono mt-1">MODEL_ID</div>
+                </div>
+                <button onclick="DTC.closeDetail()" class="text-slate-500 hover:text-white p-1 bg-slate-800 rounded-lg"><i class="ph ph-x"></i></button>
+            </div>
+
+            <div id="detail-content-rack" class="hidden space-y-3">
+                <div class="metric-box bg-slate-900/50">
+                    <div class="text-[10px] text-slate-400 uppercase mb-2 flex justify-between">
+                        <span>健康狀態</span><span class="text-nv-400 flex items-center gap-1"><span class="w-1.5 h-1.5 rounded-full bg-nv-500 animate-pulse"></span> 運行中</span>
+                    </div>
+                    <div class="flex justify-between items-center mb-1">
+                        <span class="text-xs text-slate-300">機櫃功耗</span>
+                        <div class="font-mono text-orange-400"><span class="live-val" data-base="118.5" data-var="1.5">118.5</span> kW</div>
+                    </div>
+                    <div class="w-full bg-slate-800 rounded-full h-1.5 mb-3"><div class="bg-orange-500 h-full rounded-full" style="width: 95%"></div></div>
+                    
+                    <div class="flex justify-between items-center mb-1">
+                        <span class="text-xs text-slate-300">GPU 平均溫度</span>
+                        <div class="font-mono text-yellow-400"><span class="live-val" data-base="42.5" data-var="1.2">42.5</span> °C</div>
+                    </div>
+                    <div class="w-full bg-slate-800 rounded-full h-1.5 mb-3"><div class="bg-yellow-500 h-full rounded-full" style="width: 60%"></div></div>
+
+                    <div class="flex justify-between items-center mb-1">
+                        <span class="text-xs text-slate-300">NVSwitch 溫度</span>
+                        <div class="font-mono text-white"><span class="live-val" data-base="38.2" data-var="0.8">38.2</span> °C</div>
+                    </div>
+                    <div class="w-full bg-slate-800 rounded-full h-1.5"><div class="bg-slate-400 h-full rounded-full" style="width: 50%"></div></div>
+                </div>
+            </div>
+
+            <div id="detail-content-cdu" class="hidden space-y-3">
+                <div class="grid grid-cols-2 gap-2 mb-2">
+                    <div class="metric-box bg-blue-900/20 border-blue-900/50 text-center">
+                        <div class="text-[9px] text-blue-400 uppercase mb-1">供水壓 (Supply)</div>
+                        <div class="data-value text-blue-300"><span class="live-val" data-base="2.45" data-var="0.05">2.45</span><span class="text-[10px]"> Bar</span></div>
+                    </div>
+                    <div class="metric-box bg-red-900/20 border-red-900/50 text-center">
+                        <div class="text-[9px] text-red-400 uppercase mb-1">回水壓 (Return)</div>
+                        <div class="data-value text-red-300"><span class="live-val" data-base="2.10" data-var="0.05">2.10</span><span class="text-[10px]"> Bar</span></div>
+                    </div>
+                </div>
+                <div class="metric-box bg-slate-900/50 flex justify-between items-center">
+                    <span class="text-xs text-slate-300">主幫浦轉速 (Pumps)</span>
+                    <div class="font-mono text-cyan-400 font-bold"><span class="live-val" data-base="3450" data-var="20">3450</span> RPM</div>
+                </div>
+                <div class="metric-box bg-slate-900/50 flex justify-between items-center">
+                    <span class="text-xs text-slate-300">熱交換效率 (HX Eff.)</span>
+                    <div class="font-mono text-nv-400 font-bold">98.5 %</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ======= 專業彈出式計算視窗 (Sizing Modal) ======= -->
+        <div id="sim-modal-overlay">
+            <div class="sim-modal">
+                <!-- Modal Header -->
+                <div class="flex justify-between items-center px-6 py-5 border-b border-slate-700/60">
+                    <h2 class="text-lg font-black text-white flex items-center gap-3 tracking-wide">
+                        <div class="p-2 bg-nv-500/20 rounded-lg shadow-[0_0_10px_rgba(118,185,0,0.3)]">
+                            <i class="ph-fill ph-calculator text-nv-400 text-xl"></i>
+                        </div>
+                        專業熱力學初步設計 (Preliminary Sizing)
+                    </h2>
+                    <button onclick="DTC.toggleSimPanel()" class="text-slate-400 hover:text-white hover:bg-slate-700 p-2 rounded-xl transition">
+                        <i class="ph ph-x text-xl font-bold"></i>
+                    </button>
+                </div>
+
+                <!-- Modal Body -->
+                <div class="sim-modal-body grid grid-cols-1 lg:grid-cols-[4fr_6fr] gap-8 relative">
+                    <!-- 左側：輸入參數區 -->
+                    <div class="space-y-4">
+                        
+                        <!-- 伺服器參數區塊 -->
+                        <div class="bg-slate-900/40 border border-slate-700/50 rounded-2xl p-5 shadow-inner">
+                            <div class="text-[11px] text-nv-400 font-bold uppercase tracking-wider mb-4 flex items-center gap-2">
+                                <i class="ph-fill ph-server"></i> 伺服器與場地負載
+                            </div>
+                            <div class="space-y-3">
+                                <div class="flex justify-between items-center gap-2">
+                                    <label class="text-sm text-slate-300 font-medium">單機櫃功率</label>
+                                    <div class="flex items-center gap-2">
+                                        <input type="number" id="sim_rack_kw" value="120" min="10" max="500" step="5" class="w-20 bg-slate-800 border border-slate-600 rounded-lg px-2 py-1 text-right text-sm text-white font-mono focus:border-nv-500 focus:ring-1 focus:ring-nv-500 outline-none transition">
+                                        <span class="text-xs text-slate-500 w-6">kW</span>
+                                    </div>
+                                </div>
+                                <div class="flex justify-between items-center gap-2">
+                                    <label class="text-sm text-slate-300 font-medium">單排機櫃數</label>
+                                    <div class="flex items-center gap-2">
+                                        <input type="number" id="sim_rack_count" value="5" readonly class="w-20 bg-slate-900/80 border border-slate-700/50 rounded-lg px-2 py-1 text-right text-sm text-slate-500 font-mono cursor-not-allowed">
+                                        <span class="text-xs text-slate-500 w-6">座</span>
+                                    </div>
+                                </div>
+                                <div class="flex justify-between items-center gap-2">
+                                    <label class="text-sm text-slate-300 font-medium">總排數配置</label>
+                                    <div class="flex items-center gap-2">
+                                        <input type="number" id="sim_row_count" value="2" readonly class="w-20 bg-slate-900/80 border border-slate-700/50 rounded-lg px-2 py-1 text-right text-sm text-slate-500 font-mono cursor-not-allowed">
+                                        <span class="text-xs text-slate-500 w-6">排</span>
+                                    </div>
+                                </div>
+                                <div class="flex justify-between items-center gap-2 pt-1">
+                                    <label class="text-sm text-slate-300 font-medium">液冷熱量佔比</label>
+                                    <div class="flex items-center gap-2">
+                                        <input type="number" id="sim_liquid_ratio" value="80" min="0" max="100" step="1" class="w-20 bg-slate-800 border border-slate-600 rounded-lg px-2 py-1 text-right text-sm text-nv-400 font-mono focus:border-nv-500 outline-none transition">
+                                        <span class="text-xs text-slate-500 w-6">%</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- 基礎設施與液冷參數區塊 -->
+                        <div class="bg-slate-900/40 border border-slate-700/50 rounded-2xl p-5 shadow-inner">
+                            <div class="text-[11px] text-cyan-400 font-bold uppercase tracking-wider mb-4 flex items-center gap-2">
+                                <i class="ph-fill ph-drop"></i> TCS 環路冷卻參數
+                            </div>
+                            <div class="space-y-3">
+                                <div class="flex justify-between items-center gap-2">
+                                    <label class="text-sm text-slate-300 font-medium">冷卻液種類</label>
+                                    <div class="flex items-center gap-2">
+                                        <select id="sim_coolant_type" class="w-[110px] bg-slate-800 border border-slate-600 rounded-lg px-2 py-1 text-sm text-white font-mono focus:border-cyan-500 outline-none transition">
+                                            <option value="water">純水</option>
+                                            <option value="pg25" selected>PG25%</option>
+                                            <option value="pg30">PG30%</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div class="flex justify-between items-center gap-2">
+                                    <label class="text-sm text-slate-300 font-medium">二次側供水 (Ts)</label>
+                                    <div class="flex items-center gap-2">
+                                        <input type="number" id="sim_supply_temp" value="45" min="15" max="60" step="0.5" class="w-20 bg-slate-800 border border-slate-600 rounded-lg px-2 py-1 text-right text-sm text-cyan-300 font-mono focus:border-cyan-500 outline-none transition">
+                                        <span class="text-xs text-slate-500 w-6">°C</span>
+                                    </div>
+                                </div>
+                                <div class="flex justify-between items-center gap-2">
+                                    <label class="text-sm text-slate-300 font-medium">二次側回水 (Tr)</label>
+                                    <div class="flex items-center gap-2">
+                                        <input type="number" id="sim_return_temp" value="55" min="20" max="80" step="0.5" class="w-20 bg-slate-800 border border-slate-600 rounded-lg px-2 py-1 text-right text-sm text-red-300 font-mono focus:border-red-500 outline-none transition">
+                                        <span class="text-xs text-slate-500 w-6">°C</span>
+                                    </div>
+                                </div>
+                                <div class="border-t border-slate-700/50 my-2"></div>
+                                <div class="flex justify-between items-center gap-2 pt-1">
+                                    <label class="text-sm text-slate-300 font-medium">CDU 並聯台數</label>
+                                    <div class="flex items-center gap-2">
+                                        <input type="number" id="sim_cdu_count" value="2" readonly class="w-20 bg-slate-900/80 border border-slate-700/50 rounded-lg px-2 py-1 text-right text-sm text-slate-500 font-mono cursor-not-allowed">
+                                        <span class="text-xs text-slate-500 w-6">台</span>
+                                    </div>
+                                </div>
+                                <div class="flex justify-between items-center gap-2">
+                                    <label class="text-sm text-slate-300 font-medium">CDU 額定容量</label>
+                                    <div class="flex items-center gap-2">
+                                        <input type="number" id="sim_cdu_capacity" value="800" min="100" max="2000" step="50" class="w-20 bg-slate-800 border border-slate-600 rounded-lg px-2 py-1 text-right text-sm text-white font-mono focus:border-nv-500 outline-none transition">
+                                        <span class="text-xs text-slate-500 w-6">kW</span>
+                                    </div>
+                                </div>
+                                <div class="flex justify-between items-center gap-2">
+                                    <label class="text-sm text-slate-300 font-medium">IT基礎附屬功耗</label>
+                                    <div class="flex items-center gap-2">
+                                        <input type="number" id="sim_infra_kw" value="50" min="0" max="500" step="10" class="w-20 bg-slate-800 border border-slate-600 rounded-lg px-2 py-1 text-right text-sm text-white font-mono focus:border-nv-500 outline-none transition">
+                                        <span class="text-xs text-slate-500 w-6">kW</span>
+                                    </div>
+                                </div>
+                                <div class="border-t border-slate-700/50 mt-3 mb-1"></div>
+                                <div class="flex items-center gap-1.5 text-[10px] text-nv-400 font-mono mt-2 mb-1 px-1">
+                                    <i class="ph-fill ph-link"></i> Spatial Data Linked (鎖定為 3D 模型尺度)
+                                </div>
+                                <div class="flex justify-between items-center gap-2">
+                                    <label class="text-sm text-slate-300 font-medium">主管管徑 (mm)</label>
+                                    <div class="flex items-center gap-2">
+                                        <input type="number" id="sim_pipe_dia" value="200" readonly class="w-20 bg-slate-900/80 border border-slate-700/50 rounded-lg px-2 py-1 text-right text-sm text-slate-500 font-mono cursor-not-allowed">
+                                        <span class="text-xs text-slate-500 w-6">mm</span>
+                                    </div>
+                                </div>
+                                <div class="flex justify-between items-center gap-2">
+                                    <label class="text-sm text-slate-300 font-medium">等效管長 (m)</label>
+                                    <div class="flex items-center gap-2">
+                                        <input type="number" id="sim_pipe_length" value="100" readonly class="w-20 bg-slate-900/80 border border-slate-700/50 rounded-lg px-2 py-1 text-right text-sm text-slate-500 font-mono cursor-not-allowed">
+                                        <span class="text-xs text-slate-500 w-6">m</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- 一次側與環境參數區塊 -->
+                        <div class="bg-slate-900/40 border border-slate-700/50 rounded-2xl p-5 shadow-inner">
+                            <div class="text-[11px] text-indigo-400 font-bold uppercase tracking-wider mb-4 flex items-center gap-2">
+                                <i class="ph-fill ph-thermometer"></i> 一次側與環境參數 (FCS & Env)
+                            </div>
+                            <div class="space-y-3">
+                                <div class="flex justify-between items-center gap-2">
+                                    <label class="text-sm text-slate-300 font-medium">一次側供水 (Ts)</label>
+                                    <div class="flex items-center gap-2">
+                                        <input type="number" id="sim_t1_supply" value="40" min="10" max="50" step="0.5" class="w-20 bg-slate-800 border border-slate-600 rounded-lg px-2 py-1 text-right text-sm text-indigo-300 font-mono focus:border-indigo-500 outline-none transition">
+                                        <span class="text-xs text-slate-500 w-6">°C</span>
+                                    </div>
+                                </div>
+                                <div class="flex justify-between items-center gap-2">
+                                    <label class="text-sm text-slate-300 font-medium">一次側回水 (Tr)</label>
+                                    <div class="flex items-center gap-2">
+                                        <input type="number" id="sim_t1_return" value="50" min="15" max="60" step="0.5" class="w-20 bg-slate-800 border border-slate-600 rounded-lg px-2 py-1 text-right text-sm text-pink-300 font-mono focus:border-pink-500 outline-none transition">
+                                        <span class="text-xs text-slate-500 w-6">°C</span>
+                                    </div>
+                                </div>
+                                <!-- 已修復：刪除重複的「一次側回水 (Tr)」 輸入框 -->
+                                <div class="flex justify-between items-center gap-2">
+                                    <label class="text-sm text-slate-300 font-medium">室外濕球溫度 (WB)</label>
+                                    <div class="flex items-center gap-2">
+                                        <input type="number" id="sim_ambient_wb" value="24" min="0" max="35" step="0.5" class="w-20 bg-slate-800 border border-slate-600 rounded-lg px-2 py-1 text-right text-sm text-green-300 font-mono focus:border-green-500 outline-none transition">
+                                        <span class="text-xs text-slate-500 w-6">°C</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- 執行按鈕 -->
+                        <button onclick="DTC.runSimulation()" class="w-full py-3.5 bg-nv-500 hover:bg-nv-400 text-black font-bold text-sm rounded-xl transition-all flex items-center justify-center gap-2 shadow-[0_0_20px_rgba(118,185,0,0.3)] active:scale-[0.98]">
+                            <i class="ph-fill ph-rocket-launch text-lg"></i> 執行工程 Sizing 計算
+                        </button>
+
+                    </div>
+
+                    <!-- 右側：計算結果儀表板 -->
+                    <div id="sim-results" class="hidden flex-col h-full bg-slate-900/60 border border-slate-700/50 rounded-2xl p-6 relative overflow-y-auto shadow-inner">
+                        <div class="absolute -top-16 -right-16 w-48 h-48 bg-nv-500/10 blur-3xl rounded-full pointer-events-none"></div>
+                        
+                        <div class="text-[12px] text-nv-400 font-bold uppercase tracking-widest mb-5 flex items-center gap-2">
+                            <i class="ph-fill ph-check-circle text-lg"></i> 系統容量與能效評估報告
+                        </div>
+
+                        <!-- 重點指標區塊 (Highlights) -->
+                        <div class="grid grid-cols-2 gap-4 mb-6">
+                            <div class="bg-gradient-to-br from-nv-500/10 to-transparent border border-nv-500/30 p-4 rounded-xl flex flex-col justify-center border-l-4 border-l-nv-500 relative overflow-hidden">
+                                <span class="text-xs text-nv-100 font-bold block mb-1">系統估算 PUE</span>
+                                <div class="font-mono text-nv-400 font-black text-4xl mt-1"><span id="res_pue">-</span></div>
+                                <i class="ph-fill ph-leaf absolute -right-2 -bottom-2 text-6xl text-nv-500/10 opacity-50"></i>
+                            </div>
+
+                            <div class="bg-gradient-to-br from-slate-800 to-slate-900 border border-slate-700/50 p-4 rounded-xl flex flex-col justify-center border-l-4 border-l-yellow-500 relative overflow-hidden">
+                                <span class="text-xs text-slate-300 block mb-1">CDU 運轉負載 (N+1)</span>
+                                <div class="font-mono text-yellow-400 font-black text-4xl mt-1"><span id="res_cdu_load">-</span><span class="text-2xl ml-1">%</span></div>
+                                <i class="ph-fill ph-warning-circle absolute -right-2 -bottom-2 text-6xl text-yellow-500/10 opacity-50"></i>
+                            </div>
+                        </div>
+                        
+                        <!-- 詳細數據分群 (Sub-Grids) -->
+                        <div class="space-y-4 flex-1">
+                            
+                            <!-- 第一塊：熱需求與設備 -->
+                            <div class="bg-slate-800/30 p-4 rounded-xl border border-slate-700/30">
+                                <div class="text-[10px] text-slate-500 mb-3 font-bold uppercase">熱負荷與冷卻配置</div>
+                                <div class="grid grid-cols-2 md:grid-cols-3 gap-4">
+                                    <div class="flex flex-col border-l-2 border-slate-600 pl-2">
+                                        <span class="text-[10px] text-slate-400 mb-1">總 IT 負載</span>
+                                        <div class="font-mono text-white text-lg font-bold"><span id="res_total_load">-</span> <span class="text-[10px] text-slate-500 font-sans">kW</span></div>
+                                    </div>
+                                    <div class="flex flex-col border-l-2 border-orange-500 pl-2">
+                                        <span class="text-[10px] text-slate-400 mb-1">液冷散熱需求</span>
+                                        <div class="font-mono text-orange-400 text-lg font-bold"><span id="res_heat_load">-</span> <span class="text-[10px] text-slate-500 font-sans">kW</span></div>
+                                    </div>
+                                    <div class="flex flex-col border-l-2 border-rose-500 pl-2">
+                                        <span class="text-[10px] text-slate-400 mb-1">空冷排熱需求</span>
+                                        <div class="font-mono text-rose-400 text-lg font-bold"><span id="res_air_load">-</span> <span class="text-[10px] text-slate-500 font-sans">kW</span></div>
+                                    </div>
+                                    <div class="flex flex-col border-l-2 border-teal-500 pl-2">
+                                        <span class="text-[10px] text-slate-400 mb-1">一次側冰水負載</span>
+                                        <div class="font-mono text-teal-400 text-lg font-bold"><span id="res_cooling_tons">-</span> <span class="text-[10px] text-slate-500 font-sans">RT</span></div>
+                                    </div>
+                                    <div class="flex flex-col border-l-2 border-purple-500 pl-2">
+                                        <span class="text-[10px] text-slate-400 mb-1">待補冰機容量</span>
+                                        <div class="font-mono text-purple-400 text-lg font-bold"><span id="res_chiller_req_rt">-</span> <span class="text-[10px] text-slate-500 font-sans">RT</span></div>
+                                    </div>
+                                    <div class="flex flex-col border-l-2 border-green-500 pl-2">
+                                        <span class="text-[10px] text-slate-400 mb-1">自然冷卻排熱佔比</span>
+                                        <div class="font-mono text-green-400 text-lg font-bold"><span id="res_fc_fraction">-</span> <span class="text-[10px] text-slate-500 font-sans">%</span></div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- 第二塊：液冷流體 -->
+                            <div class="bg-slate-800/30 p-4 rounded-xl border border-slate-700/30">
+                                <div class="text-[10px] text-slate-500 mb-3 font-bold uppercase">流體力學與CDU參數</div>
+                                <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                                    <div class="flex flex-col border-l-2 border-cyan-500 pl-2">
+                                        <span class="text-[10px] text-slate-400 mb-1">二次側溫差 ΔT</span>
+                                        <div class="font-mono text-cyan-400 text-lg font-bold"><span id="res_delta_t">-</span> <span class="text-[10px] text-slate-500 font-sans">°C</span></div>
+                                    </div>
+                                    <div class="flex flex-col border-l-2 border-blue-500 pl-2">
+                                        <span class="text-[10px] text-slate-400 mb-1">二次側設計流量</span>
+                                        <div class="font-mono text-blue-400 text-lg font-bold"><span id="res_flow_rate">-</span> <span class="text-[10px] text-slate-500 font-sans">m³/h</span></div>
+                                    </div>
+                                    <div class="flex flex-col border-l-2 border-indigo-500 pl-2">
+                                        <span class="text-[10px] text-slate-400 mb-1">一次側設計流量</span>
+                                        <div class="font-mono text-indigo-400 text-lg font-bold"><span id="res_primary_flow">-</span> <span class="text-[10px] text-slate-500 font-sans">m³/h</span></div>
+                                    </div>
+                                    <div class="flex flex-col border-l-2 border-pink-500 pl-2">
+                                        <span class="text-[10px] text-slate-400 mb-1">單台CDU理想容量</span>
+                                        <div class="font-mono text-pink-400 text-lg font-bold"><span id="res_cdu_req_cap">-</span> <span class="text-[10px] text-slate-500 font-sans">kW</span></div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                        </div>
+
+                        <!-- 警告顯示區 (僅當有警告時呈現) -->
+                        <div id="sim-warnings" class="hidden mt-4 p-4 bg-red-950/40 border border-red-800/50 rounded-xl text-xs text-red-300 leading-relaxed shadow-inner">
+                        </div>
+
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Bottom Toolbar -->
+        <div class="hud-bottom glass-panel">
+            <button onclick="DTC.toggleLeftHud()" class="btn-tool active " id="btn_toggle_hud"><i class="ph ph-chart-bar"></i> 營運數據</button>
+            <div class="w-px h-6 bg-slate-700 mx-1 self-center hide-on-desktop flex-shrink-0"></div>
+
+            <button onclick="DTC.setCamera('overview')" class="btn-tool" id="cam_overview"><i class="ph ph-cube"></i> 全景俯瞰</button>
+            <button onclick="DTC.setCamera('aisle')" class="btn-tool" id="cam_aisle"><i class="ph ph-footprints"></i> 冷通道</button>
+            <button onclick="DTC.setCamera('hot_aisle')" class="btn-tool" id="cam_hot_aisle"><i class="ph ph-thermometer-hot"></i> 熱通道</button>
+            <button onclick="DTC.setCamera('rack_close')" class="btn-tool" id="cam_rack_close"><i class="ph ph-server"></i> 機櫃特寫</button>
+            <button onclick="DTC.setCamera('cdu_close')" class="btn-tool" id="cam_cdu_close"><i class="ph ph-drop"></i> CDU 特寫</button>
+            <button onclick="DTC.setCamera('piping')" class="btn-tool" id="cam_piping"><i class="ph ph-git-branch"></i> 頂部管路</button>
+            <div class="w-px h-6 bg-slate-700 mx-1 self-center flex-shrink-0"></div>
+            
+            <button onclick="DTC.toggleSimPanel()" class="btn-tool" id="btn_sim"><i class="ph ph-calculator"></i> 模擬計算</button>
+            <button onclick="DTC.toggleDoors()" class="btn-tool" id="btn_toggle_doors"><i class="ph ph-door-open"></i> 機櫃開門</button>
+            <!-- 新增：爆炸拆解按鈕 -->
+            <button onclick="DTC.toggleExplode()" class="btn-tool" id="btn_toggle_explode"><i class="ph ph-arrows-out"></i> 爆炸拆解</button>
+            <button onclick="DTC.togglePipes()" class="btn-tool active" id="btn_toggle_pipes"><i class="ph ph-power"></i> 顯示管路</button>
+        </div>
+    </div>
+
+    <script src="./app.js"></script>
+</body>
+</html>

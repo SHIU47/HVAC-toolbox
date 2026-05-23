@@ -1,0 +1,855 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <!-- 安全防護 -->
+    <script src="./security.js"></script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HVAC 專業設計審查級壓損計算書 (v2.3)</title>
+    
+    <!-- 載入核心與字體 -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"></script>
+    
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@400;500;700&family=Inter:wght@300;400;500;600;700;800&display=swap');
+        
+        :root {
+            --primary: #0f172a;
+            --accent: #2563eb;
+            --success: #059669;
+            --danger: #dc2626;
+            --warning: #d97706;
+            --bg-main: #f8fafc;
+        }
+
+        body { 
+            font-family: 'Inter', 'Microsoft JhengHei', sans-serif; 
+            background-color: var(--bg-main); 
+            color: #1e293b;
+            letter-spacing: -0.01em;
+        }
+
+        .mono { font-family: 'Roboto Mono', monospace; }
+        
+        .pro-card { 
+            background: white; 
+            border-radius: 20px; 
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.05);
+            border: 1px solid #e2e8f0;
+        }
+
+        .input-pro {
+            border: 1px solid #cbd5e1;
+            padding: 8px 12px;
+            border-radius: 10px;
+            font-size: 0.875rem;
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .input-pro:focus {
+            outline: none;
+            border-color: var(--accent);
+            box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.12);
+        }
+
+        .tab-btn {
+            padding: 10px 28px;
+            font-size: 0.875rem;
+            font-weight: 700;
+            border-radius: 14px;
+            transition: all 0.3s ease;
+            color: #64748b;
+        }
+        .tab-active { 
+            background: white; 
+            color: var(--accent); 
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+
+        @keyframes slideUp { from { opacity: 0; transform: translateY(15px); } to { opacity: 1; transform: translateY(0); } }
+        .animate-slide { animation: slideUp 0.4s ease-out forwards; }
+
+        .val-display { background: #f1f5f9; padding: 4px 10px; border-radius: 8px; font-weight: 700; color: #334155; }
+
+        /* KaTeX 修正 */
+        .katex { font-size: 1.05em !important; }
+
+        @media print { 
+            .no-print { display: none !important; } 
+            body { background: white; padding: 0; -webkit-print-color-adjust: exact; } 
+            .pro-card { box-shadow: none; border: 1px solid #cbd5e1; break-inside: avoid; }
+            /* 強制列印背景色，確保標題美觀 */
+            header { background-color: #0f172a !important; color: white !important; -webkit-print-color-adjust: exact; }
+            .bg-blue-50 { background-color: #eff6ff !important; }
+            input, select { border: none; background: transparent; appearance: none; padding: 0; font-weight: bold; }
+        }
+    </style>
+</head>
+<body class="p-6 md:p-10">
+
+    <div class="max-w-[1500px] mx-auto space-y-8">
+        
+        <!-- Header -->
+        <header class="flex flex-col lg:flex-row justify-between items-start lg:items-center bg-[#0f172a] p-10 rounded-[2.5rem] shadow-2xl animate-slide text-white relative overflow-hidden">
+            <div class="absolute right-0 top-0 w-80 h-80 bg-blue-500/10 rounded-full blur-[100px]"></div>
+            <div class="z-10 flex items-center gap-6">
+                <div class="p-5 bg-blue-600 rounded-3xl shadow-2xl shadow-blue-500/20">
+                    <svg class="w-10 h-10 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
+                </div>
+                <div>
+                    <h1 class="text-3xl font-black tracking-tight" data-i18n="title">HVAC 系統壓力損失審查計算書</h1>
+                    <div class="flex items-center gap-3 mt-2">
+                        <span class="text-[11px] font-bold uppercase tracking-widest text-blue-400">Mechanical Engineering Suite v2.3</span>
+                        <div class="h-1 w-1 rounded-full bg-slate-600"></div>
+                        <span class="text-[11px] text-slate-400 font-mono">Print Ready Version</span>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="flex items-center gap-4 mt-8 lg:mt-0 no-print z-10">
+                <button onclick="toggleHelp()" class="flex items-center gap-2 px-6 py-3 bg-white/10 hover:bg-white/20 rounded-2xl transition-all font-bold text-sm backdrop-blur-md border border-white/10">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.246 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"></path></svg>
+                    <span data-i18n="designGuide">設計指南</span>
+                </button>
+                <div class="flex bg-slate-800/50 p-2 rounded-[1.5rem] backdrop-blur-md border border-white/5 shadow-inner">
+                    <button onclick="switchTab('water')" id="btnWater" class="tab-btn tab-active" data-i18n="tabWater">水系統</button>
+                    <button onclick="switchTab('air')" id="btnAir" class="tab-btn" data-i18n="tabAir">風系統</button>
+                </div>
+            </div>
+        </header>
+
+        <main class="grid grid-cols-1 xl:grid-cols-12 gap-8 items-start">
+            
+            <!-- Left Engine -->
+            <div class="xl:col-span-9 space-y-8 animate-slide" style="animation-delay: 0.1s;">
+                <div class="pro-card overflow-hidden">
+                    <div class="p-6 border-b border-slate-100 flex flex-wrap justify-between items-center bg-slate-50/50 gap-6 no-print">
+                        <div class="flex items-center gap-5">
+                            <h2 class="text-sm font-black text-slate-800 uppercase tracking-widest flex items-center gap-2">
+                                <svg class="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M4 6h16M4 12h16M4 18h7"></path></svg>
+                                <span data-i18n="sectionLoop">關鍵環路元件明細</span>
+                            </h2>
+                            <div class="flex gap-2">
+                                <span id="currentSystemTag" class="px-3 py-1 rounded-lg bg-blue-600 text-white text-[10px] font-black tracking-tighter uppercase">Water System</span>
+                                <div id="airContext" class="hidden text-[10px] text-blue-700 font-bold bg-white px-3 py-1 rounded-lg border border-blue-200">空氣密度 $\rho = 1.204 \text{ kg/m}^3$</div>
+                                <div id="waterContext" class="text-[10px] text-indigo-700 font-bold bg-white px-3 py-1 rounded-lg border border-indigo-200">清水密度 $\rho = 998.2 \text{ kg/m}^3$</div>
+                            </div>
+                        </div>
+                        <div class="flex items-center gap-3">
+                            <button onclick="addRow('pipe')" class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2.5 rounded-2xl text-xs font-black transition-all shadow-xl shadow-blue-500/20" data-i18n="btnAddPipe">➕ 新增管段</button>
+                            <button onclick="addRow('fitting')" class="bg-slate-800 hover:bg-slate-900 text-white px-6 py-2.5 rounded-2xl text-xs font-black transition-all" data-i18n="btnAddFit">➕ 零件選用</button>
+                            <button onclick="addRow('equipment')" class="bg-amber-600 hover:bg-amber-700 text-white px-6 py-2.5 rounded-2xl text-xs font-black transition-all" data-i18n="btnAddEquip">➕ 設備壓損</button>
+                        </div>
+                    </div>
+
+                    <div class="p-6">
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-left border-separate border-spacing-y-4">
+                                <thead>
+                                    <tr class="text-[11px] text-slate-400 font-black uppercase tracking-[0.2em] px-4">
+                                        <th class="pb-2 pl-4" data-i18n="thID">編號與識別</th>
+                                        <th class="pb-2" data-i18n="thGeom">幾何參數</th>
+                                        <th class="pb-2" data-i18n="thLen">長度 (m)</th>
+                                        <th class="pb-2" id="thFlow" data-i18n="thFlowWater">流量 (m³/h)</th>
+                                        <th class="pb-2" data-i18n="thMat">材質與阻力係數</th>
+                                        <th class="pb-2 pr-4 text-center" data-i18n="thCalc">計算與流態</th>
+                                        <th class="pb-2 w-10 no-print"></th>
+                                    </tr>
+                                </thead>
+                                <tbody id="calcBody"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Footer Summary -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-8 animate-slide" style="animation-delay: 0.2s;">
+                    <div class="pro-card p-8 border-t-8 border-blue-600">
+                        <h3 class="font-black text-slate-800 text-xs uppercase tracking-widest mb-6 flex items-center gap-2">
+                            <div class="w-2 h-4 bg-blue-600 rounded-sm"></div> <span data-i18n="sectionTech">技術與物理模型依據</span>
+                        </h3>
+                        <div class="space-y-4 text-[12px] leading-relaxed text-slate-500">
+                            <div id="waterLogic" class="bg-slate-50 p-5 rounded-[1.5rem] border border-slate-100">
+                                <p class="font-black text-slate-800 underline mb-2 tracking-tight" data-i18n="waterLogicTitle">Hydronic System (水系統):</p>
+                                <p data-i18n="waterLogic1">● 當 $Re \ge 10^4$ 時，採用 Hazen-Williams 公式計算磨擦。</p>
+                                <p data-i18n="waterLogic2">● 低雷諾數流態下，自動改採 Darcy-Weisbach 以維護審查精度。</p>
+                                <p data-i18n="waterLogic3">● <strong>C 值</strong>：依材質選定，新鋼管預設 120，塑料管 150。</p>
+                            </div>
+                            <div id="airLogic" class="hidden bg-slate-50 p-5 rounded-[1.5rem] border border-slate-100">
+                                <p class="font-black text-slate-800 underline mb-2 tracking-tight" data-i18n="airLogicTitle">Air Distribution (風系統):</p>
+                                <p data-i18n="airLogic1">● 全程求解 Swamee-Jain 摩擦因子 $f$。</p>
+                                <p data-i18n="airLogic2">● <strong>粗糙度 $\epsilon$</strong>：依材質選定，標準鍍鋅管 0.15mm，軟管 2.5mm。</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="pro-card p-8 border-t-8 border-red-500 bg-red-50/20">
+                        <h3 class="font-black text-red-800 text-xs mb-6 uppercase tracking-widest flex items-center gap-2">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>
+                            <span data-i18n="sectionWarn">審查異常與設計警報</span>
+                        </h3>
+                        <div id="warningsContainer" class="space-y-3">
+                            <p class="text-[11px] text-slate-400 italic" data-i18n="warnDefault">目前設計參數均符合機電審查標準...</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right Panel: Removed no-print class -->
+            <aside class="xl:col-span-3 space-y-8 animate-slide" style="animation-delay: 0.3s;">
+                <div class="pro-card p-8 sticky top-10 shadow-2xl border-blue-50/50">
+                    <h2 class="text-xs font-black text-slate-400 mb-8 border-b pb-4 uppercase tracking-[0.2em]" data-i18n="summaryTitle">Summary Dashboard</h2>
+                    
+                    <div class="space-y-8">
+                        <div class="space-y-4">
+                            <div class="flex justify-between items-center group">
+                                <span class="text-[11px] font-bold text-slate-400 uppercase tracking-tighter" data-i18n="sumFric">直管合計 $H_f$</span>
+                                <span class="mono text-slate-900 val-display" id="resFriction">0.000</span>
+                            </div>
+                            <div class="flex justify-between items-center group">
+                                <span class="text-[11px] font-bold text-slate-400 uppercase tracking-tighter" data-i18n="sumFit">局部合計 $H_m$</span>
+                                <span class="mono text-slate-900 val-display" id="resFitting">0.000</span>
+                            </div>
+                            <div class="flex justify-between items-center group">
+                                <span class="text-[11px] font-bold text-amber-600 uppercase tracking-tighter" data-i18n="sumEquip">設備定額 $H_e$</span>
+                                <span class="mono font-bold text-amber-700 bg-amber-50 px-2 py-1 rounded" id="resEquip">0.000</span>
+                            </div>
+                            
+                            <!-- Static Head Row -->
+                            <div id="staticHeadRow" class="flex justify-between items-center group bg-emerald-50 p-2 rounded-lg border border-emerald-100">
+                                <div class="flex flex-col">
+                                    <span class="text-[11px] font-black text-emerald-600 uppercase tracking-tighter" data-i18n="sumStatic">靜落差/位能 $H_z$</span>
+                                    <span class="text-[9px] text-emerald-400 font-bold leading-none" data-i18n="staticHint">僅開放系統需填</span>
+                                </div>
+                                <div class="flex items-center gap-2">
+                                    <input type="number" id="staticHeadVal" value="0" step="0.5" class="input-pro w-20 text-right font-mono font-bold text-emerald-700 bg-white" onchange="updateCalculations()">
+                                    <span class="text-[10px] text-emerald-500 font-bold">m</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="p-6 bg-slate-50 rounded-[2rem] border border-slate-100 space-y-3">
+                            <label class="block text-[10px] font-black text-slate-400 mb-1 uppercase tracking-widest font-bold" data-i18n="sfLabel">安全係數 (S.F.) - 僅摩擦項</label>
+                            <input type="number" id="sfValue" value="1.15" step="0.01" class="font-mono w-full bg-white border border-slate-200 rounded-2xl p-4 font-black text-blue-600 input-pro" onchange="updateCalculations()">
+                        </div>
+
+                        <div class="relative overflow-hidden bg-[#0f172a] rounded-[2.5rem] p-10 text-white shadow-2xl">
+                            <div class="absolute -right-8 -top-8 w-32 h-32 bg-blue-600/30 rounded-full blur-3xl"></div>
+                            <p class="text-[11px] text-blue-400 uppercase font-black mb-2 tracking-widest" data-i18n="totalHead">總揚程/靜壓需求</p>
+                            <div class="flex items-baseline gap-2">
+                                <span class="text-6xl font-black mono text-white tracking-tighter" id="totalResult">0.00</span>
+                                <span id="mainUnit" class="text-lg font-bold text-slate-500 font-bold">mH2O</span>
+                            </div>
+                        </div>
+
+                        <div id="dynamicPressureBox" class="hidden bg-blue-50/50 p-6 rounded-[2rem] border border-blue-100">
+                            <span class="text-[11px] text-blue-800 font-black uppercase tracking-widest font-bold" data-i18n="dynPress">系統出口動壓 $P_d$</span>
+                            <div class="flex items-baseline gap-2 mt-2">
+                                <span class="text-4xl font-black text-blue-900 mono" id="resDynamic">0</span>
+                                <span class="text-sm font-bold text-blue-800 font-bold">Pa</span>
+                            </div>
+                        </div>
+
+                        <!-- Button is no-print -->
+                        <button onclick="window.print()" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-black py-5 rounded-2xl transition-all shadow-2xl shadow-blue-200 uppercase text-xs tracking-widest no-print" data-i18n="btnDownload">
+                            下載正式審查報告 (PDF)
+                        </button>
+                    </div>
+                </div>
+            </aside>
+        </main>
+    </div>
+
+    <!-- Help Modal -->
+    <div id="helpModal" class="fixed inset-0 bg-slate-900/90 backdrop-blur-md z-50 flex items-center justify-center hidden p-6 no-print">
+        <div class="bg-white w-full max-w-4xl rounded-[3.5rem] shadow-2xl overflow-hidden animate-slide">
+            <div class="p-10 border-b border-slate-100 flex justify-between items-center bg-slate-50">
+                <h2 class="text-2xl font-black text-slate-900 tracking-tighter" data-i18n="helpTitle">HVAC 壓損計算器 v2.3：專家使用指南</h2>
+                <button onclick="toggleHelp()" class="p-3 hover:bg-slate-200 rounded-full transition-all text-xl">✕</button>
+            </div>
+            <div class="p-12 max-h-[70vh] overflow-y-auto space-y-12">
+                <section class="grid grid-cols-1 md:grid-cols-2 gap-12 text-slate-600">
+                    <div class="space-y-4">
+                        <h4 class="font-black text-blue-600 uppercase text-xs tracking-[0.2em] border-b pb-2 font-bold" data-i18n="helpSec1">材質與 C 值設定</h4>
+                        <ol class="space-y-4 text-sm list-decimal ml-4">
+                            <li data-i18n="help1_1"><strong>選單連動</strong>：在「阻力設定」欄位選擇管材，程式會自動填入建議的 Hazen-Williams C 值或風管粗糙度 $\epsilon$。</li>
+                            <li data-i18n="help1_2"><strong>老化考量</strong>：預設黑鐵管 C=120，這已包含約 15-20 年的老化係數。</li>
+                            <li data-i18n="help1_3"><strong>軟管注意</strong>：軟管 (Flexible Duct) 的粗糙度高達 2.5mm，約為鍍鋅風管的 16 倍，請務必如實選用以免風量不足。</li>
+                        </ol>
+                    </div>
+                    <div class="space-y-4">
+                        <h4 class="font-black text-indigo-600 uppercase text-xs tracking-[0.2em] border-b pb-2 font-bold" data-i18n="helpSec2">高程與系統類型</h4>
+                        <ul class="space-y-4 text-sm list-disc ml-4">
+                            <li data-i18n="help2_1"><strong>閉路系統</strong>：$H_z = 0$。</li>
+                            <li data-i18n="help2_2"><strong>開路系統</strong>：$H_z$ = 垂直幾何落差。</li>
+                            <li data-i18n="help2_3"><strong>安全係數</strong>：S.F. 不放大 $H_z$ 與設備壓損。</li>
+                        </ul>
+                    </div>
+                </section>
+                <div class="bg-red-50 p-10 rounded-[2.5rem] border border-red-100">
+                    <h4 class="font-black text-red-800 uppercase text-xs tracking-widest mb-6 font-bold" data-i18n="helpSec3">⚠️ 工程設計防呆檢查 (Audit)</h4>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-6 text-[11px] font-bold text-red-700 leading-relaxed">
+                        <div class="flex gap-3"><span>✕</span> <span data-i18n="help3_1">切勿每一段管都輸入流量，這會導致繼承邏輯錯誤。</span></div>
+                        <div class="flex gap-3"><span>✕</span> <span data-i18n="help3_2">流速警告若顯示紅色，代表噪音與震動過高，請調大管徑。</span></div>
+                        <div class="flex gap-3"><span>✕</span> <span data-i18n="help3_3">不鏽鋼與銅管表面光滑，C值通常取 140；鍍鋅管較粗糙取 110。</span></div>
+                        <div class="flex gap-3"><span>✕</span> <span data-i18n="help3_4">軟管壓損極大，請限制軟管長度（建議 < 1.5m）。</span></div>
+                    </div>
+                </div>
+            </div>
+            <div class="p-10 bg-slate-50 border-t flex justify-center">
+                <button onclick="toggleHelp()" class="bg-slate-900 text-white px-20 py-5 rounded-[2rem] font-black hover:scale-105 transition-all shadow-2xl" data-i18n="helpClose">進入設計書</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // --- Multi-language Support ---
+        const getUrlLang = () => {
+            const params = new URLSearchParams(window.location.search);
+            return params.get('lang') === 'en' ? 'en' : 'zh';
+        };
+        const lang = getUrlLang();
+
+        const TRANSLATIONS = {
+            zh: {
+                title: "HVAC 專業設計審查級壓損計算書 (v2.3)",
+                designGuide: "設計指南",
+                tabWater: "水系統",
+                tabAir: "風系統",
+                sectionLoop: "關鍵環路元件明細",
+                btnAddPipe: "➕ 新增管段",
+                btnAddFit: "➕ 零件選用",
+                btnAddEquip: "➕ 設備壓損",
+                thID: "編號與識別",
+                thGeom: "幾何參數",
+                thLen: "長度 (m)",
+                thFlowWater: "流量 (m³/h)",
+                thFlowAir: "風量 (CMH)",
+                thMat: "材質與阻力係數",
+                thCalc: "計算與流態",
+                sectionTech: "技術與物理模型依據",
+                sectionWarn: "審查異常與設計警報",
+                waterLogicTitle: "Hydronic System (水系統):",
+                waterLogic1: "● 當 $Re \\ge 10^4$ 時，採用 Hazen-Williams 公式計算磨擦。",
+                waterLogic2: "● 低雷諾數流態下，自動改採 Darcy-Weisbach 以維護審查精度。",
+                waterLogic3: "● <strong>C 值</strong>：依材質選定，新鋼管預設 120，塑料管 150。",
+                airLogicTitle: "Air Distribution (風系統):",
+                airLogic1: "● 全程求解 Swamee-Jain 摩擦因子 $f$。",
+                airLogic2: "● <strong>粗糙度 $\\epsilon$</strong>：依材質選定，標準鍍鋅管 0.15mm，軟管 2.5mm。",
+                warnDefault: "目前設計參數均符合機電審查標準...",
+                warnInherit: "繼承",
+                warnNoFlow: "未填流量數據。",
+                warnRisk: "Risk",
+                warnSafe: "✓ 符合機電審查設計基準",
+                summaryTitle: "Summary Dashboard",
+                sumFric: "直管合計 $H_f$",
+                sumFit: "局部合計 $H_m$",
+                sumEquip: "設備定額 $H_e$",
+                sumStatic: "靜落差/位能 $H_z$",
+                staticHint: "僅開放系統需填",
+                sfLabel: "安全係數 (S.F.) - 僅摩擦項",
+                totalHead: "總揚程/靜壓需求",
+                dynPress: "系統出口動壓 $P_d$",
+                btnDownload: "下載正式審查報告 (PDF)",
+                helpTitle: "HVAC 壓損計算器 v2.3：專家使用指南",
+                helpSec1: "材質與 C 值設定",
+                help1_1: "<strong>選單連動</strong>：在「阻力設定」欄位選擇管材，程式會自動填入建議的 Hazen-Williams C 值或風管粗糙度 $\\epsilon$。",
+                help1_2: "<strong>老化考量</strong>：預設黑鐵管 C=120，這已包含約 15-20 年的老化係數。",
+                help1_3: "<strong>軟管注意</strong>：軟管 (Flexible Duct) 的粗糙度高達 2.5mm，約為鍍鋅風管的 16 倍，請務必如實選用以免風量不足。",
+                helpSec2: "高程與系統類型",
+                help2_1: "<strong>閉路系統</strong>：$H_z = 0$。",
+                help2_2: "<strong>開路系統</strong>：$H_z$ = 垂直幾何落差。",
+                help2_3: "<strong>安全係數</strong>：S.F. 不放大 $H_z$ 與設備壓損。",
+                helpSec3: "⚠️ 工程設計防呆檢查 (Audit)",
+                help3_1: "切勿每一段管都輸入流量，這會導致繼承邏輯錯誤。",
+                help3_2: "流速警告若顯示紅色，代表噪音與震動過高，請調大管徑。",
+                help3_3: "不鏽鋼與銅管表面光滑，C值通常取 140；鍍鋅管較粗糙取 110。",
+                help3_4: "軟管壓損極大，請限制軟管長度（建議 < 1.5m）。",
+                helpClose: "進入設計書",
+                optCustom: "🔘 自定義 (Custom)",
+                optCustomIn: "🔘 自定義輸入"
+            },
+            en: {
+                title: "HVAC Pressure Drop Calculation (v2.3)",
+                designGuide: "Design Guide",
+                tabWater: "Water System",
+                tabAir: "Air System",
+                sectionLoop: "Critical Loop Components",
+                btnAddPipe: "➕ Add Pipe",
+                btnAddFit: "➕ Add Fitting",
+                btnAddEquip: "➕ Add Equip",
+                thID: "ID & Name",
+                thGeom: "Geometry",
+                thLen: "Length (m)",
+                thFlowWater: "Flow (m³/h)",
+                thFlowAir: "Airflow (CMH)",
+                thMat: "Material & Coeff",
+                thCalc: "Result & Regime",
+                sectionTech: "Technical Basis",
+                sectionWarn: "Warnings & Alerts",
+                waterLogicTitle: "Hydronic System:",
+                waterLogic1: "● Uses Hazen-Williams for $Re \\ge 10^4$.",
+                waterLogic2: "● Automatically switches to Darcy-Weisbach for low Re.",
+                waterLogic3: "● <strong>C-Value</strong>: Steel=120, Plastic=150.",
+                airLogicTitle: "Air Distribution:",
+                airLogic1: "● Solves Swamee-Jain friction factor $f$.",
+                airLogic2: "● <strong>Roughness $\\epsilon$</strong>: Galv=0.15mm, Flex=2.5mm.",
+                warnDefault: "Design parameters meet standard criteria...",
+                warnInherit: "Inherited",
+                warnNoFlow: "No flow data.",
+                warnRisk: "Risk",
+                warnSafe: "✓ Design meets standard criteria",
+                summaryTitle: "Summary Dashboard",
+                sumFric: "Friction $H_f$",
+                sumFit: "Fitting $H_m$",
+                sumEquip: "Equipment $H_e$",
+                sumStatic: "Static Head $H_z$",
+                staticHint: "Open loop only",
+                sfLabel: "Safety Factor (S.F.) - Friction only",
+                totalHead: "Total Head/Pressure",
+                dynPress: "Dynamic Pressure $P_d$",
+                btnDownload: "Download Report (PDF)",
+                helpTitle: "HVAC Estimator v2.3: User Guide",
+                helpSec1: "Material & C-Values",
+                help1_1: "<strong>Auto-Fill</strong>: Selecting material updates Hazen-Williams C or Roughness $\\epsilon$.",
+                help1_2: "<strong>Aging</strong>: Default Steel C=120 includes 15-20y aging factor.",
+                help1_3: "<strong>Flex Duct</strong>: Roughness is 2.5mm (~16x Galv). Use carefully.",
+                helpSec2: "Elevation & System Type",
+                help2_1: "<strong>Closed Loop</strong>: $H_z = 0$.",
+                help2_2: "<strong>Open Loop</strong>: $H_z$ = Vertical Lift.",
+                help2_3: "<strong>Safety Factor</strong>: S.F. applies to friction only.",
+                helpSec3: "⚠️ Engineering Audit Checks",
+                help3_1: "Do not enter flow for every segment; use inheritance.",
+                help3_2: "Red velocity warning indicates noise/vibration risk.",
+                help3_3: "SS/Copper C=140; Galvanized C=110.",
+                help3_4: "Limit flexible duct length (< 1.5m recommended).",
+                helpClose: "Close Guide",
+                optCustom: "🔘 Custom",
+                optCustomIn: "🔘 Custom Input"
+            }
+        };
+
+        const trans = TRANSLATIONS[lang];
+
+        let mode = 'water';
+        let rows = [];
+        
+        // Revised Library with Multi-lang Labels
+        const LIBRARIES = {
+            water: {
+                materials: [
+                    { id: 'custom', label: { zh: '🔘 自定義 (Custom)', en: '🔘 Custom' }, value: 120 },
+                    { id: 'pvc', label: { zh: '🧪 塑料管 (PVC/CPVC)', en: '🧪 Plastic (PVC/CPVC)' }, value: 150 },
+                    { id: 'ss', label: { zh: '✨ 銅管/不鏽鋼 (Copper/SS)', en: '✨ Copper/SS' }, value: 140 },
+                    { id: 'new_steel', label: { zh: '🏗️ 新黑鐵管 (New Steel)', en: '🏗️ New Steel' }, value: 120 },
+                    { id: 'galv', label: { zh: '🛡️ 鍍鋅鋼管 (Galvanized)', en: '🛡️ Galvanized' }, value: 110 },
+                    { id: 'old_steel', label: { zh: '🏚️ 舊鐵管 (Old Steel)', en: '🏚️ Old Steel' }, value: 100 },
+                    { id: 'cast_iron', label: { zh: '🧱 鑄鐵管 (Cast Iron)', en: '🧱 Cast Iron' }, value: 100 }
+                ],
+                fittings: [
+                    { id: 'custom', label: { zh: '🔘 自定義輸入 (K)', en: '🔘 Custom Input (K)' }, value: 0 },
+                    { id: 'elbow90l', label: { zh: '📏 90° 彎頭 (長半徑)', en: '📏 90° Elbow (LR)' }, value: 0.45 },
+                    { id: 'elbow90s', label: { zh: '📏 90° 彎頭 (標準)', en: '📏 90° Elbow (Std)' }, value: 0.90 },
+                    { id: 'elbow45', label: { zh: '📏 45° 彎頭', en: '📏 45° Elbow' }, value: 0.35 },
+                    { id: 'tee_branch', label: { zh: '🔱 三通 - 分流 (Branch)', en: '🔱 Tee (Branch)' }, value: 1.80 },
+                    { id: 'tee_through', label: { zh: '🔱 三通 - 直通 (Through)', en: '🔱 Tee (Through)' }, value: 0.60 },
+                    { id: 'gate_valve', label: { zh: '🎚️ 閘閥 (全開)', en: '🎚️ Gate Valve' }, value: 0.17 },
+                    { id: 'butterfly', label: { zh: '🎚️ 蝶閥 (全開)', en: '🎚️ Butterfly Valve' }, value: 0.80 },
+                    { id: 'check_valve', label: { zh: '🛡️ 止回閥 (旋啟式)', en: '🛡️ Swing Check' }, value: 2.50 },
+                    { id: 'strainer', label: { zh: '🧬 Y型過濾器', en: '🧬 Y-Strainer' }, value: 4.50 }
+                ],
+                equipment: [
+                    { id: 'custom', label: { zh: '🔘 自定義輸入 (mH2O)', en: '🔘 Custom Input (mH2O)' }, value: 0 },
+                    { id: 'chiller_evap', label: { zh: '❄️ 冰機蒸發器 (Chiller Evap)', en: '❄️ Chiller Evap' }, value: 5.0 },
+                    { id: 'chiller_cond', label: { zh: '🔥 冰機冷凝器 (Chiller Cond)', en: '🔥 Chiller Cond' }, value: 6.5 },
+                    { id: 'cooling_tower', label: { zh: '🏙️ 冷卻水塔 (內部損耗)', en: '🏙️ Cooling Tower' }, value: 2.5 },
+                    { id: 'fcu', label: { zh: '📦 FCU 盤管', en: '📦 FCU Coil' }, value: 2.2 },
+                    { id: 'ahu', label: { zh: '🏗️ AHU 盤管 (6 Row)', en: '🏗️ AHU Coil (6R)' }, value: 4.8 },
+                    { id: 'phe', label: { zh: '🔄 板換 (Heat Exchanger)', en: '🔄 PHE' }, value: 4.0 }
+                ]
+            },
+            air: {
+                materials: [
+                    { id: 'custom', label: { zh: '🔘 自定義 (Custom)', en: '🔘 Custom' }, value: 0.15 },
+                    { id: 'galv', label: { zh: '🏗️ 鍍鋅鋼管 (Galvanized)', en: '🏗️ Galvanized' }, value: 0.15 },
+                    { id: 'al_ss', label: { zh: '✨ 鋁管/不鏽鋼 (Al/SS)', en: '✨ Al/SS' }, value: 0.05 },
+                    { id: 'plastic', label: { zh: '🧪 塑料/PVC (Plastic)', en: '🧪 Plastic' }, value: 0.05 },
+                    { id: 'flex', label: { zh: '🐍 軟管/伸縮管 (Flexible)', en: '🐍 Flexible Duct' }, value: 2.50 },
+                    { id: 'concrete', label: { zh: '🧱 混凝土風道 (Concrete)', en: '🧱 Concrete' }, value: 2.00 },
+                    { id: 'lined', label: { zh: '🛡️ 內襯平滑風管 (Lined)', en: '🛡️ Lined Duct' }, value: 0.03 }
+                ],
+                fittings: [
+                    { id: 'custom', label: { zh: '🔘 自定義輸入 (K)', en: '🔘 Custom Input (K)' }, value: 0 },
+                    { id: 'elbow90_vane', label: { zh: '📐 90° 彎頭 (含導流片)', en: '📐 90° Elbow (Vanes)' }, value: 0.25 },
+                    { id: 'elbow90_no', label: { zh: '📐 90° 彎頭 (無導流片)', en: '📐 90° Elbow (No Vanes)' }, value: 1.20 },
+                    { id: 'tee_takeoff', label: { zh: '🔱 三通分流 (Take-off)', en: '🔱 Take-off' }, value: 1.50 },
+                    { id: 'grille', label: { zh: '📤 出風口 (Grille)', en: '📤 Grille' }, value: 2.50 }
+                ],
+                equipment: [
+                    { id: 'custom', label: { zh: '🔘 自定義輸入 (Pa)', en: '🔘 Custom Input (Pa)' }, value: 0 },
+                    { id: 'ahu_internal', label: { zh: '🌬️ AHU 內部全壓', en: '🌬️ AHU Internal' }, value: 250 },
+                    { id: 'filter_pre', label: { zh: '🕸️ 初效濾網 (Pre)', en: '🕸️ Pre-Filter' }, value: 60 },
+                    { id: 'filter_bag', label: { zh: '🕸️ 中效袋式 (Bag)', en: '🕸️ Bag Filter' }, value: 120 },
+                    { id: 'filter_hepa', label: { zh: '🕸️ 高效濾網 (HEPA)', en: '🕸️ HEPA' }, value: 250 },
+                    { id: 'silencer', label: { zh: '🔇 消音器 (Silencer)', en: '🔇 Silencer' }, value: 40 }
+                ]
+            }
+        };
+
+        const RHO_AIR = 1.204, MU_AIR = 1.81e-5, EPSILON_AIR = 0.00015; // Kept as fallback
+        const RHO_WATER = 998.2, MU_WATER = 0.001002, GRAVITY_ACCEL = 9.80665, EPSILON_WATER = 0.000045;
+
+        function flow_m3h_to_m3s(q_h) { return (parseFloat(q_h) || 0) / 3600; }
+        function toggleHelp() { document.getElementById('helpModal').classList.toggle('hidden'); }
+
+        // 核心渲染數學公式函式
+        function renderMath() {
+            if (typeof renderMathInElement === 'function') {
+                try {
+                    renderMathInElement(document.body, {
+                        delimiters: [
+                            {left: '$', right: '$', display: false}
+                        ],
+                        throwOnError: false
+                    });
+                } catch (e) {
+                    console.warn("KaTeX render failed", e);
+                }
+            }
+        }
+
+        function updateLanguage() {
+            document.title = trans.title;
+            // Update static elements with data-i18n
+            document.querySelectorAll('[data-i18n]').forEach(el => {
+                const key = el.getAttribute('data-i18n');
+                if (trans[key]) {
+                    if (el.children.length === 0) {
+                        el.innerText = trans[key];
+                    } else {
+                        const icon = el.querySelector('svg');
+                        if (icon) {
+                            const text = document.createTextNode(" " + trans[key]);
+                            Array.from(el.childNodes).forEach(c => { if (c.nodeType === 3) el.removeChild(c); });
+                            el.appendChild(text);
+                        } else {
+                            el.innerHTML = trans[key]; 
+                        }
+                    }
+                }
+            });
+        }
+
+        function switchTab(newMode) {
+            mode = newMode;
+            document.getElementById('btnWater').className = (mode === 'water') ? 'tab-btn tab-active' : 'tab-btn';
+            document.getElementById('btnAir').className = (mode === 'air') ? 'tab-btn tab-active' : 'tab-btn';
+            document.getElementById('thFlow').innerText = (mode === 'water') ? trans.thFlowWater : trans.thFlowAir;
+            document.getElementById('mainUnit').innerText = (mode === 'water') ? 'mH2O' : 'Pa';
+            
+            const elDyn = document.getElementById('dynamicPressureBox');
+            const elAir = document.getElementById('airContext');
+            const elWat = document.getElementById('waterContext');
+            const elAirL = document.getElementById('airLogic');
+            const elWatL = document.getElementById('waterLogic');
+            const elTag = document.getElementById('currentSystemTag');
+            const elStaticRow = document.getElementById('staticHeadRow'); // Static Head Control
+
+            if(elDyn) elDyn.classList.toggle('hidden', mode === 'water');
+            if(elAir) elAir.classList.toggle('hidden', mode === 'water');
+            if(elWat) elWat.classList.toggle('hidden', mode === 'air');
+            if(elAirL) elAirL.classList.toggle('hidden', mode === 'water');
+            if(elWatL) elWatL.classList.toggle('hidden', mode === 'air');
+            
+            // Static Head only visible for Water
+            if(elStaticRow) elStaticRow.classList.toggle('hidden', mode === 'air');
+
+            if(elTag) {
+                elTag.innerText = (mode === 'water') ? 'WATER SYSTEM' : 'AIR SYSTEM';
+                elTag.className = (mode === 'water') ? 'px-3 py-1 rounded-lg bg-blue-600 text-white text-[10px] font-black' : 'px-3 py-1 rounded-lg bg-indigo-600 text-white text-[10px] font-black';
+            }
+
+            rows = []; 
+            addRow('pipe'); 
+            updateCalculations();
+        }
+
+        function addRow(type) {
+            const defaultMatId = mode === 'water' ? 'new_steel' : 'galv';
+            const defaultMat = LIBRARIES[mode].materials.find(m => m.id === defaultMatId);
+            
+            const row = {
+                id: Date.now(),
+                type: type,
+                name: type === 'pipe' ? `P-${rows.length+1}` : (type === 'fitting' ? `F-${rows.length+1}` : `E-${rows.length+1}`),
+                d1: mode === 'water' ? 50 : 300, 
+                d2: mode === 'air' ? 300 : 0,    
+                shape: 'circular',
+                length: 10,
+                flow: 0,
+                lossType: 'k', 
+                libId: 'custom', // ID reference for dropdowns
+                materialId: defaultMatId, // ID reference
+                cValue: defaultMat.value, // Water default
+                roughness: defaultMat.value, // Air default
+                kValue: 0,
+                leq: 0,
+                fixedLoss: 0
+            };
+            if (rows.length === 0 && type === 'pipe') row.flow = mode === 'water' ? 10 : 1200;
+            rows.push(row);
+            renderTable();
+            updateCalculations();
+        }
+
+        function removeRow(id) { 
+            rows = rows.filter(r => r.id !== id); 
+            renderTable(); 
+            updateCalculations(); 
+        }
+        
+        function updateRow(id, field, value) {
+            const row = rows.find(r => r.id === id);
+            if (row) {
+                if (field === 'libId') {
+                    // Update Fitting/Equip selection
+                    const lib = row.type === 'fitting' ? LIBRARIES[mode].fittings : LIBRARIES[mode].equipment;
+                    const selected = lib.find(item => item.id === value);
+                    row.libId = value;
+                    if (selected && value !== 'custom') {
+                        if (row.type === 'fitting') row.kValue = selected.value;
+                        else row.fixedLoss = selected.value;
+                    }
+                } else if (field === 'materialId') {
+                    // Update Pipe Material
+                    const lib = mode === 'water' ? LIBRARIES.water.materials : LIBRARIES.air.materials;
+                    const selected = lib.find(item => item.id === value);
+                    row.materialId = value;
+                    if (selected && value !== 'custom') {
+                        if (mode === 'water') row.cValue = selected.value;
+                        else row.roughness = selected.value;
+                    }
+                } else if (field === 'cValue') {
+                    row.cValue = parseFloat(value);
+                    if (mode === 'water') row.materialId = 'custom';
+                } else if (field === 'roughness') {
+                    row.roughness = parseFloat(value);
+                    if (mode === 'air') row.materialId = 'custom';
+                } else {
+                    row[field] = (field === 'name' || field === 'shape' || field === 'lossType') ? value : parseFloat(value) || 0;
+                }
+                renderTable();
+                updateCalculations();
+            }
+        }
+
+        function getEffectiveFlow(currentRow, index) {
+            if (currentRow.flow > 0) return currentRow.flow;
+            for (let i = index - 1; i >= 0; i--) {
+                if (rows[i].type === 'pipe' && rows[i].flow > 0) return rows[i].flow;
+            }
+            return 0;
+        }
+
+        function getFrictionFactor(re, d, epsilon) {
+            if (re < 2320) return re > 0 ? 64 / re : 0;
+            return 0.25 / Math.pow(Math.log10((epsilon / (3.7 * d)) + (5.74 / Math.pow(re, 0.9))), 2);
+        }
+
+        function calculateRow(row, index) {
+            let res = { loss: 0, v: 0, re: 0, vRisk: false, flowUsed: 0 };
+            if (row.type === 'equipment') { res.loss = row.fixedLoss; return res; }
+            if (row.d1 <= 0 || (row.shape === 'rectangular' && row.d2 <= 0)) return res;
+
+            const effectiveFlow_h = getEffectiveFlow(row, index);
+            res.flowUsed = effectiveFlow_h;
+            const q_m3s = flow_m3h_to_m3s(effectiveFlow_h);
+
+            let v = 0, dh = 0, area = 0;
+            if (mode === 'water') {
+                dh = row.d1 / 1000;
+                area = Math.PI * Math.pow(dh/2, 2);
+                v = q_m3s / area;
+                res.re = (RHO_WATER * v * dh) / MU_WATER;
+                res.vRisk = (v > 2.4 || v < 0.6);
+            } else {
+                if (row.shape === 'circular') {
+                    dh = row.d1 / 1000;
+                    area = Math.PI * Math.pow(dh/2, 2);
+                } else {
+                    const a = row.d1 / 1000, b = row.d2 / 1000;
+                    dh = (2 * a * b) / (a + b);
+                    area = a * b;
+                }
+                v = q_m3s / area;
+                res.re = (RHO_AIR * v * dh) / MU_AIR;
+                res.vRisk = (v > 12.0 || v < 2.5);
+            }
+            res.v = v;
+
+            if (row.type === 'pipe') {
+                if (mode === 'water') {
+                    if (res.re >= 10000) {
+                        res.loss = (10.67 * row.length * Math.pow(q_m3s, 1.852)) / (Math.pow(row.cValue, 1.852) * Math.pow(dh, 4.8704));
+                    } else {
+                        const f = getFrictionFactor(res.re, dh, EPSILON_WATER);
+                        res.loss = (f * (row.length / dh) * (v * v) / (2 * GRAVITY_ACCEL));
+                    }
+                } else {
+                    const epsilon = (row.roughness !== undefined ? row.roughness : 0.15) / 1000; // mm to m
+                    const f = getFrictionFactor(res.re, dh, epsilon);
+                    res.loss = f * (row.length / dh) * (RHO_AIR * v * v / 2);
+                }
+            } else if (row.type === 'fitting') {
+                if (row.lossType === 'k') {
+                    res.loss = (mode === 'water') ? (row.kValue * v * v / (2 * GRAVITY_ACCEL)) : (row.kValue * RHO_AIR * v * v / 2);
+                } else {
+                    if (mode === 'water') {
+                        res.loss = (res.re >= 10000) ? (10.67 * row.leq * Math.pow(q_m3s, 1.852)) / (Math.pow(row.cValue, 1.852) * Math.pow(dh, 4.8704)) : (getFrictionFactor(res.re, dh, EPSILON_WATER) * (row.leq / dh) * (v * v) / (2 * GRAVITY_ACCEL));
+                    } else {
+                         const epsilon = 0.00015; 
+                        res.loss = getFrictionFactor(res.re, dh, epsilon) * (row.leq / dh) * (RHO_AIR * v * v / 2);
+                    }
+                }
+            }
+            return res;
+        }
+
+        function updateCalculations() {
+            let fricTotal = 0, fitTotal = 0, eqTotal = 0, vMax = 0, warnings = [];
+            rows.forEach((row, idx) => {
+                const r = calculateRow(row, idx);
+                if (row.type === 'pipe') fricTotal += r.loss;
+                else if (row.type === 'fitting') fitTotal += r.loss;
+                else eqTotal += r.loss;
+                if (r.v > vMax) vMax = r.v;
+                if (r.flowUsed <= 0 && row.type !== 'equipment') warnings.push(`[${row.name}] ${trans.warnNoFlow}`);
+            });
+
+            const sf = parseFloat(document.getElementById('sfValue').value) || 1.0;
+            const hz = mode === 'water' ? (parseFloat(document.getElementById('staticHeadVal').value) || 0) : 0;
+            
+            const total = (fricTotal + fitTotal) * sf + eqTotal + hz;
+            
+            document.getElementById('resFriction').innerText = fricTotal.toFixed(3);
+            document.getElementById('resFitting').innerText = fitTotal.toFixed(3);
+            document.getElementById('resEquip').innerText = eqTotal.toFixed(2);
+            document.getElementById('totalResult').innerText = total.toFixed(2);
+            
+            const elDynVal = document.getElementById('resDynamic');
+            if (elDynVal) elDynVal.innerText = (RHO_AIR * vMax * vMax / 2).toFixed(0);
+
+            const warnContainer = document.getElementById('warningsContainer');
+            if (warnContainer) {
+                warnContainer.innerHTML = '';
+                if (warnings.length > 0) {
+                    [...new Set(warnings)].forEach(w => {
+                        const d = document.createElement('div');
+                        d.className = "text-[10px] text-red-800 bg-red-100/50 p-2 rounded-lg border border-red-200 mb-1 font-bold animate-slide";
+                        d.innerHTML = `<span class="bg-red-600 text-white px-1 mr-1 rounded-sm uppercase italic">${trans.warnRisk}</span> ${w}`;
+                        warnContainer.appendChild(d);
+                    });
+                } else if (rows.length > 0) {
+                    warnContainer.innerHTML = `<p class="text-[10px] text-green-700 font-bold bg-green-50 p-2 rounded-lg border border-green-100 flex items-center gap-2">${trans.warnSafe}</p>`;
+                }
+            }
+            renderMath();
+        }
+
+        function renderTable() {
+            const tbody = document.getElementById('calcBody'); if (!tbody) return;
+            tbody.innerHTML = '';
+            rows.forEach((row, idx) => {
+                const tr = document.createElement('tr');
+                tr.className = "pro-card bg-white hover:bg-slate-50 transition-all align-top animate-slide";
+                
+                let geomHTML = '';
+                if (row.type === 'pipe') {
+                    if (mode === 'water') geomHTML = `<div class="flex flex-col gap-1"><label class="text-[9px] font-black text-slate-400">INNER DN</label><input type="number" value="${row.d1}" onchange="updateRow(${row.id}, 'd1', this.value)" class="input-pro"></div>`;
+                    else geomHTML = `<div class="flex flex-col gap-1"><select onchange="updateRow(${row.id}, 'shape', this.value)" class="text-[9px] h-6 py-0 font-black bg-slate-100 rounded-lg border-none"><option value="circular" ${row.shape === 'circular' ? 'selected' : ''}>ROUND</option><option value="rectangular" ${row.shape === 'rectangular' ? 'selected' : ''}>RECT</option></select><div class="flex gap-1"><input type="number" value="${row.d1}" onchange="updateRow(${row.id}, 'd1', this.value)" class="input-pro w-full font-bold">${row.shape === 'rectangular' ? `<input type="number" value="${row.d2}" onchange="updateRow(${row.id}, 'd2', this.value)" class="input-pro w-full font-bold">` : ''}</div></div>`;
+                } else if (row.type === 'fitting' && row.lossType === 'leq') {
+                    geomHTML = `<div class="flex flex-col gap-1"><label class="text-[9px] font-black text-slate-400">REF DN</label><input type="number" value="${row.d1}" onchange="updateRow(${row.id}, 'd1', this.value)" class="input-pro"></div>`;
+                } else { geomHTML = `<div class="h-12 flex items-center"><span class="text-slate-300 italic text-[10px] font-bold tracking-widest uppercase">${trans.warnInherit}</span></div>`; }
+
+                let lossHTML = '';
+                if (row.type === 'fitting') {
+                    // Populate with translated labels
+                    const libOptions = LIBRARIES[mode].fittings.map(item => `<option value="${item.id}" ${row.libId === item.id ? 'selected' : ''}>${item.label[lang]}</option>`).join('');
+                    lossHTML = `
+                        <div class="flex flex-col gap-1">
+                            <select onchange="updateRow(${row.id}, 'libId', this.value)" class="text-[10px] h-7 py-0 font-bold bg-blue-50 text-blue-800 rounded-lg border-none">${libOptions}</select>
+                            <div class="flex gap-2 items-center">
+                                <select onchange="updateRow(${row.id}, 'lossType', this.value)" class="text-[9px] h-6 py-0 font-black bg-slate-100 rounded-lg border-none w-16"><option value="k" ${row.lossType === 'k' ? 'selected' : ''}>K</option><option value="leq" ${row.lossType === 'leq' ? 'selected' : ''}>LEQ</option></select>
+                                <input type="number" step="0.01" value="${row.lossType === 'k' ? row.kValue : row.leq}" onchange="updateRow(${row.id}, row.lossType === 'k' ? 'kValue' : 'leq', this.value)" class="input-pro text-[11px] font-bold">
+                            </div>
+                        </div>`;
+                } else if (row.type === 'equipment') {
+                    const libOptions = LIBRARIES[mode].equipment.map(item => `<option value="${item.id}" ${row.libId === item.id ? 'selected' : ''}>${item.label[lang]}</option>`).join('');
+                    lossHTML = `
+                        <div class="flex flex-col gap-1">
+                            <select onchange="updateRow(${row.id}, 'libId', this.value)" class="text-[10px] h-7 py-0 font-bold bg-amber-50 text-amber-800 rounded-lg border-none">${libOptions}</select>
+                            <input type="number" value="${row.fixedLoss}" onchange="updateRow(${row.id}, 'fixedLoss', this.value)" class="input-pro font-black text-amber-600 bg-amber-50/20">
+                        </div>`;
+                } else {
+                    // Pipe Row Logic for C-Value / Material / Roughness
+                    if (mode === 'water') {
+                        const matOptions = LIBRARIES.water.materials.map(m => `<option value="${m.id}" ${row.materialId === m.id ? 'selected' : ''}>${m.label[lang]}</option>`).join('');
+                        lossHTML = `
+                            <div class="flex flex-col gap-1">
+                                <select onchange="updateRow(${row.id}, 'materialId', this.value)" class="text-[10px] h-7 py-0 font-bold bg-slate-100 text-slate-700 rounded-lg border-none">${matOptions}</select>
+                                <div class="flex items-center gap-2">
+                                     <span class="text-[9px] font-black text-slate-400">C=</span>
+                                     <input type="number" value="${row.cValue}" onchange="updateRow(${row.id}, 'cValue', this.value)" class="input-pro font-bold h-7">
+                                </div>
+                            </div>
+                        `;
+                    } else {
+                        // AIR mode
+                        const matOptions = LIBRARIES.air.materials.map(m => `<option value="${m.id}" ${row.materialId === m.id ? 'selected' : ''}>${m.label[lang]}</option>`).join('');
+                        lossHTML = `
+                            <div class="flex flex-col gap-1">
+                                <select onchange="updateRow(${row.id}, 'materialId', this.value)" class="text-[10px] h-7 py-0 font-bold bg-slate-100 text-slate-700 rounded-lg border-none">${matOptions}</select>
+                                <div class="flex items-center gap-2">
+                                     <span class="text-[9px] font-black text-slate-400">ε=</span>
+                                     <input type="number" step="0.01" value="${row.roughness}" onchange="updateRow(${row.id}, 'roughness', this.value)" class="input-pro font-bold h-7">
+                                     <span class="text-[9px] text-slate-400">mm</span>
+                                </div>
+                            </div>
+                        `;
+                    }
+                }
+
+                const res = calculateRow(row, idx);
+                tr.innerHTML = `
+                    <td class="p-4 pl-6"><input type="text" value="${row.name}" onchange="updateRow(${row.id}, 'name', this.value)" class="font-extrabold text-slate-800 bg-transparent border-none w-full focus:ring-0 text-sm"></td>
+                    <td class="p-4">${geomHTML}</td>
+                    <td class="p-4">${row.type !== 'equipment' ? `<div class="flex flex-col gap-1"><label class="text-[9px] font-black text-slate-400 uppercase tracking-tighter">Length</label><input type="number" value="${row.length}" onchange="updateRow(${row.id}, 'length', this.value)" class="input-pro w-20 font-bold"></div>` : '<span class="text-slate-300 font-bold">--</span>'}</td>
+                    <td class="p-4">${row.type !== 'equipment' ? `<div class="flex flex-col gap-1"><label class="text-[9px] font-black text-slate-400 uppercase tracking-tighter">Flow</label><input type="number" value="${row.flow}" onchange="updateRow(${row.id}, 'flow', this.value)" placeholder="${trans.warnInherit}" class="input-pro w-24 font-bold placeholder:font-normal"></div>` : '<span class="text-slate-300 font-bold">--</span>'}</td>
+                    <td class="p-4">${lossHTML}</td>
+                    <td class="p-4 pr-6">
+                        <div class="text-[10px] mono text-slate-500 space-y-1.5 flex flex-col items-center">
+                            <div class="flex justify-between w-full border-b border-slate-100 pb-1 italic font-bold">V: <span class="font-bold ${res.vRisk ? 'text-red-600' : 'text-blue-700'}">${res.v.toFixed(2)} m/s</span></div>
+                            <div class="font-black text-slate-900 flex justify-between w-full uppercase">ΔP: <span class="text-blue-600 font-bold">${res.loss.toFixed(4)}</span></div>
+                        </div>
+                    </td>
+                    <td class="p-4 text-right pr-6 no-print">
+                        <button onclick="removeRow(${row.id})" class="text-slate-300 hover:text-red-500 p-2 hover:bg-red-50 rounded-xl transition-all">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M6 18L18 6M6 6l12 12"></path></svg>
+                        </button>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+            renderMath();
+        }
+
+        window.onload = () => { 
+            updateLanguage();
+            switchTab('water'); 
+            // 延遲執行一次全域公式渲染
+            setTimeout(renderMath, 500);
+        };
+    </script>
+</body>
+</html>
