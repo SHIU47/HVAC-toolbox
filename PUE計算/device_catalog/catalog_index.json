@@ -1,0 +1,79 @@
+{
+  "_meta": {
+    "version": "1.1",
+    "description": "設備型錄索引 — 列出所有可用廠商與設備分類資料檔案",
+    "last_updated": "2026-08",
+    "usage": "CatalogManager / engines.js 讀取此索引，逐一 fetch vendor 檔案並合併至 BUILTIN_CATALOGS"
+  },
+
+  "categories": {
+    "chiller": {
+      "label_zh": "冷水主機",
+      "label_en": "Chiller",
+      "schema": "chiller/_schema.json",
+      "vendors": [
+        { "id": "trane",   "name": "Trane (Trane Technologies)", "file": "chiller/trane.json" },
+        { "id": "york",    "name": "York (Johnson Controls)",     "file": "chiller/york.json" },
+        { "id": "carrier", "name": "Carrier",                     "file": "chiller/carrier.json" },
+        { "id": "vertiv",  "name": "Vertiv",                      "file": "chiller/vertiv.json" },
+        { "id": "schneider", "name": "Schneider Electric",        "file": "chiller/schneider.json" },
+        { "id": "standard","name": "Standard Chiller DB",         "file": "chiller.json" }
+      ]
+    },
+    "cooling_tower": {
+      "label_zh": "冷卻水塔 / 乾冷器",
+      "label_en": "Cooling Tower / Dry Cooler",
+      "schema": "cooling_tower/_schema.json",
+      "vendors": [
+        { "id": "bac",     "name": "Baltimore Aircoil (BAC)",     "file": "cooling_tower/bac.json" },
+        { "id": "gunther", "name": "Günther (Güntner)",           "file": "cooling_tower/gunther.json" }
+      ]
+    },
+    "dry_cooler": {
+      "label_zh": "乾冷器 (Dry Cooler)",
+      "label_en": "Dry Cooler",
+      "vendors": [
+        { "id": "standard", "name": "DSX Dry Coolers",            "file": "dry_cooler.json" }
+      ]
+    },
+    "cdu_xdu": {
+      "label_zh": "液冷分配單元",
+      "label_en": "CDU / XDU",
+      "schema": "cdu_xdu/_schema.json",
+      "vendors": [
+        { "id": "standard", "name": "Standard CDU / XDU",        "file": "cdu_xdu.json" }
+      ]
+    },
+    "pump": {
+      "label_zh": "循環泵浦",
+      "label_en": "Pump",
+      "vendors": [
+        { "id": "grundfos", "name": "Grundfos",                  "file": "pump/grundfos.json" }
+      ]
+    },
+    "crac_crah": {
+      "label_zh": "機房精密空調",
+      "label_en": "CRAC / CRAH",
+      "schema": "crac_crah/_schema.json",
+      "vendors": [
+        { "id": "stulz",   "name": "Stulz",                       "file": "crac_crah/stulz.json" },
+        { "id": "vertiv",  "name": "Vertiv",                      "file": "crac_crah/vertiv.json" },
+        { "id": "schneider", "name": "Schneider Electric",        "file": "crac_crah/schneider.json" }
+      ]
+    },
+    "fanwall": {
+      "label_zh": "Fanwall 冰水風牆",
+      "label_en": "FanWall",
+      "vendors": [
+        { "id": "highdensity", "name": "High-Density FanWall",    "file": "fanwall/fanwall_highdensity.json" }
+      ]
+    },
+    "rdhx": {
+      "label_zh": "背板式熱交換器 (RDHX)",
+      "label_en": "Rear Door Heat Exchanger",
+      "vendors": [
+        { "id": "standard", "name": "RDHX Vendor Catalog",        "file": "rdhx.json" }
+      ]
+    }
+  }
+}

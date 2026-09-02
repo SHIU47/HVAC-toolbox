@@ -1,0 +1,26 @@
+{
+  "_meta": {
+    "schema_version": "1.1",
+    "category": "transformer",
+    "description": "變壓器型錄 AI 填入範本",
+    "ai_fill_guide": {
+      "noload_loss_kw":  "空載鐵損 kW（即使無負載仍持續損耗）",
+      "load_loss_pct":   "負載銅損佔額定容量的百分比 %（隨負載平方變化）",
+      "capacity_kva":    "額定容量 kVA"
+    },
+    "field_definitions": {
+      "model":           "完整型號",
+      "vendor":          "廠牌",
+      "capacity_kva":    "額定容量 kVA",
+      "noload_loss_kw":  "空載鐵損 kW",
+      "load_loss_pct":   "滿載銅損 % (負載損耗 / 額定容量)",
+      "voltage_ratio":   "電壓比，如 22kV/0.48kV (選填)",
+      "efficiency_pct":  "滿載效率 % (選填)",
+      "weight_kg":       "設備重量 kg (選填)",
+      "notes":           "應用說明",
+      "_source":         "資料來源",
+      "_ai_confidence":  "0.0~1.0",
+      "_verified":       "true/false"
+    }
+  }
+}

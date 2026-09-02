@@ -1,0 +1,35 @@
+{
+  "_meta": {
+    "schema_version": "1.1",
+    "category": "cooling_tower",
+    "description": "冷卻水塔 / 乾冷器 型錄 AI 填入範本",
+    "tower_types": {
+      "open_tower":    "開放式冷卻水塔（蒸發冷卻，依濕球溫度，最省電但有水耗）",
+      "closed_tower":  "密閉式冷卻水塔（流體間接冷卻，水耗較低）",
+      "dry_cooler":    "乾冷器（完全無蒸發，依乾球溫度，WUE≈0）"
+    },
+    "ai_fill_guide": {
+      "heat_rejection_kw":  "滿負載散熱能力 kW（AHRI 標準：WB 25.6°C, CEWT 43.3°C / 32.2°C range）",
+      "fan_kw_dx":          "機械冷卻（滿速）模式風機功耗 kW",
+      "fan_kw_fc":          "自由冷卻（節能）模式風機功耗 kW（約為 dx 的 30-40%）",
+      "approach_design_c":  "設計濕球接近溫差 °C，開放塔一般 4-6°C，密閉塔 6-8°C",
+      "_source":            "型錄版本或原廠網頁"
+    },
+    "field_definitions": {
+      "model":              "完整型號名稱",
+      "vendor":             "廠牌名稱",
+      "tower_type":         "open_tower / closed_tower / dry_cooler",
+      "heat_rejection_kw":  "滿負載散熱能力 kW",
+      "fan_kw_dx":          "DX 模式（全速）風機功耗 kW",
+      "fan_kw_fc":          "FC 模式（節能）風機功耗 kW",
+      "approach_design_c":  "設計接近溫差 °C（選填）",
+      "flow_rate_m3h":      "循環水量 m³/h（選填）",
+      "weight_kg":          "設備重量 kg（選填）",
+      "cell_qty":           "格數（選填，多格型）",
+      "notes":              "應用說明",
+      "_source":            "資料來源",
+      "_ai_confidence":     "0.0~1.0",
+      "_verified":          "人工核對後設 true"
+    }
+  }
+}

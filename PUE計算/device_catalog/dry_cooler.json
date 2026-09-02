@@ -1,0 +1,59 @@
+{
+  "_meta": {
+    "version": "1.0",
+    "description": "Dry Cooler Catalog",
+    "last_updated": "2026-08"
+  },
+  "guntner_raised_bed_6000kw": {
+    "category": "dry_cooler",
+    "model": "Güntner 6000kW Raised-Bed (DSX Standard)",
+    "vendor": "Güntner",
+    "heat_rejection_kw": 6000,
+    "approach_temp_c": 5,
+    "fan_kw_dx": 150,
+    "fan_kw_fc": 55,
+    "flow_rate_lpm": 8600,
+    "notes": "NVIDIA DSX-V2 標準 6MW Raised-Bed 乾冷器模組"
+  },
+  "bac_trillium_6000kw": {
+    "category": "dry_cooler",
+    "model": "BAC Trillium 6000kW Raised-Bed (DSX)",
+    "vendor": "BAC",
+    "heat_rejection_kw": 6000,
+    "approach_temp_c": 5,
+    "fan_kw_dx": 145,
+    "fan_kw_fc": 52,
+    "flow_rate_lpm": 8600,
+    "notes": "NVIDIA DSX-V2 標準 6MW 乾式閉迴路散熱單元"
+  },
+  "bac_trillium_tdfs1238n_c60et30b": {
+    "category": "dry_cooler",
+    "model": "BAC TrilliumSeries TDFS1238N-C60ET30B",
+    "vendor": "BAC",
+    "heat_rejection_kw": 2514.5,
+    "approach_temp_c": 3.8,
+    "fan_kw_dx": 89.48,
+    "fan_kw_fc": null,
+    "flow_rate_lpm": 3611,
+    "weight_kg": 22187,
+    "notes": "資料來源：使用者提供的 BAC 選型軟體(TrilliumSeries Selection v1.12.6)單點選型報告，真實工程數據非型錄泛用值。設計工況：水50→40°C(範圍10°C，非標準CHW，屬高溫製程/DLC迴路)、DB=36.2°C、單機4顆風扇合計22.37kW×4=89.48kW額定風機功率。approach_temp_c=離水溫40°C-DB36.2°C=3.8°C。fan_kw_fc(部分負載/低DB風扇功率)報告未提供，此份僅為單一設計點快照，非逐時性能表",
+    "_source": "[BAC] TrilliumSeries 乾冷器 [選型計算彙總表].pdf",
+    "_ai_confidence": 0.85,
+    "_verified": false
+  },
+  "schneider_dsaf1200a": {
+    "category": "dry_cooler",
+    "model": "Schneider Uniflair DSAF1200A",
+    "vendor": "Schneider Electric",
+    "heat_rejection_kw": 1773.4,
+    "approach_temp_c": 5.0,
+    "fan_kw_dx": 46.6,
+    "fan_kw_fc": null,
+    "flow_rate_lpm": 1782,
+    "weight_kg": 8570,
+    "notes": "資料來源：使用者提供的 Schneider Electric UNICALC 選型軟體單點性能表，真實工程數據非型錄泛用值。設計工況：水50→35°C(範圍15°C)、DB=30°C、RH=50%、乙二醇20%。原文在此工況下風扇轉速僅83.1%即可達成需求(實際風機功率28.7kW)，fan_kw_dx為用VFD affinity law反推100%轉速額定值(28.7/(0.10+0.90*0.831^3)≈46.6kW)，非型錄額定值原文直接標示。EER(kW冷量/kW耗電)=61.77，純自然冷卻工況(無壓縮機、無耗水)。此為單一設計點快照，非逐時性能表，fan_kw_fc留白",
+    "_source": "[施耐德] DSAF1200A 乾冷器 (35C-50C高水溫工況) [性能選型表].pdf",
+    "_ai_confidence": 0.85,
+    "_verified": false
+  }
+}

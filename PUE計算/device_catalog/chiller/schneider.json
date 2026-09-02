@@ -1,0 +1,143 @@
+{
+  "_meta": {
+    "vendor": "Schneider Electric",
+    "vendor_website": "https://www.se.com",
+    "category": "chiller",
+    "schema_version": "1.1",
+    "last_updated": "2026-08-29",
+    "note": "資料來源：使用者提供的官方技術規格書「[施耐德] Uniflair XCAC-XCAF 送風單元 [技術規格書 Spec].pdf」(06ME0136@00B0120)，真實工程數據非型錄泛用值。XCAC/XCAF為大型油磁浮/離心式氣冷式冰水主機，內建大型EC風扇牆式冷凝器陣列(故被使用者歸檔在「04_Fan_Wall」資料夾下)。XCAC=純氣冷、XCAF=內建自然冷卻(Free-Cooling)盤管版本(乙二醇20%)。取值條件：標準噪音版(Nominal Noise Version)、不含Economizer(經濟器)選配、R1234ze冷媒、工況30/20°C冰水進出/35°C外氣。原文件另有UltraLow Noise版本與含Economizer版本(容量/EER略有差異，Economizer版容量更高)，此處僅取代表性標準版本；原文明確標示R515B冷媒版本效能與R1234ze相差<2%。cop_curve 因型錄僅提供單點額定工況數據，暫用 fixed。"
+  },
+
+  "Uniflair XCAC1212A": {
+    "model": "Uniflair XCAC1212A",
+    "vendor": "Schneider Electric",
+    "chiller_type": "air_cooled",
+    "category": "Oil-Free Centrifugal Chiller (Air-Cooled)",
+    "cooling_capacity_kw": 1295.97,
+    "cop_design": 4.38,
+    "iplv": null,
+    "power_input_kw": 295.91,
+    "refrigerant": "R1234ze",
+    "t_chws_c": 20.0,
+    "cop_curve": { "type": "fixed" },
+    "water_flow_lh": 112070,
+    "airflow_m3h": 398704,
+    "notes": "標準噪音版、不含Economizer、工況30/20°C冰水/35°C外氣、0%乙二醇。EER(總輸入功率含壓縮機+風扇)=cooling_capacity/power_input=4.38",
+    "_source": "[施耐德] Uniflair XCAC-XCAF 送風單元 [技術規格書 Spec].pdf p.71",
+    "_ai_confidence": 0.95,
+    "_verified": false
+  },
+
+  "Uniflair XCAC1913A": {
+    "model": "Uniflair XCAC1913A",
+    "vendor": "Schneider Electric",
+    "chiller_type": "air_cooled",
+    "category": "Oil-Free Centrifugal Chiller (Air-Cooled)",
+    "cooling_capacity_kw": 1872.27,
+    "cop_design": 4.29,
+    "iplv": null,
+    "power_input_kw": 436.59,
+    "refrigerant": "R1234ze",
+    "t_chws_c": 20.0,
+    "cop_curve": { "type": "fixed" },
+    "water_flow_lh": 161900,
+    "airflow_m3h": 512024,
+    "notes": "標準噪音版、不含Economizer、工況30/20°C冰水/35°C外氣、0%乙二醇",
+    "_source": "[施耐德] Uniflair XCAC-XCAF 送風單元 [技術規格書 Spec].pdf p.71",
+    "_ai_confidence": 0.95,
+    "_verified": false
+  },
+
+  "Uniflair XCAC2524A": {
+    "model": "Uniflair XCAC2524A",
+    "vendor": "Schneider Electric",
+    "chiller_type": "air_cooled",
+    "category": "Oil-Free Centrifugal Chiller (Air-Cooled)",
+    "cooling_capacity_kw": 2482.20,
+    "cop_design": 4.24,
+    "iplv": null,
+    "power_input_kw": 585.20,
+    "refrigerant": "R1234ze",
+    "t_chws_c": 20.0,
+    "cop_curve": { "type": "fixed" },
+    "water_flow_lh": 214450,
+    "airflow_m3h": 625900,
+    "notes": "標準噪音版、不含Economizer、工況30/20°C冰水/35°C外氣、0%乙二醇",
+    "_source": "[施耐德] Uniflair XCAC-XCAF 送風單元 [技術規格書 Spec].pdf p.71",
+    "_ai_confidence": 0.95,
+    "_verified": false
+  },
+
+  "Uniflair XCAF1212A": {
+    "model": "Uniflair XCAF1212A (含自然冷卻盤管)",
+    "vendor": "Schneider Electric",
+    "chiller_type": "air_cooled",
+    "category": "Oil-Free Centrifugal Chiller with Integrated Free-Cooling (Air-Cooled)",
+    "cooling_capacity_kw": 1256.83,
+    "cop_design": 4.18,
+    "iplv": null,
+    "power_input_kw": 300.55,
+    "refrigerant": "R1234ze",
+    "t_chws_c": 20.0,
+    "cop_curve": { "type": "fixed" },
+    "water_flow_lh": 113540,
+    "airflow_m3h": 352455,
+    "notes": "內建自然冷卻(free-cooling)盤管版本，乙二醇20%，故COP略低於純氣冷XCAC同容量段版(液側阻力較高)，換取冬季可切換自然冷卻運轉降低全年PUE。標準噪音版、不含Economizer、工況30/20°C冰水/35°C外氣",
+    "partial_load_points": [
+      {
+        "load_pct": 79.6,
+        "required_capacity_kw": 1000,
+        "return_water_c": 35, "supply_water_setpoint_c": 25, "actual_supply_water_c": 24.98,
+        "external_air_c": 35, "external_air_rh_pct": 30, "glycol_pct": 20,
+        "operating_mode": "mechanical",
+        "compressor_qty_active": 2,
+        "compressor_power_kw": 121.44, "fan_power_kw": 41.07,
+        "total_power_kw": 162.51, "eer": 6.15,
+        "note": "使用者提供的Schneider官方UNICALC選型軟體(Uninet)真實專案選型報告，機械模式(非自然冷卻)、部分負載(1000/1257≈80%)。EER 6.15 明顯高於滿載額定表(30/20°C工況)的4.18，反映離心式壓縮機在部分負載時效率通常優於滿載(IGV/變頻調節)，此為與型錄額定值互補的真實部分負載錨點，未來若要擬合完整AHRI雙二次曲線可用此點校正。"
+      }
+    ],
+    "_source": "[施耐德] Uniflair XCAC-XCAF 送風單元 [技術規格書 Spec].pdf p.72; partial_load_points來自[施耐德] Uniflair XCAF1212A 機房風牆_送風單元 [規格與選型書].pdf (Schneider Uninet選型軟體報告)",
+    "_ai_confidence": 0.95,
+    "_verified": false
+  },
+
+  "Uniflair XCAF1913A": {
+    "model": "Uniflair XCAF1913A (含自然冷卻盤管)",
+    "vendor": "Schneider Electric",
+    "chiller_type": "air_cooled",
+    "category": "Oil-Free Centrifugal Chiller with Integrated Free-Cooling (Air-Cooled)",
+    "cooling_capacity_kw": 1805.67,
+    "cop_design": 4.09,
+    "iplv": null,
+    "power_input_kw": 441.74,
+    "refrigerant": "R1234ze",
+    "t_chws_c": 20.0,
+    "cop_curve": { "type": "fixed" },
+    "water_flow_lh": 163120,
+    "airflow_m3h": 452382,
+    "notes": "內建自然冷卻盤管版本，乙二醇20%。標準噪音版、不含Economizer、工況30/20°C冰水/35°C外氣",
+    "_source": "[施耐德] Uniflair XCAC-XCAF 送風單元 [技術規格書 Spec].pdf p.72",
+    "_ai_confidence": 0.95,
+    "_verified": false
+  },
+
+  "Uniflair XCAF2524A": {
+    "model": "Uniflair XCAF2524A (含自然冷卻盤管)",
+    "vendor": "Schneider Electric",
+    "chiller_type": "air_cooled",
+    "category": "Oil-Free Centrifugal Chiller with Integrated Free-Cooling (Air-Cooled)",
+    "cooling_capacity_kw": 2387.70,
+    "cop_design": 4.07,
+    "iplv": null,
+    "power_input_kw": 587.11,
+    "refrigerant": "R1234ze",
+    "t_chws_c": 20.0,
+    "cop_curve": { "type": "fixed" },
+    "water_flow_lh": 218550,
+    "airflow_m3h": 553300,
+    "notes": "內建自然冷卻盤管版本，乙二醇20%。標準噪音版、不含Economizer、工況30/20°C冰水/35°C外氣",
+    "_source": "[施耐德] Uniflair XCAC-XCAF 送風單元 [技術規格書 Spec].pdf p.72",
+    "_ai_confidence": 0.95,
+    "_verified": false
+  }
+}

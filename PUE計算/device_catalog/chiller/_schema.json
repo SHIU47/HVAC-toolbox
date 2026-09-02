@@ -1,0 +1,65 @@
+{
+  "_meta": {
+    "schema_version": "1.1",
+    "category": "chiller",
+    "description": "冷水主機型錄 AI 填入範本",
+    "reference_conditions": {
+      "water_cooled": "AHRI 550/590 標準：CHWS 6.7°C (44°F), CEWT 29.4°C (85°F)",
+      "air_cooled":   "ARI 550/590 標準：CHWS 6.7°C (44°F), OAT 35°C (95°F)"
+    },
+    "cop_curve_presets": {
+      "screw_standard":        "螺旋壓縮機標準效率 (AHRI biquadratic)",
+      "centrifugal_standard":  "離心壓縮機標準效率 (AHRI biquadratic)",
+      "centrifugal_higheff":   "離心壓縮機高效型，含磁浮/無油 (AHRI biquadratic)",
+      "fixed":                 "固定 COP (氣冷簡化模型，不隨溫度變化)"
+    },
+    "ai_fill_guide": {
+      "step1": "從設備規格書取得以下數值（按 AHRI 或 CNS 11376 標準條件）",
+      "step2": "cop_design = 冷卻能力(kW) / 輸入功率(kW)，或 COP = 3.517 / (kW/RT)",
+      "step3": "iplv 為整合部分負載值，若規格書未提供可省略",
+      "step4": "cop_curve.preset 依壓縮機型式選擇，不確定時氣冷用 fixed，水冷離心用 centrifugal_standard",
+      "step5": "_source 填入規格書版本或來源網頁，方便日後核對"
+    },
+    "field_definitions": {
+      "model":               "完整型號名稱（廠商官方名稱）",
+      "vendor":              "廠牌名稱",
+      "chiller_type":        "water_cooled 或 air_cooled",
+      "category":            "壓縮機型式，如 Screw / Centrifugal / Scroll / Magnetic Bearing",
+      "cooling_capacity_kw": "設計點冷卻能力 kW（AHRI 標準條件）",
+      "cop_design":          "設計點 COP（AHRI 標準條件）",
+      "iplv":                "AHRI IPLV 整合部分負載效率值（選填）",
+      "power_input_kw":      "設計點輸入功率 kW（= cooling_capacity_kw / cop_design）",
+      "refrigerant":         "冷媒型號，如 R-134a, R-513A, R-1234ze, R-514A",
+      "t_chws_c":            "設計供水溫度 °C（預設 7.0）",
+      "t_cewt_design_c":     "冷卻水進水溫度 °C（水冷 30.0；氣冷不適用填 null）",
+      "cop_curve":           "{ type: 'ahri_biquadratic', preset: '...' } 或 { type: 'fixed' }",
+      "compressor_stages":   "壓縮機級數 1/2（選填）",
+      "weight_kg":           "主機重量 kg（選填）",
+      "footprint_m2":        "設備佔地面積 m²（選填）",
+      "min_plr":             "最小部分負載率，如 0.15（選填，預設 0.10）",
+      "notes":               "應用場合與特性說明",
+      "_source":             "資料來源（規格書名稱 / URL / 版本）",
+      "_ai_confidence":      "0.0~1.0，AI 填入資料的信心分數（建議人工驗證後設為 1.0）",
+      "_verified":           "true/false，人工核對後設為 true"
+    },
+    "example_entry": {
+      "model": "Trane RTWD 1500kW",
+      "vendor": "Trane Technologies",
+      "chiller_type": "water_cooled",
+      "category": "Screw Chiller",
+      "cooling_capacity_kw": 1500,
+      "cop_design": 6.5,
+      "iplv": 8.2,
+      "power_input_kw": 230.8,
+      "refrigerant": "R-134a",
+      "t_chws_c": 7.0,
+      "t_cewt_design_c": 30.0,
+      "cop_curve": { "type": "ahri_biquadratic", "preset": "screw_standard" },
+      "weight_kg": 6200,
+      "notes": "雙螺旋壓縮機，適用大型冷機房",
+      "_source": "Trane Product Data PD-RTWD-1500 Rev.3 2024",
+      "_ai_confidence": 0.85,
+      "_verified": false
+    }
+  }
+}
