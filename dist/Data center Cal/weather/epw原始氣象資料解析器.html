@@ -1,0 +1,351 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<script>
+function _0x196a(){var _0xab4cb4=['451sSEUxe','8XmErFs','key','662930StTvYs','F12','11311992ioXwDE','includes','shiftKey','358arBodM','addEventListener','preventDefault','17679ihmSGt','ctrlKey','keydown','5461211iUjzNC','80485xdjNcY','769744zRTces','498spJzxU','1147638sHIJuT'];_0x196a=function(){return _0xab4cb4;};return _0x196a();}function _0x17e1(_0x4af793,_0x95553f){_0x4af793=_0x4af793-0x94;var _0x196a12=_0x196a();var _0x17e157=_0x196a12[_0x4af793];return _0x17e157;}(function(_0x38b72f,_0x4849da){var _0x222d63={_0x268783:0x99,_0x1c7cce:0xa0,_0x53929c:0xa2,_0x376ac5:0x9f,_0x4f5d8c:0xa5},_0x449005=_0x17e1,_0x264380=_0x38b72f();while(!![]){try{var _0xfda3ca=-parseInt(_0x449005(0xa3))/0x1+-parseInt(_0x449005(_0x222d63._0x268783))/0x2*(-parseInt(_0x449005(0x9c))/0x3)+parseInt(_0x449005(0xa1))/0x4+parseInt(_0x449005(_0x222d63._0x1c7cce))/0x5*(parseInt(_0x449005(_0x222d63._0x53929c))/0x6)+parseInt(_0x449005(_0x222d63._0x376ac5))/0x7*(parseInt(_0x449005(_0x222d63._0x4f5d8c))/0x8)+parseInt(_0x449005(0x96))/0x9+-parseInt(_0x449005(0x94))/0xa*(parseInt(_0x449005(0xa4))/0xb);if(_0xfda3ca===_0x4849da)break;else _0x264380['push'](_0x264380['shift']());}catch(_0xec2c00){_0x264380['push'](_0x264380['shift']());}}}(_0x196a,0xb8438),(function(){var _0x2a3241={_0x1ab973:0xa6,_0x2f4d6d:0x95,_0x25cde3:0x9d,_0x1cd05d:0x98,_0x3f2eea:0x9d,_0x1eeb6b:0x97},_0x486743=_0x17e1;document['addEventListener']('contextmenu',function(_0x141739){var _0x34ab3f=_0x17e1;_0x141739[_0x34ab3f(0x9b)]();}),document[_0x486743(0x9a)](_0x486743(0x9e),function(_0x8ee9d){var _0x18a6fb=_0x486743;if(_0x8ee9d[_0x18a6fb(_0x2a3241._0x1ab973)]===_0x18a6fb(_0x2a3241._0x2f4d6d)||_0x8ee9d[_0x18a6fb(_0x2a3241._0x25cde3)]&&_0x8ee9d[_0x18a6fb(_0x2a3241._0x1cd05d)]&&['i','I','j','J','c','C','k','K']['includes'](_0x8ee9d[_0x18a6fb(0xa6)])||_0x8ee9d[_0x18a6fb(_0x2a3241._0x3f2eea)]&&['u','U','s','S'][_0x18a6fb(_0x2a3241._0x1eeb6b)](_0x8ee9d[_0x18a6fb(0xa6)]))return _0x8ee9d['preventDefault'](),_0x8ee9d['stopPropagation'](),![];});}()));
+</script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EPW 氣象數據與 Free Cooling 效益分析工具</title>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>::-webkit-scrollbar{width:6px;height:6px}::-webkit-scrollbar-track{background:#f1f5f9;border-radius:4px}::-webkit-scrollbar-thumb{background:#cbd5e1;border-radius:4px}::-webkit-scrollbar-thumb:hover{background:#94a3b8}.drag-active{border-color:#10b981 !important;background-color:#ecfdf5 !important}.data-table th,.data-table td{border-bottom:1px solid #e2e8f0;padding:0.5rem 0.75rem;text-align:center}.data-table th{background-color:#f8fafc;color:#475569;font-weight:600;font-size:0.8rem;position:sticky;top:0;z-index:10}.data-table tr:hover{background-color:#f1f5f9}.loader{border:4px solid #f3f3f3;border-top:4px solid #10b981;border-radius:50%;width:32px;height:32px;animation:spin 1s linear infinite}@keyframes spin{0%{transform:rotate(0deg)}100%{transform:rotate(360deg)}}</style>
+</head>
+<body class="bg-slate-50 text-slate-800 font-sans min-h-screen">
+
+    
+    <div id="toastContainer" class="fixed top-4 right-4 z-50 flex flex-col gap-2 pointer-events-none"></div>
+
+    <div class="max-w-7xl mx-auto p-4 sm:p-6 space-y-6">
+        
+        
+        <header class="flex flex-col lg:flex-row lg:items-center justify-between gap-4 bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
+            <div>
+                <div class="flex items-center gap-2">
+                    <h1 class="text-2xl sm:text-3xl font-bold text-slate-900">EPW 氣象數據與 Free Cooling 分析工具</h1>
+                    <span class="text-xs font-semibold px-2.5 py-1 bg-emerald-100 text-emerald-800 rounded-full">v3.0 Simplified</span>
+                </div>
+                <p class="text-slate-500 text-sm mt-1">解析 8,760 小時氣象數據 (DB / WB / DP / RH)、營運排程過濾與自然冷卻時數估算</p>
+            </div>
+            
+            <div class="flex flex-col sm:flex-row gap-3 items-stretch sm:items-center">
+                
+                <button id="demoBtn" onclick="loadDemoData()" class="px-4 py-3 bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium text-sm rounded-xl transition flex items-center justify-center gap-2 border border-slate-300 shadow-sm">
+                    <svg class="w-4 h-4 text-slate-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                    載入台北 EPW 範例
+                </button>
+
+                
+                <div id="dropZone" class="border-2 border-dashed border-emerald-400 rounded-xl px-5 py-2.5 text-center bg-emerald-50/50 hover:bg-emerald-50 transition duration-200 cursor-pointer flex items-center justify-center gap-3">
+                    <svg class="h-6 w-6 text-emerald-600 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" /></svg>
+                    <div class="text-left">
+                        <p class="text-sm font-semibold text-emerald-900">上傳 EPW 氣象檔</p>
+                        <p class="text-xs text-emerald-600">點擊或拖曳 .epw 檔案</p>
+                    </div>
+                    <input type="file" id="fileInput" accept=".epw,.csv" class="hidden">
+                </div>
+            </div>
+        </header>
+
+        
+        <div id="loadingIndicator" class="hidden flex-col items-center justify-center py-16 bg-white rounded-2xl border border-slate-200 shadow-sm">
+            <div class="loader mb-4"></div>
+            <p id="loadingMsg" class="text-slate-600 font-medium text-sm">正在計算 8760 小時氣象數據，請稍候...</p>
+        </div>
+
+        
+        <div id="dashboard" class="hidden space-y-6">
+            
+            
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                
+                <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-5 flex flex-col justify-between">
+                    <div class="flex items-center justify-between mb-2">
+                        <span class="text-xs font-bold uppercase tracking-wider text-slate-400">測站位置</span>
+                        <span class="p-1 bg-slate-100 text-slate-600 rounded">
+                            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+                        </span>
+                    </div>
+                    <div>
+                        <p id="infoLocation" class="text-lg font-bold text-slate-800 mb-1 truncate" title="-">-</p>
+                        <div class="grid grid-cols-2 gap-y-1 text-xs text-slate-600">
+                            <div>緯度: <span id="infoLat" class="font-medium text-slate-800">-</span></div>
+                            <div>經度: <span id="infoLon" class="font-medium text-slate-800">-</span></div>
+                            <div class="col-span-2">海拔: <span id="infoElev" class="font-medium text-slate-800">-</span> m</div>
+                        </div>
+                    </div>
+                </div>
+
+                
+                <div class="bg-gradient-to-br from-emerald-600 to-teal-700 rounded-xl shadow-sm p-5 text-white flex flex-col justify-between relative overflow-hidden">
+                    <div class="text-emerald-100 text-xs font-medium">全年平均乾球 (DB)</div>
+                    <div class="flex items-baseline mt-1">
+                        <span id="infoAvgDB" class="text-3xl font-extrabold">--</span><span class="ml-1 text-emerald-200 text-lg">°C</span>
+                    </div>
+                    <p class="text-xs text-emerald-100 mt-2">
+                        極端最高: <span id="infoMaxDB" class="font-bold">--</span>°C
+                    </p>
+                </div>
+
+                
+                <div class="bg-gradient-to-br from-blue-600 to-indigo-700 rounded-xl shadow-sm p-5 text-white flex flex-col justify-between relative overflow-hidden">
+                    <div class="text-blue-100 text-xs font-medium">平均濕球 / 露點</div>
+                    <div class="flex items-baseline mt-1 gap-2">
+                        <div><span id="infoAvgWB" class="text-2xl font-extrabold">--</span><span class="ml-0.5 text-blue-200 text-xs">°C WB</span></div>
+                        <div class="border-l border-blue-400 pl-2"><span id="infoAvgDP" class="text-lg font-bold text-blue-100">--</span><span class="ml-0.5 text-blue-200 text-xs">°C DP</span></div>
+                    </div>
+                    <p class="text-xs text-blue-100 mt-2">
+                        最高露點: <span id="infoMaxDP" class="font-bold">--</span>°C
+                    </p>
+                </div>
+
+                
+                <div class="bg-gradient-to-br from-cyan-600 to-blue-600 rounded-xl shadow-sm p-5 text-white flex flex-col justify-between relative overflow-hidden">
+                    <div class="text-cyan-100 text-xs font-medium">平均相對濕度 (RH)</div>
+                    <div class="flex items-baseline mt-1">
+                        <span id="infoAvgRH" class="text-3xl font-extrabold">--</span><span class="ml-1 text-cyan-200 text-lg">%</span>
+                    </div>
+                    <p class="text-xs text-cyan-100 mt-2">
+                        計算時數: <span id="infoActiveHours" class="font-bold">8,760</span> hrs
+                    </p>
+                </div>
+            </div>
+
+            
+            <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
+                <div class="flex flex-col lg:flex-row lg:items-center justify-between border-b border-slate-100 pb-4 mb-6 gap-2">
+                    <div>
+                        <h2 class="text-xl font-bold text-slate-800 flex items-center gap-2">
+                            <span class="w-3 h-3 rounded-full bg-emerald-500"></span>
+                            Free Cooling 外氣自然冷卻效益試算
+                        </h2>
+                        <p class="text-xs text-slate-500 mt-1">自訂溫度門檻與廠房營運時數，即時推算全年可開啟自然冷卻時數與節能效益。</p>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 lg:grid-cols-12 gap-8">
+                    
+                    
+                    <div class="lg:col-span-5 bg-slate-50 p-5 rounded-xl border border-slate-200 space-y-4">
+                        <h3 class="text-sm font-bold text-slate-800 border-b border-slate-200 pb-2">設定營運排程與冷卻門檻</h3>
+                        
+                        
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-700 mb-1">廠房 / 建築營運排程 (Schedule)</label>
+                            <select id="fcSchedule" onchange="updateCalculations()" class="w-full text-xs border-slate-300 rounded-lg p-2.5 bg-white border focus:ring-2 focus:ring-emerald-500">
+                                <option value="24_7" selected>全年無休 24/7 (無塵室 / 資料中心, 8,760 hrs)</option>
+                                <option value="12_6">雙班制 12/6 (週一至六 08:00-20:00, ~3,744 hrs)</option>
+                                <option value="10_5">日間商辦 10/5 (週一至五 08:00-18:00, ~2,600 hrs)</option>
+                            </select>
+                        </div>
+
+                        
+                        <div>
+                            <label class="block text-xs font-bold text-slate-700 mb-1">節能控制策略 (Economizer Mode)</label>
+                            <select id="fcControlMode" onchange="onControlModeChange()" class="w-full text-xs border-slate-300 rounded-lg p-2.5 bg-white border focus:ring-2 focus:ring-emerald-500 font-bold text-emerald-900">
+                                <option value="DB">氣側外氣節能 (Air-side Dry-Bulb)</option>
+                                <option value="WATER">水側板熱節能器 (Water-side Plate HEX Economizer)</option>
+                            </select>
+                        </div>
+
+                        
+                        <div id="thresholdInputsContainer" class="p-3 bg-emerald-50/70 rounded-lg border border-emerald-200">
+                            
+                        </div>
+
+                        
+                        <div class="pt-3 border-t border-slate-200 space-y-3">
+                            <h4 class="text-xs font-bold text-slate-700">冰水系統冷負荷與電費設定</h4>
+                            <div class="grid grid-cols-2 gap-3">
+                                <div>
+                                    <label class="block text-[11px] text-slate-500 mb-1">平均冷負荷 (RT)</label>
+                                    <input type="number" id="fcLoadRt" value="200" oninput="updateCalculations()" class="w-full text-xs border-slate-300 rounded-lg p-2 bg-white border">
+                                </div>
+                                <div>
+                                    <label class="block text-[11px] text-slate-500 mb-1">冰機耗電 (kW/RT)</label>
+                                    <input type="number" id="fcKwPerRt" value="0.70" step="0.05" oninput="updateCalculations()" class="w-full text-xs border-slate-300 rounded-lg p-2 bg-white border">
+                                </div>
+                            </div>
+                            <div>
+                                <label class="block text-[11px] text-slate-500 mb-1">平均電費單價 ($/kWh 度)</label>
+                                <input type="number" id="fcElecPrice" value="4.0" step="0.1" oninput="updateCalculations()" class="w-full text-xs border-slate-300 rounded-lg p-2 bg-white border">
+                            </div>
+                        </div>
+
+                    </div>
+
+                    
+                    <div class="lg:col-span-7 flex flex-col justify-between space-y-6">
+                        
+                        
+                        <div class="grid grid-cols-2 gap-4">
+                            
+                            <div class="bg-emerald-50 border border-emerald-200 p-4 rounded-xl text-center">
+                                <span class="text-xs font-bold text-emerald-800 block">自然冷卻 (Free Cooling)</span>
+                                <div id="resFullHours" class="text-3xl font-black text-emerald-600 my-1">0 hrs</div>
+                                <span id="resFullPct" class="text-xs text-emerald-700 font-semibold">0 %</span>
+                            </div>
+
+                            
+                            <div class="bg-slate-100 border border-slate-200 p-4 rounded-xl text-center">
+                                <span class="text-xs font-bold text-slate-700 block">機械制冷 (No FC)</span>
+                                <div id="resNoHours" class="text-3xl font-black text-slate-600 my-1">0 hrs</div>
+                                <span id="resNoPct" class="text-xs text-slate-500 font-semibold">0 %</span>
+                            </div>
+                        </div>
+
+                        
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 items-center">
+                            
+                            <div class="h-44 relative flex items-center justify-center">
+                                <canvas id="fcPieChart"></canvas>
+                            </div>
+
+                            
+                            <div class="bg-slate-900 text-white p-4 rounded-xl space-y-3">
+                                <h4 class="text-xs text-slate-400 font-bold uppercase tracking-wider">節能經濟效益估算</h4>
+                                <div>
+                                    <div class="text-xs text-slate-400">節能啟動總時數</div>
+                                    <div id="resEquivHours" class="text-xl font-extrabold text-emerald-400">0 小時/年</div>
+                                </div>
+                                <div class="border-t border-slate-800 pt-2 grid grid-cols-2 gap-2">
+                                    <div>
+                                        <div class="text-[11px] text-slate-400">預估節省電量</div>
+                                        <div id="resSavedKwh" class="text-sm font-bold text-cyan-300">0 kWh</div>
+                                    </div>
+                                    <div>
+                                        <div class="text-[11px] text-slate-400">預估節省電費</div>
+                                        <div id="resSavedCost" class="text-sm font-bold text-emerald-300">$ 0 元</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                    </div>
+                </div>
+            </div>
+
+            
+            <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
+                <div class="flex flex-col sm:flex-row sm:items-center justify-between border-b border-slate-100 pb-4 mb-4 gap-3">
+                    <div>
+                        <h2 class="text-lg font-bold text-slate-800">氣候數據區間統計 (Bin Analysis)</h2>
+                        <p class="text-xs text-slate-500">統計特定氣象變數落在各個間隔區間的時間與累積百分比</p>
+                    </div>
+                    <div class="flex flex-wrap items-center gap-3">
+                        <div>
+                            <label class="text-xs text-slate-600 font-medium mr-1">統計指標:</label>
+                            <select id="binVariableSelect" onchange="updateBinAnalysis()" class="text-xs border border-slate-300 rounded-lg px-2 py-1.5 bg-white font-semibold">
+                                <option value="db" selected>乾球溫度 DB (°C)</option>
+                                <option value="wb">濕球溫度 WB (°C)</option>
+                                <option value="dp">露點溫度 DP (°C)</option>
+                                <option value="rh">相對濕度 RH (%)</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="text-xs text-slate-600 font-medium mr-1">間隔步長:</label>
+                            <select id="binStepSelect" onchange="updateBinAnalysis()" class="text-xs border border-slate-300 rounded-lg px-2 py-1.5 bg-white font-semibold">
+                                <option value="1">1 個單位</option>
+                                <option value="2" selected>2 個單位</option>
+                                <option value="5">5 個單位</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+                    
+                    <div class="lg:col-span-7 h-72">
+                        <canvas id="binChart"></canvas>
+                    </div>
+
+                    
+                    <div class="lg:col-span-5 h-72 overflow-y-auto border border-slate-200 rounded-xl">
+                        <table class="w-full data-table text-xs">
+                            <thead>
+                                <tr>
+                                    <th>數值區間</th>
+                                    <th>時數 (hrs)</th>
+                                    <th>佔比 (%)</th>
+                                    <th>累積時數</th>
+                                    <th>累積佔比</th>
+                                </tr>
+                            </thead>
+                            <tbody id="binTableBody">
+                                
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                
+                <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 flex flex-col">
+                    <h2 class="text-lg font-bold text-slate-800 mb-1">各月份 Free Cooling 可用時數</h2>
+                    <p class="text-xs text-slate-500 mb-4">呈現每月可執行自然冷卻與純機械制冷的小時數</p>
+                    <div class="h-64 relative flex-1">
+                        <canvas id="monthlyFcChart"></canvas>
+                    </div>
+                </div>
+
+                
+                <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 flex flex-col">
+                    <h2 class="text-lg font-bold text-slate-800 mb-1">8,760 小時指標走勢與門檻線</h2>
+                    <p class="text-xs text-slate-500 mb-4">綠色實線: 選擇之氣象指標數值 | 紅色虛線: Free Cooling 門檻</p>
+                    <div class="h-64 relative flex-1">
+                        <canvas id="hourlyChart"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                
+                <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 flex flex-col">
+                    <h2 class="text-lg font-bold text-slate-800 mb-4">月度綜合氣候趨勢 (乾球 / 濕球 / 露點)</h2>
+                    <div class="h-72 w-full relative flex-1">
+                        <canvas id="monthlyTrendChart"></canvas>
+                    </div>
+                </div>
+
+                
+                <div class="bg-white rounded-2xl shadow-sm border border-slate-200 flex flex-col overflow-hidden">
+                    <div class="bg-slate-50 border-b border-slate-200 px-5 py-4 flex justify-between items-center flex-wrap gap-2">
+                        <h2 class="text-sm font-bold text-slate-700">月度氣象資料摘要</h2>
+                        <div class="flex gap-2">
+                            <button onclick="copyTableData()" class="text-xs bg-white border border-slate-300 text-slate-600 px-2.5 py-1 rounded-lg hover:bg-slate-100 transition shadow-sm">複製 Excel 格式</button>
+                            <button onclick="exportMonthlyCSV()" class="text-xs bg-emerald-600 text-white px-2.5 py-1 rounded-lg hover:bg-emerald-700 transition shadow-sm">匯出月摘要 CSV</button>
+                        </div>
+                    </div>
+                    <div class="overflow-y-auto flex-1 max-h-80">
+                        <table class="w-full data-table text-xs" id="dataTable">
+                            <thead>
+                                <tr>
+                                    <th>月份</th>
+                                    <th class="text-emerald-700">均溫 DB (°C)</th>
+                                    <th class="text-teal-700">均濕球 WB (°C)</th>
+                                    <th class="text-blue-600">均露點 DP (°C)</th>
+                                    <th class="text-cyan-600">相對濕度 (%)</th>
+                                </tr>
+                            </thead>
+                            <tbody id="dataTableBody">
+                                
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    
+    <script>
+const _0x4f94b4=_0x5299;(function(_0x305d55,_0x3c7756){const _0x53338c={_0x4c516a:0x163,_0x5ea4f1:0x1bb,_0x1b94f3:0x168,_0x23a01a:0x1a7,_0x26f0c0:0x14a,_0x79693:0x18f,_0x3bb0ef:0x1c4},_0x5d3c89=_0x5299,_0x164081=_0x305d55();while(!![]){try{const _0x380c37=-parseInt(_0x5d3c89(_0x53338c._0x4c516a))/0x1*(-parseInt(_0x5d3c89(0x1b9))/0x2)+parseInt(_0x5d3c89(_0x53338c._0x5ea4f1))/0x3*(parseInt(_0x5d3c89(_0x53338c._0x1b94f3))/0x4)+parseInt(_0x5d3c89(0x185))/0x5*(parseInt(_0x5d3c89(_0x53338c._0x23a01a))/0x6)+parseInt(_0x5d3c89(_0x53338c._0x26f0c0))/0x7+parseInt(_0x5d3c89(0x145))/0x8*(parseInt(_0x5d3c89(0x13e))/0x9)+parseInt(_0x5d3c89(0x17c))/0xa+-parseInt(_0x5d3c89(_0x53338c._0x79693))/0xb*(parseInt(_0x5d3c89(_0x53338c._0x3bb0ef))/0xc);if(_0x380c37===_0x3c7756)break;else _0x164081['push'](_0x164081['shift']());}catch(_0x24b1b8){_0x164081['push'](_0x164081['shift']());}}}(_0x38b0,0x39b48));let globalRawData=null,stationInfo={},fcPieChartInstance=null,binChartInstance=null,monthlyFcChartInstance=null,hourlyChartInstance=null,monthlyTrendChartInstance=null;const dropZone=document[_0x4f94b4(0x14c)]('dropZone'),fileInput=document[_0x4f94b4(0x14c)](_0x4f94b4(0x1bc)),dashboard=document['getElementById'](_0x4f94b4(0x13a)),loadingIndicator=document[_0x4f94b4(0x14c)]('loadingIndicator');[_0x4f94b4(0x135),'dragover',_0x4f94b4(0x158),_0x4f94b4(0x15d)][_0x4f94b4(0x120)](_0x4ca978=>{const _0x3a4a7b={_0x109efc:0x144},_0x1d8b7f=_0x4f94b4;dropZone[_0x1d8b7f(_0x3a4a7b._0x109efc)](_0x4ca978,preventDefaults,![]),document[_0x1d8b7f(0x12f)][_0x1d8b7f(0x144)](_0x4ca978,preventDefaults,![]);});function preventDefaults(_0x2bd1d1){const _0x31eacb=_0x4f94b4;_0x2bd1d1[_0x31eacb(0x19e)](),_0x2bd1d1[_0x31eacb(0x161)]();}[_0x4f94b4(0x135),_0x4f94b4(0x137)][_0x4f94b4(0x120)](_0x159274=>dropZone[_0x4f94b4(0x144)](_0x159274,()=>dropZone[_0x4f94b4(0x1a9)][_0x4f94b4(0x1a0)]('drag-active'),![])),[_0x4f94b4(0x158),_0x4f94b4(0x15d)][_0x4f94b4(0x120)](_0x4851e4=>dropZone[_0x4f94b4(0x144)](_0x4851e4,()=>dropZone[_0x4f94b4(0x1a9)]['remove'](_0x4f94b4(0x12b)),![])),dropZone[_0x4f94b4(0x144)](_0x4f94b4(0x15d),_0x2e7c0f=>handleFiles(_0x2e7c0f[_0x4f94b4(0x173)][_0x4f94b4(0x119)])),fileInput[_0x4f94b4(0x144)](_0x4f94b4(0x1a6),function(){const _0x1529d5=_0x4f94b4;handleFiles(this[_0x1529d5(0x119)]);}),dropZone[_0x4f94b4(0x144)](_0x4f94b4(0x175),_0x594a3e=>{const _0x4fd4d6=_0x4f94b4;if(_0x594a3e['target']['tagName']!=='BUTTON')fileInput[_0x4fd4d6(0x175)]();});function handleFiles(_0x539cc6){const _0x5d9afa={_0x4b6035:0x13d,_0x29f4f8:0x1b7,_0x2cc3d4:0x1a8,_0x720a59:0x169,_0x3a347e:0x170},_0x1602e1=_0x4f94b4;if(_0x539cc6[_0x1602e1(0x198)]===0x0)return;const _0x20e20a=_0x539cc6[0x0];if(!_0x20e20a[_0x1602e1(0x18c)][_0x1602e1(_0x5d9afa._0x4b6035)]()[_0x1602e1(_0x5d9afa._0x29f4f8)](_0x1602e1(_0x5d9afa._0x2cc3d4))&&!_0x20e20a['name']['toLowerCase']()['endsWith'](_0x1602e1(_0x5d9afa._0x720a59))){showToast('請上傳\x20.epw\x20格式的氣象檔案。',_0x1602e1(_0x5d9afa._0x3a347e));return;}showLoading(!![],'正在解析檔案:\x20'+_0x20e20a[_0x1602e1(0x18c)]+_0x1602e1(0x14f));const _0x3ff33a=new FileReader();_0x3ff33a[_0x1602e1(0x1b2)]=function(_0xf24e4c){const _0x17ae8b={_0x5b1521:0x11a,_0x8176ce:0x172,_0x3a1bd0:0x141,_0x5cadcb:0x1be};setTimeout(()=>{const _0x2a5baa=_0x5299;try{parseEPWContent(_0xf24e4c['target'][_0x2a5baa(_0x17ae8b._0x5b1521)]),showLoading(![]),showToast(_0x2a5baa(_0x17ae8b._0x8176ce),_0x2a5baa(_0x17ae8b._0x3a1bd0));}catch(_0x12e5be){showToast(_0x2a5baa(_0x17ae8b._0x5cadcb)+_0x12e5be['message'],_0x2a5baa(0x170)),showLoading(![]);}},0x50);},_0x3ff33a[_0x1602e1(0x140)](_0x20e20a);}function calculateWetBulb(_0x501a36,_0x260d46){const _0xa63063={_0x494e00:0x184,_0x466bc3:0x1c3,_0x1dc7ef:0x1c3},_0x44a0fb=_0x4f94b4,_0x1fa4eb=Math[_0x44a0fb(_0xa63063._0x494e00)](0x0,Math[_0x44a0fb(0x17d)](0x64,_0x260d46)),_0x19e606=_0x501a36*Math[_0x44a0fb(_0xa63063._0x466bc3)](0.151977*Math[_0x44a0fb(0x123)](_0x1fa4eb+8.313659))+Math['atan'](_0x501a36+_0x1fa4eb)-Math[_0x44a0fb(_0xa63063._0x1dc7ef)](_0x1fa4eb-1.676331)+0.00391838*Math['pow'](_0x1fa4eb,1.5)*Math['atan'](0.023101*_0x1fa4eb)-4.686035;return parseFloat(_0x19e606[_0x44a0fb(0x154)](0x1));}function _0x38b0(){const _0x5c5cfd=['小時數\x20(hrs)','atan','2328360bDIEPo','\x20小時/年','FC\x20門檻\x20(','\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20<div>\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20<label\x20class=\x22block\x20text-xs\x20font-semibold\x20text-emerald-800\x20mb-1\x22>Free\x20Cooling\x20啟動乾球溫度門檻</label>\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20<div\x20class=\x22relative\x22>\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20<input\x20type=\x22number\x22\x20id=\x22fcFullTemp\x22\x20value=\x2218\x22\x20step=\x220.5\x22\x20oninput=\x22updateCalculations()\x22\x20class=\x22w-full\x20text-xs\x20border-emerald-300\x20rounded-lg\x20p-2.5\x20pr-8\x20bg-white\x20border\x20font-bold\x20text-emerald-800\x20focus:ring-2\x20focus:ring-emerald-500\x22>\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20<span\x20class=\x22absolute\x20right-3\x20top-2.5\x20text-xs\x20text-slate-400\x22>°C</span>\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20</div>\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20<p\x20class=\x22text-[11px]\x20text-slate-500\x20mt-1\x22>當室外乾球溫度\x20≤\x20此設定值時，開啟氣側節能。</p>\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20</div>\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20','value','resEquivHours','\x20%</td>\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20','infoLon','files','result','11月','\x20%</td>\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20<td\x20class=\x22text-slate-500\x22>','24_7','round','binTableBody','forEach','text/csv;charset=utf-8;','map','sqrt','#f1f5f9','bg-slate-800','infoLat','resNoPct','toLocaleString','fcPieChart','elev','drag-active','className','自然冷卻\x20(FC)','getContext','body','info','infoActiveHours','#cbd5e1','replace','resFullPct','dragenter','dataTableBody','dragover','sin','rgba(16,\x20185,\x20129,\x200.7)','dashboard','fcFullTemp','\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20<td\x20class=\x22font-semibold\x20text-slate-700\x22>','toLowerCase','18atvBgi','day','readAsText','success','removeChild','hidden','addEventListener','673064RhIUJF','#dataTableBody\x20tr','#0d9488','thresholdInputsContainer','月份\x09均溫DB(°C)\x09均濕球WB(°C)\x09均露點DP(°C)\x09相對濕度(%)\x0a','2747248TVxeaF','random','getElementById','25.03','execCommand','...','label','fcElecPrice','infoLocation','lon','toFixed','binChart','bg-emerald-600','#ffffff','dragleave','fill','binVariableSelect','lat','full','drop','已載入台北\x208,760\x20小時範例氣象資料！','appendChild','createObjectURL','stopPropagation','count','1xdaaNW','fcControlMode','infoAvgDP','innerHTML','10月','4QTXjoL','.csv','Taipei-Taiwan\x20(Demo)','remove','infoMaxDB','resSavedKwh','querySelectorAll','dpAvg','error','10_5','EPW\x20檔案載入並解析成功！','dataTransfer','純機械制冷\x20(No\x20FC)','click','destroy','\x20hrs','</span>','push','trim','loadingMsg','798400AOZtwr','min','infoAvgRH','innerText','select','infoAvgWB','121.56','#64748b','max','11590ewsSag','split','fcSchedule','href','setAttribute','filter','flex','name','hour','月</td>\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20<td\x20class=\x22text-emerald-700\x20font-bold\x22>','66IoKAru','div','</td>\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20<td\x20class=\x22text-blue-600\x20font-medium\x22>','infoElev','opacity-0','</td>\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20<td\x20class=\x22text-emerald-600\x20font-bold\x22>','floor','infoAvgDB','#3b82f6','length','12月','textContent','createElement','已將月度摘要複製至剪貼簿\x20(可直接貼入\x20Excel)！','\x20~\x20','preventDefault','<span>','add','textarea','#10b981','機械制冷\x20(No\x20FC)','Month,Avg_DB_C,Avg_WB_C,Avg_DP_C,Avg_RH_pct\x0a','平均乾球\x20(DB)','change','1032hrglIZ','.epw','classList','style','line','bottom','resNoHours','top','from','location','平均濕球\x20(WB)','onload','copy','translate-y-2','join','dbAvg','endsWith','month','334322xSzBNE','N/A','582339rkZTAz','fileInput','hourlyChart','解析檔案失敗:\x20','65%','WATER','\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20<td\x20class=\x22font-bold\x20text-slate-700\x22>'];_0x38b0=function(){return _0x5c5cfd;};return _0x38b0();}function parseEPWContent(_0x209a4c){const _0x14f01b={_0x509ea0:0x186,_0x516285:0x1ba,_0x3b5c2d:0x198,_0x413722:0x198,_0x4d5384:0x152,_0x4eaf5e:0x14c,_0x368f69:0x1b0,_0x32738d:0x126,_0x52bece:0x1cb,_0x1c7c21:0x192,_0x1d9904:0x12a,_0x3e340e:0x122,_0xca6422:0x122,_0x40e3ff:0x196,_0xac5e40:0x154,_0x1f1a6c:0x181,_0x4cc023:0x11e},_0x35b992=_0x4f94b4,_0x2df5fe=_0x209a4c[_0x35b992(_0x14f01b._0x509ea0)](/\r?\n/);if(_0x2df5fe['length']>0x0&&_0x2df5fe[0x0]['startsWith']('LOCATION')){const _0x2111dd=_0x2df5fe[0x0]['split'](',');stationInfo={'location':_0x2111dd[0x1]||'未知測站','lat':_0x2111dd[0x6]||_0x35b992(_0x14f01b._0x516285),'lon':_0x2111dd[0x7]||'N/A','elev':_0x2111dd[0x9]||_0x35b992(0x1ba)};}const _0x53634b=_0x2df5fe[_0x35b992(_0x14f01b._0x3b5c2d)]>0x8?0x8:0x0,_0xca14a6=[];let _0x5301e8=0x1;for(let _0x2bc97f=_0x53634b;_0x2bc97f<_0x2df5fe[_0x35b992(_0x14f01b._0x413722)];_0x2bc97f++){const _0x51793f=_0x2df5fe[_0x2bc97f][_0x35b992(0x17a)]();if(!_0x51793f)continue;const _0x11cb4f=_0x51793f[_0x35b992(0x186)](',');if(_0x11cb4f[_0x35b992(_0x14f01b._0x413722)]>=0x19&&!isNaN(_0x11cb4f[0x0])&&!isNaN(_0x11cb4f[0x1])){const _0x36e70e=parseInt(_0x11cb4f[0x1],0xa)-0x1,_0x57c3ee=parseInt(_0x11cb4f[0x2],0xa),_0x382613=parseInt(_0x11cb4f[0x3],0xa),_0x297560=parseFloat(_0x11cb4f[0x6]),_0x232be3=parseFloat(_0x11cb4f[0x7]),_0x2f31f7=parseFloat(_0x11cb4f[0x8]);if(_0x36e70e>=0x0&&_0x36e70e<=0xb&&!isNaN(_0x297560)&&!isNaN(_0x2f31f7)){const _0xb7526=calculateWetBulb(_0x297560,_0x2f31f7);_0xca14a6[_0x35b992(0x179)]({'month':_0x36e70e,'day':_0x57c3ee,'hour':_0x382613,'db':_0x297560,'dp':_0x232be3,'rh':_0x2f31f7,'wb':_0xb7526});}}}if(_0xca14a6[_0x35b992(0x198)]===0x0)throw new Error('無法在檔案中讀取到有效的逐時氣象資料。');globalRawData=_0xca14a6,setText(_0x35b992(_0x14f01b._0x4d5384),stationInfo[_0x35b992(0x1b0)]),document[_0x35b992(_0x14f01b._0x4eaf5e)](_0x35b992(0x152))['title']=stationInfo[_0x35b992(_0x14f01b._0x368f69)],setText(_0x35b992(_0x14f01b._0x32738d),stationInfo['lat']),setText(_0x35b992(_0x14f01b._0x52bece),stationInfo[_0x35b992(0x153)]),setText(_0x35b992(_0x14f01b._0x1c7c21),stationInfo[_0x35b992(_0x14f01b._0x1d9904)]);const _0x226bfe=_0xca14a6[_0x35b992(0x122)](_0x30000f=>_0x30000f['db']),_0x43ccce=_0xca14a6[_0x35b992(0x122)](_0x42abe2=>_0x42abe2['dp']),_0x5271b3=_0xca14a6[_0x35b992(_0x14f01b._0x3e340e)](_0x1d1df9=>_0x1d1df9['wb']),_0x49d6dc=_0xca14a6[_0x35b992(_0x14f01b._0xca6422)](_0x5c4c17=>_0x5c4c17['rh']);setText(_0x35b992(_0x14f01b._0x40e3ff),avg(_0x226bfe)[_0x35b992(_0x14f01b._0xac5e40)](0x1)),setText('infoMaxDB',max(_0x226bfe)[_0x35b992(0x154)](0x1)),setText(_0x35b992(_0x14f01b._0x1f1a6c),avg(_0x5271b3)[_0x35b992(0x154)](0x1)),setText(_0x35b992(0x165),avg(_0x43ccce)[_0x35b992(0x154)](0x1)),setText('infoMaxDP',max(_0x43ccce)[_0x35b992(0x154)](0x1)),setText('infoAvgRH',Math[_0x35b992(_0x14f01b._0x4cc023)](avg(_0x49d6dc))),onControlModeChange(),renderMonthlyTrendAndTable();}function onControlModeChange(){const _0x5c6657={_0x238f40:0x14c,_0x290292:0x1c8,_0x4db545:0x14c,_0x32d43c:0x166,_0x1249da:0x1c7},_0x55d4a0=_0x4f94b4,_0x388c45=document[_0x55d4a0(_0x5c6657._0x238f40)]('fcControlMode')[_0x55d4a0(_0x5c6657._0x290292)],_0x5cad53=document[_0x55d4a0(_0x5c6657._0x4db545)](_0x55d4a0(0x148));if(_0x388c45==='DB')_0x5cad53[_0x55d4a0(_0x5c6657._0x32d43c)]=_0x55d4a0(_0x5c6657._0x1249da);else _0x388c45==='WATER'&&(_0x5cad53[_0x55d4a0(_0x5c6657._0x32d43c)]='\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20<div>\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20<label\x20class=\x22block\x20text-xs\x20font-semibold\x20text-blue-800\x20mb-1\x22>板熱節能允許最高室外濕球溫度\x20(WB)</label>\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20<div\x20class=\x22relative\x22>\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20<input\x20type=\x22number\x22\x20id=\x22fcFullTemp\x22\x20value=\x2212\x22\x20step=\x220.5\x22\x20oninput=\x22updateCalculations()\x22\x20class=\x22w-full\x20text-xs\x20border-blue-300\x20rounded-lg\x20p-2.5\x20pr-8\x20bg-white\x20border\x20font-bold\x20text-blue-900\x20focus:ring-2\x20focus:ring-blue-500\x22>\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20<span\x20class=\x22absolute\x20right-3\x20top-2.5\x20text-xs\x20text-slate-400\x22>°C</span>\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20</div>\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20<p\x20class=\x22text-[11px]\x20text-slate-500\x20mt-1\x22>當室外濕球溫度\x20≤\x20此設定值時，水側板熱節能器啟動。</p>\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20</div>\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20');updateCalculations();}function isHourInSchedule(_0x2e0fbf){const _0x44b484={_0x27f317:0x18d,_0x2dfcd8:0x171},_0xd7b8cd=_0x4f94b4,_0x1d6c59=document['getElementById'](_0xd7b8cd(0x187))['value'];if(_0x1d6c59===_0xd7b8cd(0x11d))return!![];const _0x5ddb87=_0x2e0fbf[_0xd7b8cd(0x13f)]%0x7,_0x2ecc90=_0x5ddb87>=0x1&&_0x5ddb87<=0x5;if(_0x1d6c59==='12_6'){const _0x19782e=_0x5ddb87>=0x1&&_0x5ddb87<=0x6;return _0x19782e&&_0x2e0fbf[_0xd7b8cd(_0x44b484._0x27f317)]>=0x8&&_0x2e0fbf['hour']<0x14;}else{if(_0x1d6c59===_0xd7b8cd(_0x44b484._0x2dfcd8))return _0x2ecc90&&_0x2e0fbf['hour']>=0x8&&_0x2e0fbf[_0xd7b8cd(0x18d)]<0x12;}return!![];}function updateCalculations(){const _0x2c920e={_0x584ae0:0x1c8,_0x2c4aa4:0x1c8,_0x2ce04d:0x14c,_0x4ee9c0:0x1c8,_0x4b7369:0x1af,_0x1b46bc:0x120,_0x3870c5:0x1ad,_0x3b79cf:0x127,_0x579854:0x11e,_0x540aef:0x1c9,_0x1c8e8a:0x128},_0x4a6754={_0xd8c2e1:0x15c},_0x4c4379=_0x4f94b4;if(!globalRawData)return;const _0x1b53fd=document['getElementById'](_0x4c4379(0x164))[_0x4c4379(_0x2c920e._0x584ae0)],_0x2b5d31=parseFloat(document[_0x4c4379(0x14c)](_0x4c4379(0x13b))[_0x4c4379(_0x2c920e._0x584ae0)])||0x12,_0x82f0=parseFloat(document['getElementById']('fcLoadRt')[_0x4c4379(_0x2c920e._0x2c4aa4)])||0xc8,_0x1069ec=parseFloat(document[_0x4c4379(0x14c)]('fcKwPerRt')['value'])||0.7,_0x4afbd6=parseFloat(document[_0x4c4379(_0x2c920e._0x2ce04d)](_0x4c4379(0x151))[_0x4c4379(_0x2c920e._0x4ee9c0)])||0x4;let _0xb71ffa=0x0,_0x2dca94=0x0,_0x303c4f=0x0;const _0x2a95db=Array[_0x4c4379(_0x2c920e._0x4b7369)]({'length':0xc},()=>({'full':0x0,'no':0x0}));globalRawData[_0x4c4379(_0x2c920e._0x1b46bc)](_0x1e2e53=>{const _0x4e324d=_0x4c4379;if(!isHourInSchedule(_0x1e2e53))return;_0x303c4f++;let _0x4fde87=_0x1e2e53['db'];if(_0x1b53fd===_0x4e324d(0x1c0))_0x4fde87=_0x1e2e53['wb'];_0x4fde87<=_0x2b5d31?(_0xb71ffa++,_0x2a95db[_0x1e2e53[_0x4e324d(0x1b8)]][_0x4e324d(_0x4a6754._0xd8c2e1)]++):(_0x2dca94++,_0x2a95db[_0x1e2e53[_0x4e324d(0x1b8)]]['no']++);}),setText(_0x4c4379(0x131),_0x303c4f['toLocaleString']());const _0x7f2339=_0x303c4f||0x1,_0x3538d7=_0xb71ffa/_0x7f2339*0x64,_0x385933=_0x2dca94/_0x7f2339*0x64;setText('resFullHours',_0xb71ffa[_0x4c4379(0x128)]()+_0x4c4379(0x177)),setText(_0x4c4379(0x134),_0x3538d7[_0x4c4379(0x154)](0x1)+'\x20%'),setText(_0x4c4379(_0x2c920e._0x3870c5),_0x2dca94[_0x4c4379(0x128)]()+_0x4c4379(0x177)),setText(_0x4c4379(_0x2c920e._0x3b79cf),_0x385933['toFixed'](0x1)+'\x20%');const _0x336952=Math[_0x4c4379(_0x2c920e._0x579854)](_0xb71ffa*_0x82f0*_0x1069ec),_0x5d750d=Math[_0x4c4379(0x11e)](_0x336952*_0x4afbd6);setText(_0x4c4379(_0x2c920e._0x540aef),_0xb71ffa[_0x4c4379(0x128)]()+_0x4c4379(0x1c5)),setText(_0x4c4379(0x16d),_0x336952['toLocaleString']()+'\x20kWh'),setText('resSavedCost','$\x20'+_0x5d750d[_0x4c4379(_0x2c920e._0x1c8e8a)]()+'\x20元'),renderFcPieChart(_0xb71ffa,_0x2dca94),renderMonthlyFcChart(_0x2a95db),renderHourlyChartWithThresholds(_0x2b5d31,_0x1b53fd),updateBinAnalysis();}function updateBinAnalysis(){const _0x4a8cdf={_0x10e895:0x15a,_0x52a771:0x1c8,_0x1d159b:0x14c,_0x1193ba:0x18a,_0x9a1e8d:0x198,_0x1dead:0x19d,_0x377882:0x120,_0x5b8815:0x14c,_0xe751e:0x166},_0x130792={_0x21c7f1:0x162,_0x3dc32c:0x154,_0x3a2483:0x13c,_0x9f9faa:0x1ca,_0x50e044:0x15f},_0x5e7b49={_0x2e8737:0x17d,_0x2a1bde:0x162,_0x4bc1d2:0x162},_0x51c4bf=_0x4f94b4;if(!globalRawData)return;const _0xebd7eb=document[_0x51c4bf(0x14c)](_0x51c4bf(_0x4a8cdf._0x10e895))[_0x51c4bf(_0x4a8cdf._0x52a771)],_0x71eecc=parseInt(document[_0x51c4bf(_0x4a8cdf._0x1d159b)]('binStepSelect')[_0x51c4bf(0x1c8)],0xa)||0x2,_0x4a7961=globalRawData[_0x51c4bf(_0x4a8cdf._0x1193ba)](_0x5c851c=>isHourInSchedule(_0x5c851c))[_0x51c4bf(0x122)](_0x6f3528=>_0x6f3528[_0xebd7eb]);if(_0x4a7961[_0x51c4bf(_0x4a8cdf._0x9a1e8d)]===0x0)return;const _0x45d1c3=Math[_0x51c4bf(0x195)](min(_0x4a7961)),_0xbe9cc6=Math['ceil'](max(_0x4a7961)),_0x68bc42=[];for(let _0x33c764=_0x45d1c3;_0x33c764<_0xbe9cc6;_0x33c764+=_0x71eecc){_0x68bc42['push']({'min':_0x33c764,'max':_0x33c764+_0x71eecc,'label':_0x33c764+_0x51c4bf(_0x4a8cdf._0x1dead)+(_0x33c764+_0x71eecc),'count':0x0});}_0x4a7961[_0x51c4bf(_0x4a8cdf._0x377882)](_0x3f5a00=>{const _0x36f216=_0x51c4bf;let _0x6f86d6=![];for(let _0x378161 of _0x68bc42){if(_0x3f5a00>=_0x378161[_0x36f216(_0x5e7b49._0x2e8737)]&&_0x3f5a00<_0x378161['max']){_0x378161[_0x36f216(_0x5e7b49._0x2a1bde)]++,_0x6f86d6=!![];break;}}!_0x6f86d6&&_0x68bc42['length']>0x0&&_0x68bc42[_0x68bc42[_0x36f216(0x198)]-0x1][_0x36f216(_0x5e7b49._0x4bc1d2)]++;});let _0x1097b3=0x0;const _0x6193b1=_0x4a7961[_0x51c4bf(0x198)],_0x3f4610=document[_0x51c4bf(_0x4a8cdf._0x5b8815)](_0x51c4bf(0x11f));_0x3f4610[_0x51c4bf(_0x4a8cdf._0xe751e)]='',_0x68bc42[_0x51c4bf(_0x4a8cdf._0x377882)](_0x40bec6=>{const _0x5e174e=_0x51c4bf;_0x1097b3+=_0x40bec6[_0x5e174e(_0x130792._0x21c7f1)];const _0xca4772=(_0x40bec6[_0x5e174e(0x162)]/_0x6193b1*0x64)[_0x5e174e(0x154)](0x1),_0x139f84=(_0x1097b3/_0x6193b1*0x64)[_0x5e174e(_0x130792._0x3dc32c)](0x1),_0x1b77bb=document['createElement']('tr');_0x1b77bb['innerHTML']=_0x5e174e(_0x130792._0x3a2483)+_0x40bec6[_0x5e174e(0x150)]+_0x5e174e(0x194)+_0x40bec6[_0x5e174e(0x162)]+'</td>\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20<td>'+_0xca4772+_0x5e174e(0x11c)+_0x1097b3+'\x20hrs</td>\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20<td\x20class=\x22text-slate-400\x22>'+_0x139f84+_0x5e174e(_0x130792._0x9f9faa),_0x3f4610[_0x5e174e(_0x130792._0x50e044)](_0x1b77bb);}),renderBinChart(_0x68bc42,_0xebd7eb);}function renderFcPieChart(_0x27325b,_0x697fdb){const _0x9cb8e9={_0x48126c:0x129,_0x526bd6:0x12e,_0x57eb3c:0x1a2,_0x1c29cf:0x183,_0x1a0fb0:0x1bf},_0x13ce77=_0x4f94b4,_0x5423dc=document[_0x13ce77(0x14c)](_0x13ce77(_0x9cb8e9._0x48126c))[_0x13ce77(_0x9cb8e9._0x526bd6)]('2d');if(fcPieChartInstance)fcPieChartInstance[_0x13ce77(0x176)]();fcPieChartInstance=new Chart(_0x5423dc,{'type':'doughnut','data':{'labels':['自然冷卻\x20(Free\x20Cooling)',_0x13ce77(0x174)],'datasets':[{'data':[_0x27325b,_0x697fdb],'backgroundColor':[_0x13ce77(_0x9cb8e9._0x57eb3c),_0x13ce77(_0x9cb8e9._0x1c29cf)],'borderWidth':0x2,'borderColor':_0x13ce77(0x157)}]},'options':{'responsive':!![],'maintainAspectRatio':![],'plugins':{'legend':{'position':_0x13ce77(0x1ac),'labels':{'boxWidth':0xa,'font':{'size':0xa}}}},'cutout':_0x13ce77(_0x9cb8e9._0x1a0fb0)}});}function renderBinChart(_0x24f289,_0x1f5e8c){const _0x15bc7a={_0xd0dfad:0x12e,_0x4a87d1:0x176},_0x6d9aad=_0x4f94b4,_0x42d8c9=document[_0x6d9aad(0x14c)](_0x6d9aad(0x155))[_0x6d9aad(_0x15bc7a._0xd0dfad)]('2d');if(binChartInstance)binChartInstance[_0x6d9aad(_0x15bc7a._0x4a87d1)]();const _0x46f415={'db':'°C','wb':'°C','dp':'°C','rh':'%'},_0x44f21f=_0x46f415[_0x1f5e8c]||'';binChartInstance=new Chart(_0x42d8c9,{'type':'bar','data':{'labels':_0x24f289[_0x6d9aad(0x122)](_0x261f7d=>_0x261f7d[_0x6d9aad(0x150)]+'\x20'+_0x44f21f),'datasets':[{'label':_0x6d9aad(0x1c2),'data':_0x24f289[_0x6d9aad(0x122)](_0x5e51e5=>_0x5e51e5[_0x6d9aad(0x162)]),'backgroundColor':_0x6d9aad(0x139),'borderColor':'#10b981','borderWidth':0x1,'borderRadius':0x4}]},'options':{'responsive':!![],'maintainAspectRatio':![],'plugins':{'legend':{'display':![]}},'scales':{'y':{'title':{'display':!![],'text':_0x6d9aad(0x1c2)},'grid':{'color':_0x6d9aad(0x124)}},'x':{'grid':{'display':![]}}}}});}function renderMonthlyFcChart(_0x43fbbe){const _0x300b75={_0x1f1c78:0x14c,_0x8a5801:0x11b,_0x524a11:0x122,_0x2749ce:0x1a3,_0x5db3ef:0x132},_0x25c3df=_0x4f94b4,_0x185137=document[_0x25c3df(_0x300b75._0x1f1c78)]('monthlyFcChart')['getContext']('2d');if(monthlyFcChartInstance)monthlyFcChartInstance[_0x25c3df(0x176)]();const _0x108e6e=['1月','2月','3月','4月','5月','6月','7月','8月','9月','10月',_0x25c3df(_0x300b75._0x8a5801),_0x25c3df(0x199)];monthlyFcChartInstance=new Chart(_0x185137,{'type':'bar','data':{'labels':_0x108e6e,'datasets':[{'label':_0x25c3df(0x12d),'data':_0x43fbbe[_0x25c3df(_0x300b75._0x524a11)](_0x411ae6=>_0x411ae6['full']),'backgroundColor':'#10b981'},{'label':_0x25c3df(_0x300b75._0x2749ce),'data':_0x43fbbe['map'](_0x286029=>_0x286029['no']),'backgroundColor':_0x25c3df(_0x300b75._0x5db3ef)}]},'options':{'responsive':!![],'maintainAspectRatio':![],'plugins':{'legend':{'position':_0x25c3df(0x1ae),'labels':{'boxWidth':0xa}}},'scales':{'x':{'stacked':!![],'grid':{'display':![]}},'y':{'stacked':!![],'title':{'display':!![],'text':_0x25c3df(0x1c2)},'grid':{'color':'#f1f5f9'}}}}});}function renderHourlyChartWithThresholds(_0x2ed4ea,_0x332879){const _0xd846d={_0xf5851:0x14c,_0x1e5c76:0x12e,_0x1f5cdb:0x198,_0x1066c8:0x159,_0x1b45ee:0x1af,_0x1dec78:0x1c6,_0x17b76f:0x124},_0x1e9520=_0x4f94b4,_0x45b6b3=document[_0x1e9520(_0xd846d._0xf5851)](_0x1e9520(0x1bd))[_0x1e9520(_0xd846d._0x1e5c76)]('2d');if(hourlyChartInstance)hourlyChartInstance[_0x1e9520(0x176)]();const _0x2bf0ea=globalRawData[_0x1e9520(0x122)](_0x226ee5=>_0x332879===_0x1e9520(0x1c0)?_0x226ee5['wb']:_0x226ee5['db']),_0x24e29e=Array(_0x2bf0ea[_0x1e9520(_0xd846d._0x1f5cdb)])[_0x1e9520(_0xd846d._0x1066c8)](_0x2ed4ea);hourlyChartInstance=new Chart(_0x45b6b3,{'type':_0x1e9520(0x1ab),'data':{'labels':Array[_0x1e9520(_0xd846d._0x1b45ee)]({'length':_0x2bf0ea[_0x1e9520(0x198)]},(_0x3ef935,_0xb07ff1)=>_0xb07ff1+0x1),'datasets':[{'label':'室外指標數值\x20('+_0x332879+')','data':_0x2bf0ea,'borderColor':'rgba(16,\x20185,\x20129,\x200.6)','borderWidth':0x1,'pointRadius':0x0,'tension':0x0},{'label':_0x1e9520(_0xd846d._0x1dec78)+_0x2ed4ea+'°C)','data':_0x24e29e,'borderColor':'#ef4444','borderWidth':1.5,'borderDash':[0x4,0x4],'pointRadius':0x0,'fill':![]}]},'options':{'responsive':!![],'maintainAspectRatio':![],'animation':![],'plugins':{'legend':{'position':_0x1e9520(0x1ae),'labels':{'boxWidth':0xa}}},'scales':{'x':{'display':![]},'y':{'title':{'display':!![],'text':'數值'},'grid':{'color':_0x1e9520(_0xd846d._0x17b76f)}}}}});}function renderMonthlyTrendAndTable(){const _0x4cbec6={_0x254f9c:0x1af,_0x307bf1:0x120,_0x2ebdc2:0x122,_0x5bde56:0x136,_0x556128:0x120,_0x53d4b3:0x14c,_0x55c27d:0x167,_0x36cb4b:0x11b,_0x892edd:0x199,_0x2bac49:0x122,_0x5af9b0:0x1a2,_0x148ac3:0x1b1,_0x24a035:0x147,_0x26811a:0x1ae},_0x292fef={_0x272dba:0x1c1,_0x140603:0x18e,_0xfd97e4:0x154,_0x32d6a0:0x15f},_0x447bac={_0x30542f:0x1b8,_0x124f99:0x179},_0x472c8c=_0x4f94b4,_0x107dd0=Array[_0x472c8c(_0x4cbec6._0x254f9c)]({'length':0xc},()=>({'db':[],'wb':[],'dp':[],'rh':[]}));globalRawData[_0x472c8c(_0x4cbec6._0x307bf1)](_0x4bd003=>{const _0x25906b=_0x472c8c;_0x107dd0[_0x4bd003['month']]['db']['push'](_0x4bd003['db']),_0x107dd0[_0x4bd003[_0x25906b(_0x447bac._0x30542f)]]['wb'][_0x25906b(0x179)](_0x4bd003['wb']),_0x107dd0[_0x4bd003[_0x25906b(_0x447bac._0x30542f)]]['dp'][_0x25906b(0x179)](_0x4bd003['dp']),_0x107dd0[_0x4bd003['month']]['rh'][_0x25906b(_0x447bac._0x124f99)](_0x4bd003['rh']);});const _0x2e7313=_0x107dd0[_0x472c8c(_0x4cbec6._0x2ebdc2)](_0x267bae=>({'dbAvg':avg(_0x267bae['db']),'wbAvg':avg(_0x267bae['wb']),'dpAvg':avg(_0x267bae['dp']),'rhAvg':avg(_0x267bae['rh'])})),_0xdd1424=document[_0x472c8c(0x14c)](_0x472c8c(_0x4cbec6._0x5bde56));_0xdd1424['innerHTML']='',_0x2e7313[_0x472c8c(_0x4cbec6._0x556128)]((_0x539331,_0x3b8982)=>{const _0x54c487=_0x472c8c,_0x52d542=document[_0x54c487(0x19b)]('tr');_0x52d542['innerHTML']=_0x54c487(_0x292fef._0x272dba)+(_0x3b8982+0x1)+_0x54c487(_0x292fef._0x140603)+_0x539331[_0x54c487(0x1b6)][_0x54c487(0x154)](0x1)+'</td>\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20<td\x20class=\x22text-teal-700\x20font-bold\x22>'+_0x539331['wbAvg']['toFixed'](0x1)+_0x54c487(0x191)+_0x539331['dpAvg'][_0x54c487(_0x292fef._0xfd97e4)](0x1)+'</td>\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20<td\x20class=\x22text-cyan-600\x20font-bold\x22>'+Math[_0x54c487(0x11e)](_0x539331['rhAvg'])+'%</td>\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20',_0xdd1424[_0x54c487(_0x292fef._0x32d6a0)](_0x52d542);});const _0x7e4656=document[_0x472c8c(_0x4cbec6._0x53d4b3)]('monthlyTrendChart')[_0x472c8c(0x12e)]('2d');if(monthlyTrendChartInstance)monthlyTrendChartInstance[_0x472c8c(0x176)]();const _0x5b9b49=['1月','2月','3月','4月','5月','6月','7月','8月','9月',_0x472c8c(_0x4cbec6._0x55c27d),_0x472c8c(_0x4cbec6._0x36cb4b),_0x472c8c(_0x4cbec6._0x892edd)];monthlyTrendChartInstance=new Chart(_0x7e4656,{'type':_0x472c8c(0x1ab),'data':{'labels':_0x5b9b49,'datasets':[{'label':_0x472c8c(0x1a5),'data':_0x2e7313[_0x472c8c(_0x4cbec6._0x2bac49)](_0x33f150=>_0x33f150[_0x472c8c(0x1b6)][_0x472c8c(0x154)](0x1)),'borderColor':_0x472c8c(_0x4cbec6._0x5af9b0),'tension':0.3,'yAxisID':'y'},{'label':_0x472c8c(_0x4cbec6._0x148ac3),'data':_0x2e7313['map'](_0x79ad23=>_0x79ad23['wbAvg'][_0x472c8c(0x154)](0x1)),'borderColor':_0x472c8c(_0x4cbec6._0x24a035),'borderDash':[0x4,0x4],'tension':0.3,'yAxisID':'y'},{'label':'平均露點\x20(DP)','data':_0x2e7313['map'](_0x2fbe78=>_0x2fbe78[_0x472c8c(0x16f)][_0x472c8c(0x154)](0x1)),'borderColor':_0x472c8c(0x197),'tension':0.3,'yAxisID':'y'}]},'options':{'responsive':!![],'maintainAspectRatio':![],'plugins':{'legend':{'position':_0x472c8c(_0x4cbec6._0x26811a),'labels':{'boxWidth':0xa}}},'scales':{'y':{'title':{'display':!![],'text':'溫度\x20(°C)'},'grid':{'color':_0x472c8c(0x124)}},'x':{'grid':{'display':![]}}}}});}function loadDemoData(){const _0x135068={_0x4d9757:0x138,_0x38b357:0x154,_0x4cc951:0x17d,_0x2109f8:0x184,_0xa7fa87:0x11e,_0x5bdd30:0x14b,_0x5459cb:0x179,_0x1e8060:0x182,_0x15ea6b:0x152,_0x41c3c5:0x1b0,_0xeb03c3:0x1cb,_0xddc455:0x122,_0x1add84:0x196,_0x49124f:0x16c,_0x3916e9:0x181,_0x5afc6e:0x154,_0x617484:0x165,_0x18f1da:0x17e};showLoading(!![],'正在生成台北（Taipei）8,760\x20小時氣象數據範例...'),setTimeout(()=>{const _0x1af7c6=_0x5299,_0x41dfd9=[];for(let _0x2899bb=0x0;_0x2899bb<0xc;_0x2899bb++){const _0x400f34=[0x1f,0x1c,0x1f,0x1e,0x1f,0x1e,0x1f,0x1f,0x1e,0x1f,0x1e,0x1f][_0x2899bb],_0x40eb5e=[0x10,0x11,0x13,0x17,0x1b,0x1d,0x1f,0x1e,0x1c,0x19,0x16,0x12][_0x2899bb],_0x343ffa=[0x4e,0x50,0x4d,0x4b,0x4c,0x4e,0x49,0x4b,0x4c,0x4a,0x4b,0x4c][_0x2899bb];let _0x2455e1=0x1;for(let _0x2b7d78=0x0;_0x2b7d78<_0x400f34;_0x2b7d78++){for(let _0x32a83b=0x0;_0x32a83b<0x18;_0x32a83b++){const _0x1182d9=Math[_0x1af7c6(_0x135068._0x4d9757)]((_0x32a83b-0x8)/0x18*Math['PI']*0x2)*0x4,_0x219515=(Math[_0x1af7c6(0x14b)]()-0.5)*0x3,_0x4648be=parseFloat((_0x40eb5e+_0x1182d9+_0x219515)[_0x1af7c6(_0x135068._0x38b357)](0x1)),_0xc86ed2=Math[_0x1af7c6(_0x135068._0x4cc951)](0x62,Math[_0x1af7c6(_0x135068._0x2109f8)](0x2d,Math[_0x1af7c6(_0x135068._0xa7fa87)](_0x343ffa-_0x1182d9*0x2+(Math[_0x1af7c6(_0x135068._0x5bdd30)]()-0.5)*0x6))),_0x1eaf98=parseFloat((_0x4648be-(0x64-_0xc86ed2)/0x5)[_0x1af7c6(0x154)](0x1)),_0x3583a2=calculateWetBulb(_0x4648be,_0xc86ed2);_0x41dfd9[_0x1af7c6(_0x135068._0x5459cb)]({'month':_0x2899bb,'day':_0x2455e1,'hour':_0x32a83b+0x1,'db':_0x4648be,'dp':_0x1eaf98,'rh':_0xc86ed2,'wb':_0x3583a2});}_0x2455e1++;}}stationInfo={'location':_0x1af7c6(0x16a),'lat':_0x1af7c6(0x14d),'lon':_0x1af7c6(_0x135068._0x1e8060),'elev':'9.0'},globalRawData=_0x41dfd9,setText(_0x1af7c6(_0x135068._0x15ea6b),stationInfo['location']),document[_0x1af7c6(0x14c)]('infoLocation')['title']=stationInfo[_0x1af7c6(_0x135068._0x41c3c5)],setText('infoLat',stationInfo[_0x1af7c6(0x15b)]),setText(_0x1af7c6(_0x135068._0xeb03c3),stationInfo['lon']),setText(_0x1af7c6(0x192),stationInfo[_0x1af7c6(0x12a)]);const _0x53fb04=_0x41dfd9[_0x1af7c6(_0x135068._0xddc455)](_0x2668b1=>_0x2668b1['db']),_0x221273=_0x41dfd9['map'](_0x6f359b=>_0x6f359b['dp']),_0x9ac0b5=_0x41dfd9[_0x1af7c6(_0x135068._0xddc455)](_0x479c0f=>_0x479c0f['wb']),_0x579105=_0x41dfd9['map'](_0x82c9c8=>_0x82c9c8['rh']);setText(_0x1af7c6(_0x135068._0x1add84),avg(_0x53fb04)[_0x1af7c6(0x154)](0x1)),setText(_0x1af7c6(_0x135068._0x49124f),max(_0x53fb04)[_0x1af7c6(_0x135068._0x38b357)](0x1)),setText(_0x1af7c6(_0x135068._0x3916e9),avg(_0x9ac0b5)[_0x1af7c6(_0x135068._0x5afc6e)](0x1)),setText(_0x1af7c6(_0x135068._0x617484),avg(_0x221273)[_0x1af7c6(0x154)](0x1)),setText('infoMaxDP',max(_0x221273)[_0x1af7c6(_0x135068._0x5afc6e)](0x1)),setText(_0x1af7c6(_0x135068._0x18f1da),Math[_0x1af7c6(_0x135068._0xa7fa87)](avg(_0x579105))),onControlModeChange(),renderMonthlyTrendAndTable(),showLoading(![]),showToast(_0x1af7c6(0x15e),_0x1af7c6(0x141));},0x64);}function exportMonthlyCSV(){const _0x1ac75b={_0x5eec26:0x1a4,_0x3d7a30:0x16e,_0x2a9a3e:0x120},_0x4a97fd={_0x2d96c7:0x1af,_0x3e45db:0x122},_0x2a1171=_0x4f94b4;let _0xb0a803=_0x2a1171(_0x1ac75b._0x5eec26);const _0x14460e=document[_0x2a1171(_0x1ac75b._0x3d7a30)]('#dataTableBody\x20tr');_0x14460e[_0x2a1171(_0x1ac75b._0x2a9a3e)](_0x3d87e7=>{const _0xce4305=_0x2a1171,_0xdd6ee7=Array[_0xce4305(_0x4a97fd._0x2d96c7)](_0x3d87e7['querySelectorAll']('td'))[_0xce4305(_0x4a97fd._0x3e45db)](_0x45975e=>_0x45975e[_0xce4305(0x17f)][_0xce4305(0x133)]('%','')[_0xce4305(0x17a)]());_0xb0a803+=_0xdd6ee7[_0xce4305(0x1b5)](',')+'\x0a';}),downloadCSV(_0xb0a803,'EPW_Monthly_Summary.csv');}function downloadCSV(_0x34ae2e,_0x5fcdcd){const _0x2a17fc={_0x5e7887:0x121,_0x524291:0x188,_0x13c377:0x1aa},_0x4b946f=_0x4f94b4,_0x3eb368=new Blob(['\ufeff'+_0x34ae2e],{'type':_0x4b946f(_0x2a17fc._0x5e7887)}),_0x21c1a9=document['createElement']('a'),_0x1ac005=URL[_0x4b946f(0x160)](_0x3eb368);_0x21c1a9[_0x4b946f(0x189)](_0x4b946f(_0x2a17fc._0x524291),_0x1ac005),_0x21c1a9[_0x4b946f(0x189)]('download',_0x5fcdcd),_0x21c1a9[_0x4b946f(_0x2a17fc._0x13c377)]['visibility']=_0x4b946f(0x143),document['body']['appendChild'](_0x21c1a9),_0x21c1a9[_0x4b946f(0x175)](),document['body'][_0x4b946f(0x142)](_0x21c1a9);}function _0x5299(_0x5d123a,_0x31e569){_0x5d123a=_0x5d123a-0x119;const _0x38b0f1=_0x38b0();let _0x5299cb=_0x38b0f1[_0x5d123a];return _0x5299cb;}function copyTableData(){const _0x3c2150={_0x4a14e6:0x149,_0x484749:0x16e,_0x2d359b:0x146,_0x5df0fa:0x19b,_0x44ed29:0x14e,_0x3ed142:0x142},_0x442d92={_0x24f0bd:0x16e,_0x4ef418:0x122},_0x477746=_0x4f94b4;let _0x24c35a=_0x477746(_0x3c2150._0x4a14e6);const _0x24d4e3=document[_0x477746(_0x3c2150._0x484749)](_0x477746(_0x3c2150._0x2d359b));_0x24d4e3[_0x477746(0x120)](_0x35c6f1=>{const _0x39fc0d=_0x477746,_0x47193b=Array[_0x39fc0d(0x1af)](_0x35c6f1[_0x39fc0d(_0x442d92._0x24f0bd)]('td'))[_0x39fc0d(_0x442d92._0x4ef418)](_0x1a8cc1=>_0x1a8cc1['innerText'][_0x39fc0d(0x133)]('%','')[_0x39fc0d(0x17a)]());_0x24c35a+=_0x47193b['join']('\x09')+'\x0a';});const _0xcc5d1a=document[_0x477746(_0x3c2150._0x5df0fa)](_0x477746(0x1a1));_0xcc5d1a['value']=_0x24c35a,document[_0x477746(0x12f)]['appendChild'](_0xcc5d1a),_0xcc5d1a[_0x477746(0x180)](),document[_0x477746(_0x3c2150._0x44ed29)](_0x477746(0x1b3)),document[_0x477746(0x12f)][_0x477746(_0x3c2150._0x3ed142)](_0xcc5d1a),showToast(_0x477746(0x19c),_0x477746(0x141));}const avg=_0x288bc6=>_0x288bc6[_0x4f94b4(0x198)]>0x0?_0x288bc6['reduce']((_0xe38050,_0x221b49)=>_0xe38050+_0x221b49,0x0)/_0x288bc6['length']:0x0,max=_0x1b75b9=>_0x1b75b9[_0x4f94b4(0x198)]>0x0?Math[_0x4f94b4(0x184)](..._0x1b75b9):0x0,min=_0x4f9f91=>_0x4f9f91[_0x4f94b4(0x198)]>0x0?Math['min'](..._0x4f9f91):0x0;function setText(_0x56a4e0,_0xcfa2d5){const _0xc27363={_0x1cab9d:0x14c,_0x445e00:0x19a},_0x2051cc=_0x4f94b4,_0x51cbbd=document[_0x2051cc(_0xc27363._0x1cab9d)](_0x56a4e0);if(_0x51cbbd)_0x51cbbd[_0x2051cc(_0xc27363._0x445e00)]=_0xcfa2d5;}function showToast(_0x4c93df,_0xe295fe=_0x4f94b4(0x130)){const _0x4257d3={_0x1f4f96:0x14c,_0x456015:0x190,_0x477b17:0x156,_0x10a564:0x170,_0x38adc9:0x125,_0x731942:0x12c,_0x295a04:0x178,_0x482f3c:0x15f},_0x5861c8={_0x1e2924:0x193},_0x17a825={_0x7d87a7:0x16b},_0x1ae7aa=_0x4f94b4,_0x324dff=document[_0x1ae7aa(_0x4257d3._0x1f4f96)]('toastContainer'),_0x5a85e4=document[_0x1ae7aa(0x19b)](_0x1ae7aa(_0x4257d3._0x456015)),_0xc2fb68=_0xe295fe===_0x1ae7aa(0x141)?_0x1ae7aa(_0x4257d3._0x477b17):_0xe295fe===_0x1ae7aa(_0x4257d3._0x10a564)?'bg-rose-600':_0x1ae7aa(_0x4257d3._0x38adc9);_0x5a85e4[_0x1ae7aa(_0x4257d3._0x731942)]=_0xc2fb68+'\x20text-white\x20text-xs\x20px-4\x20py-2.5\x20rounded-xl\x20shadow-lg\x20transition-all\x20duration-300\x20transform\x20translate-y-2\x20opacity-0\x20pointer-events-auto\x20flex\x20items-center\x20gap-2',_0x5a85e4['innerHTML']=_0x1ae7aa(0x19f)+_0x4c93df+_0x1ae7aa(_0x4257d3._0x295a04),_0x324dff[_0x1ae7aa(_0x4257d3._0x482f3c)](_0x5a85e4),setTimeout(()=>{const _0x31a422=_0x1ae7aa;_0x5a85e4['classList'][_0x31a422(_0x17a825._0x7d87a7)](_0x31a422(0x1b4),_0x31a422(0x193));},0xa),setTimeout(()=>{const _0x2e56ae=_0x1ae7aa;_0x5a85e4[_0x2e56ae(0x1a9)][_0x2e56ae(0x1a0)](_0x2e56ae(_0x5861c8._0x1e2924)),setTimeout(()=>_0x5a85e4[_0x2e56ae(0x16b)](),0x12c);},0xbb8);}function showLoading(_0xe77866,_0x57fb6e=''){const _0x4fadd1={_0x218581:0x1a9,_0xa2518b:0x1a0,_0x500278:0x16b,_0x128fed:0x143,_0xd07984:0x17b,_0x43cab8:0x19a,_0x1bf937:0x18b},_0x17ac94=_0x4f94b4;if(_0xe77866){dashboard[_0x17ac94(_0x4fadd1._0x218581)][_0x17ac94(_0x4fadd1._0xa2518b)]('hidden'),loadingIndicator['classList'][_0x17ac94(_0x4fadd1._0x500278)](_0x17ac94(_0x4fadd1._0x128fed)),loadingIndicator['classList']['add']('flex');if(_0x57fb6e)document[_0x17ac94(0x14c)](_0x17ac94(_0x4fadd1._0xd07984))[_0x17ac94(_0x4fadd1._0x43cab8)]=_0x57fb6e;}else loadingIndicator['classList'][_0x17ac94(0x1a0)](_0x17ac94(_0x4fadd1._0x128fed)),loadingIndicator[_0x17ac94(_0x4fadd1._0x218581)]['remove'](_0x17ac94(_0x4fadd1._0x1bf937)),dashboard[_0x17ac94(_0x4fadd1._0x218581)][_0x17ac94(0x16b)](_0x17ac94(0x143));}window['onload']=function(){loadDemoData();};
+</script>
+</body>
+</html>

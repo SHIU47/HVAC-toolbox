@@ -1,0 +1,34 @@
+"                });set(fx, spineH / 2 + 0.04, -trayD / 2 - 0.07);
+                    rackPipingGroup.add(barb);
+                    const band = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 0.01, 16), new THREE.MeshBasicMaterial({ color: idx === 0 ? 0x3b82f6 : 0xef4444 }));
+                    band.position.set(fx, spineH / 2 + 0.025, -trayD / 2 - 0.07);
+                    rackPipingGroup.add(band);
+                });
+
+                [-0.13, 0.13].forEach(fx => {
+                    const drainValve = new THREE.Mesh(new THREE.SphereGeometry(0.015, 8, 8), new THREE.MeshStandardMaterial({ color: 0xd4af37, metalness: 0.8 }));
+                    drainValve.position.set(fx, -spineH / 2 - 0.01, -trayD / 2 - 0.07);
+                    rackPipingGroup.add(drainValve);
+                });
+
+                const dripTray = new THREE.Mesh(new THREE.BoxGeometry(w - 0.04, 0.015, d - 0.06), new THREE.MeshStandardMaterial({ color: 0x374151, metalness: 0.5, roughness: 0.6 }));
+                dripTray.position.set(0, -h / 2 + 0.05, 0);
+                group.add(dripTray);
+
+                [
+                    [0, 0, d / 2 - 0.04, w - 0.04, 0.02, 0.01],
+                    [0, 0, -d / 2 + 0.04, w - 0.04, 0.02, 0.01],
+                    [-w / 2 + 0.03, 0, 0, 0.01, 0.02, d - 0.06],
+                    [w / 2 - 0.03, 0, 0, 0.01, 0.02, d - 0.06],
+                ].forEach(r => {
+                    const rim = new THREE.Mesh(new THREE.BoxGeometry(r[3], r[4], r[5]), new THREE.MeshStandardMaterial({ color: 0x374151, metalness: 0.5 }));
+                    rim.position.set(r[0], -h / 2 + 0.06, r[2]);
+                    group.add(rim);
+                });
+
+                const leakRope = new THREE.Mesh(new THREE.CylinderGeometry(0.004, 0.004, 0.5, 6), leakSensor);
+                leakRope.rotation.z = Math.PI / 2;
+                leakRope.position.set(0, -h / 2 + 0.055, -trayD / 2 - 0.07);
+                rackPipingGroup.add(leakRope);
+                const leakController = new THREE.Mes
+<truncated 3553 bytes>

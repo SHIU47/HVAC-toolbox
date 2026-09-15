@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="zh-TW" class="dark">
+<head>
+
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>冰機房 (Chiller Plant) 數位展廳 | 高效冷卻核心</title>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tween.js/18.6.4/tween.umd.js"></script>
+
+    
+
+    <style>@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700;800&family=Inter:wght@400;600;800&display=swap');body{background-color:#080c14;color:#e2e8f0;overflow:hidden;margin:0}#canvas-container{width:100vw;height:100vh;position:absolute;top:0;left:0;z-index:1;cursor:grab}#canvas-container:active{cursor:grabbing}#ui-layer{position:absolute;inset:0;pointer-events:none;z-index:10;display:flex;flex-direction:column}.glass-panel{background:rgba(8,12,20,0.75);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);border:1px solid rgba(51,65,85,0.4);box-shadow:0 10px 30px -10px rgba(0,0,0,0.8);pointer-events:auto}.hud-left{position:absolute;top:80px;left:20px;width:320px;border-radius:16px;padding:20px;z-index:40;transition:all 0.4s cubic-bezier(0.4,0,0.2,1)}.hud-right{position:absolute;top:80px;right:20px;width:340px;border-radius:16px;padding:20px;z-index:50;opacity:0;transform:translateX(20px);transition:all 0.4s cubic-bezier(0.4,0,0.2,1);pointer-events:none}.hud-right.active{opacity:1;transform:translateX(0);pointer-events:auto}@media (max-width:768px){.hud-left,.hud-right{left:5%;right:5%;width:auto;top:76px;transform:translateY(-10px) scale(0.98);opacity:0;pointer-events:none}.hud-left.active,.hud-right.active{opacity:1;pointer-events:auto;transform:translateY(0) scale(1)}}#sim-modal-overlay{position:fixed;inset:0;z-index:100;background:rgba(2,6,23,0.85);backdrop-filter:blur(16px);display:flex;align-items:center;justify-content:center;opacity:0;pointer-events:none;transition:opacity 0.3s ease}#sim-modal-overlay.active{opacity:1;pointer-events:auto}.sim-modal{background:rgba(15,23,42,0.85);border:1px solid rgba(51,65,85,0.6);box-shadow:0 25px 50px -12px rgba(0,0,0,0.8),0 0 0 1px rgba(14,165,233,0.2);width:95%;max-width:1000px;max-height:90vh;border-radius:24px;display:flex;flex-direction:column;transform:translateY(20px) scale(0.95);transition:all 0.4s cubic-bezier(0.4,0,0.2,1)}#sim-modal-overlay.active .sim-modal{transform:translateY(0) scale(1)}.sim-modal-body{overflow-y:auto;padding:24px}.sim-modal input[type="number"]{-moz-appearance:textfield;background-color:rgba(15,23,42,0.8)}.sim-modal input::-webkit-outer-spin-button,.sim-modal input::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}.hud-bottom{position:absolute;bottom:20px;left:50%;transform:translateX(-50%);border-radius:100px;padding:8px;display:flex;gap:8px;z-index:40;width:max-content;max-width:95vw;overflow-x:auto;scrollbar-width:none}.btn-tool{background:rgba(30,41,59,0.6);border:1px solid rgba(51,65,85,0.8);color:#94a3b8;transition:all .2s;border-radius:99px;padding:10px 20px;font-size:13px;font-weight:600;display:flex;align-items:center;gap:8px;cursor:pointer;pointer-events:auto;white-space:nowrap;flex-shrink:0}.btn-tool:hover{background:rgba(51,65,85,0.8);color:#fff}.btn-tool.active{background:rgba(14,165,233,0.2);color:#38bdf8;border-color:#0ea5e9}@media (min-width:768px){.hide-on-desktop{display:none !important}}.metric-box{background:rgba(0,0,0,0.4);border:1px solid rgba(51,65,85,0.4);border-radius:12px;padding:12px}.data-value{font-family:'JetBrains Mono',monospace;font-weight:800;font-size:1.25rem}.tooltip{position:absolute;background:rgba(0,0,0,0.85);color:#fff;padding:6px 10px;border-radius:6px;font-size:12px;font-family:monospace;border:1px solid #0ea5e9;pointer-events:none;opacity:0;transition:opacity 0.2s;z-index:20;transform:translate(-50%,-150%);white-space:nowrap;font-weight:bold}</style>
+</head>
+<body class="antialiased">
+
+    <div id="canvas-container"></div>
+    <div id="hover-tooltip" class="tooltip">Equipment</div>
+
+    <div id="ui-layer">
+        <header class="glass-panel w-full p-4 flex justify-between items-center border-b-0 rounded-b-xl max-w-[1800px] mx-auto mt-2">
+            <div class="flex items-center gap-3 md:gap-4">
+                <div class="bg-sky-500 p-2 rounded-lg shadow-[0_0_15px_rgba(14,165,233,0.4)]"><i class="ph-fill ph-snowflake text-black text-xl md:text-2xl"></i></div>
+                <div>
+                    <h1 class="text-sm md:text-lg font-black text-white flex items-center gap-2">
+                        <span class="hidden md:inline">冰機房 (Chiller Plant) <span class="text-sky-400 font-normal">|</span></span> 核心冷卻設施
+                    </h1>
+                    <div class="text-[9px] md:text-[10px] text-slate-400 tracking-widest font-bold uppercase mt-0.5">Hydronic Cooling Engine</div>
+                </div>
+            </div>
+            <div class="flex items-center gap-3">
+                <div class="text-[10px] md:text-xs font-bold text-sky-400 bg-sky-500/10 px-3 md:px-4 py-2 rounded-full border border-sky-500/30 flex items-center gap-2">
+                    <span class="w-2 h-2 rounded-full bg-sky-500 animate-pulse"></span> <span class="hidden md:inline">PLANT </span>RUNNING
+                </div>
+            </div>
+        </header>
+
+        
+        <div id="hud-left" class="hud-left glass-panel active">
+            <h2 class="text-sm font-black text-white flex items-center gap-2 mb-4 pb-2 border-b border-slate-700">
+                <i class="ph-fill ph-thermometer text-sky-400 text-lg"></i> 水路熱力指標 (Hydronic Metrics)
+            </h2>
+            
+            <div class="space-y-3 mb-5">
+                <div class="flex gap-2">
+                    <div class="metric-box flex-1 border-l-2 border-sky-500">
+                        <div class="text-[10px] text-slate-400 mb-1">冰水出水 (CHWS)</div>
+                        <div><span class="data-value text-sky-400 live-val" data-base="12.0" data-var="0.2">12.0</span><span class="text-[10px] text-sky-400 ml-1">°C</span></div>
+                    </div>
+                    <div class="metric-box flex-1 border-l-2 border-red-500">
+                        <div class="text-[10px] text-slate-400 mb-1">冰水回水 (CHWR)</div>
+                        <div><span class="data-value text-red-400 live-val" data-base="18.0" data-var="0.3">18.0</span><span class="text-[10px] text-red-400 ml-1">°C</span></div>
+                    </div>
+                </div>
+                <div class="flex gap-2">
+                    <div class="metric-box flex-1 border-l-2 border-green-500">
+                        <div class="text-[10px] text-slate-400 mb-1">冷水進水 (CWS)</div>
+                        <div><span class="data-value text-green-400 live-val" data-base="28.5" data-var="0.4">28.5</span><span class="text-[10px] text-green-400 ml-1">°C</span></div>
+                    </div>
+                    <div class="metric-box flex-1 border-l-2 border-emerald-700">
+                        <div class="text-[10px] text-slate-400 mb-1">冷水出水 (CWR)</div>
+                        <div><span class="data-value text-emerald-500 live-val" data-base="34.0" data-var="0.5">34.0</span><span class="text-[10px] text-emerald-500 ml-1">°C</span></div>
+                    </div>
+                </div>
+                
+                <div class="metric-box flex justify-between items-end border-l-2 border-nv-500">
+                    <span class="text-xs text-slate-400 font-bold">總製冷量 (Total Cooling)</span>
+                    <div class="text-right"><span class="data-value text-white live-val" data-base="850" data-var="5">850</span><span class="text-[10px] text-slate-400 ml-1">RT</span></div>
+                </div>
+                
+                <div class="flex gap-3">
+                    <div class="metric-box flex-1 text-center">
+                        <div class="text-[10px] text-slate-400 mb-1">冰水總流量</div>
+                        <div class="data-value text-white"><span class="live-val" data-base="510" data-var="10">510</span> <span class="text-[9px]">m³/h</span></div>
+                    </div>
+                    <div class="metric-box flex-1 text-center">
+                        <div class="text-[10px] text-slate-400 mb-1">冰機 COP</div>
+                        <div class="data-value text-nv-400"><span class="live-val" data-base="6.2" data-var="0.1">6.2</span></div>
+                    </div>
+                </div>
+            </div>
+            <div class="text-[10px] text-slate-500 leading-relaxed border-t border-slate-700 pt-3">
+                <p>💡 提示：點擊 <b class="text-sky-400">冰機 (Chiller)</b> 或 <b class="text-blue-300">水泵 (Pump)</b> 檢視設備運轉細節。</p>
+            </div>
+        </div>
+
+        
+        <div id="hud-detail" class="hud-right glass-panel">
+            <div class="flex justify-between items-start mb-4 pb-2 border-b border-slate-700">
+                <div>
+                    <h2 id="detail-title" class="text-sm font-black text-white flex items-center gap-2">設備名稱</h2>
+                    <div id="detail-subtitle" class="text-[10px] text-sky-400 font-mono mt-1">MODEL_ID</div>
+                </div>
+                <button onclick="APP.closeDetail()" class="text-slate-500 hover:text-white p-1 bg-slate-800 rounded-lg"><i class="ph ph-x"></i></button>
+            </div>
+
+            <div id="detail-content-chiller" class="hidden space-y-3">
+                <div class="metric-box bg-slate-900/50">
+                    <div class="text-[10px] text-slate-400 uppercase mb-2 flex justify-between">
+                        <span>壓縮機狀態</span><span class="text-nv-400 flex items-center gap-1"><span class="w-1.5 h-1.5 rounded-full bg-nv-500 animate-pulse"></span> 運轉中</span>
+                    </div>
+                    <div class="flex justify-between items-center mb-1">
+                        <span class="text-xs text-slate-300">馬達負載 (Motor FLA)</span>
+                        <div class="font-mono text-yellow-400"><span class="live-val" data-base="75.5" data-var="2">75.5</span> %</div>
+                    </div>
+                    <div class="w-full bg-slate-800 rounded-full h-1.5 mb-3"><div class="bg-yellow-500 h-full rounded-full" style="width: 75.5%"></div></div>
+                    
+                    <div class="grid grid-cols-2 gap-2 mt-2">
+                        <div class="bg-slate-800/50 p-2 rounded">
+                            <div class="text-[9px] text-slate-400 mb-1">蒸發壓力 (Evap)</div>
+                            <div class="font-mono text-sky-300 text-sm"><span class="live-val" data-base="350" data-var="5">350</span> kPa</div>
+                        </div>
+                        <div class="bg-slate-800/50 p-2 rounded">
+                            <div class="text-[9px] text-slate-400 mb-1">冷凝壓力 (Cond)</div>
+                            <div class="font-mono text-red-300 text-sm"><span class="live-val" data-base="820" data-var="8">820</span> kPa</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="detail-content-pump" class="hidden space-y-3">
+                <div class="metric-box bg-slate-900/50">
+                    <div class="text-[10px] text-slate-400 uppercase mb-2 flex justify-between">
+                        <span>變頻器 (VFD) 狀態</span><span class="text-nv-400 flex items-center gap-1"> AUTO 模式</span>
+                    </div>
+                    <div class="flex justify-between items-center mb-2">
+                        <span class="text-xs text-slate-300">運轉頻率</span>
+                        <div class="font-mono text-white"><span class="live-val" data-base="45.5" data-var="0.5">45.5</span> Hz</div>
+                    </div>
+                    <div class="flex justify-between items-center mb-2">
+                        <span class="text-xs text-slate-300">揚程 (Head)</span>
+                        <div class="font-mono text-white"><span class="live-val" data-base="22.5" data-var="0.2">22.5</span> m</div>
+                    </div>
+                    <div class="flex justify-between items-center border-t border-slate-700 pt-2">
+                        <span class="text-xs text-slate-300">功率消耗</span>
+                        <div class="font-mono text-yellow-400"><span class="live-val" data-base="35.2" data-var="0.5">35.2</span> kW</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        
+        <div id="sim-modal-overlay">
+            <div class="sim-modal">
+                <div class="flex justify-between items-center px-6 py-5 border-b border-slate-700/60">
+                    <h2 class="text-lg font-black text-white flex items-center gap-3">
+                        <div class="p-2 bg-sky-500/20 rounded-lg"><i class="ph-fill ph-calculator text-sky-500 text-xl"></i></div>
+                        冰機系統初步選型計算 (Sizing)
+                    </h2>
+                    <button onclick="APP.toggleSimPanel()" class="text-slate-400 hover:text-white p-2 rounded-xl transition"><i class="ph ph-x text-xl font-bold"></i></button>
+                </div>
+                <div class="sim-modal-body grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div class="space-y-4 bg-slate-900/40 p-5 rounded-xl border border-slate-700/50">
+                        <h3 class="text-xs text-slate-400 font-bold uppercase mb-3">熱負載與設計溫差</h3>
+                        <div class="flex justify-between items-center">
+                            <label class="text-sm text-slate-300">IT 總熱負載 (kW)</label>
+                            <input type="number" id="calc_load" value="3000" class="w-24 bg-slate-800 border border-slate-600 rounded px-2 py-1 text-right text-white font-mono">
+                        </div>
+                        <div class="flex justify-between items-center">
+                            <label class="text-sm text-slate-300">冰水供回溫差 ΔT (°C)</label>
+                            <input type="number" id="calc_dt_chw" value="6" class="w-24 bg-slate-800 border border-slate-600 rounded px-2 py-1 text-right text-sky-300 font-mono">
+                        </div>
+                        <div class="flex justify-between items-center">
+                            <label class="text-sm text-slate-300">冷卻水溫差 ΔT (°C)</label>
+                            <input type="number" id="calc_dt_cw" value="5" class="w-24 bg-slate-800 border border-slate-600 rounded px-2 py-1 text-right text-green-300 font-mono">
+                        </div>
+                        <div class="flex justify-between items-center">
+                            <label class="text-sm text-slate-300">預估冰機 COP</label>
+                            <input type="number" id="calc_cop" value="6.0" step="0.1" class="w-24 bg-slate-800 border border-slate-600 rounded px-2 py-1 text-right text-white font-mono">
+                        </div>
+                        <div class="flex justify-between items-center">
+                            <label class="text-sm text-slate-300">設計運轉台數 (N)</label>
+                            <input type="number" id="calc_n" value="2" class="w-24 bg-slate-800 border border-slate-600 rounded px-2 py-1 text-right text-white font-mono">
+                        </div>
+                        <button onclick="APP.calculateChiller()" class="w-full mt-4 py-2 bg-sky-600 hover:bg-sky-500 text-white font-bold rounded transition">執行計算</button>
+                    </div>
+                    
+                    <div class="bg-slate-800/40 p-5 rounded-xl border border-slate-700/50 flex flex-col justify-center">
+                        <div class="grid grid-cols-2 gap-4">
+                            <div class="bg-slate-900/60 p-4 rounded-lg border-l-2 border-sky-500">
+                                <div class="text-xs text-slate-400 mb-1">總製冷需求 (Total RT)</div>
+                                <div class="text-2xl font-mono text-white"><span id="res_total_rt">853</span> RT</div>
+                            </div>
+                            <div class="bg-slate-900/60 p-4 rounded-lg border-l-2 border-yellow-500">
+                                <div class="text-xs text-slate-400 mb-1">單台冰機容量 (RT/台)</div>
+                                <div class="text-2xl font-mono text-yellow-400 font-bold"><span id="res_unit_rt">426</span> RT</div>
+                            </div>
+                            <div class="bg-slate-900/60 p-4 rounded-lg border-l-2 border-blue-500">
+                                <div class="text-xs text-slate-400 mb-1">冰水總流量 (m³/h)</div>
+                                <div class="text-xl font-mono text-sky-300"><span id="res_chw_flow">430</span></div>
+                            </div>
+                            <div class="bg-slate-900/60 p-4 rounded-lg border-l-2 border-emerald-500">
+                                <div class="text-xs text-slate-400 mb-1">冷卻水總流量 (m³/h)</div>
+                                <div class="text-xl font-mono text-emerald-300"><span id="res_cw_flow">602</span></div>
+                            </div>
+                        </div>
+                        <div class="mt-4 text-[10px] text-slate-500">
+                            * 註：1 RT = 3.517 kW。冷卻水熱排量包含壓縮機作功 (Heat Rejection = Cooling Load * (1 + 1/COP))。
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        
+        <div class="hud-bottom glass-panel">
+            <button onclick="APP.toggleLeftHud()" class="btn-tool hide-on-desktop" id="btn_toggle_hud"><i class="ph ph-chart-bar"></i> 營運數據</button>
+            <div class="w-px h-6 bg-slate-700 mx-1 self-center hide-on-desktop flex-shrink-0"></div>
+
+            <button onclick="APP.setCamera('overview')" class="btn-tool active" id="cam_overview"><i class="ph ph-cube"></i> 機房全景</button>
+            <button onclick="APP.setCamera('chiller')" class="btn-tool" id="cam_chiller"><i class="ph ph-snowflake"></i> 離心冰機</button>
+            <button onclick="APP.setCamera('pump')" class="btn-tool" id="cam_pump"><i class="ph ph-engine"></i> 水泵陣列</button>
+            <button onclick="APP.setCamera('hx')" class="btn-tool" id="cam_hx"><i class="ph ph-intersect"></i> 熱交換器</button>
+            <button onclick="APP.setCamera('piping')" class="btn-tool" id="cam_piping"><i class="ph ph-git-branch"></i> 頂部管網</button>
+            <button onclick="APP.setCamera('ct')" class="btn-tool" id="cam_ct"><i class="ph ph-thermometer-hot"></i> 冷卻塔</button>
+            
+            <div class="w-px h-6 bg-slate-700 mx-1 self-center flex-shrink-0"></div>
+            <button onclick="APP.toggleSimPanel()" class="btn-tool" id="btn_sim"><i class="ph ph-calculator"></i> 容量估算</button>
+        </div>
+    </div>
+
+    
+</body>
+</html>

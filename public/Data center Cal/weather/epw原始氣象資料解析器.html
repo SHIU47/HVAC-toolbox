@@ -1,0 +1,1027 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EPW 氣象數據與 Free Cooling 效益分析工具</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Chart.js CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: #f1f5f9; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+        
+        .drag-active {
+            border-color: #10b981 !important;
+            background-color: #ecfdf5 !important;
+        }
+        
+        .data-table th, .data-table td {
+            border-bottom: 1px solid #e2e8f0;
+            padding: 0.5rem 0.75rem;
+            text-align: center;
+        }
+        .data-table th {
+            background-color: #f8fafc;
+            color: #475569;
+            font-weight: 600;
+            font-size: 0.8rem;
+            position: sticky;
+            top: 0;
+            z-index: 10;
+        }
+        .data-table tr:hover { background-color: #f1f5f9; }
+        
+        .loader {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #10b981;
+            border-radius: 50%;
+            width: 32px;
+            height: 32px;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-800 font-sans min-h-screen">
+
+    <!-- Toast Notification Container -->
+    <div id="toastContainer" class="fixed top-4 right-4 z-50 flex flex-col gap-2 pointer-events-none"></div>
+
+    <div class="max-w-7xl mx-auto p-4 sm:p-6 space-y-6">
+        
+        <!-- Header Section -->
+        <header class="flex flex-col lg:flex-row lg:items-center justify-between gap-4 bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
+            <div>
+                <div class="flex items-center gap-2">
+                    <h1 class="text-2xl sm:text-3xl font-bold text-slate-900">EPW 氣象數據與 Free Cooling 分析工具</h1>
+                    <span class="text-xs font-semibold px-2.5 py-1 bg-emerald-100 text-emerald-800 rounded-full">v3.0 Simplified</span>
+                </div>
+                <p class="text-slate-500 text-sm mt-1">解析 8,760 小時氣象數據 (DB / WB / DP / RH)、營運排程過濾與自然冷卻時數估算</p>
+            </div>
+            
+            <div class="flex flex-col sm:flex-row gap-3 items-stretch sm:items-center">
+                <!-- 載入範例按鈕 -->
+                <button id="demoBtn" onclick="loadDemoData()" class="px-4 py-3 bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium text-sm rounded-xl transition flex items-center justify-center gap-2 border border-slate-300 shadow-sm">
+                    <svg class="w-4 h-4 text-slate-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                    載入台北 EPW 範例
+                </button>
+
+                <!-- 上傳區 -->
+                <div id="dropZone" class="border-2 border-dashed border-emerald-400 rounded-xl px-5 py-2.5 text-center bg-emerald-50/50 hover:bg-emerald-50 transition duration-200 cursor-pointer flex items-center justify-center gap-3">
+                    <svg class="h-6 w-6 text-emerald-600 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" /></svg>
+                    <div class="text-left">
+                        <p class="text-sm font-semibold text-emerald-900">上傳 EPW 氣象檔</p>
+                        <p class="text-xs text-emerald-600">點擊或拖曳 .epw 檔案</p>
+                    </div>
+                    <input type="file" id="fileInput" accept=".epw,.csv" class="hidden">
+                </div>
+            </div>
+        </header>
+
+        <!-- Loading Indicator -->
+        <div id="loadingIndicator" class="hidden flex-col items-center justify-center py-16 bg-white rounded-2xl border border-slate-200 shadow-sm">
+            <div class="loader mb-4"></div>
+            <p id="loadingMsg" class="text-slate-600 font-medium text-sm">正在計算 8760 小時氣象數據，請稍候...</p>
+        </div>
+
+        <!-- Dashboard Panel -->
+        <div id="dashboard" class="hidden space-y-6">
+            
+            <!-- 1. Top KPI Cards -->
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                <!-- 測站資訊 -->
+                <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-5 flex flex-col justify-between">
+                    <div class="flex items-center justify-between mb-2">
+                        <span class="text-xs font-bold uppercase tracking-wider text-slate-400">測站位置</span>
+                        <span class="p-1 bg-slate-100 text-slate-600 rounded">
+                            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+                        </span>
+                    </div>
+                    <div>
+                        <p id="infoLocation" class="text-lg font-bold text-slate-800 mb-1 truncate" title="-">-</p>
+                        <div class="grid grid-cols-2 gap-y-1 text-xs text-slate-600">
+                            <div>緯度: <span id="infoLat" class="font-medium text-slate-800">-</span></div>
+                            <div>經度: <span id="infoLon" class="font-medium text-slate-800">-</span></div>
+                            <div class="col-span-2">海拔: <span id="infoElev" class="font-medium text-slate-800">-</span> m</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 乾球溫度 -->
+                <div class="bg-gradient-to-br from-emerald-600 to-teal-700 rounded-xl shadow-sm p-5 text-white flex flex-col justify-between relative overflow-hidden">
+                    <div class="text-emerald-100 text-xs font-medium">全年平均乾球 (DB)</div>
+                    <div class="flex items-baseline mt-1">
+                        <span id="infoAvgDB" class="text-3xl font-extrabold">--</span><span class="ml-1 text-emerald-200 text-lg">°C</span>
+                    </div>
+                    <p class="text-xs text-emerald-100 mt-2">
+                        極端最高: <span id="infoMaxDB" class="font-bold">--</span>°C
+                    </p>
+                </div>
+
+                <!-- 濕球與露點溫度 -->
+                <div class="bg-gradient-to-br from-blue-600 to-indigo-700 rounded-xl shadow-sm p-5 text-white flex flex-col justify-between relative overflow-hidden">
+                    <div class="text-blue-100 text-xs font-medium">平均濕球 / 露點</div>
+                    <div class="flex items-baseline mt-1 gap-2">
+                        <div><span id="infoAvgWB" class="text-2xl font-extrabold">--</span><span class="ml-0.5 text-blue-200 text-xs">°C WB</span></div>
+                        <div class="border-l border-blue-400 pl-2"><span id="infoAvgDP" class="text-lg font-bold text-blue-100">--</span><span class="ml-0.5 text-blue-200 text-xs">°C DP</span></div>
+                    </div>
+                    <p class="text-xs text-blue-100 mt-2">
+                        最高露點: <span id="infoMaxDP" class="font-bold">--</span>°C
+                    </p>
+                </div>
+
+                <!-- 平均相對濕度 -->
+                <div class="bg-gradient-to-br from-cyan-600 to-blue-600 rounded-xl shadow-sm p-5 text-white flex flex-col justify-between relative overflow-hidden">
+                    <div class="text-cyan-100 text-xs font-medium">平均相對濕度 (RH)</div>
+                    <div class="flex items-baseline mt-1">
+                        <span id="infoAvgRH" class="text-3xl font-extrabold">--</span><span class="ml-1 text-cyan-200 text-lg">%</span>
+                    </div>
+                    <p class="text-xs text-cyan-100 mt-2">
+                        計算時數: <span id="infoActiveHours" class="font-bold">8,760</span> hrs
+                    </p>
+                </div>
+            </div>
+
+            <!-- 2. Free Cooling 試算與控制面板 -->
+            <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
+                <div class="flex flex-col lg:flex-row lg:items-center justify-between border-b border-slate-100 pb-4 mb-6 gap-2">
+                    <div>
+                        <h2 class="text-xl font-bold text-slate-800 flex items-center gap-2">
+                            <span class="w-3 h-3 rounded-full bg-emerald-500"></span>
+                            Free Cooling 外氣自然冷卻效益試算
+                        </h2>
+                        <p class="text-xs text-slate-500 mt-1">自訂溫度門檻與廠房營運時數，即時推算全年可開啟自然冷卻時數與節能效益。</p>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 lg:grid-cols-12 gap-8">
+                    
+                    <!-- 左側：簡化參數填寫區 -->
+                    <div class="lg:col-span-5 bg-slate-50 p-5 rounded-xl border border-slate-200 space-y-4">
+                        <h3 class="text-sm font-bold text-slate-800 border-b border-slate-200 pb-2">設定營運排程與冷卻門檻</h3>
+                        
+                        <!-- 營運排程選擇 -->
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-700 mb-1">廠房 / 建築營運排程 (Schedule)</label>
+                            <select id="fcSchedule" onchange="updateCalculations()" class="w-full text-xs border-slate-300 rounded-lg p-2.5 bg-white border focus:ring-2 focus:ring-emerald-500">
+                                <option value="24_7" selected>全年無休 24/7 (無塵室 / 資料中心, 8,760 hrs)</option>
+                                <option value="12_6">雙班制 12/6 (週一至六 08:00-20:00, ~3,744 hrs)</option>
+                                <option value="10_5">日間商辦 10/5 (週一至五 08:00-18:00, ~2,600 hrs)</option>
+                            </select>
+                        </div>
+
+                        <!-- 控制指標模式選擇 -->
+                        <div>
+                            <label class="block text-xs font-bold text-slate-700 mb-1">節能控制策略 (Economizer Mode)</label>
+                            <select id="fcControlMode" onchange="onControlModeChange()" class="w-full text-xs border-slate-300 rounded-lg p-2.5 bg-white border focus:ring-2 focus:ring-emerald-500 font-bold text-emerald-900">
+                                <option value="DB">氣側外氣節能 (Air-side Dry-Bulb)</option>
+                                <option value="WATER">水側板熱節能器 (Water-side Plate HEX Economizer)</option>
+                            </select>
+                        </div>
+
+                        <!-- 單一溫度門檻動態注入區塊 -->
+                        <div id="thresholdInputsContainer" class="p-3 bg-emerald-50/70 rounded-lg border border-emerald-200">
+                            <!-- JS 動態渲染內部 DOM -->
+                        </div>
+
+                        <!-- 冷負荷與電費效益估算 -->
+                        <div class="pt-3 border-t border-slate-200 space-y-3">
+                            <h4 class="text-xs font-bold text-slate-700">冰水系統冷負荷與電費設定</h4>
+                            <div class="grid grid-cols-2 gap-3">
+                                <div>
+                                    <label class="block text-[11px] text-slate-500 mb-1">平均冷負荷 (RT)</label>
+                                    <input type="number" id="fcLoadRt" value="200" oninput="updateCalculations()" class="w-full text-xs border-slate-300 rounded-lg p-2 bg-white border">
+                                </div>
+                                <div>
+                                    <label class="block text-[11px] text-slate-500 mb-1">冰機耗電 (kW/RT)</label>
+                                    <input type="number" id="fcKwPerRt" value="0.70" step="0.05" oninput="updateCalculations()" class="w-full text-xs border-slate-300 rounded-lg p-2 bg-white border">
+                                </div>
+                            </div>
+                            <div>
+                                <label class="block text-[11px] text-slate-500 mb-1">平均電費單價 ($/kWh 度)</label>
+                                <input type="number" id="fcElecPrice" value="4.0" step="0.1" oninput="updateCalculations()" class="w-full text-xs border-slate-300 rounded-lg p-2 bg-white border">
+                            </div>
+                        </div>
+
+                    </div>
+
+                    <!-- 右側：計算結果統計數據與圖表 -->
+                    <div class="lg:col-span-7 flex flex-col justify-between space-y-6">
+                        
+                        <!-- 二元化數據統計卡片列 -->
+                        <div class="grid grid-cols-2 gap-4">
+                            <!-- Free Cooling Hours -->
+                            <div class="bg-emerald-50 border border-emerald-200 p-4 rounded-xl text-center">
+                                <span class="text-xs font-bold text-emerald-800 block">自然冷卻 (Free Cooling)</span>
+                                <div id="resFullHours" class="text-3xl font-black text-emerald-600 my-1">0 hrs</div>
+                                <span id="resFullPct" class="text-xs text-emerald-700 font-semibold">0 %</span>
+                            </div>
+
+                            <!-- No Free Cooling -->
+                            <div class="bg-slate-100 border border-slate-200 p-4 rounded-xl text-center">
+                                <span class="text-xs font-bold text-slate-700 block">機械制冷 (No FC)</span>
+                                <div id="resNoHours" class="text-3xl font-black text-slate-600 my-1">0 hrs</div>
+                                <span id="resNoPct" class="text-xs text-slate-500 font-semibold">0 %</span>
+                            </div>
+                        </div>
+
+                        <!-- 圓餅圖與節能總結區 -->
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 items-center">
+                            <!-- 圓餅圖 -->
+                            <div class="h-44 relative flex items-center justify-center">
+                                <canvas id="fcPieChart"></canvas>
+                            </div>
+
+                            <!-- 經濟效益預估 Panel -->
+                            <div class="bg-slate-900 text-white p-4 rounded-xl space-y-3">
+                                <h4 class="text-xs text-slate-400 font-bold uppercase tracking-wider">節能經濟效益估算</h4>
+                                <div>
+                                    <div class="text-xs text-slate-400">節能啟動總時數</div>
+                                    <div id="resEquivHours" class="text-xl font-extrabold text-emerald-400">0 小時/年</div>
+                                </div>
+                                <div class="border-t border-slate-800 pt-2 grid grid-cols-2 gap-2">
+                                    <div>
+                                        <div class="text-[11px] text-slate-400">預估節省電量</div>
+                                        <div id="resSavedKwh" class="text-sm font-bold text-cyan-300">0 kWh</div>
+                                    </div>
+                                    <div>
+                                        <div class="text-[11px] text-slate-400">預估節省電費</div>
+                                        <div id="resSavedCost" class="text-sm font-bold text-emerald-300">$ 0 元</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                    </div>
+                </div>
+            </div>
+
+            <!-- 3. 8760 小時氣候 Bin Analysis -->
+            <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
+                <div class="flex flex-col sm:flex-row sm:items-center justify-between border-b border-slate-100 pb-4 mb-4 gap-3">
+                    <div>
+                        <h2 class="text-lg font-bold text-slate-800">氣候數據區間統計 (Bin Analysis)</h2>
+                        <p class="text-xs text-slate-500">統計特定氣象變數落在各個間隔區間的時間與累積百分比</p>
+                    </div>
+                    <div class="flex flex-wrap items-center gap-3">
+                        <div>
+                            <label class="text-xs text-slate-600 font-medium mr-1">統計指標:</label>
+                            <select id="binVariableSelect" onchange="updateBinAnalysis()" class="text-xs border border-slate-300 rounded-lg px-2 py-1.5 bg-white font-semibold">
+                                <option value="db" selected>乾球溫度 DB (°C)</option>
+                                <option value="wb">濕球溫度 WB (°C)</option>
+                                <option value="dp">露點溫度 DP (°C)</option>
+                                <option value="rh">相對濕度 RH (%)</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="text-xs text-slate-600 font-medium mr-1">間隔步長:</label>
+                            <select id="binStepSelect" onchange="updateBinAnalysis()" class="text-xs border border-slate-300 rounded-lg px-2 py-1.5 bg-white font-semibold">
+                                <option value="1">1 個單位</option>
+                                <option value="2" selected>2 個單位</option>
+                                <option value="5">5 個單位</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+                    <!-- 直方圖 -->
+                    <div class="lg:col-span-7 h-72">
+                        <canvas id="binChart"></canvas>
+                    </div>
+
+                    <!-- 表格 -->
+                    <div class="lg:col-span-5 h-72 overflow-y-auto border border-slate-200 rounded-xl">
+                        <table class="w-full data-table text-xs">
+                            <thead>
+                                <tr>
+                                    <th>數值區間</th>
+                                    <th>時數 (hrs)</th>
+                                    <th>佔比 (%)</th>
+                                    <th>累積時數</th>
+                                    <th>累積佔比</th>
+                                </tr>
+                            </thead>
+                            <tbody id="binTableBody">
+                                <!-- JS 動態渲染 -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 4. 各月份 Free Cooling 時數分佈與 8,760 逐時對照 -->
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <!-- 月份 Free Cooling Bar Chart -->
+                <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 flex flex-col">
+                    <h2 class="text-lg font-bold text-slate-800 mb-1">各月份 Free Cooling 可用時數</h2>
+                    <p class="text-xs text-slate-500 mb-4">呈現每月可執行自然冷卻與純機械制冷的小時數</p>
+                    <div class="h-64 relative flex-1">
+                        <canvas id="monthlyFcChart"></canvas>
+                    </div>
+                </div>
+
+                <!-- 全年 8,760 小時走勢與門檻對照 -->
+                <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 flex flex-col">
+                    <h2 class="text-lg font-bold text-slate-800 mb-1">8,760 小時指標走勢與門檻線</h2>
+                    <p class="text-xs text-slate-500 mb-4">綠色實線: 選擇之氣象指標數值 | 紅色虛線: Free Cooling 門檻</p>
+                    <div class="h-64 relative flex-1">
+                        <canvas id="hourlyChart"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 5. 月度溫濕度摘要圖表與表格 -->
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <!-- 雙軸趨勢圖 -->
+                <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 flex flex-col">
+                    <h2 class="text-lg font-bold text-slate-800 mb-4">月度綜合氣候趨勢 (乾球 / 濕球 / 露點)</h2>
+                    <div class="h-72 w-full relative flex-1">
+                        <canvas id="monthlyTrendChart"></canvas>
+                    </div>
+                </div>
+
+                <!-- 月度數據摘要表 -->
+                <div class="bg-white rounded-2xl shadow-sm border border-slate-200 flex flex-col overflow-hidden">
+                    <div class="bg-slate-50 border-b border-slate-200 px-5 py-4 flex justify-between items-center flex-wrap gap-2">
+                        <h2 class="text-sm font-bold text-slate-700">月度氣象資料摘要</h2>
+                        <div class="flex gap-2">
+                            <button onclick="copyTableData()" class="text-xs bg-white border border-slate-300 text-slate-600 px-2.5 py-1 rounded-lg hover:bg-slate-100 transition shadow-sm">複製 Excel 格式</button>
+                            <button onclick="exportMonthlyCSV()" class="text-xs bg-emerald-600 text-white px-2.5 py-1 rounded-lg hover:bg-emerald-700 transition shadow-sm">匯出月摘要 CSV</button>
+                        </div>
+                    </div>
+                    <div class="overflow-y-auto flex-1 max-h-80">
+                        <table class="w-full data-table text-xs" id="dataTable">
+                            <thead>
+                                <tr>
+                                    <th>月份</th>
+                                    <th class="text-emerald-700">均溫 DB (°C)</th>
+                                    <th class="text-teal-700">均濕球 WB (°C)</th>
+                                    <th class="text-blue-600">均露點 DP (°C)</th>
+                                    <th class="text-cyan-600">相對濕度 (%)</th>
+                                </tr>
+                            </thead>
+                            <tbody id="dataTableBody">
+                                <!-- JS 動態插入 -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- JavaScript Application Logic -->
+    <script>
+        // 全域資料與 Chart 實體
+        let globalRawData = null; // 儲存 8760 小時氣象資料
+        let stationInfo = {};
+
+        let fcPieChartInstance = null;
+        let binChartInstance = null;
+        let monthlyFcChartInstance = null;
+        let hourlyChartInstance = null;
+        let monthlyTrendChartInstance = null;
+
+        // DOM 元素
+        const dropZone = document.getElementById('dropZone');
+        const fileInput = document.getElementById('fileInput');
+        const dashboard = document.getElementById('dashboard');
+        const loadingIndicator = document.getElementById('loadingIndicator');
+
+        // Drag & Drop 事件處理
+        ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(ev => {
+            dropZone.addEventListener(ev, preventDefaults, false);
+            document.body.addEventListener(ev, preventDefaults, false);
+        });
+        function preventDefaults(e) { e.preventDefault(); e.stopPropagation(); }
+
+        ['dragenter', 'dragover'].forEach(ev => dropZone.addEventListener(ev, () => dropZone.classList.add('drag-active'), false));
+        ['dragleave', 'drop'].forEach(ev => dropZone.addEventListener(ev, () => dropZone.classList.remove('drag-active'), false));
+
+        dropZone.addEventListener('drop', (e) => handleFiles(e.dataTransfer.files));
+        fileInput.addEventListener('change', function() { handleFiles(this.files); });
+        dropZone.addEventListener('click', (e) => { if(e.target.tagName !== 'BUTTON') fileInput.click(); });
+
+        function handleFiles(files) {
+            if (files.length === 0) return;
+            const file = files[0];
+            if (!file.name.toLowerCase().endsWith('.epw') && !file.name.toLowerCase().endsWith('.csv')) {
+                showToast('請上傳 .epw 格式的氣象檔案。', 'error');
+                return;
+            }
+            showLoading(true, `正在解析檔案: ${file.name}...`);
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                setTimeout(() => {
+                    try {
+                        parseEPWContent(e.target.result);
+                        showLoading(false);
+                        showToast('EPW 檔案載入並解析成功！', 'success');
+                    } catch (err) {
+                        showToast('解析檔案失敗: ' + err.message, 'error');
+                        showLoading(false);
+                    }
+                }, 80);
+            };
+            reader.readAsText(file);
+        }
+
+        // 濕球溫度估算 (Stull, 2011)
+        function calculateWetBulb(t, rh) {
+            const rhVal = Math.max(0, Math.min(100, rh));
+            const wb = t * Math.atan(0.151977 * Math.sqrt(rhVal + 8.313659))
+                     + Math.atan(t + rhVal)
+                     - Math.atan(rhVal - 1.676331)
+                     + 0.00391838 * Math.pow(rhVal, 1.5) * Math.atan(0.023101 * rhVal)
+                     - 4.686035;
+            return parseFloat(wb.toFixed(1));
+        }
+
+        function parseEPWContent(text) {
+            const lines = text.split(/\r?\n/);
+            
+            // 解析 LOCATION Header
+            if (lines.length > 0 && lines[0].startsWith('LOCATION')) {
+                const cols = lines[0].split(',');
+                stationInfo = {
+                    location: cols[1] || '未知測站',
+                    lat: cols[6] || 'N/A',
+                    lon: cols[7] || 'N/A',
+                    elev: cols[9] || 'N/A'
+                };
+            }
+
+            // 跳過前 8 行標準 EPW Header
+            const startLine = lines.length > 8 ? 8 : 0;
+            const rawData = [];
+            let dayOfYear = 1;
+
+            for (let i = startLine; i < lines.length; i++) {
+                const line = lines[i].trim();
+                if (!line) continue;
+                const cols = line.split(',');
+                if (cols.length >= 25 && !isNaN(cols[0]) && !isNaN(cols[1])) {
+                    const month = parseInt(cols[1], 10) - 1; // 0~11
+                    const day = parseInt(cols[2], 10);
+                    const hour = parseInt(cols[3], 10);
+                    const db = parseFloat(cols[6]); // Dry Bulb
+                    const dp = parseFloat(cols[7]); // Dew Point
+                    const rh = parseFloat(cols[8]); // Relative Humidity
+                    
+                    if (month >= 0 && month <= 11 && !isNaN(db) && !isNaN(rh)) {
+                        const wb = calculateWetBulb(db, rh);
+                        rawData.push({ month, day, hour, db, dp, rh, wb });
+                    }
+                }
+            }
+
+            if (rawData.length === 0) {
+                throw new Error("無法在檔案中讀取到有效的逐時氣象資料。");
+            }
+
+            globalRawData = rawData;
+
+            // 渲染測站資訊
+            setText('infoLocation', stationInfo.location);
+            document.getElementById('infoLocation').title = stationInfo.location;
+            setText('infoLat', stationInfo.lat);
+            setText('infoLon', stationInfo.lon);
+            setText('infoElev', stationInfo.elev);
+
+            // 計算基礎氣候 KPI
+            const allDB = rawData.map(d => d.db);
+            const allDP = rawData.map(d => d.dp);
+            const allWB = rawData.map(d => d.wb);
+            const allRH = rawData.map(d => d.rh);
+
+            setText('infoAvgDB', avg(allDB).toFixed(1));
+            setText('infoMaxDB', max(allDB).toFixed(1));
+
+            setText('infoAvgWB', avg(allWB).toFixed(1));
+            setText('infoAvgDP', avg(allDP).toFixed(1));
+            setText('infoMaxDP', max(allDP).toFixed(1));
+
+            setText('infoAvgRH', Math.round(avg(allRH)));
+
+            onControlModeChange();
+            renderMonthlyTrendAndTable();
+        }
+
+        function onControlModeChange() {
+            const mode = document.getElementById('fcControlMode').value;
+            const container = document.getElementById('thresholdInputsContainer');
+
+            if (mode === 'DB') {
+                container.innerHTML = `
+                    <div>
+                        <label class="block text-xs font-semibold text-emerald-800 mb-1">Free Cooling 啟動乾球溫度門檻</label>
+                        <div class="relative">
+                            <input type="number" id="fcFullTemp" value="18" step="0.5" oninput="updateCalculations()" class="w-full text-xs border-emerald-300 rounded-lg p-2.5 pr-8 bg-white border font-bold text-emerald-800 focus:ring-2 focus:ring-emerald-500">
+                            <span class="absolute right-3 top-2.5 text-xs text-slate-400">°C</span>
+                        </div>
+                        <p class="text-[11px] text-slate-500 mt-1">當室外乾球溫度 ≤ 此設定值時，開啟氣側節能。</p>
+                    </div>
+                `;
+            } else if (mode === 'WATER') {
+                container.innerHTML = `
+                    <div>
+                        <label class="block text-xs font-semibold text-blue-800 mb-1">板熱節能允許最高室外濕球溫度 (WB)</label>
+                        <div class="relative">
+                            <input type="number" id="fcFullTemp" value="12" step="0.5" oninput="updateCalculations()" class="w-full text-xs border-blue-300 rounded-lg p-2.5 pr-8 bg-white border font-bold text-blue-900 focus:ring-2 focus:ring-blue-500">
+                            <span class="absolute right-3 top-2.5 text-xs text-slate-400">°C</span>
+                        </div>
+                        <p class="text-[11px] text-slate-500 mt-1">當室外濕球溫度 ≤ 此設定值時，水側板熱節能器啟動。</p>
+                    </div>
+                `;
+            }
+
+            updateCalculations();
+        }
+
+        function isHourInSchedule(d) {
+            const sched = document.getElementById('fcSchedule').value;
+            if (sched === '24_7') return true;
+
+            // 簡化模擬：假定每 7 天為一週 (d.day % 7)
+            const dayOfWeek = (d.day % 7); // 0 = Sun, 6 = Sat
+            const isWeekday = dayOfWeek >= 1 && dayOfWeek <= 5;
+
+            if (sched === '12_6') {
+                // 週一至六 08:00 - 20:00
+                const isMonToSat = dayOfWeek >= 1 && dayOfWeek <= 6;
+                return isMonToSat && d.hour >= 8 && d.hour < 20;
+            } else if (sched === '10_5') {
+                // 週一至五 08:00 - 18:00
+                return isWeekday && d.hour >= 8 && d.hour < 18;
+            }
+            return true;
+        }
+
+        function updateCalculations() {
+            if (!globalRawData) return;
+
+            const mode = document.getElementById('fcControlMode').value;
+            const fullLimit = parseFloat(document.getElementById('fcFullTemp').value) || 18;
+
+            const loadRt = parseFloat(document.getElementById('fcLoadRt').value) || 200;
+            const kwPerRt = parseFloat(document.getElementById('fcKwPerRt').value) || 0.7;
+            const elecPrice = parseFloat(document.getElementById('fcElecPrice').value) || 4.0;
+
+            let fcHours = 0;
+            let noHours = 0;
+            let activeScheduleHours = 0;
+
+            const monthlyFc = Array.from({ length: 12 }, () => ({ full: 0, no: 0 }));
+
+            globalRawData.forEach(d => {
+                if (!isHourInSchedule(d)) return;
+                
+                activeScheduleHours++;
+
+                let valToEvaluate = d.db;
+                if (mode === 'WATER') valToEvaluate = d.wb;
+
+                if (valToEvaluate <= fullLimit) {
+                    fcHours++;
+                    monthlyFc[d.month].full++;
+                } else {
+                    noHours++;
+                    monthlyFc[d.month].no++;
+                }
+            });
+
+            setText('infoActiveHours', activeScheduleHours.toLocaleString());
+
+            const total = activeScheduleHours || 1;
+            const fcPct = (fcHours / total) * 100;
+            const noPct = (noHours / total) * 100;
+
+            // 更新 UI KPI 卡片
+            setText('resFullHours', `${fcHours.toLocaleString()} hrs`);
+            setText('resFullPct', `${fcPct.toFixed(1)} %`);
+
+            setText('resNoHours', `${noHours.toLocaleString()} hrs`);
+            setText('resNoPct', `${noPct.toFixed(1)} %`);
+
+            // 節能效益估算
+            const savedKwh = Math.round(fcHours * loadRt * kwPerRt);
+            const savedCost = Math.round(savedKwh * elecPrice);
+
+            setText('resEquivHours', `${fcHours.toLocaleString()} 小時/年`);
+            setText('resSavedKwh', `${savedKwh.toLocaleString()} kWh`);
+            setText('resSavedCost', `$ ${savedCost.toLocaleString()} 元`);
+
+            // 繪製圖表
+            renderFcPieChart(fcHours, noHours);
+            renderMonthlyFcChart(monthlyFc);
+            renderHourlyChartWithThresholds(fullLimit, mode);
+            updateBinAnalysis();
+        }
+
+        function updateBinAnalysis() {
+            if (!globalRawData) return;
+
+            const varKey = document.getElementById('binVariableSelect').value;
+            const step = parseInt(document.getElementById('binStepSelect').value, 10) || 2;
+
+            const filteredData = globalRawData.filter(d => isHourInSchedule(d)).map(d => d[varKey]);
+            if (filteredData.length === 0) return;
+
+            const minVal = Math.floor(min(filteredData));
+            const maxVal = Math.ceil(max(filteredData));
+
+            const bins = [];
+            for (let v = minVal; v < maxVal; v += step) {
+                bins.push({
+                    min: v,
+                    max: v + step,
+                    label: `${v} ~ ${v + step}`,
+                    count: 0
+                });
+            }
+
+            filteredData.forEach(v => {
+                let placed = false;
+                for (let b of bins) {
+                    if (v >= b.min && v < b.max) {
+                        b.count++;
+                        placed = true;
+                        break;
+                    }
+                }
+                if (!placed && bins.length > 0) {
+                    bins[bins.length - 1].count++;
+                }
+            });
+
+            let accum = 0;
+            const total = filteredData.length;
+            const binTableBody = document.getElementById('binTableBody');
+            binTableBody.innerHTML = '';
+
+            bins.forEach(b => {
+                accum += b.count;
+                const pct = ((b.count / total) * 100).toFixed(1);
+                const accumPct = ((accum / total) * 100).toFixed(1);
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td class="font-semibold text-slate-700">${b.label}</td>
+                    <td class="text-emerald-600 font-bold">${b.count}</td>
+                    <td>${pct} %</td>
+                    <td class="text-slate-500">${accum} hrs</td>
+                    <td class="text-slate-400">${accumPct} %</td>
+                `;
+                binTableBody.appendChild(tr);
+            });
+
+            renderBinChart(bins, varKey);
+        }
+
+        function renderFcPieChart(full, no) {
+            const ctx = document.getElementById('fcPieChart').getContext('2d');
+            if (fcPieChartInstance) fcPieChartInstance.destroy();
+
+            fcPieChartInstance = new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: ['自然冷卻 (Free Cooling)', '純機械制冷 (No FC)'],
+                    datasets: [{
+                        data: [full, no],
+                        backgroundColor: ['#10b981', '#64748b'],
+                        borderWidth: 2,
+                        borderColor: '#ffffff'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { position: 'bottom', labels: { boxWidth: 10, font: { size: 10 } } }
+                    },
+                    cutout: '65%'
+                }
+            });
+        }
+
+        function renderBinChart(bins, varKey) {
+            const ctx = document.getElementById('binChart').getContext('2d');
+            if (binChartInstance) binChartInstance.destroy();
+
+            const unitMap = { db: '°C', wb: '°C', dp: '°C', rh: '%' };
+            const unit = unitMap[varKey] || '';
+
+            binChartInstance = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: bins.map(b => `${b.label} ${unit}`),
+                    datasets: [{
+                        label: '小時數 (hrs)',
+                        data: bins.map(b => b.count),
+                        backgroundColor: 'rgba(16, 185, 129, 0.7)',
+                        borderColor: '#10b981',
+                        borderWidth: 1,
+                        borderRadius: 4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { display: false } },
+                    scales: {
+                        y: { title: { display: true, text: '小時數 (hrs)' }, grid: { color: '#f1f5f9' } },
+                        x: { grid: { display: false } }
+                    }
+                }
+            });
+        }
+
+        function renderMonthlyFcChart(monthlyFc) {
+            const ctx = document.getElementById('monthlyFcChart').getContext('2d');
+            if (monthlyFcChartInstance) monthlyFcChartInstance.destroy();
+
+            const months = ['1月','2月','3月','4月','5月','6月','7月','8月','9月','10月','11月','12月'];
+
+            monthlyFcChartInstance = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: months,
+                    datasets: [
+                        { label: '自然冷卻 (FC)', data: monthlyFc.map(m => m.full), backgroundColor: '#10b981' },
+                        { label: '機械制冷 (No FC)', data: monthlyFc.map(m => m.no), backgroundColor: '#cbd5e1' }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { position: 'top', labels: { boxWidth: 10 } } },
+                    scales: {
+                        x: { stacked: true, grid: { display: false } },
+                        y: { stacked: true, title: { display: true, text: '小時數 (hrs)' }, grid: { color: '#f1f5f9' } }
+                    }
+                }
+            });
+        }
+
+        function renderHourlyChartWithThresholds(fullLimit, mode) {
+            const ctx = document.getElementById('hourlyChart').getContext('2d');
+            if (hourlyChartInstance) hourlyChartInstance.destroy();
+
+            const hourlyData = globalRawData.map(d => (mode === 'WATER' ? d.wb : d.db));
+            const limitLine = Array(hourlyData.length).fill(fullLimit);
+
+            hourlyChartInstance = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: Array.from({ length: hourlyData.length }, (_, i) => i + 1),
+                    datasets: [
+                        {
+                            label: `室外指標數值 (${mode})`,
+                            data: hourlyData,
+                            borderColor: 'rgba(16, 185, 129, 0.6)',
+                            borderWidth: 1,
+                            pointRadius: 0,
+                            tension: 0
+                        },
+                        {
+                            label: `FC 門檻 (${fullLimit}°C)`,
+                            data: limitLine,
+                            borderColor: '#ef4444',
+                            borderWidth: 1.5,
+                            borderDash: [4, 4],
+                            pointRadius: 0,
+                            fill: false
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    animation: false,
+                    plugins: { legend: { position: 'top', labels: { boxWidth: 10 } } },
+                    scales: {
+                        x: { display: false },
+                        y: { title: { display: true, text: '數值' }, grid: { color: '#f1f5f9' } }
+                    }
+                }
+            });
+        }
+
+        function renderMonthlyTrendAndTable() {
+            const monthlyStats = Array.from({ length: 12 }, () => ({
+                db: [], wb: [], dp: [], rh: []
+            }));
+
+            globalRawData.forEach(d => {
+                monthlyStats[d.month].db.push(d.db);
+                monthlyStats[d.month].wb.push(d.wb);
+                monthlyStats[d.month].dp.push(d.dp);
+                monthlyStats[d.month].rh.push(d.rh);
+            });
+
+            const stats = monthlyStats.map(m => ({
+                dbAvg: avg(m.db),
+                wbAvg: avg(m.wb),
+                dpAvg: avg(m.dp),
+                rhAvg: avg(m.rh)
+            }));
+
+            const tbody = document.getElementById('dataTableBody');
+            tbody.innerHTML = '';
+            stats.forEach((s, i) => {
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td class="font-bold text-slate-700">${i + 1}月</td>
+                    <td class="text-emerald-700 font-bold">${s.dbAvg.toFixed(1)}</td>
+                    <td class="text-teal-700 font-bold">${s.wbAvg.toFixed(1)}</td>
+                    <td class="text-blue-600 font-medium">${s.dpAvg.toFixed(1)}</td>
+                    <td class="text-cyan-600 font-bold">${Math.round(s.rhAvg)}%</td>
+                `;
+                tbody.appendChild(tr);
+            });
+
+            const ctx = document.getElementById('monthlyTrendChart').getContext('2d');
+            if (monthlyTrendChartInstance) monthlyTrendChartInstance.destroy();
+
+            const months = ['1月','2月','3月','4月','5月','6月','7月','8月','9月','10月','11月','12月'];
+
+            monthlyTrendChartInstance = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: months,
+                    datasets: [
+                        { label: '平均乾球 (DB)', data: stats.map(s => s.dbAvg.toFixed(1)), borderColor: '#10b981', tension: 0.3, yAxisID: 'y' },
+                        { label: '平均濕球 (WB)', data: stats.map(s => s.wbAvg.toFixed(1)), borderColor: '#0d9488', borderDash: [4, 4], tension: 0.3, yAxisID: 'y' },
+                        { label: '平均露點 (DP)', data: stats.map(s => s.dpAvg.toFixed(1)), borderColor: '#3b82f6', tension: 0.3, yAxisID: 'y' }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { position: 'top', labels: { boxWidth: 10 } } },
+                    scales: {
+                        y: { title: { display: true, text: '溫度 (°C)' }, grid: { color: '#f1f5f9' } },
+                        x: { grid: { display: false } }
+                    }
+                }
+            });
+        }
+
+        function loadDemoData() {
+            showLoading(true, '正在生成台北（Taipei）8,760 小時氣象數據範例...');
+            
+            setTimeout(() => {
+                const rawData = [];
+                for (let m = 0; m < 12; m++) {
+                    const monthDays = [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31][m];
+                    const baseTemp = [16, 17, 19, 23, 27, 29, 31, 30, 28, 25, 22, 18][m];
+                    const baseRh = [78, 80, 77, 75, 76, 78, 73, 75, 76, 74, 75, 76][m];
+
+                    let dayCounter = 1;
+                    for (let d = 0; d < monthDays; d++) {
+                        for (let h = 0; h < 24; h++) {
+                            const diurnal = Math.sin((h - 8) / 24 * Math.PI * 2) * 4;
+                            const noise = (Math.random() - 0.5) * 3;
+                            const db = parseFloat((baseTemp + diurnal + noise).toFixed(1));
+                            const rh = Math.min(98, Math.max(45, Math.round(baseRh - diurnal * 2 + (Math.random() - 0.5) * 6)));
+                            const dp = parseFloat((db - ((100 - rh) / 5)).toFixed(1));
+                            const wb = calculateWetBulb(db, rh);
+
+                            rawData.push({ month: m, day: dayCounter, hour: h + 1, db, dp, rh, wb });
+                        }
+                        dayCounter++;
+                    }
+                }
+
+                stationInfo = {
+                    location: 'Taipei-Taiwan (Demo)',
+                    lat: '25.03',
+                    lon: '121.56',
+                    elev: '9.0'
+                };
+
+                globalRawData = rawData;
+
+                setText('infoLocation', stationInfo.location);
+                document.getElementById('infoLocation').title = stationInfo.location;
+                setText('infoLat', stationInfo.lat);
+                setText('infoLon', stationInfo.lon);
+                setText('infoElev', stationInfo.elev);
+
+                const allDB = rawData.map(d => d.db);
+                const allDP = rawData.map(d => d.dp);
+                const allWB = rawData.map(d => d.wb);
+                const allRH = rawData.map(d => d.rh);
+
+                setText('infoAvgDB', avg(allDB).toFixed(1));
+                setText('infoMaxDB', max(allDB).toFixed(1));
+
+                setText('infoAvgWB', avg(allWB).toFixed(1));
+                setText('infoAvgDP', avg(allDP).toFixed(1));
+                setText('infoMaxDP', max(allDP).toFixed(1));
+
+                setText('infoAvgRH', Math.round(avg(allRH)));
+
+                onControlModeChange();
+                renderMonthlyTrendAndTable();
+
+                showLoading(false);
+                showToast('已載入台北 8,760 小時範例氣象資料！', 'success');
+            }, 100);
+        }
+
+        // Export Functions
+        function exportMonthlyCSV() {
+            let csv = "Month,Avg_DB_C,Avg_WB_C,Avg_DP_C,Avg_RH_pct\n";
+            const rows = document.querySelectorAll('#dataTableBody tr');
+            rows.forEach(row => {
+                const cells = Array.from(row.querySelectorAll('td')).map(td => td.innerText.replace('%', '').trim());
+                csv += cells.join(',') + '\n';
+            });
+            downloadCSV(csv, "EPW_Monthly_Summary.csv");
+        }
+
+        function downloadCSV(csv, filename) {
+            const blob = new Blob(["\uFEFF" + csv], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement("a");
+            const url = URL.createObjectURL(blob);
+            link.setAttribute("href", url);
+            link.setAttribute("download", filename);
+            link.style.visibility = 'hidden';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+
+        function copyTableData() {
+            let text = "月份\t均溫DB(°C)\t均濕球WB(°C)\t均露點DP(°C)\t相對濕度(%)\n";
+            const rows = document.querySelectorAll('#dataTableBody tr');
+            rows.forEach(row => {
+                const cells = Array.from(row.querySelectorAll('td')).map(td => td.innerText.replace('%', '').trim());
+                text += cells.join('\t') + '\n';
+            });
+            
+            const textarea = document.createElement('textarea');
+            textarea.value = text;
+            document.body.appendChild(textarea);
+            textarea.select();
+            document.execCommand('copy');
+            document.body.removeChild(textarea);
+
+            showToast('已將月度摘要複製至剪貼簿 (可直接貼入 Excel)！', 'success');
+        }
+
+        // Helper Utility Functions
+        const avg = arr => arr.length > 0 ? arr.reduce((a,b)=>a+b,0)/arr.length : 0;
+        const max = arr => arr.length > 0 ? Math.max(...arr) : 0;
+        const min = arr => arr.length > 0 ? Math.min(...arr) : 0;
+
+        function setText(id, text) {
+            const el = document.getElementById(id);
+            if (el) el.textContent = text;
+        }
+
+        function showToast(msg, type = 'info') {
+            const container = document.getElementById('toastContainer');
+            const toast = document.createElement('div');
+            const bgColor = type === 'success' ? 'bg-emerald-600' : type === 'error' ? 'bg-rose-600' : 'bg-slate-800';
+            toast.className = `${bgColor} text-white text-xs px-4 py-2.5 rounded-xl shadow-lg transition-all duration-300 transform translate-y-2 opacity-0 pointer-events-auto flex items-center gap-2`;
+            toast.innerHTML = `<span>${msg}</span>`;
+            container.appendChild(toast);
+            
+            setTimeout(() => {
+                toast.classList.remove('translate-y-2', 'opacity-0');
+            }, 10);
+
+            setTimeout(() => {
+                toast.classList.add('opacity-0');
+                setTimeout(() => toast.remove(), 300);
+            }, 3000);
+        }
+
+        function showLoading(show, msg = '') {
+            if (show) {
+                dashboard.classList.add('hidden');
+                loadingIndicator.classList.remove('hidden');
+                loadingIndicator.classList.add('flex');
+                if (msg) document.getElementById('loadingMsg').textContent = msg;
+            } else {
+                loadingIndicator.classList.add('hidden');
+                loadingIndicator.classList.remove('flex');
+                dashboard.classList.remove('hidden');
+            }
+        }
+
+        // 頁面初次載入，自動讀取台北範例
+        window.onload = function() {
+            loadDemoData();
+        };
+    </script>
+</body>
+</html>

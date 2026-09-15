@@ -1,0 +1,136 @@
+{
+  "_meta": {
+    "version": "1.0",
+    "description": "冷水主機設備型錄 (AHRI 550/590 Biquadratic Curve)",
+    "reference_conditions": { "T_chws_c": 7, "T_cewt_c": 30 },
+    "cop_curve_type": "ahri_biquadratic"
+  },
+
+  "Trane RTWD 1500kW": {
+    "category": "Screw Chiller",
+    "model": "Trane RTWD 1500kW",
+    "vendor": "Trane",
+    "cooling_capacity_kw": 1500,
+    "cop_design": 6.5,
+    "iplv": 8.2,
+    "power_input_kw": 230.8,
+    "t_chws_c": 7.0,
+    "t_cewt_design_c": 30.0,
+    "cop_curve": { "type": "ahri_biquadratic", "preset": "screw_standard" },
+    "refrigerant": "R-134a",
+    "weight_kg": 6200,
+    "notes": "雙螺旋壓縮機，適用大型冷機房"
+  },
+
+  "Trane CTV 2000kW": {
+    "category": "Centrifugal Chiller",
+    "model": "Trane CTV 2000kW",
+    "vendor": "Trane",
+    "cooling_capacity_kw": 2000,
+    "cop_design": 6.8,
+    "iplv": 9.5,
+    "power_input_kw": 294.1,
+    "t_chws_c": 7.0,
+    "t_cewt_design_c": 30.0,
+    "cop_curve": { "type": "ahri_biquadratic", "preset": "centrifugal_standard" },
+    "refrigerant": "R-134a",
+    "weight_kg": 9500,
+    "notes": "單級離心，AHRI 認證"
+  },
+
+  "Trane Turbocor TC 700kW": {
+    "category": "Centrifugal Chiller (Magnetic Bearing)",
+    "model": "Trane Turbocor TC 700kW",
+    "vendor": "Trane",
+    "cooling_capacity_kw": 700,
+    "cop_design": 8.3,
+    "iplv": 14.0,
+    "power_input_kw": 84.3,
+    "t_chws_c": 7.0,
+    "t_cewt_design_c": 30.0,
+    "cop_curve": { "type": "ahri_biquadratic", "preset": "centrifugal_higheff" },
+    "refrigerant": "R-134a",
+    "weight_kg": 1600,
+    "notes": "磁浮無油壓縮機，低 PLR 效率佳"
+  },
+
+  "York YT 2500kW": {
+    "category": "Centrifugal Chiller",
+    "model": "York YT 2500kW",
+    "vendor": "Johnson Controls (York)",
+    "cooling_capacity_kw": 2500,
+    "cop_design": 7.0,
+    "iplv": 9.8,
+    "power_input_kw": 357.1,
+    "t_chws_c": 7.0,
+    "t_cewt_design_c": 30.0,
+    "cop_curve": { "type": "ahri_biquadratic", "preset": "centrifugal_standard" },
+    "refrigerant": "R-514A",
+    "weight_kg": 11200,
+    "notes": "磁浮離心，HFO 冷媒"
+  },
+
+  "York YVFA 1200kW": {
+    "category": "Centrifugal Chiller (Variable Speed)",
+    "model": "York YVFA 1200kW",
+    "vendor": "Johnson Controls (York)",
+    "cooling_capacity_kw": 1200,
+    "cop_design": 7.8,
+    "iplv": 12.5,
+    "power_input_kw": 153.8,
+    "t_chws_c": 7.0,
+    "t_cewt_design_c": 30.0,
+    "cop_curve": { "type": "ahri_biquadratic", "preset": "centrifugal_higheff" },
+    "refrigerant": "R-134a",
+    "weight_kg": 4800,
+    "notes": "變頻磁浮離心，IPLV 超高效"
+  },
+
+  "Carrier 19XR 1800kW": {
+    "category": "Centrifugal Chiller",
+    "model": "Carrier 19XR 1800kW",
+    "vendor": "Carrier",
+    "cooling_capacity_kw": 1800,
+    "cop_design": 6.7,
+    "iplv": 9.2,
+    "power_input_kw": 268.7,
+    "t_chws_c": 7.0,
+    "t_cewt_design_c": 30.0,
+    "cop_curve": { "type": "ahri_biquadratic", "preset": "centrifugal_standard" },
+    "refrigerant": "R-134a",
+    "weight_kg": 8100,
+    "notes": "標準離心，市占率高"
+  },
+
+  "Carrier 30XA 1000kW": {
+    "category": "Screw Chiller (Air-Cooled)",
+    "model": "Carrier 30XA 1000kW",
+    "vendor": "Carrier",
+    "cooling_capacity_kw": 1000,
+    "cop_design": 3.8,
+    "iplv": 5.2,
+    "power_input_kw": 263.2,
+    "t_chws_c": 7.0,
+    "t_cewt_design_c": 30.0,
+    "cop_curve": { "type": "ahri_biquadratic", "preset": "screw_standard" },
+    "refrigerant": "R-134a",
+    "weight_kg": 4200,
+    "notes": "氣冷螺旋，不需冷卻水塔"
+  },
+
+  "Daikin EWWD 800kW": {
+    "category": "Screw Chiller",
+    "model": "Daikin EWWD 800kW",
+    "vendor": "Daikin",
+    "cooling_capacity_kw": 800,
+    "cop_design": 6.2,
+    "iplv": 8.0,
+    "power_input_kw": 129.0,
+    "t_chws_c": 7.0,
+    "t_cewt_design_c": 30.0,
+    "cop_curve": { "type": "ahri_biquadratic", "preset": "screw_standard" },
+    "refrigerant": "R-134a",
+    "weight_kg": 3600,
+    "notes": "雙螺旋，台灣常見型號"
+  }
+}

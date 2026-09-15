@@ -1,0 +1,72 @@
+Created At: 2026-06-04T13:37:57Z
+Completed At: 2026-06-04T13:37:57Z
+The following changes were made by the replace_file_content tool to: c:\Users\user\OneDrive\桌面\HVAC-Pro\public\whitespace\app.js. If relevant, proactively run terminal commands to execute this code for the USER. Don't ask for permission.
+[diff_block_start]
+@@ -1838,107 +1838,99 @@
+                         if (side === 1 && x > 1.2) explodeDist = 0.6;   
+                     } else { 
+                         if (side === 1 && x < -1.2) explodeDist = 0.6;   
+-                        if (side === -1 && x > 1.2) explodeDist = -0.6;  
+-                    }
+-
+-                    sideGroup.userData = { isShell: true, origPos: sideGroup.position.clone(), explodeDir: new THREE.Vector3(explodeDist, 0, 0) };
+-                    if (explodeDist !== 0) {
+-                        this.explodeShells.push(sideGroup);
+-                    }
+-
+-                    const sidePanel = new THREE.Mesh(new THREE.BoxGeometry(0.015, h - 0.1, d - 0.08), rackFrame);
+-                    sideGroup.add(sidePanel);
+-                    
+-                    [-0.3, 0.3].forEach(cy => {
+-                        const clip = new THREE.Mesh(new THREE.BoxGeometry(0.02, 0.03, 0.015), chromeDetail);
+-                        clip.position.set(side * 0.005, cy, d / 2 - 0.08);
+-                        sideGroup.add(clip);
+-                    });
+-                    group.add(sideGroup);
+-                });
+-
+-                const instData = {
+-                    trayBody: [], pcb: [], handle: [],
+-                    gpuPlate: [], cpuPlate: [], switchPlate: [],
+-                    qdcMale: [], qdcFemale: [],
+-                    osfpPort: [], psuModule: [], statusLed: [], ledStrip: [],
+-                    blankPanel: [], coldTube: [],
+-                    psuFanGrill: [], psuHandle: [],
+-                    memModule: [], vrm: [],
+-                };
+-
+-                const pushInst = (arr, px, py, pz, sx = 1, sy = 1, sz = 1, ry = 0) => {
+-                    const dummy
+<truncated 11496 bytes>
+         for (let u = 0; u < totalU; u++) {
+-                    const isCompute = (u >= 4 && u <= 13) || (u >= 23 && u <= 32);
+-                    const isSwitch = (u >= 14 && u <= 22);
+-                    if (!isCompute && !isSwitch) continue;
+-
+-                    const branchY = startY + u * uHeight;
+-                    const branchLength = 0.06;
+-
+-                    const bSupply = new THREE.Mesh(new THREE.CylinderGeometry(0.008, 0.008, branchLength, 8), pipeBlueM);
+-                    bSupply.rotation.x = Math.PI / 2;
+-                    bSupply.position.set(-0.13, branchY, -trayD / 2 - 0.04);
+-                    rackPipingGroup.add(bSupply);
+-
+-                    const bReturn = new THREE.Mesh(new THREE.CylinderGeometry(0.008, 0.008, branchLength, 8), pipeRedM);
+-                    bReturn.rotation.x = Math.PI / 2;
+-                    bReturn.position.set(0.13, branchY, -trayD / 2 - 0.04);
+-                    rackPipingGroup.add(bReturn);
+-                }
+-
+-                [-0.13, 0.13].forEach((fx, idx) => {
+-                    const fl = createFlange(0.04, 0.015, 4);
+-                    fl.position.set(fx, spineH / 2 + 0.01, -trayD / 2 - 0.07);
+-                    rackPipingGroup.add(fl);
+-                    const barb = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.025, 0.04, 12), chromeDetail);
+-                    barb.position.set(fx, spineH / 2 + 0.04, -trayD / 2 - 0.07);
++                });set(fx, spineH / 2 + 0.04, -trayD / 2 - 0.07);
+                     rackPipingGroup.add(barb);
+                     const band = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 0.01, 16), new THREE.MeshBasicMaterial({ color: idx === 0 ? 0x3b82f6 : 0xef4444 }));
+                     band.position.set(fx, spineH / 2 + 0.025, -trayD / 2 - 0.07);
+[diff_block_end]
+
+Please note that the above snippet only shows the MODIFIED lines from the last change. It shows up to 3 lines of unchanged lines before and after the modified lines. The actual file contents may have many more lines not shown.

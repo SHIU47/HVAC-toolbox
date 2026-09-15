@@ -1,0 +1,66 @@
+Created At: 2026-06-04T13:44:51Z
+Completed At: 2026-06-04T13:44:51Z
+File Path: `file:///C:/Users/user/OneDrive/%E6%A1%8C%E9%9D%A2/HVAC-Pro/public/whitespace/app.js`
+Total Lines: 2533
+Total Bytes: 140724
+Showing lines 1770 to 1835
+The following code has been modified to include a line number before every line, in the format: <line_number>: <original_line>. Please note that any changes targeting the original code should remove the line number, colon, and leading space.
+1770:                     const bracket = new THREE.Mesh(new THREE.BoxGeometry(0.03, 0.04, 0.04), darkMetal);
+1771:                     bracket.position.set(cp[0], -h / 2 - 0.02, cp[1]);
+1772:                     group.add(bracket);
+1773:                     const wheel = new THREE.Mesh(new THREE.CylinderGeometry(0.025, 0.025, 0.015, 12), rubberBlack);
+1774:                     wheel.rotation.z = Math.PI / 2;
+1775:                     wheel.position.set(cp[0], -h / 2 - 0.045, cp[1]);
+1776:                     group.add(wheel);
+1777:                     if (idx < 2) {
+1778:                         const brake = new THREE.Mesh(new THREE.BoxGeometry(0.02, 0.015, 0.01), chromeDetail);
+1779:                         brake.position.set(cp[0] + 0.02, -h / 2 - 0.035, cp[1]);
+1780:                         group.add(brake);
+1781:                     }
+1782:                 });
+1783: 
+1784:                 casterPositions.forEach(cp => {
+1785:                     const footBolt = new THREE.Mesh(new THREE.CylinderGeometry(0.006, 0.006, 0.06, 8), chromeDetail);
+1786:                     footBolt.position.set(cp[0], -h / 2 - 0.03, cp[1]);
+1787:                     group.add(footBolt);
+1788:                     const footPad = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.022, 0.008, 12), rubberBlack);
+1789:                     footPad.position.set(cp[0], -h / 2 - 0.06, cp[1]);
+1790:                     group.add(footPad);
+1791:                 });
+1792: 
+1793:                 // 前門
+1794:                 const doorGroup = new THREE.Group();
+1795:            
+<truncated 666 bytes>
+ndleBar = new THREE.Mesh(new THREE.BoxGeometry(0.015, 0.2, 0.03), chromeDetail);
+1806:                 handleBar.position.set(w / 2 - 0.04, 0, -0.02);
+1807:                 doorContent.add(handleBar);
+1808:                 const lockBody = new THREE.Mesh(new THREE.CylinderGeometry(0.012, 0.012, 0.015, 12), darkMetal);
+1809:                 lockBody.rotation.x = Math.PI / 2;
+1810:                 lockBody.position.set(w / 2 - 0.04, -0.15, -0.02);
+1811:                 doorContent.add(lockBody);
+1812:                 const lockSlot = new THREE.Mesh(new THREE.BoxGeometry(0.002, 0.01, 0.005), chromeDetail);
+1813:                 lockSlot.position.set(w / 2 - 0.04, -0.15, -0.028);
+1814:                 doorContent.add(lockSlot);
+1815:                 doorGroup.add(doorContent);
+1816: 
+1817:                 [-0.35, 0, 0.35].forEach(hy => {
+1818:                     const hinge = new THREE.Mesh(new THREE.CylinderGeometry(0.008, 0.008, 0.04, 8), darkMetal);
+1819:                     hinge.position.set(0, hy, 0);
+1820:                     doorGroup.add(hinge);
+1821:                     const pin = new THREE.Mesh(new THREE.CylinderGeometry(0.003, 0.003, 0.05, 6), chromeDetail);
+1822:                     pin.position.set(0, hy, 0);
+1823:                     doorGroup.add(pin);
+1824:                 });
+1825: 
+1826:                 group.add(doorGroup);
+1827:                 if (!this.rackFrontDoors) this.rackFrontDoors = [];
+1828:                 this.rackFrontDoors.push(doorGroup);
+1829: 
+1830:                 // 機櫃側板 (加入爆炸拆解清單 - 僅最外側機櫃側板會作動)
+1831:                 [-1, 1].forEach(side => {
+1832:                     const sideGroup = new THREE.Group();
+1833:                     sideGroup.position.set(side * (w / 2), 0, 0);
+1834:                     
+1835:                     let explodeDist = 0;
+The above content does NOT show the entire file contents. If you need to view any lines of the file which were not shown to complete your task, call this tool again to view those lines.

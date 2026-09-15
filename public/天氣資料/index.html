@@ -1,0 +1,2750 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <!-- 安全防護 -->
+    <script src="../security.js" onerror="console.log('security loaded')"></script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Climate & Cooling Intelligence Pro | EPW 氣候大數據與 Free Cooling 平台</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Space+Grotesk:wght@500;600;700;800&display=swap" rel="stylesheet">
+    <!-- Globe.gl 3D Earth -->
+    <script src="https://unpkg.com/globe.gl"></script>
+    <!-- Chart.js CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Built-in EPW Weather Database -->
+    <script src="./weather_data.js"></script>
+
+    <style>
+        :root {
+            --font-main: 'Inter', sans-serif;
+            --font-heading: 'Space Grotesk', sans-serif;
+        }
+        body { font-family: var(--font-main); background: #05050a; overflow-x: hidden; color: #f8fafc; }
+        .heading { font-family: var(--font-heading); letter-spacing: -0.03em; }
+        
+        #globePanel, #globeViz, #globeViz canvas {
+            overscroll-behavior: contain;
+            touch-action: none;
+        }
+        
+        .bg-mesh {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: -1;
+            background: radial-gradient(circle at 10% 0%, rgba(14, 165, 233, 0.14) 0%, transparent 45%),
+                        radial-gradient(circle at 90% 20%, rgba(99, 102, 241, 0.12) 0%, transparent 45%),
+                        radial-gradient(circle at 50% 100%, rgba(16, 185, 129, 0.08) 0%, transparent 50%),
+                        #05050a;
+        }
+        .blur-orb {
+            position: fixed; width: 500px; height: 500px; filter: blur(140px); border-radius: 50%; z-index: -1; 
+            animation: float 25s infinite alternate ease-in-out; opacity: 0.5; mix-blend-mode: screen;
+        }
+        @keyframes float { 0% { transform: translate(0, 0) scale(1); } 100% { transform: translate(80px, 40px) scale(1.1); } }
+
+        /* Premium Glassmorphism */
+        .glass-card { 
+            background: linear-gradient(145deg, rgba(255, 255, 255, 0.04) 0%, rgba(255, 255, 255, 0.01) 100%);
+            backdrop-filter: blur(28px); -webkit-backdrop-filter: blur(28px);
+            border: 1px solid rgba(255, 255, 255, 0.08); 
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.25), inset 0 1px 0 rgba(255,255,255,0.06); 
+            transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+        .glass-panel { 
+            background: linear-gradient(180deg, rgba(15, 23, 42, 0.7) 0%, rgba(10, 15, 30, 0.85) 100%);
+            backdrop-filter: blur(36px); -webkit-backdrop-filter: blur(36px);
+            border: 1px solid rgba(255, 255, 255, 0.1); 
+            box-shadow: 0 24px 48px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255,255,255,0.08); 
+        }
+        
+        /* Table Styling */
+        table { border-collapse: separate; border-spacing: 0 6px; }
+        tr.table-row td { background: rgba(255,255,255,0.02); border-top: 1px solid rgba(255,255,255,0.04); border-bottom: 1px solid rgba(255,255,255,0.04); transition: all 0.25s ease; }
+        tr.table-row td:first-child { border-left: 1px solid rgba(255,255,255,0.04); border-top-left-radius: 0.85rem; border-bottom-left-radius: 0.85rem; }
+        tr.table-row td:last-child { border-right: 1px solid rgba(255,255,255,0.04); border-top-right-radius: 0.85rem; border-bottom-right-radius: 0.85rem; }
+        tr.table-row:hover td { background: rgba(255,255,255,0.07); border-color: rgba(56, 189, 248, 0.4); }
+        tr.table-row.selected-row td { background: rgba(14, 165, 233, 0.15) !important; border-color: rgba(56, 189, 248, 0.6) !important; }
+
+        ::-webkit-scrollbar { width: 5px; height: 5px;}
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.15); border-radius: 10px; }
+        ::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.3); }
+
+        .kpi-value { font-family: var(--font-heading); letter-spacing: -0.03em; }
+        
+        .globe-container canvas { outline: none; }
+        @keyframes customPing { 0% { transform: scale(1); opacity: 0.9; box-shadow: 0 0 12px currentColor; } 75%, 100% { transform: scale(3.2); opacity: 0; } }
+        .globe-marker-ping { animation: customPing 2.2s cubic-bezier(0.2, 0.8, 0.2, 1) infinite; }
+        
+        /* Drag and Drop Zone active */
+        .drop-active {
+            border-color: #38bdf8 !important;
+            background: rgba(14, 165, 233, 0.15) !important;
+            transform: scale(1.01);
+        }
+
+        /* --- Light Theme Overrides --- */
+        body.light-theme { background: #f8fafc; color: #0f172a; }
+        body.light-theme .bg-mesh {
+            background: radial-gradient(circle at 10% 0%, rgba(14, 165, 233, 0.12) 0%, transparent 40%),
+                        radial-gradient(circle at 90% 20%, rgba(99, 102, 241, 0.1) 0%, transparent 40%),
+                        radial-gradient(circle at 50% 100%, rgba(16, 185, 129, 0.08) 0%, transparent 50%),
+                        #f8fafc;
+        }
+        body.light-theme .blur-orb { mix-blend-mode: multiply; opacity: 0.3; }
+        body.light-theme .text-white { color: #0f172a !important; }
+        body.light-theme .text-slate-300 { color: #334155 !important; }
+        body.light-theme .text-slate-400 { color: #475569 !important; }
+        body.light-theme .text-slate-500 { color: #64748b !important; }
+        body.light-theme .border-white\/5, body.light-theme .border-white\/10, body.light-theme .border-white\/20 {
+            border-color: rgba(0, 0, 0, 0.08) !important;
+        }
+        body.light-theme .glass-card {
+            background: linear-gradient(145deg, rgba(255, 255, 255, 0.85) 0%, rgba(255, 255, 255, 0.6) 100%);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.06), inset 0 1px 0 rgba(255,255,255,1);
+            border-color: rgba(0, 0, 0, 0.08);
+        }
+        body.light-theme .glass-panel {
+            background: linear-gradient(180deg, rgba(255, 255, 255, 0.95) 0%, rgba(241, 245, 249, 0.9) 100%);
+            box-shadow: 0 24px 48px rgba(0, 0, 0, 0.08), inset 0 1px 0 rgba(255,255,255,1);
+            border-color: rgba(0, 0, 0, 0.1);
+        }
+        body.light-theme tr.table-row td { background: rgba(255,255,255,0.7); border-color: rgba(0,0,0,0.06); }
+        body.light-theme tr.table-row:hover td { background: rgba(255,255,255,0.95); border-color: rgba(14, 165, 233, 0.5); }
+        body.light-theme tr.table-row.selected-row td { background: rgba(14, 165, 233, 0.12) !important; }
+        /* Explicit Select & Option Styling for Dark & Light Themes */
+        select option {
+            background-color: #0b1120;
+            color: #f8fafc;
+            padding: 8px 12px;
+        }
+        body.dark-theme select, body:not(.light-theme) select {
+            color-scheme: dark;
+            background-color: #0b1120;
+            color: #f8fafc;
+        }
+        body.light-theme select {
+            color-scheme: light;
+            background-color: #ffffff !important;
+            color: #0f172a !important;
+            border-color: rgba(0,0,0,0.15) !important;
+        }
+        body.light-theme select option {
+            background-color: #ffffff !important;
+            color: #0f172a !important;
+        }
+        body.light-theme input {
+            background-color: #ffffff !important;
+            color: #0f172a !important;
+            border-color: rgba(0,0,0,0.15) !important;
+        }
+        body.light-theme .modal-container { background: #ffffff !important; color: #0f172a !important; }
+    </style>
+</head>
+<body class="dark-theme antialiased selection:bg-cyan-500 selection:text-white">
+    <div class="bg-mesh"></div>
+    <div class="blur-orb bg-sky-500/15 top-0 left-10"></div>
+    <div class="blur-orb bg-indigo-500/10 bottom-10 right-10" style="animation-delay: -5s;"></div>
+
+    <!-- Toast Notifications -->
+    <div id="toastContainer" class="fixed top-5 right-5 z-50 flex flex-col gap-2 pointer-events-none"></div>
+
+    <!-- Hidden EPW File Input -->
+    <input type="file" id="epwFileInput" accept=".epw" multiple class="hidden">
+
+    <div class="max-w-[1560px] mx-auto px-4 sm:px-6 lg:px-8 py-6 flex flex-col min-h-screen">
+        
+        <!-- Navigation Bar -->
+        <nav class="flex flex-col lg:flex-row lg:items-center justify-between mb-8 gap-5 relative z-20">
+            <div>
+                <div class="flex items-center gap-3">
+                    <span class="px-2.5 py-1 rounded-md text-[10px] font-mono font-black tracking-widest uppercase bg-gradient-to-r from-cyan-500/20 to-blue-500/20 text-cyan-400 border border-cyan-500/30">
+                        ASHRAE TC 9.9 & EPW TMYx
+                    </span>
+                    <span id="stationCountBadge" class="text-[11px] font-mono text-slate-400">
+                        165 Stations Loaded
+                    </span>
+                </div>
+                <h1 class="heading text-3xl sm:text-4xl lg:text-5xl font-black tracking-tight text-white mt-1">
+                    CLIMATE & COOLING <span class="text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 via-sky-300 to-indigo-400">PRO</span>
+                </h1>
+                <p id="t-subtitle" data-i18n="navSubtitle" class="text-xs font-mono font-medium text-slate-400 tracking-wider mt-1">
+                    GLOBAL AI DATA CENTER FREE-COOLING & EPW ANALYZER
+                </p>
+            </div>
+
+            <!-- Controls: Filter, Search, Import, Theme, Language -->
+            <div class="flex flex-wrap items-center gap-3">
+                <!-- Country Filter -->
+                <div class="relative">
+                    <select id="countryFilter" onchange="applyFilters()" class="glass-card pl-3.5 pr-8 py-2.5 rounded-xl text-xs font-bold text-white bg-slate-900/90 outline-none cursor-pointer hover:border-cyan-500/40">
+                        <option value="ALL">🌐 全部國家 / 區域</option>
+                    </select>
+                </div>
+
+                <!-- Search Input -->
+                <div class="relative">
+                    <input type="text" id="searchInput" oninput="applyFilters()" data-i18n-placeholder="searchPlaceholder" placeholder="搜尋城市、測站、WMO..." class="glass-card pl-9 pr-4 py-2.5 rounded-xl text-xs font-medium text-white outline-none w-44 focus:w-60 transition-all placeholder:text-slate-500">
+                    <svg class="w-3.5 h-3.5 text-slate-400 absolute left-3 top-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+                </div>
+
+                <!-- Import EPW Button -->
+                <button onclick="document.getElementById('epwFileInput').click()" class="glass-card px-4 py-2.5 rounded-xl text-xs font-bold text-cyan-300 bg-cyan-500/10 hover:bg-cyan-500/20 border-cyan-500/40 flex items-center gap-2 transition-all hover:scale-105 active:scale-95 shadow-[0_0_15px_rgba(6,182,212,0.2)]">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"></path></svg>
+                    <span data-i18n="importBtn">📂 匯入 EPW 檔案</span>
+                </button>
+
+                <!-- Theme Toggle -->
+                <button onclick="toggleTheme()" class="glass-card w-10 h-10 rounded-xl flex items-center justify-center text-slate-300 hover:text-white hover:border-white/20 transition-colors" title="切換深淺模式">
+                    <svg id="themeIcon" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"></path></svg>
+                </button>
+
+                <!-- Guide Modal -->
+                <button onclick="openGuideModal()" class="glass-card w-10 h-10 rounded-xl flex items-center justify-center text-slate-300 hover:text-white hover:border-white/20 transition-colors" title="工程指南與說明">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                </button>
+
+                <!-- Lang Toggle -->
+                <button onclick="toggleLang()" class="glass-card px-3 py-2.5 rounded-xl text-xs font-mono font-bold text-slate-300 hover:text-white transition-colors">
+                    <span id="langLabel">ZH / EN</span>
+                </button>
+            </div>
+        </nav>
+
+        <!-- KPI Summary Cards: PUE預估 | 最高乾球 | 最高濕球 | 自然冷卻時數 -->
+        <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+            <!-- Card 1: PUE預估 -->
+            <div class="glass-card p-5 rounded-2xl border-t border-l border-white/10 hover:border-cyan-500/30 transition-all">
+                <div class="flex items-center justify-between mb-2">
+                    <span class="text-[11px] font-mono font-bold text-slate-400 uppercase tracking-wider" id="kpiPueTitle">PUE 預估</span>
+                    <span class="w-2 h-2 rounded-full bg-cyan-400 shadow-[0_0_8px_#22d3ee]"></span>
+                </div>
+                <div class="text-3xl sm:text-4xl font-black text-white kpi-value" id="kpiAvgPUE">1.25</div>
+                <div class="text-[10px] font-mono text-cyan-400/80 mt-1 truncate" id="kpiPueSub">基準空調負載評估</div>
+            </div>
+
+            <!-- Card 2: 最高乾球 -->
+            <div class="glass-card p-5 rounded-2xl border-t border-l border-white/10 hover:border-amber-500/30 transition-all">
+                <div class="flex items-center justify-between mb-2">
+                    <span class="text-[11px] font-mono font-bold text-slate-400 uppercase tracking-wider" id="kpiMaxDbTitle">最高乾球</span>
+                    <span class="w-2 h-2 rounded-full bg-amber-400 shadow-[0_0_8px_#fbbf24]"></span>
+                </div>
+                <div class="text-3xl sm:text-4xl font-black text-amber-400 kpi-value" id="kpiMaxDB">38.2 <span class="text-lg font-normal text-slate-400">°C</span></div>
+                <div class="text-[10px] font-mono text-slate-400 mt-1 truncate" id="kpiMaxDbSub">年最高乾球溫</div>
+            </div>
+
+            <!-- Card 3: 最高濕球 -->
+            <div class="glass-card p-5 rounded-2xl border-t border-l border-white/10 hover:border-rose-500/30 transition-all">
+                <div class="flex items-center justify-between mb-2">
+                    <span class="text-[11px] font-mono font-bold text-slate-400 uppercase tracking-wider" id="kpiMaxWbTitle">最高濕球</span>
+                    <span class="w-2 h-2 rounded-full bg-rose-500 shadow-[0_0_8px_#f43f5e]"></span>
+                </div>
+                <div class="text-3xl sm:text-4xl font-black text-rose-400 kpi-value" id="kpiMaxWB">29.5 <span class="text-lg font-normal text-slate-400">°C</span></div>
+                <div class="text-[10px] font-mono text-slate-400 mt-1 truncate" id="kpiMaxWbSub">年最高濕球溫</div>
+            </div>
+
+            <!-- Card 4: 自然冷卻時數 -->
+            <div class="glass-card p-5 rounded-2xl border-t border-l border-white/10 hover:border-emerald-500/30 transition-all">
+                <div class="flex items-center justify-between mb-2">
+                    <span class="text-[11px] font-mono font-bold text-slate-400 uppercase tracking-wider" id="kpiFcTitle">自然冷卻時數</span>
+                    <span class="w-2 h-2 rounded-full bg-emerald-400 shadow-[0_0_8px_#34d399]"></span>
+                </div>
+                <div class="text-3xl sm:text-4xl font-black text-emerald-400 kpi-value" id="kpiMaxFC">8,760 <span class="text-lg font-normal text-slate-400">hrs</span></div>
+                <div class="text-[10px] font-mono text-emerald-400/80 mt-1 truncate" id="kpiFcSub">≤34°C 年度累計時數</div>
+            </div>
+        </div>
+
+        <!-- Middle Workspace: 3D Globe + Detail Panel -->
+        <div class="flex flex-col lg:flex-row gap-6 mb-8 items-stretch">
+            
+            <!-- 3D Globe View -->
+            <div id="globePanel" class="flex-1 glass-panel rounded-[2rem] relative overflow-hidden flex flex-col min-h-[460px] lg:min-h-[560px]">
+                <div class="absolute top-5 left-6 z-10 pointer-events-none">
+                    <h2 class="heading text-xl sm:text-2xl font-bold text-white drop-shadow" data-i18n="globeTitle">全球氣候拓撲 3D 視角</h2>
+                    <p class="text-[11px] font-mono text-slate-400" data-i18n="globeSub">點擊節點聚焦並載入氣象深度解析</p>
+                </div>
+
+                <div id="globeLoading" class="absolute inset-0 z-10 flex flex-col items-center justify-center bg-[#05050a]/80 backdrop-blur-md transition-opacity duration-500">
+                    <div class="w-10 h-10 border-4 border-cyan-500/20 border-t-cyan-400 rounded-full animate-spin mb-3"></div>
+                    <p class="text-xs font-mono font-bold text-slate-300 tracking-widest">3D ENGINE INITIALIZING...</p>
+                </div>
+
+                <div id="globeViz" class="w-full h-full cursor-move globe-container relative z-0"></div>
+
+                <div class="absolute bottom-4 left-6 z-10 flex flex-wrap items-center gap-4 bg-slate-900/70 backdrop-blur-md px-3.5 py-2 rounded-xl border border-white/10 pointer-events-auto">
+                    <div class="flex items-center gap-2"><span class="w-2.5 h-2.5 rounded-full bg-rose-500"></span><span class="text-[10px] font-bold text-slate-300" data-i18n="legendTropical">熱帶 / 濕球高溫區</span></div>
+                    <div class="flex items-center gap-2"><span class="w-2.5 h-2.5 rounded-full bg-amber-400"></span><span class="text-[10px] font-bold text-slate-300" data-i18n="legendSubtropical">亞熱帶 / 混合過渡區</span></div>
+                    <div class="flex items-center gap-2"><span class="w-2.5 h-2.5 rounded-full bg-emerald-400"></span><span class="text-[10px] font-bold text-slate-300" data-i18n="legendHighFC">高 Free Cooling 潛力區</span></div>
+                </div>
+            </div>
+
+            <!-- Detail Panel -->
+            <div id="detailPanel" class="w-full lg:w-[450px] glass-panel rounded-[2rem] p-6 shrink-0 flex flex-col justify-between shadow-2xl relative overflow-y-auto max-h-[700px]">
+                <!-- Injected via JavaScript updateDetailPanel -->
+                <div class="text-center py-20 text-slate-500">
+                    <div class="w-10 h-10 border-2 border-slate-600 border-t-cyan-400 rounded-full animate-spin mx-auto mb-4"></div>
+                    <p class="text-xs font-mono" data-i18n="loadingStation">載入測站資料中...</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Global Station Table Area -->
+        <div class="glass-panel rounded-[2rem] p-6 relative z-10 mb-12">
+            <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-4">
+                <div>
+                    <h3 class="heading text-xl font-bold text-white" data-i18n="tableTitle">EPW 測站氣象數據庫</h3>
+                    <p class="text-xs font-mono text-slate-400" data-i18n="tableSubtitle">即時計算各測站 8,760 小時氣候參數與 Free Cooling 統計</p>
+                </div>
+                <div class="text-xs font-mono text-slate-400" data-i18n="tableTip">
+                    點擊列表列可立即切換視角與調用深度分析
+                </div>
+            </div>
+
+            <div class="w-full overflow-x-auto">
+                <table class="w-full text-left min-w-[980px]">
+                    <thead class="text-[11px] font-mono font-bold text-slate-400 uppercase tracking-wider border-b border-white/10">
+                        <tr>
+                            <th class="px-4 py-3 cursor-pointer hover:text-white" onclick="sortTable('city')"><span data-i18n="colCity">地區 / 測站</span> <span id="sort-city"></span></th>
+                            <th class="px-4 py-3 cursor-pointer hover:text-white" onclick="sortTable('country')"><span data-i18n="colCountry">國家</span> <span id="sort-country"></span></th>
+                            <th class="px-3 py-3 text-center cursor-pointer hover:text-white" onclick="sortTable('zone')">ASHRAE <span id="sort-zone"></span></th>
+                            <th class="px-3 py-3 text-right cursor-pointer hover:text-white" onclick="sortTable('avgDB')"><span data-i18n="colAvgDB">年均乾球</span> <span id="sort-avgDB"></span></th>
+                            <th class="px-3 py-3 text-right cursor-pointer hover:text-white" onclick="sortTable('extWB')"><span data-i18n="colExtWB">最高乾/濕球</span> <span id="sort-extWB"></span></th>
+                            <th class="px-3 py-3 text-right cursor-pointer hover:text-white" onclick="sortTable('freeCooling')"><span data-i18n="colFC">Free Cooling (hrs)</span> <span id="sort-freeCooling"></span></th>
+                            <th class="px-3 py-3 text-right cursor-pointer hover:text-white" onclick="sortTable('pue')"><span data-i18n="colPUE">預估 PUE</span> <span id="sort-pue"></span></th>
+                            <th class="px-4 py-3 text-center" data-i18n="colAction">深度分析操作</th>
+                        </tr>
+                    </thead>
+                    <tbody id="stationTableBody">
+                        <!-- Populated by JavaScript -->
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Drag & Drop Zone inside Table area -->
+            <div id="dropZone" class="mt-4 p-5 rounded-2xl border-2 border-dashed border-white/10 hover:border-cyan-400/50 bg-white/[0.01] hover:bg-cyan-500/5 text-center transition-all cursor-pointer" onclick="document.getElementById('epwFileInput').click()">
+                <div class="flex items-center justify-center gap-3 text-slate-400">
+                    <svg class="w-5 h-5 text-cyan-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path></svg>
+                    <span class="text-xs font-bold text-slate-300" data-i18n="dropText">拖曳新的 <span class="text-cyan-400">.epw</span> 檔案至此，或點擊選取檔案</span>
+                    <span class="text-[11px] font-mono text-slate-500" data-i18n="dropSub">（系統將自動解析座標並釘選至 3D 地球）</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Footer -->
+        <footer class="mt-auto py-6 border-t border-white/10 flex flex-col sm:flex-row items-center justify-between text-xs font-mono text-slate-500 gap-4">
+            <div class="flex items-center gap-4">
+                <span>© 2026 AI THERMAL INTEL SYSTEM</span>
+                <span>•</span>
+                <span>DATA SOURCE: CLIMATE.ONEBUILDING (TMYx / EPW)</span>
+            </div>
+            <div class="flex items-center gap-2">
+                <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+                <span>EPW RUNTIME ENGINE ACTIVE</span>
+            </div>
+        </footer>
+    </div>
+
+    <!-- ========================================================================= -->
+    <!-- EPW 深度氣象與 FREE COOLING 分析視窗 (Deep Dive Modal) -->
+    <!-- ========================================================================= -->
+    <div id="epwModal" class="fixed inset-0 z-50 hidden flex items-center justify-center p-3 sm:p-6 bg-slate-950/80 backdrop-blur-xl opacity-0 transition-opacity duration-300">
+        <div class="relative w-full max-w-7xl max-h-[94vh] flex flex-col glass-panel rounded-[2rem] border border-white/20 shadow-2xl overflow-hidden modal-container">
+            
+            <!-- Modal Header -->
+            <div class="px-6 py-4 border-b border-white/10 flex items-center justify-between bg-slate-900/50">
+                <div class="flex items-center gap-3">
+                    <span id="modalFlag" class="text-3xl">🇹🇼</span>
+                    <div>
+                        <div class="flex items-center gap-2">
+                            <h2 id="modalTitle" class="heading text-xl sm:text-2xl font-black text-white">桃園 (Taoyuan)</h2>
+                            <span id="modalZoneBadge" class="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-cyan-500/20 text-cyan-300 border border-cyan-500/30">Zone 3A</span>
+                        </div>
+                        <p id="modalSub" class="text-xs font-mono text-slate-400">
+                            WMO: 589650 • 緯度: 25.05° • 經度: 121.22° • 海拔: 48m
+                        </p>
+                    </div>
+                </div>
+                <button onclick="closeEpwModal()" class="w-9 h-9 rounded-xl bg-white/5 hover:bg-white/10 text-slate-300 hover:text-white flex items-center justify-center transition-colors">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                </button>
+            </div>
+
+            <!-- Modal Body (Scrollable) -->
+            <div class="flex-1 overflow-y-auto p-6 space-y-6">
+                
+                <!-- Controls: Mode, Thresholds & Schedules -->
+                <div class="glass-card p-5 rounded-2xl border border-cyan-500/20 bg-cyan-950/10">
+                    <div class="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4 mb-4">
+                        <div>
+                            <h4 class="text-sm font-bold text-white flex items-center gap-2">
+                                <svg class="w-4 h-4 text-cyan-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4"></path></svg>
+                                <span data-i18n="modalCtrlTitle">Free Cooling 控制邏輯與溫度門檻設定</span>
+                            </h4>
+                            <p class="text-xs font-mono text-slate-400" data-i18n="modalCtrlSub">依據空調系統形式（水側節能 / 風側節能）即時調整閥值</p>
+                        </div>
+
+                        <!-- Mode Switcher -->
+                        <div class="flex items-center gap-3">
+                            <label class="text-xs font-bold text-slate-300" data-i18n="modalCtrlModeLabel">控制模式：</label>
+                            <select id="modalControlMode" onchange="onModalControlModeChange()" class="glass-card px-3 py-1.5 rounded-lg text-xs font-bold text-cyan-300 bg-slate-900 border-cyan-500/30 outline-none cursor-pointer">
+                                <option value="DB">乾球溫 (DB) - 風側節能器 (Air Economizer)</option>
+                                <option value="WB">濕球溫 (WB) - 水側冷卻水塔節能 (Water Economizer)</option>
+                                <option value="COMBINED">溫濕度綜合限制 (DB & RH Enthalpy)</option>
+                            </select>
+
+                            <label class="text-xs font-bold text-slate-300 ml-2" data-i18n="modalSchedLabel">運轉時段：</label>
+                            <select id="modalScheduleMode" onchange="recalcModalFC()" class="glass-card px-3 py-1.5 rounded-lg text-xs font-bold text-white bg-slate-900 border-white/10 outline-none cursor-pointer">
+                                <option value="247">全年連續 (24/7, 8,760 hrs)</option>
+                                <option value="DAYTIME">僅日間時段 (08:00 - 20:00)</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- Dynamic Threshold Sliders -->
+                    <div id="modalThresholdContainer" class="grid grid-cols-1 md:grid-cols-2 gap-4 pt-3 border-t border-white/5">
+                        <!-- Injected dynamically based on DB or WB -->
+                    </div>
+
+                    <div id="modalConditionText" class="mt-3 text-xs font-mono text-cyan-400/90 bg-cyan-500/10 p-2.5 rounded-xl border border-cyan-500/20">
+                        正在載入判定標準...
+                    </div>
+                </div>
+
+                <!-- 3 Major KPI Result Badges -->
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div class="glass-card p-4 rounded-2xl border-l-4 border-emerald-400">
+                        <div class="text-xs font-mono font-bold text-slate-400 mb-1" id="lblResFullTitle">自然冷卻 (100% Free Cooling)</div>
+                        <div class="flex items-baseline justify-between">
+                            <span id="resFullHours" class="text-3xl font-black text-emerald-400">0 hrs</span>
+                            <span id="resFullPct" class="text-xs font-bold px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300">0%</span>
+                        </div>
+                        <div class="text-[10px] font-mono text-slate-400 mt-1" id="lblResFullSub">≤ 34°C 自然冷卻，主機壓縮機停止運轉</div>
+                    </div>
+
+                    <div class="glass-card p-4 rounded-2xl border-l-4 border-cyan-400">
+                        <div class="text-xs font-mono font-bold text-slate-400 mb-1" id="lblResPartTitle">部分冷卻 (Partial Free Cooling)</div>
+                        <div class="flex items-baseline justify-between">
+                            <span id="resPartHours" class="text-3xl font-black text-cyan-400">0 hrs</span>
+                            <span id="resPartPct" class="text-xs font-bold px-2 py-0.5 rounded bg-cyan-500/20 text-cyan-300">0%</span>
+                        </div>
+                        <div class="text-[10px] font-mono text-slate-400 mt-1" id="lblResPartSub">34°C ~ 41°C 預冷分擔負載，降低壓縮功</div>
+                    </div>
+
+                    <div class="glass-card p-4 rounded-2xl border-l-4 border-rose-400">
+                        <div class="text-xs font-mono font-bold text-slate-400 mb-1" id="lblResNoTitle">機械冷卻 (Mechanical Cooling)</div>
+                        <div class="flex items-baseline justify-between">
+                            <span id="resNoHours" class="text-3xl font-black text-rose-400">0 hrs</span>
+                            <span id="resNoPct" class="text-xs font-bold px-2 py-0.5 rounded bg-rose-500/20 text-rose-300">0%</span>
+                        </div>
+                        <div class="text-[10px] font-mono text-slate-400 mt-1" id="lblResNoSub">超過 41°C 全面啟動機械製冷</div>
+                    </div>
+                </div>
+
+                <!-- 4 Quick Stats Pills -->
+                <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                    <div class="glass-card p-3 rounded-xl">
+                        <span class="text-[10px] font-mono text-slate-400 block" data-i18n="lblStatDailyAvg">每日平均 Free Cooling</span>
+                        <span id="statDailyAvg" class="text-sm font-bold text-white">0.0 小時/天</span>
+                    </div>
+                    <div class="glass-card p-3 rounded-xl">
+                        <span class="text-[10px] font-mono text-slate-400 block" data-i18n="lblStatBestMonth">全年最高潛力月份</span>
+                        <span id="statBestMonth" class="text-sm font-bold text-emerald-400">-</span>
+                    </div>
+                    <div class="glass-card p-3 rounded-xl">
+                        <span class="text-[10px] font-mono text-slate-400 block" data-i18n="lblStatSummer">夏季冷卻時數 (6-8月)</span>
+                        <span id="statSummerHours" class="text-sm font-bold text-white">0 hrs</span>
+                    </div>
+                    <div class="glass-card p-3 rounded-xl">
+                        <span class="text-[10px] font-mono text-slate-400 block" data-i18n="lblStatWinter">冬季冷卻時數 (12-2月)</span>
+                        <span id="statWinterHours" class="text-sm font-bold text-cyan-400">0 hrs</span>
+                    </div>
+                </div>
+
+                <!-- Charts Section -->
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    <!-- Pie Chart -->
+                    <div class="glass-card p-5 rounded-2xl flex flex-col items-center justify-center">
+                        <h4 class="text-xs font-bold text-white mb-2 self-start" data-i18n="modalPieTitle">Free Cooling 時數佔比分佈</h4>
+                        <div class="w-full h-56 relative flex items-center justify-center">
+                            <canvas id="modalPieChart"></canvas>
+                        </div>
+                    </div>
+
+                    <!-- Monthly FC Stacked Bar -->
+                    <div class="glass-card p-5 rounded-2xl lg:col-span-2">
+                        <div class="flex items-center justify-between mb-2">
+                            <h4 class="text-xs font-bold text-white" data-i18n="modalMonthlyTitle">月度 Free Cooling 時數分佈 (1~12月)</h4>
+                            <span class="text-[10px] font-mono text-slate-400" data-i18n="modalMonthlyUnit">小時 / 月</span>
+                        </div>
+                        <div class="w-full h-56">
+                            <canvas id="modalMonthlyFcChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Temperature Hours Calculator & Bin Distribution Analyzer (Full Width Card) -->
+                <div class="glass-card p-6 rounded-2xl border border-amber-500/20 bg-amber-950/10 space-y-5">
+                    <!-- Header -->
+                    <div class="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-3">
+                        <div>
+                            <h4 class="text-sm font-bold text-white flex items-center gap-2">
+                                <span class="w-2.5 h-2.5 rounded-full bg-amber-400 shadow-[0_0_10px_#fbbf24]"></span>
+                                <span data-i18n="calcTitle">氣溫累計時數計算器 (Temperature Hours Calculator)</span>
+                            </h4>
+                            <p class="text-xs font-mono text-slate-400" data-i18n="calcSub">即時計算任意氣溫條件下所佔的年度時數、佔比與月度逐月分佈</p>
+                        </div>
+                        <!-- Variable Selector -->
+                        <div class="flex items-center gap-2 flex-wrap">
+                            <span class="text-xs font-bold text-slate-300" data-i18n="calcVarLabel">氣象指標：</span>
+                            <select id="calcVarSelect" onchange="onCalcInputChange()" class="glass-card px-3 py-1.5 rounded-lg text-xs font-bold text-amber-300 bg-slate-900 border-amber-500/30 outline-none cursor-pointer">
+                                <option value="db">乾球溫度 (Dry Bulb, °C)</option>
+                                <option value="wb">濕球溫度 (Wet Bulb, °C)</option>
+                                <option value="dp">露點溫度 (Dew Point, °C)</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- Quick Presets -->
+                    <div class="flex items-center gap-2 flex-wrap text-xs pt-1 border-t border-white/5">
+                        <span class="text-slate-400 font-mono text-[11px]" data-i18n="calcPresetLabel">常用快捷設定：</span>
+                        <button type="button" onclick="setCalcPreset('lte', 20)" class="px-2.5 py-1 rounded-lg bg-white/5 hover:bg-emerald-500/20 text-slate-300 hover:text-emerald-300 border border-white/10 transition-colors">❄️ 冰水節能 (≤ 20°C)</button>
+                        <button type="button" onclick="setCalcPreset('lte', 24)" class="px-2.5 py-1 rounded-lg bg-white/5 hover:bg-emerald-500/20 text-slate-300 hover:text-emerald-300 border border-white/10 transition-colors">🌿 自然通風 (≤ 24°C)</button>
+                        <button type="button" onclick="setCalcPreset('range', 18, 27)" class="px-2.5 py-1 rounded-lg bg-white/5 hover:bg-cyan-500/20 text-slate-300 hover:text-cyan-300 border border-white/10 transition-colors">🖥️ TC 9.9 推薦 (18~27°C)</button>
+                        <button type="button" onclick="setCalcPreset('gte', 30)" class="px-2.5 py-1 rounded-lg bg-white/5 hover:bg-amber-500/20 text-slate-300 hover:text-amber-300 border border-white/10 transition-colors">⚠️ 高溫負載 (≥ 30°C)</button>
+                        <button type="button" onclick="setCalcPreset('gte', 35)" class="px-2.5 py-1 rounded-lg bg-white/5 hover:bg-rose-500/20 text-slate-300 hover:text-rose-300 border border-white/10 transition-colors">🔥 極端高溫 (≥ 35°C)</button>
+                    </div>
+
+                    <!-- Condition Configuration Form -->
+                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 bg-slate-900/60 p-4 rounded-xl border border-white/5">
+                        <div>
+                            <label class="text-xs text-slate-400 block mb-1.5 font-bold" data-i18n="calcCondLabel">計算條件</label>
+                            <select id="calcConditionType" onchange="onCalcInputChange()" class="w-full glass-card px-3 py-2 rounded-lg text-xs font-bold text-white bg-slate-800 border-white/10 outline-none cursor-pointer">
+                                <option value="lte">小於等於 (≤ 門檻值)</option>
+                                <option value="gte">大於等於 (≥ 門檻值)</option>
+                                <option value="range">介於區間 (Min ~ Max)</option>
+                            </select>
+                        </div>
+
+                        <!-- Single Threshold Input (for lte / gte) -->
+                        <div id="calcSingleThresholdBox" class="sm:col-span-2 flex flex-col justify-center">
+                            <div class="flex justify-between items-center mb-1">
+                                <span class="text-xs font-mono text-slate-400" id="calcThresholdLabel">溫度門檻 (°C)</span>
+                                <span class="text-sm font-black font-mono text-amber-400" id="calcThresholdVal">24.0 °C</span>
+                            </div>
+                            <div class="flex items-center gap-3">
+                                <input type="range" id="calcThresholdSlider" min="-20" max="50" step="0.5" value="24" oninput="onCalcSliderChange()" class="w-full accent-amber-400 cursor-pointer">
+                                <input type="number" id="calcThresholdInput" step="0.1" value="24.0" oninput="onCalcNumberChange()" class="w-20 px-2 py-1 glass-card rounded bg-slate-800 text-xs font-mono font-bold text-white text-right border border-white/10">
+                            </div>
+                        </div>
+
+                        <!-- Range Threshold Inputs (for range) -->
+                        <div id="calcRangeThresholdBox" class="sm:col-span-2 hidden grid grid-cols-2 gap-3">
+                            <div>
+                                <div class="flex justify-between items-center mb-1">
+                                    <span class="text-xs font-mono text-slate-400">下限 Min (°C)</span>
+                                    <span class="text-xs font-black font-mono text-cyan-400" id="calcRangeMinVal">18.0 °C</span>
+                                </div>
+                                <input type="number" id="calcRangeMinInput" step="0.5" value="18.0" oninput="onCalcRangeChange()" class="w-full px-2 py-1.5 glass-card rounded bg-slate-800 text-xs font-mono font-bold text-white text-right border border-white/10">
+                            </div>
+                            <div>
+                                <div class="flex justify-between items-center mb-1">
+                                    <span class="text-xs font-mono text-slate-400">上限 Max (°C)</span>
+                                    <span class="text-xs font-black font-mono text-rose-400" id="calcRangeMaxVal">27.0 °C</span>
+                                </div>
+                                <input type="number" id="calcRangeMaxInput" step="0.5" value="27.0" oninput="onCalcRangeChange()" class="w-full px-2 py-1.5 glass-card rounded bg-slate-800 text-xs font-mono font-bold text-white text-right border border-white/10">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Calculation Results Overview -->
+                    <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                        <div class="glass-card p-3.5 rounded-xl border-l-4 border-amber-400 bg-slate-900/40">
+                            <span class="text-[10px] font-mono text-slate-400 block" data-i18n="calcResHours">符合時數</span>
+                            <div class="flex items-baseline gap-1 mt-0.5">
+                                <span id="calcResHours" class="text-2xl font-black text-amber-400">0</span>
+                                <span class="text-xs font-mono text-slate-400">hrs</span>
+                            </div>
+                            <div class="text-[10px] font-mono text-slate-400 mt-1" id="calcResDays">約 0 天</div>
+                        </div>
+                        <div class="glass-card p-3.5 rounded-xl border-l-4 border-cyan-400 bg-slate-900/40">
+                            <span class="text-[10px] font-mono text-slate-400 block" data-i18n="calcResPct">全年時數佔比</span>
+                            <div class="flex items-baseline gap-1 mt-0.5">
+                                <span id="calcResPct" class="text-2xl font-black text-cyan-400">0.0%</span>
+                            </div>
+                            <div class="text-[10px] font-mono text-slate-400 mt-1" id="calcResOppPct">未符合: 100.0%</div>
+                        </div>
+                        <div class="glass-card p-3.5 rounded-xl border-l-4 border-emerald-400 bg-slate-900/40">
+                            <span class="text-[10px] font-mono text-slate-400 block" data-i18n="calcResPeakMonth">最高分佈月份</span>
+                            <div class="flex items-baseline gap-1 mt-0.5">
+                                <span id="calcResPeakMonth" class="text-lg font-black text-emerald-400">-</span>
+                            </div>
+                            <div class="text-[10px] font-mono text-slate-400 mt-1" id="calcResPeakHours">0 hrs</div>
+                        </div>
+                        <div class="glass-card p-3.5 rounded-xl border-l-4 border-indigo-400 bg-slate-900/40">
+                            <span class="text-[10px] font-mono text-slate-400 block" data-i18n="calcResDailyAvg">日平均時數</span>
+                            <div class="flex items-baseline gap-1 mt-0.5">
+                                <span id="calcResDailyAvg" class="text-2xl font-black text-indigo-300">0.0</span>
+                                <span class="text-xs font-mono text-slate-400">h/day</span>
+                            </div>
+                            <div class="text-[10px] font-mono text-slate-400 mt-1" id="calcResSummaryDesc">依據全站 8,760 小時計算</div>
+                        </div>
+                    </div>
+
+                    <!-- Monthly Breakdown Mini Bar Visualizer -->
+                    <div class="bg-slate-900/60 p-4 rounded-xl border border-white/5 space-y-2">
+                        <div class="flex justify-between items-center text-xs">
+                            <span class="font-bold text-white flex items-center gap-1.5">
+                                <svg class="w-3.5 h-3.5 text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
+                                <span data-i18n="calcMonthlyTitle">1~12 月月度時數逐月分佈明細</span>
+                            </span>
+                            <span class="font-mono text-[10px] text-slate-400" id="calcMonthlySub">每月時數與佔該月比例</span>
+                        </div>
+                        <div id="calcMonthlyBarsContainer" class="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-12 gap-1.5 pt-1">
+                            <!-- Injected by JS: 12 mini month cards with progress bars -->
+                        </div>
+                    </div>
+
+                    <!-- Detailed Bin Table Collapse / Expand -->
+                    <div class="pt-1">
+                        <div class="flex items-center justify-between">
+                            <button type="button" onclick="toggleCalcBinTable()" class="text-xs font-bold text-cyan-300 hover:text-cyan-200 flex items-center gap-1.5 transition-colors">
+                                <span id="calcBinTableToggleIcon">▶</span>
+                                <span data-i18n="calcBinTableBtn">展開檢視完整溫度階梯 (Bin 1°C) 時數累計分佈表</span>
+                            </button>
+                            <button type="button" onclick="exportCalcBinCSV()" class="glass-card px-2.5 py-1 rounded-lg text-[11px] font-bold text-slate-300 hover:text-white border border-white/10 flex items-center gap-1 transition-colors whitespace-nowrap">
+                                <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
+                                <span data-i18n="exportBinCSV">匯出 Bin CSV</span>
+                            </button>
+                        </div>
+                        <div id="calcBinTableWrapper" class="hidden mt-3 overflow-x-auto max-h-72 overflow-y-auto border border-white/10 rounded-xl">
+                            <table class="w-full text-xs text-center border-collapse">
+                                <thead class="sticky top-0 bg-slate-900 text-slate-400 font-mono">
+                                    <tr class="border-b border-white/10">
+                                        <th class="p-2 border-r border-white/10">溫度區間 (°C)</th>
+                                        <th class="p-2 border-r border-white/10">該區間時數 (hrs)</th>
+                                        <th class="p-2 border-r border-white/10">區間佔比 (%)</th>
+                                        <th class="p-2 border-r border-white/10 text-cyan-400">累計 ≤ 該溫度 (hrs)</th>
+                                        <th class="p-2 border-r border-white/10 text-cyan-400">累計 ≤ 佔比 (%)</th>
+                                        <th class="p-2 border-r border-white/10 text-rose-400">累計 > 該溫度 (hrs)</th>
+                                        <th class="p-2 text-rose-400">累計 > 佔比 (%)</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="calcBinTableBody" class="font-mono text-slate-300 divide-y divide-white/5">
+                                    <!-- Dynamic Bin Rows -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Climate Visualizations Grid (2 Columns: Bin Histogram & 8760 Hourly Profile) -->
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    <!-- Temperature Bin Distribution Chart -->
+                    <div class="glass-card p-5 rounded-2xl">
+                        <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 mb-3">
+                            <div>
+                                <h4 class="text-xs font-bold text-white" data-i18n="modalBinTitle">氣象溫度頻率直方圖 (Temperature Bin Distribution)</h4>
+                                <p class="text-[10px] font-mono text-slate-400" data-i18n="modalBinSub">全年 8,760 小時在各溫度區間的分佈時數</p>
+                            </div>
+                            <div class="flex items-center gap-2">
+                                <span class="text-xs text-slate-400" data-i18n="modalBinVarLabel">分析變數：</span>
+                                <select id="modalBinVarSelect" onchange="recalcModalBins()" class="glass-card px-2.5 py-1 rounded-lg text-xs font-bold text-white bg-slate-900 border-white/10 outline-none">
+                                    <option value="db">乾球溫度 (Dry Bulb, °C)</option>
+                                    <option value="wb">濕球溫度 (Wet Bulb, °C)</option>
+                                    <option value="dp">露點溫度 (Dew Point, °C)</option>
+                                    <option value="rh">相對濕度 (RH, %)</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="w-full h-64">
+                            <canvas id="modalBinChart"></canvas>
+                        </div>
+                    </div>
+
+                    <!-- 8760 Hourly Distribution Chart -->
+                    <div class="glass-card p-5 rounded-2xl">
+                        <div class="flex items-center justify-between mb-3">
+                            <div>
+                                <h4 class="text-xs font-bold text-white" data-i18n="modalHourlyTitle">全年 8,760 小時逐時溫度分佈</h4>
+                                <p class="text-[10px] font-mono text-slate-400" data-i18n="modalHourlySub">包含完全自然冷卻與無冷卻門檻參考線</p>
+                            </div>
+                            <span class="text-[10px] font-mono text-cyan-400" data-i18n="modalHourlyRange">1月1日 01:00 ~ 12月31日 24:00</span>
+                        </div>
+                        <div class="w-full h-64">
+                            <canvas id="modalHourlyChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Monthly Climate Trends & Detailed Data Table -->
+                <div class="glass-card p-5 rounded-2xl space-y-4">
+                    <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+                        <div>
+                            <h4 class="text-xs font-bold text-white" data-i18n="modalTableTitle">月度逐月氣候指標統計表</h4>
+                            <p class="text-[10px] font-mono text-slate-400" data-i18n="modalTableSub">包含乾濕球溫、露點、相對濕度、太陽輻射與 Free Cooling 時數</p>
+                        </div>
+                        <div class="flex items-center gap-2 flex-wrap">
+                            <button onclick="exportModalCSV()" class="glass-card px-3 py-1.5 rounded-lg text-xs font-bold text-cyan-300 hover:bg-cyan-500/20 border-cyan-500/30 flex items-center gap-1.5 transition-colors whitespace-nowrap">
+                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
+                                <span data-i18n="modalBtnExport">匯出 CSV</span>
+                            </button>
+                            <button onclick="copyModalTable()" class="glass-card px-3 py-1.5 rounded-lg text-xs font-bold text-slate-300 hover:text-white border-white/10 flex items-center gap-1.5 transition-colors whitespace-nowrap">
+                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg>
+                                <span data-i18n="modalBtnCopy">複製表格</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="w-full overflow-x-auto">
+                        <table class="w-full text-xs text-center border-collapse" id="modalDataTable">
+                            <thead>
+                                <tr class="bg-white/5 text-slate-400 font-mono font-bold">
+                                    <th class="p-2 border border-white/10" data-i18n="thMonth">月份</th>
+                                    <th class="p-2 border border-white/10" data-i18n="thAvgDB">平均乾球 (°C)</th>
+                                    <th class="p-2 border border-white/10" data-i18n="thMaxDB">最高乾球 (°C)</th>
+                                    <th class="p-2 border border-white/10" data-i18n="thMinDB">最低乾球 (°C)</th>
+                                    <th class="p-2 border border-white/10" data-i18n="thAvgWB">平均濕球 (°C)</th>
+                                    <th class="p-2 border border-white/10" data-i18n="thAvgDP">平均露點 (°C)</th>
+                                    <th class="p-2 border border-white/10" data-i18n="thAvgRH">平均濕度 (%)</th>
+                                    <th class="p-2 border border-white/10" data-i18n="thRad">太陽法向輻射 (Wh/m²)</th>
+                                    <th class="p-2 border border-white/10 text-emerald-400" data-i18n="thFC">Free Cooling (hrs)</th>
+                                </tr>
+                            </thead>
+                            <tbody id="modalDataTableBody" class="font-mono text-slate-300 divide-y divide-white/5">
+                                <!-- Populated dynamically -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Engineering & Architecture Recommendation -->
+                <div class="glass-card p-5 rounded-2xl bg-gradient-to-r from-blue-950/20 to-indigo-950/20 border border-blue-500/20">
+                    <h4 class="text-sm font-bold text-white mb-2 flex items-center gap-2">
+                        <svg class="w-4 h-4 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z"></path></svg>
+                        <span data-i18n="modalRecoTitle">數據中心散熱架構與 ASHRAE 設計建議</span>
+                    </h4>
+                    <div id="modalRecoContent" class="text-xs font-mono text-slate-300 leading-relaxed">
+                        <!-- Recommendation populated dynamically -->
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- Modal Footer -->
+            <div class="px-6 py-3 border-t border-white/10 bg-slate-900/40 flex items-center justify-between text-xs font-mono text-slate-400">
+                <span data-i18n="modalFooterBasis">計算依據：EPW 逐時模擬與 ASHRAE 90.1 規範</span>
+                <button onclick="closeEpwModal()" class="px-4 py-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-white font-bold transition-colors" data-i18n="modalBtnClose">關閉視窗</button>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- ========================================================================= -->
+    <!-- ENGINEERING GUIDE MODAL (工程指南視窗) -->
+    <!-- ========================================================================= -->
+    <div id="guideModal" class="fixed inset-0 z-50 hidden flex items-center justify-center p-4 sm:p-8 bg-slate-950/80 backdrop-blur-xl opacity-0 transition-opacity duration-300">
+        <div class="relative w-full max-w-3xl max-h-[90vh] flex flex-col glass-panel rounded-[2rem] border border-white/20 shadow-2xl overflow-hidden modal-container">
+            <div class="px-6 py-4 border-b border-white/10 flex items-center justify-between">
+                <h3 class="heading text-xl font-bold text-white" data-i18n="guideModalTitle">平台工程指南與氣象資料庫使用說明</h3>
+                <button onclick="closeGuideModal()" class="text-slate-400 hover:text-white">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                </button>
+            </div>
+            <div id="guideModalBody" class="p-6 overflow-y-auto space-y-4 text-xs font-mono leading-relaxed text-slate-300">
+                <!-- Populated via applyLang / I18N -->
+            </div>
+            <div class="px-6 py-3 border-t border-white/10 bg-slate-900/40 text-right">
+                <button onclick="closeGuideModal()" class="px-4 py-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-white font-bold transition-colors" data-i18n="guideModalClose">關閉</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ========================================================================= -->
+    <!-- APPLICATION JAVASCRIPT LOGIC -->
+    <!-- ========================================================================= -->
+    <script>
+        // --- 1. Global State ---
+        let stations = [];
+        let selectedStation = null;
+        let myGlobe = null;
+        let currentSort = { key: 'freeCooling', dir: -1 };
+        let currentLang = 'zh';
+        let currentTheme = 'dark';
+
+        // Modal Chart Instances
+        let chartPie = null;
+        let chartMonthlyFc = null;
+        let chartBin = null;
+        let chartHourly = null;
+
+        // --- Bilingual I18N Dictionary ---
+        const I18N = {
+            zh: {
+                navSubtitle: "GLOBAL AI DATA CENTER FREE-COOLING & EPW ANALYZER",
+                allCountries: "🌐 全部國家 / 區域",
+                searchPlaceholder: "搜尋城市、測站、WMO...",
+                importBtn: "📂 匯入 EPW 檔案",
+                stationCountSuffix: "測站已載入 (EPW 逐時數據)",
+                globeTitle: "全球氣候拓撲 3D 視角",
+                globeSub: "點擊節點聚焦並載入氣象深度解析",
+                legendTropical: "熱帶 / 濕球高溫區",
+                legendSubtropical: "亞熱帶 / 混合過渡區",
+                legendHighFC: "高 Free Cooling 潛力區",
+                loadingStation: "載入測站資料中...",
+                tableTitle: "EPW 測站氣象數據庫",
+                tableSubtitle: "即時計算各測站 8,760 小時氣候參數與 Free Cooling 統計",
+                tableTip: "點擊列表列可立即切換視角與調用深度分析",
+                colCity: "地區 / 測站",
+                colCountry: "國家",
+                colAvgDB: "年均乾球",
+                colExtWB: "最高乾/濕球",
+                colFC: "Free Cooling (hrs)",
+                colPUE: "預估 PUE",
+                colAction: "深度分析操作",
+                btnDeepDive: "📊 深度解析",
+                noMatchingStations: "未找到符合條件之氣象測站",
+                dropText: "拖曳新的 <span class=\"text-cyan-400\">.epw</span> 檔案至此，或點擊選取檔案",
+                dropSub: "（系統將自動解析座標並釘選至 3D 地球）",
+                modalCtrlTitle: "Free Cooling 控制邏輯與溫度門檻設定",
+                modalCtrlSub: "依據空調系統形式（水側節能 / 風側節能）即時調整閥值",
+                modalCtrlModeLabel: "控制模式：",
+                modalSchedLabel: "運轉時段：",
+                modalOptDB: "乾球溫 (DB) - 風側節能器 (Air Economizer)",
+                modalOptWB: "濕球溫 (WB) - 水側冷卻水塔節能 (Water Economizer)",
+                modalOptComb: "溫濕度綜合限制 (DB & RH Enthalpy)",
+                modalOpt247: "全年連續 (24/7, 8,760 hrs)",
+                modalOptDay: "僅日間時段 (08:00 - 20:00)",
+                lblStatDailyAvg: "每日平均 Free Cooling",
+                lblStatBestMonth: "全年最高潛力月份",
+                lblStatSummer: "夏季冷卻時數 (6-8月)",
+                lblStatWinter: "冬季冷卻時數 (12-2月)",
+                modalPieTitle: "Free Cooling 時數佔比分佈",
+                modalMonthlyTitle: "月度 Free Cooling 時數分佈 (1~12月)",
+                modalMonthlyUnit: "小時 / 月",
+                modalBinTitle: "氣象溫度頻率直方圖 (Temperature Bin Distribution)",
+                modalBinSub: "全年 8,760 小時在各溫度區間的分佈時數",
+                modalBinVarLabel: "分析變數：",
+                modalBinOptDB: "乾球溫度 (Dry Bulb, °C)",
+                modalBinOptWB: "濕球溫度 (Wet Bulb, °C)",
+                modalBinOptDP: "露點溫度 (Dew Point, °C)",
+                modalBinOptRH: "相對濕度 (RH, %)",
+                modalHourlyTitle: "全年 8,760 小時逐時溫度分佈",
+                modalHourlySub: "包含完全自然冷卻與無冷卻門檻參考線",
+                modalHourlyRange: "1月1日 01:00 ~ 12月31日 24:00",
+                modalTableTitle: "月度逐月氣候指標統計表",
+                modalTableSub: "包含乾濕球溫、露點、相對濕度、太陽輻射與 Free Cooling 時數",
+                modalBtnExport: "匯出 CSV",
+                modalBtnCopy: "複製表格",
+                thMonth: "月份",
+                thAvgDB: "平均乾球 (°C)",
+                thMaxDB: "最高乾球 (°C)",
+                thMinDB: "最低乾球 (°C)",
+                thAvgWB: "平均濕球 (°C)",
+                thAvgDP: "平均露點 (°C)",
+                thAvgRH: "平均濕度 (%)",
+                thRad: "太陽法向輻射 (Wh/m²)",
+                thFC: "Free Cooling (hrs)",
+                calcTitle: "氣溫累計時數計算器 (Temperature Hours Calculator)",
+                calcSub: "即時計算任意氣溫條件下所佔的年度時數、佔比與月度逐月分佈",
+                calcVarLabel: "氣象指標：",
+                calcPresetLabel: "常用快捷設定：",
+                calcCondLabel: "計算條件",
+                calcResHours: "符合時數",
+                calcResPct: "全年時數佔比",
+                calcResPeakMonth: "最高分佈月份",
+                calcResDailyAvg: "日平均時數",
+                calcMonthlyTitle: "1~12 月月度時數逐月分佈明細",
+                calcBinTableBtn: "展開檢視完整溫度階梯 (Bin 1°C) 時數累計分佈表",
+                exportBinCSV: "匯出 Bin CSV",
+                modalRecoTitle: "數據中心散熱架構與 ASHRAE 設計建議",
+                modalFooterBasis: "計算依據：EPW 逐時模擬與 ASHRAE 90.1 規範",
+                modalBtnClose: "關閉視窗",
+                guideModalTitle: "平台工程指南與氣象資料庫使用說明",
+                guideModalClose: "關閉",
+                months: ['1月', '2月', '3月', '4月', '5月', '6月', '7月', '8月', '9月', '10月', '11月', '12月'],
+                pieLabels: ['自然冷卻', '部分冷卻', '機械冷卻'],
+                chartBarLabels: ['自然冷卻 (Free)', '部分冷卻 (Partial)', '機械冷卻 (Mechanical)'],
+                guideModalContent: `
+                    <div class="p-4 rounded-xl bg-cyan-500/10 border border-cyan-500/30 text-cyan-200">
+                        <strong class="text-white text-sm block mb-1">一、氣象資料來源與格式</strong>
+                        本系統支援 EnergyPlus 國際標準 EPW（EnergyPlus Weather Format）氣象檔案。內建資料庫由 Climate.OneBuilding.org 最新釋出之 TMYx（典型氣象年）逐時觀測數據編譯而成，包含完整年度 8,760 小時氣候數據。
+                    </div>
+                    <div>
+                        <strong class="text-white text-sm block mb-1">二、新增其他國家/城市氣象檔之兩種方式：</strong>
+                        <ol class="list-decimal list-inside space-y-2 text-slate-400">
+                            <li><strong class="text-white">即時動態拖曳（免重啟）</strong>：至 Climate.OneBuilding 下載任意城市的 TMYx 壓縮檔，解壓取得 <code class="text-cyan-300">.epw</code> 檔，直接拖進網頁任意位置或點擊右上角「📂 匯入 EPW 檔案」，系統立即解析並釘選至 3D 地球。</li>
+                            <li><strong class="text-white">永久內建擴充</strong>：將解壓的檔案或目錄放入 <code class="text-cyan-300">ZIP檔/</code> 目錄中，在終端機執行 <code class="text-cyan-300">node build_weather_data.js</code>，系統將自動重新打包輸出最新的 <code class="text-cyan-300">weather_data.js</code>。</li>
+                        </ol>
+                    </div>
+                    <div>
+                        <strong class="text-white text-sm block mb-1">三、Free Cooling 計算與空調架構對應：</strong>
+                        <ul class="list-disc list-inside space-y-1 text-slate-400">
+                            <li><strong class="text-white">乾球溫模式 (DB)</strong>：適用於風側節能器 (Air Economizer) 與乾冷器 (Dry Cooler)。</li>
+                            <li><strong class="text-white">濕球溫模式 (WB)</strong>：適用於冷卻水塔搭配板式熱交換器之水側節能器 (Water Economizer)。</li>
+                            <li><strong class="text-white">完全自然冷卻</strong>：外氣溫度滿足設計進水/進風溫度，主機壓縮機可 100% 關閉。</li>
+                            <li><strong class="text-white">部分自然冷卻</strong>：外氣低於回水/回風溫度，可先對系統進行預冷，大幅降低冰機壓比與電耗。</li>
+                        </ul>
+                    </div>
+                `
+            },
+            en: {
+                navSubtitle: "GLOBAL AI DATA CENTER FREE-COOLING & EPW ANALYZER",
+                allCountries: "🌐 All Countries / Regions",
+                searchPlaceholder: "Search city, station, WMO...",
+                importBtn: "📂 Import EPW File",
+                stationCountSuffix: "Stations Loaded (EPW Hourly)",
+                globeTitle: "Global Climate 3D Topology",
+                globeSub: "Click a node to focus and load in-depth weather analysis",
+                legendTropical: "Tropical / High WB Zone",
+                legendSubtropical: "Subtropical / Transition Zone",
+                legendHighFC: "High Free Cooling Potential",
+                loadingStation: "Loading station data...",
+                tableTitle: "EPW Weather Station Database",
+                tableSubtitle: "Real-time calculation of 8,760-hour climate parameters and Free Cooling stats",
+                tableTip: "Click any row to switch 3D perspective and open deep dive",
+                colCity: "City / Station",
+                colCountry: "Country",
+                colAvgDB: "Annual Avg DB",
+                colExtWB: "Max DB / WB",
+                colFC: "Free Cooling (hrs)",
+                colPUE: "Est. PUE",
+                colAction: "Analysis Actions",
+                btnDeepDive: "📊 Deep Dive",
+                noMatchingStations: "No matching weather stations found",
+                dropText: "Drag new <span class=\"text-cyan-400\">.epw</span> file here, or click to select",
+                dropSub: "(Auto-parses coordinates and pins to 3D Globe)",
+                modalCtrlTitle: "Free Cooling Control Logic & Temperature Thresholds",
+                modalCtrlSub: "Real-time threshold adjustment based on cooling architecture (Water/Air Economizer)",
+                modalCtrlModeLabel: "Control Mode:",
+                modalSchedLabel: "Schedule:",
+                modalOptDB: "Dry Bulb (DB) - Air Economizer",
+                modalOptWB: "Wet Bulb (WB) - Water-side Economizer",
+                modalOptComb: "Combined Limits (DB & RH Enthalpy)",
+                modalOpt247: "Continuous 24/7 (8,760 hrs)",
+                modalOptDay: "Daytime Only (08:00 - 20:00)",
+                lblStatDailyAvg: "Daily Avg Free Cooling",
+                lblStatBestMonth: "Peak Potential Month",
+                lblStatSummer: "Summer FC Hours (Jun-Aug)",
+                lblStatWinter: "Winter FC Hours (Dec-Feb)",
+                modalPieTitle: "Free Cooling Hours Share",
+                modalMonthlyTitle: "Monthly Free Cooling Hours Distribution (Jan-Dec)",
+                modalMonthlyUnit: "Hours / Month",
+                modalBinTitle: "Temperature Bin Distribution Histogram",
+                modalBinSub: "Annual 8,760-hour frequency distribution across temperature bins",
+                modalBinVarLabel: "Variable:",
+                modalBinOptDB: "Dry Bulb (DB, °C)",
+                modalBinOptWB: "Wet Bulb (WB, °C)",
+                modalBinOptDP: "Dew Point (DP, °C)",
+                modalBinOptRH: "Relative Humidity (RH, %)",
+                modalHourlyTitle: "Annual 8,760-Hour Temperature Profile",
+                modalHourlySub: "Including Free Cooling & Mechanical Cooling Threshold References",
+                modalHourlyRange: "Jan 1 01:00 ~ Dec 31 24:00",
+                modalTableTitle: "Monthly Climate Metrics Summary Table",
+                modalTableSub: "Including Dry/Wet Bulb, Dew Point, RH, Solar Radiation & Free Cooling Hours",
+                modalBtnExport: "Export CSV",
+                modalBtnCopy: "Copy Table",
+                thMonth: "Month",
+                thAvgDB: "Mean DB (°C)",
+                thMaxDB: "Max DB (°C)",
+                thMinDB: "Min DB (°C)",
+                thAvgWB: "Mean WB (°C)",
+                thAvgDP: "Mean DP (°C)",
+                thAvgRH: "Mean RH (%)",
+                thRad: "Direct Normal Rad (Wh/m²)",
+                thFC: "Free Cooling (hrs)",
+                calcTitle: "Temperature Hours Calculator",
+                calcSub: "Real-time calculation of annual hours, percentage & monthly distribution under any temperature condition",
+                calcVarLabel: "Variable:",
+                calcPresetLabel: "Quick Presets:",
+                calcCondLabel: "Condition",
+                calcResHours: "Matching Hours",
+                calcResPct: "Annual Share",
+                calcResPeakMonth: "Peak Month",
+                calcResDailyAvg: "Daily Average",
+                calcMonthlyTitle: "Monthly Hours Distribution (Jan-Dec)",
+                calcBinTableBtn: "Expand Full Temperature Bin (1°C Step) Cumulative Table",
+                exportBinCSV: "Export Bin CSV",
+                modalRecoTitle: "Data Center Cooling Architecture & ASHRAE Guidelines",
+                modalFooterBasis: "Simulation Basis: EPW 8,760-hr runtime & ASHRAE 90.1 standard",
+                modalBtnClose: "Close Window",
+                guideModalTitle: "Platform Engineering Guide & Weather Database Instructions",
+                guideModalClose: "Close",
+                months: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'],
+                pieLabels: ['Free Cooling', 'Partial Cooling', 'Mechanical Cooling'],
+                chartBarLabels: ['Free Cooling', 'Partial Cooling', 'Mechanical Cooling'],
+                guideModalContent: `
+                    <div class="p-4 rounded-xl bg-cyan-500/10 border border-cyan-500/30 text-cyan-200">
+                        <strong class="text-white text-sm block mb-1">I. Weather Data Source & Format</strong>
+                        The platform natively supports the international EnergyPlus Weather format (EPW). The embedded database is compiled from the latest TMYx (Typical Meteorological Year) hourly datasets released by Climate.OneBuilding.org, encompassing complete 8,760 annual hours per station.
+                    </div>
+                    <div>
+                        <strong class="text-white text-sm block mb-1">II. Two Ways to Expand Weather Stations:</strong>
+                        <ol class="list-decimal list-inside space-y-2 text-slate-400">
+                            <li><strong class="text-white">Instant Drag & Drop (Zero Restart)</strong>: Download any city's TMYx archive from Climate.OneBuilding, extract the <code class="text-cyan-300">.epw</code> file, and drag it anywhere onto the page or click "📂 Import EPW File". The system instantly parses coordinates and pins it to the 3D globe.</li>
+                            <li><strong class="text-white">Permanent Built-in Compilation</strong>: Place extracted files/directories into the <code class="text-cyan-300">ZIP檔/</code> folder and run <code class="text-cyan-300">node build_weather_data.js</code> in terminal. The system automatically re-packages into the master <code class="text-cyan-300">weather_data.js</code>.</li>
+                        </ol>
+                    </div>
+                    <div>
+                        <strong class="text-white text-sm block mb-1">III. Free Cooling Calculation & HVAC Architecture Mapping:</strong>
+                        <ul class="list-disc list-inside space-y-1 text-slate-400">
+                            <li><strong class="text-white">Dry Bulb Mode (DB)</strong>: Best suited for Air Economizers, Indirect Evaporative Cooling (IEC), and Dry Coolers.</li>
+                            <li><strong class="text-white">Wet Bulb Mode (WB)</strong>: Best suited for Cooling Tower plate heat exchanger bypass systems (Water Economizer).</li>
+                            <li><strong class="text-white">Full Free Cooling (100%)</strong>: Ambient temperature meets design supply water/air requirements; chillers and compressors can be completely shut off.</li>
+                            <li><strong class="text-white">Partial Free Cooling</strong>: Ambient conditions allow pre-cooling return water/air, dramatically reducing chiller compression ratio and kWh consumption.</li>
+                        </ul>
+                    </div>
+                `
+            }
+        };
+
+        function applyLang(lang) {
+            currentLang = lang || currentLang;
+            const dict = I18N[currentLang];
+            if (!dict) return;
+
+            localStorage.setItem('weather_lang', currentLang);
+
+            // 1. Static data-i18n elements
+            document.querySelectorAll('[data-i18n]').forEach(el => {
+                const key = el.getAttribute('data-i18n');
+                if (dict[key]) {
+                    el.innerHTML = dict[key];
+                }
+            });
+
+            // 2. Static data-i18n-placeholder elements
+            document.querySelectorAll('[data-i18n-placeholder]').forEach(el => {
+                const key = el.getAttribute('data-i18n-placeholder');
+                if (dict[key]) {
+                    el.placeholder = dict[key];
+                }
+            });
+
+            // 3. Update select options in modal
+            const selControl = document.getElementById('modalControlMode');
+            if (selControl && selControl.options.length >= 3) {
+                selControl.options[0].textContent = dict.modalOptDB;
+                selControl.options[1].textContent = dict.modalOptWB;
+                selControl.options[2].textContent = dict.modalOptComb;
+            }
+
+            const selSched = document.getElementById('modalScheduleMode');
+            if (selSched && selSched.options.length >= 2) {
+                selSched.options[0].textContent = dict.modalOpt247;
+                selSched.options[1].textContent = dict.modalOptDay;
+            }
+
+            const selBinVar = document.getElementById('modalBinVarSelect');
+            if (selBinVar && selBinVar.options.length >= 4) {
+                selBinVar.options[0].textContent = dict.modalBinOptDB;
+                selBinVar.options[1].textContent = dict.modalBinOptWB;
+                selBinVar.options[2].textContent = dict.modalBinOptDP;
+                selBinVar.options[3].textContent = dict.modalBinOptRH;
+            }
+
+            const selCalcVar = document.getElementById('calcVarSelect');
+            if (selCalcVar && selCalcVar.options.length >= 3) {
+                selCalcVar.options[0].textContent = currentLang === 'zh' ? '乾球溫度 (Dry Bulb, °C)' : 'Dry Bulb (DB, °C)';
+                selCalcVar.options[1].textContent = currentLang === 'zh' ? '濕球溫度 (Wet Bulb, °C)' : 'Wet Bulb (WB, °C)';
+                selCalcVar.options[2].textContent = currentLang === 'zh' ? '露點溫度 (Dew Point, °C)' : 'Dew Point (DP, °C)';
+            }
+
+            const selCalcCond = document.getElementById('calcConditionType');
+            if (selCalcCond && selCalcCond.options.length >= 3) {
+                selCalcCond.options[0].textContent = currentLang === 'zh' ? '小於等於 (≤ 門檻值)' : 'Less than or equal (≤ Threshold)';
+                selCalcCond.options[1].textContent = currentLang === 'zh' ? '大於等於 (≥ 門檻值)' : 'Greater than or equal (≥ Threshold)';
+                selCalcCond.options[2].textContent = currentLang === 'zh' ? '介於區間 (Min ~ Max)' : 'Range between (Min ~ Max)';
+            }
+
+            // 4. Update country filter
+            populateCountryFilter();
+
+            // 5. Update station count badge
+            const badge = document.getElementById('stationCountBadge');
+            if (badge) {
+                badge.textContent = `${stations.length} ${dict.stationCountSuffix}`;
+            }
+
+            // 6. Update guide modal content
+            const guideBody = document.getElementById('guideModalBody');
+            if (guideBody) {
+                guideBody.innerHTML = dict.guideModalContent;
+            }
+
+            // 7. Update Lang Toggle button label
+            const langLabel = document.getElementById('langLabel');
+            if (langLabel) {
+                langLabel.textContent = currentLang === 'zh' ? 'ZH / EN' : 'EN / ZH';
+            }
+
+            // 8. Re-render dynamic components
+            updateTopKPIs();
+            if (selectedStation) {
+                updateDetailPanel(selectedStation);
+            }
+            renderTable();
+            if (myGlobe) {
+                myGlobe.htmlElementsData(getFilteredStations());
+            }
+
+            // 9. If Deep Dive modal is open, re-render its dynamic parts
+            const modal = document.getElementById('epwModal');
+            if (modal && !modal.classList.contains('hidden') && currentModalStation) {
+                onModalControlModeChange();
+            }
+        }
+
+        // --- 2. Stull Wet Bulb Approximation ---
+        function calculateWetBulb(t, rh) {
+            if (rh < 0) rh = 0;
+            if (rh > 100) rh = 100;
+            const rhVal = rh;
+            const wb = t * Math.atan(0.151977 * Math.pow(rhVal + 8.313659, 0.5))
+                     + Math.atan(t + rhVal)
+                     - Math.atan(rhVal - 1.676331)
+                     + 0.00391838 * Math.pow(rhVal, 1.5) * Math.atan(0.023101 * rhVal)
+                     - 4.686035;
+            return parseFloat(wb.toFixed(1));
+        }
+
+        // --- 3. Client-side EPW Parser for Drag & Drop ---
+        function parseEPWString(text, filename) {
+            const lines = text.split(/\r?\n/);
+            if (lines.length < 10 || !lines[0].startsWith('LOCATION')) {
+                throw new Error("不是有效的 EnergyPlus EPW 檔案格式");
+            }
+
+            const locCols = lines[0].split(',');
+            const city = (locCols[1] || 'Unknown Station').trim();
+            const state = (locCols[2] || '').trim();
+            const countryCode = (locCols[3] || '').trim().toUpperCase();
+            const wmo = (locCols[5] || '').trim();
+            const lat = parseFloat(locCols[6]) || 0;
+            const lon = parseFloat(locCols[7]) || 0;
+            const tz = parseFloat(locCols[8]) || 0;
+            const elev = parseFloat(locCols[9]) || 0;
+
+            const COUNTRY_FLAGS = {
+                "TWN": "🇹🇼", "THA": "🇹🇭", "PHL": "🇵🇭", "USA": "🇺🇸", "JPN": "🇯🇵",
+                "SGP": "🇸🇬", "MYS": "🇲🇾", "KOR": "🇰🇷", "CHN": "🇨🇳", "IDN": "🇮🇩",
+                "IND": "🇮🇳", "ARE": "🇦🇪", "SAU": "🇸🇦", "HKG": "🇭🇰", "VNM": "🇻🇳",
+                "PAK": "🇵🇰", "BGD": "🇧🇩", "LKA": "🇱🇰", "KHM": "🇰🇭", "KAZ": "🇰🇿",
+                "UZB": "🇺🇿", "AZE": "🇦🇿", "GEO": "🇬🇪", "GBR": "🇬🇧", "DEU": "🇩🇪",
+                "FRA": "🇫🇷", "NLD": "🇳🇱", "IRL": "🇮🇪", "SWE": "🇸🇪", "FIN": "🇫🇮",
+                "AUS": "🇦🇺"
+            };
+
+            const hourly = [];
+            for (let i = 8; i < lines.length; i++) {
+                const line = lines[i].trim();
+                if (!line) continue;
+                const cols = line.split(',');
+                if (cols.length >= 25 && !isNaN(cols[0]) && !isNaN(cols[1])) {
+                    const month = parseInt(cols[1], 10) - 1;
+                    const day = parseInt(cols[2], 10);
+                    const hour = parseInt(cols[3], 10);
+                    const db = parseFloat(cols[6]);
+                    const dp = parseFloat(cols[7]);
+                    const rh = parseFloat(cols[8]);
+                    const rad = parseFloat(cols[13]) || 0;
+
+                    if (!isNaN(db) && !isNaN(rh)) {
+                        hourly.push({
+                            m: month, d: day, h: hour,
+                            db: parseFloat(db.toFixed(1)),
+                            dp: parseFloat(dp.toFixed(1)),
+                            rh: Math.round(rh),
+                            wb: calculateWetBulb(db, rh),
+                            rad: Math.round(rad)
+                        });
+                    }
+                }
+            }
+
+            if (hourly.length === 0) throw new Error("未解析到逐時氣候資料");
+
+            const allDB = hourly.map(h => h.db);
+            const allWB = hourly.map(h => h.wb);
+            const allRH = hourly.map(h => h.rh);
+
+            const minDB = Math.min(...allDB);
+            const maxDB = Math.max(...allDB);
+            const avgDB = parseFloat((allDB.reduce((a, b) => a + b, 0) / allDB.length).toFixed(1));
+
+            const minWB = Math.min(...allWB);
+            const maxWB = Math.max(...allWB);
+            const avgWB = parseFloat((allWB.reduce((a, b) => a + b, 0) / allWB.length).toFixed(1));
+
+            const sortedDB = [...allDB].sort((a, b) => a - b);
+            const extDBIndex = Math.min(sortedDB.length - 1, Math.floor(sortedDB.length * 0.996));
+            const extDB = parseFloat(sortedDB[extDBIndex].toFixed(1));
+
+            const sortedWB = [...allWB].sort((a, b) => a - b);
+            const extWBIndex = Math.min(sortedWB.length - 1, Math.floor(sortedWB.length * 0.996));
+            const extWB = parseFloat(sortedWB[extWBIndex].toFixed(1));
+            const avgRH = Math.round(allRH.reduce((a, b) => a + b, 0) / allRH.length);
+            const fcHours = hourly.filter(h => h.db <= 34).length;
+
+            let cleanCity = city.replace(/_/g, ' ').replace(/\./g, ' ');
+            if (state && !cleanCity.includes(state)) cleanCity += `, ${state}`;
+
+            let zone = "3A";
+            if (avgDB > 24) zone = "1A";
+            else if (avgDB > 18) zone = "2A";
+            else if (minDB < -10) zone = "5A";
+            else if (minDB < 0) zone = "4A";
+
+            let estPue = extWB > 28 ? 1.38 : (extWB > 25 ? 1.28 : (extWB > 22 ? 1.22 : 1.15));
+
+            return {
+                id: (filename || city).replace('.epw', ''),
+                city: cleanCity,
+                stationName: locCols[1] || cleanCity,
+                country: countryCode,
+                flag: COUNTRY_FLAGS[countryCode] || "🌐",
+                continent: "Global",
+                wmo: wmo,
+                lat: lat,
+                lng: lon,
+                elev: elev,
+                tz: tz,
+                zone: zone,
+                minDB: minDB, maxDB: maxDB, avgDB: avgDB, extDB: extDB,
+                minWB: minWB, maxWB: maxWB, avgWB: avgWB, extWB: extWB,
+                avgRH: avgRH,
+                freeCooling: fcHours,
+                pue: parseFloat(estPue.toFixed(2)),
+                hourly: hourly
+            };
+        }
+
+        // --- 4. Initialization ---
+        window.addEventListener('DOMContentLoaded', () => {
+            if (window.BUILTIN_WEATHER_STATIONS && window.BUILTIN_WEATHER_STATIONS.length > 0) {
+                stations = [...window.BUILTIN_WEATHER_STATIONS];
+            }
+
+            currentLang = localStorage.getItem('weather_lang') || 'zh';
+
+            populateCountryFilter();
+            applyLang(currentLang);
+
+            if (stations.length > 0) {
+                updateDetailPanel(stations[0]);
+            }
+
+            initGlobe();
+            setupDragAndDrop();
+        });
+
+        function getStationCountry(s) {
+            if (!s) return '';
+            if (currentLang === 'zh') {
+                return s.countryZh || s.country;
+            }
+            return s.country;
+        }
+
+        function getStationCity(s) {
+            if (!s) return '';
+            if (currentLang === 'zh') {
+                return s.cityZh || s.city;
+            }
+            return s.city;
+        }
+
+        // --- 5. Populate Country Filter (Organized by Continents) ---
+        function populateCountryFilter() {
+            const select = document.getElementById('countryFilter');
+            if (!select) return;
+            const currentVal = select.value || 'ALL';
+            const isZh = currentLang === 'zh';
+            const dict = I18N[currentLang] || I18N.zh;
+
+            const continentConfig = [
+                { id: 'Asia', nameZh: '🌏 亞洲 (Asia)', nameEn: '🌏 Asia' },
+                { id: 'Europe', nameZh: '🌍 歐洲 (Europe)', nameEn: '🌍 Europe' },
+                { id: 'Americas', nameZh: '🌎 美洲 (Americas)', nameEn: '🌎 Americas' },
+                { id: 'Africa', nameZh: '🌍 非洲 (Africa)', nameEn: '🌍 Africa' },
+                { id: 'Oceania', nameZh: '🌏 大洋洲 (Oceania)', nameEn: '🌏 Oceania' }
+            ];
+
+            let html = `<option value="ALL">${isZh ? '🌐 全球所有地區 (全部 ' + stations.length + ' 站點)' : '🌐 All Global Stations (' + stations.length + ' Stations)'}</option>`;
+
+            continentConfig.forEach(cont => {
+                const contStations = stations.filter(s => s.continent === cont.id);
+                if (contStations.length === 0) return;
+
+                const contLabel = isZh ? cont.nameZh : cont.nameEn;
+                html += `<optgroup label="${contLabel} [${contStations.length} 站 / stations]">`;
+
+                // All Continent option
+                const contAllText = isZh ? `👉 全部${cont.nameZh.replace(/^[^\s]+\s*/, '')} (${contStations.length} 站點)` : `👉 All ${cont.nameEn.replace(/^[^\s]+\s*/, '')} (${contStations.length} stations)`;
+                html += `<option value="CONTINENT:${cont.id}">${contAllText}</option>`;
+
+                // Countries within this continent
+                const countries = [...new Set(contStations.map(s => s.country))].sort((a, b) => {
+                    const sA = contStations.find(s => s.country === a);
+                    const sB = contStations.find(s => s.country === b);
+                    return getStationCountry(sA).localeCompare(getStationCountry(sB));
+                });
+
+                countries.forEach(c => {
+                    const sample = contStations.find(s => s.country === c);
+                    const count = contStations.filter(s => s.country === c).length;
+                    const displayName = getStationCountry(sample);
+                    const countSuffix = count > 1 ? ` (${count} 站)` : '';
+                    html += `<option value="${c}">${sample?.flag || '🌐'} ${displayName}${countSuffix}</option>`;
+                });
+
+                html += `</optgroup>`;
+            });
+
+            select.innerHTML = html;
+
+            // Restore selection if valid
+            if (select.querySelector(`option[value="${currentVal}"]`)) {
+                select.value = currentVal;
+            } else {
+                select.value = 'ALL';
+            }
+
+            const badge = document.getElementById('stationCountBadge');
+            if (badge) {
+                badge.textContent = `${stations.length} ${dict.stationCountSuffix}`;
+            }
+        }
+
+        // --- 6. Update Top 4 KPIs: PUE預估 | 最高乾球 | 最高濕球 | 自然冷卻時數 ---
+        function updateTopKPIs(focusedStation = null) {
+            const country = document.getElementById('countryFilter')?.value || 'ALL';
+            const list = getFilteredStations();
+            const isZh = currentLang === 'zh';
+
+            // If a station is directly clicked or passed, prioritize displaying that station
+            const target = focusedStation || selectedStation;
+
+            if (target) {
+                const fcPct = ((target.freeCooling / 8760) * 100).toFixed(1);
+                const targetCountry = getStationCountry(target);
+                
+                // Card 1: PUE預估
+                const targetCity = getStationCity(target);
+                document.getElementById('kpiPueTitle').textContent = `${target.flag} ${targetCity} ${isZh ? 'PUE 預估' : 'PUE Estimate'}`;
+                document.getElementById('kpiPueSub').textContent = `${targetCountry} • ASHRAE Zone ${target.zone}`;
+                document.getElementById('kpiAvgPUE').textContent = target.pue.toFixed(2);
+
+                // Card 2: 最高乾球
+                document.getElementById('kpiMaxDbTitle').textContent = isZh ? '最高乾球 (Max DB)' : 'Max Dry Bulb (Max DB)';
+                document.getElementById('kpiMaxDB').innerHTML = `${target.maxDB} <span class="text-lg font-normal text-slate-400">°C</span>`;
+                document.getElementById('kpiMaxDbSub').textContent = isZh 
+                    ? `年均溫: ${target.avgDB}°C • 最低: ${target.minDB}°C` 
+                    : `Annual Avg: ${target.avgDB}°C • Min: ${target.minDB}°C`;
+
+                // Card 3: 最高濕球
+                document.getElementById('kpiMaxWbTitle').textContent = isZh ? '最高濕球 (Max WB)' : 'Max Wet Bulb (Max WB)';
+                document.getElementById('kpiMaxWB').innerHTML = `${target.extWB} <span class="text-lg font-normal text-slate-400">°C</span>`;
+                document.getElementById('kpiMaxWbSub').textContent = isZh 
+                    ? `年均濕球: ${target.avgWB}°C • 均濕: ${target.avgRH}%` 
+                    : `Annual Avg WB: ${target.avgWB}°C • Avg RH: ${target.avgRH}%`;
+
+                // Card 4: 自然冷卻時數
+                document.getElementById('kpiFcTitle').textContent = isZh ? '自然冷卻時數 (≤34°C)' : 'Free Cooling Hours (≤34°C)';
+                document.getElementById('kpiMaxFC').innerHTML = `${target.freeCooling.toLocaleString()} <span class="text-lg font-normal text-slate-400">hrs</span>`;
+                document.getElementById('kpiFcSub').textContent = isZh 
+                    ? `覆蓋率 ${fcPct}% (年總8,760小時)` 
+                    : `Coverage ${fcPct}% (8,760 Total Hours)`;
+                return;
+            }
+
+            if (list.length === 0) {
+                document.getElementById('kpiPueTitle').textContent = isZh ? 'PUE 預估' : 'PUE Estimate';
+                document.getElementById('kpiPueSub').textContent = isZh ? '無符合資料' : 'No matching data';
+                document.getElementById('kpiAvgPUE').textContent = '--';
+
+                document.getElementById('kpiMaxDbTitle').textContent = isZh ? '最高乾球' : 'Max Dry Bulb';
+                document.getElementById('kpiMaxDB').innerHTML = `-- <span class="text-lg font-normal text-slate-400">°C</span>`;
+                document.getElementById('kpiMaxDbSub').textContent = isZh ? '無資料' : 'No data';
+
+                document.getElementById('kpiMaxWbTitle').textContent = isZh ? '最高濕球' : 'Max Wet Bulb';
+                document.getElementById('kpiMaxWB').innerHTML = `-- <span class="text-lg font-normal text-slate-400">°C</span>`;
+                document.getElementById('kpiMaxWbSub').textContent = isZh ? '無資料' : 'No data';
+
+                document.getElementById('kpiFcTitle').textContent = isZh ? '自然冷卻時數' : 'Free Cooling Hours';
+                document.getElementById('kpiMaxFC').innerHTML = `-- <span class="text-lg font-normal text-slate-400">hrs</span>`;
+                document.getElementById('kpiFcSub').textContent = isZh ? '無資料' : 'No data';
+                return;
+            }
+
+            const flag = list[0].flag || '🌐';
+            const avgPUE = (list.reduce((acc, s) => acc + s.pue, 0) / list.length).toFixed(2);
+            
+            let countryDisplay = '';
+            if (country.startsWith('CONTINENT:')) {
+                const contKey = country.replace('CONTINENT:', '');
+                const contNamesZh = { 'Asia': '亞洲', 'Europe': '歐洲', 'Americas': '美洲', 'Africa': '非洲', 'Oceania': '大洋洲' };
+                countryDisplay = isZh ? (contNamesZh[contKey] || contKey) : contKey;
+            } else if (country !== 'ALL') {
+                countryDisplay = getStationCountry(list[0]);
+            }
+            
+            // Find max dry bulb station, max wet bulb station, and max FC station in current list
+            let maxDBStation = list[0];
+            let maxWBStation = list[0];
+            let maxFCStation = list[0];
+
+            list.forEach(s => {
+                if (s.maxDB > maxDBStation.maxDB) maxDBStation = s;
+                if (s.extWB > maxWBStation.extWB) maxWBStation = s;
+                if (s.freeCooling > maxFCStation.freeCooling) maxFCStation = s;
+            });
+
+            if (country !== 'ALL') {
+                // Continent or Country Filter Mode
+                document.getElementById('kpiPueTitle').textContent = `${flag} ${countryDisplay} ${isZh ? '平均 PUE' : 'Avg PUE'}`;
+                document.getElementById('kpiPueSub').textContent = isZh 
+                    ? `${countryDisplay} 區域綜合評估 (${list.length} 測站)` 
+                    : `${countryDisplay} Regional Assessment (${list.length} Stations)`;
+                document.getElementById('kpiAvgPUE').textContent = avgPUE;
+
+                document.getElementById('kpiMaxDbTitle').textContent = `${countryDisplay} ${isZh ? '最高乾球' : 'Max Dry Bulb'}`;
+                document.getElementById('kpiMaxDB').innerHTML = `${maxDBStation.maxDB} <span class="text-lg font-normal text-slate-400">°C</span>`;
+                document.getElementById('kpiMaxDbSub').textContent = `${maxDBStation.flag} ${getStationCity(maxDBStation)}`;
+
+                document.getElementById('kpiMaxWbTitle').textContent = `${countryDisplay} ${isZh ? '最高濕球' : 'Max Wet Bulb'}`;
+                document.getElementById('kpiMaxWB').innerHTML = `${maxWBStation.extWB} <span class="text-lg font-normal text-slate-400">°C</span>`;
+                document.getElementById('kpiMaxWbSub').textContent = `${maxWBStation.flag} ${getStationCity(maxWBStation)}`;
+
+                const fcPct = ((maxFCStation.freeCooling / 8760) * 100).toFixed(1);
+                document.getElementById('kpiFcTitle').textContent = `${countryDisplay} ${isZh ? '自然冷卻時數' : 'Free Cooling Hours'}`;
+                document.getElementById('kpiMaxFC').innerHTML = `${maxFCStation.freeCooling.toLocaleString()} <span class="text-lg font-normal text-slate-400">hrs</span>`;
+                document.getElementById('kpiFcSub').textContent = `${maxFCStation.flag} ${getStationCity(maxFCStation)} (${fcPct}%)`;
+            } else {
+                // Global Overview Mode
+                document.getElementById('kpiPueTitle').textContent = isZh ? 'PUE 預估 (整體平均)' : 'PUE Estimate (Overall Avg)';
+                document.getElementById('kpiPueSub').textContent = isZh 
+                    ? `全球基準評估 (${list.length} 測站)` 
+                    : `Global Baseline (${list.length} Stations)`;
+                document.getElementById('kpiAvgPUE').textContent = avgPUE;
+
+                document.getElementById('kpiMaxDbTitle').textContent = isZh ? '最高乾球 (全域)' : 'Max Dry Bulb (Global)';
+                document.getElementById('kpiMaxDB').innerHTML = `${maxDBStation.maxDB} <span class="text-lg font-normal text-slate-400">°C</span>`;
+                document.getElementById('kpiMaxDbSub').textContent = `${maxDBStation.flag} ${getStationCity(maxDBStation)}`;
+
+                document.getElementById('kpiMaxWbTitle').textContent = isZh ? '最高濕球 (全域)' : 'Max Wet Bulb (Global)';
+                document.getElementById('kpiMaxWB').innerHTML = `${maxWBStation.extWB} <span class="text-lg font-normal text-slate-400">°C</span>`;
+                document.getElementById('kpiMaxWbSub').textContent = `${maxWBStation.flag} ${getStationCity(maxWBStation)}`;
+
+                const fcPct = ((maxFCStation.freeCooling / 8760) * 100).toFixed(1);
+                document.getElementById('kpiFcTitle').textContent = isZh ? '自然冷卻時數 (最高)' : 'Free Cooling Hours (Peak)';
+                document.getElementById('kpiMaxFC').innerHTML = `${maxFCStation.freeCooling.toLocaleString()} <span class="text-lg font-normal text-slate-400">hrs</span>`;
+                document.getElementById('kpiFcSub').textContent = `${maxFCStation.flag} ${getStationCity(maxFCStation)} (${fcPct}%)`;
+            }
+        }
+
+        // --- 7. Table Filtering & Rendering ---
+        function getFilteredStations() {
+            const country = document.getElementById('countryFilter')?.value || 'ALL';
+            const search = document.getElementById('searchInput')?.value.toLowerCase().trim() || '';
+
+            return stations.filter(s => {
+                let matchCountry = true;
+                if (country === 'ALL') {
+                    matchCountry = true;
+                } else if (country.startsWith('CONTINENT:')) {
+                    matchCountry = s.continent === country.replace('CONTINENT:', '');
+                } else {
+                    matchCountry = s.country === country;
+                }
+
+                const matchSearch = !search || 
+                    s.city.toLowerCase().includes(search) || 
+                    (s.cityZh && s.cityZh.toLowerCase().includes(search)) ||
+                    s.country.toLowerCase().includes(search) || 
+                    (s.countryZh && s.countryZh.toLowerCase().includes(search)) ||
+                    (s.countryCode && s.countryCode.toLowerCase().includes(search)) ||
+                    (s.wmo && s.wmo.toLowerCase().includes(search)) ||
+                    (s.datacenters && s.datacenters.toLowerCase().includes(search)) ||
+                    (s.stationName && s.stationName.toLowerCase().includes(search)) ||
+                    (s.id && s.id.toLowerCase().includes(search)) ||
+                    ((search.includes('星加坡') || search.includes('星洲') || search.includes('獅城') || search.includes('樟宜')) && s.countryCode === 'SGP');
+
+                return matchCountry && matchSearch;
+            }).sort((a, b) => {
+                let va = a[currentSort.key];
+                let vb = b[currentSort.key];
+                if (typeof va === 'string') return currentSort.dir * va.localeCompare(vb);
+                return currentSort.dir * (va - vb);
+            });
+        }
+
+        function filterByCountry(countryName) {
+            const select = document.getElementById('countryFilter');
+            if (select) {
+                select.value = countryName;
+                selectedStation = null;
+                applyFilters();
+                const sample = stations.find(s => s.country === countryName);
+                const display = sample ? getStationCountry(sample) : countryName;
+                showToast(currentLang === 'zh' ? `已篩選國家：${display}` : `Filtered by country: ${display}`, 'info');
+            }
+        }
+
+        function applyFilters() {
+            selectedStation = null;
+            renderTable();
+            updateTopKPIs();
+            if (myGlobe) {
+                myGlobe.htmlElementsData(getFilteredStations());
+            }
+        }
+
+        function sortTable(key) {
+            if (currentSort.key === key) {
+                currentSort.dir *= -1;
+            } else {
+                currentSort.key = key;
+                currentSort.dir = 1;
+            }
+            ['city', 'country', 'zone', 'avgDB', 'extWB', 'freeCooling', 'pue'].forEach(k => {
+                const el = document.getElementById(`sort-${k}`);
+                if (el) el.textContent = currentSort.key === k ? (currentSort.dir === 1 ? '▲' : '▼') : '';
+            });
+            renderTable();
+        }
+
+        function renderTable() {
+            const tbody = document.getElementById('stationTableBody');
+            const list = getFilteredStations();
+            const isZh = currentLang === 'zh';
+            const dict = I18N[currentLang] || I18N.zh;
+
+            tbody.innerHTML = '';
+            if (list.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="8" class="text-center py-6 text-slate-500 font-mono">${dict.noMatchingStations}</td></tr>`;
+                return;
+            }
+
+            list.forEach(s => {
+                const isSelected = selectedStation && selectedStation.id === s.id;
+                const tr = document.createElement('tr');
+                tr.className = `table-row cursor-pointer ${isSelected ? 'selected-row' : ''}`;
+                tr.onclick = () => selectStation(s.id);
+
+                const fcPct = ((s.freeCooling / 8760) * 100).toFixed(1);
+
+                const countryName = getStationCountry(s);
+                const cityDisplay = isZh ? (s.cityZh || s.city) : s.city;
+                const citySub = (isZh && s.cityZh) 
+                    ? `<div class="text-[10px] font-mono text-slate-400 truncate max-w-[220px]" title="${s.city}">${s.city} • WMO: ${s.wmo || 'TMYx'}</div>` 
+                    : `<div class="text-[10px] font-mono text-slate-400">WMO: ${s.wmo || 'TMYx'}</div>`;
+
+                tr.innerHTML = `
+                    <td class="px-4 py-3.5">
+                        <div class="flex items-center gap-2.5">
+                            <span class="text-2xl">${s.flag}</span>
+                            <div>
+                                <div class="font-bold text-white text-xs sm:text-sm">${cityDisplay}</div>
+                                ${citySub}
+                            </div>
+                        </div>
+                    </td>
+                    <td class="px-4 py-3.5 text-xs text-slate-300 font-bold hover:text-cyan-400 cursor-pointer" onclick="event.stopPropagation(); filterByCountry('${s.country}');" title="${isZh ? '點擊切換篩選' : 'Click to filter'} ${countryName}">
+                        ${countryName}
+                    </td>
+                    <td class="px-3 py-3.5 text-center">
+                        <span class="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-white/10 text-cyan-300 border border-white/10">${s.zone}</span>
+                    </td>
+                    <td class="px-3 py-3.5 text-right font-mono text-xs text-slate-300">${s.avgDB} °C</td>
+                    <td class="px-3 py-3.5 text-right font-mono text-xs">
+                        <span class="text-amber-400 font-bold" title="${isZh ? '最高乾球' : 'Max DB'}">${s.maxDB}°</span>
+                        <span class="text-slate-600">/</span>
+                        <span class="text-rose-400 font-bold" title="${isZh ? '最高濕球' : 'Max WB'}">${s.extWB}°C</span>
+                    </td>
+                    <td class="px-3 py-3.5 text-right font-mono text-xs">
+                        <span class="text-emerald-400 font-bold">${s.freeCooling.toLocaleString()}</span>
+                        <span class="text-[10px] text-slate-500">(${fcPct}%)</span>
+                    </td>
+                    <td class="px-3 py-3.5 text-right font-mono text-xs font-bold text-sky-400">${s.pue.toFixed(2)}</td>
+                    <td class="px-4 py-3.5 text-center" onclick="event.stopPropagation()">
+                        <button onclick="openEpwModal('${s.id}')" class="px-3 py-1 rounded-lg text-xs font-bold bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-300 border border-cyan-500/40 transition-all hover:scale-105">
+                            ${dict.btnDeepDive}
+                        </button>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        // --- 8. Station Selection & Detail Panel ---
+        function selectStation(id) {
+            selectedStation = stations.find(s => s.id === id);
+            if (!selectedStation) return;
+
+            updateDetailPanel(selectedStation);
+            updateTopKPIs(selectedStation);
+            renderTable();
+
+            if (myGlobe) {
+                myGlobe.controls().autoRotate = false;
+                myGlobe.pointOfView({ lat: selectedStation.lat, lng: selectedStation.lng, altitude: 1.25 }, 1200);
+            }
+        }
+
+        function updateDetailPanel(s) {
+            const panel = document.getElementById('detailPanel');
+            if (!panel || !s) return;
+
+            const isZh = currentLang === 'zh';
+            const fcPct = ((s.freeCooling / 8760) * 100).toFixed(1);
+            const cityDisplay = isZh ? (s.cityZh || s.city) : s.city;
+            const countryDisplay = getStationCountry(s);
+
+            panel.innerHTML = `
+                <div>
+                    <!-- Header -->
+                    <div class="flex items-start justify-between gap-3 mb-5">
+                        <div class="flex items-center gap-3">
+                            <span class="text-4xl filter drop-shadow">${s.flag}</span>
+                            <div>
+                                <h3 class="heading text-xl sm:text-2xl font-black text-white leading-tight">${cityDisplay}</h3>
+                                <p class="text-[11px] font-mono text-slate-400 mt-0.5">
+                                    ${countryDisplay} • ASHRAE Zone ${s.zone} • WMO: ${s.wmo || 'TMYx'}
+                                </p>
+                            </div>
+                        </div>
+                        <span class="px-2.5 py-1 rounded-lg text-xs font-mono font-bold bg-cyan-500/20 text-cyan-300 border border-cyan-500/30">
+                            PUE ${s.pue.toFixed(2)}
+                        </span>
+                    </div>
+
+                    <!-- Coordinates & Station Elevation -->
+                    <div class="grid grid-cols-3 gap-2 py-2.5 px-3 rounded-xl bg-white/[0.02] border border-white/5 text-center font-mono text-xs text-slate-400 mb-5">
+                        <div>${isZh ? '緯度' : 'Lat'}: <span class="text-white font-bold">${s.lat}°</span></div>
+                        <div>${isZh ? '經度' : 'Lng'}: <span class="text-white font-bold">${s.lng}°</span></div>
+                        <div>${isZh ? '海拔' : 'Elev'}: <span class="text-white font-bold">${s.elev}m</span></div>
+                    </div>
+
+                    <!-- Ambient Specs Matrix -->
+                    <div class="space-y-3 mb-5">
+                        <div class="flex justify-between items-center py-1.5 border-b border-white/5">
+                            <span class="text-xs text-slate-400">${isZh ? '乾球溫範圍 (Min ~ Max)' : 'Dry Bulb Range (Min ~ Max)'}</span>
+                            <span class="font-mono text-xs font-bold text-white">
+                                <span class="text-cyan-400">${s.minDB}°C</span> ~ <span class="text-rose-400">${s.maxDB}°C</span>
+                            </span>
+                        </div>
+                        <div class="flex justify-between items-center py-1.5 border-b border-white/5">
+                            <span class="text-xs text-slate-400">${isZh ? '最高乾球 / 最高濕球' : 'Max DB / Max WB'}</span>
+                            <span class="font-mono text-xs font-bold text-white">
+                                <span class="text-amber-400 font-bold">${s.maxDB}°C</span> <span class="text-slate-500">|</span> <span class="text-rose-400 font-bold">${s.extWB}°C</span>
+                            </span>
+                        </div>
+                        <div class="flex justify-between items-center py-1.5 border-b border-white/5">
+                            <span class="text-xs text-slate-400">${isZh ? '年平均乾球 / 相對濕度' : 'Annual Avg DB / Rel. Humidity'}</span>
+                            <span class="font-mono text-xs font-bold text-white">
+                                ${s.avgDB}°C <span class="text-slate-500">|</span> ${s.avgRH}%
+                            </span>
+                        </div>
+                        <div class="flex justify-between items-center py-1.5 border-b border-white/5">
+                            <span class="text-xs text-slate-400">${isZh ? '年平均濕球溫' : 'Annual Avg Wet Bulb'}</span>
+                            <span class="font-mono text-xs font-bold text-white">
+                                ${s.avgWB}°C
+                            </span>
+                        </div>
+                    </div>
+
+                    <!-- Free Cooling Quick Progress -->
+                    <div class="glass-card p-4 rounded-xl border border-emerald-500/20 bg-emerald-950/10 mb-5">
+                        <div class="flex justify-between items-baseline mb-2">
+                            <span class="text-xs font-bold text-emerald-400">${isZh ? '基準 Free Cooling 潛力' : 'Baseline Free Cooling Potential'}</span>
+                            <span class="font-mono text-xs font-black text-white">${s.freeCooling.toLocaleString()} hrs (${fcPct}%)</span>
+                        </div>
+                        <div class="w-full bg-slate-800 rounded-full h-2.5 overflow-hidden">
+                            <div class="bg-gradient-to-r from-emerald-500 to-cyan-400 h-2.5 rounded-full" style="width: ${fcPct}%"></div>
+                        </div>
+                        <div class="text-[10px] font-mono text-slate-400 mt-2">
+                            ${isZh ? '以乾球溫 DB ≤ 34°C 為自然冷卻估算（34°C~41°C 為部分冷卻，>41°C 為機械冷卻）' : 'Free cooling based on DB ≤ 34°C (34°C~41°C partial cooling, >41°C mechanical cooling)'}
+                        </div>
+                    </div>
+
+                    <!-- Representative Data Centers & Operators (Replaces Recommended Architecture) -->
+                    <div class="p-4 rounded-xl bg-gradient-to-br from-cyan-950/30 to-blue-950/30 border border-cyan-500/30 mb-6">
+                        <div class="flex items-center justify-between mb-2">
+                            <span class="text-[11px] font-mono font-bold text-cyan-300 uppercase tracking-wider flex items-center gap-1.5">
+                                <svg class="w-4 h-4 text-cyan-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"></path></svg>
+                                ${isZh ? '代表性數據中心 / 算力園區' : 'Representative Data Centers & Operators'}
+                            </span>
+                            <span class="px-2 py-0.5 rounded text-[10px] font-mono bg-cyan-500/20 text-cyan-300 border border-cyan-500/30 font-bold">${isZh ? '主要據點' : 'DC Hub'}</span>
+                        </div>
+                        <p class="text-xs font-medium text-slate-200 leading-relaxed font-sans">
+                            ${s.datacenters || (isZh ? '區域核心數據中心與電信樞紐設施 (Regional Telco & Enterprise DC Hub)' : 'Regional Telco & Enterprise DC Hub')}
+                        </p>
+                    </div>
+                </div>
+
+                <!-- Open Deep EPW Analysis Modal Button -->
+                <button onclick="openEpwModal('${s.id}')" class="w-full py-3.5 rounded-xl font-bold text-xs sm:text-sm bg-gradient-to-r from-cyan-500 via-sky-500 to-indigo-600 text-white shadow-[0_0_25px_rgba(14,165,233,0.4)] hover:brightness-110 active:scale-[0.99] transition-all flex items-center justify-center gap-2">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path></svg>
+                    <span>${isZh ? '開啟 EPW 深度氣象與 Free Cooling 解析報告' : 'Open EPW In-Depth Weather & Free Cooling Report'}</span>
+                </button>
+            `;
+        }
+
+        // --- 9. 3D Globe Implementation ---
+        let globeIdleTimeout = null;
+
+        // Real-time Horizon Occlusion Culler (Back-facing points are 100% hidden)
+        function updateGlobeOcclusion() {
+            if (!myGlobe) return;
+            const pov = myGlobe.pointOfView();
+            if (!pov || typeof pov.lat !== 'number' || typeof pov.lng !== 'number') return;
+
+            const camLatRad = pov.lat * Math.PI / 180;
+            const camLngRad = pov.lng * Math.PI / 180;
+            const alt = pov.altitude || 1.5;
+
+            // Horizon angle cutoff:
+            // Tangent from camera at (1 + alt) to unit sphere touches at cos(angle) = 1 / (1 + alt).
+            // Points with cos(angle) < 1 / (1 + alt) are beyond the horizon (behind the Earth).
+            const minCos = (1 / (1 + alt)) - 0.05;
+
+            const list = getFilteredStations();
+            for (let i = 0; i < list.length; i++) {
+                const s = list[i];
+                if (!s.__el) continue;
+
+                const latRad = s.lat * Math.PI / 180;
+                const lngRad = s.lng * Math.PI / 180;
+
+                // Spherical angular distance between camera center and station point
+                const cosDist = Math.sin(camLatRad) * Math.sin(latRad) +
+                                Math.cos(camLatRad) * Math.cos(latRad) * Math.cos(camLngRad - lngRad);
+
+                if (cosDist > minCos) {
+                    s.__el.style.display = 'block';
+                    s.__el.style.pointerEvents = 'auto';
+                } else {
+                    s.__el.style.display = 'none';
+                    s.__el.style.pointerEvents = 'none';
+                }
+            }
+        }
+
+        function initGlobe() {
+            const container = document.getElementById('globeViz');
+            const panel = document.getElementById('globePanel');
+            if (!container || typeof Globe === 'undefined') return;
+
+            try {
+                myGlobe = Globe()(container)
+                    .backgroundColor('rgba(0,0,0,0)')
+                    .showAtmosphere(true)
+                    .atmosphereColor('#38bdf8')
+                    .atmosphereAltitude(0.18)
+                    .globeImageUrl('https://unpkg.com/three-globe/example/img/earth-blue-marble.jpg')
+                    .bumpImageUrl('https://unpkg.com/three-globe/example/img/earth-topology.png')
+                    .htmlElementsData(getFilteredStations())
+                    .htmlElement(d => {
+                        const el = document.createElement('div');
+                        d.__el = el; // Cache DOM element reference for per-frame occlusion culling
+
+                        let markerColor = 'bg-emerald-400 text-emerald-400';
+                        if (d.extWB > 27) markerColor = 'bg-rose-500 text-rose-500';
+                        else if (d.extWB > 24) markerColor = 'bg-amber-400 text-amber-400';
+
+                        // Fixed 20x20 anchor with absolute tooltip to prevent element resize shifts
+                        el.innerHTML = `
+                            <div class="globe-marker-pin relative flex items-center justify-center cursor-pointer group pointer-events-auto" style="width: 20px; height: 20px; transform: translate(-50%, -50%);">
+                                <span class="absolute inline-flex w-full h-full rounded-full ${markerColor} opacity-75 globe-marker-ping"></span>
+                                <span class="relative inline-flex rounded-full w-3.5 h-3.5 ${markerColor} border-2 border-white shadow-[0_0_10px_rgba(255,255,255,0.8)]"></span>
+                                
+                                <!-- Absolute Tooltip (Does NOT affect marker position) -->
+                                <div class="pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity duration-200 absolute left-full top-1/2 -translate-y-1/2 ml-2 px-2.5 py-1 bg-slate-900/95 backdrop-blur-md text-white text-[11px] font-bold rounded-lg whitespace-nowrap border border-white/20 shadow-2xl z-50">
+                                    ${d.flag} ${getStationCity(d)} <span class="text-slate-400 font-normal">(${getStationCountry(d)})</span> <span class="text-cyan-400 font-mono">(${d.freeCooling} hrs FC)</span>
+                                </div>
+                            </div>
+                        `;
+
+                        // Pause globe rotation when hovering marker
+                        el.addEventListener('mouseenter', () => {
+                            if (myGlobe && myGlobe.controls()) {
+                                myGlobe.controls().autoRotate = false;
+                            }
+                        });
+
+                        el.onclick = () => selectStation(d.id);
+                        return el;
+                    })
+                    .htmlAltitude(0.015);
+
+                myGlobe.onGlobeReady(() => {
+                    const loader = document.getElementById('globeLoading');
+                    if (loader) {
+                        loader.style.opacity = '0';
+                        setTimeout(() => { loader.style.display = 'none'; }, 500);
+                    }
+                });
+
+                myGlobe.controls().autoRotate = true;
+                myGlobe.controls().autoRotateSpeed = 0.5;
+                myGlobe.controls().enableZoom = true;
+
+                // Hook camera changes to update horizon occlusion
+                myGlobe.controls().addEventListener('change', updateGlobeOcclusion);
+
+                // Continuous render loop for occlusion checks during smooth animations & autoRotate
+                function occlusionLoop() {
+                    updateGlobeOcclusion();
+                    requestAnimationFrame(occlusionLoop);
+                }
+                requestAnimationFrame(occlusionLoop);
+
+                // Pause rotation when user moves mouse inside globe panel
+                if (panel) {
+                    panel.addEventListener('mouseenter', () => {
+                        clearTimeout(globeIdleTimeout);
+                        if (myGlobe && myGlobe.controls()) {
+                            myGlobe.controls().autoRotate = false;
+                        }
+                    });
+
+                    panel.addEventListener('mouseleave', () => {
+                        clearTimeout(globeIdleTimeout);
+                        globeIdleTimeout = setTimeout(() => {
+                            const modal = document.getElementById('epwModal');
+                            const isModalOpen = modal && !modal.classList.contains('hidden');
+                            if (myGlobe && myGlobe.controls() && !isModalOpen) {
+                                myGlobe.controls().autoRotate = true;
+                                myGlobe.controls().autoRotateSpeed = 0.5;
+                            }
+                        }, 3000);
+                    });
+
+                    // 阻止滾動縮放地球時帶動整個網頁上下捲動
+                    const stopPageScroll = (e) => {
+                        e.preventDefault();
+                    };
+                    panel.addEventListener('wheel', stopPageScroll, { passive: false });
+                    if (container) {
+                        container.addEventListener('wheel', stopPageScroll, { passive: false });
+                    }
+                }
+
+                // Auto Resize Observer
+                new ResizeObserver(entries => {
+                    for (let entry of entries) {
+                        const { width, height } = entry.contentRect;
+                        if (width && height && myGlobe) {
+                            myGlobe.width(width);
+                            myGlobe.height(height);
+                        }
+                    }
+                }).observe(container);
+
+            } catch (e) {
+                console.error("Globe init error:", e);
+            }
+        }
+
+        // --- 10. Drag & Drop File Import Handler ---
+        function setupDragAndDrop() {
+            const dropZone = document.getElementById('dropZone');
+            const fileInput = document.getElementById('epwFileInput');
+
+            fileInput.addEventListener('change', (e) => {
+                if (e.target.files && e.target.files.length > 0) {
+                    processFiles(Array.from(e.target.files));
+                }
+            });
+
+            ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+                window.addEventListener(eventName, (e) => { e.preventDefault(); e.stopPropagation(); }, false);
+            });
+
+            window.addEventListener('dragover', () => {
+                if (dropZone) dropZone.classList.add('drop-active');
+            });
+
+            window.addEventListener('dragleave', () => {
+                if (dropZone) dropZone.classList.remove('drop-active');
+            });
+
+            window.addEventListener('drop', (e) => {
+                if (dropZone) dropZone.classList.remove('drop-active');
+                const dt = e.dataTransfer;
+                if (dt && dt.files && dt.files.length > 0) {
+                    processFiles(Array.from(dt.files));
+                }
+            });
+        }
+
+        function processFiles(files) {
+            let loadedCount = 0;
+            files.forEach(file => {
+                if (!file.name.toLowerCase().endsWith('.epw')) {
+                    showToast(`跳過非 EPW 檔案：${file.name}`, 'warning');
+                    return;
+                }
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    try {
+                        const newStation = parseEPWString(e.target.result, file.name);
+                        // Check if station with same id or city exists
+                        const existingIdx = stations.findIndex(s => s.id === newStation.id);
+                        if (existingIdx >= 0) {
+                            stations[existingIdx] = newStation;
+                        } else {
+                            stations.unshift(newStation);
+                        }
+                        loadedCount++;
+                        populateCountryFilter();
+                        updateTopKPIs();
+                        renderTable();
+                        selectStation(newStation.id);
+                        showToast(`成功匯入測站：${newStation.city} (${newStation.country})`, 'success');
+                    } catch (err) {
+                        showToast(`解析失敗 (${file.name}): ${err.message}`, 'error');
+                    }
+                };
+                reader.readAsText(file);
+            });
+        }
+
+        // --- 11. Deep Dive Modal (EPW Free Cooling Engine) ---
+        let currentModalStation = null;
+        let modalThresholds = { full: 34, no: 41 };
+
+        async function openEpwModal(stationId) {
+            currentModalStation = stations.find(s => s.id === stationId) || selectedStation;
+            if (!currentModalStation) return;
+
+            const isZh = currentLang === 'zh';
+            document.getElementById('modalFlag').textContent = currentModalStation.flag;
+            document.getElementById('modalTitle').textContent = isZh ? (currentModalStation.cityZh || currentModalStation.city) : currentModalStation.city;
+            document.getElementById('modalZoneBadge').textContent = `Zone ${currentModalStation.zone}`;
+            const countryDisplay = getStationCountry(currentModalStation);
+            document.getElementById('modalSub').textContent = isZh
+                ? `國家: ${countryDisplay} • WMO: ${currentModalStation.wmo || 'TMYx'} • 緯度: ${currentModalStation.lat}° • 經度: ${currentModalStation.lng}° • 海拔: ${currentModalStation.elev}m`
+                : `Country: ${countryDisplay} • WMO: ${currentModalStation.wmo || 'TMYx'} • Lat: ${currentModalStation.lat}° • Lng: ${currentModalStation.lng}° • Elev: ${currentModalStation.elev}m`;
+
+            // On-demand hourly fetch if not yet loaded
+            if (!currentModalStation.hourly || currentModalStation.hourly.length === 0) {
+                showToast(isZh ? '正在讀取 8,760 小時逐時數據...' : 'Loading 8,760h hourly data...', 'info');
+                try {
+                    const res = await fetch('./hourly/' + encodeURIComponent(currentModalStation.id) + '.json');
+                    if (res.ok) {
+                        currentModalStation.hourly = await res.json();
+                    }
+                } catch (e) {
+                    console.warn('On-demand hourly fetch failed:', e);
+                }
+            }
+
+            onModalControlModeChange();
+
+            const modal = document.getElementById('epwModal');
+            modal.classList.remove('hidden');
+            setTimeout(() => { modal.classList.remove('opacity-0'); }, 10);
+        }
+
+        function closeEpwModal() {
+            const modal = document.getElementById('epwModal');
+            modal.classList.add('opacity-0');
+            setTimeout(() => { modal.classList.add('hidden'); }, 300);
+        }
+
+        function onModalControlModeChange() {
+            const mode = document.getElementById('modalControlMode').value;
+            const container = document.getElementById('modalThresholdContainer');
+            const isZh = currentLang === 'zh';
+
+            if (mode === 'DB') {
+                modalThresholds.full = 34;
+                modalThresholds.no = 41;
+                container.innerHTML = `
+                    <div>
+                        <div class="flex justify-between text-xs text-slate-300 mb-1">
+                            <span>${isZh ? '自然冷卻上限 (Full FC limit):' : 'Full Free Cooling Limit (DB):'}</span>
+                            <span class="font-mono font-bold text-emerald-400" id="dispFullLimit">${modalThresholds.full} °C</span>
+                        </div>
+                        <input type="range" min="20" max="40" step="0.5" value="${modalThresholds.full}" oninput="updateModalThreshold('full', this.value)" class="w-full accent-emerald-400">
+                    </div>
+                    <div>
+                        <div class="flex justify-between text-xs text-slate-300 mb-1">
+                            <span>${isZh ? '機械冷卻門檻 (Mechanical Cooling limit):' : 'Mechanical Cooling Limit (DB):'}</span>
+                            <span class="font-mono font-bold text-rose-400" id="dispNoLimit">${modalThresholds.no} °C</span>
+                        </div>
+                        <input type="range" min="34" max="50" step="0.5" value="${modalThresholds.no}" oninput="updateModalThreshold('no', this.value)" class="w-full accent-rose-400">
+                    </div>
+                `;
+            } else if (mode === 'WB') {
+                modalThresholds.full = 12;
+                modalThresholds.no = 18;
+                container.innerHTML = `
+                    <div>
+                        <div class="flex justify-between text-xs text-slate-300 mb-1">
+                            <span>${isZh ? '冷卻水塔完全節能濕球上限 (Full FC WB):' : 'Cooling Tower Full FC WB Limit:'}</span>
+                            <span class="font-mono font-bold text-emerald-400" id="dispFullLimit">${modalThresholds.full} °C</span>
+                        </div>
+                        <input type="range" min="5" max="20" step="0.5" value="${modalThresholds.full}" oninput="updateModalThreshold('full', this.value)" class="w-full accent-emerald-400">
+                    </div>
+                    <div>
+                        <div class="flex justify-between text-xs text-slate-300 mb-1">
+                            <span>${isZh ? '水側節能截止濕球上限 (No FC WB):' : 'Water Economizer Cutoff WB Limit:'}</span>
+                            <span class="font-mono font-bold text-rose-400" id="dispNoLimit">${modalThresholds.no} °C</span>
+                        </div>
+                        <input type="range" min="12" max="26" step="0.5" value="${modalThresholds.no}" oninput="updateModalThreshold('no', this.value)" class="w-full accent-rose-400">
+                    </div>
+                `;
+            } else {
+                modalThresholds.full = 20;
+                modalThresholds.no = 26;
+                container.innerHTML = `
+                    <div>
+                        <div class="flex justify-between text-xs text-slate-300 mb-1">
+                            <span>${isZh ? '乾球溫最高限制 (Max DB):' : 'Max Dry Bulb Limit:'}</span>
+                            <span class="font-mono font-bold text-emerald-400" id="dispFullLimit">${modalThresholds.full} °C</span>
+                        </div>
+                        <input type="range" min="14" max="28" step="0.5" value="${modalThresholds.full}" oninput="updateModalThreshold('full', this.value)" class="w-full accent-emerald-400">
+                    </div>
+                    <div>
+                        <div class="flex justify-between text-xs text-slate-300 mb-1">
+                            <span>${isZh ? '相對濕度最高限制 (Max RH):' : 'Max Relative Humidity:'}</span>
+                            <span class="font-mono font-bold text-cyan-400" id="dispNoLimit">70 %</span>
+                        </div>
+                        <input type="range" min="40" max="90" step="5" value="70" oninput="document.getElementById('dispNoLimit').textContent = this.value + ' %'; recalcModalFC();" class="w-full accent-cyan-400">
+                    </div>
+                `;
+            }
+
+            recalcModalFC();
+        }
+
+        function updateModalThreshold(type, val) {
+            modalThresholds[type] = parseFloat(val);
+            if (type === 'full') document.getElementById('dispFullLimit').textContent = `${val} °C`;
+            if (type === 'no') document.getElementById('dispNoLimit').textContent = `${val} °C`;
+            recalcModalFC();
+        }
+
+        function recalcModalFC() {
+            if (!currentModalStation || !currentModalStation.hourly) return;
+
+            const mode = document.getElementById('modalControlMode').value;
+            const sched = document.getElementById('modalScheduleMode').value;
+            const fullLimit = modalThresholds.full;
+            const noLimit = modalThresholds.no;
+            const isZh = currentLang === 'zh';
+
+            let condDesc = "";
+            if (mode === 'DB') {
+                condDesc = isZh
+                    ? `判定條件：乾球溫 ≤ ${fullLimit}°C 為自然冷卻；乾球溫在 ${fullLimit}°C ~ ${noLimit}°C 為部分冷卻；超過 ${noLimit}°C 為機械冷卻。`
+                    : `Criteria: Dry Bulb ≤ ${fullLimit}°C for Full Free Cooling; ${fullLimit}°C ~ ${noLimit}°C for Partial Cooling; > ${noLimit}°C for Mechanical Cooling.`;
+            } else if (mode === 'WB') {
+                condDesc = isZh
+                    ? `判定條件：濕球溫 ≤ ${fullLimit}°C 為完全水側節能；濕球溫在 ${fullLimit}°C ~ ${noLimit}°C 為部分冷卻；超過 ${noLimit}°C 為機械冷卻。`
+                    : `Criteria: Wet Bulb ≤ ${fullLimit}°C for Full Water-side FC; ${fullLimit}°C ~ ${noLimit}°C for Partial Cooling; > ${noLimit}°C for Mechanical Cooling.`;
+            } else {
+                condDesc = isZh
+                    ? `判定條件：乾球溫 ≤ ${fullLimit}°C 且 相對濕度 ≤ 70% 允許自然引風。`
+                    : `Criteria: Dry Bulb ≤ ${fullLimit}°C and RH ≤ 70% allows direct economizer operation.`;
+            }
+            document.getElementById('modalConditionText').textContent = condDesc;
+
+            let fullHrs = 0;
+            let partHrs = 0;
+            let noHrs = 0;
+            let totalEvaluated = 0;
+
+            const monthlyCounts = Array.from({ length: 12 }, () => ({ full: 0, part: 0, no: 0 }));
+
+            currentModalStation.hourly.forEach(h => {
+                // Check schedule
+                if (sched === 'DAYTIME' && (h.h < 8 || h.h > 20)) return;
+
+                totalEvaluated++;
+                let status = 'no';
+
+                if (mode === 'DB') {
+                    if (h.db <= fullLimit) status = 'full';
+                    else if (h.db <= noLimit) status = 'part';
+                    else status = 'no';
+                } else if (mode === 'WB') {
+                    if (h.wb <= fullLimit) status = 'full';
+                    else if (h.wb <= noLimit) status = 'part';
+                    else status = 'no';
+                } else {
+                    if (h.db <= fullLimit && h.rh <= 70) status = 'full';
+                    else if (h.db <= noLimit) status = 'part';
+                    else status = 'no';
+                }
+
+                if (status === 'full') fullHrs++;
+                else if (status === 'part') partHrs++;
+                else noHrs++;
+
+                monthlyCounts[h.m][status]++;
+            });
+
+            if (totalEvaluated === 0) totalEvaluated = 1;
+
+            const fullPct = ((fullHrs / totalEvaluated) * 100).toFixed(1);
+            const partPct = ((partHrs / totalEvaluated) * 100).toFixed(1);
+            const noPct = ((noHrs / totalEvaluated) * 100).toFixed(1);
+
+            // Update badge titles and descriptions
+            const lblFull = document.getElementById('lblResFullTitle');
+            const lblFullSub = document.getElementById('lblResFullSub');
+            if (lblFull) lblFull.textContent = isZh ? '自然冷卻 (100% Free Cooling)' : '100% Free Cooling';
+            if (lblFullSub) lblFullSub.textContent = isZh ? `≤ ${fullLimit}°C 自然冷卻，主機壓縮機停止運轉` : `≤ ${fullLimit}°C Free cooling, chillers turned off`;
+
+            const lblPart = document.getElementById('lblResPartTitle');
+            const lblPartSub = document.getElementById('lblResPartSub');
+            if (lblPart) lblPart.textContent = isZh ? '部分冷卻 (Partial Free Cooling)' : 'Partial Free Cooling';
+            if (lblPartSub) lblPartSub.textContent = isZh ? `${fullLimit}°C ~ ${noLimit}°C 預冷分擔負載，降低壓縮功` : `${fullLimit}°C ~ ${noLimit}°C Pre-cooling reduces compressor power`;
+
+            const lblNo = document.getElementById('lblResNoTitle');
+            const lblNoSub = document.getElementById('lblResNoSub');
+            if (lblNo) lblNo.textContent = isZh ? '機械冷卻 (Mechanical Cooling)' : 'Mechanical Cooling';
+            if (lblNoSub) lblNoSub.textContent = isZh ? `超過 ${noLimit}°C 全面啟動機械製冷` : `> ${noLimit}°C Full mechanical refrigeration active`;
+
+            document.getElementById('resFullHours').textContent = `${fullHrs.toLocaleString()} hrs`;
+            document.getElementById('resFullPct').textContent = `${fullPct}%`;
+            document.getElementById('resPartHours').textContent = `${partHrs.toLocaleString()} hrs`;
+            document.getElementById('resPartPct').textContent = `${partPct}%`;
+            document.getElementById('resNoHours').textContent = `${noHrs.toLocaleString()} hrs`;
+            document.getElementById('resNoPct').textContent = `${noPct}%`;
+
+            // Quick Stats
+            document.getElementById('statDailyAvg').textContent = `${(fullHrs / 365).toFixed(1)} ${isZh ? '小時/天' : 'hrs/day'}`;
+
+            // Best month
+            let bestM = 0;
+            let maxMFull = -1;
+            monthlyCounts.forEach((mc, idx) => {
+                if (mc.full > maxMFull) { maxMFull = mc.full; bestM = idx + 1; }
+            });
+            document.getElementById('statBestMonth').textContent = isZh 
+                ? `${bestM} 月 (${maxMFull} hrs)`
+                : `Month ${bestM} (${maxMFull} hrs)`;
+
+            // Summer (June 5, July 6, Aug 7) & Winter (Dec 11, Jan 0, Feb 1)
+            const summerHrs = monthlyCounts[5].full + monthlyCounts[6].full + monthlyCounts[7].full;
+            const winterHrs = monthlyCounts[11].full + monthlyCounts[0].full + monthlyCounts[1].full;
+            document.getElementById('statSummerHours').textContent = `${summerHrs} hrs`;
+            document.getElementById('statWinterHours').textContent = `${winterHrs} hrs`;
+
+            renderModalCharts(fullHrs, partHrs, noHrs, monthlyCounts, mode);
+            recalcModalBins();
+            recalcTempHours();
+            renderModalTable(monthlyCounts);
+            renderModalReco();
+        }
+
+        // --- 12. Modal Charts Rendering (Chart.js) ---
+        function renderModalCharts(full, part, no, monthlyCounts, mode) {
+            const isZh = currentLang === 'zh';
+            const dict = I18N[currentLang] || I18N.zh;
+
+            // 1. Pie Chart
+            const ctxPie = document.getElementById('modalPieChart').getContext('2d');
+            if (chartPie) chartPie.destroy();
+            chartPie = new Chart(ctxPie, {
+                type: 'doughnut',
+                data: {
+                    labels: dict.pieLabels,
+                    datasets: [{
+                        data: [full, part, no],
+                        backgroundColor: ['#10b981', '#06b6d4', '#f43f5e'],
+                        borderColor: '#0f172a',
+                        borderWidth: 2
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { position: 'bottom', labels: { color: '#94a3b8', font: { size: 10 } } }
+                    }
+                }
+            });
+
+            // 2. Monthly FC Stacked Bar Chart
+            const ctxMonthly = document.getElementById('modalMonthlyFcChart').getContext('2d');
+            if (chartMonthlyFc) chartMonthlyFc.destroy();
+            chartMonthlyFc = new Chart(ctxMonthly, {
+                type: 'bar',
+                data: {
+                    labels: dict.months,
+                    datasets: [
+                        { label: dict.chartBarLabels[0], data: monthlyCounts.map(m => m.full), backgroundColor: '#10b981' },
+                        { label: dict.chartBarLabels[1], data: monthlyCounts.map(m => m.part), backgroundColor: '#06b6d4' },
+                        { label: dict.chartBarLabels[2], data: monthlyCounts.map(m => m.no), backgroundColor: '#f43f5e' }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        x: { stacked: true, ticks: { color: '#94a3b8' }, grid: { display: false } },
+                        y: { stacked: true, ticks: { color: '#94a3b8' }, grid: { color: 'rgba(255,255,255,0.05)' } }
+                    },
+                    plugins: {
+                        legend: { position: 'top', labels: { color: '#cbd5e1', font: { size: 10 } } }
+                    }
+                }
+            });
+
+            // 3. Hourly Chart
+            const ctxHourly = document.getElementById('modalHourlyChart').getContext('2d');
+            if (chartHourly) chartHourly.destroy();
+
+            // Downsample 8760 points to 730 points (approx 1 per 12 hours) for ultra smooth performance
+            const hourlyStep = 12;
+            const downsampledData = [];
+            const labels = [];
+
+            for (let i = 0; i < currentModalStation.hourly.length; i += hourlyStep) {
+                const h = currentModalStation.hourly[i];
+                downsampledData.push(mode === 'WB' ? h.wb : h.db);
+                labels.push(`${h.m + 1}/${h.d}`);
+            }
+
+            const tempLabel = mode === 'WB' 
+                ? (isZh ? '濕球溫度 (WB, °C)' : 'Wet Bulb (WB, °C)') 
+                : (isZh ? '乾球溫度 (DB, °C)' : 'Dry Bulb (DB, °C)');
+            const fcLimitLabel = isZh ? `自然冷卻門檻 (${modalThresholds.full}°C)` : `Free Cooling Limit (${modalThresholds.full}°C)`;
+            const mechLimitLabel = isZh ? `機械冷卻門檻 (${modalThresholds.no}°C)` : `Mechanical Cooling Limit (${modalThresholds.no}°C)`;
+
+            chartHourly = new Chart(ctxHourly, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [
+                        {
+                            label: tempLabel,
+                            data: downsampledData,
+                            borderColor: mode === 'WB' ? '#38bdf8' : '#fbbf24',
+                            borderWidth: 1.5,
+                            pointRadius: 0,
+                            tension: 0.1
+                        },
+                        {
+                            label: fcLimitLabel,
+                            data: Array(labels.length).fill(modalThresholds.full),
+                            borderColor: '#10b981',
+                            borderWidth: 1.5,
+                            borderDash: [5, 5],
+                            pointRadius: 0
+                        },
+                        {
+                            label: mechLimitLabel,
+                            data: Array(labels.length).fill(modalThresholds.no),
+                            borderColor: '#f43f5e',
+                            borderWidth: 1.5,
+                            borderDash: [5, 5],
+                            pointRadius: 0
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        x: { ticks: { color: '#94a3b8', maxTicksLimit: 12 }, grid: { display: false } },
+                        y: { ticks: { color: '#94a3b8' }, grid: { color: 'rgba(255,255,255,0.05)' } }
+                    },
+                    plugins: {
+                        legend: { position: 'top', labels: { color: '#cbd5e1', font: { size: 10 } } }
+                    }
+                }
+            });
+        }
+
+        // --- 13. Modal Bin Analysis ---
+        function recalcModalBins() {
+            if (!currentModalStation || !currentModalStation.hourly) return;
+            const varKey = document.getElementById('modalBinVarSelect').value;
+            const values = currentModalStation.hourly.map(h => h[varKey]);
+            const isZh = currentLang === 'zh';
+
+            const minVal = Math.floor(Math.min(...values));
+            const maxVal = Math.ceil(Math.max(...values));
+            const binSize = varKey === 'rh' ? 5 : 2;
+
+            const bins = [];
+            for (let b = minVal; b <= maxVal; b += binSize) {
+                bins.push({ label: `${b}~${b + binSize}`, count: 0 });
+            }
+
+            values.forEach(v => {
+                const idx = Math.floor((v - minVal) / binSize);
+                if (idx >= 0 && idx < bins.length) bins[idx].count++;
+            });
+
+            const ctxBin = document.getElementById('modalBinChart').getContext('2d');
+            if (chartBin) chartBin.destroy();
+            chartBin = new Chart(ctxBin, {
+                type: 'bar',
+                data: {
+                    labels: bins.map(b => b.label),
+                    datasets: [{
+                        label: isZh ? '發生時數 (Hours)' : 'Frequency (Hours)',
+                        data: bins.map(b => b.count),
+                        backgroundColor: '#38bdf8',
+                        borderRadius: 4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        x: { ticks: { color: '#94a3b8', font: { size: 10 } }, grid: { display: false } },
+                        y: { ticks: { color: '#94a3b8' }, grid: { color: 'rgba(255,255,255,0.05)' } }
+                    },
+                    plugins: {
+                        legend: { display: false }
+                    }
+                }
+            });
+        }
+
+        // --- 13.5 Temperature Hours Calculator & Detailed Bin Analysis ---
+        let calcCurrentVar = 'db';
+        let calcCurrentCond = 'lte';
+        let calcCurrentVal = 24.0;
+        let calcCurrentMin = 18.0;
+        let calcCurrentMax = 27.0;
+        let lastCalcBinData = [];
+
+        function setCalcPreset(type, val1, val2) {
+            const condSelect = document.getElementById('calcConditionType');
+            if (condSelect) condSelect.value = type;
+            calcCurrentCond = type;
+            
+            if (type === 'range') {
+                calcCurrentMin = val1 !== undefined ? val1 : 18.0;
+                calcCurrentMax = val2 !== undefined ? val2 : 27.0;
+                const minIn = document.getElementById('calcRangeMinInput');
+                const maxIn = document.getElementById('calcRangeMaxInput');
+                if (minIn) minIn.value = calcCurrentMin;
+                if (maxIn) maxIn.value = calcCurrentMax;
+                const minSpan = document.getElementById('calcRangeMinVal');
+                const maxSpan = document.getElementById('calcRangeMaxVal');
+                if (minSpan) minSpan.textContent = `${calcCurrentMin.toFixed(1)} °C`;
+                if (maxSpan) maxSpan.textContent = `${calcCurrentMax.toFixed(1)} °C`;
+            } else {
+                calcCurrentVal = val1 !== undefined ? val1 : 24.0;
+                const slider = document.getElementById('calcThresholdSlider');
+                const numIn = document.getElementById('calcThresholdInput');
+                if (slider) slider.value = calcCurrentVal;
+                if (numIn) numIn.value = calcCurrentVal;
+                const valSpan = document.getElementById('calcThresholdVal');
+                if (valSpan) valSpan.textContent = `${calcCurrentVal.toFixed(1)} °C`;
+            }
+            updateCalcInputVisibility();
+            recalcTempHours();
+        }
+
+        function updateCalcInputVisibility() {
+            const cond = document.getElementById('calcConditionType')?.value || 'lte';
+            calcCurrentCond = cond;
+            const singleBox = document.getElementById('calcSingleThresholdBox');
+            const rangeBox = document.getElementById('calcRangeThresholdBox');
+            
+            if (cond === 'range') {
+                if (singleBox) singleBox.classList.add('hidden');
+                if (rangeBox) rangeBox.classList.remove('hidden');
+            } else {
+                if (singleBox) singleBox.classList.remove('hidden');
+                if (rangeBox) rangeBox.classList.add('hidden');
+            }
+        }
+
+        function onCalcInputChange() {
+            updateCalcInputVisibility();
+            calcCurrentVar = document.getElementById('calcVarSelect')?.value || 'db';
+            recalcTempHours();
+        }
+
+        function onCalcSliderChange() {
+            const slider = document.getElementById('calcThresholdSlider');
+            const numIn = document.getElementById('calcThresholdInput');
+            if (!slider) return;
+            calcCurrentVal = parseFloat(slider.value);
+            if (numIn) numIn.value = calcCurrentVal;
+            const valSpan = document.getElementById('calcThresholdVal');
+            if (valSpan) valSpan.textContent = `${calcCurrentVal.toFixed(1)} °C`;
+            recalcTempHours();
+        }
+
+        function onCalcNumberChange() {
+            const slider = document.getElementById('calcThresholdSlider');
+            const numIn = document.getElementById('calcThresholdInput');
+            if (!numIn) return;
+            let val = parseFloat(numIn.value);
+            if (isNaN(val)) return;
+            calcCurrentVal = val;
+            if (slider) slider.value = val;
+            const valSpan = document.getElementById('calcThresholdVal');
+            if (valSpan) valSpan.textContent = `${calcCurrentVal.toFixed(1)} °C`;
+            recalcTempHours();
+        }
+
+        function onCalcRangeChange() {
+            const minIn = document.getElementById('calcRangeMinInput');
+            const maxIn = document.getElementById('calcRangeMaxInput');
+            if (minIn) calcCurrentMin = parseFloat(minIn.value) || 0;
+            if (maxIn) calcCurrentMax = parseFloat(maxIn.value) || 0;
+            const minValSpan = document.getElementById('calcRangeMinVal');
+            const maxValSpan = document.getElementById('calcRangeMaxVal');
+            if (minValSpan) minValSpan.textContent = `${calcCurrentMin.toFixed(1)} °C`;
+            if (maxValSpan) maxValSpan.textContent = `${calcCurrentMax.toFixed(1)} °C`;
+            recalcTempHours();
+        }
+
+        function recalcTempHours() {
+            if (!currentModalStation || !currentModalStation.hourly || currentModalStation.hourly.length === 0) return;
+            const hourly = currentModalStation.hourly;
+            const isZh = currentLang === 'zh';
+            calcCurrentVar = document.getElementById('calcVarSelect')?.value || 'db';
+            calcCurrentCond = document.getElementById('calcConditionType')?.value || 'lte';
+
+            let matched = 0;
+            const monthlyCounts = Array(12).fill(0);
+            const monthlyTotals = Array(12).fill(0);
+
+            hourly.forEach(h => {
+                const val = h[calcCurrentVar];
+                const m = h.m;
+                monthlyTotals[m]++;
+                let pass = false;
+                if (calcCurrentCond === 'lte') {
+                    pass = val <= calcCurrentVal;
+                } else if (calcCurrentCond === 'gte') {
+                    pass = val >= calcCurrentVal;
+                } else if (calcCurrentCond === 'range') {
+                    pass = val >= Math.min(calcCurrentMin, calcCurrentMax) && val <= Math.max(calcCurrentMin, calcCurrentMax);
+                }
+                if (pass) {
+                    matched++;
+                    monthlyCounts[m]++;
+                }
+            });
+
+            const totalHours = hourly.length;
+            const pct = ((matched / totalHours) * 100).toFixed(1);
+            const oppPct = (100 - parseFloat(pct)).toFixed(1);
+            const days = (matched / 24).toFixed(1);
+            const dailyAvg = (matched / 365).toFixed(1);
+
+            // Peak Month
+            let peakM = 0;
+            let peakHrs = -1;
+            monthlyCounts.forEach((c, idx) => {
+                if (c > peakHrs) { peakHrs = c; peakM = idx; }
+            });
+            const months = (I18N[currentLang] || I18N.zh).months;
+
+            // Update KPI Pills
+            const resHoursEl = document.getElementById('calcResHours');
+            if (resHoursEl) resHoursEl.textContent = matched.toLocaleString();
+            const resDaysEl = document.getElementById('calcResDays');
+            if (resDaysEl) resDaysEl.textContent = isZh ? `約 ${days} 天 (年平均 ${dailyAvg} h/日)` : `~${days} days (${dailyAvg} h/day)`;
+            const resPctEl = document.getElementById('calcResPct');
+            if (resPctEl) resPctEl.textContent = `${pct}%`;
+            const resOppEl = document.getElementById('calcResOppPct');
+            if (resOppEl) resOppEl.textContent = isZh ? `未符合: ${oppPct}%` : `Unmet: ${oppPct}%`;
+            const resDailyAvgEl = document.getElementById('calcResDailyAvg');
+            if (resDailyAvgEl) resDailyAvgEl.textContent = dailyAvg;
+            const peakMEl = document.getElementById('calcResPeakMonth');
+            if (peakMEl) peakMEl.textContent = months[peakM];
+            const peakHrsEl = document.getElementById('calcResPeakHours');
+            if (peakHrsEl) {
+                const mTotal = monthlyTotals[peakM] || 720;
+                peakHrsEl.textContent = isZh 
+                    ? `${peakHrs} 小時 (佔該月 ${((peakHrs / mTotal) * 100).toFixed(1)}%)` 
+                    : `${peakHrs} hrs (${((peakHrs / mTotal) * 100).toFixed(1)}%)`;
+            }
+
+            // Render 12 Mini Monthly Bars
+            renderCalcMonthlyBars(monthlyCounts, monthlyTotals, months);
+
+            // Update Bin Table
+            rebuildCalcBinTable(hourly, calcCurrentVar);
+        }
+
+        function renderCalcMonthlyBars(monthlyCounts, monthlyTotals, months) {
+            const container = document.getElementById('calcMonthlyBarsContainer');
+            if (!container) return;
+            container.innerHTML = '';
+            const maxVal = Math.max(...monthlyCounts, 1);
+
+            months.forEach((mName, idx) => {
+                const count = monthlyCounts[idx];
+                const total = monthlyTotals[idx] || 720;
+                const mPct = ((count / total) * 100).toFixed(0);
+                const barHeight = Math.max(4, Math.round((count / maxVal) * 40));
+
+                const col = document.createElement('div');
+                col.className = 'flex flex-col items-center bg-slate-800/50 p-1.5 rounded-lg border border-white/5 hover:border-amber-400/40 transition-all';
+                col.title = `${mName}: ${count} hrs (${mPct}%)`;
+                col.innerHTML = `
+                    <span class="text-[10px] font-mono text-slate-400 mb-1">${mName}</span>
+                    <div class="w-full h-10 flex items-end justify-center bg-slate-900/80 rounded my-1 px-1">
+                        <div class="w-full bg-gradient-to-t from-amber-500 to-amber-300 rounded-sm transition-all duration-300" style="height: ${barHeight}px;"></div>
+                    </div>
+                    <span class="text-[10px] font-bold font-mono text-amber-300">${count}</span>
+                    <span class="text-[8px] font-mono text-slate-500">${mPct}%</span>
+                `;
+                container.appendChild(col);
+            });
+        }
+
+        function rebuildCalcBinTable(hourly, varKey) {
+            const tbody = document.getElementById('calcBinTableBody');
+            if (!tbody) return;
+            tbody.innerHTML = '';
+            lastCalcBinData = [];
+
+            const values = hourly.map(h => h[varKey]);
+            const minVal = Math.floor(Math.min(...values));
+            const maxVal = Math.ceil(Math.max(...values));
+            const binStep = 1;
+
+            const total = values.length;
+            const bins = [];
+            for (let b = minVal; b <= maxVal; b += binStep) {
+                bins.push({ low: b, high: b + binStep, count: 0 });
+            }
+
+            values.forEach(v => {
+                const idx = Math.floor(v - minVal);
+                if (idx >= 0 && idx < bins.length) bins[idx].count++;
+                else if (idx === bins.length) bins[bins.length - 1].count++;
+            });
+
+            let cumLte = 0;
+            bins.forEach(bin => {
+                cumLte += bin.count;
+                const cumLtePct = ((cumLte / total) * 100).toFixed(1);
+                const cumGt = total - cumLte;
+                const cumGtPct = ((cumGt / total) * 100).toFixed(1);
+                const binPct = ((bin.count / total) * 100).toFixed(1);
+
+                lastCalcBinData.push({
+                    range: `${bin.low} ~ ${bin.high}`,
+                    count: bin.count,
+                    pct: binPct,
+                    cumLte: cumLte,
+                    cumLtePct: cumLtePct,
+                    cumGt: cumGt,
+                    cumGtPct: cumGtPct
+                });
+
+                const tr = document.createElement('tr');
+                tr.className = 'hover:bg-white/5 transition-colors';
+                tr.innerHTML = `
+                    <td class="p-2 border border-white/5 font-bold text-white">${bin.low}°C ~ ${bin.high}°C</td>
+                    <td class="p-2 border border-white/5 text-amber-300 font-bold">${bin.count.toLocaleString()}</td>
+                    <td class="p-2 border border-white/5">${binPct}%</td>
+                    <td class="p-2 border border-white/5 text-cyan-300 font-bold">${cumLte.toLocaleString()}</td>
+                    <td class="p-2 border border-white/5 text-cyan-400">${cumLtePct}%</td>
+                    <td class="p-2 border border-white/5 text-rose-300 font-bold">${cumGt.toLocaleString()}</td>
+                    <td class="p-2 border border-white/5 text-rose-400">${cumGtPct}%</td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        function toggleCalcBinTable() {
+            const wrapper = document.getElementById('calcBinTableWrapper');
+            const icon = document.getElementById('calcBinTableToggleIcon');
+            if (!wrapper) return;
+            const isHidden = wrapper.classList.toggle('hidden');
+            if (icon) icon.textContent = isHidden ? '▶' : '▼';
+        }
+
+        function exportCalcBinCSV() {
+            if (!lastCalcBinData || lastCalcBinData.length === 0) return;
+            const varName = (document.getElementById('calcVarSelect')?.value || 'DB').toUpperCase();
+            const stName = currentModalStation?.city || 'Station';
+            const filename = `${stName}_${varName}_Temperature_Bins.csv`;
+
+            let csv = `\uFEFFStation,${stName}\nVariable,${varName}\n`;
+            csv += "Temperature Range (°C),Bin Hours (hrs),Bin Share (%),Cumulative <= T (hrs),Cumulative <= T (%),Cumulative > T (hrs),Cumulative > T (%)\n";
+            lastCalcBinData.forEach(r => {
+                csv += `"${r.range}",${r.count},${r.pct}%,${r.cumLte},${r.cumLtePct}%,${r.cumGt},${r.cumGtPct}%\n`;
+            });
+
+            const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.download = filename;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+        let lastMonthlyStats = [];
+        function renderModalTable(monthlyCounts) {
+            const tbody = document.getElementById('modalDataTableBody');
+            tbody.innerHTML = '';
+            const hourly = currentModalStation.hourly;
+
+            lastMonthlyStats = [];
+            const months = (I18N[currentLang] || I18N.zh).months;
+
+            months.forEach((name, m) => {
+                const mData = hourly.filter(h => h.m === m);
+                const dbs = mData.map(d => d.db);
+                const wbs = mData.map(d => d.wb);
+                const dps = mData.map(d => d.dp);
+                const rhs = mData.map(d => d.rh);
+                const rads = mData.map(d => d.rad);
+
+                const avgDB = (dbs.reduce((a, b) => a + b, 0) / dbs.length).toFixed(1);
+                const maxDB = Math.max(...dbs).toFixed(1);
+                const minDB = Math.min(...dbs).toFixed(1);
+                const avgWB = (wbs.reduce((a, b) => a + b, 0) / wbs.length).toFixed(1);
+                const avgDP = (dps.reduce((a, b) => a + b, 0) / dps.length).toFixed(1);
+                const avgRH = Math.round(rhs.reduce((a, b) => a + b, 0) / rhs.length);
+                const avgRad = Math.round(rads.reduce((a, b) => a + b, 0) / rads.length);
+                const fcHrs = monthlyCounts[m].full;
+
+                lastMonthlyStats.push({ month: name, avgDB, maxDB, minDB, avgWB, avgDP, avgRH, avgRad, fcHrs });
+
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td class="p-2 border border-white/10 font-bold text-white">${name}</td>
+                    <td class="p-2 border border-white/10">${avgDB}</td>
+                    <td class="p-2 border border-white/10 text-rose-400">${maxDB}</td>
+                    <td class="p-2 border border-white/10 text-cyan-400">${minDB}</td>
+                    <td class="p-2 border border-white/10 text-blue-300">${avgWB}</td>
+                    <td class="p-2 border border-white/10">${avgDP}</td>
+                    <td class="p-2 border border-white/10">${avgRH}%</td>
+                    <td class="p-2 border border-white/10">${avgRad}</td>
+                    <td class="p-2 border border-white/10 font-bold text-emerald-400">${fcHrs}</td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        function renderModalReco() {
+            const s = currentModalStation;
+            const recoDiv = document.getElementById('modalRecoContent');
+            const isZh = currentLang === 'zh';
+
+            if (isZh) {
+                recoDiv.innerHTML = `
+                    <div class="space-y-2">
+                        <p>• <strong>氣候極值評估</strong>：測站極端乾球 (0.4%) 為 <strong>${s.extDB || s.maxDB}°C</strong>，極端濕球 (0.4%) 為 <strong>${s.extWB}°C</strong>，ASHRAE 氣候分區歸類為 <strong>Zone ${s.zone}</strong>。</p>
+                        <p>• <strong>代表性數據中心 / 算力園區</strong>：<span class="text-cyan-300 font-bold">${s.datacenters || '區域核心數據中心與電信樞紐設施'}</span></p>
+                        <p>• <strong>水側與風側節能可行性</strong>：
+                            ${s.extWB <= 22 ? '本測站具備極佳水側 Free Cooling 條件，冷卻水塔搭配板式熱交換器全年可提供逾 4,000 小時自然冷卻，強烈建議導入水側節能旁通系統。' :
+                            (s.extWB <= 26 ? '本測站春秋及冬季具備顯著節能時數，夏季高溫高濕需依賴冰水主機，建議採用冷卻水塔水側節能 + 變頻磁懸浮離心冰機之複合架構。' :
+                            '本測站屬高溫高濕熱帶氣候，外氣濕球溫常態偏高，水側節能潛力有限，建議以浸沒式液冷 (Immersion) 或直接晶片液冷 (D2C) 為主，提高進水溫度 (如 W40/W45) 以實現全年乾冷器運轉。')}
+                        </p>
+                    </div>
+                `;
+            } else {
+                recoDiv.innerHTML = `
+                    <div class="space-y-2">
+                        <p>• <strong>Climate Characteristics Assessment</strong>: Extreme Dry-Bulb (0.4%) is <strong>${s.extDB || s.maxDB}°C</strong>, Extreme Wet-Bulb (0.4%) is <strong>${s.extWB}°C</strong>, ASHRAE <strong>Zone ${s.zone}</strong>.</p>
+                        <p>• <strong>Representative Data Centers & Operators</strong>: <span class="text-cyan-300 font-bold">${s.datacenters || 'Regional Telco & Enterprise DC Hub'}</span></p>
+                        <p>• <strong>Water-Side & Air-Side Economizer Feasibility</strong>:
+                            ${s.extWB <= 22 ? 'This location has superior Water-Side Free Cooling potential. A cooling tower paired with plate heat exchangers can provide over 4,000 hours of natural cooling annually; bypass heat exchanger installation is strongly recommended.' :
+                            (s.extWB <= 26 ? 'This location provides significant free cooling during spring, autumn, and winter. High summer wet-bulb requires mechanical chillers; a hybrid system featuring water-side economizer + magnetic bearing centrifugal chillers is optimal.' :
+                            'Tropical high-temperature and high-humidity climate. Ambient wet-bulb remains consistently elevated, resulting in limited water-side free cooling hours. Immersion liquid cooling or Direct-to-Chip (D2C) liquid cooling with elevated water inlet temperature (e.g., W40/W45) is recommended for year-round dry-cooler operation.')}
+                        </p>
+                    </div>
+                `;
+            }
+        }
+
+        function exportModalCSV() {
+            if (!lastMonthlyStats || lastMonthlyStats.length === 0) return;
+            const isZh = currentLang === 'zh';
+            let csv = isZh 
+                ? "月份,平均乾球(C),最高乾球(C),最低乾球(C),平均濕球(C),平均露點(C),平均濕度(%),太陽法向輻射(Wh/m2),FreeCooling時數(hrs)\n"
+                : "Month,Mean DB(C),Max DB(C),Min DB(C),Mean WB(C),Mean DP(C),Mean RH(%),Direct Normal Rad(Wh/m2),FreeCooling Hours(hrs)\n";
+            lastMonthlyStats.forEach(r => {
+                csv += `${r.month},${r.avgDB},${r.maxDB},${r.minDB},${r.avgWB},${r.avgDP},${r.avgRH},${r.avgRad},${r.fcHrs}\n`;
+            });
+            const blob = new Blob(["\uFEFF" + csv], { type: 'text/csv;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `${currentModalStation.city}_EPW_Monthly_Summary.csv`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            showToast(isZh ? "成功匯出 CSV 報告" : "Successfully exported CSV report", "success");
+        }
+
+        function copyModalTable() {
+            if (!lastMonthlyStats || lastMonthlyStats.length === 0) return;
+            const isZh = currentLang === 'zh';
+            let text = isZh
+                ? "月份\t平均乾球\t最高乾球\t最低乾球\t平均濕球\t平均露點\t平均濕度\t太陽輻射\tFree Cooling時數\n"
+                : "Month\tMean DB\tMax DB\tMin DB\tMean WB\tMean DP\tMean RH\tSolar Rad\tFree Cooling Hours\n";
+            lastMonthlyStats.forEach(r => {
+                text += `${r.month}\t${r.avgDB}\t${r.maxDB}\t${r.minDB}\t${r.avgWB}\t${r.avgDP}\t${r.avgRH}\t${r.avgRad}\t${r.fcHrs}\n`;
+            });
+            navigator.clipboard.writeText(text).then(() => {
+                showToast(isZh ? "已複製月度表格數據至剪貼簿" : "Copied monthly table data to clipboard", "success");
+            });
+        }
+
+        // --- 15. UI Helpers (Theme, Lang, Modals, Toasts) ---
+        function toggleTheme() {
+            const body = document.body;
+            body.classList.toggle('light-theme');
+            currentTheme = body.classList.contains('light-theme') ? 'light' : 'dark';
+        }
+
+        function toggleLang() {
+            const nextLang = currentLang === 'zh' ? 'en' : 'zh';
+            applyLang(nextLang);
+            showToast(currentLang === 'zh' ? '已切換至 繁體中文' : 'Switched to English interface', 'info');
+        }
+
+        function openGuideModal() {
+            const m = document.getElementById('guideModal');
+            m.classList.remove('hidden');
+            setTimeout(() => { m.classList.remove('opacity-0'); }, 10);
+        }
+
+        function closeGuideModal() {
+            const m = document.getElementById('guideModal');
+            m.classList.add('opacity-0');
+            setTimeout(() => { m.classList.add('hidden'); }, 300);
+        }
+
+        function showToast(msg, type = 'info') {
+            const container = document.getElementById('toastContainer');
+            if (!container) return;
+
+            const t = document.createElement('div');
+            let color = 'bg-slate-900/95 border-cyan-500/40 text-cyan-300';
+            if (type === 'success') color = 'bg-emerald-950/95 border-emerald-500/40 text-emerald-300';
+            if (type === 'error') color = 'bg-rose-950/95 border-rose-500/40 text-rose-300';
+            if (type === 'warning') color = 'bg-amber-950/95 border-amber-500/40 text-amber-300';
+
+            t.className = `px-4 py-2.5 rounded-xl border shadow-2xl backdrop-blur-md text-xs font-mono font-bold flex items-center gap-2 transform transition-all duration-300 translate-y-2 opacity-0 ${color}`;
+            t.innerHTML = `<span>${type === 'success' ? '✓' : (type === 'error' ? '✗' : 'ℹ')}</span> <span>${msg}</span>`;
+
+            container.appendChild(t);
+            requestAnimationFrame(() => {
+                t.classList.remove('translate-y-2', 'opacity-0');
+            });
+
+            setTimeout(() => {
+                t.classList.add('opacity-0', 'translate-y-2');
+                setTimeout(() => { container.removeChild(t); }, 300);
+            }, 3500);
+        }
+    </script>
+</body>
+</html>

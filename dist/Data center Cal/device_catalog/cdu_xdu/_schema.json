@@ -1,0 +1,31 @@
+{
+  "_meta": {
+    "schema_version": "1.1",
+    "category": "cdu_xdu",
+    "description": "液冷分配單元 CDU/XDU 型錄 AI 填入範本",
+    "ai_fill_guide": {
+      "cooling_capacity_kw":     "額定冷卻能力 kW（次側迴路最大熱移除量）",
+      "power_kw":                "CDU/XDU 自身耗電（泵浦 + 控制）kW",
+      "secondary_supply_temp_c": "次側供液溫度 °C（到機架的入口水溫）",
+      "primary_return_temp_c":   "一次側回水溫度 °C（回到冷機的溫度）",
+      "flow_rate_lpm":           "次側最大流量 L/min"
+    },
+    "field_definitions": {
+      "model":                   "完整型號名稱",
+      "vendor":                  "廠牌名稱",
+      "category":                "XDU (外部液冷分配) 或 CDU (機架嵌入式)",
+      "cooling_capacity_kw":     "額定冷卻能力 kW",
+      "power_kw":                "自身耗電 kW",
+      "secondary_supply_temp_c": "次側供液溫度 °C (選填)",
+      "primary_return_temp_c":   "一次側回水溫度 °C (選填)",
+      "flow_rate_lpm":           "次側最大流量 L/min (選填)",
+      "pump_type":               "single / redundant",
+      "compatible_racks":        "相容機架清單 (選填)",
+      "weight_kg":               "設備重量 kg (選填)",
+      "notes":                   "應用說明",
+      "_source":                 "資料來源",
+      "_ai_confidence":          "0.0~1.0",
+      "_verified":               "true/false"
+    }
+  }
+}

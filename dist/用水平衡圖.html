@@ -1,0 +1,423 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<script>
+function _0x43fb(_0x47b7b0,_0x2d1d74){_0x47b7b0=_0x47b7b0-0x1ed;var _0x57fbec=_0x57fb();var _0x43fb02=_0x57fbec[_0x47b7b0];return _0x43fb02;}function _0x57fb(){var _0x21bf1a=['stopPropagation','12021816VFFWoy','1286634xvBxax','ctrlKey','shiftKey','preventDefault','keydown','4275hxxfKW','13028760gqYHPn','232412mUjpmn','10NTzkPx','includes','7421293BLDcRz','F12','addEventListener','7UkiijR','5471730VPShTg','key','3972aHoWkw','contextmenu','4QuNBZk'];_0x57fb=function(){return _0x21bf1a;};return _0x57fb();}(function(_0x4a9a64,_0x435968){var _0x42aeee={_0x1a4608:0x1f8,_0x5c465a:0x201,_0x4870e2:0x1f9,_0x2f9f35:0x1fb},_0x46cb9b=_0x43fb,_0x5cd449=_0x4a9a64();while(!![]){try{var _0x2db708=-parseInt(_0x46cb9b(_0x42aeee._0x1a4608))/0x1+-parseInt(_0x46cb9b(0x1ee))/0x2*(parseInt(_0x46cb9b(0x1f1))/0x3)+-parseInt(_0x46cb9b(_0x42aeee._0x5c465a))/0x4*(parseInt(_0x46cb9b(0x1f6))/0x5)+-parseInt(_0x46cb9b(0x1ff))/0x6+-parseInt(_0x46cb9b(0x1fe))/0x7*(-parseInt(_0x46cb9b(0x1f0))/0x8)+parseInt(_0x46cb9b(0x1f7))/0x9+-parseInt(_0x46cb9b(_0x42aeee._0x4870e2))/0xa*(-parseInt(_0x46cb9b(_0x42aeee._0x2f9f35))/0xb);if(_0x2db708===_0x435968)break;else _0x5cd449['push'](_0x5cd449['shift']());}catch(_0x43e1eb){_0x5cd449['push'](_0x5cd449['shift']());}}}(_0x57fb,0xbcf04),(function(){var _0x24a063={_0x37c014:0x1fd},_0x1cfe4c={_0x5aff56:0x200,_0x387b99:0x1f3,_0x41a0cb:0x1fa,_0x5881dd:0x1fa,_0xd56577:0x1f4,_0x519825:0x1ef},_0xd273af=_0x43fb;document[_0xd273af(0x1fd)](_0xd273af(0x1ed),function(_0x224736){var _0x1dd76f=_0xd273af;_0x224736[_0x1dd76f(0x1f4)]();}),document[_0xd273af(_0x24a063._0x37c014)](_0xd273af(0x1f5),function(_0x109344){var _0x3c47ff=_0xd273af;if(_0x109344[_0x3c47ff(_0x1cfe4c._0x5aff56)]===_0x3c47ff(0x1fc)||_0x109344[_0x3c47ff(0x1f2)]&&_0x109344[_0x3c47ff(_0x1cfe4c._0x387b99)]&&['i','I','j','J','c','C','k','K'][_0x3c47ff(_0x1cfe4c._0x41a0cb)](_0x109344[_0x3c47ff(0x200)])||_0x109344[_0x3c47ff(0x1f2)]&&['u','U','s','S'][_0x3c47ff(_0x1cfe4c._0x5881dd)](_0x109344[_0x3c47ff(0x200)]))return _0x109344[_0x3c47ff(_0x1cfe4c._0xd56577)](),_0x109344[_0x3c47ff(_0x1cfe4c._0x519825)](),![];});}()));
+</script>
+    
+    <script src="./security.js"></script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>工廠用水平衡計算系統 V3.6 | Water Balance System</title>
+    
+    
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet">
+
+    <style>:root{--color-input:#3b82f6;--color-circulation:#f59e0b;--color-reuse:#22c55e;--color-consumption:#ef4444;--color-discharge:#64748b;--header-bg:#0f172a;--header-text:#ffffff;--bg-body:#f8fafc;--card-radius:12px;--header-radius:16px}body{background-color:var(--bg-body);font-family:'Inter','Noto Sans TC',sans-serif;color:#334155;padding-bottom:60px}.app-header-container{margin:20px auto 30px auto;max-width:1400px;padding:0 15px}.app-header{background-color:var(--header-bg);border-radius:var(--header-radius);padding:1rem 1.5rem;color:var(--header-text);box-shadow:0 10px 15px -3px rgba(0,0,0,0.1),0 4px 6px -2px rgba(0,0,0,0.05);display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:15px}.header-left{display:flex;align-items:center;gap:15px}.icon-box{width:48px;height:48px;background-color:rgba(255,255,255,0.1);border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:1.5rem;color:var(--color-input)}.title-group h1{font-size:1.25rem;font-weight:700;margin:0;line-height:1.2}.title-group .tags{font-size:0.75rem;font-weight:600;color:var(--color-reuse);letter-spacing:0.05em;text-transform:uppercase;font-family:monospace;margin-top:2px}.header-actions{display:flex;gap:10px;align-items:center}.btn-header{background-color:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);color:#e2e8f0;font-size:0.85rem;padding:0.4rem 0.8rem;border-radius:8px;transition:all 0.2s}.btn-header:hover{background-color:rgba(255,255,255,0.15);color:white;border-color:rgba(255,255,255,0.3)}.btn-header-primary{background-color:var(--color-input);border-color:var(--color-input);color:white}.btn-header-primary:hover{background-color:#2563eb;border-color:#1d4ed8}.validation-card{border:none;border-radius:var(--card-radius);box-shadow:0 4px 6px -1px rgba(0,0,0,0.05);overflow:hidden;background:white;margin-bottom:24px}.validation-item{padding:12px 16px;border-left:4px solid transparent;display:flex;align-items:flex-start;gap:12px;background:#fff;border-bottom:1px solid #f1f5f9}.validation-item:last-child{border-bottom:none}.val-error{border-left-color:var(--color-consumption);background-color:#fef2f2}.val-error .icon{color:var(--color-consumption)}.val-error .text{color:#991b1b}.val-warning{border-left-color:var(--color-circulation);background-color:#fffbeb}.val-warning .icon{color:var(--color-circulation)}.val-warning .text{color:#92400e}.val-note{font-size:0.85rem;color:#64748b;margin-top:4px;display:block;background-color:rgba(255,255,255,0.5);padding:4px 8px;border-radius:4px}.card{border:none;box-shadow:0 4px 6px -1px rgba(0,0,0,0.05),0 2px 4px -1px rgba(0,0,0,0.03);margin-bottom:20px;border-radius:var(--card-radius);background:white;transition:transform 0.2s}.card-header{background-color:white;border-bottom:1px solid #e2e8f0;font-weight:600;color:#1e293b;padding:1rem 1.25rem;border-top-left-radius:var(--card-radius) !important;border-top-right-radius:var(--card-radius) !important;display:flex;align-items:center}.card-header i{color:#64748b}.card-body{padding:1.25rem}.input-group-text{background-color:#f8fafc;border-color:#e2e8f0;color:#64748b;font-size:0.85rem}.form-control{border-color:#e2e8f0;color:#334155}.form-control:focus{border-color:var(--color-input);box-shadow:0 0 0 2px rgba(59,130,246,0.15)}.form-label{font-size:0.85rem;color:#475569;font-weight:600;margin-bottom:4px}.metric-card{text-align:center;padding:24px 16px;background:white;border-radius:var(--card-radius);border-top:4px solid var(--color-input);box-shadow:0 4px 6px -1px rgba(0,0,0,0.05);height:100%}.metric-value{font-size:1.8rem;font-weight:700;color:#0f172a;font-family:'Inter',sans-serif;margin:8px 0}.metric-title{color:#64748b;font-size:0.85rem;font-weight:500;text-transform:uppercase;letter-spacing:0.05em}.status-balanced{border-top-color:var(--color-reuse);background:#f0fdf4}.status-warning{border-top-color:var(--color-circulation);background:#fffbeb}.status-error{border-top-color:var(--color-consumption);background:#fef2f2}.progress{height:24px;background-color:#e2e8f0;border-radius:99px;box-shadow:inset 0 2px 4px rgba(0,0,0,0.05)}#diagram-container{background-color:white;padding:20px;border-radius:var(--card-radius);border:1px solid #e2e8f0;overflow-x:auto;text-align:center;min-height:400px}.table thead th{background-color:#f8fafc;color:#475569;font-weight:600;text-transform:uppercase;font-size:0.8rem;letter-spacing:0.025em;border-bottom:2px solid #e2e8f0}.table td{color:#334155;vertical-align:middle}.help-step-icon{width:24px;height:24px;background:var(--color-input);color:white;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-size:0.8rem;margin-right:8px;font-weight:bold}.help-term{font-weight:700;color:#1e293b}.print-only{display:none}@media print{@page{size:A4;margin:10mm}body{background-color:white;padding:0;color:black;font-family:'Noto Sans TC',serif}.no-print{display:none !important}.print-only{display:block;margin-bottom:20px;text-align:center;border-bottom:2px solid #000;padding-bottom:10px}.card{box-shadow:none;border:1px solid #ccc;break-inside:avoid;page-break-inside:avoid;margin-bottom:15px}.card-header{background-color:#f0f0f0 !important;border-bottom:1px solid #999;color:black}.metric-card{border:1px solid #ccc;-webkit-print-color-adjust:exact;print-color-adjust:exact}.chart-container{height:250px !important;width:100% !important;page-break-inside:avoid}.table{font-size:0.8rem}.table th{background-color:#eee !important;-webkit-print-color-adjust:exact}::-webkit-scrollbar{display:none}.val-error,.val-warning{background-color:white !important;border-bottom:1px solid #ccc}}</style>
+</head>
+<body>
+
+<div id="app">
+    
+    <div class="print-only">
+        <h2>{{ t.printHeader }}</h2>
+        <p>{{ t.printSubHeader }} | {{ t.dateLabel }}: {{ currentDate }}</p>
+    </div>
+
+    
+    <div class="app-header-container no-print">
+        <header class="app-header">
+            <div class="header-left">
+                <div class="icon-box">
+                    <i class="fa-solid fa-droplet"></i>
+                </div>
+                <div class="title-group">
+                    <h1>{{ t.headerTitle }}</h1>
+                    <div class="tags">ENGINEERING • INCOMPRESSIBLE</div>
+                </div>
+            </div>
+            
+            <div class="header-actions">
+                
+                <button class="btn btn-header" data-bs-toggle="modal" data-bs-target="#helpModal" :title="t.btnHelpTitle">
+                    <i class="fa-solid fa-circle-question me-1"></i> {{ t.btnHelp }}
+                </button>
+
+                <button class="btn btn-header" @click="loadExampleData" :title="t.btnExampleTitle">
+                    <i class="fa-solid fa-rotate-right me-1"></i> {{ t.btnExample }}
+                </button>
+                <button class="btn btn-header" @click="resetData" :title="t.btnClearTitle">
+                    <i class="fa-solid fa-eraser me-1"></i> {{ t.btnClear }}
+                </button>
+                <button class="btn btn-header btn-header-primary" @click="exportToExcel" :title="t.btnExportTitle">
+                    <i class="fa-solid fa-file-excel me-1"></i> {{ t.btnExport }}
+                </button>
+                <button class="btn btn-header" @click="printReport" :title="t.btnPrintTitle">
+                    <i class="fa-solid fa-print"></i> {{ t.btnPrint }}
+                </button>
+            </div>
+        </header>
+    </div>
+
+    <div class="container-fluid px-4" style="max-width: 1440px; margin: 0 auto;">
+        
+        
+        <div v-if="validationIssues.length > 0" class="validation-card no-print">
+            <div class="card-header bg-white border-0 pb-0">
+                <span class="text-uppercase text-muted fw-bold small"><i class="fa-solid fa-clipboard-check me-2"></i>{{ t.validationTitle }}</span>
+            </div>
+            <div class="p-2">
+                <div v-for="(issue, index) in validationIssues" :key="index" 
+                     class="validation-item rounded m-2"
+                     :class="issue.level === 'error' ? 'val-error' : 'val-warning'">
+                    
+                    <div class="icon mt-1">
+                        <i v-if="issue.level === 'error'" class="fa-solid fa-circle-xmark fa-lg"></i>
+                        <i v-else class="fa-solid fa-triangle-exclamation fa-lg"></i>
+                    </div>
+                    
+                    <div class="content">
+                        <div class="fw-bold text text-uppercase small mb-1">
+                            {{ issue.level === 'error' ? t.errorLabel : t.warningLabel }}
+                        </div>
+                        <div v-html="issue.msg" class="text-dark"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="row">
+            
+            <div class="col-lg-4 col-md-12">
+                
+                
+                <div class="card">
+                    <div class="card-header">
+                        <i class="fa-solid fa-faucet me-2"></i>{{ t.inputSectionTitle }}
+                    </div>
+                    <div class="card-body">
+                        <div class="row g-2">
+                            <div class="col-6" v-for="(label, key) in currentSourceLabels" :key="key">
+                                <label class="form-label text-truncate" :title="label">{{ label }}</label>
+                                <input type="number" min="0" step="0.01" 
+                                       class="form-control form-control-sm text-end" 
+                                       v-model.number="sources[key]" 
+                                       @focus="$event.target.select()"
+                                       placeholder="0.00">
+                            </div>
+                        </div>
+                        <div class="mt-3 p-3 bg-light rounded text-end border border-primary-subtle">
+                            <small class="text-secondary d-block fw-bold text-uppercase" style="font-size: 0.7rem;">{{ t.totalInputLabel }}</small>
+                            <div class="h3 text-primary mb-0 fw-bold font-monospace">{{ totalInput.toFixed(1) }} <small class="fs-6 text-muted">CMD</small></div>
+                        </div>
+                    </div>
+                </div>
+
+                
+                <div class="card">
+                    <div class="card-header">
+                        <i class="fa-solid fa-gears me-2"></i>{{ t.unitSectionTitle }}
+                    </div>
+                    <div class="card-body p-0">
+                        <div class="accordion accordion-flush" id="unitAccordion">
+                            <div class="accordion-item" v-for="(unit, key) in units" :key="key">
+                                <h2 class="accordion-header">
+                                    <button class="accordion-button collapsed py-2" type="button" 
+                                            data-bs-toggle="collapse" 
+                                            :data-bs-target="'#collapse-'+key">
+                                            <div class="d-flex justify-content-between w-100 align-items-center pe-2">
+                                                <span class="fw-semibold">{{ currentUnitLabels[key] }}</span>
+                                                <span class="badge bg-secondary ms-2 rounded-pill" v-if="(unit.w + unit.c + unit.d) > 0">
+                                                    {{ (unit.w + unit.c + unit.d).toFixed(0) }}
+                                                </span>
+                                            </div>
+                                    </button>
+                                </h2>
+                                <div :id="'collapse-'+key" class="accordion-collapse collapse" 
+                                     data-bs-parent="#unitAccordion">
+                                    <div class="accordion-body bg-light">
+                                        <div class="input-group input-group-sm mb-2">
+                                            <span class="input-group-text">{{ t.consumptionLabel }} (w)</span>
+                                            <input type="number" min="0" step="0.01" class="form-control text-end" v-model.number="unit.w">
+                                            <span class="input-group-text">CMD</span>
+                                        </div>
+                                        <div class="input-group input-group-sm mb-2">
+                                            <span class="input-group-text">{{ t.circulationLabel }} (c)</span>
+                                            <input type="number" min="0" step="0.01" class="form-control text-end" v-model.number="unit.c">
+                                            <span class="input-group-text">CMD</span>
+                                        </div>
+                                        <div class="input-group input-group-sm">
+                                            <span class="input-group-text">{{ t.dischargeLabel }} (d)</span>
+                                            <input type="number" min="0" step="0.01" class="form-control text-end" v-model.number="unit.d">
+                                            <span class="input-group-text">CMD</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="accordion-item">
+                                <h2 class="accordion-header">
+                                    <button class="accordion-button collapsed py-2" type="button" 
+                                            data-bs-toggle="collapse" data-bs-target="#collapse-reclaim">
+                                            <strong class="text-success"><i class="fa-solid fa-recycle me-1"></i>{{ t.wasteWaterRecovery }}</strong>
+                                            <span class="ms-auto badge bg-success rounded-pill" v-if="reclaimed_water > 0">
+                                                {{ reclaimed_water.toFixed(1) }}
+                                            </span>
+                                    </button>
+                                </h2>
+                                <div id="collapse-reclaim" class="accordion-collapse collapse" data-bs-parent="#unitAccordion">
+                                    <div class="accordion-body bg-light">
+                                        <div class="input-group input-group-sm">
+                                            <span class="input-group-text">{{ t.reclaimedWaterAmount }}</span>
+                                            <input type="number" min="0" step="0.01" class="form-control text-end" v-model.number="reclaimed_water">
+                                            <span class="input-group-text">CMD</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            
+            <div class="col-lg-8 col-md-12">
+                
+                
+                <div class="row mb-4 g-3">
+                    <div class="col-md-3 col-6">
+                        <div class="metric-card" :class="balanceStatusClass">
+                            <div class="metric-title">{{ t.balanceErrorTitle }} Δ</div>
+                            <div class="metric-value" :class="balanceTextClass">
+                                {{ balanceErrorPercent.toFixed(1) }}%
+                            </div>
+                            <small class="text-muted d-block mt-1 font-monospace">
+                                {{ balanceError.toFixed(1) }} CMD
+                            </small>
+                            <span class="badge rounded-pill mt-2" :class="balanceBadgeClass">{{ balanceLabel }}</span>
+                        </div>
+                    </div>
+                    <div class="col-md-3 col-6">
+                        <div class="metric-card" style="border-top-color: var(--color-reuse);">
+                            <div class="metric-title">{{ t.r1Title }}</div>
+                            <div class="metric-value" :class="{'text-success': parseFloat(r1_percentage) >= 80}">
+                                {{ r1_percentage }}%
+                            </div>
+                            <small class="text-muted">{{ t.r1Subtitle }}</small>
+                        </div>
+                    </div>
+                    <div class="col-md-3 col-6">
+                        <div class="metric-card" style="border-top-color: var(--color-input);">
+                            <div class="metric-title">{{ t.r2Title }}</div>
+                            <div class="metric-value" :class="{'text-success': parseFloat(r2_percentage) >= 50}">
+                                {{ r2_percentage }}%
+                            </div>
+                            <small class="text-muted">{{ t.r2Subtitle }}</small>
+                        </div>
+                    </div>
+                    <div class="col-md-3 col-6">
+                        <div class="metric-card" style="border-top-color: var(--color-circulation);">
+                            <div class="metric-title">{{ t.totalCirculationTitle }}</div>
+                            <div class="metric-value font-monospace">{{ totalCirculation.toFixed(0) }}</div>
+                            <small class="text-muted">CMD</small>
+                        </div>
+                    </div>
+                </div>
+
+                
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <i class="fa-solid fa-chart-line me-2"></i>{{ t.recoveryIndexAnalysis }}
+                    </div>
+                    <div class="card-body">
+                        <div class="row align-items-center mb-3">
+                            <div class="col-md-2 fw-bold text-end text-secondary" style="font-size:0.9rem;">{{ t.r1Indicator }}</div>
+                            <div class="col-md-10">
+                                <div class="progress position-relative" style="height: 20px;">
+                                    <div class="progress-bar progress-bar-striped progress-bar-animated bg-success" 
+                                         role="progressbar" 
+                                         :style="{width: Math.min(parseFloat(r1_percentage), 100) + '%'}">
+                                    </div>
+                                    <span class="position-absolute w-100 text-center text-dark fw-bold" style="font-size: 0.75rem; line-height: 20px;">{{ r1_percentage }}%</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="row align-items-center">
+                            <div class="col-md-2 fw-bold text-end text-secondary" style="font-size:0.9rem;">{{ t.r2Indicator }}</div>
+                            <div class="col-md-10">
+                                <div class="progress position-relative" style="height: 20px;">
+                                    <div class="progress-bar progress-bar-striped progress-bar-animated bg-primary" 
+                                         role="progressbar" 
+                                         :style="{width: Math.min(parseFloat(r2_percentage), 100) + '%'}">
+                                    </div>
+                                    <span class="position-absolute w-100 text-center text-dark fw-bold" style="font-size: 0.75rem; line-height: 20px;">{{ r2_percentage }}%</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                
+                <div class="row">
+                    <div class="col-md-6 mb-4">
+                        <div class="card h-100">
+                            <div class="card-header"><i class="fa-solid fa-chart-pie me-2"></i>{{ t.pieChartTitle }}</div>
+                            <div class="card-body position-relative">
+                                <div class="chart-container" v-show="totalConsumption > 0">
+                                    <canvas id="pieChart"></canvas>
+                                </div>
+                                <div class="empty-chart-message" v-show="totalConsumption === 0">
+                                    <i class="fa-solid fa-chart-pie"></i>
+                                    <p>{{ t.noData }}</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6 mb-4">
+                        <div class="card h-100">
+                            <div class="card-header"><i class="fa-solid fa-chart-bar me-2"></i>{{ t.barChartTitle }}</div>
+                            <div class="card-body position-relative">
+                                <div class="chart-container" v-show="totalInput > 0 || totalCirculation > 0">
+                                    <canvas id="barChart"></canvas>
+                                </div>
+                                <div class="empty-chart-message" v-show="totalInput === 0 && totalCirculation === 0">
+                                    <i class="fa-solid fa-chart-bar"></i>
+                                    <p>{{ t.noData }}</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                
+                <div class="card mb-4">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <span><i class="fa-solid fa-diagram-project me-2"></i>{{ t.mermaidTitle }}</span>
+                        <span class="badge bg-light text-dark border">Engineering View</span>
+                    </div>
+                    <div class="card-body">
+                        <div id="diagram-container">
+                            <div class="mermaid"></div>
+                        </div>
+                        <div class="text-muted text-center mt-2 small">
+                            <i class="fa-solid fa-info-circle me-1"></i>
+                            {{ t.mermaidLegend }}
+                        </div>
+                    </div>
+                </div>
+
+                
+                <div class="card">
+                    <div class="card-header"><i class="fa-solid fa-table me-2"></i>{{ t.tableTitle }}</div>
+                    <div class="card-body">
+                        <div class="table-responsive">
+                            <table class="table table-hover align-middle mb-0">
+                                <thead>
+                                    <tr>
+                                        <th class="ps-3">{{ t.colUnit }}</th>
+                                        <th class="text-end">{{ t.colConsumption }} (w)</th>
+                                        <th class="text-end">{{ t.colCirculation }} (c)</th>
+                                        <th class="text-end">{{ t.colDischarge }} (d)</th>
+                                        <th class="text-end pe-3">{{ t.colEstimatedInput }} (w+d)</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr v-for="(unit, key) in units" :key="key">
+                                        <td class="ps-3 fw-medium">{{ currentUnitLabels[key] }}</td>
+                                        <td class="text-end font-monospace">{{ unit.w.toFixed(1) }}</td>
+                                        <td class="text-end text-muted font-monospace">{{ unit.c.toFixed(1) }}</td>
+                                        <td class="text-end font-monospace">{{ unit.d.toFixed(1) }}</td>
+                                        <td class="text-end fw-bold font-monospace pe-3" style="color: var(--color-input);">{{ (unit.w + unit.d).toFixed(1) }}</td>
+                                    </tr>
+                                </tbody>
+                                <tfoot class="table-light border-top-2">
+                                    <tr class="fw-bold">
+                                        <td class="ps-3">{{ t.totalLabel }}</td>
+                                        <td class="text-end">{{ totalConsumption.toFixed(1) }}</td>
+                                        <td class="text-end">{{ totalCirculation.toFixed(1) }}</td>
+                                        <td class="text-end">{{ totalDischarge.toFixed(1) }}</td>
+                                        <td class="text-end pe-3">{{ (totalConsumption + totalDischarge).toFixed(1) }}</td>
+                                    </tr>
+                                </tfoot>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </div>
+
+    <footer class="text-center text-muted py-4 mt-5 no-print">
+        <small class="font-monospace">Water Balance System V3.6 | Engineering Edition</small>
+    </footer>
+
+    
+    <div class="modal fade" id="helpModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title fw-bold"><i class="fa-solid fa-book-open me-2 text-primary"></i>{{ t.helpModalTitle }}</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body text-secondary">
+                    <div class="mb-4">
+                        <h6 class="fw-bold text-dark border-bottom pb-2">{{ t.helpQuickStartTitle }}</h6>
+                        <div class="d-flex align-items-start mb-2">
+                            <span class="help-step-icon">1</span>
+                            <div>
+                                <strong>{{ t.helpStep1Title }}</strong>
+                                <p class="small mb-0">{{ t.helpStep1Desc }}</p>
+                            </div>
+                        </div>
+                        <div class="d-flex align-items-start mb-2">
+                            <span class="help-step-icon">2</span>
+                            <div>
+                                <strong>{{ t.helpStep2Title }}</strong>
+                                <p class="small mb-0">{{ t.helpStep2Desc }}</p>
+                            </div>
+                        </div>
+                        <div class="d-flex align-items-start">
+                            <span class="help-step-icon">3</span>
+                            <div>
+                                <strong>{{ t.helpStep3Title }}</strong>
+                                <p class="small mb-0">{{ t.helpStep3Desc }}</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div>
+                        <h6 class="fw-bold text-dark border-bottom pb-2">{{ t.helpGlossaryTitle }}</h6>
+                        <ul class="list-unstyled small">
+                            <li class="mb-2"><span class="help-term">{{ t.consumptionLabel }} (w):</span> {{ t.helpGlossaryW }}</li>
+                            <li class="mb-2"><span class="help-term">{{ t.circulationLabel }} (c):</span> {{ t.helpGlossaryC }}</li>
+                            <li class="mb-2"><span class="help-term">{{ t.dischargeLabel }} (d):</span> {{ t.helpGlossaryD }}</li>
+                            <li><span class="help-term">CMD:</span> {{ t.helpGlossaryCMD }}</li>
+                        </ul>
+                    </div>
+                </div>
+                <div class="modal-footer bg-light">
+                    <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">{{ t.btnClose }}</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10.6.1/dist/mermaid.min.js"></script>
+<script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
+
+<script>
+function _0x1b00(_0x1d4355,_0x15cd3f){_0x1d4355=_0x1d4355-0xab;const _0x5cd9f5=_0x5cd9();let _0x1b0059=_0x5cd9f5[_0x1d4355];return _0x1b0059;}const _0x2dc1a3=_0x1b00;(function(_0x5788a8,_0x4cf8d6){const _0x8f6661={_0x11aaee:0xe1,_0x4ecb2a:0xf1,_0x4bffa2:0xed},_0x2a33f0=_0x1b00,_0x361efd=_0x5788a8();while(!![]){try{const _0x58da27=parseInt(_0x2a33f0(0x127))/0x1+parseInt(_0x2a33f0(_0x8f6661._0x11aaee))/0x2*(parseInt(_0x2a33f0(0x1c0))/0x3)+parseInt(_0x2a33f0(_0x8f6661._0x4ecb2a))/0x4*(-parseInt(_0x2a33f0(0x151))/0x5)+-parseInt(_0x2a33f0(0x117))/0x6*(parseInt(_0x2a33f0(0xc4))/0x7)+-parseInt(_0x2a33f0(_0x8f6661._0x4bffa2))/0x8*(parseInt(_0x2a33f0(0x1e0))/0x9)+-parseInt(_0x2a33f0(0x17f))/0xa+parseInt(_0x2a33f0(0x179))/0xb*(parseInt(_0x2a33f0(0x1b9))/0xc);if(_0x58da27===_0x4cf8d6)break;else _0x361efd['push'](_0x361efd['shift']());}catch(_0x5f5934){_0x361efd['push'](_0x361efd['shift']());}}}(_0x5cd9,0xaeda4));const {createApp}=Vue,i18n={'zh':{'printHeader':_0x2dc1a3(0x18f),'printSubHeader':_0x2dc1a3(0x13a),'dateLabel':'輸出日期','headerTitle':'Water\x20Balance\x20System\x20V3.6','btnExample':'範例','btnExampleTitle':_0x2dc1a3(0x101),'btnClear':'清空','btnClearTitle':'清空所有輸入','btnExport':'匯出','btnExportTitle':_0x2dc1a3(0x1d5),'btnPrint':_0x2dc1a3(0xd6),'btnPrintTitle':_0x2dc1a3(0x120),'btnHelp':'說明','btnHelpTitle':_0x2dc1a3(0xc0),'btnClose':'關閉','validationTitle':_0x2dc1a3(0x13b),'errorLabel':_0x2dc1a3(0x1f1),'warningLabel':_0x2dc1a3(0x19a),'inputSectionTitle':'水源資料\x20(Input)','totalInputLabel':'Total\x20Input','unitSectionTitle':'用水單元數據','consumptionLabel':'消耗','circulationLabel':'循環','dischargeLabel':'排放','wasteWaterRecovery':_0x2dc1a3(0xcf),'reclaimedWaterAmount':_0x2dc1a3(0x1a6),'balanceErrorTitle':'水平衡誤差','r1Title':'R1\x20回收率','r1Subtitle':_0x2dc1a3(0xe8),'r2Title':'R2\x20回收率','r2Subtitle':_0x2dc1a3(0x106),'totalCirculationTitle':_0x2dc1a3(0xbc),'recoveryIndexAnalysis':_0x2dc1a3(0x156),'r1Indicator':_0x2dc1a3(0xda),'r2Indicator':'R2\x20指標','pieChartTitle':_0x2dc1a3(0xfb),'barChartTitle':_0x2dc1a3(0x17c),'noData':_0x2dc1a3(0xad),'mermaidTitle':_0x2dc1a3(0x1a3),'mermaidLegend':'圖示說明：實線代表新水/排放水流向，虛線代表單元內部循環。','tableTitle':_0x2dc1a3(0x199),'colUnit':_0x2dc1a3(0x195),'colConsumption':'消耗','colCirculation':'循環','colDischarge':'排放','colEstimatedInput':_0x2dc1a3(0x19e),'totalLabel':'總計','helpModalTitle':_0x2dc1a3(0xf4),'helpQuickStartTitle':_0x2dc1a3(0x15d),'helpStep1Title':_0x2dc1a3(0x1ea),'helpStep1Desc':_0x2dc1a3(0x148),'helpStep2Title':'設定單元數據','helpStep2Desc':'針對各用水單元\x20(如冷卻水塔、製程)\x20填入\x20w\x20(消耗)、c\x20(循環)、d\x20(排放)\x20三項關鍵數據。','helpStep3Title':_0x2dc1a3(0x165),'helpStep3Desc':_0x2dc1a3(0x1da),'helpGlossaryTitle':'工程名詞解釋','helpGlossaryW':'製程中蒸發、飛濺或產品帶走而損失的水量。','helpGlossaryC':_0x2dc1a3(0x150),'helpGlossaryD':_0x2dc1a3(0xb7),'helpGlossaryCMD':_0x2dc1a3(0x1a0),'sourceLabels':{'I1':_0x2dc1a3(0xbf),'I2':_0x2dc1a3(0x1c8),'I3':'地面水\x20(I3)','I4':_0x2dc1a3(0x1c4),'I5':_0x2dc1a3(0xc8),'I6':_0x2dc1a3(0x14d),'I7':_0x2dc1a3(0x1e3),'I8':_0x2dc1a3(0x1af)},'unitLabels':{'purified':_0x2dc1a3(0x1e8),'cooling':_0x2dc1a3(0xaf),'process':_0x2dc1a3(0xb1),'boiler':'鍋爐','scrubber':_0x2dc1a3(0xcd),'domestic':_0x2dc1a3(0xee),'other':_0x2dc1a3(0x13d)},'msg_balance_error':_0x2dc1a3(0x194),'msg_physical_error':_0x2dc1a3(0x17b),'msg_recovery_abnormal':_0x2dc1a3(0x1ac),'msg_cooling_low':_0x2dc1a3(0x1c2),'msg_cooling_high':_0x2dc1a3(0x19d),'msg_cooling_note':_0x2dc1a3(0x168),'msg_discharge_error':_0x2dc1a3(0x12e),'confirm_reset':_0x2dc1a3(0x142),'export_alert':_0x2dc1a3(0xf7),'exp_title':_0x2dc1a3(0xc1),'exp_item':'項目','exp_value':'數值','exp_unit':'單位','exp_desc':'說明','exp_total_input':_0x2dc1a3(0x16b),'exp_total_input_desc':_0x2dc1a3(0x1d8),'exp_total_circ':_0x2dc1a3(0xbc),'exp_total_circ_desc':_0x2dc1a3(0xae),'exp_total_reuse':_0x2dc1a3(0x141),'exp_total_reuse_desc':_0x2dc1a3(0x1ee),'exp_total_consump':_0x2dc1a3(0x154),'exp_total_consump_desc':'蒸發/產品帶走','exp_total_discharge':_0x2dc1a3(0x1a1),'exp_total_discharge_desc':'排放至廢水處理','exp_balance_error':'水平衡誤差','exp_balance_error_desc':_0x2dc1a3(0x107),'exp_r1':_0x2dc1a3(0x19f),'exp_r1_desc':'(總循環+總回用)/(總取水+總循環+總回用)','exp_r2':_0x2dc1a3(0x16e),'exp_r2_desc':_0x2dc1a3(0xcb),'exp_sheet_summary':'摘要報表','exp_sheet_detail':'詳細數據','mermaid_source':_0x2dc1a3(0x153),'mermaid_input_source':_0x2dc1a3(0x11e),'mermaid_intake':'取水','mermaid_circ':'循環','mermaid_discharge':'排放','mermaid_waste_sys':_0x2dc1a3(0x18b),'mermaid_total_discharge':_0x2dc1a3(0x161),'mermaid_recycle_sys':'回收系統','mermaid_recycle':'回收','mermaid_reuse':'回用'},'en':{'printHeader':_0x2dc1a3(0x118),'printSubHeader':_0x2dc1a3(0x19b),'dateLabel':_0x2dc1a3(0x1b7),'headerTitle':_0x2dc1a3(0x1bc),'btnExample':_0x2dc1a3(0x1cb),'btnExampleTitle':'Reload\x20example\x20data','btnClear':_0x2dc1a3(0x10f),'btnClearTitle':_0x2dc1a3(0x10b),'btnExport':_0x2dc1a3(0x1ab),'btnExportTitle':_0x2dc1a3(0x16c),'btnPrint':_0x2dc1a3(0x145),'btnPrintTitle':_0x2dc1a3(0xec),'btnHelp':_0x2dc1a3(0x12b),'btnHelpTitle':'User\x20Guide','btnClose':_0x2dc1a3(0x1e9),'validationTitle':_0x2dc1a3(0x13b),'errorLabel':_0x2dc1a3(0x1f1),'warningLabel':_0x2dc1a3(0x19a),'inputSectionTitle':_0x2dc1a3(0x132),'totalInputLabel':_0x2dc1a3(0x115),'unitSectionTitle':_0x2dc1a3(0x1b0),'consumptionLabel':_0x2dc1a3(0xb6),'circulationLabel':'Circ.','dischargeLabel':_0x2dc1a3(0x164),'wasteWaterRecovery':_0x2dc1a3(0x1b5),'reclaimedWaterAmount':_0x2dc1a3(0x109),'balanceErrorTitle':_0x2dc1a3(0x128),'r1Title':_0x2dc1a3(0x170),'r1Subtitle':_0x2dc1a3(0xe6),'r2Title':_0x2dc1a3(0x1c9),'r2Subtitle':_0x2dc1a3(0x196),'totalCirculationTitle':_0x2dc1a3(0x191),'recoveryIndexAnalysis':_0x2dc1a3(0x17a),'r1Indicator':_0x2dc1a3(0x1d0),'r2Indicator':_0x2dc1a3(0x17e),'pieChartTitle':_0x2dc1a3(0x113),'barChartTitle':'Plant\x20Water\x20Statistics','noData':'No\x20Data','mermaidTitle':'Water\x20Balance\x20Diagram\x20(Mermaid)','mermaidLegend':'Legend:\x20Solid\x20lines\x20represent\x20fresh\x20water/discharge\x20flow,\x20dashed\x20lines\x20represent\x20internal\x20circulation.','tableTitle':_0x2dc1a3(0x1c3),'colUnit':_0x2dc1a3(0x178),'colConsumption':_0x2dc1a3(0x1e1),'colCirculation':_0x2dc1a3(0x119),'colDischarge':_0x2dc1a3(0x164),'colEstimatedInput':_0x2dc1a3(0x1ad),'totalLabel':'Total','helpModalTitle':_0x2dc1a3(0x172),'helpQuickStartTitle':_0x2dc1a3(0xd3),'helpStep1Title':_0x2dc1a3(0xea),'helpStep1Desc':_0x2dc1a3(0x171),'helpStep2Title':_0x2dc1a3(0x1f0),'helpStep2Desc':'For\x20each\x20unit\x20(e.g.,\x20Cooling\x20Tower),\x20enter\x20w\x20(Consumption),\x20c\x20(Circulation),\x20and\x20d\x20(Discharge).','helpStep3Title':_0x2dc1a3(0x12f),'helpStep3Desc':'Monitor\x20\x27Balance\x20Error\x27\x20on\x20the\x20dashboard.\x20Green\x20\x27Balanced\x27\x20indicates\x20input\x20matches\x20output.','helpGlossaryTitle':_0x2dc1a3(0x157),'helpGlossaryW':_0x2dc1a3(0xbe),'helpGlossaryC':_0x2dc1a3(0x1d4),'helpGlossaryD':_0x2dc1a3(0x1b2),'helpGlossaryCMD':_0x2dc1a3(0x13c),'sourceLabels':{'I1':_0x2dc1a3(0x180),'I2':_0x2dc1a3(0x1d2),'I3':_0x2dc1a3(0xd1),'I4':'Contract\x20Water\x20(I4)','I5':_0x2dc1a3(0x173),'I6':'Rainwater\x20(I6)','I7':_0x2dc1a3(0x10e),'I8':_0x2dc1a3(0x186)},'unitLabels':{'purified':_0x2dc1a3(0x138),'cooling':_0x2dc1a3(0x182),'process':_0x2dc1a3(0xc9),'boiler':_0x2dc1a3(0x100),'scrubber':_0x2dc1a3(0x1b4),'domestic':_0x2dc1a3(0x14f),'other':_0x2dc1a3(0x158)},'msg_balance_error':_0x2dc1a3(0x114),'msg_physical_error':_0x2dc1a3(0x1c5),'msg_recovery_abnormal':_0x2dc1a3(0xdf),'msg_cooling_low':_0x2dc1a3(0x10c),'msg_cooling_high':_0x2dc1a3(0x1aa),'msg_cooling_note':_0x2dc1a3(0x192),'msg_discharge_error':_0x2dc1a3(0x185),'confirm_reset':_0x2dc1a3(0x12c),'export_alert':_0x2dc1a3(0x167),'exp_title':_0x2dc1a3(0xe5),'exp_item':_0x2dc1a3(0x126),'exp_value':_0x2dc1a3(0x18d),'exp_unit':_0x2dc1a3(0x1b3),'exp_desc':_0x2dc1a3(0x133),'exp_total_input':_0x2dc1a3(0x1db),'exp_total_input_desc':'Sum\x20of\x20all\x20sources','exp_total_circ':'Total\x20Circulation','exp_total_circ_desc':_0x2dc1a3(0x108),'exp_total_reuse':_0x2dc1a3(0x104),'exp_total_reuse_desc':_0x2dc1a3(0xe4),'exp_total_consump':_0x2dc1a3(0x1f3),'exp_total_consump_desc':_0x2dc1a3(0x1a9),'exp_total_discharge':_0x2dc1a3(0x15c),'exp_total_discharge_desc':_0x2dc1a3(0x13f),'exp_balance_error':_0x2dc1a3(0x128),'exp_balance_error_desc':_0x2dc1a3(0x1a4),'exp_r1':_0x2dc1a3(0x170),'exp_r1_desc':'(Total\x20Circ.+Total\x20Reused)/(Total\x20Input+Total\x20Circ.+Total\x20Reused)','exp_r2':_0x2dc1a3(0x1c9),'exp_r2_desc':_0x2dc1a3(0x1d7),'exp_sheet_summary':_0x2dc1a3(0x129),'exp_sheet_detail':'Detailed\x20Data','mermaid_source':_0x2dc1a3(0xef),'mermaid_input_source':_0x2dc1a3(0x1c7),'mermaid_intake':_0x2dc1a3(0x15a),'mermaid_circ':_0x2dc1a3(0x122),'mermaid_discharge':_0x2dc1a3(0x164),'mermaid_waste_sys':_0x2dc1a3(0x1cc),'mermaid_total_discharge':_0x2dc1a3(0x1dd),'mermaid_recycle_sys':_0x2dc1a3(0x1ae),'mermaid_recycle':'Recycle','mermaid_reuse':_0x2dc1a3(0xd2)}};function _0x5cd9(){const _0x3cd921=['Water\x20Unit','22WpeqTZ','Recovery\x20Index\x20Analysis','<strong>重大工程錯誤</strong>：回收水量\x20({reclaimed})\x20大於全廠總排放水量\x20({discharge})。<span\x20class=\x27val-note\x27>回收水來源不足，物理上不可能發生。</span>','全廠水量統計','exp_r2','R2\x20Index','8764930VquEsn','Tap\x20Water\x20(I1)','barChartInstance','Cooling\x20Tower','forEach','unitLabels','<strong>{unit}\x20Data\x20Error</strong>:\x20Unit\x20discharge\x20exceeds\x20total\x20plant\x20water\x20source,\x20logical\x20error.','Others\x20(I8)','exp_title','#fff','Source\x20-->|',']:::source;\x0a','廢水處理系統','msg_physical_error','Value','bg-success','工廠用水平衡計算系統\x20-\x20工程報表','exp_sheet_summary','Total\x20Circulation','<span\x20class=\x27val-note\x27>Note:\x20Model\x20assumes\x20Consumption\x20(w)\x20=\x20Total\x20Loss\x20of\x20<strong>Evaporation\x20(E)\x20+\x20Drift\x20(D)\x20+\x20Blowdown\x20(B)</strong>.</span>','#22c55e','<strong>水平衡嚴重失衡</strong>：誤差為\x20{error}%\x20(建議控制在\x20±5%\x20內)。<span\x20class=\x27val-note\x27>請檢查輸入總量與消耗/排放總和是否一致。</span>','用水單元','Excl.\x20Cooling\x20Tower','text-success','call','詳細數據總覽','Engineering\x20Warning','V3.6\x20Engineering\x20Edition','mermaid_reuse','<strong>冷卻水塔濃縮倍數過高</strong>：循環/消耗比\x20({ratio})\x20高於\x20200。{note}','推估取水','R1\x20回收率','立方公尺/日\x20(Cubic\x20Meter\x20per\x20Day)，常見的水量單位。','總排放水量',',stroke:#1d4ed8,color:white,stroke-width:0px,rx:5px,ry:5px;\x0a','水平衡流程圖\x20(Mermaid)','Recommended\x20within\x20±5%','r2_percentage','回收水量','exp_r1_desc','slice','Evaporation/Product\x20loss','<strong>Cooling\x20Tower\x20Cycles\x20Too\x20High</strong>:\x20Circ./Consump.\x20ratio\x20({ratio})\x20is\x20above\x20200.\x20{note}','Export','<strong>回收率數值異常</strong>：計算結果超過\x20100%，請檢查輸入數據是否合理。','Est.\x20Intake','Recycle\x20Sys','其他水源\x20(I8)','Water\x20Unit\x20Data','aoa_to_sheet','Water\x20discharged\x20to\x20the\x20wastewater\x20treatment\x20system.','Unit','Scrubber','Wastewater\x20Recovery','{ratio}','Date','abs','14747448RZzXNo','exp_total_reuse','graph\x20TB;\x0a','Water\x20Balance\x20System\x20V3.6','doughnut','exp_value','msg_cooling_note','36ojkGtU','#ef4444','<strong>冷卻水塔濃縮倍數過低</strong>：循環/消耗比\x20({ratio})\x20低於\x2020。{note}','Detailed\x20Data\x20Overview','契約供水\x20(I4)','<strong>Major\x20Engineering\x20Error</strong>:\x20Reclaimed\x20water\x20({reclaimed})\x20exceeds\x20total\x20plant\x20discharge\x20({discharge}).<span\x20class=\x27val-note\x27>Insufficient\x20source\x20for\x20reclamation,\x20physically\x20impossible.</span>','split','Input\x20Source','地下水\x20(I2)','R2\x20Recovery','msg_discharge_error','Example','Wastewater\x20Sys','msg_cooling_low','hsl(','exp_unit','R1\x20Index','toLocaleDateString','Groundwater\x20(I2)','exp_total_discharge','Internal\x20recirculation\x20flow\x20(e.g.,\x20cooling\x20tower\x20pumps).','匯出\x20Excel','currentUnitLabels','Excluding\x20Cooling\x20Tower\x20Circulation','所有水源總和',']:::waste;\x0a','觀察儀表板的「水平衡誤差」，若顯示綠色\x20Balanced\x20代表輸入平衡，紅色則需檢查數據。','Total\x20Intake','location','Total\x20Disch.','totalConsumption','exp_r1','504cuvylB','Consumption','querySelector','冷凝水\x20(I7)','reclaimed_water','process','book_new','(w)','純水系統','Close','輸入水源資料','reduce','keys','exp_total_reuse_desc','廢水處理回收','msg_cooling_high','Set\x20Unit\x20Data','Critical\x20Error','getElementById','Total\x20Consumption','toFixed','mermaid_circ','尚無數據','系統內重複使用','冷卻水塔','0.00','製程用水','exp_r2_desc','values','totalInput','colEstimatedInput','Consump.','從單元排放至廢水處理系統的水量。','#app','length','classDef\x20waste\x20fill:#fee2e2,stroke:','mermaid_total_discharge','總循環水量','writeFile','Water\x20lost\x20via\x20evaporation,\x20drift,\x20or\x20product\x20incorporation.','自來水\x20(I1)','系統使用說明','工廠用水平衡計算摘要報表','mermaid_waste_sys','\x20-.\x22','44205pQmSqo','printSubHeader','purified','mermaid_intake','再生水\x20(I5)','Process\x20Water','colUnit','排除冷卻水塔內循環量','totalCirculation','洗滌塔','pieChart','污水處理回收','documentElement','Surface\x20Water\x20(I3)','Reuse','Quick\x20Start\x20Guide','entries','textContent','列印/PDF','warning','balanced','replace','R1\x20指標','boiler','Tooltip','Source[💧\x20','mermaidCode','<strong>Abnormal\x20Recovery\x20Rate</strong>:\x20Result\x20exceeds\x20100%,\x20please\x20check\x20input\x20data.','bottom','139926spHPqU','exp_desc','updateCharts','Wastewater\x20recovery','Factory\x20Water\x20Balance\x20Summary\x20Report','Reuse\x20Rate','bar','重複利用率','bg-danger','Input\x20Water\x20Sources','|\x20Waste;\x0a','Print\x20Report','112568Liwwmp','民生用水','Total\x20Source','\x22.->\x20','652iXquWF','Check','balanceErrorPercent','工廠用水平衡系統\x20-\x20使用指南','currentDate','run','提醒：Excel\x20匯出功能目前僅支援標準格式，無法設定開啟密碼\x20(如需加密請在\x20Excel\x20軟體中手動設定)。','bg-warning\x20text-dark','resetData','text-danger','用水單元消耗分佈\x20(w)','Recycle[♻️\x20','sourceLabels','toISOString','totalReuse','Boiler','重新載入預設數據','msg_balance_error','querySelectorAll','Total\x20Reused','search','排除冷卻塔循環','建議維持在\x20±5%\x20內','System\x20internal\x20reuse','Reclaimed\x20Water','error','Clear\x20all\x20inputs','<strong>Cooling\x20Tower\x20Cycles\x20Too\x20Low</strong>:\x20Circ./Consump.\x20ratio\x20({ratio})\x20is\x20below\x2020.\x20{note}','totalDischarge','Condensate\x20(I7)','Reset','classDef\x20source\x20fill:','discharge','<br/>','Unit\x20Consumption\x20Distribution\x20(w)','<strong>Severe\x20Balance\x20Imbalance</strong>:\x20Error\x20is\x20{error}%\x20(Recommended\x20within\x20±5%).<span\x20class=\x27val-note\x27>Check\x20if\x20total\x20input\x20matches\x20sum\x20of\x20consumption/discharge.</span>','Total\x20Input','{note}','510FMWKMj','Factory\x20Water\x20Balance\x20Calculation\x20System\x20-\x20Engineering\x20Report','Circulation','generateColors','!cols','balanceStatus','chartColors','請輸入水源','Mermaid\x20syntax\x20wait...','列印報表','{unit}','Circ.','exp_total_input','print','push','Item','17859veiNys','Balance\x20Error','Summary\x20Report','destroy','Help','Are\x20you\x20sure\x20you\x20want\x20to\x20clear\x20all\x20data?',']:::recycle;\x0a','<strong>{unit}\x20數據錯誤</strong>：單元排放量大於全廠總水源，邏輯錯誤。','Check\x20Balance','level','exp_balance_error','Water\x20Sources\x20(Input)','Description','units','consumption','mermaid_recycle','bg-warning','Purified\x20Water',',stroke-width:1px,rx:5px,ry:5px;\x0a','V3.6\x20工程版','System\x20Validation','Cubic\x20Meters\x20per\x20Day.','其他用水','mermaid_source','Discharge\x20to\x20treatment','zh-TW','總回用水量','確定要清空所有數據嗎？','utils','|\x20Recycle;\x0a','Print/PDF','sort','[data-bs-toggle=\x22tooltip\x22]','請在左上角「水源資料」區塊輸入各類水源的每日進水量\x20(CMD)，系統會自動計算\x20Total\x20Input。','colDischarge','{reclaimed}','cooling','sources','雨水\x20(I6)','renderAll','Domestic','系統內部的重複循環水量\x20(如冷卻水塔循環泵流量)。','12205AZTrII','mermaid_discharge','總水源','總消耗水量','exp_total_consump_desc','回收率指標分析','Glossary','Other','(d)','Intake','map','Total\x20Discharge','快速上手步驟','exp_total_circ','text-warning','confirm_reset','總排放','r1_percentage','lang','Discharge','檢查水平衡','log','Note:\x20Excel\x20export\x20currently\x20supports\x20standard\x20format\x20only.\x20Password\x20protection\x20must\x20be\x20set\x20manually\x20in\x20Excel\x20software.','<span\x20class=\x27val-note\x27>說明：本模型假設\x20消耗水量\x20(w)\x20=\x20<strong>蒸發\x20(E)\x20+\x20飛濺\x20(D)\x20+\x20排污\x20(B)</strong>\x20之總損失。</span>','.xlsx','Error','總取水量','Export\x20to\x20Excel','CMD','R2\x20回收率','reuse','R1\x20Recovery','Enter\x20daily\x20intake\x20(CMD)\x20for\x20each\x20water\x20source\x20in\x20the\x20\x27Water\x20Sources\x27\x20section.','Water\x20Balance\x20System\x20-\x20User\x20Guide','Reclaimed\x20Water\x20(I5)','exp_total_consump','{discharge}','balanceError','pieChartInstance'];_0x5cd9=function(){return _0x3cd921;};return _0x5cd9();}createApp({'data'(){const _0x4ea2a2={_0x2a58c6:0x1c1,_0x550173:0x1d1},_0x3ba2e2=_0x2dc1a3;return{'lang':'zh','chartColors':{'input':'#3b82f6','circulation':'#f59e0b','reuse':_0x3ba2e2(0x193),'consumption':_0x3ba2e2(_0x4ea2a2._0x2a58c6),'discharge':'#64748b'},'sources':{'I1':0x3e8,'I2':0x0,'I3':0x0,'I4':0x0,'I5':0x0,'I6':0x32,'I7':0x0,'I8':0x0},'units':{'purified':{'w':0x14,'c':0x0,'d':0xa},'cooling':{'w':0x32,'c':0x1388,'d':0x1e},'process':{'w':0x12c,'c':0xc8,'d':0x1f4},'boiler':{'w':0x50,'c':0x0,'d':0x14},'scrubber':{'w':0x0,'c':0x0,'d':0x0},'domestic':{'w':0x64,'c':0x0,'d':0x5a},'other':{'w':0x0,'c':0x0,'d':0x0}},'reclaimed_water':0x96,'currentDate':new Date()[_0x3ba2e2(_0x4ea2a2._0x550173)](),'pieChartInstance':null,'barChartInstance':null};},'created'(){const _0x126716={_0x119d18:0x163,_0x556348:0xd0,_0x4ebfb6:0x1d1,_0x2df541:0x140},_0xd5b0db=_0x2dc1a3,_0x5ac324=new URLSearchParams(window[_0xd5b0db(0x1dc)][_0xd5b0db(0x105)]),_0x13abcd=_0x5ac324['get'](_0xd5b0db(_0x126716._0x119d18));_0x13abcd&&(_0x13abcd==='en'||_0x13abcd==='zh')&&(this[_0xd5b0db(0x163)]=_0x13abcd,document[_0xd5b0db(_0x126716._0x556348)][_0xd5b0db(_0x126716._0x119d18)]=this[_0xd5b0db(_0x126716._0x119d18)]==='zh'?'zh-TW':'en',this[_0xd5b0db(0xf5)]=new Date()[_0xd5b0db(_0x126716._0x4ebfb6)](this[_0xd5b0db(0x163)]==='zh'?_0xd5b0db(_0x126716._0x2df541):'en-US'));},'computed':{'t'(){const _0x5d942f=_0x2dc1a3;return i18n[this[_0x5d942f(0x163)]];},'currentSourceLabels'(){const _0xc8e49={_0x13a2d7:0xfd},_0x14614d=_0x2dc1a3;return this['t'][_0x14614d(_0xc8e49._0x13a2d7)];},'currentUnitLabels'(){const _0x1d6e08={_0x1e3948:0x184},_0x3a9d6a=_0x2dc1a3;return this['t'][_0x3a9d6a(_0x1d6e08._0x1e3948)];},'totalInput'(){const _0x3ee929={_0x134f77:0xb3,_0x49c1c4:0x1eb},_0x3a4355=_0x2dc1a3;return Object[_0x3a4355(_0x3ee929._0x134f77)](this[_0x3a4355(0x14c)])[_0x3a4355(_0x3ee929._0x49c1c4)]((_0x310732,_0x971fcd)=>_0x310732+_0x971fcd,0x0);},'totalCirculation'(){const _0x40f088=_0x2dc1a3;return Object[_0x40f088(0xb3)](this[_0x40f088(0x134)])[_0x40f088(0x1eb)]((_0x46df1f,_0x5a3530)=>_0x46df1f+_0x5a3530['c'],0x0);},'totalConsumption'(){const _0x807b83={_0x1fccb5:0x1eb},_0x45183c=_0x2dc1a3;return Object[_0x45183c(0xb3)](this['units'])[_0x45183c(_0x807b83._0x1fccb5)]((_0x586f63,_0x545288)=>_0x586f63+_0x545288['w'],0x0);},'totalDischarge'(){const _0xf34af8={_0x2cdaf3:0x1eb},_0x138811=_0x2dc1a3;return Object['values'](this['units'])[_0x138811(_0xf34af8._0x2cdaf3)]((_0x478a06,_0x223411)=>_0x478a06+_0x223411['d'],0x0);},'totalReuse'(){const _0x4b0db4=_0x2dc1a3;return this[_0x4b0db4(0x1e4)];},'balanceError'(){const _0x27e2ea=_0x2dc1a3;return this['totalInput']+this['totalReuse']-(this['totalConsumption']+this[_0x27e2ea(0x10d)]);},'balanceErrorPercent'(){const _0x466a8a={_0x8c4597:0xff},_0x1a17e8=_0x2dc1a3,_0x2868be=this[_0x1a17e8(0xb4)]+this[_0x1a17e8(_0x466a8a._0x8c4597)];if(_0x2868be===0x0)return 0x0;return this[_0x1a17e8(0x176)]/_0x2868be*0x64;},'balanceStatus'(){const _0xe67d9={_0x107590:0xf3,_0x38829e:0xd7,_0x72c738:0x10a},_0x357975=_0x2dc1a3,_0xa87646=Math[_0x357975(0x1b8)](this[_0x357975(_0xe67d9._0x107590)]);if(_0xa87646<=0x1)return'balanced';if(_0xa87646<=0x5)return _0x357975(_0xe67d9._0x38829e);return _0x357975(_0xe67d9._0x72c738);},'balanceStatusClass'(){const _0x3b23c8=_0x2dc1a3;return{'status-balanced':this[_0x3b23c8(0x11c)]===_0x3b23c8(0xd8),'status-warning':this[_0x3b23c8(0x11c)]==='warning','status-error':this['balanceStatus']==='error'};},'balanceTextClass'(){const _0x5989dd={_0x2b949f:0x11c,_0x38a0f4:0xd8,_0x2b633e:0x197,_0x16ef01:0x15f,_0x5271ec:0xfa},_0xd1a2a5=_0x2dc1a3;if(this[_0xd1a2a5(_0x5989dd._0x2b949f)]===_0xd1a2a5(_0x5989dd._0x38a0f4))return _0xd1a2a5(_0x5989dd._0x2b633e);if(this[_0xd1a2a5(_0x5989dd._0x2b949f)]===_0xd1a2a5(0xd7))return _0xd1a2a5(_0x5989dd._0x16ef01);return _0xd1a2a5(_0x5989dd._0x5271ec);},'balanceLabel'(){const _0x53df96={_0x16b50d:0xf2,_0x21317b:0x16a},_0x2b0ff1=_0x2dc1a3;if(this[_0x2b0ff1(0x11c)]===_0x2b0ff1(0xd8))return'Balanced';if(this['balanceStatus']==='warning')return _0x2b0ff1(_0x53df96._0x16b50d);return _0x2b0ff1(_0x53df96._0x21317b);},'balanceBadgeClass'(){const _0x3d38e6={_0x1145ba:0x11c,_0x50c5f3:0xd7},_0x243df4=_0x2dc1a3;if(this[_0x243df4(_0x3d38e6._0x1145ba)]==='balanced')return _0x243df4(0x18e);if(this[_0x243df4(0x11c)]===_0x243df4(_0x3d38e6._0x50c5f3))return _0x243df4(0xf8);return'bg-danger';},'r1_percentage'(){const _0xf5de61={_0x3a840b:0xcc},_0x1bc562=_0x2dc1a3,_0x15ed7f=this[_0x1bc562(0xb4)]+this[_0x1bc562(0xcc)]+this['totalReuse'];if(_0x15ed7f===0x0)return _0x1bc562(0xb0);return((this[_0x1bc562(_0xf5de61._0x3a840b)]+this[_0x1bc562(0xff)])/_0x15ed7f*0x64)[_0x1bc562(0xab)](0x2);},'r2_percentage'(){const _0x5547fe={_0x362651:0x14b,_0x1d1ae4:0xff},_0x4f4cfd=_0x2dc1a3,_0x1db9f8=this[_0x4f4cfd(0x134)][_0x4f4cfd(_0x5547fe._0x362651)]?this[_0x4f4cfd(0x134)][_0x4f4cfd(0x14b)]['c']:0x0,_0xb665b6=this[_0x4f4cfd(0xb4)]+this['totalCirculation']+this[_0x4f4cfd(_0x5547fe._0x1d1ae4)]-_0x1db9f8;if(_0xb665b6<=0x0)return'0.00';return((this['totalCirculation']+this[_0x4f4cfd(0xff)]-_0x1db9f8)/_0xb665b6*0x64)[_0x4f4cfd(0xab)](0x2);},'validationIssues'(){const _0x4f93d5={_0x399813:0x1b8,_0x367a47:0x125,_0x23fb25:0x102,_0x32858e:0x10a,_0x3bd007:0xd9,_0x7bdb06:0x14a,_0x73a13f:0x1e4,_0x1c6a95:0x175,_0xa2d7bd:0x125,_0x15422c:0xd7,_0x24e261:0xd9,_0x14c0cb:0x1b6,_0x46153b:0xab,_0x486735:0x125,_0x3037f7:0xd7,_0xcba492:0x1ef,_0x92189e:0xab,_0x2ac12e:0x1bf,_0x11ea91:0xb4,_0x3f0491:0x183},_0xebba8c={_0x19a4eb:0x121,_0x2291cb:0x1d6},_0x5fb114=_0x2dc1a3,_0x4f92b2=[],_0x30b92c=this['t'];Math[_0x5fb114(_0x4f93d5._0x399813)](this[_0x5fb114(0xf3)])>0x5&&_0x4f92b2[_0x5fb114(_0x4f93d5._0x367a47)]({'level':'error','msg':_0x30b92c[_0x5fb114(_0x4f93d5._0x23fb25)]['replace']('{error}',this['balanceErrorPercent'][_0x5fb114(0xab)](0x1))});this['reclaimed_water']>this['totalDischarge']&&_0x4f92b2[_0x5fb114(0x125)]({'level':_0x5fb114(_0x4f93d5._0x32858e),'msg':_0x30b92c[_0x5fb114(0x18c)][_0x5fb114(_0x4f93d5._0x3bd007)](_0x5fb114(_0x4f93d5._0x7bdb06),this[_0x5fb114(_0x4f93d5._0x73a13f)])['replace'](_0x5fb114(_0x4f93d5._0x1c6a95),this[_0x5fb114(0x10d)])});(parseFloat(this[_0x5fb114(0x162)])>0x64||parseFloat(this['r2_percentage'])>0x64)&&_0x4f92b2[_0x5fb114(_0x4f93d5._0xa2d7bd)]({'level':_0x5fb114(_0x4f93d5._0x15422c),'msg':_0x30b92c['msg_recovery_abnormal']});const _0x402639=this[_0x5fb114(0x134)][_0x5fb114(0x14b)];if(_0x402639&&_0x402639['c']>0x0&&_0x402639['w']>0x0){const _0x2ca37b=_0x402639['c']/_0x402639['w'];if(_0x2ca37b<0x14)_0x4f92b2[_0x5fb114(_0x4f93d5._0xa2d7bd)]({'level':'warning','msg':_0x30b92c[_0x5fb114(0x1cd)][_0x5fb114(_0x4f93d5._0x24e261)](_0x5fb114(_0x4f93d5._0x14c0cb),_0x2ca37b[_0x5fb114(_0x4f93d5._0x46153b)](0x1))[_0x5fb114(_0x4f93d5._0x3bd007)](_0x5fb114(0x116),_0x30b92c['msg_cooling_note'])});else _0x2ca37b>0xc8&&_0x4f92b2[_0x5fb114(_0x4f93d5._0x486735)]({'level':_0x5fb114(_0x4f93d5._0x3037f7),'msg':_0x30b92c[_0x5fb114(_0x4f93d5._0xcba492)]['replace'](_0x5fb114(_0x4f93d5._0x14c0cb),_0x2ca37b[_0x5fb114(_0x4f93d5._0x92189e)](0x1))['replace'](_0x5fb114(0x116),_0x30b92c[_0x5fb114(_0x4f93d5._0x2ac12e)])});}const _0x416734=this[_0x5fb114(_0x4f93d5._0x11ea91)]+this['totalReuse'];return Object['entries'](this['units'])[_0x5fb114(_0x4f93d5._0x3f0491)](([_0x4ded2f,_0x410666])=>{const _0x41a54d=_0x5fb114;_0x410666['d']>_0x416734&&_0x416734>0x0&&_0x4f92b2[_0x41a54d(0x125)]({'level':_0x41a54d(0x10a),'msg':_0x30b92c[_0x41a54d(0x1ca)][_0x41a54d(0xd9)](_0x41a54d(_0xebba8c._0x19a4eb),this[_0x41a54d(_0xebba8c._0x2291cb)][_0x4ded2f])});}),_0x4f92b2[_0x5fb114(0x146)]((_0x40da58,_0x55112e)=>_0x40da58[_0x5fb114(0x130)]==='error'?-0x1:0x1);},'mermaidCode'(){const _0x57ab4b={_0x1e0640:0x1bb,_0x7f63ae:0x1a2,_0x2bd21a:0xba,_0x2e3957:0x11d,_0x4f6ef5:0x135,_0x452d26:0x139,_0x2d7569:0x13e,_0x1c3c2b:0x112,_0x14df4f:0xb4,_0x2b0b78:0xdd,_0x4636df:0x18a,_0x439930:0xd4,_0x123f3:0x134,_0x3cbc4e:0xc2,_0xfa9266:0xab,_0x54261c:0xfc,_0x5139c2:0x136,_0x2f6f5b:0x144,_0x5eb3f0:0x19c},_0x4c2c82={_0x52e26f:0xc7,_0x2dc683:0xc3,_0x12ff60:0xac,_0x4c6f6f:0xf0},_0x3a6af0=_0x2dc1a3,_0x2f8127=this['t'];let _0x129253=_0x3a6af0(_0x57ab4b._0x1e0640);_0x129253+=_0x3a6af0(0x110)+this[_0x3a6af0(0x11d)]['input']+_0x3a6af0(_0x57ab4b._0x7f63ae),_0x129253+='classDef\x20unit\x20fill:#f1f5f9,stroke:#94a3b8,stroke-width:1px,rx:5px,ry:5px;\x0a',_0x129253+=_0x3a6af0(_0x57ab4b._0x2bd21a)+this[_0x3a6af0(_0x57ab4b._0x2e3957)][_0x3a6af0(_0x57ab4b._0x4f6ef5)]+_0x3a6af0(_0x57ab4b._0x452d26),_0x129253+='classDef\x20recycle\x20fill:#dcfce7,stroke:'+this['chartColors']['reuse']+_0x3a6af0(_0x57ab4b._0x452d26),_0x129253+=this[_0x3a6af0(0xb4)]>0x0?_0x3a6af0(0xdd)+_0x2f8127[_0x3a6af0(_0x57ab4b._0x2d7569)]+_0x3a6af0(_0x57ab4b._0x1c3c2b)+this[_0x3a6af0(_0x57ab4b._0x14df4f)]['toFixed'](0x1)+_0x3a6af0(0x18a):_0x3a6af0(_0x57ab4b._0x2b0b78)+_0x2f8127['mermaid_input_source']+_0x3a6af0(_0x57ab4b._0x4636df);let _0x2817ef=![];return Object[_0x3a6af0(_0x57ab4b._0x439930)](this[_0x3a6af0(_0x57ab4b._0x123f3)])['forEach'](([_0xd7b97f,_0x4ca693])=>{const _0x1d2754=_0x3a6af0,_0x508233=this[_0x1d2754(0x1d6)][_0xd7b97f],_0x169f8f=_0x4ca693['w']+_0x4ca693['d'];if(_0x169f8f>0x0||_0x4ca693['c']>0x0||_0x4ca693['d']>0x0){_0x129253+=_0xd7b97f+'[\x22'+_0x508233+'\x22]:::unit;\x0a';if(_0x169f8f>0x0)_0x129253+=_0x1d2754(0x189)+_0x2f8127[_0x1d2754(_0x4c2c82._0x52e26f)]+':\x20'+_0x169f8f[_0x1d2754(0xab)](0x0)+'|\x20'+_0xd7b97f+';\x0a';if(_0x4ca693['c']>0x0)_0x129253+=_0xd7b97f+_0x1d2754(_0x4c2c82._0x2dc683)+_0x2f8127[_0x1d2754(_0x4c2c82._0x12ff60)]+':\x20'+_0x4ca693['c'][_0x1d2754(0xab)](0x0)+_0x1d2754(_0x4c2c82._0x4c6f6f)+_0xd7b97f+';\x0a';_0x4ca693['d']>0x0&&(_0x129253+=_0xd7b97f+'\x20-->|'+_0x2f8127[_0x1d2754(0x152)]+':\x20'+_0x4ca693['d']['toFixed'](0x0)+_0x1d2754(0xeb),_0x2817ef=!![]);}}),_0x2817ef&&(_0x129253+='Waste[🚰\x20'+_0x2f8127[_0x3a6af0(_0x57ab4b._0x3cbc4e)]+_0x3a6af0(0x112)+_0x2f8127[_0x3a6af0(0xbb)]+':\x20'+this[_0x3a6af0(0x10d)][_0x3a6af0(_0x57ab4b._0xfa9266)](0x0)+_0x3a6af0(0x1d9),this[_0x3a6af0(0xff)]>0x0&&(_0x129253+=_0x3a6af0(_0x57ab4b._0x54261c)+_0x2f8127['mermaid_recycle_sys']+'<br/>'+this['totalReuse']['toFixed'](0x0)+_0x3a6af0(0x12d),_0x129253+='Waste\x20-->|'+_0x2f8127[_0x3a6af0(_0x57ab4b._0x5139c2)]+_0x3a6af0(_0x57ab4b._0x2f6f5b),_0x129253+='Recycle\x20-->|'+_0x2f8127[_0x3a6af0(_0x57ab4b._0x5eb3f0)]+'|\x20Source;\x0a')),_0x129253;}},'watch':{'sources':{'handler'(){this['renderAll']();},'deep':!![]},'units':{'handler'(){this['renderAll']();},'deep':!![]},'reclaimed_water':{'handler'(){this['renderAll']();}},'lang':{'handler'(){const _0x5bb2ad=_0x2dc1a3;this[_0x5bb2ad(0x14e)]();}}},'mounted'(){const _0x3332e2={_0x1acc9b:0x14e},_0x4d94b7=_0x2dc1a3;this[_0x4d94b7(_0x3332e2._0x1acc9b)]();},'methods':{'renderAll'(){const _0x4b2dd5={_0xaaf65b:0x1a8,_0x478198:0x147};this['$nextTick'](()=>{const _0x4f0fe5=_0x1b00;this[_0x4f0fe5(0xe3)](),this['renderMermaid'](),[][_0x4f0fe5(_0x4b2dd5._0xaaf65b)][_0x4f0fe5(0x198)](document[_0x4f0fe5(0x103)](_0x4f0fe5(_0x4b2dd5._0x478198)))['map'](_0x3bad85=>new bootstrap[(_0x4f0fe5(0xdc))](_0x3bad85));});},'getProgressBarClass'(_0x10df92){const _0x190e48={_0x3ee05e:0x18e,_0x31a30c:0x137},_0x1851cd=_0x2dc1a3,_0x185fbe=parseFloat(_0x10df92);if(_0x185fbe>=0x50)return _0x1851cd(_0x190e48._0x3ee05e);if(_0x185fbe>=0x32)return'bg-info';if(_0x185fbe>=0x1e)return _0x1851cd(_0x190e48._0x31a30c);return _0x1851cd(0xe9);},'generateColors'(_0x17920a){const _0x57338c={_0x2878d3:0x125},_0x1877a8=_0x2dc1a3,_0x2760bb=[];for(let _0x165bd2=0x0;_0x165bd2<_0x17920a;_0x165bd2++){const _0x30e26b=Math['floor'](0x168/_0x17920a*_0x165bd2);_0x2760bb[_0x1877a8(_0x57338c._0x2878d3)](_0x1877a8(0x1ce)+_0x30e26b+',\x2070%,\x2060%)');}return _0x2760bb;},'updateCharts'(){const _0x202dd9={_0x560e3f:0x177,_0x5ba168:0x12a,_0x3ef051:0x134,_0x2bb5be:0x11a,_0x47e80e:0x188,_0x22c5d3:0x177,_0x7663a6:0x1bd,_0x180790:0x181,_0x5cbde0:0x181,_0x59b356:0xcc,_0x393e8c:0x123,_0x423d88:0x16d,_0x34947b:0x10d,_0x262f59:0x11d,_0x528199:0x111,_0x372edf:0xe7},_0x434142=_0x2dc1a3,_0x12e93e=this['t'],_0x2fe180=document[_0x434142(0x1f2)](_0x434142(0xce));this['pieChartInstance']&&(this[_0x434142(_0x202dd9._0x560e3f)][_0x434142(_0x202dd9._0x5ba168)](),this[_0x434142(0x177)]=null);if(this[_0x434142(0x1de)]>0x0&&_0x2fe180){const _0x47a3fc=Object['values'](this[_0x434142(_0x202dd9._0x3ef051)])[_0x434142(0x15b)](_0x3f79b7=>_0x3f79b7['w']),_0x33cf78=this[_0x434142(_0x202dd9._0x2bb5be)](_0x47a3fc[_0x434142(0xb9)]),_0x4f66a6={'labels':Object[_0x434142(0xb3)](this['currentUnitLabels']),'datasets':[{'data':_0x47a3fc,'backgroundColor':_0x33cf78,'borderWidth':0x2,'borderColor':_0x434142(_0x202dd9._0x47e80e)}]};this[_0x434142(_0x202dd9._0x22c5d3)]=new Chart(_0x2fe180,{'type':_0x434142(_0x202dd9._0x7663a6),'data':_0x4f66a6,'options':{'responsive':!![],'maintainAspectRatio':![],'plugins':{'legend':{'position':_0x434142(0xe0)}}}});}const _0x44de00=document[_0x434142(0x1f2)]('barChart');this[_0x434142(_0x202dd9._0x180790)]&&(this[_0x434142(_0x202dd9._0x5cbde0)]['destroy'](),this[_0x434142(0x181)]=null);if((this[_0x434142(0xb4)]>0x0||this[_0x434142(_0x202dd9._0x59b356)]>0x0)&&_0x44de00){const _0x4f36aa={'labels':[_0x12e93e[_0x434142(_0x202dd9._0x393e8c)],_0x12e93e['exp_total_circ'],_0x12e93e[_0x434142(0x1ba)],_0x12e93e[_0x434142(0x174)],_0x12e93e[_0x434142(0x1d3)]],'datasets':[{'label':_0x434142(_0x202dd9._0x423d88),'data':[this[_0x434142(0xb4)],this['totalCirculation'],this[_0x434142(0xff)],this[_0x434142(0x1de)],this[_0x434142(_0x202dd9._0x34947b)]],'backgroundColor':[this['chartColors']['input'],this[_0x434142(_0x202dd9._0x262f59)]['circulation'],this['chartColors'][_0x434142(0x16f)],this[_0x434142(0x11d)][_0x434142(0x135)],this[_0x434142(_0x202dd9._0x262f59)][_0x434142(_0x202dd9._0x528199)]],'borderWidth':0x2,'borderColor':_0x434142(_0x202dd9._0x47e80e)}]};this['barChartInstance']=new Chart(_0x44de00,{'type':_0x434142(_0x202dd9._0x372edf),'data':_0x4f36aa,'options':{'responsive':!![],'maintainAspectRatio':![],'scales':{'y':{'beginAtZero':!![],'title':{'display':!![],'text':_0x434142(_0x202dd9._0x423d88)}}},'plugins':{'legend':{'display':![]}}}});}},async 'renderMermaid'(){const _0x1279ec={_0x50c173:0xd5,_0x5023ac:0xf6,_0x3a01f4:0x166,_0x1a9fd1:0x11f},_0x38c5cf=_0x2dc1a3,_0xe217d5=document[_0x38c5cf(0x1e2)]('.mermaid');if(_0xe217d5){_0xe217d5['removeAttribute']('data-processed'),_0xe217d5[_0x38c5cf(_0x1279ec._0x50c173)]=this[_0x38c5cf(0xde)];try{await mermaid[_0x38c5cf(_0x1279ec._0x5023ac)]({'nodes':[_0xe217d5]});}catch(_0x342c25){console[_0x38c5cf(_0x1279ec._0x3a01f4)](_0x38c5cf(_0x1279ec._0x1a9fd1));}}},'loadExampleData'(){const _0x1c6543={_0x42e127:0xf9,_0xaf8b27:0x134,_0x358bfd:0xc6,_0x17a0d1:0x134,_0x1abdb9:0x134,_0x5d0cf9:0x1e4},_0x59e221=_0x2dc1a3;this[_0x59e221(_0x1c6543._0x42e127)](![]),this[_0x59e221(0x14c)]['I1']=0x3e8,this[_0x59e221(0x14c)]['I6']=0x32,this[_0x59e221(_0x1c6543._0xaf8b27)][_0x59e221(_0x1c6543._0x358bfd)]={'w':0x14,'c':0x0,'d':0xa},this[_0x59e221(_0x1c6543._0x17a0d1)]['cooling']={'w':0x32,'c':0x1388,'d':0x1e},this[_0x59e221(0x134)][_0x59e221(0x1e5)]={'w':0x12c,'c':0xc8,'d':0x1f4},this[_0x59e221(0x134)][_0x59e221(0xdb)]={'w':0x50,'c':0x0,'d':0x14},this[_0x59e221(_0x1c6543._0x1abdb9)]['domestic']={'w':0x64,'c':0x0,'d':0x5a},this[_0x59e221(_0x1c6543._0x5d0cf9)]=0x96;},'resetData'(_0x4c03a2=!![]){const _0x2234e8={_0x11fdaa:0x160,_0x5bf70e:0x134,_0x49a411:0x1e4},_0x237ea1={_0x2eea29:0x134},_0x43151e=_0x2dc1a3;if(_0x4c03a2&&!confirm(this['t'][_0x43151e(_0x2234e8._0x11fdaa)]))return;Object['keys'](this[_0x43151e(0x14c)])[_0x43151e(0x183)](_0x357e4a=>this[_0x43151e(0x14c)][_0x357e4a]=0x0),Object[_0x43151e(0x1ec)](this[_0x43151e(_0x2234e8._0x5bf70e)])['forEach'](_0x14609d=>{const _0x344805=_0x43151e;this[_0x344805(_0x237ea1._0x2eea29)][_0x14609d]['w']=0x0,this[_0x344805(_0x237ea1._0x2eea29)][_0x14609d]['c']=0x0,this[_0x344805(_0x237ea1._0x2eea29)][_0x14609d]['d']=0x0;}),this[_0x43151e(_0x2234e8._0x49a411)]=0x0;},'printReport'(){const _0x357ae0={_0x202353:0x124},_0x72c29a=_0x2dc1a3;window[_0x72c29a(_0x357ae0._0x202353)]();},'exportToExcel'(){const _0x41027b={_0x5008e6:0x1e6,_0x414ed7:0x1be,_0x251eff:0x1cf,_0x42ecb3:0xe2,_0x41375a:0xb4,_0x384d43:0x15e,_0x1b3bf:0x1ba,_0x2b4953:0xff,_0x2f529f:0x16d,_0xef9ad7:0x1de,_0x9cf5d9:0x131,_0x3ecda9:0xab,_0x4cba4a:0x162,_0x1c4500:0x1a7,_0x19b738:0x1a5,_0x4c1239:0xb2,_0x5c99b0:0x1b1,_0x1c8a03:0x11b,_0x535fb6:0x143,_0x49c9af:0x190,_0x5d10d0:0xbd,_0x45f474:0xfe,_0x2ed316:0x169},_0x32fa26={_0x5d11b8:0x125,_0x19a24e:0x1d6},_0x3fea4f=_0x2dc1a3,_0x2d8519=this['t'],_0x555349=XLSX['utils'][_0x3fea4f(_0x41027b._0x5008e6)](),_0x138ad1=[[_0x2d8519[_0x3fea4f(0x187)]+('\x20('+_0x2d8519[_0x3fea4f(0xc5)]+')')],[''],[_0x2d8519['exp_item'],_0x2d8519[_0x3fea4f(_0x41027b._0x414ed7)],_0x2d8519[_0x3fea4f(_0x41027b._0x251eff)],_0x2d8519[_0x3fea4f(_0x41027b._0x42ecb3)]],[_0x2d8519[_0x3fea4f(0x123)],this[_0x3fea4f(_0x41027b._0x41375a)],'CMD',_0x2d8519['exp_total_input_desc']],[_0x2d8519[_0x3fea4f(_0x41027b._0x384d43)],this[_0x3fea4f(0xcc)],'CMD',_0x2d8519['exp_total_circ_desc']],[_0x2d8519[_0x3fea4f(_0x41027b._0x1b3bf)],this[_0x3fea4f(_0x41027b._0x2b4953)],_0x3fea4f(_0x41027b._0x2f529f),_0x2d8519[_0x3fea4f(0x1ed)]],[_0x2d8519['exp_total_consump'],this[_0x3fea4f(_0x41027b._0xef9ad7)],_0x3fea4f(0x16d),_0x2d8519[_0x3fea4f(0x155)]],[_0x2d8519[_0x3fea4f(0x1d3)],this[_0x3fea4f(0x10d)],_0x3fea4f(0x16d),_0x2d8519['exp_total_discharge_desc']],[_0x2d8519[_0x3fea4f(_0x41027b._0x9cf5d9)],this[_0x3fea4f(0xf3)][_0x3fea4f(_0x41027b._0x3ecda9)](0x1)+'%','',_0x2d8519['exp_balance_error_desc']],[_0x2d8519[_0x3fea4f(0x1df)],this[_0x3fea4f(_0x41027b._0x4cba4a)]+'%','',_0x2d8519[_0x3fea4f(_0x41027b._0x1c4500)]],[_0x2d8519[_0x3fea4f(0x17d)],this[_0x3fea4f(_0x41027b._0x19b738)]+'%','',_0x2d8519[_0x3fea4f(_0x41027b._0x4c1239)]]],_0x419050=XLSX['utils'][_0x3fea4f(_0x41027b._0x5c99b0)](_0x138ad1);_0x419050[_0x3fea4f(_0x41027b._0x1c8a03)]=[{'wch':0x19},{'wch':0xf},{'wch':0xa},{'wch':0x2d}],XLSX[_0x3fea4f(_0x41027b._0x535fb6)]['book_append_sheet'](_0x555349,_0x419050,_0x2d8519[_0x3fea4f(_0x41027b._0x49c9af)]);const _0x41efdb=[[_0x2d8519[_0x3fea4f(0xca)],_0x2d8519['colConsumption']+_0x3fea4f(0x1e7),_0x2d8519['colCirculation']+'(c)',_0x2d8519[_0x3fea4f(0x149)]+_0x3fea4f(0x159),_0x2d8519[_0x3fea4f(0xb5)]+'(w+d)']];Object['entries'](this[_0x3fea4f(0x134)])[_0x3fea4f(0x183)](([_0x49d816,_0x1cd5e6])=>{const _0x3221b4=_0x3fea4f;_0x41efdb[_0x3221b4(_0x32fa26._0x5d11b8)]([this[_0x3221b4(_0x32fa26._0x19a24e)][_0x49d816],_0x1cd5e6['w'],_0x1cd5e6['c'],_0x1cd5e6['d'],_0x1cd5e6['w']+_0x1cd5e6['d']]);});const _0x5cda37=XLSX[_0x3fea4f(0x143)][_0x3fea4f(0x1b1)](_0x41efdb);_0x5cda37[_0x3fea4f(_0x41027b._0x1c8a03)]=[{'wch':0x14},{'wch':0xf},{'wch':0xf},{'wch':0xf},{'wch':0x14}],XLSX[_0x3fea4f(0x143)]['book_append_sheet'](_0x555349,_0x5cda37,_0x2d8519['exp_sheet_detail']),alert(_0x2d8519['export_alert']),XLSX[_0x3fea4f(_0x41027b._0x5d10d0)](_0x555349,'WaterBalance_V3.6_'+new Date()[_0x3fea4f(_0x41027b._0x45f474)]()[_0x3fea4f(0x1c6)]('T')[0x0]+_0x3fea4f(_0x41027b._0x2ed316));}}})['mount'](_0x2dc1a3(0xb8));
+</script>
+
+</body>
+</html>

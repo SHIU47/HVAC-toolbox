@@ -1,0 +1,2190 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <!-- 安全防護 -->
+    <script src="./security.js"></script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Climate & Cooling Intelligence Pro</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/globe.gl"></script>
+
+    <style>
+        :root {
+            --font-main: 'Inter', sans-serif;
+            --font-heading: 'Space Grotesk', sans-serif;
+        }
+        body { font-family: var(--font-main); background: #05050a; overflow-x: hidden; color: #f8fafc; }
+        .heading { font-family: var(--font-heading); letter-spacing: -0.04em; }
+        
+        .bg-mesh {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: -1;
+            background: radial-gradient(circle at 10% 0%, rgba(14, 165, 233, 0.12) 0%, transparent 40%),
+                        radial-gradient(circle at 90% 20%, rgba(99, 102, 241, 0.1) 0%, transparent 40%),
+                        radial-gradient(circle at 50% 100%, rgba(244, 63, 94, 0.08) 0%, transparent 50%),
+                        #05050a;
+        }
+        .blur-orb {
+            position: fixed; width: 500px; height: 500px; filter: blur(140px); border-radius: 50%; z-index: -1; 
+            animation: float 25s infinite alternate ease-in-out; opacity: 0.5; mix-blend-mode: screen;
+        }
+        @keyframes float { 0% { transform: translate(0, 0) scale(1); } 100% { transform: translate(80px, 40px) scale(1.1); } }
+
+        /* Premium Glassmorphism */
+        .glass-card { 
+            background: linear-gradient(145deg, rgba(255, 255, 255, 0.03) 0%, rgba(255, 255, 255, 0.01) 100%);
+            backdrop-filter: blur(32px); -webkit-backdrop-filter: blur(32px);
+            border: 1px solid rgba(255, 255, 255, 0.08); 
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2), inset 0 1px 0 rgba(255,255,255,0.05); 
+            transition: all 0.4s ease;
+        }
+        .glass-panel { 
+            background: linear-gradient(180deg, rgba(15, 23, 42, 0.4) 0%, rgba(15, 23, 42, 0.2) 100%);
+            backdrop-filter: blur(40px); -webkit-backdrop-filter: blur(40px);
+            border: 1px solid rgba(255, 255, 255, 0.08); 
+            box-shadow: 0 24px 48px rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(255,255,255,0.05); 
+        }
+        
+        /* Floating table rows fix */
+        table { border-collapse: separate; border-spacing: 0 8px; }
+        tr.table-row td { background: rgba(255,255,255,0.02); border-top: 1px solid rgba(255,255,255,0.04); border-bottom: 1px solid rgba(255,255,255,0.04); transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1); }
+        tr.table-row td:first-child { border-left: 1px solid rgba(255,255,255,0.04); border-top-left-radius: 1rem; border-bottom-left-radius: 1rem; }
+        tr.table-row td:last-child { border-right: 1px solid rgba(255,255,255,0.04); border-top-right-radius: 1rem; border-bottom-right-radius: 1rem; }
+        tr.table-row:hover td { background: rgba(255,255,255,0.06); border-color: rgba(255,255,255,0.15); box-shadow: 0 10px 20px -5px rgba(0,0,0,0.3); }
+        tr.table-row:hover { transform: translateY(-2px); }
+
+        ::-webkit-scrollbar { width: 4px; height: 4px;}
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 10px; }
+        ::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.2); }
+
+        .kpi-value { font-family: var(--font-heading); letter-spacing: -0.04em; }
+        
+        .thermal-cold { background: linear-gradient(135deg, #38bdf8, #818cf8); }
+        .thermal-hot { background: linear-gradient(135deg, #fbbf24, #f43f5e); }
+        
+        .globe-container canvas { outline: none; }
+        @keyframes customPing { 0% { transform: scale(1); opacity: 0.8; box-shadow: 0 0 10px currentColor; } 75%, 100% { transform: scale(3); opacity: 0; } }
+        .globe-marker-ping { animation: customPing 2s cubic-bezier(0.2, 0.8, 0.2, 1) infinite; }
+        
+        /* --- Light Theme Overrides --- */
+        body.light-theme { background: #f8fafc; color: #0f172a; }
+        body.light-theme .bg-mesh {
+            background: radial-gradient(circle at 10% 0%, rgba(14, 165, 233, 0.12) 0%, transparent 40%),
+                        radial-gradient(circle at 90% 20%, rgba(99, 102, 241, 0.1) 0%, transparent 40%),
+                        radial-gradient(circle at 50% 100%, rgba(244, 63, 94, 0.08) 0%, transparent 50%),
+                        #f8fafc;
+        }
+        body.light-theme .blur-orb { mix-blend-mode: multiply; opacity: 0.3; }
+        body.light-theme .text-white { color: #0f172a !important; }
+        body.light-theme .text-slate-300 { color: #475569 !important; }
+        body.light-theme .text-slate-400 { color: #64748b !important; }
+        body.light-theme .text-slate-500 { color: #94a3b8 !important; }
+        body.light-theme .border-white\/5, body.light-theme .border-white\/10, body.light-theme .border-white\/20, body.light-theme .border-white\/30, body.light-theme .border-white\/40 {
+            border-color: rgba(0, 0, 0, 0.08) !important;
+        }
+        body.light-theme .glass-card {
+            background: linear-gradient(145deg, rgba(255, 255, 255, 0.8) 0%, rgba(255, 255, 255, 0.5) 100%);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.05), inset 0 1px 0 rgba(255,255,255,1);
+        }
+        body.light-theme .glass-panel {
+            background: linear-gradient(180deg, rgba(255, 255, 255, 0.9) 0%, rgba(255, 255, 255, 0.7) 100%);
+            box-shadow: 0 24px 48px rgba(0, 0, 0, 0.08), inset 0 1px 0 rgba(255,255,255,1);
+        }
+        body.light-theme .bg-\[\#05050a\]\/80 { background-color: rgba(255, 255, 255, 0.8) !important; }
+        body.light-theme .bg-\[\#05050a\] { background-color: #e2e8f0 !important; }
+        body.light-theme .bg-\[\#05050a\]\/60 { background-color: rgba(255, 255, 255, 0.6) !important; }
+        body.light-theme .bg-slate-800\/80 { background-color: rgba(0,0,0,0.1) !important; }
+        body.light-theme .bg-white\/10 { background-color: rgba(0,0,0,0.05) !important; }
+        body.light-theme tr.table-row td { background: rgba(255,255,255,0.6); border-top-color: rgba(0,0,0,0.05); border-bottom-color: rgba(0,0,0,0.05); }
+        body.light-theme tr.table-row td:first-child { border-left-color: rgba(0,0,0,0.05); }
+        body.light-theme tr.table-row td:last-child { border-right-color: rgba(0,0,0,0.05); }
+        body.light-theme tr.table-row:hover td { background: rgba(255,255,255,0.95); border-color: rgba(0,0,0,0.1); box-shadow: 0 10px 20px -5px rgba(0,0,0,0.1); }
+        body.light-theme .hover\:bg-white\/10:hover { background-color: rgba(0,0,0,0.05) !important; }
+        body.light-theme .hover\:text-white:hover { color: #0f172a !important; }
+        body.light-theme select option { background-color: #ffffff !important; color: #0f172a !important; }
+        body.light-theme .bg-slate-800\/95 { background-color: rgba(255,255,255,0.95) !important; color: #0f172a !important; border-color: rgba(0,0,0,0.1) !important; }
+        body.light-theme .bg-slate-900\/90 { background-color: rgba(255,255,255,0.9) !important; color: #0f172a !important; border-color: rgba(0,0,0,0.1) !important; }
+
+        /* Ensure the report and guide modals keep their dark theme text and layout colors in light theme */
+        body.light-theme #reportModal .text-white, body.light-theme #guideModal .text-white { color: #ffffff !important; }
+        body.light-theme #reportModal .text-slate-300, body.light-theme #guideModal .text-slate-300 { color: #cbd5e1 !important; }
+        body.light-theme #reportModal .text-slate-400, body.light-theme #guideModal .text-slate-400 { color: #94a3b8 !important; }
+        body.light-theme #reportModal .text-slate-500, body.light-theme #guideModal .text-slate-500 { color: #64748b !important; }
+        body.light-theme #reportModal .border-white\/5, body.light-theme #reportModal .border-white\/10, body.light-theme #guideModal .border-white\/5, body.light-theme #guideModal .border-white\/10 { border-color: rgba(255, 255, 255, 0.08) !important; }
+        body.light-theme #reportModal .bg-slate-800\/30, body.light-theme #guideModal .bg-slate-800\/30 { background-color: rgba(30, 41, 59, 0.3) !important; }
+        body.light-theme #reportModal .bg-slate-900\/50, body.light-theme #guideModal .bg-slate-900\/50 { background-color: rgba(15, 23, 42, 0.5) !important; }
+        body.light-theme #reportModal .bg-slate-900\/95, body.light-theme #guideModal .bg-slate-900\/95 { background-color: rgba(15, 23, 42, 0.95) !important; }
+        body.light-theme #reportModal .bg-slate-900\/90, body.light-theme #guideModal .bg-slate-900\/90 { background-color: rgba(15, 23, 42, 0.9) !important; }
+        body.light-theme #reportModal .glass-panel, body.light-theme #guideModal .glass-panel {
+            background: linear-gradient(180deg, rgba(15, 23, 42, 0.95) 0%, rgba(15, 23, 42, 0.9) 100%) !important;
+            border-color: rgba(255, 255, 255, 0.08) !important;
+            box-shadow: 0 24px 48px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255,255,255,0.05) !important;
+        }
+
+        /* Dedicated classes to protect modal text colors from light theme overrides */
+        .modal-text-white { color: #ffffff !important; }
+        .modal-text-slate-300 { color: #cbd5e1 !important; }
+        .modal-text-slate-400 { color: #94a3b8 !important; }
+        .modal-text-slate-500 { color: #64748b !important; }
+
+        /* ─── Mobile Responsive ───────────────────────────────────── */
+        @media (max-width: 1023px) {
+            #globePanel { min-height: 400px !important; }
+            #detailPanel { min-height: auto !important; }
+        }
+
+        @media (max-width: 640px) {
+            /* Globe: shorter on mobile */
+            #globePanel { min-height: 270px !important; border-radius: 1.5rem !important; }
+
+            /* Detail panel: auto height */
+            #detailPanel { min-height: auto !important; border-radius: 1.5rem !important; padding: 1.25rem !important; }
+
+            /* Nav: reduce margin and gap */
+            nav.flex { margin-bottom: 1.5rem !important; gap: 1rem !important; }
+
+            /* Subtitle: prevent overflow from wide letter-spacing */
+            #t-subtitle { letter-spacing: 0.12em !important; font-size: 10px !important; }
+
+            /* KPI section: tighter padding */
+            #kpiSection > div { padding: 1.25rem 1rem !important; border-radius: 1.5rem !important; }
+
+            /* KPI large numbers: slightly smaller */
+            #kpiAvgPue, #kpiMaxWb, #kpiMaxFreeCooling, #kpiLiquidNecessity {
+                font-size: 2.5rem !important;
+                line-height: 1 !important;
+            }
+
+            /* Globe + detail row: tighter gap */
+            .flex.flex-col.lg\:flex-row.gap-6 { gap: 1rem !important; margin-bottom: 2rem !important; }
+
+            /* Table area: enable touch scrolling */
+            .overflow-x-auto { -webkit-overflow-scrolling: touch; }
+
+            /* Hide decorative blur orbs for performance */
+            .blur-orb { display: none !important; }
+
+            /* Footer: stack vertically, reduce padding */
+            #siteFooter {
+                flex-direction: column !important;
+                align-items: flex-start !important;
+                gap: 0.5rem !important;
+                padding-left: 1rem !important;
+                padding-right: 1rem !important;
+                letter-spacing: 0.1em !important;
+            }
+
+            /* Report modal: full-screen-ish on mobile */
+            #reportModalContent {
+                border-radius: 1.25rem !important;
+                max-height: 92vh !important;
+            }
+
+            /* Modal header: tighter */
+            #reportModalContent .shrink-0 {
+                padding: 1rem 1.25rem !important;
+            }
+
+            /* Modal body: tighter padding */
+            #reportModalContent .p-6.sm\:p-10 {
+                padding: 1rem !important;
+            }
+
+            /* Risk matrix: 3-col → 1-col on very small screens */
+            .grid.grid-cols-3 { grid-template-columns: 1fr !important; gap: 0.75rem !important; }
+            .border-l.border-white\/5 { border-left: none !important; border-top: 1px solid rgba(255,255,255,0.05) !important; padding-top: 0.75rem !important; }
+
+            /* Detail panel city heading: allow wrapping for long names */
+            #detailPanel h2.heading { font-size: 2.25rem !important; overflow-wrap: break-word; word-break: break-word; }
+        }
+
+        @media (max-width: 400px) {
+            /* Smallest phones: further reduce KPI */
+            #kpiAvgPue, #kpiMaxWb, #kpiMaxFreeCooling, #kpiLiquidNecessity {
+                font-size: 2rem !important;
+            }
+            /* Main title */
+            h1.heading { font-size: 2.25rem !important; }
+        }
+    </style>
+</head>
+<body class="light-theme">
+
+    <div class="bg-mesh"></div>
+    <div class="blur-orb top-[-10%] left-[-10%]"></div>
+    <div class="blur-orb bottom-[-10%] right-[-10%] bg-rose-100/50" style="animation-delay: -5s;"></div>
+
+    <div class="max-w-[1440px] mx-auto px-4 sm:px-8 py-10 relative">
+        
+        <!-- Top Nav Area -->
+        <nav class="flex flex-col lg:flex-row lg:items-end justify-between mb-12 gap-8 relative z-20">
+            <div>
+                <div class="flex items-center gap-3 mb-4">
+                    <span class="inline-block w-2.5 h-2.5 bg-emerald-400 rounded-full animate-pulse shadow-[0_0_12px_#34d399]"></span>
+                    <span class="font-mono text-[12px] font-bold text-slate-400 tracking-[0.3em] uppercase" id="t-subtitle">Global AI Infrastructure Data Feed</span>
+                </div>
+                <h1 class="heading text-5xl md:text-6xl lg:text-[4.5rem] font-black tracking-tighter leading-[0.95] text-transparent bg-clip-text bg-gradient-to-br from-slate-800 to-slate-500 dark:from-white dark:to-slate-400 drop-shadow-2xl" id="t-title">Climate Engineering<br/>Intelligence</h1>
+            </div>
+            
+            <div class="flex flex-wrap items-center gap-4">
+                <div class="relative">
+                    <select id="regionFilter" class="glass-card pl-4 pr-10 py-2.5 rounded-[1rem] text-sm font-bold text-slate-300 outline-none cursor-pointer border-white/10 hover:border-white/30 hover:text-white focus:border-blue-400 appearance-none bg-transparent transition-all shadow-lg">
+                        <option value="All" class="bg-slate-900 text-white">🌍 All Regions</option>
+                        <option value="Americas" class="bg-slate-900 text-white">🌎 Americas</option>
+                        <option value="Europe" class="bg-slate-900 text-white">🌍 Europe</option>
+                        <option value="Asia" class="bg-slate-900 text-white">🌏 Asia</option>
+                        <option value="MEA" class="bg-slate-900 text-white">🌍 Middle East & Africa</option>
+                    </select>
+                    <svg class="absolute right-3.5 top-3 text-slate-400 pointer-events-none" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"></path></svg>
+                </div>
+                <div class="relative group">
+                    <input type="text" id="searchInput" placeholder="Search..." 
+                        class="glass-card pl-10 pr-6 py-2.5 rounded-[1rem] text-sm outline-none w-48 focus:w-64 transition-all border-white/10 hover:border-white/30 focus:border-blue-400 focus:ring-2 focus:ring-blue-500/20 text-white placeholder-slate-500 bg-transparent shadow-lg">
+                    <svg class="absolute left-3.5 top-3 text-slate-400 group-hover:text-blue-400 transition-colors" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+                </div>
+                <button onclick="toggleTheme()" class="glass-card w-10 h-10 rounded-[1rem] flex items-center justify-center hover:bg-white/10 transition-all border-white/10 shadow-lg text-slate-400 group" title="Toggle Theme">
+                    <!-- Sun Icon (shows in dark mode) -->
+                    <svg id="icon-sun" class="w-5 h-5 group-hover:text-amber-400 transition-colors hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"></path></svg>
+                    <!-- Moon Icon (shows in light mode) -->
+                    <svg id="icon-moon" class="w-5 h-5 group-hover:text-blue-500 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"></path></svg>
+                </button>
+                <button onclick="openGuideModal()" class="glass-card w-10 h-10 rounded-[1rem] flex items-center justify-center hover:bg-white/10 transition-all border-white/10 shadow-lg text-slate-400 group" title="System Design Guide">
+                    <span class="font-bold text-lg group-hover:text-blue-400 transition-colors">?</span>
+                </button>
+                <button onclick="toggleLang()" class="glass-card px-4 py-2.5 rounded-[1rem] text-sm font-bold text-slate-300 hover:text-white hover:bg-white/10 transition-all border-white/10 flex items-center gap-2 group shadow-lg">
+                    <svg class="w-4 h-4 group-hover:text-blue-400 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 5h12M9 3v2m1.048 9.5A18.022 18.022 0 016.412 9m6.088 9h7M11 21l5-10 5 10M12.751 5C11.783 10.77 8.07 15.61 3 18.129"></path></svg>
+                    <span id="langLabel">ZH</span>
+                </button>
+            </div>
+        </nav>
+
+        <!-- KPI Section -->
+        <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-6 mb-10 relative z-10" id="kpiSection">
+            <div class="glass-card p-6 sm:p-8 rounded-[2rem] border-t border-l border-white/5 hover:border-white/20 transition-all duration-500 group overflow-hidden relative shadow-lg">
+                <div class="absolute -right-8 -top-8 w-32 h-32 bg-blue-500/10 rounded-full blur-3xl group-hover:bg-blue-500/20 transition-all duration-500"></div>
+                <p class="text-[11px] font-mono text-slate-400 uppercase tracking-[0.2em] mb-3 relative z-10" id="t-kpi1">Global Avg PUE</p>
+                <div class="flex items-end gap-2 relative z-10">
+                    <span class="heading text-5xl md:text-6xl font-black text-transparent bg-clip-text bg-gradient-to-b from-blue-300 to-indigo-500 drop-shadow-md tracking-tighter" id="kpiAvgPue">--</span>
+                    <span class="text-[11px] text-emerald-400 font-mono font-bold uppercase tracking-widest mb-1.5" id="t-kpi1-sub">Optimal</span>
+                </div>
+            </div>
+            <div class="glass-card p-6 sm:p-8 rounded-[2rem] border-t border-l border-white/5 hover:border-white/20 transition-all duration-500 group overflow-hidden relative shadow-lg">
+                <div class="absolute -right-8 -top-8 w-32 h-32 bg-rose-500/10 rounded-full blur-3xl group-hover:bg-rose-500/20 transition-all duration-500"></div>
+                <p class="text-[11px] font-mono text-slate-400 uppercase tracking-[0.2em] mb-3 relative z-10" id="t-kpi2">Extreme WB Node</p>
+                <div class="flex items-end gap-2 relative z-10">
+                    <span class="heading text-5xl md:text-6xl font-black text-transparent bg-clip-text bg-gradient-to-b from-rose-400 to-orange-500 drop-shadow-md tracking-tighter" id="kpiMaxWb">--</span>
+                    <span class="text-[11px] text-slate-500 font-mono font-bold uppercase tracking-widest max-w-[80px] truncate mb-1.5" id="kpiMaxWbCity"></span>
+                </div>
+            </div>
+            <div class="glass-card p-6 sm:p-8 rounded-[2rem] border-t border-l border-white/5 hover:border-white/20 transition-all duration-500 group overflow-hidden relative shadow-lg">
+                <div class="absolute -right-8 -top-8 w-32 h-32 bg-emerald-500/10 rounded-full blur-3xl group-hover:bg-emerald-500/20 transition-all duration-500"></div>
+                <p class="text-[11px] font-mono text-slate-400 uppercase tracking-[0.2em] mb-3 relative z-10" id="t-kpi3">Free Cooling Peak</p>
+                <div class="flex items-end gap-2 relative z-10">
+                    <span class="heading text-5xl md:text-6xl font-black text-transparent bg-clip-text bg-gradient-to-b from-emerald-300 to-cyan-500 drop-shadow-md tracking-tighter" id="kpiMaxFreeCooling">--</span>
+                    <span class="text-[11px] text-slate-400 font-mono font-bold uppercase tracking-widest mb-1.5" id="t-kpi3-sub">Hours/Yr</span>
+                </div>
+            </div>
+            <div class="glass-card p-6 sm:p-8 rounded-[2rem] border-t border-l border-white/5 hover:border-white/20 transition-all duration-500 group overflow-hidden relative shadow-lg">
+                <div class="absolute -right-8 -top-8 w-32 h-32 bg-purple-500/10 rounded-full blur-3xl group-hover:bg-purple-500/20 transition-all duration-500"></div>
+                <p class="text-[11px] font-mono text-slate-400 uppercase tracking-[0.2em] mb-3 relative z-10" id="t-kpi4">Liquid Necessity</p>
+                <div class="flex items-end gap-2 relative z-10">
+                    <span class="heading text-5xl md:text-6xl font-black text-transparent bg-clip-text bg-gradient-to-b from-indigo-300 to-purple-500 drop-shadow-md tracking-tighter" id="kpiLiquidNecessity">--</span>
+                    <span class="text-[11px] text-slate-400 font-mono font-bold uppercase tracking-widest mb-1.5" id="t-kpi4-sub">Of Nodes</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Command Center Area (Globe + Details) -->
+        <div class="flex flex-col lg:flex-row gap-6 mb-12 relative z-10">
+            <div id="globePanel" class="flex-1 glass-panel rounded-[2.5rem] relative overflow-hidden flex flex-col items-center justify-center min-h-[500px] shadow-[0_0_50px_rgba(0,0,0,0.5)] border-t border-l border-white/5">
+                <div class="absolute top-8 left-8 z-20 pointer-events-none">
+                    <h2 class="heading text-3xl font-bold text-white drop-shadow-lg tracking-tight" id="t-globe-title">Global Topology</h2>
+                    <p class="text-[12px] font-bold text-blue-400 uppercase tracking-[0.2em] mt-2 drop-shadow-md" id="t-globe-sub">Real-time 3D Interactive Map</p>
+                </div>
+                
+                <!-- 3D Globe Loading Mask -->
+                <div id="globeLoading" class="absolute inset-0 z-10 flex flex-col items-center justify-center bg-[#05050a]/80 backdrop-blur-xl transition-opacity duration-500">
+                    <svg class="animate-spin h-10 w-10 text-blue-500 mb-6 drop-shadow-[0_0_15px_rgba(59,130,246,0.5)]" fill="none" viewBox="0 0 24 24">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    <p class="text-[12px] font-bold text-slate-300 uppercase tracking-[0.2em]" id="t-globe-loading">Loading 3D Engine...</p>
+                </div>
+
+                <div id="globeViz" class="w-full h-full cursor-move globe-container relative z-0"></div>
+                <div class="absolute bottom-6 left-6 z-20 pointer-events-none flex flex-col gap-1.5">
+                    <div class="flex items-center gap-2"><span class="w-2.5 h-2.5 rounded-full bg-rose-500 shrink-0 shadow-[0_0_6px_rgba(239,68,68,0.8)]"></span><span class="text-[11px] font-bold text-slate-300 uppercase tracking-widest">High Thermal Risk</span></div>
+                    <div class="flex items-center gap-2"><span class="w-2.5 h-2.5 rounded-full bg-amber-400 shrink-0 shadow-[0_0_6px_rgba(251,191,36,0.8)]"></span><span class="text-[11px] font-bold text-slate-300 uppercase tracking-widest">Moderate Risk</span></div>
+                    <div class="flex items-center gap-2"><span class="w-2.5 h-2.5 rounded-full bg-cyan-400 shrink-0 shadow-[0_0_6px_rgba(34,211,238,0.8)]"></span><span class="text-[11px] font-bold text-slate-300 uppercase tracking-widest">Low Risk / Free Cooling</span></div>
+                </div>
+            </div>
+
+            <div id="detailPanel" class="w-full lg:w-[420px] glass-panel rounded-[2.5rem] p-6 sm:p-7 shrink-0 flex flex-col min-h-[550px] lg:max-h-[85vh] shadow-[0_0_50px_rgba(0,0,0,0.5)] border-t border-l border-white/5 overflow-y-auto relative">
+                <div class="text-center text-slate-500 animate-pulse">
+                    <svg class="w-12 h-12 mx-auto mb-4 text-slate-600 drop-shadow-md" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                    <p class="font-bold text-[12px] uppercase tracking-[0.2em]" id="t-init">Initializing Data...</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Table Component Area -->
+        <div class="w-full overflow-x-auto pb-10 relative z-10">
+            <table class="w-full text-left min-w-[1100px]">
+                <thead class="text-[11px] font-mono font-bold text-slate-500 uppercase tracking-[0.2em] border-b border-white/5">
+                    <tr>
+                        <th class="px-6 py-4 cursor-pointer hover:text-white transition-colors" onclick="sortData('city')">
+                            <span id="t-col-region">Region / Hub</span> <span id="sort-city" class="sort-icon"></span>
+                        </th>
+                        <th class="px-4 py-4 text-center cursor-pointer hover:text-white transition-colors" onclick="sortData('zone')">
+                            <span id="t-col-zone">Zone</span> <span id="sort-zone" class="sort-icon"></span>
+                        </th>
+                        <th class="px-4 py-4 text-right cursor-pointer hover:text-white transition-colors" onclick="sortData('extWB')">
+                            <span id="t-col-wb">Wet Bulb</span> <span id="sort-extWB" class="sort-icon"></span>
+                        </th>
+                        <th class="px-4 py-4 cursor-pointer hover:text-white transition-colors" onclick="sortData('freeCooling')">
+                            <span id="t-col-fc">Free Cooling</span> <span id="sort-freeCooling" class="sort-icon"></span>
+                        </th>
+                        <th class="px-4 py-4 text-right cursor-pointer hover:text-white transition-colors" onclick="sortData('waterRisk')">
+                            <span id="t-col-water">Water Risk</span> <span id="sort-waterRisk" class="sort-icon"></span>
+                        </th>
+                        <th class="px-4 py-4 text-right cursor-pointer hover:text-white transition-colors" onclick="sortData('pue')">
+                            <span id="t-col-pue">Est. PUE</span> <span id="sort-pue" class="sort-icon"></span>
+                        </th>
+                        <th class="px-6 py-4 text-right" id="t-col-req">Requirement</th>
+                    </tr>
+                </thead>
+                <tbody id="tableBody">
+                    <!-- Rows injected here -->
+                </tbody>
+            </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- 報告彈出視窗 (Modal) -->
+    <div id="reportModal" class="fixed inset-0 z-50 hidden flex-col items-center justify-center p-4 sm:p-8 opacity-0 transition-opacity duration-500">
+        <div class="absolute inset-0 bg-slate-900/60 backdrop-blur-md" onclick="closeReportModal()"></div>
+        <div id="reportModalContent" class="relative w-full max-w-6xl max-h-[90vh] flex flex-col glass-panel rounded-[2rem] sm:rounded-[3rem] shadow-2xl transform scale-95 transition-transform duration-500 bg-white/95 border border-white/60 overflow-hidden">
+            <!-- Modal Content Injected Here -->
+        </div>
+    </div>
+
+    <!-- 評分與工程設計指南彈出視窗 (Guide Modal) -->
+    <div id="guideModal" class="fixed inset-0 z-50 hidden flex-col items-center justify-center p-4 sm:p-8 opacity-0 transition-opacity duration-500">
+        <div class="absolute inset-0 bg-slate-900/60 backdrop-blur-md" onclick="closeGuideModal()"></div>
+        <div id="guideModalContent" class="relative w-full max-w-4xl max-h-[90vh] flex flex-col glass-panel rounded-[2rem] sm:rounded-[3rem] shadow-2xl transform scale-95 transition-transform duration-500 bg-white/95 border border-white/60 overflow-hidden">
+            <!-- Guide Content Injected Here -->
+        </div>
+    </div>
+
+    <!-- Engineering Footer -->
+    <footer id="siteFooter" class="max-w-[1440px] mx-auto px-8 pb-10 mt-8 flex justify-between items-center text-[12px] font-bold text-slate-400 uppercase tracking-[0.2em]">
+        <div class="flex gap-6">
+            <span>© 2026 THERMAL INTEL SYSTEM</span>
+            <span class="text-slate-300">|</span>
+            <span>DATA SOURCE: ASHRAE CLIMATE</span>
+        </div>
+        <div class="flex gap-4 items-center">
+            <span class="w-2 h-2 rounded-full bg-blue-400 shadow-[0_0_8px_rgba(96,165,250,0.8)] animate-pulse"></span>
+            SYNCED WITH GLOBAL HUB
+        </div>
+    </footer>
+    <script>
+        // --- 1. i18n Dictionary ---
+        const i18n = {
+            en: {
+                title: "GLOBAL AI CLIMATE",
+                subtitle: "INFRASTRUCTURE INTELLIGENCE",
+                search: "Search Region, Zone...",
+                kpi1: "Global Avg PUE", kpi1_sub: "Optimal",
+                kpi2: "Extreme WB Node",
+                kpi3: "Free Cooling Peak", kpi3_sub: "Hours/Yr",
+                kpi4: "Liquid Necessity", kpi4_sub: "Of Nodes",
+                globe_title: "Global Topology", globe_sub: "Real-time 3D Interactive Map",
+                globe_loading: "Loading 3D Engine...",
+                col_region: "Region / Hub", col_zone: "Zone", col_wb: "Wet Bulb",
+                col_fc: "Free Cooling", col_water: "Water Risk", col_pue: "Est. PUE", col_req: "Requirement",
+                btn_report: "View Complete Infrastructure Report",
+                req_immersion: "Immersion Preferred", req_d2c: "D2C Required", req_hybrid: "Hybrid Recommended",
+                term_score: "Thermal Complexity Score", term_maxDB: "Ext High DB", term_minDB: "Ext Low DB",
+                term_verdict: "Architecture Verdict",
+                tooltip_score: "Weights: Wet Bulb 35% | Dry Bulb 15% | Free Cooling 30% | Water Risk 20%",
+                modal_env: "Environmental Profile", modal_fc: "Free Cooling Potential",
+                modal_risk: "Water Risk Level", modal_hyperscalers: "Major Hyperscalers",
+                modal_saturation: "Cluster Saturation", modal_ashrae: "ASHRAE Design Guidelines",
+                modal_cost: "Est. Opex (10MW IT)", modal_cue: "Est. CUE (Carbon)",
+                modal_cdd: "Annual CDD", modal_grid: "Grid Renewable",
+                reco_1: "Chiller + D2C", reco_2: "Dry Cooler + D2C", reco_3: "100% Dry Cooling",
+                reco_4: "Hybrid D2C + RDHx", reco_5: "Air Econ + Liquid", reco_6: "Heat Reuse + D2C",
+                reco_7: "Hybrid D2C Retrofit", reco_8: "Liquid w/ Heat Reuse", reco_9: "Air Side Econ + D2C",
+                reco_10: "District Heat Reuse", reco_11: "Direct Air Free Cool", reco_12: "100% Free Cooling",
+                reco_13: "RDHx / Modular Liquid", reco_14: "D2C + Air Econ", reco_15: "Immersion / W40",
+                reco_16: "Water-Cooled Chiller", reco_17: "Liquid-only", reco_18: "Hybrid (D2C/Air)",
+                reco_19: "W45 Liquid + Dry", reco_20: "Chiller + Cold Plate", reco_21: "Dry Cooling + Air Econ",
+                // Climate Auditor Keys
+                auditor_title: "10-Year Climate & Infrastructure Risk Auditor",
+                auditor_chiller_derating: "Chiller Capacity Derating",
+                auditor_tower_approach: "Tower Approach Shrinkage Risk",
+                auditor_fc_loss: "Free-Cooling Stability Loss",
+                auditor_grade: "Resilience Grade",
+                auditor_pue_deg: "10-Year PUE Increase Trend",
+                auditor_toggle_temp: "Peak Temperatures",
+                auditor_toggle_hours: "Extreme Climate Hours",
+                auditor_extreme_history: "10-Year Climate Extremes Trend (2016-2026)",
+                auditor_pue_deterioration: "Extreme PUE Peak",
+                auditor_design_db: "ASHRAE Design Dry Bulb",
+                auditor_design_wb: "ASHRAE Design Wet Bulb",
+                auditor_pue_forecast: "Decadal Warming PUE Forecast",
+                auditor_chiller_desc: "COP degradation risk under ambient temperatures exceeding design standard.",
+                auditor_tower_desc: "Risk of high cooling water temperature due to wet-bulb temperature exceeding tower approach.",
+                auditor_grade_desc: "Infrastructure capability to handle decadal climatic extreme events.",
+                auditor_years: "Years",
+                auditor_hours_yr: "Hours/Year"
+            },
+            zh: {
+                title: "GLOBAL AI CLIMATE",
+                subtitle: "INFRASTRUCTURE INTELLIGENCE",
+                search: "搜尋地區、氣候區...",
+                kpi1: "全球平均 PUE", kpi1_sub: "基準",
+                kpi2: "極端濕球節點",
+                kpi3: "自然冷卻峰值", kpi3_sub: "小時/年",
+                kpi4: "液冷需求佔比", kpi4_sub: "節點比例",
+                globe_title: "全球拓樸網路", globe_sub: "即時 3D 互動地圖",
+                globe_loading: "正在載入 3D 地球引擎...",
+                col_region: "地區 / 基礎設施", col_zone: "氣候區", col_wb: "極端濕球",
+                col_fc: "自然冷卻 (Free Cooling)", col_water: "水資源風險", col_pue: "預估 PUE", col_req: "散熱需求",
+                btn_report: "檢視完整工程基礎設施報告",
+                req_immersion: "強烈建議浸沒式", req_d2c: "必須採用 D2C 液冷", req_hybrid: "建議風液冷混合",
+                term_score: "熱複雜度評分", term_maxDB: "極端高溫 (乾球)", term_minDB: "極端低溫 (乾球)",
+                term_verdict: "架構工程建議",
+                tooltip_score: "評分權重：濕球 35% | 乾球 15% | 自然冷卻 30% | 水資源 20%",
+                modal_env: "環境與氣候特徵", modal_fc: "自然冷卻潛力",
+                modal_risk: "水資源壓力等級", modal_hyperscalers: "主要雲端與 AI 設施營運商",
+                modal_saturation: "聚落飽和度", modal_ashrae: "ASHRAE 設計標準與能耗分析",
+                modal_cost: "預估年化能源成本 (以 10MW 基準)", modal_cue: "預估 CUE (碳排強度)",
+                modal_cdd: "年化冷卻度日 (CDD)", modal_grid: "綠電佔比",
+                reco_1: "冰水主機 + D2C", reco_2: "乾式冷卻器 + D2C", reco_3: "100% 乾式冷卻",
+                reco_4: "混合 D2C + RDHx", reco_5: "自然進風 + 液冷", reco_6: "廢熱回收 + D2C",
+                reco_7: "混合 D2C 改建", reco_8: "液冷 + 廢熱回收", reco_9: "風側自然冷卻 + D2C",
+                reco_10: "區域供熱回收", reco_11: "直接外氣冷卻", reco_12: "100% 自然冷卻",
+                reco_13: "背門熱交換器 / 模組化液冷", reco_14: "D2C + 自然進風", reco_15: "浸沒式 / W40 溫水",
+                reco_16: "水冷式冰水主機", reco_17: "純液冷架構", reco_18: "混合架構 (D2C/風冷)",
+                reco_19: "W45 溫水液冷 + 乾式", reco_20: "冰水主機 + 水冷板", reco_21: "乾式冷卻 + 自然進風",
+                // Climate Auditor Keys
+                auditor_title: "10年期極端氣候與基礎設施風險審計器",
+                auditor_chiller_derating: "氣冷冰機製冷能力衰退率",
+                auditor_tower_approach: "冷卻塔 Approach 收斂風險",
+                auditor_fc_loss: "自然冷卻穩定度損失率",
+                auditor_grade: "基礎設施耐氣候級別",
+                auditor_pue_deg: "10年 PUE 增長趨勢",
+                auditor_toggle_temp: "極端高低溫走勢",
+                auditor_toggle_hours: "極端氣候時數",
+                auditor_extreme_history: "10年極端氣候走勢圖 (2016-2026)",
+                auditor_pue_deterioration: "極端氣候 PUE 峰值",
+                auditor_design_db: "ASHRAE 設計乾球溫度",
+                auditor_design_wb: "ASHRAE 設計濕球溫度",
+                auditor_pue_forecast: "十年氣候暖化 PUE 劣化預估",
+                auditor_chiller_desc: "當環境乾球溫度超過設計標準時，氣冷冰機之 COP 劣化與製冷量損失風險。",
+                auditor_tower_desc: "當極端濕球溫度超過冷卻塔極限時，冷卻水溫過高導致水冷系統停機風險。",
+                auditor_grade_desc: "評估該站點抵禦未來十年內極端高低溫及缺水事件之綜合工程能力分級。",
+                auditor_years: "年份",
+                auditor_hours_yr: "時數/年"
+            }
+        };
+
+        let currentLang = 'en';
+        let selectedCity = null;
+        let selectedChartTab = 'temp';
+        let currentSort = { key: 'city', dir: 1 };
+        let myGlobe = null;
+
+        // --- 2. Data Source ---
+        const data = [
+            { continent: "Americas", lat: 39.0438, lng: -77.4874, flag: "🇺🇸", country: "USA", city: "Ashburn, VA", zone: "4A", maxDB: 33.7, minDB: -10.2, extWB: 25.8, freeCooling: 4200, waterRisk: 3, heatWave: 3, seismic: 1, recoKey: "reco_1", pue: 1.25, carbonIntensity: 350, electricityCost: 0.08, gridRenewable: 15, annualCDD: 1200, coolingWaterTemp: "W32", latency: 2, hyperscalers: ["AWS", "Google Cloud", "Meta", "Microsoft Azure", "Equinix"] },
+            { continent: "Americas", lat: 39.9612, lng: -82.9988, flag: "🇺🇸", country: "USA", city: "Columbus, OH", zone: "5A", maxDB: 31.5, minDB: -17.4, extWB: 22.8, freeCooling: 6200, waterRisk: 2, heatWave: 2, seismic: 1, recoKey: "reco_2", pue: 1.15, carbonIntensity: 600, electricityCost: 0.07, gridRenewable: 10, annualCDD: 900, coolingWaterTemp: "W32", latency: 8, hyperscalers: ["AWS", "Google Cloud", "Meta", "Intel Foundry"] },
+            { continent: "Americas", lat: 33.4484, lng: -112.0740, flag: "🇺🇸", country: "USA", city: "Phoenix, AZ", zone: "2B", maxDB: 43.1, minDB: 1.2, extWB: 22.4, freeCooling: 3100, waterRisk: 5, heatWave: 5, seismic: 2, recoKey: "reco_2", pue: 1.35, carbonIntensity: 420, electricityCost: 0.06, gridRenewable: 25, annualCDD: 3500, coolingWaterTemp: "W40", latency: 12, hyperscalers: ["TSMC", "Intel", "Microsoft Azure", "Google Cloud"] },
+            { continent: "Americas", lat: 37.3541, lng: -121.9552, flag: "🇺🇸", country: "USA", city: "Santa Clara, CA", zone: "3C", maxDB: 29.4, minDB: 0.5, extWB: 18.2, freeCooling: 5800, waterRisk: 4, heatWave: 2, seismic: 5, recoKey: "reco_5", pue: 1.18, carbonIntensity: 200, electricityCost: 0.15, gridRenewable: 40, annualCDD: 400, coolingWaterTemp: "W32", latency: 1, hyperscalers: ["NVIDIA", "Intel", "Equinix", "Vantage"] },
+            { continent: "Americas", lat: 45.5231, lng: -122.9898, flag: "🇺🇸", country: "USA", city: "Hillsboro, OR", zone: "4C", maxDB: 28.5, minDB: -3.5, extWB: 19.8, freeCooling: 7200, waterRisk: 2, heatWave: 2, seismic: 4, recoKey: "reco_12", pue: 1.12, carbonIntensity: 150, electricityCost: 0.07, gridRenewable: 85, annualCDD: 200, coolingWaterTemp: "W32", latency: 4, hyperscalers: ["Intel", "AWS", "QTS", "Flexential"] },
+            { continent: "Americas", lat: 40.7608, lng: -111.8910, flag: "🇺🇸", country: "USA", city: "Salt Lake City, UT", zone: "5B", maxDB: 38.5, minDB: -12.5, extWB: 19.5, freeCooling: 6000, waterRisk: 4, heatWave: 4, seismic: 3, recoKey: "reco_2", pue: 1.18, carbonIntensity: 500, electricityCost: 0.06, gridRenewable: 20, annualCDD: 1000, coolingWaterTemp: "W32", latency: 10, hyperscalers: ["Meta", "Novva", "Aligned", "Google Cloud"] },
+            { continent: "Europe", lat: 51.5074, lng: -0.1278, flag: "🇬🇧", country: "UK", city: "London", zone: "4C", maxDB: 28.5, minDB: -3.5, extWB: 20.8, freeCooling: 6800, waterRisk: 3, heatWave: 3, seismic: 1, recoKey: "reco_7", pue: 1.18, carbonIntensity: 180, electricityCost: 0.22, gridRenewable: 45, annualCDD: 150, coolingWaterTemp: "W32", latency: 2, hyperscalers: ["AWS", "Google Cloud", "Microsoft Azure", "Equinix"] },
+            { continent: "Europe", lat: 50.1109, lng: 8.6821, flag: "🇩🇪", country: "Germany", city: "Frankfurt", zone: "5A", maxDB: 31.4, minDB: -9.5, extWB: 21.4, freeCooling: 6400, waterRisk: 2, heatWave: 3, seismic: 1, recoKey: "reco_8", pue: 1.20, carbonIntensity: 350, electricityCost: 0.18, gridRenewable: 50, annualCDD: 300, coolingWaterTemp: "W35", latency: 3, hyperscalers: ["AWS", "Google Cloud", "Microsoft Azure", "Digital Realty"] },
+            { continent: "Europe", lat: 59.3293, lng: 18.0686, flag: "🇸🇪", country: "Sweden", city: "Stockholm", zone: "6A", maxDB: 26.5, minDB: -16.8, extWB: 19.2, freeCooling: 8400, waterRisk: 1, heatWave: 1, seismic: 1, recoKey: "reco_12", pue: 1.05, carbonIntensity: 20, electricityCost: 0.05, gridRenewable: 98, annualCDD: 50, coolingWaterTemp: "W27", latency: 15, hyperscalers: ["AWS", "Microsoft Azure", "EcoDataCenter"] },
+            { continent: "Europe", lat: 52.2297, lng: 21.0122, flag: "🇵🇱", country: "Poland", city: "Warsaw", zone: "5A", maxDB: 32.1, minDB: -12.5, extWB: 22.1, freeCooling: 6000, waterRisk: 2, heatWave: 3, seismic: 1, recoKey: "reco_2", pue: 1.21, carbonIntensity: 750, electricityCost: 0.14, gridRenewable: 15, annualCDD: 350, coolingWaterTemp: "W35", latency: 12, hyperscalers: ["Google Cloud", "Microsoft Azure", "Equinix"] },
+            { continent: "Asia", lat: 25.0330, lng: 121.5654, flag: "🇹🇼", country: "Taiwan", city: "Taipei", zone: "1A", maxDB: 34.8, minDB: 8.5, extWB: 27.2, freeCooling: 1800, waterRisk: 4, heatWave: 4, seismic: 5, recoKey: "reco_15", pue: 1.32, carbonIntensity: 480, electricityCost: 0.09, gridRenewable: 8, annualCDD: 2500, coolingWaterTemp: "W40", latency: 3, hyperscalers: ["NVIDIA (Taipei-1)", "Google Cloud", "Microsoft Azure", "Foxconn"] },
+            { continent: "Asia", lat: 23.0142, lng: 120.2198, flag: "🇹🇼", country: "Taiwan", city: "Tainan", zone: "1A", maxDB: 35.8, minDB: 9.8, extWB: 27.8, freeCooling: 1600, waterRisk: 5, heatWave: 5, seismic: 4, recoKey: "reco_15", pue: 1.34, carbonIntensity: 490, electricityCost: 0.09, gridRenewable: 12, annualCDD: 2700, coolingWaterTemp: "W40", latency: 4, hyperscalers: ["TSMC", "ASML", "NVIDIA", "Google Cloud"] },
+            { continent: "Asia", lat: 39.9042, lng: 116.4074, flag: "🇨🇳", country: "China", city: "Beijing", zone: "4A", maxDB: 36.5, minDB: -15.2, extWB: 26.5, freeCooling: 4500, waterRisk: 5, heatWave: 4, seismic: 3, recoKey: "reco_17", pue: 1.28, carbonIntensity: 600, electricityCost: 0.10, gridRenewable: 20, annualCDD: 1400, coolingWaterTemp: "W35", latency: 5, hyperscalers: ["Alibaba Cloud", "Tencent", "Baidu"] },
+            { continent: "Asia", lat: 31.2304, lng: 121.4737, flag: "🇨🇳", country: "China", city: "Shanghai", zone: "3A", maxDB: 37.8, minDB: -3.5, extWB: 28.5, freeCooling: 2800, waterRisk: 3, heatWave: 5, seismic: 2, recoKey: "reco_15", pue: 1.35, carbonIntensity: 550, electricityCost: 0.12, gridRenewable: 15, annualCDD: 1800, coolingWaterTemp: "W40", latency: 4, hyperscalers: ["Alibaba Cloud", "Tencent", "AWS"] },
+            { continent: "Asia", lat: 35.6762, lng: 139.6503, flag: "🇯🇵", country: "Japan", city: "Tokyo", zone: "3A", maxDB: 33.1, minDB: -1.5, extWB: 26.5, freeCooling: 3800, waterRisk: 3, heatWave: 4, seismic: 5, recoKey: "reco_17", pue: 1.25, carbonIntensity: 450, electricityCost: 0.18, gridRenewable: 22, annualCDD: 1100, coolingWaterTemp: "W35", latency: 2, hyperscalers: ["AWS", "Google Cloud", "Microsoft Azure", "NTT"] },
+            { continent: "Asia", lat: 34.6937, lng: 135.5023, flag: "🇯🇵", country: "Japan", city: "Osaka", zone: "3A", maxDB: 34.2, minDB: -0.5, extWB: 26.8, freeCooling: 3600, waterRisk: 3, heatWave: 4, seismic: 5, recoKey: "reco_17", pue: 1.27, carbonIntensity: 430, electricityCost: 0.17, gridRenewable: 25, annualCDD: 1200, coolingWaterTemp: "W35", latency: 3, hyperscalers: ["AWS", "Microsoft Azure", "Digital Realty", "Equinix"] },
+            { continent: "Asia", lat: 1.3521, lng: 103.8198, flag: "🇸🇬", country: "Singapore", city: "Singapore", zone: "0A", maxDB: 33.2, minDB: 22.5, extWB: 28.1, freeCooling: 0, waterRisk: 5, heatWave: 3, seismic: 1, recoKey: "reco_15", pue: 1.38, carbonIntensity: 400, electricityCost: 0.20, gridRenewable: 5, annualCDD: 3500, coolingWaterTemp: "W45", latency: 1, hyperscalers: ["AWS", "Google Cloud", "Microsoft Azure", "ST Telemedia"] },
+            { continent: "Asia", lat: -6.2088, lng: 106.8456, flag: "🇮🇩", country: "Indonesia", city: "Jakarta", zone: "0A", maxDB: 34.5, minDB: 23.1, extWB: 28.5, freeCooling: 0, waterRisk: 4, heatWave: 3, seismic: 4, recoKey: "reco_17", pue: 1.42, carbonIntensity: 700, electricityCost: 0.08, gridRenewable: 12, annualCDD: 3600, coolingWaterTemp: "W45", latency: 10, hyperscalers: ["AWS", "Google Cloud", "Alibaba Cloud", "Equinix"] },
+            { continent: "Asia", lat: 13.0827, lng: 80.2707, flag: "🇮🇳", country: "India", city: "Chennai", zone: "0A", maxDB: 38.5, minDB: 18.5, extWB: 31.0, freeCooling: 0, waterRisk: 5, heatWave: 5, seismic: 2, recoKey: "reco_15", pue: 1.44, carbonIntensity: 680, electricityCost: 0.11, gridRenewable: 20, annualCDD: 3900, coolingWaterTemp: "W45", latency: 8, hyperscalers: ["AWS", "Google Cloud", "CtrlS", "Adani"] },
+            { continent: "MEA", lat: 25.2854, lng: 51.5310, flag: "🇶🇦", country: "Qatar", city: "Doha", zone: "1B", maxDB: 46.5, minDB: 10.5, extWB: 31.5, freeCooling: 1000, waterRisk: 5, heatWave: 5, seismic: 1, recoKey: "reco_15", pue: 1.48, carbonIntensity: 490, electricityCost: 0.04, gridRenewable: 2, annualCDD: 4200, coolingWaterTemp: "W45", latency: 20, hyperscalers: ["Microsoft Azure", "Google Cloud", "Meeza"] },
+            { continent: "MEA", lat: 25.2048, lng: 55.2708, flag: "🇦🇪", country: "UAE", city: "Dubai", zone: "1B", maxDB: 43.3, minDB: 11.9, extWB: 30.4, freeCooling: 1500, waterRisk: 5, heatWave: 5, seismic: 2, recoKey: "reco_15", pue: 1.45, carbonIntensity: 450, electricityCost: 0.08, gridRenewable: 15, annualCDD: 3900, coolingWaterTemp: "W45", latency: 15, hyperscalers: ["Microsoft Azure", "AWS", "Equinix"] },
+            { continent: "MEA", lat: -1.2921, lng: 36.8219, flag: "🇰🇪", country: "Kenya", city: "Nairobi", zone: "3B", maxDB: 28.5, minDB: 10.5, extWB: 19.5, freeCooling: 7500, waterRisk: 3, heatWave: 1, seismic: 2, recoKey: "reco_21", pue: 1.18, carbonIntensity: 90, electricityCost: 0.15, gridRenewable: 90, annualCDD: 100, coolingWaterTemp: "W32", latency: 40, hyperscalers: ["AWS (Local)", "Africa Data Centres", "Icolo"] },
+            { continent: "Americas", lat: 20.5881, lng: -100.3899, flag: "🇲🇽", country: "Mexico", city: "Queretaro", zone: "3B", maxDB: 32.5, minDB: 5.2, extWB: 20.1, freeCooling: 5200, waterRisk: 5, heatWave: 3, seismic: 3, recoKey: "reco_2", pue: 1.25, carbonIntensity: 420, electricityCost: 0.11, gridRenewable: 25, annualCDD: 800, coolingWaterTemp: "W32", latency: 18, hyperscalers: ["Microsoft Azure", "AWS", "Google Cloud", "ODATA"] },
+            { continent: "Europe", lat: 53.3498, lng: -6.2603, flag: "🇮🇪", country: "Ireland", city: "Dublin", zone: "4C", maxDB: 24.5, minDB: -2.1, extWB: 18.5, freeCooling: 7200, waterRisk: 2, heatWave: 1, seismic: 1, recoKey: "reco_12", pue: 1.12, carbonIntensity: 300, electricityCost: 0.25, gridRenewable: 40, annualCDD: 50, coolingWaterTemp: "W32", latency: 3, hyperscalers: ["AWS", "Microsoft Azure", "Google Cloud", "Equinix"] },
+            { continent: "Europe", lat: 52.3676, lng: 4.9041, flag: "🇳🇱", country: "Netherlands", city: "Amsterdam", zone: "4C", maxDB: 29.5, minDB: -5.4, extWB: 21.0, freeCooling: 6500, waterRisk: 1, heatWave: 2, seismic: 1, recoKey: "reco_11", pue: 1.16, carbonIntensity: 320, electricityCost: 0.18, gridRenewable: 35, annualCDD: 180, coolingWaterTemp: "W32", latency: 1, hyperscalers: ["Google Cloud", "Microsoft Azure", "Digital Realty"] },
+            { continent: "Europe", lat: 48.8566, lng: 2.3522, flag: "🇫🇷", country: "France", city: "Paris", zone: "4C", maxDB: 34.5, minDB: -4.5, extWB: 22.5, freeCooling: 5800, waterRisk: 2, heatWave: 4, seismic: 1, recoKey: "reco_2", pue: 1.22, carbonIntensity: 60, electricityCost: 0.20, gridRenewable: 25, annualCDD: 350, coolingWaterTemp: "W32", latency: 2, hyperscalers: ["AWS", "Google Cloud", "Scaleway"] },
+            { continent: "Europe", lat: 45.4642, lng: 9.1900, flag: "🇮🇹", country: "Italy", city: "Milan", zone: "4A", maxDB: 35.1, minDB: -3.2, extWB: 24.5, freeCooling: 4500, waterRisk: 3, heatWave: 4, seismic: 3, recoKey: "reco_1", pue: 1.28, carbonIntensity: 250, electricityCost: 0.24, gridRenewable: 40, annualCDD: 900, coolingWaterTemp: "W35", latency: 5, hyperscalers: ["AWS", "Microsoft Azure", "Aruba"] },
+            { continent: "Europe", lat: 60.1695, lng: 24.9354, flag: "🇫🇮", country: "Finland", city: "Helsinki", zone: "6A", maxDB: 25.5, minDB: -20.5, extWB: 19.5, freeCooling: 8200, waterRisk: 1, heatWave: 1, seismic: 1, recoKey: "reco_10", pue: 1.08, carbonIntensity: 50, electricityCost: 0.08, gridRenewable: 85, annualCDD: 20, coolingWaterTemp: "W27", latency: 12, hyperscalers: ["Google Cloud", "Equinix"] },
+            { continent: "Americas", lat: 45.5017, lng: -73.5673, flag: "🇨🇦", country: "Canada", city: "Montreal", zone: "6A", maxDB: 28.5, minDB: -25.5, extWB: 22.5, freeCooling: 7000, waterRisk: 1, heatWave: 2, seismic: 2, recoKey: "reco_14", pue: 1.15, carbonIntensity: 10, electricityCost: 0.05, gridRenewable: 99, annualCDD: 400, coolingWaterTemp: "W32", latency: 6, hyperscalers: ["AWS", "Google Cloud", "Microsoft Azure"] },
+            { continent: "Americas", lat: 43.6510, lng: -79.3470, flag: "🇨🇦", country: "Canada", city: "Toronto", zone: "5A", maxDB: 31.5, minDB: -18.5, extWB: 23.5, freeCooling: 6000, waterRisk: 1, heatWave: 3, seismic: 1, recoKey: "reco_2", pue: 1.18, carbonIntensity: 40, electricityCost: 0.08, gridRenewable: 95, annualCDD: 600, coolingWaterTemp: "W32", latency: 8, hyperscalers: ["AWS", "Google Cloud", "Microsoft Azure"] },
+            { continent: "Americas", lat: 32.7767, lng: -96.7970, flag: "🇺🇸", country: "USA", city: "Dallas, TX", zone: "3A", maxDB: 39.5, minDB: -5.5, extWB: 26.5, freeCooling: 3500, waterRisk: 4, heatWave: 4, seismic: 1, recoKey: "reco_17", pue: 1.30, carbonIntensity: 400, electricityCost: 0.08, gridRenewable: 30, annualCDD: 2800, coolingWaterTemp: "W40", latency: 5, hyperscalers: ["AWS", "Google Cloud", "Microsoft Azure", "Equinix"] },
+            { continent: "Americas", lat: 47.6062, lng: -122.3321, flag: "🇺🇸", country: "USA", city: "Seattle, WA", zone: "4C", maxDB: 30.5, minDB: -2.5, extWB: 20.5, freeCooling: 6800, waterRisk: 1, heatWave: 2, seismic: 4, recoKey: "reco_12", pue: 1.16, carbonIntensity: 120, electricityCost: 0.07, gridRenewable: 80, annualCDD: 250, coolingWaterTemp: "W32", latency: 3, hyperscalers: ["AWS", "Microsoft Azure", "Sabey"] },
+            { continent: "Americas", lat: -23.5505, lng: -46.6333, flag: "🇧🇷", country: "Brazil", city: "Sao Paulo", zone: "2A", maxDB: 34.5, minDB: 8.5, extWB: 25.5, freeCooling: 2500, waterRisk: 3, heatWave: 3, seismic: 1, recoKey: "reco_1", pue: 1.40, carbonIntensity: 150, electricityCost: 0.14, gridRenewable: 85, annualCDD: 2200, coolingWaterTemp: "W35", latency: 15, hyperscalers: ["AWS", "Google Cloud", "Microsoft Azure", "Ascenty"] },
+            { continent: "Americas", lat: -33.4489, lng: -70.6693, flag: "🇨🇱", country: "Chile", city: "Santiago", zone: "3C", maxDB: 33.5, minDB: -1.5, extWB: 19.5, freeCooling: 5500, waterRisk: 5, heatWave: 3, seismic: 5, recoKey: "reco_3", pue: 1.28, carbonIntensity: 250, electricityCost: 0.12, gridRenewable: 55, annualCDD: 900, coolingWaterTemp: "W32", latency: 25, hyperscalers: ["Google Cloud", "AWS", "Microsoft Azure"] },
+            { continent: "Asia", lat: 37.5665, lng: 126.9780, flag: "🇰🇷", country: "South Korea", city: "Seoul", zone: "4A", maxDB: 34.5, minDB: -12.5, extWB: 26.5, freeCooling: 4500, waterRisk: 2, heatWave: 3, seismic: 2, recoKey: "reco_17", pue: 1.26, carbonIntensity: 450, electricityCost: 0.11, gridRenewable: 10, annualCDD: 1200, coolingWaterTemp: "W35", latency: 4, hyperscalers: ["AWS", "Google Cloud", "Microsoft Azure", "KT"] },
+            { continent: "Asia", lat: -33.8688, lng: 151.2093, flag: "🇦🇺", country: "Australia", city: "Sydney", zone: "3A", maxDB: 35.5, minDB: 6.5, extWB: 25.5, freeCooling: 3500, waterRisk: 4, heatWave: 4, seismic: 1, recoKey: "reco_1", pue: 1.32, carbonIntensity: 650, electricityCost: 0.16, gridRenewable: 35, annualCDD: 1500, coolingWaterTemp: "W35", latency: 1, hyperscalers: ["AWS", "Google Cloud", "Microsoft Azure", "NextDC"] },
+            { continent: "Asia", lat: 19.0760, lng: 72.8777, flag: "🇮🇳", country: "India", city: "Mumbai", zone: "0A", maxDB: 36.5, minDB: 15.5, extWB: 30.5, freeCooling: 500, waterRisk: 4, heatWave: 4, seismic: 3, recoKey: "reco_15", pue: 1.45, carbonIntensity: 700, electricityCost: 0.10, gridRenewable: 25, annualCDD: 3800, coolingWaterTemp: "W45", latency: 12, hyperscalers: ["AWS", "Google Cloud", "Microsoft Azure", "CtrlS"] },
+            { continent: "Asia", lat: 3.1390, lng: 101.6869, flag: "🇲🇾", country: "Malaysia", city: "Kuala Lumpur", zone: "0A", maxDB: 34.5, minDB: 22.5, extWB: 28.5, freeCooling: 0, waterRisk: 2, heatWave: 3, seismic: 1, recoKey: "reco_17", pue: 1.38, carbonIntensity: 550, electricityCost: 0.09, gridRenewable: 20, annualCDD: 3500, coolingWaterTemp: "W45", latency: 8, hyperscalers: ["AWS", "Microsoft Azure", "Google Cloud", "YTL"] },
+            { continent: "Asia", lat: 22.3193, lng: 114.1694, flag: "🇭🇰", country: "Hong Kong", city: "Hong Kong", zone: "2A", maxDB: 34.5, minDB: 10.5, extWB: 28.5, freeCooling: 1200, waterRisk: 3, heatWave: 3, seismic: 1, recoKey: "reco_15", pue: 1.35, carbonIntensity: 600, electricityCost: 0.15, gridRenewable: 5, annualCDD: 2800, coolingWaterTemp: "W40", latency: 2, hyperscalers: ["AWS", "Google Cloud", "Microsoft Azure", "Equinix"] },
+            { continent: "MEA", lat: 32.0853, lng: 34.7818, flag: "🇮🇱", country: "Israel", city: "Tel Aviv", zone: "2B", maxDB: 35.5, minDB: 7.5, extWB: 25.5, freeCooling: 3000, waterRisk: 5, heatWave: 4, seismic: 4, recoKey: "reco_1", pue: 1.30, carbonIntensity: 450, electricityCost: 0.14, gridRenewable: 15, annualCDD: 2200, coolingWaterTemp: "W35", latency: 8, hyperscalers: ["AWS", "Google Cloud", "Microsoft Azure"] },
+            { continent: "MEA", lat: -26.2041, lng: 28.0473, flag: "🇿🇦", country: "South Africa", city: "Johannesburg", zone: "3B", maxDB: 32.5, minDB: -1.5, extWB: 19.5, freeCooling: 6000, waterRisk: 4, heatWave: 2, seismic: 1, recoKey: "reco_3", pue: 1.25, carbonIntensity: 850, electricityCost: 0.12, gridRenewable: 15, annualCDD: 800, coolingWaterTemp: "W32", latency: 35, hyperscalers: ["AWS", "Microsoft Azure", "Teraco"] }
+        ];
+
+        function generate10YearHistory(d) {
+            const seed = Math.abs(Math.sin(d.lat) * 1000 + Math.cos(d.lng) * 1000);
+            function lcg(s) {
+                let state = s;
+                return function() {
+                    state = (state * 1664525 + 1013904223) % 4294967296;
+                    return state / 4294967296;
+                };
+            }
+            const rand = lcg(seed);
+            const history = [];
+            for (let year = 2016; year <= 2026; year++) {
+                const warmTrend = (year - 2016) * 0.12; 
+                const dbNoise = (rand() - 0.5) * 4; 
+                const wbNoise = (rand() - 0.5) * 2; 
+                
+                let anomalyDB = 0;
+                let anomalyWB = 0;
+                if (year === 2022 && (d.continent === 'Europe' || d.continent === 'Americas')) {
+                    anomalyDB = 2.5;
+                    anomalyWB = 1.2;
+                } else if (year === 2023 && d.continent === 'Asia') {
+                    anomalyDB = 2.2;
+                    anomalyWB = 1.5;
+                } else if (year === 2026) {
+                    anomalyDB = 1.8;
+                    anomalyWB = 1.0;
+                }
+                
+                const peakDB = d.maxDB + warmTrend + dbNoise + anomalyDB;
+                const peakWB = d.extWB + (warmTrend * 0.7) + wbNoise + anomalyWB;
+                const finalWB = Math.min(peakDB - 0.5, peakWB);
+                
+                const baseHours = d.zone.startsWith('0') || d.zone.startsWith('1') || d.zone.startsWith('2') ? 350 : 80;
+                const heatwaveHours = Math.max(0, Math.round(baseHours + (warmTrend + dbNoise + anomalyDB) * 35));
+                
+                let freezingHours = 0;
+                if (d.minDB < -5) {
+                    const coldNoise = (rand() - 0.5) * 40;
+                    freezingHours = Math.max(0, Math.round(Math.abs(d.minDB) * 15 - warmTrend * 8 + coldNoise));
+                }
+                
+                const designDB = d.maxDB - 1.5;
+                const dbExcess = Math.max(0, peakDB - designDB);
+                const peakPUE = d.pue + (dbExcess * 0.015);
+                
+                history.push({
+                    year,
+                    peakDB: parseFloat(peakDB.toFixed(1)),
+                    peakWB: parseFloat(finalWB.toFixed(1)),
+                    heatwaveHours,
+                    freezingHours,
+                    peakPUE: parseFloat(peakPUE.toFixed(3))
+                });
+            }
+            return history;
+        }
+
+        data.forEach(d => {
+            const wbScore = Math.max(0, Math.min(10, (d.extWB - 5) / 25 * 10));
+            const dbScore = Math.max(0, Math.min(10, (d.maxDB - 15) / 30 * 10));
+            const fcScore = (8760 - d.freeCooling) / 8760 * 10;
+            const wrScore = (d.waterRisk - 1) / 4 * 10;
+            let score = wbScore * 0.35 + dbScore * 0.15 + fcScore * 0.30 + wrScore * 0.20;
+            d.score = parseFloat(Math.max(1, Math.min(10, score)).toFixed(1));
+
+            d.history = generate10YearHistory(d);
+            
+            d.designDB = parseFloat((d.maxDB - 1.5).toFixed(1));
+            d.designWB = parseFloat((d.extWB - 1.0).toFixed(1));
+            
+            const max10YrDB = Math.max(...d.history.map(h => h.peakDB));
+            const max10YrWB = Math.max(...d.history.map(h => h.peakWB));
+            
+            d.chillerDerating = parseFloat(Math.max(0, (max10YrDB - d.designDB) * 1.5).toFixed(1));
+            d.approachRisk = parseFloat(Math.max(0, max10YrWB - d.designWB).toFixed(1));
+            d.fcLoss = parseFloat(Math.max(2.0, Math.min(25.0, (d.history[d.history.length-1].peakDB - d.history[0].peakDB) * 6.0)).toFixed(1));
+            d.pueDeterioration = parseFloat(Math.max(...d.history.map(h => h.peakPUE)).toFixed(3));
+
+            const weightedRisk = d.chillerDerating * 1.5 + d.approachRisk * 2.0 + d.waterRisk * 6.0 + d.seismic * 4.0;
+            if (weightedRisk < 18) d.resilienceGrade = 'S';
+            else if (weightedRisk < 28) d.resilienceGrade = 'A';
+            else if (weightedRisk < 42) d.resilienceGrade = 'B';
+            else if (weightedRisk < 56) d.resilienceGrade = 'C';
+            else d.resilienceGrade = 'D';
+        });
+
+        // --- 3. Controllers ---
+        function setLanguage(lang) {
+            currentLang = lang;
+            const dict = i18n[lang];
+            
+            // Subtitle & Title
+            document.getElementById('t-subtitle').innerText = dict.subtitle;
+            document.getElementById('t-title').innerHTML = lang === 'zh' ? '氣候工程基礎設施<br/>大數據監測平台' : 'Climate Engineering<br/>Infrastructure Intelligence';
+            
+            // Search Input
+            document.getElementById('searchInput').placeholder = dict.search;
+            
+            // Language Button Label
+            document.getElementById('langLabel').innerText = lang === 'en' ? 'ZH' : 'EN';
+            
+            // KPIs
+            document.getElementById('t-kpi1').innerText = dict.kpi1;
+            document.getElementById('t-kpi1-sub').innerText = dict.kpi1_sub;
+            document.getElementById('t-kpi2').innerText = dict.kpi2;
+            document.getElementById('t-kpi3').innerText = dict.kpi3;
+            document.getElementById('t-kpi3-sub').innerText = dict.kpi3_sub;
+            document.getElementById('t-kpi4').innerText = dict.kpi4;
+            document.getElementById('t-kpi4-sub').innerText = dict.kpi4_sub;
+            
+            // Globe
+            document.getElementById('t-globe-title').innerText = dict.globe_title;
+            document.getElementById('t-globe-sub').innerText = dict.globe_sub;
+            document.getElementById('t-globe-loading').innerText = dict.globe_loading;
+            
+            // Table Columns
+            document.getElementById('t-col-region').innerText = dict.col_region;
+            document.getElementById('t-col-zone').innerText = dict.col_zone;
+            document.getElementById('t-col-wb').innerText = dict.col_wb;
+            document.getElementById('t-col-fc').innerText = dict.col_fc;
+            document.getElementById('t-col-water').innerText = dict.col_water;
+            document.getElementById('t-col-pue').innerText = dict.col_pue;
+            document.getElementById('t-col-req').innerText = dict.col_req;
+            
+            // Region Filter Options
+            const regionSelect = document.getElementById('regionFilter');
+            if (regionSelect) {
+                if (lang === 'zh') {
+                    regionSelect.options[0].text = "🌍 所有區域";
+                    regionSelect.options[1].text = "🌎 美洲地區";
+                    regionSelect.options[2].text = "🌍 歐洲地區";
+                    regionSelect.options[3].text = "🌏 亞洲地區";
+                    regionSelect.options[4].text = "🌍 中東與非洲";
+                } else {
+                    regionSelect.options[0].text = "🌍 All Regions";
+                    regionSelect.options[1].text = "🌎 Americas";
+                    regionSelect.options[2].text = "🌍 Europe";
+                    regionSelect.options[3].text = "🌏 Asia";
+                    regionSelect.options[4].text = "🌍 Middle East & Africa";
+                }
+            }
+            
+            // Update table, KPIs, and detail panel
+            renderTable();
+            updateKPIs();
+            if (selectedCity) {
+                updateDetailPanel(selectedCity);
+            }
+        }
+
+        function toggleLang() {
+            setLanguage(currentLang === 'en' ? 'zh' : 'en');
+        }
+
+        function toggleTheme() {
+            const body = document.body;
+            const isLight = body.classList.contains('light-theme');
+            const sunIcon = document.getElementById('icon-sun');
+            const moonIcon = document.getElementById('icon-moon');
+            
+            if (isLight) {
+                body.classList.remove('light-theme');
+                sunIcon.classList.remove('hidden');
+                moonIcon.classList.add('hidden');
+            } else {
+                body.classList.add('light-theme');
+                sunIcon.classList.add('hidden');
+                moonIcon.classList.remove('hidden');
+            }
+        }
+
+        function getCoolingRequirement(wetBulb) {
+            if (wetBulb >= 27.5) {
+                return {
+                    textKey: 'req_immersion',
+                    class: 'border-rose-500/30 text-rose-400 bg-rose-500/5',
+                    bgHex: '#ef4444'
+                };
+            } else if (wetBulb >= 24.5) {
+                return {
+                    textKey: 'req_d2c',
+                    class: 'border-amber-500/30 text-amber-400 bg-amber-500/5',
+                    bgHex: '#f59e0b'
+                };
+            } else {
+                return {
+                    textKey: 'req_hybrid',
+                    class: 'border-cyan-500/30 text-cyan-400 bg-cyan-500/5',
+                    bgHex: '#22d3ee'
+                };
+            }
+        }
+
+        function getHeatColorBg(wetBulb) {
+            if (wetBulb >= 27.5) return 'bg-rose-500';
+            if (wetBulb >= 24.5) return 'bg-amber-500';
+            return 'bg-cyan-400';
+        }
+
+        function getFilteredData() {
+            const region = document.getElementById('regionFilter').value;
+            const search = document.getElementById('searchInput').value.toLowerCase().trim();
+            
+            return data.filter(d => {
+                const matchRegion = region === 'All' || d.continent === region;
+                const matchSearch = !search || 
+                    d.city.toLowerCase().includes(search) || 
+                    d.country.toLowerCase().includes(search) ||
+                    d.zone.toLowerCase().includes(search);
+                return matchRegion && matchSearch;
+            });
+        }
+
+        function updateGlobeMarkers() {
+            if (!myGlobe) return;
+            const filtered = getFilteredData();
+            myGlobe.htmlElementsData(filtered);
+        }
+
+        function renderTable() {
+            const filtered = getFilteredData();
+            
+            // Sync globe markers
+            updateGlobeMarkers();
+            
+            // Sort
+            const { key, dir } = currentSort;
+            filtered.sort((a, b) => {
+                let valA = a[key];
+                let valB = b[key];
+                
+                if (typeof valA === 'string') {
+                    return valA.localeCompare(valB) * dir;
+                }
+                return (valA - valB) * dir;
+            });
+            
+            // Update sort icons in table headers
+            const headers = ['city', 'zone', 'extWB', 'freeCooling', 'waterRisk', 'pue'];
+            headers.forEach(h => {
+                const el = document.getElementById(`sort-${h}`);
+                if (el) {
+                    if (key === h) {
+                        el.innerHTML = dir === 1 ? ' ▴' : ' ▾';
+                        el.className = 'text-blue-400 font-bold ml-1';
+                    } else {
+                        el.innerHTML = '';
+                        el.className = '';
+                    }
+                }
+            });
+
+            const tbody = document.getElementById('tableBody');
+            if (!tbody) return;
+            
+            if (filtered.length === 0) {
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="7" class="text-center py-12 text-slate-500 font-bold uppercase tracking-wider">No nodes match your filter criteria</td>
+                    </tr>
+                `;
+                return;
+            }
+            
+            const lang = i18n[currentLang];
+            
+            tbody.innerHTML = filtered.map(d => {
+                const req = getCoolingRequirement(d.extWB);
+                const isSelected = selectedCity && selectedCity.city === d.city;
+                const selectedClass = isSelected ? 'ring-2 ring-blue-500 ring-offset-2 ring-offset-slate-900' : '';
+                
+                let waterRiskHTML = `<div class="flex justify-end gap-1 font-mono">`;
+                for (let i = 1; i <= 5; i++) {
+                    const color = i <= d.waterRisk ? 'bg-rose-500 shadow-[0_0_6px_rgba(239,68,68,0.5)]' : 'bg-slate-700/50';
+                    waterRiskHTML += `<span class="w-1.5 h-1.5 rounded-full ${color}"></span>`;
+                }
+                waterRiskHTML += `</div>`;
+                
+                return `
+                    <tr class="table-row cursor-pointer transition-all duration-300 ${selectedClass}" onclick="selectNode('${d.city}')">
+                        <td class="px-6 py-4">
+                            <div class="flex items-center gap-3">
+                                <span class="text-2xl">${d.flag}</span>
+                                <div>
+                                    <p class="font-bold text-white leading-tight">${d.city}</p>
+                                    <p class="text-[10px] font-mono font-bold text-slate-400 uppercase tracking-widest mt-1">${d.country}</p>
+                                </div>
+                            </div>
+                        </td>
+                        <td class="px-4 py-4 text-center font-mono font-bold text-slate-300">
+                            <span class="px-2.5 py-1 bg-slate-800/80 rounded-lg border border-white/5 text-xs text-blue-400">${d.zone}</span>
+                        </td>
+                        <td class="px-4 py-4 text-right font-mono font-bold">
+                            <span class="text-rose-500">${d.extWB.toFixed(1)}°C</span>
+                        </td>
+                        <td class="px-4 py-4">
+                            <div class="flex items-center gap-3">
+                                <div class="w-24 bg-slate-700/30 h-1.5 rounded-full overflow-hidden shrink-0 border border-white/5">
+                                    <div class="h-full bg-gradient-to-r from-emerald-400 to-teal-500" style="width: ${d.freeCooling / 8760 * 100}%"></div>
+                                </div>
+                                <span class="font-mono text-xs font-bold text-emerald-400 shrink-0">${d.freeCooling}h</span>
+                            </div>
+                        </td>
+                        <td class="px-4 py-4 text-right">
+                            ${waterRiskHTML}
+                        </td>
+                        <td class="px-4 py-4 text-right font-mono font-bold text-amber-400">
+                            ${d.pue.toFixed(2)}
+                        </td>
+                        <td class="px-6 py-4 text-right">
+                            <div class="inline-flex items-center gap-2 px-3 py-1.5 rounded-xl border ${req.class} font-bold text-xs">
+                                <span class="w-1.5 h-1.5 rounded-full" style="background-color: ${req.bgHex}"></span>
+                                ${lang[req.textKey]}
+                            </div>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        function updateKPIs() {
+            const filtered = getFilteredData();
+            if (filtered.length === 0) {
+                document.getElementById('kpiAvgPue').innerText = '--';
+                document.getElementById('kpiMaxWb').innerText = '--';
+                document.getElementById('kpiMaxWbCity').innerText = '';
+                document.getElementById('kpiMaxFreeCooling').innerText = '--';
+                document.getElementById('kpiLiquidNecessity').innerText = '--';
+                return;
+            }
+            
+            const avgPue = filtered.reduce((acc, curr) => acc + curr.pue, 0) / filtered.length;
+            document.getElementById('kpiAvgPue').innerText = avgPue.toFixed(2);
+            
+            let maxWbNode = filtered[0];
+            filtered.forEach(d => {
+                if (d.extWB > maxWbNode.extWB) {
+                    maxWbNode = d;
+                }
+            });
+            document.getElementById('kpiMaxWb').innerText = `${maxWbNode.extWB.toFixed(1)}°C`;
+            document.getElementById('kpiMaxWbCity').innerText = maxWbNode.city.split(',')[0];
+            
+            const maxFC = Math.max(...filtered.map(d => d.freeCooling));
+            document.getElementById('kpiMaxFreeCooling').innerText = maxFC.toLocaleString();
+            
+            const liquidNodes = filtered.filter(d => d.extWB >= 24.5).length;
+            const pct = Math.round(liquidNodes / filtered.length * 100);
+            document.getElementById('kpiLiquidNecessity').innerText = `${pct}%`;
+        }
+
+        function updateDetailPanel(d) {
+            const panel = document.getElementById('detailPanel');
+            if (!panel) return;
+            
+            const lang = i18n[currentLang];
+            const req = getCoolingRequirement(d.extWB);
+            
+            let gradeBadgeClass = 'from-emerald-500 to-teal-600';
+            if (d.resilienceGrade === 'A') gradeBadgeClass = 'from-blue-500 to-indigo-600';
+            if (d.resilienceGrade === 'B') gradeBadgeClass = 'from-amber-500 to-orange-600';
+            if (d.resilienceGrade === 'C') gradeBadgeClass = 'from-rose-500 to-red-600';
+            if (d.resilienceGrade === 'D') gradeBadgeClass = 'from-purple-600 to-pink-700';
+
+            panel.innerHTML = `
+                <!-- Panel Header -->
+                <div class="flex items-center gap-4 mb-6">
+                    <span class="text-4xl filter drop-shadow-md shrink-0">${d.flag}</span>
+                    <div class="min-w-0">
+                        <h2 class="heading text-2xl font-black text-white tracking-tight truncate leading-tight">${d.city}</h2>
+                        <p class="text-[10px] font-mono font-bold text-slate-400 uppercase tracking-widest mt-1">
+                            ${d.country} • ASHRAE Zone ${d.zone}
+                        </p>
+                    </div>
+                </div>
+
+                <!-- Score / Grade Quick Stats -->
+                <div class="grid grid-cols-2 gap-3 mb-6">
+                    <div class="glass-card p-4 rounded-2xl relative overflow-hidden group hover:border-white/20">
+                        <p class="text-[9px] font-mono text-slate-400 uppercase tracking-wider mb-1 flex items-center gap-1">
+                            ${lang.term_score}
+                            <span class="cursor-help text-slate-500 hover:text-white" title="${lang.tooltip_score}">ⓘ</span>
+                        </p>
+                        <span class="text-3xl font-black text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-indigo-500 font-mono tracking-tighter">
+                            ${d.score}/10
+                        </span>
+                    </div>
+                    <div class="glass-card p-4 rounded-2xl relative overflow-hidden group hover:border-white/20">
+                        <p class="text-[9px] font-mono text-slate-400 uppercase tracking-wider mb-1">
+                            ${lang.auditor_grade}
+                        </p>
+                        <span class="px-3.5 py-0.5 rounded-lg text-white font-black font-mono text-xl bg-gradient-to-r ${gradeBadgeClass} shadow-md">
+                            ${d.resilienceGrade}
+                        </span>
+                    </div>
+                </div>
+
+                <!-- Core Ambient Specs -->
+                <div class="space-y-3.5 mb-6">
+                    <div class="flex justify-between items-center py-2 border-b border-white/5">
+                        <span class="text-xs font-bold text-slate-400 uppercase">${lang.term_maxDB} / CDD</span>
+                        <span class="font-mono text-sm font-bold text-rose-500">${d.maxDB}°C <span class="text-slate-300">|</span> <span class="text-slate-500">${d.annualCDD}</span></span>
+                    </div>
+                    <div class="flex justify-between items-center py-2 border-b border-white/5">
+                        <span class="text-xs font-bold text-slate-400 uppercase">${lang.term_minDB}</span>
+                        <span class="font-mono text-sm font-bold text-cyan-400">${d.minDB}°C</span>
+                    </div>
+                    <div class="flex justify-between items-center py-2 border-b border-white/5">
+                        <span class="text-xs font-bold text-slate-400 uppercase">${lang.auditor_design_wb} / Peak</span>
+                        <span class="font-mono text-sm font-bold text-blue-500">${d.designWB}°C <span class="text-slate-300">|</span> <span class="text-rose-500">${d.extWB}°C</span></span>
+                    </div>
+                </div>
+
+                <!-- Climate Trend Interactive Chart -->
+                <div class="mb-6 flex-grow flex flex-col min-h-[200px]">
+                    <div class="flex justify-between items-center mb-3">
+                        <h3 class="text-[10px] font-mono font-bold text-slate-400 uppercase tracking-widest">${lang.auditor_extreme_history}</h3>
+                        <div class="flex gap-1 bg-slate-800/40 p-0.5 rounded-lg border border-white/5">
+                            <button onclick="changeChartTab('temp')" class="px-2 py-1 text-[9px] font-bold rounded-md transition-all ${selectedChartTab === 'temp' ? 'bg-blue-500 text-white shadow-sm' : 'text-slate-400 hover:text-white'}">
+                                ${lang.auditor_toggle_temp.split(' ')[0]}
+                            </button>
+                            <button onclick="changeChartTab('hours')" class="px-2 py-1 text-[9px] font-bold rounded-md transition-all ${selectedChartTab === 'hours' ? 'bg-blue-500 text-white shadow-sm' : 'text-slate-400 hover:text-white'}">
+                                ${lang.auditor_toggle_hours.split(' ')[0]}
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <div class="flex-grow min-h-[140px] flex items-center justify-center relative bg-slate-900/30 rounded-2xl border border-white/5 p-2.5">
+                        ${renderSVGChart(d)}
+                    </div>
+                </div>
+
+                <!-- Architecture Verdict / Liquid Cooling Bar -->
+                <div class="bg-slate-900/40 border border-white/10 rounded-[1.5rem] p-4.5 mb-6 relative overflow-hidden">
+                    <div class="absolute -right-8 -top-8 w-24 h-24 bg-blue-500/5 rounded-full blur-2xl"></div>
+                    <div class="flex justify-between items-start mb-2.5">
+                        <div>
+                            <p class="text-[10px] font-mono font-bold text-blue-400 uppercase tracking-widest mb-1">${lang.term_verdict}</p>
+                            <p class="text-sm font-bold text-white leading-tight">${lang[d.recoKey]}</p>
+                        </div>
+                        <span class="text-[9px] font-black uppercase px-2.5 py-1 rounded-lg border shrink-0 ${req.class}">${lang[req.textKey]}</span>
+                    </div>
+                </div>
+
+                <!-- Action Button -->
+                <button onclick="generateReport('${d.city}')" class="w-full bg-gradient-to-r from-blue-600 via-indigo-600 to-blue-600 hover:from-blue-500 hover:to-indigo-500 text-white py-3.5 px-6 rounded-2xl font-bold text-sm tracking-wide shadow-[0_4px_20px_rgba(99,102,241,0.25)] hover:shadow-[0_4px_25px_rgba(99,102,241,0.4)] active:scale-[0.98] transition-all flex items-center justify-center gap-2 group mt-auto">
+                    <span>${lang.btn_report}</span>
+                    <svg class="w-4 h-4 transform group-hover:translate-x-0.5 transition-transform" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M14 5l7 7m0 0l-7 7m7-7H3"></path></svg>
+                </button>
+            `;
+        }
+
+        function changeChartTab(tab) {
+            selectedChartTab = tab;
+            if (selectedCity) {
+                updateDetailPanel(selectedCity);
+            }
+        }
+
+        function renderSVGChart(d) {
+            const history = d.history;
+            if (!history || history.length === 0) return '';
+            
+            const w = 340;
+            const h = 140;
+            const padding = { top: 15, right: 15, bottom: 20, left: 30 };
+            const chartW = w - padding.left - padding.right;
+            const chartH = h - padding.top - padding.bottom;
+            
+            if (selectedChartTab === 'temp') {
+                const allVals = history.flatMap(item => [item.peakDB, item.peakWB]);
+                const maxVal = Math.max(...allVals);
+                const minVal = Math.min(...allVals);
+                const valRange = (maxVal - minVal) || 1;
+                
+                const minY = minVal - valRange * 0.1;
+                const maxY = maxVal + valRange * 0.1;
+                const getX = (index) => padding.left + (index / (history.length - 1)) * chartW;
+                const getY = (val) => padding.top + chartH - ((val - minY) / (maxY - minY)) * chartH;
+                
+                let dbPath = '';
+                let dbDots = '';
+                history.forEach((item, idx) => {
+                    const x = getX(idx);
+                    const y = getY(item.peakDB);
+                    if (idx === 0) dbPath += `M ${x} ${y}`;
+                    else dbPath += ` L ${x} ${y}`;
+                    
+                    dbDots += `<circle cx="${x}" cy="${y}" r="3" fill="#f43f5e" stroke="#05050a" stroke-width="1" />`;
+                });
+                
+                let wbPath = '';
+                let wbDots = '';
+                history.forEach((item, idx) => {
+                    const x = getX(idx);
+                    const y = getY(item.peakWB);
+                    if (idx === 0) wbPath += `M ${x} ${y}`;
+                    else wbPath += ` L ${x} ${y}`;
+                    
+                    wbDots += `<circle cx="${x}" cy="${y}" r="3" fill="#3b82f6" stroke="#05050a" stroke-width="1" />`;
+                });
+                
+                const steps = 3;
+                let gridLines = '';
+                for (let i = 0; i <= steps; i++) {
+                    const yVal = minY + (i / steps) * (maxY - minY);
+                    const y = getY(yVal);
+                    gridLines += `
+                        <line x1="${padding.left}" y1="${y}" x2="${w - padding.right}" y2="${y}" stroke="rgba(255,255,255,0.08)" stroke-width="1" />
+                        <text x="${padding.left - 5}" y="${y + 3}" fill="#64748b" font-size="8" font-family="monospace" text-anchor="end">${yVal.toFixed(0)}°</text>
+                    `;
+                }
+                
+                let xLabels = '';
+                history.forEach((item, idx) => {
+                    if (idx === 0 || idx === Math.floor(history.length / 2) || idx === history.length - 1) {
+                        const x = getX(idx);
+                        xLabels += `
+                            <text x="${x}" y="${h - 4}" fill="#64748b" font-size="8" font-family="monospace" text-anchor="middle">${item.year}</text>
+                        `;
+                    }
+                });
+                
+                return `
+                    <svg viewBox="0 0 ${w} ${h}" class="w-full h-full">
+                        <defs>
+                            <linearGradient id="dbGrad" x1="0" y1="0" x2="0" y2="1">
+                                <stop offset="0%" stop-color="#f43f5e" stop-opacity="0.15"/>
+                                <stop offset="100%" stop-color="#f43f5e" stop-opacity="0"/>
+                            </linearGradient>
+                            <linearGradient id="wbGrad" x1="0" y1="0" x2="0" y2="1">
+                                <stop offset="0%" stop-color="#3b82f6" stop-opacity="0.1"/>
+                                <stop offset="100%" stop-color="#3b82f6" stop-opacity="0"/>
+                            </linearGradient>
+                        </defs>
+                        ${gridLines}
+                        <path d="${dbPath} L ${getX(history.length - 1)} ${padding.top + chartH} L ${getX(0)} ${padding.top + chartH} Z" fill="url(#dbGrad)" />
+                        <path d="${wbPath} L ${getX(history.length - 1)} ${padding.top + chartH} L ${getX(0)} ${padding.top + chartH} Z" fill="url(#wbGrad)" />
+                        
+                        <path d="${dbPath}" fill="none" stroke="#f43f5e" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+                        <path d="${wbPath}" fill="none" stroke="#3b82f6" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="3,3" />
+                        
+                        ${dbDots}
+                        ${wbDots}
+                        ${xLabels}
+                    </svg>
+                `;
+            } else {
+                const maxVal = Math.max(...history.map(item => item.heatwaveHours + item.freezingHours), 50);
+                const minY = 0;
+                const maxY = maxVal * 1.1;
+                
+                const getX = (index) => padding.left + (index / (history.length - 1)) * chartW;
+                const getY = (val) => padding.top + chartH - (val / maxY) * chartH;
+                
+                let heatwavePath = '';
+                let freezingPath = '';
+                let heatwaveDots = '';
+                let freezingDots = '';
+                
+                history.forEach((item, idx) => {
+                    const x = getX(idx);
+                    const yH = getY(item.heatwaveHours);
+                    const yF = getY(item.freezingHours);
+                    
+                    if (idx === 0) {
+                        heatwavePath += `M ${x} ${yH}`;
+                        freezingPath += `M ${x} ${yF}`;
+                    } else {
+                        heatwavePath += ` L ${x} ${yH}`;
+                        freezingPath += ` L ${x} ${yF}`;
+                    }
+                    
+                    heatwaveDots += `<circle cx="${x}" cy="${yH}" r="3" fill="#fb923c" stroke="#05050a" stroke-width="1" />`;
+                    if (item.freezingHours > 0) {
+                        freezingDots += `<circle cx="${x}" cy="${yF}" r="3" fill="#38bdf8" stroke="#05050a" stroke-width="1" />`;
+                    }
+                });
+                
+                const steps = 3;
+                let gridLines = '';
+                for (let i = 0; i <= steps; i++) {
+                    const yVal = (i / steps) * maxY;
+                    const y = getY(yVal);
+                    gridLines += `
+                        <line x1="${padding.left}" y1="${y}" x2="${w - padding.right}" y2="${y}" stroke="rgba(255,255,255,0.08)" stroke-width="1" />
+                        <text x="${padding.left - 5}" y="${y + 3}" fill="#64748b" font-size="8" font-family="monospace" text-anchor="end">${Math.round(yVal)}h</text>
+                    `;
+                }
+                
+                let xLabels = '';
+                history.forEach((item, idx) => {
+                    if (idx === 0 || idx === Math.floor(history.length / 2) || idx === history.length - 1) {
+                        const x = getX(idx);
+                        xLabels += `
+                            <text x="${x}" y="${h - 4}" fill="#64748b" font-size="8" font-family="monospace" text-anchor="middle">${item.year}</text>
+                        `;
+                    }
+                });
+                
+                return `
+                    <svg viewBox="0 0 ${w} ${h}" class="w-full h-full">
+                        <defs>
+                            <linearGradient id="heatGrad" x1="0" y1="0" x2="0" y2="1">
+                                <stop offset="0%" stop-color="#fb923c" stop-opacity="0.15"/>
+                                <stop offset="100%" stop-color="#fb923c" stop-opacity="0"/>
+                            </linearGradient>
+                            <linearGradient id="freezeGrad" x1="0" y1="0" x2="0" y2="1">
+                                <stop offset="0%" stop-color="#38bdf8" stop-opacity="0.1"/>
+                                <stop offset="100%" stop-color="#38bdf8" stop-opacity="0"/>
+                            </linearGradient>
+                        </defs>
+                        ${gridLines}
+                        
+                        <path d="${heatwavePath} L ${getX(history.length - 1)} ${padding.top + chartH} L ${getX(0)} ${padding.top + chartH} Z" fill="url(#heatGrad)" />
+                        <path d="${freezingPath} L ${getX(history.length - 1)} ${padding.top + chartH} L ${getX(0)} ${padding.top + chartH} Z" fill="url(#freezeGrad)" />
+                        
+                        <path d="${heatwavePath}" fill="none" stroke="#fb923c" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+                        <path d="${freezingPath}" fill="none" stroke="#38bdf8" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
+                        
+                        ${heatwaveDots}
+                        ${freezingDots}
+                        ${xLabels}
+                    </svg>
+                `;
+            }
+        }
+
+        function initGlobe() {
+            const container = document.getElementById('globeViz');
+            if (!container) return;
+            
+            if (typeof Globe === 'undefined') {
+                container.innerHTML = '<div class="w-full h-full flex items-center justify-center text-slate-400 font-bold">3D Library Loading Failed.</div>';
+                return;
+            }
+
+            try {
+                myGlobe = Globe()(container)
+                    // 初始長寬會由 ResizeObserver 接手處理
+                    .backgroundColor('rgba(0,0,0,0)')
+                    .showAtmosphere(true).atmosphereColor('#bae6fd').atmosphereAltitude(0.2)
+                    .globeImageUrl('https://unpkg.com/three-globe/example/img/earth-blue-marble.jpg') 
+                    .bumpImageUrl('https://unpkg.com/three-globe/example/img/earth-topology.png')
+                    .htmlElementsData(data)
+                    .htmlElement(d => {
+                        const el = document.createElement('div');
+                        const colorClass = getHeatColorBg(d.extWB);
+                        el.innerHTML = `
+                            <div class="flex items-center gap-2 cursor-pointer group pointer-events-auto" style="transform: translate(-50%, -50%);">
+                                <div class="relative flex h-3 w-3 sm:h-4 sm:w-4">
+                                    <span class="absolute inline-flex h-full w-full rounded-full ${colorClass} globe-marker-ping"></span>
+                                    <span class="relative inline-flex rounded-full h-3 w-3 sm:h-4 sm:w-4 ${colorClass} shadow-[0_0_8px_rgba(255,255,255,0.8)] border border-white/80"></span>
+                                </div>
+                                <div class="hidden group-hover:block px-2.5 py-1 bg-slate-900/90 backdrop-blur-md text-white text-[11px] font-bold rounded-lg whitespace-nowrap border border-white/20 transition-all shadow-xl">
+                                    ${d.city}
+                                </div>
+                            </div>
+                        `;
+                        el.onclick = () => selectNode(d.city);
+                        return el;
+                    })
+                    .htmlAltitude(0.02);
+
+                // 註冊地圖載入完成的事件，淡出 Loading 遮罩
+                myGlobe.onGlobeReady(() => {
+                    const loader = document.getElementById('globeLoading');
+                    if(loader) {
+                        loader.style.opacity = '0';
+                        setTimeout(() => { loader.style.display = 'none'; }, 500);
+                    }
+                });
+
+                myGlobe.controls().autoRotate = true;
+                myGlobe.controls().autoRotateSpeed = 0.8;
+                myGlobe.controls().enableZoom = true;
+
+                // 導入 ResizeObserver 確保自適應容器調整
+                const resizeObserver = new ResizeObserver(entries => {
+                    for (let entry of entries) {
+                        const { width, height } = entry.contentRect;
+                        if (width && height && myGlobe) {
+                            myGlobe.width(width);
+                            myGlobe.height(height);
+                        }
+                    }
+                });
+                resizeObserver.observe(container);
+
+            } catch (error) {
+                console.error("Globe init error:", error);
+            }
+        }
+
+        // --- 自動旋轉與閒置偵測 ---
+        let idleTimeout = null;
+        function resetIdleTimer() {
+            clearTimeout(idleTimeout);
+            idleTimeout = setTimeout(() => {
+                if (myGlobe) {
+                    myGlobe.controls().autoRotate = true;
+                    myGlobe.controls().autoRotateSpeed = 0.8;
+                }
+            }, 10000); // 10秒無操作後恢復旋轉
+        }
+
+        // 監聽使用者操作來重置計時器
+        ['mousemove', 'mousedown', 'keydown', 'touchstart', 'wheel'].forEach(evt => 
+            window.addEventListener(evt, () => {
+                resetIdleTimer();
+            }, { passive: true })
+        );
+
+        function selectNode(cityName) {
+            selectedCity = data.find(d => d.city === cityName);
+            updateDetailPanel(selectedCity);
+            renderTable();
+
+            if (myGlobe) {
+                myGlobe.controls().autoRotate = false;
+                myGlobe.controls().autoRotateSpeed = 0;
+                myGlobe.pointOfView({ lat: selectedCity.lat, lng: selectedCity.lng, altitude: 1.2 }, 1200);
+                setTimeout(() => {
+                    if (myGlobe) { myGlobe.controls().autoRotate = false; myGlobe.controls().autoRotateSpeed = 0; }
+                }, 1250);
+                resetIdleTimer();
+            }
+        }
+
+        // --- 5. Deep Engineering Modal Report ---
+        // --- 5. Deep Engineering Modal Report ---
+        function generateReport(cityName) {
+            const cityData = data.find(d => d.city === cityName);
+            const modal = document.getElementById('reportModal');
+            const modalContent = document.getElementById('reportModalContent');
+            const lang = i18n[currentLang];
+            const req = getCoolingRequirement(cityData.extWB);
+            
+            // Engineering Calculations (assuming 10MW IT Load)
+            const itLoadKW = 10000;
+            let totalBaseKwh = 0;
+            let totalActualKwh = 0;
+
+            cityData.history.forEach(h => {
+                totalBaseKwh += itLoadKW * 8760 * cityData.pue;
+                // annualAvgPUE is estimated based on peakPUE degradation
+                const annualAvgPUE = cityData.pue + (h.peakPUE - cityData.pue) * 0.12;
+                totalActualKwh += itLoadKW * 8760 * annualAvgPUE;
+            });
+
+            const energyPenaltyKwh = Math.max(0, totalActualKwh - totalBaseKwh);
+            const opexPenaltyVal = energyPenaltyKwh * cityData.electricityCost;
+            const carbonPenaltyVal = energyPenaltyKwh * (cityData.carbonIntensity / 1000);
+
+            const opexPenaltyStr = opexPenaltyVal.toLocaleString('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 });
+            const carbonPenaltyTon = (carbonPenaltyVal / 1000).toLocaleString('en-US', { maximumFractionDigits: 1 });
+
+            const totalOpexCost = (totalActualKwh * cityData.electricityCost).toLocaleString('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 });
+            const totalCarbonTon = ((totalActualKwh * (cityData.carbonIntensity / 1000)) / 1000).toLocaleString('en-US', { maximumFractionDigits: 1 });
+
+            const reportI18n = {
+                en: {
+                    climateAuditor: "10-Year Climate & Infrastructure Risk Auditor",
+                    decadalProjections: "10-Year Projections (10MW IT Load)",
+                    climateChangeImpact: "Decadal Climate Risk Penalty",
+                    baseEnergy: "Baseline Energy",
+                    actualEnergy: "Warming Scenario Energy",
+                    opexPenalty: "Decadal OPEX Penalty",
+                    carbonPenalty: "Decadal Carbon Penalty",
+                    stableDesign: "Design Baseline (Stable)",
+                    warmingScenario: "10-Yr Extreme Warming",
+                    thermoWarnings: "Thermodynamic Risks & Safeguards",
+                    chillerCapacityDerating: "Chiller Capacity Derating",
+                    chillerDeratingDesc: "Air-cooled chiller COP degrades by 1.5% per °C when ambient dry-bulb exceeds the design standard of",
+                    towerApproachSaturation: "Tower Approach Saturation Risk",
+                    towerSaturationDesc: "Wet-bulb temperature exceeding design narrows approach margin, raising water temperature by",
+                    waterStressIndex: "Water Scarcity Stress Index",
+                    waterStressDesc: "High water risk zone. Evaporative cooling towers are restricted. Closed-loop dry cooling or liquid immersion highly recommended.",
+                    seismicSafeguards: "Seismic Resiliency & Piping Integrity",
+                    seismicDesc: "Extreme seismic zone. Piping loops require flexible expansion joints, structural anti-seismic braces, and modular leak-detection barriers.",
+                    normalStatus: "NOMINAL",
+                    mediumRisk: "ELEVATED RISK",
+                    highRisk: "CRITICAL ALERT",
+                    year: "Year",
+                    peakDB: "Peak DB",
+                    peakWB: "Peak WB",
+                    freezingHrs: "Freezing Hrs",
+                    heatwaveHrs: "Heatwave Hrs",
+                    peakPUE: "Peak PUE",
+                    chillerAlert: "COP drop triggers high chiller opex. Auxiliary misting or cooling fluid derating recommended.",
+                    towerAlert: "Approaching tower thermal limit. Heat rejection bottleneck may trigger automatic chiller trip.",
+                    waterAlert: "Severe water stress. Water conservation regulations may force curtailment of evaporative systems.",
+                    seismicAlert: "High seismic zone. High danger of piping shear failure. Anti-seismic piping supports mandatory.",
+                    cumCost: "Total Decadal Energy Cost",
+                    cumCarbon: "Total Decadal Carbon",
+                    auditorGrade: "Resilience Grade",
+                    auditorGradeDesc: "Infrastructure capability to handle decadal climatic extreme events."
+                },
+                zh: {
+                    climateAuditor: "10年期極端氣候與基礎設施風險審計器",
+                    decadalProjections: "10年期累計能耗與碳排預估 (以 10MW IT 負載基準)",
+                    climateChangeImpact: "氣候暖化衝擊溢價",
+                    baseEnergy: "設計基準能耗",
+                    actualEnergy: "氣候劣化實際能耗",
+                    opexPenalty: "10年累計「氣候風險電費溢價」",
+                    carbonPenalty: "10年累計「氣候風險碳排溢價」",
+                    stableDesign: "穩定氣候設計基準",
+                    warmingScenario: "10年暖化極端情境",
+                    thermoWarnings: "熱力學工程警報與基礎設施防禦策略",
+                    chillerCapacityDerating: "氣冷冰機製冷能力衰退率",
+                    chillerDeratingDesc: "當環境乾球溫度超過設計標準時，氣冷冰機 COP 每升高 1°C 劣化約 1.5%。目前設計標準：",
+                    towerApproachSaturation: "冷卻塔接近溫度 (Approach) 飽和風險",
+                    towerSaturationDesc: "極端濕球溫度超過冷卻塔設計標準，導致 Approach 收斂，預估冷卻水溫升高：",
+                    waterStressIndex: "水資源匱乏度與蒸發應力指數",
+                    waterStressDesc: "高水資源壓力區域。蒸發型冷卻塔用水受限。強烈建議採用閉式乾冷器或浸沒式液冷架構。",
+                    seismicSafeguards: "防震管道整合度與管道耐剪應力",
+                    seismicDesc: "極端地震帶。冷卻循環管道必須配備金屬波紋避震軟管、高強度抗震支吊架以及漏液阻絕防護區。",
+                    normalStatus: "正常範圍",
+                    mediumRisk: "中度預警",
+                    highRisk: "高度警報",
+                    year: "年份",
+                    peakDB: "極端乾球",
+                    peakWB: "極端濕球",
+                    freezingHrs: "極低溫時數",
+                    heatwaveHrs: "極高溫時數",
+                    peakPUE: "峰值 PUE",
+                    chillerAlert: "COP大幅下滑將導致電費激增。建議引進外氣噴霧輔助冷卻或冰機降載運行。",
+                    towerAlert: "已逼近冷卻塔散熱極限！冷卻水溫過高可能引發冰水主機連鎖跳機停機。",
+                    waterAlert: "嚴重缺水警戒！當地用水法規可能限制蒸發冷卻，應儘速轉型無水液冷方案。",
+                    seismicAlert: "強震高風險帶！配管面臨極大應力剪切風險，必須強制加裝防震支撐及膨脹節。",
+                    cumCost: "10年期總能耗電費",
+                    cumCarbon: "10年期總碳排放量",
+                    auditorGrade: "基礎設施耐氣候級別",
+                    auditorGradeDesc: "評估該站點抵禦未來十年內極端高低溫及缺水事件之綜合工程能力分級。"
+                }
+            };
+
+            const t = reportI18n[currentLang];
+
+            // Determine cooling architecture based on water risk
+            const isWaterCooled = cityData.waterRisk < 4;
+            
+            // Dynamic text based on cooling architecture
+            let chillerTitle = "";
+            let chillerDesc = "";
+            let chillerAlertText = "";
+            let towerTitle = "";
+            let towerDesc = "";
+            let towerAlertText = "";
+            
+            if (currentLang === 'zh') {
+                if (isWaterCooled) {
+                    chillerTitle = "水冷式冰機製冷能力衰退率";
+                    chillerDesc = `當極端濕球溫度超過冷卻塔設計標準，導致 Approach 收斂、冷卻水溫升高時，水冷式冰機之 COP 與製冷能力發生衰退。目前設計濕球標準：${cityData.designWB}°C`;
+                    chillerAlertText = "冷卻水溫過高導致水冷主機 COP 下降、耗電激增。建議引進部分液冷板溫水直接散熱，降低主機負載。";
+                    towerTitle = "冷卻塔接近溫度 (Approach) 飽和風險";
+                    towerDesc = `極端濕球溫度超過冷卻塔設計標準，導致 Approach 收斂，預估冷卻水溫升高：+${cityData.approachRisk}°C`;
+                    towerAlertText = "已逼近冷卻塔散熱極限！冷卻水溫過高可能引發水冷式冰水主機高壓連鎖跳機停機。";
+                } else {
+                    chillerTitle = "氣冷式冰機製冷能力衰退率";
+                    chillerDesc = `在高缺水地區強制採用無水氣冷主機，當環境乾球溫度超過設計標準時，氣冷冰機 COP 每升高 1°C 劣化約 1.5%。目前設計乾球標準：${cityData.designDB}°C`;
+                    chillerAlertText = "COP 大幅下滑將導致電費溢價激增。建議引進外氣噴霧輔助冷卻或乾冷器降載運行。";
+                    towerTitle = "乾式冷卻器逼近溫度收斂風險";
+                    towerDesc = `極端高溫乾球縮窄了乾冷器 (Dry Cooler) 的熱交換逼近溫度 (Approach)，導致冷卻流體溫度升高：+${cityData.approachRisk}°C`;
+                    towerAlertText = "已逼近乾式冷卻器散熱極限！二次側冷卻流體溫度過高可能引發晶片端連鎖降載或伺服器保護性停機。";
+                }
+            } else {
+                if (isWaterCooled) {
+                    chillerTitle = "Water-Cooled Chiller Capacity Derating";
+                    chillerDesc = `Water-cooled chiller COP degrades as cooling water temperature rises due to wet-bulb temperature exceeding design standard of ${cityData.designWB}°C`;
+                    chillerAlertText = "High cooling water temp triggers lower chiller COP. Evaporative cooling fluid derating or heat extraction plate bypass recommended.";
+                    towerTitle = "Tower Approach Saturation Risk";
+                    towerDesc = `Wet-bulb temperature exceeding design narrows approach margin, raising water temperature by +${cityData.approachRisk}°C`;
+                    towerAlertText = "Approaching tower thermal limit. Elevated cooling water temperature may trigger high-pressure automatic chiller trip.";
+                } else {
+                    chillerTitle = "Air-Cooled Chiller Capacity Derating";
+                    chillerDesc = `In water-scarce zones, dry-cooling is mandated. Air-cooled chiller COP degrades by 1.5% per °C when ambient dry-bulb exceeds standard of ${cityData.designDB}°C`;
+                    chillerAlertText = "COP drop triggers high chiller opex. Auxiliary adiabatic misting or cooling fluid derating recommended.";
+                    towerTitle = "Dry Cooler Approach Saturation Risk";
+                    towerDesc = `Extreme ambient dry-bulb narrows the temperature difference (approach) of the dry cooler, raising fluid temperature by +${cityData.approachRisk}°C`;
+                    towerAlertText = "Approaching dry cooler thermal limit. Elevated cooling loop fluid temperature may trigger CPU thermal throttling or trip.";
+                }
+            }
+
+            // Grade badge class mapping
+            let gradeBadgeClass = 'from-emerald-600 to-teal-500 shadow-emerald-500/20';
+            if (cityData.resilienceGrade === 'A') gradeBadgeClass = 'from-blue-600 to-indigo-500 shadow-blue-500/20';
+            else if (cityData.resilienceGrade === 'B') gradeBadgeClass = 'from-amber-500 to-orange-400 shadow-amber-500/20';
+            else if (cityData.resilienceGrade === 'C') gradeBadgeClass = 'from-orange-600 to-rose-500 shadow-orange-500/20';
+            else if (cityData.resilienceGrade === 'D') gradeBadgeClass = 'from-rose-700 to-red-500 shadow-rose-500/20';
+
+            modalContent.innerHTML = `
+                <!-- Modal Header -->
+                <div class="shrink-0 bg-slate-900/90 backdrop-blur-md px-6 sm:px-10 py-5 sm:py-6 border-b border-white/10 flex flex-col sm:flex-row justify-between items-start sm:items-center z-20 relative">
+                    <div class="flex items-center gap-4">
+                        <div class="w-14 h-14 sm:w-16 sm:h-16 bg-slate-800/80 rounded-[1.25rem] flex items-center justify-center text-3xl sm:text-4xl shadow-inner border border-white/10 shrink-0 modal-text-white">
+                            ${cityData.flag}
+                        </div>
+                        <div>
+                            <h2 class="heading text-2xl sm:text-3xl font-bold modal-text-white tracking-tight leading-tight">${cityData.city}</h2>
+                            <p class="text-[10px] sm:text-xs font-bold modal-text-slate-400 uppercase tracking-[0.2em] mt-1">${cityData.country} • ASHRAE Zone ${cityData.zone}</p>
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-4 mt-4 sm:mt-0 w-full sm:w-auto justify-between sm:justify-end">
+                        <div class="text-right">
+                            <span class="text-[10px] font-bold modal-text-slate-400 uppercase tracking-widest block">${t.climateAuditor}</span>
+                            <span class="text-sm font-mono font-bold text-emerald-400 tracking-wider">Status: Synced (2026)</span>
+                        </div>
+                        <button onclick="closeReportModal()" class="w-10 h-10 bg-slate-800 hover:bg-slate-700 modal-text-slate-300 rounded-full flex items-center justify-center transition-all shrink-0 border border-white/10 shadow-sm active:scale-95">
+                            <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"></path></svg>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Modal Scrollable Body -->
+                <div class="p-6 sm:p-10 overflow-y-auto w-full flex-1 bg-slate-900/95 scrollbar-thin">
+                    <div class="grid grid-cols-1 lg:grid-cols-12 gap-8">
+                        
+                        <!-- Left Panel: 10-Yr Extremes Timeline & Cumulative Projections (7/12 cols) -->
+                        <div class="lg:col-span-7 space-y-8">
+                            
+                            <!-- Section: Timeline Table -->
+                            <div class="bg-slate-800/30 border border-white/5 rounded-3xl p-5 sm:p-6 backdrop-blur-sm relative overflow-hidden">
+                                <div class="absolute -left-16 -top-16 w-36 h-36 bg-blue-500/5 rounded-full blur-3xl"></div>
+                                <div class="flex justify-between items-center mb-4 relative z-10">
+                                    <h3 class="text-sm font-mono font-bold modal-text-white uppercase tracking-wider flex items-center gap-2">
+                                        <span class="w-1.5 h-3 bg-blue-500 rounded-full"></span>
+                                        ${t.climateAuditor} (2016-2026)
+                                    </h3>
+                                    <span class="text-[10px] font-mono font-bold modal-text-slate-400 uppercase border border-white/10 px-2 py-0.5 rounded-md">ASHRAE Zone ${cityData.zone}</span>
+                                </div>
+                                
+                                <div class="overflow-x-auto -mx-5 sm:mx-0">
+                                    <table class="w-full text-left min-w-[500px]">
+                                        <thead>
+                                            <tr class="text-[10px] font-mono font-bold modal-text-slate-400 uppercase tracking-widest border-b border-white/5">
+                                                <th class="py-2.5 px-3 modal-text-slate-400">${t.year}</th>
+                                                <th class="py-2.5 px-3 text-right modal-text-slate-400">${t.peakDB}</th>
+                                                <th class="py-2.5 px-3 text-right modal-text-slate-400">${t.peakWB}</th>
+                                                <th class="py-2.5 px-3 text-right modal-text-slate-400">${t.heatwaveHrs}</th>
+                                                <th class="py-2.5 px-3 text-right modal-text-slate-400">${t.freezingHrs}</th>
+                                                <th class="py-2.5 px-3 text-right modal-text-slate-400">${t.peakPUE}</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody class="divide-y divide-white/5 font-mono text-xs modal-text-slate-300">
+                                            ${cityData.history.map(h => {
+                                                const dbDiff = h.peakDB - cityData.designDB;
+                                                const dbClass = dbDiff > 2.0 ? 'text-rose-400 font-bold' : (dbDiff > 0 ? 'text-amber-400' : 'modal-text-slate-300');
+                                                const wbClass = h.peakWB > cityData.designWB ? 'text-rose-400 font-bold' : 'modal-text-slate-300';
+                                                
+                                                // Dynamic dot for anomalies
+                                                let anomalyDot = '';
+                                                if (h.year === 2022 && (cityData.continent === 'Europe' || cityData.continent === 'Americas')) {
+                                                    anomalyDot = '<span class="inline-block w-1.5 h-1.5 rounded-full bg-rose-500 ml-1 animate-pulse" title="2022 Heatwave Anomaly"></span>';
+                                                } else if (h.year === 2023 && cityData.continent === 'Asia') {
+                                                    anomalyDot = '<span class="inline-block w-1.5 h-1.5 rounded-full bg-rose-500 ml-1 animate-pulse" title="2023 Asian Super-El-Nino"></span>';
+                                                } else if (h.year === 2026) {
+                                                    anomalyDot = '<span class="inline-block w-1.5 h-1.5 rounded-full bg-amber-400 ml-1 animate-pulse" title="Current Record Warmth"></span>';
+                                                }
+
+                                                return `
+                                                    <tr class="hover:bg-white/[0.02] transition-colors">
+                                                        <td class="py-2 px-3 modal-text-slate-400 font-bold">${h.year}${anomalyDot}</td>
+                                                        <td class="py-2 px-3 text-right ${dbClass}">${h.peakDB.toFixed(1)}°C</td>
+                                                        <td class="py-2 px-3 text-right ${wbClass}">${h.peakWB.toFixed(1)}°C</td>
+                                                        <td class="py-2 px-3 text-right">
+                                                            <span class="px-1.5 py-0.5 rounded bg-orange-500/10 text-orange-400 text-[10px] font-bold">
+                                                                ${h.heatwaveHours}h
+                                                            </span>
+                                                        </td>
+                                                        <td class="py-2 px-3 text-right">
+                                                            ${h.freezingHours > 0 ? `
+                                                                <span class="px-1.5 py-0.5 rounded bg-cyan-500/10 text-cyan-400 text-[10px] font-bold">
+                                                                    ${h.freezingHours}h
+                                                                </span>
+                                                            ` : '<span class="text-slate-600">-</span>'}
+                                                        </td>
+                                                        <td class="py-2 px-3 text-right text-emerald-400 font-bold">${h.peakPUE.toFixed(3)}</td>
+                                                    </tr>
+                                                `;
+                                            }).join('')}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+
+                            <!-- Section: Decadal Projections & Cumulative Penalty -->
+                            <div class="bg-slate-800/30 border border-white/5 rounded-3xl p-5 sm:p-6 backdrop-blur-sm relative overflow-hidden">
+                                <div class="absolute -right-16 -bottom-16 w-36 h-36 bg-emerald-500/5 rounded-full blur-3xl"></div>
+                                <h3 class="text-sm font-mono font-bold modal-text-white uppercase tracking-wider mb-5 flex items-center gap-2 relative z-10">
+                                    <span class="w-1.5 h-3 bg-emerald-500 rounded-full"></span>
+                                    ${t.decadalProjections}
+                                </h3>
+
+                                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 relative z-10">
+                                    <!-- Card: Cumulative Cost -->
+                                    <div class="bg-slate-900/50 border border-white/5 rounded-2xl p-4.5">
+                                        <p class="text-[10px] font-bold modal-text-slate-400 uppercase tracking-widest mb-1">${t.cumCost}</p>
+                                        <div class="flex items-baseline gap-2">
+                                            <span class="text-2xl font-mono font-black modal-text-white">${totalOpexCost}</span>
+                                            <span class="text-[10px] modal-text-slate-400 font-bold uppercase">USD</span>
+                                        </div>
+                                        <div class="mt-3 pt-3 border-t border-white/5 flex justify-between items-center text-xs">
+                                            <span class="modal-text-slate-400">${t.climateChangeImpact}</span>
+                                            <span class="font-mono text-amber-400 font-bold">+${opexPenaltyStr}</span>
+                                        </div>
+                                    </div>
+                                    <!-- Card: Cumulative Carbon -->
+                                    <div class="bg-slate-900/50 border border-white/5 rounded-2xl p-4.5">
+                                        <p class="text-[10px] font-bold modal-text-slate-400 uppercase tracking-widest mb-1">${t.cumCarbon}</p>
+                                        <div class="flex items-baseline gap-2">
+                                            <span class="text-2xl font-mono font-black modal-text-white">${totalCarbonTon}</span>
+                                            <span class="text-[10px] modal-text-slate-400 font-bold uppercase">Tons CO₂e</span>
+                                        </div>
+                                        <div class="mt-3 pt-3 border-t border-white/5 flex justify-between items-center text-xs">
+                                            <span class="modal-text-slate-400">${t.climateChangeImpact}</span>
+                                            <span class="font-mono text-emerald-400 font-bold">+${carbonPenaltyTon} t</span>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Dynamic breakdown chart visualization -->
+                                <div class="mt-5 bg-slate-900/40 rounded-2xl p-4 flex flex-col gap-3 relative z-10 modal-text-white">
+                                    <div class="flex justify-between items-center text-xs">
+                                        <span class="modal-text-slate-400 font-bold uppercase tracking-wider text-[10px]">${t.stableDesign} (PUE ${cityData.pue.toFixed(2)})</span>
+                                        <span class="font-mono modal-text-slate-300 font-bold">${(totalBaseKwh/1e6).toFixed(1)}M kWh</span>
+                                    </div>
+                                    <div class="w-full bg-slate-800 h-2 rounded-full overflow-hidden">
+                                        <div class="h-full bg-blue-500" style="width: ${(totalBaseKwh / totalActualKwh * 100).toFixed(1)}%"></div>
+                                    </div>
+                                    <div class="flex justify-between items-center text-xs">
+                                        <span class="modal-text-slate-400 font-bold uppercase tracking-wider text-[10px]">${t.warmingScenario} (PUE ${cityData.pueDeterioration.toFixed(2)} Peak)</span>
+                                        <span class="font-mono text-amber-400 font-bold">${(totalActualKwh/1e6).toFixed(1)}M kWh</span>
+                                    </div>
+                                    <div class="w-full bg-slate-800 h-2 rounded-full overflow-hidden">
+                                        <div class="h-full bg-gradient-to-r from-blue-500 to-amber-500" style="width: 100%"></div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Right Panel: Thermodynamic Assessment & Architecture Verdict (5/12 cols) -->
+                        <div class="lg:col-span-5 space-y-8">
+                            
+                            <!-- Section: Thermodynamic Assessments -->
+                            <div class="bg-slate-800/30 border border-white/5 rounded-3xl p-5 sm:p-6 backdrop-blur-sm space-y-6">
+                                <h3 class="text-sm font-mono font-bold modal-text-white uppercase tracking-wider flex items-center gap-2">
+                                    <span class="w-1.5 h-3 bg-rose-500 rounded-full"></span>
+                                    ${t.thermoWarnings}
+                                </h3>
+
+                                <!-- Risk 1: Chiller Capacity Derating -->
+                                <div class="bg-slate-900/50 rounded-2xl p-4 border border-white/5">
+                                    <div class="flex justify-between items-start mb-2">
+                                        <div>
+                                            <h4 class="text-xs font-bold text-slate-200 uppercase">${chillerTitle}</h4>
+                                            <p class="text-[10px] modal-text-slate-400 mt-0.5">${chillerDesc}</p>
+                                        </div>
+                                        <span class="text-[9px] font-bold px-2 py-0.5 rounded ${cityData.chillerDerating > 8 ? 'bg-rose-500/10 text-rose-400 border border-rose-500/20' : (cityData.chillerDerating > 3 ? 'bg-amber-500/10 text-amber-400 border border-amber-500/20' : 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20')} uppercase">
+                                            ${cityData.chillerDerating > 8 ? t.highRisk : (cityData.chillerDerating > 3 ? t.mediumRisk : t.normalStatus)}
+                                        </span>
+                                    </div>
+                                    <div class="flex items-center gap-3 mt-3">
+                                        <div class="flex-1 bg-slate-800 h-2.5 rounded-full overflow-hidden">
+                                            <div class="h-full bg-gradient-to-r from-emerald-500 via-amber-500 to-rose-500" style="width: ${Math.min(100, cityData.chillerDerating * 5)}%"></div>
+                                        </div>
+                                        <span class="font-mono text-sm font-black text-rose-400">${cityData.chillerDerating}%</span>
+                                    </div>
+                                    ${cityData.chillerDerating > 3 ? `
+                                        <div class="mt-3 p-2.5 bg-rose-500/5 border border-rose-500/10 rounded-xl text-[10px] text-rose-300 font-bold leading-normal flex items-start gap-2">
+                                            <svg class="w-3.5 h-3.5 shrink-0 text-rose-400 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>
+                                            <span>${chillerAlertText}</span>
+                                        </div>
+                                    ` : ''}
+                                </div>
+
+                                <!-- Risk 2: Tower Approach Saturation -->
+                                <div class="bg-slate-900/50 rounded-2xl p-4 border border-white/5">
+                                    <div class="flex justify-between items-start mb-2">
+                                        <div>
+                                            <h4 class="text-xs font-bold text-slate-200 uppercase">${towerTitle}</h4>
+                                            <p class="text-[10px] modal-text-slate-400 mt-0.5">${towerDesc}</p>
+                                        </div>
+                                        <span class="text-[9px] font-bold px-2 py-0.5 rounded ${cityData.approachRisk > 2.0 ? 'bg-rose-500/10 text-rose-400 border border-rose-500/20' : (cityData.approachRisk > 0.8 ? 'bg-amber-500/10 text-amber-400 border border-amber-500/20' : 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20')} uppercase">
+                                            ${cityData.approachRisk > 2.0 ? t.highRisk : (cityData.approachRisk > 0.8 ? t.mediumRisk : t.normalStatus)}
+                                        </span>
+                                    </div>
+                                    <div class="flex items-center gap-3 mt-3">
+                                        <div class="flex-1 bg-slate-800 h-2.5 rounded-full overflow-hidden">
+                                            <div class="h-full bg-gradient-to-r from-emerald-500 via-amber-500 to-rose-500" style="width: ${Math.min(100, cityData.approachRisk * 25)}%"></div>
+                                        </div>
+                                        <span class="font-mono text-sm font-black text-rose-400">+${cityData.approachRisk}°C</span>
+                                    </div>
+                                    ${cityData.approachRisk > 0.8 ? `
+                                        <div class="mt-3 p-2.5 bg-rose-500/5 border border-rose-500/10 rounded-xl text-[10px] text-rose-300 font-bold leading-normal flex items-start gap-2">
+                                            <svg class="w-3.5 h-3.5 shrink-0 text-rose-400 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>
+                                            <span>${towerAlertText}</span>
+                                        </div>
+                                    ` : ''}
+                                </div>
+
+                                <!-- Risk 3: Water Scarcity Evaporative Stress -->
+                                <div class="bg-slate-900/50 rounded-2xl p-4 border border-white/5">
+                                    <div class="flex justify-between items-center mb-2">
+                                        <div>
+                                            <h4 class="text-xs font-bold text-slate-200 uppercase">${t.waterStressIndex}</h4>
+                                        </div>
+                                        <div class="flex gap-1">
+                                            ${Array.from({ length: 5 }).map((_, i) => `
+                                                <svg class="w-4 h-4 ${i < cityData.waterRisk ? 'text-blue-500 fill-blue-500' : 'text-slate-600'}" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                                                    <path d="M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0z"></path>
+                                                </svg>
+                                            `).join('')}
+                                        </div>
+                                    </div>
+                                    ${cityData.waterRisk >= 4 ? `
+                                        <p class="text-[10px] text-amber-300 bg-amber-500/5 border border-amber-500/10 p-2.5 rounded-xl font-bold leading-normal">
+                                            ${t.waterStressDesc}<br/><span class="text-slate-400 mt-1 block">${t.waterAlert}</span>
+                                        </p>
+                                    ` : `
+                                        <p class="text-[10px] modal-text-slate-400 leading-normal">Nominal water risk level. Cooling tower evaporation consumes water but standard supply constraints do not currently mandate cooling method restrictions.</p>
+                                    `}
+                                </div>
+
+                                <!-- Risk 4: Seismic Piping Integrity -->
+                                <div class="bg-slate-900/50 rounded-2xl p-4 border border-white/5">
+                                    <div class="flex justify-between items-center mb-2">
+                                        <div>
+                                            <h4 class="text-xs font-bold text-slate-200 uppercase">${t.seismicSafeguards}</h4>
+                                        </div>
+                                        <div class="flex gap-1">
+                                            ${Array.from({ length: 5 }).map((_, i) => `
+                                                <svg class="w-4 h-4 ${i < cityData.seismic ? 'text-red-500 fill-red-500' : 'text-slate-600'}" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
+                                                </svg>
+                                            `).join('')}
+                                        </div>
+                                    </div>
+                                    ${cityData.seismic >= 4 ? `
+                                        <p class="text-[10px] text-rose-300 bg-rose-500/5 border border-rose-500/10 p-2.5 rounded-xl font-bold leading-normal">
+                                            ${t.seismicDesc}<br/><span class="modal-text-slate-400 mt-1 block">${t.seismicAlert}</span>
+                                        </p>
+                                    ` : `
+                                        <p class="text-[10px] modal-text-slate-400 leading-normal">Stable tectonic setting. Standard mechanical building piping standards are sufficient. No advanced flexible header or seismic bracing required.</p>
+                                    `}
+                                </div>
+                            </div>
+
+                            <!-- Section: Architecture Verdict & Resilience Grade -->
+                            <div class="bg-gradient-to-br from-slate-900 to-slate-800 border border-white/10 rounded-3xl p-6 relative overflow-hidden">
+                                <div class="absolute -right-16 -top-16 w-36 h-36 bg-blue-500/10 rounded-full blur-3xl"></div>
+                                <div class="flex justify-between items-center relative z-10">
+                                    <div>
+                                        <p class="text-[10px] font-mono font-bold text-blue-400 uppercase tracking-widest mb-1.5">${lang.term_verdict}</p>
+                                        <h4 class="text-xl font-bold modal-text-white leading-snug">${lang[cityData.recoKey]}</h4>
+                                        <p class="text-xs modal-text-slate-400 mt-2 font-bold uppercase tracking-wider">Estimated PUE: <span class="font-mono text-emerald-400 text-sm font-black">${cityData.pue.toFixed(2)}</span></p>
+                                    </div>
+                                    <div class="text-center shrink-0">
+                                        <span class="text-[10px] font-mono font-bold modal-text-slate-400 uppercase tracking-wider block mb-1">${t.auditorGrade}</span>
+                                        <div class="w-16 h-16 rounded-2xl bg-gradient-to-r ${gradeBadgeClass} flex items-center justify-center text-3xl font-black text-white font-mono shadow-lg relative overflow-hidden group">
+                                            <div class="absolute inset-0 bg-white/20 transform -translate-x-full group-hover:translate-x-full transition-transform duration-1000"></div>
+                                            ${cityData.resilienceGrade}
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="mt-4 pt-4 border-t border-white/5 text-[11px] modal-text-slate-400 leading-normal relative z-10">
+                                    ${t.auditorGradeDesc}
+                                </div>
+                            </div>
+                        </div>
+
+                    </div>
+                </div>
+            `;
+
+            modal.classList.remove('hidden'); modal.classList.add('flex');
+            requestAnimationFrame(() => {
+                modal.classList.remove('opacity-0'); modalContent.classList.remove('scale-95');
+            });
+        }
+
+        function closeReportModal() {
+            const modal = document.getElementById('reportModal');
+            const modalContent = document.getElementById('reportModalContent');
+            if (modal && !modal.classList.contains('hidden')) {
+                modal.classList.add('opacity-0'); modalContent.classList.add('scale-95');
+                setTimeout(() => { modal.classList.add('hidden'); modal.classList.remove('flex'); }, 500);
+            }
+        }
+
+        // --- 6. Guide Modal (評分與設計指南) ---
+        let activeGuideTab = 'zones';
+
+        function openGuideModal() {
+            const modal = document.getElementById('guideModal');
+            if (!modal) return;
+            activeGuideTab = 'zones'; // Default tab
+            renderGuideContent();
+            modal.classList.remove('hidden'); modal.classList.add('flex');
+            requestAnimationFrame(() => {
+                const modalContent = document.getElementById('guideModalContent');
+                modal.classList.remove('opacity-0');
+                if (modalContent) modalContent.classList.remove('scale-95');
+            });
+        }
+
+        function closeGuideModal() {
+            const modal = document.getElementById('guideModal');
+            const modalContent = document.getElementById('guideModalContent');
+            if (modal && !modal.classList.contains('hidden')) {
+                modal.classList.add('opacity-0');
+                if (modalContent) modalContent.classList.add('scale-95');
+                setTimeout(() => { modal.classList.add('hidden'); modal.classList.remove('flex'); }, 500);
+            }
+        }
+
+        function changeGuideTab(tabId) {
+            activeGuideTab = tabId;
+            renderGuideContent();
+        }
+
+        function renderGuideContent() {
+            const modalContent = document.getElementById('guideModalContent');
+            if (!modalContent) return;
+            const lang = currentLang;
+
+            let title = lang === 'zh' ? '工程設計與評分標準指南' : 'System Design & Climate Audit Guide';
+            let subtitle = lang === 'zh' ? 'ASHRAE 氣候標準、熱複雜度與基礎設施耐氣候級別計算說明' : 'Understanding ASHRAE Zones, Thermal Complexity & Resilience Grading';
+
+            // Active tab button style helpers
+            const getTabBtnClass = (tabId) => {
+                const base = "px-4.5 py-3 text-xs sm:text-sm font-bold rounded-xl transition-all duration-300 ";
+                if (activeGuideTab === tabId) {
+                    return base + "bg-blue-600 text-white shadow-md shadow-blue-500/10 border border-blue-500/30";
+                }
+                return base + "modal-text-slate-400 hover:modal-text-white hover:bg-white/5 border border-transparent";
+            };
+
+            // Switch content based on active tab
+            let tabContentHTML = "";
+
+            if (activeGuideTab === 'zones') {
+                tabContentHTML = lang === 'zh' ? `
+                    <div class="space-y-6">
+                        <div class="bg-slate-900/50 rounded-2xl p-5 border border-white/5">
+                            <h4 class="text-sm font-mono font-bold text-blue-400 uppercase tracking-wider mb-3">1. ASHRAE 氣候分區標準概述</h4>
+                            <p class="text-xs modal-text-slate-300 leading-relaxed">
+                                ASHRAE Standard 169 (美國採暖、製冷與空調工程師學會) 是全球建築及數據中心環境設計的基石。該標準將全球氣候劃分為 <strong>0 到 8 等級的乾球溫度範圍 (嚴重程度)</strong>，並搭配 <strong>A、B、C 三種濕度/水分指標</strong>：
+                            </p>
+                        </div>
+
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div class="bg-slate-900/50 rounded-2xl p-5 border border-white/5 space-y-3">
+                                <h4 class="text-xs font-mono font-bold text-amber-400 uppercase tracking-wider">🌡️ 乾球溫度級別 (Severity Number 0-8)</h4>
+                                <ul class="text-[11px] modal-text-slate-300 space-y-2.5">
+                                    <li><strong class="text-rose-400 font-mono">Zone 0 (極熱 Extremely Hot)</strong>: 冷卻度日 CDD10°C > 5000 (例如新加坡、雅加達、清奈)</li>
+                                    <li><strong class="text-orange-400 font-mono">Zone 1 (濕熱 Very Hot)</strong>: 3500 < CDD10°C ≤ 5000 (例如台北、台南、杜哈)</li>
+                                    <li><strong class="text-amber-300 font-mono">Zone 2-3 (溫熱至溫暖 Hot/Warm)</strong>: 2700 < CDD10°C ≤ 3500 或採暖度日 HDD18°C ≤ 2000 (例如鳳凰城、東京、上海)</li>
+                                    <li><strong class="text-emerald-400 font-mono">Zone 4 (混合 Mixed)</strong>: 2000 < HDD18°C ≤ 3000 (例如阿什本、倫敦、希爾斯伯勒)</li>
+                                    <li><strong class="text-cyan-400 font-mono">Zone 5-6 (冷涼至寒冷 Cool/Cold)</strong>: 3000 < HDD18°C ≤ 5000 (例如法蘭克福、斯德哥爾摩、蒙特婁)</li>
+                                </ul>
+                            </div>
+
+                            <div class="bg-slate-900/50 rounded-2xl p-5 border border-white/5 space-y-3">
+                                <h4 class="text-xs font-mono font-bold text-cyan-400 uppercase tracking-wider">💧 濕度指標 (Moisture Regimes A/B/C)</h4>
+                                <div class="space-y-3">
+                                    <div class="border-b border-white/5 pb-2">
+                                        <p class="text-xs font-bold text-slate-200">A - 潮濕區 (Humid)</p>
+                                        <p class="text-[11px] modal-text-slate-400 mt-1">環境中含水量極高，極端濕球溫度通常突破 25°C。由於空氣幾近飽和，常規蒸發冷卻塔效率被大幅限制，強烈建議導入液冷板 (D2C) 或浸沒式冷卻。</p>
+                                    </div>
+                                    <div class="border-b border-white/5 pb-2">
+                                        <p class="text-xs font-bold text-slate-200">B - 乾燥區 (Dry)</p>
+                                        <p class="text-[11px] modal-text-slate-400 mt-1">氣候乾燥荒漠，濕球溫度低。非常有利於蒸發冷卻技術，但由於當地水資源極度匱乏，常面臨極高水風險法規限額。</p>
+                                    </div>
+                                    <div>
+                                        <p class="text-xs font-bold text-slate-200">C - 海洋區 (Marine)</p>
+                                        <p class="text-[11px] modal-text-slate-400 mt-1">沿海受溫和季風影響，氣溫波動小。最適合直接引入外氣進行自然冷卻 (Direct Air Free Cooling)。</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                ` : `
+                    <div class="space-y-6">
+                        <div class="bg-slate-900/50 rounded-2xl p-5 border border-white/5">
+                            <h4 class="text-sm font-mono font-bold text-blue-400 uppercase tracking-wider mb-3">1. ASHRAE Climate Classification Overview</h4>
+                            <p class="text-xs modal-text-slate-300 leading-relaxed">
+                                ASHRAE Standard 169 (American Society of Heating, Refrigerating and Air-Conditioning Engineers) is the international foundation for architectural and data center thermal design. It divides global locations into <strong>0 to 8 Severity Numbers (based on heat/cold intensity)</strong> and <strong>A, B, C Moisture Regimes</strong>:
+                            </p>
+                        </div>
+
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div class="bg-slate-900/50 rounded-2xl p-5 border border-white/5 space-y-3">
+                                <h4 class="text-xs font-mono font-bold text-amber-400 uppercase tracking-wider">🌡️ Temperature Severity (Zones 0-8)</h4>
+                                <ul class="text-[11px] modal-text-slate-300 space-y-2.5">
+                                    <li><strong class="text-rose-400 font-mono">Zone 0 (Extremely Hot)</strong>: Cooling Degree Days CDD10°C > 5000 (e.g., Singapore, Jakarta, Chennai)</li>
+                                    <li><strong class="text-orange-400 font-mono">Zone 1 (Very Hot)</strong>: 3500 < CDD10°C ≤ 5000 (e.g., Taipei, Tainan, Doha)</li>
+                                    <li><strong class="text-amber-300 font-mono">Zone 2-3 (Hot/Warm)</strong>: 2700 < CDD10°C ≤ 3500 or Heating Degree Days HDD18°C ≤ 2000 (e.g., Phoenix, Tokyo, Shanghai)</li>
+                                    <li><strong class="text-emerald-400 font-mono">Zone 4 (Mixed)</strong>: 2000 < HDD18°C ≤ 3000 (e.g., Ashburn, London, Hillsboro)</li>
+                                    <li><strong class="text-cyan-400 font-mono">Zone 5-6 (Cool/Cold)</strong>: 3000 < HDD18°C ≤ 5000 (e.g., Frankfurt, Stockholm, Montreal)</li>
+                                </ul>
+                            </div>
+
+                            <div class="bg-slate-900/50 rounded-2xl p-5 border border-white/5 space-y-3">
+                                <h4 class="text-xs font-mono font-bold text-cyan-400 uppercase tracking-wider">💧 Moisture Regimes (A/B/C)</h4>
+                                <div class="space-y-3">
+                                    <div class="border-b border-white/5 pb-2">
+                                        <p class="text-xs font-bold text-slate-200">A - Humid</p>
+                                        <p class="text-[11px] modal-text-slate-400 mt-1">High atmospheric humidity, wet-bulb peaks often exceed 25°C. Evaporative cooling tower approach is narrow, strongly recommending Direct-to-Chip (D2C) liquid cooling.</p>
+                                    </div>
+                                    <div class="border-b border-white/5 pb-2">
+                                        <p class="text-xs font-bold text-slate-200">B - Dry</p>
+                                        <p class="text-[11px] modal-text-slate-400 mt-1">Arid desert climates, very low wet-bulb. Excellent for evaporative cooling towers, but constrained by local water scarcity and regulatory limits.</p>
+                                    </div>
+                                    <div>
+                                        <p class="text-xs font-bold text-slate-200">C - Marine</p>
+                                        <p class="text-[11px] modal-text-slate-400 mt-1">Temperate coastal zones, minimal seasonal fluctuations. Ideal for Direct Air Free Cooling for the majority of operating hours.</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            } else if (activeGuideTab === 'complexity') {
+                tabContentHTML = lang === 'zh' ? `
+                    <div class="space-y-6">
+                        <div class="bg-slate-900/50 rounded-2xl p-5 border border-white/5">
+                            <h4 class="text-sm font-mono font-bold text-blue-400 uppercase tracking-wider mb-2">2. 熱複雜度評分 (Thermal Complexity Score) 數學模型</h4>
+                            <p class="text-xs modal-text-slate-300 leading-relaxed mb-4">
+                                熱複雜度評分（1.0 至 10.0 分，分數越高代表現場散熱工程難度越嚴苛）反映了數據中心氣候環境對冷卻系統設計的綜合壓力和挑戰。該指標排除單一乾球溫度盲點，結合了濕球、乾球、自然冷卻潛力與水壓力權重：
+                            </p>
+                            
+                            <!-- Formula Display -->
+                            <div class="bg-slate-950/60 border border-white/10 rounded-xl p-4 text-center font-mono text-xs sm:text-sm text-emerald-400 shadow-inner">
+                                <span class="font-bold text-slate-400 text-[10px] block mb-1">【綜合加權公式】</span>
+                                <strong>熱複雜度評分 = 35% × 濕球風險 + 15% × 乾球風險 + 30% × 自然冷卻缺失 + 20% × 水壓力指標</strong>
+                            </div>
+                        </div>
+
+                        <!-- Grid Cards -->
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div class="bg-slate-900/50 border border-white/5 rounded-2xl p-4.5 space-y-2">
+                                <span class="px-2 py-0.5 rounded text-[10px] font-black bg-blue-500/10 text-blue-400 border border-blue-500/20">35% 濕球風險分量 (WB Score)</span>
+                                <p class="text-xs font-bold text-slate-200">計算公式：(極端濕球 - 5°C) / 25 × 10</p>
+                                <p class="text-[11px] modal-text-slate-400 leading-relaxed">
+                                    濕球溫度是決定冷卻水塔排熱極限（Approach Limit）與物理臨界點的關鍵。濕球越高，排熱阻力越大，機械製冷能耗越高。
+                                </p>
+                            </div>
+                            
+                            <div class="bg-slate-900/50 border border-white/5 rounded-2xl p-4.5 space-y-2">
+                                <span class="px-2 py-0.5 rounded text-[10px] font-black bg-rose-500/10 text-rose-400 border border-rose-500/20">15% 乾球風險分量 (DB Score)</span>
+                                <p class="text-xs font-bold text-slate-200">計算公式：(極端乾球 - 15°C) / 30 × 10</p>
+                                <p class="text-[11px] modal-text-slate-400 leading-relaxed">
+                                    乾球溫度是決定氣冷主機 COP 衰退的主要因素。乾球越高，極端熱浪下氣冷冰機效率衰減越嚴重，可能導致供冷失效。
+                                </p>
+                            </div>
+
+                            <div class="bg-slate-900/50 border border-white/5 rounded-2xl p-4.5 space-y-2">
+                                <span class="px-2 py-0.5 rounded text-[10px] font-black bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">30% 自然冷卻缺失 (FC Score)</span>
+                                <p class="text-xs font-bold text-slate-200">計算公式：(8760 - 自然冷卻時數) / 8760 × 10</p>
+                                <p class="text-[11px] modal-text-slate-400 leading-relaxed">
+                                    評估該地利用大自然低溫環境進行無壓縮機製冷（PUE 趨近於 1.0）的短缺程度。缺失越大，年化運行耗電量（Opex）越沉重。
+                                </p>
+                            </div>
+
+                            <div class="bg-slate-900/50 border border-white/5 rounded-2xl p-4.5 space-y-2">
+                                <span class="px-2 py-0.5 rounded text-[10px] font-black bg-purple-500/10 text-purple-400 border border-purple-500/20">20% 水壓力指標分量 (WR Score)</span>
+                                <p class="text-xs font-bold text-slate-200">計算公式：(水資源壓力等級 - 1) / 4 × 10</p>
+                                <p class="text-[11px] modal-text-slate-400 leading-relaxed">
+                                    水資源是綠色數據中心指標的重要支柱。高水資源壓力地區，蒸發性冷卻塔面臨高度停水或開徵水稅風險，推高散熱成本。
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                ` : `
+                    <div class="space-y-6">
+                        <div class="bg-slate-900/50 rounded-2xl p-5 border border-white/5">
+                            <h4 class="text-sm font-mono font-bold text-blue-400 uppercase tracking-wider mb-2">2. Thermal Complexity Score Mathematical Model</h4>
+                            <p class="text-xs modal-text-slate-300 leading-relaxed mb-4">
+                                The Thermal Complexity Score (scaled 1.0 to 10.0, where higher scores represent higher heat rejection engineering difficulties) reflects the compounding atmospheric and water stresses exerted on a data center's cooling infrastructure:
+                            </p>
+                            
+                            <!-- Formula Display -->
+                            <div class="bg-slate-950/60 border border-white/10 rounded-xl p-4 text-center font-mono text-xs sm:text-sm text-emerald-400 shadow-inner">
+                                <span class="font-bold text-slate-400 text-[10px] block mb-1">[COMPOUND WEIGHTED FORMULA]</span>
+                                <strong>Complexity = 35% × WB Score + 15% × DB Score + 30% × FC Deficit + 20% × Water Risk</strong>
+                            </div>
+                        </div>
+
+                        <!-- Grid Cards -->
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div class="bg-slate-900/50 border border-white/5 rounded-2xl p-4.5 space-y-2">
+                                <span class="px-2 py-0.5 rounded text-[10px] font-black bg-blue-500/10 text-blue-400 border border-blue-500/20">35% Wet Bulb Risk (WB Score)</span>
+                                <p class="text-xs font-bold text-slate-200">Formula: (Ext WB - 5°C) / 25 × 10</p>
+                                <p class="text-[11px] modal-text-slate-400 leading-relaxed">
+                                    Wet-bulb dictates the thermodynamic limit of cooling towers. Higher wet-bulb increases heat rejection resistance and drives higher chiller opex.
+                                </p>
+                            </div>
+                            
+                            <div class="bg-slate-900/50 border border-white/5 rounded-2xl p-4.5 space-y-2">
+                                <span class="px-2 py-0.5 rounded text-[10px] font-black bg-rose-500/10 text-rose-400 border border-rose-500/20">15% Dry Bulb Risk (DB Score)</span>
+                                <p class="text-xs font-bold text-slate-200">Formula: (Max DB - 15°C) / 30 × 10</p>
+                                <p class="text-[11px] modal-text-slate-400 leading-relaxed">
+                                    Dry-bulb directly impacts air-cooled chiller efficiency. Elevated dry-bulb leads to chiller COP degradation and high risk of thermal runaway.
+                                </p>
+                            </div>
+
+                            <div class="bg-slate-900/50 border border-white/5 rounded-2xl p-4.5 space-y-2">
+                                <span class="px-2 py-0.5 rounded text-[10px] font-black bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">30% Free Cooling Deficit (FC Score)</span>
+                                <p class="text-xs font-bold text-slate-200">Formula: (8760 - Free Cooling Hours) / 8760 × 10</p>
+                                <p class="text-[11px] modal-text-slate-400 leading-relaxed">
+                                    Evaluates the lack of natural cold climates suitable for compressor-free cooling. A higher deficit denotes continuous, active mechanical refrigeration requirements.
+                                </p>
+                            </div>
+
+                            <div class="bg-slate-900/50 border border-white/5 rounded-2xl p-4.5 space-y-2">
+                                <span class="px-2 py-0.5 rounded text-[10px] font-black bg-purple-500/10 text-purple-400 border border-purple-500/20">20% Water Scarcity component (WR Score)</span>
+                                <p class="text-xs font-bold text-slate-200">Formula: (Water Risk - 1) / 4 × 10</p>
+                                <p class="text-[11px] modal-text-slate-400 leading-relaxed">
+                                    Water is a key pillar of datacenters. High water risk sites face strict consumption limits, water usage penalties, or regulatory curtailment.
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            } else if (activeGuideTab === 'resilience') {
+                tabContentHTML = lang === 'zh' ? `
+                    <div class="space-y-6">
+                        <div class="bg-slate-900/50 rounded-2xl p-5 border border-white/5">
+                            <h4 class="text-sm font-mono font-bold text-blue-400 uppercase tracking-wider mb-2">3. 基礎設施耐氣候級別 (Resilience Grade) 計算細則</h4>
+                            <p class="text-xs modal-text-slate-300 leading-relaxed mb-4">
+                                耐氣候級別反映了站點抵禦未來十年內極端溫濕度氣候異動、水資源匱乏及地質震災之綜合工程韌性分級。計算核心基於熱力學能耗模型與基礎物理危害，依據 <strong>加權風險指數（Weighted Risk Index）</strong> 劃分：
+                            </p>
+                            
+                            <!-- Formula Display -->
+                            <div class="bg-slate-950/60 border border-white/10 rounded-xl p-4 font-mono text-[11px] sm:text-xs text-rose-400 shadow-inner space-y-1 text-left sm:text-center">
+                                <span class="font-bold text-slate-400 text-[10px] block mb-1 text-center">【綜合加權風險指數公式】</span>
+                                <div class="text-center">
+                                    <strong>加權風險指數 = (冰機衰退率 × 1.5) + (冷卻塔 Approach 溫升 × 2.0) + (水資源壓力 × 6.0) + (地質防震係數 × 4.0)</strong>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Grades and Boundaries -->
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <!-- Left: Grade boundaries -->
+                            <div class="bg-slate-800/20 border border-white/5 rounded-2xl p-5 space-y-3.5">
+                                <h4 class="text-xs font-mono font-bold text-slate-200 uppercase">📊 級別劃分臨界點 (Grade Boundaries)</h4>
+                                <div class="space-y-2 text-xs">
+                                    <div class="flex justify-between items-center py-1.5 border-b border-white/5">
+                                        <span class="font-bold text-emerald-400">Grade S (極高抗震耐氣候級別)</span>
+                                        <span class="font-mono modal-text-slate-300">風險分數 &lt; 18</span>
+                                    </div>
+                                    <div class="flex justify-between items-center py-1.5 border-b border-white/5">
+                                        <span class="font-bold text-blue-400">Grade A (高度耐氣候級別)</span>
+                                        <span class="font-mono modal-text-slate-300">風險分數 &lt; 28</span>
+                                    </div>
+                                    <div class="flex justify-between items-center py-1.5 border-b border-white/5">
+                                        <span class="font-bold text-amber-400">Grade B (中度耐氣候級別)</span>
+                                        <span class="font-mono modal-text-slate-300">風險分數 &lt; 42</span>
+                                    </div>
+                                    <div class="flex justify-between items-center py-1.5 border-b border-white/5">
+                                        <span class="font-bold text-rose-400">Grade C (基礎耐氣候級別/易受波及)</span>
+                                        <span class="font-mono modal-text-slate-300">風險分數 &lt; 56</span>
+                                    </div>
+                                    <div class="flex justify-between items-center py-1.5">
+                                        <span class="font-bold text-purple-400">Grade D (高風險警戒級別)</span>
+                                        <span class="font-mono modal-text-slate-300">風險分數 ≥ 56</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Right: Case Study Taipei & Tainan -->
+                            <div class="bg-slate-900/60 border border-amber-500/10 rounded-2xl p-5 space-y-3 relative overflow-hidden">
+                                <div class="absolute -right-8 -top-8 w-24 h-24 bg-amber-500/5 rounded-full blur-2xl"></div>
+                                <h4 class="text-xs font-mono font-bold text-amber-400 uppercase flex items-center gap-1.5">
+                                    <span class="w-1.5 h-1.5 bg-amber-400 rounded-full animate-pulse"></span>
+                                    案例深度剖析：為何台北與台南評估為 Grade C？
+                                </h4>
+                                <p class="text-[11px] modal-text-slate-300 leading-relaxed">
+                                    在熱力學上，台北與台南氣溫適中。然而，由於兩地均處於高敏感地震帶上（台北地質防震 <strong class="text-rose-400 font-mono">5/5</strong>，台南 <strong class="text-rose-400 font-mono">4/5</strong>），在公式中地質防震係數權重高達 <strong class="text-rose-300 font-mono">4.0×</strong>，直接灌入 <strong class="text-rose-400 font-mono">16-20 分</strong>！
+                                </p>
+                                <p class="text-[11px] modal-text-slate-300 leading-relaxed">
+                                    此外，做為全球先進晶片代工核心樞紐，兩地工業水資源供需關係與水壓力極高（台北水資源風險 <strong class="text-cyan-400 font-mono">4/5</strong>，台南 <strong class="text-cyan-400 font-mono">5/5</strong>），水權重更高達 <strong class="text-cyan-300 font-mono">6.0×</strong>，直接灌入 <strong class="text-cyan-400 font-mono">24-30 分</strong>！
+                                </p>
+                                <p class="text-[11px] modal-text-slate-300 leading-relaxed pt-1.5 border-t border-white/5 font-bold text-slate-200">
+                                    雙重地理與地質非熱力風險合計即貢獻高達 40-50 分！導致兩地最終加權風險指數落入 42–56 區間，被列為 Grade C，說明此地除了氣候散熱問題外，防震管道防護與水資源回收才是基礎設施的關鍵戰場。
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                ` : `
+                    <div class="space-y-6">
+                        <div class="bg-slate-900/50 rounded-2xl p-5 border border-white/5">
+                            <h4 class="text-sm font-mono font-bold text-blue-400 uppercase tracking-wider mb-2">3. Infrastructure Resilience Grade Calculation Details</h4>
+                            <p class="text-xs modal-text-slate-300 leading-relaxed mb-4">
+                                The resilience grade quantifies an infrastructure asset's ability to survive decadal extreme climate anomalies, localized water restrictions, and geographic/tectonic hazards without triggering severe thermal runaways:
+                            </p>
+                            
+                            <!-- Formula Display -->
+                            <div class="bg-slate-950/60 border border-white/10 rounded-xl p-4 font-mono text-[11px] sm:text-xs text-rose-400 shadow-inner space-y-1 text-left sm:text-center">
+                                <span class="font-bold text-slate-400 text-[10px] block mb-1 text-center">[COMPOUND RISK INDEX FORMULA]</span>
+                                <div class="text-center">
+                                    <strong>Risk Index = (Chiller Derating × 1.5) + (Approach Risk × 2.0) + (Water Risk × 6.0) + (Seismic Risk × 4.0)</strong>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Grades and Boundaries -->
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <!-- Left: Grade boundaries -->
+                            <div class="bg-slate-800/20 border border-white/5 rounded-2xl p-5 space-y-3.5">
+                                <h4 class="text-xs font-mono font-bold text-slate-200 uppercase">📊 Grade Threshold Boundaries</h4>
+                                <div class="space-y-2 text-xs">
+                                    <div class="flex justify-between items-center py-1.5 border-b border-white/5">
+                                        <span class="font-bold text-emerald-400">Grade S (Ultra-Resilient)</span>
+                                        <span class="font-mono modal-text-slate-300">Risk Score &lt; 18</span>
+                                    </div>
+                                    <div class="flex justify-between items-center py-1.5 border-b border-white/5">
+                                        <span class="font-bold text-blue-400">Grade A (High Resilience)</span>
+                                        <span class="font-mono modal-text-slate-300">Risk Score &lt; 28</span>
+                                    </div>
+                                    <div class="flex justify-between items-center py-1.5 border-b border-white/5">
+                                        <span class="font-bold text-amber-400">Grade B (Moderate Resilience)</span>
+                                        <span class="font-mono modal-text-slate-300">Risk Score &lt; 42</span>
+                                    </div>
+                                    <div class="flex justify-between items-center py-1.5 border-b border-white/5">
+                                        <span class="font-bold text-rose-400">Grade C (Standard Resilience)</span>
+                                        <span class="font-mono modal-text-slate-300">Risk Score &lt; 56</span>
+                                    </div>
+                                    <div class="flex justify-between items-center py-1.5">
+                                        <span class="font-bold text-purple-400">Grade D (High Vulnerability)</span>
+                                        <span class="font-mono modal-text-slate-300">Risk Score ≥ 56</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Right: Case Study Taipei & Tainan -->
+                            <div class="bg-slate-900/60 border border-amber-500/10 rounded-2xl p-5 space-y-3 relative overflow-hidden">
+                                <div class="absolute -right-8 -top-8 w-24 h-24 bg-amber-500/5 rounded-full blur-2xl"></div>
+                                <h4 class="text-xs font-mono font-bold text-amber-400 uppercase flex items-center gap-1.5">
+                                    <span class="w-1.5 h-1.5 bg-amber-400 rounded-full animate-pulse"></span>
+                                    Geopolitical Case Study: Why Taipei & Tainan are Grade C?
+                                </h4>
+                                <p class="text-[11px] modal-text-slate-300 leading-relaxed">
+                                    Thermodynamically, Taiwan has a moderate summer climate. However, both cities sit in active tectonic fault lines (seismic risk <strong class="text-rose-400 font-mono">5/5</strong> for Taipei, <strong class="text-rose-400 font-mono">4/5</strong> for Tainan). With a high seismic weighting of <strong class="text-rose-300 font-mono">4.0×</strong>, this contributes <strong class="text-rose-400 font-mono">16-20 points</strong> instantly.
+                                </p>
+                                <p class="text-[11px] modal-text-slate-300 leading-relaxed">
+                                    Additionally, as global semiconductor hubs, they suffer from high industrial water demands (water risk <strong class="text-cyan-400 font-mono">4/5</strong> for Taipei, <strong class="text-cyan-400 font-mono">5/5</strong> for Tainan). With a massive water weighting of <strong class="text-cyan-300 font-mono">6.0×</strong>, it adds <strong class="text-cyan-400 font-mono">24-30 points</strong>.
+                                </p>
+                                <p class="text-[11px] modal-text-slate-300 leading-relaxed pt-1.5 border-t border-white/5 font-bold text-slate-200">
+                                    Together, non-climatic water & seismic hazards contribute 40-50 points! This pushes their risk indices to 43.7 and 49.7, resulting in a Grade C classification. It proves that geology and hydro-resource risks are just as critical as raw hot dry-bulb air temperatures.
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }
+
+            modalContent.innerHTML = `
+                <!-- Modal Header -->
+                <div class="shrink-0 bg-slate-900/90 backdrop-blur-md px-6 sm:px-10 py-5 border-b border-white/10 flex flex-col sm:flex-row justify-between items-start sm:items-center z-20 relative">
+                    <div class="flex items-center gap-3">
+                        <div class="w-12 h-12 bg-slate-800/80 rounded-xl flex items-center justify-center text-2xl shadow-inner border border-white/10 shrink-0 text-blue-400 font-mono font-bold">
+                            📖
+                        </div>
+                        <div>
+                            <h2 class="heading text-xl sm:text-2xl font-bold modal-text-white tracking-tight leading-tight">${title}</h2>
+                            <p class="text-[10px] sm:text-xs font-bold modal-text-slate-400 uppercase tracking-[0.2em] mt-1">${subtitle}</p>
+                        </div>
+                    </div>
+                    <button onclick="closeGuideModal()" class="w-9 h-9 bg-slate-800 hover:bg-slate-700 modal-text-slate-300 rounded-full flex items-center justify-center transition-all shrink-0 border border-white/10 shadow-sm active:scale-95 mt-3 sm:mt-0 self-end sm:self-auto">
+                        <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"></path></svg>
+                    </button>
+                </div>
+
+                <!-- Tab bar -->
+                <div class="shrink-0 bg-slate-900/70 backdrop-blur-md px-6 sm:px-10 py-3 border-b border-white/5 flex flex-wrap gap-2 z-15 relative">
+                    <button onclick="changeGuideTab('zones')" class="${getTabBtnClass('zones')}">
+                        ${lang === 'zh' ? '🌍 ASHRAE 氣候區' : '🌍 ASHRAE Zones'}
+                    </button>
+                    <button onclick="changeGuideTab('complexity')" class="${getTabBtnClass('complexity')}">
+                        ${lang === 'zh' ? '🌡️ 熱複雜度評分' : '🌡️ Thermal Complexity'}
+                    </button>
+                    <button onclick="changeGuideTab('resilience')" class="${getTabBtnClass('resilience')}">
+                        ${lang === 'zh' ? '🛡️ 耐氣候級別' : '🛡️ Resilience Grade'}
+                    </button>
+                </div>
+
+                <!-- Scrollable Body -->
+                <div class="p-6 sm:p-10 overflow-y-auto w-full flex-1 bg-slate-900/95 scrollbar-thin">
+                    ${tabContentHTML}
+                </div>
+            `;
+        }
+
+        function sortData(key) {
+            if (currentSort.key === key) { currentSort.dir *= -1; } else { currentSort.key = key; currentSort.dir = 1; }
+            renderTable();
+        }
+
+        // --- 全局快捷鍵綁定 (Esc 關閉 Modal) ---
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                closeReportModal();
+                closeGuideModal();
+            }
+        });
+
+        // Event Listeners
+        document.getElementById('searchInput').addEventListener('input', renderTable);
+        document.getElementById('regionFilter').addEventListener('change', (e) => {
+            renderTable();
+            const region = e.target.value;
+            if (myGlobe) {
+                let coords = { lat: 20, lng: 0, altitude: 2.5 }; // All Regions 預設視角
+                if (region === 'Americas') coords = { lat: 39, lng: -95, altitude: 1.8 };
+                else if (region === 'Europe') coords = { lat: 50, lng: 10, altitude: 1.5 };
+                else if (region === 'Asia') coords = { lat: 25, lng: 110, altitude: 1.8 };
+                else if (region === 'MEA') coords = { lat: 20, lng: 40, altitude: 1.8 };
+                
+                myGlobe.controls().autoRotate = false;
+                myGlobe.pointOfView(coords, 1200);
+                resetIdleTimer();
+            }
+        });
+
+        window.addEventListener('DOMContentLoaded', () => {
+            setLanguage('zh'); 
+            setTimeout(() => { initGlobe(); }, 150);
+            
+            // Fix: Wait for data array to be available and select the first node by default.
+            setTimeout(() => { 
+                if(data && data.length > 0) {
+                    selectNode(data[0].city); 
+                }
+            }, 600);
+        });
+
+    </script>
+</body>
+</html>

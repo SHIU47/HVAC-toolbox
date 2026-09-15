@@ -1,0 +1,46 @@
+﻿<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>診斷頁面</title>
+</head>
+<body>
+<div id="log" style="font-family:monospace;padding:20px;font-size:14px;white-space:pre-wrap;"></div>
+<script>
+const log = (msg, color) => {
+    const d = document.createElement('div');
+    d.style.color = color || 'black';
+    d.textContent = new Date().toLocaleTimeString() + ' — ' + msg;
+    document.getElementById('log').appendChild(d);
+};
+log('診斷開始...');
+
+// 1. localStorage 檢查
+try {
+    localStorage.setItem('_t', '1'); localStorage.removeItem('_t');
+    log('localStorage 可用', 'green');
+    const av = localStorage.getItem('hydropuzzle_autosave');
+    if (av) {
+        log('發現 autosave 資料 length=' + av.length, 'orange');
+        try {
+            const p = JSON.parse(av);
+            log('類型:' + typeof p + ' isArray:' + Array.isArray(p) + ' hasNodes:' + !!(p && p.nodes), p && p.nodes ? 'green' : 'red');
+        } catch(e) { log('autosave 解析失敗: ' + e.message, 'red'); }
+    } else { log('無 autosave 資料', 'gray'); }
+    const pv = localStorage.getItem('hydropuzzle_projects');
+    if (pv) { log('projects 資料 length=' + pv.length, 'orange'); }
+} catch(e) { log('localStorage 錯誤: ' + e.message, 'red'); }
+
+// 2. CDN 腳本測試
+['https://unpkg.com/react@18/umd/react.production.min.js','https://unpkg.com/@babel/standalone/babel.min.js'].forEach(u => {
+    const s = document.createElement('script');
+    const name = u.includes('babel') ? 'Babel' : 'React';
+    s.onload = () => log(name + ' CDN 載入成功', 'green');
+    s.onerror = () => log(name + ' CDN 載入失敗！', 'red');
+    s.src = u; document.head.appendChild(s);
+});
+
+log('等待 CDN 結果...');
+</script>
+</body>
+</html>

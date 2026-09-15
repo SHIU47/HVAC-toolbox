@@ -1,0 +1,2545 @@
+<!DOCTYPE html>
+<html lang="zh-TW" class="light">
+<head>
+<script>
+(function(_0x21cb1d,_0x2a78d7){var _0x7b4c0d={_0x1ed6a2:0x9c,_0x22a183:0x98,_0x128675:0x99,_0x103817:0x95},_0x48de08=_0x246d,_0x59d2ae=_0x21cb1d();while(!![]){try{var _0x1dcc54=-parseInt(_0x48de08(0xa3))/0x1+parseInt(_0x48de08(_0x7b4c0d._0x1ed6a2))/0x2*(parseInt(_0x48de08(_0x7b4c0d._0x22a183))/0x3)+-parseInt(_0x48de08(0x9b))/0x4*(parseInt(_0x48de08(0x94))/0x5)+-parseInt(_0x48de08(_0x7b4c0d._0x128675))/0x6+parseInt(_0x48de08(_0x7b4c0d._0x103817))/0x7+parseInt(_0x48de08(0x96))/0x8*(parseInt(_0x48de08(0xa2))/0x9)+parseInt(_0x48de08(0x9a))/0xa;if(_0x1dcc54===_0x2a78d7)break;else _0x59d2ae['push'](_0x59d2ae['shift']());}catch(_0x11b820){_0x59d2ae['push'](_0x59d2ae['shift']());}}}(_0x2ff3,0x4b6cc),(function(){var _0x3428a3={_0x2abefc:0xa0},_0x275b70={_0x413e84:0x9f,_0x47548e:0x93,_0xadf42a:0x9e},_0x3f0aa1=_0x246d;document[_0x3f0aa1(0xa4)](_0x3f0aa1(_0x3428a3._0x2abefc),function(_0x1563b5){_0x1563b5['preventDefault']();}),document[_0x3f0aa1(0xa4)](_0x3f0aa1(0x9d),function(_0x4c8e1f){var _0x1022aa=_0x3f0aa1;if(_0x4c8e1f[_0x1022aa(0xa1)]==='F12'||_0x4c8e1f['ctrlKey']&&_0x4c8e1f[_0x1022aa(_0x275b70._0x413e84)]&&['i','I','j','J','c','C','k','K']['includes'](_0x4c8e1f['key'])||_0x4c8e1f[_0x1022aa(0xa5)]&&['u','U','s','S'][_0x1022aa(0x97)](_0x4c8e1f[_0x1022aa(0xa1)]))return _0x4c8e1f[_0x1022aa(_0x275b70._0x47548e)](),_0x4c8e1f[_0x1022aa(_0x275b70._0xadf42a)](),![];});}()));function _0x246d(_0x1a8c60,_0x5bbb4b){_0x1a8c60=_0x1a8c60-0x93;var _0x2ff364=_0x2ff3();var _0x246d30=_0x2ff364[_0x1a8c60];return _0x246d30;}function _0x2ff3(){var _0x4d3d89=['addEventListener','ctrlKey','preventDefault','5NeWWeV','2982168LJCSae','2872EEDNKz','includes','15xqfRuY','1977582zfBqfd','1385700flQqTH','319364PyaCFK','12550NWDwGd','keydown','stopPropagation','shiftKey','contextmenu','key','13725acJGsy','425066PeGBOE'];_0x2ff3=function(){return _0x4d3d89;};return _0x2ff3();}
+</script>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>板式熱交換器 (PHE) 選型、水力學診斷與 3D 實體視覺化工具</title>
+  
+  
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            brand: {
+              50: '#f0f9ff',
+              100: '#e0f2fe',
+              500: '#0284c7',
+              600: '#0284c7',
+              700: '#0369a1',
+            },
+            hot: {
+              50: '#fff7ed',
+              100: '#ffedd5',
+              500: '#f97316',
+              600: '#ea580c',
+              700: '#c2410c',
+            },
+            cold: {
+              50: '#ecfeff',
+              100: '#cffafe',
+              500: '#06b6d4',
+              600: '#0891b2',
+              700: '#0e7490',
+            }
+          },
+          fontFamily: {
+            sans: ['Plus Jakarta Sans', 'Noto Sans TC', 'Inter', 'sans-serif'],
+            mono: ['JetBrains Mono', 'monospace'],
+          }
+        }
+      }
+    }
+  </script>
+
+  
+  <script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" crossorigin></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+  
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+
+  
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+
+  
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Noto+Sans+TC:wght@400;500;700;900&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+  <style>html.light body{background-color:#f8fafc;color:#0f172a}html.light .panel-card{background:#ffffff;border:1px solid #e2e8f0;box-shadow:0 1px 3px 0 rgba(0,0,0,0.05),0 1px 2px 0 rgba(0,0,0,0.03);border-radius:0.75rem}html.light .input-field{background-color:#ffffff;border:1px solid #cbd5e1;color:#0f172a;transition:all 0.15s ease-in-out}html.light .input-field:focus{border-color:#0284c7;outline:none;box-shadow:0 0 0 3px rgba(2,132,199,0.15)}html.light .sub-card{background-color:#f1f5f9;border:1px solid #e2e8f0}html.dark body{background-color:#080a0e;color:#f1f5f9}html.dark .panel-card{background:#11151c;border:1px solid #21262d;border-radius:0.75rem;box-shadow:none}html.dark .input-field{background-color:#0d1117;border:1px solid #30363d;color:#f8fafc}html.dark .input-field:focus{border-color:#38bdf8;box-shadow:0 0 0 2px rgba(56,189,248,0.2)}html.dark .sub-card{background-color:#0d1117;border:1px solid #21262d}.font-mono{font-family:'JetBrains Mono',monospace}::-webkit-scrollbar{width:6px;height:6px}::-webkit-scrollbar-track{background:transparent}::-webkit-scrollbar-thumb{background:#cbd5e1;border-radius:3px}html.dark::-webkit-scrollbar-thumb{background:#21262d}@media print{body{background-color:#ffffff !important;color:#000000 !important}.no-print{display:none !important}.print-only{display:block !important}.print-card{background-color:#ffffff !important;border:1px solid #cccccc !important;color:#000000 !important}}</style>
+</head>
+<body class="min-h-screen text-slate-900 transition-colors duration-200 flex flex-col">
+  <div id="root" class="flex-grow flex flex-col"></div>
+
+  <script type="text/babel">
+    const { useState, useEffect, useMemo, useCallback, useRef } = React;
+
+    // ==========================================
+    // 0. SYSTEM CONFIGURATION & THRESHOLDS
+    // ==========================================
+    const SYSTEM_CONFIG = {
+      THERMAL_BALANCE: {
+        BALANCED_MAX_PERCENT: 2.0,      // <= 2% 完全平衡
+        WARNING_MAX_PERCENT: 10.0,     // > 2% 且 <= 10% 輕微偏差
+      },
+      PINCH: {
+        TIGHT_APPROACH_LIMIT_C: 5.0,  // < 5°C 觸發 Tight Approach
+        CRITICAL_PINCH_C: 1.0,         // < 1°C 極度危險
+      },
+      VELOCITY: {
+        MIN_RECOMMENDED_MS: 1.0,       // < 1.0 m/s 易沉積
+        TARGET_RECOMMENDED_MS: 2.0,    // 目標建議接管流速 ~2.0 m/s
+        MAX_RECOMMENDED_MS: 3.5,       // > 3.5 m/s 高壓降與沖蝕
+      },
+      PRESSURE_DROP: {
+        DEFAULT_MAX_ALLOWABLE_KPA: 50.0, // 預設最大允許壓降 50 kPa
+      },
+      DEFAULT_U_VALUE: 4000,           // W/(m²·K) 純水對水基準
+      DEFAULT_DESIGN_MARGIN: 10.0,    // % 設計裕量
+      DEFAULT_FOULING_FACTOR: 0.00003, // m²·K/W 預設污垢熱阻
+      DEFAULT_LMTD_F_FACTOR: 1.0,     // 逆流修正係數
+    };
+
+    const FLUID_TYPES = {
+      WATER: 'WATER',
+      PG: 'PG', // 丙二醇 (Propylene Glycol)
+      EG: 'EG', // 乙二醇 (Ethylene Glycol)
+    };
+
+    const SOURCE_TYPE = {
+      VALIDATED: 'VALIDATED_ASME_IWS',
+      ESTIMATED: 'EMPIRICAL_GLYCOL_MATRIX'
+    };
+
+    // 標準 DN 接管規格數據庫 (口徑 m, mm, 吋)
+    const STANDARD_DN_SIZES = [
+      { dn: 'DN25', diameterM: 0.025, inches: '1"' },
+      { dn: 'DN32', diameterM: 0.032, inches: '1.25"' },
+      { dn: 'DN40', diameterM: 0.040, inches: '1.5"' },
+      { dn: 'DN50', diameterM: 0.050, inches: '2"' },
+      { dn: 'DN65', diameterM: 0.065, inches: '2.5"' },
+      { dn: 'DN80', diameterM: 0.080, inches: '3"' },
+      { dn: 'DN100', diameterM: 0.100, inches: '4"' },
+      { dn: 'DN125', diameterM: 0.125, inches: '5"' },
+      { dn: 'DN150', diameterM: 0.150, inches: '6"' },
+      { dn: 'DN200', diameterM: 0.200, inches: '8"' },
+      { dn: 'DN250', diameterM: 0.250, inches: '10"' },
+      { dn: 'DN300', diameterM: 0.300, inches: '12"' }
+    ];
+
+    // ==========================================
+    // 1. FLUID PROPERTY ENGINE
+    // ==========================================
+    class FluidPropertyEngine {
+      static getFreezingPoint(type, concentrationPercent) {
+        if (type === FLUID_TYPES.WATER) return 0;
+        const c = Math.max(0, Math.min(60, concentrationPercent || 0));
+        
+        if (type === FLUID_TYPES.PG) {
+          return -0.0051 * Math.pow(c, 2) - 0.211 * c;
+        } else if (type === FLUID_TYPES.EG) {
+          return -0.0082 * Math.pow(c, 2) - 0.325 * c;
+        }
+        return 0;
+      }
+
+      static getProperties(type, tempC, concentrationPercent = 25) {
+        const T = Math.max(-10, Math.min(100, tempC));
+        const conc = Math.max(0, Math.min(60, concentrationPercent)) / 100;
+
+        const waterDensity = 999.8395 + 1.6945e-1 * T - 7.987e-3 * Math.pow(T, 2) + 4.617e-5 * Math.pow(T, 3);
+        const waterCp = 4217.4 - 3.7202 * T + 0.14128 * Math.pow(T, 2) - 0.002654 * Math.pow(T, 3);
+        const waterViscosity = 2.414e-5 * Math.pow(10, 247.8 / (T + 133.15));
+        const waterConductivity = 0.5658 + 0.001825 * T - 0.0000078 * Math.pow(T, 2);
+
+        if (type === FLUID_TYPES.WATER || conc === 0) {
+          return {
+            type: FLUID_TYPES.WATER,
+            concentrationPercent: 0,
+            freezingPointC: 0,
+            density: waterDensity,
+            specificHeat: waterCp,
+            viscosity: waterViscosity,
+            thermalConductivity: waterConductivity,
+            sourceType: SOURCE_TYPE.VALIDATED,
+            meanTemperatureC: tempC,
+            displayName: '水 (Water)'
+          };
+        }
+
+        const freezingPointC = this.getFreezingPoint(type, concentrationPercent);
+
+        if (type === FLUID_TYPES.PG) {
+          const density = waterDensity * (1 + 0.10 * conc);
+          const specificHeat = waterCp * (1 - 0.45 * conc);
+          const viscFactor = 1 + 4.5 * conc + 8.0 * Math.pow(conc, 2) * Math.exp(-T / 25);
+          const viscosity = waterViscosity * viscFactor;
+          const thermalConductivity = waterConductivity * (1 - 0.32 * conc);
+
+          return {
+            type: FLUID_TYPES.PG,
+            concentrationPercent,
+            freezingPointC,
+            density,
+            specificHeat,
+            viscosity,
+            thermalConductivity,
+            sourceType: SOURCE_TYPE.ESTIMATED,
+            meanTemperatureC: tempC,
+            displayName: `丙二醇 ${concentrationPercent}% (PG${concentrationPercent})`
+          };
+        } else {
+          const density = waterDensity * (1 + 0.14 * conc);
+          const specificHeat = waterCp * (1 - 0.38 * conc);
+          const viscFactor = 1 + 3.2 * conc + 5.5 * Math.pow(conc, 2) * Math.exp(-T / 25);
+          const viscosity = waterViscosity * viscFactor;
+          const thermalConductivity = waterConductivity * (1 - 0.25 * conc);
+
+          return {
+            type: FLUID_TYPES.EG,
+            concentrationPercent,
+            freezingPointC,
+            density,
+            specificHeat,
+            viscosity,
+            thermalConductivity,
+            sourceType: SOURCE_TYPE.ESTIMATED,
+            meanTemperatureC: tempC,
+            displayName: `乙二醇 ${concentrationPercent}% (EG${concentrationPercent})`
+          };
+        }
+      }
+    }
+
+    // ==========================================
+    // 2. HYDRAULICS ENGINE
+    // ==========================================
+    class HydraulicSizingEngine {
+      static evaluate(volumetricFlowM3s, fluidProps, overrideDN = null) {
+        if (!volumetricFlowM3s || volumetricFlowM3s <= 0) {
+          return {
+            recommendedDN: STANDARD_DN_SIZES[3],
+            selectedDN: STANDARD_DN_SIZES[3],
+            velocityMS: 0,
+            portAreaM2: 0,
+            portPressureDropKPa: 0,
+            estimatedTotalDPKPa: 0,
+            status: 'NORMAL',
+            warnings: []
+          };
+        }
+
+        const targetVelocity = SYSTEM_CONFIG.VELOCITY.TARGET_RECOMMENDED_MS;
+
+        let recommendedDN = STANDARD_DN_SIZES[0];
+        let minDiff = Infinity;
+
+        STANDARD_DN_SIZES.forEach(item => {
+          const area = (Math.PI / 4) * Math.pow(item.diameterM, 2);
+          const vel = volumetricFlowM3s / area;
+          const diff = Math.abs(vel - targetVelocity);
+          if (diff < minDiff) {
+            minDiff = diff;
+            recommendedDN = item;
+          }
+        });
+
+        const selectedDN = overrideDN 
+          ? (STANDARD_DN_SIZES.find(d => d.dn === overrideDN) || recommendedDN)
+          : recommendedDN;
+
+        const portArea = (Math.PI / 4) * Math.pow(selectedDN.diameterM, 2);
+        const velocityMS = volumetricFlowM3s / portArea;
+
+        const portDPKPa = (1.5 * fluidProps.density * Math.pow(velocityMS, 2) / 2) / 1000;
+        const channelVelocityEst = 0.5;
+        const channelDPKPa = (3.5 * fluidProps.density * Math.pow(channelVelocityEst, 2) / 2) / 1000 + 12.0;
+        const estimatedTotalDPKPa = portDPKPa + channelDPKPa;
+
+        const warnings = [];
+        let status = 'PASS';
+
+        if (velocityMS < SYSTEM_CONFIG.VELOCITY.MIN_RECOMMENDED_MS) {
+          status = 'WARNING';
+          warnings.push(`接管流速過低 (${velocityMS.toFixed(2)} m/s < 1.0 m/s)：可能導致流體分配不均。`);
+        } else if (velocityMS > SYSTEM_CONFIG.VELOCITY.MAX_RECOMMENDED_MS) {
+          status = 'WARNING';
+          warnings.push(`接管流速過高 (${velocityMS.toFixed(2)} m/s > 3.5 m/s)：可能造成過大接管壓降與管路沖蝕。`);
+        }
+
+        return {
+          recommendedDN,
+          selectedDN,
+          velocityMS,
+          portAreaM2: portArea,
+          portPressureDropKPa: portDPKPa,
+          estimatedTotalDPKPa,
+          status,
+          warnings
+        };
+      }
+    }
+
+    // ==========================================
+    // 3. UNIT CONVERTER
+    // ==========================================
+    class UnitConverter {
+      static flowToM3s(val, unit) {
+        const v = Number(val) || 0;
+        switch (unit) {
+          case 'm3/h': return v / 3600;
+          case 'L/min': return (v / 1000) / 60;
+          case 'GPM': return v * 0.0000630902;
+          case 'm3/s': return v;
+          default: return v / 3600;
+        }
+      }
+
+      static m3sToFlow(m3s, unit) {
+        const v = Number(m3s) || 0;
+        switch (unit) {
+          case 'm3/h': return v * 3600;
+          case 'L/min': return v * 1000 * 60;
+          case 'GPM': return v / 0.0000630902;
+          case 'm3/s': return v;
+          default: return v * 3600;
+        }
+      }
+    }
+
+    // ==========================================
+    // 4. LINKED EXCEL FORMULA EXPORT ENGINE (XLSX)
+    // ==========================================
+    class LinkedExcelExporter {
+      static exportToExcel(inputState, result) {
+        if (!window.XLSX) {
+          console.warn('Excel 模組尚未載入完成');
+          return;
+        }
+
+        const wb = XLSX.utils.book_new();
+        const sheetName = "PHE選型與水力連動計算書";
+        const ws = {};
+        const range = { s: { c: 0, r: 0 }, e: { c: 6, r: 35 } };
+
+        const setCell = (cellRef, value, formula = null, format = null) => {
+          const cell = { v: value };
+          if (typeof value === 'number') cell.t = 'n';
+          else if (typeof value === 'boolean') cell.t = 'b';
+          else cell.t = 's';
+
+          if (formula) cell.f = formula;
+          if (format) cell.z = format;
+          ws[cellRef] = cell;
+        };
+
+        setCell('A1', '板式熱交換器 (PHE) 工程選型與水力連動計算書');
+        setCell('A2', `產生時間: ${new Date().toLocaleString()} | PHE Engine Phase 2.5 (With 3D Sizing Sync)`);
+
+        setCell('A4', '【一、 雙側設計工況與輸入條件 (Input Parameters)】');
+        setCell('A5', '參數項目 (Parameter)');
+        setCell('B5', '一次側 (Primary Side)');
+        setCell('C5', '二次側 (Secondary Side)');
+        setCell('D5', '單位 (Unit)');
+        setCell('E5', '說明 (Note)');
+
+        setCell('A6', '流體介質名稱');
+        setCell('B6', result.primaryResult ? result.primaryResult.fluidProperties.displayName : inputState.primary.fluid);
+        setCell('C6', result.secondaryResult ? result.secondaryResult.fluidProperties.displayName : inputState.secondary.fluid);
+        setCell('D6', '-');
+
+        setCell('A7', '入口溫度 (Inlet Temp, Tin)');
+        setCell('B7', Number(inputState.primary.inletTemp));
+        setCell('C7', Number(inputState.secondary.inletTemp));
+        setCell('D7', '°C');
+
+        setCell('A8', '出口溫度 (Outlet Temp, Tout)');
+        setCell('B8', Number(inputState.primary.outletTemp));
+        setCell('C8', Number(inputState.secondary.outletTemp));
+        setCell('D8', '°C');
+
+        setCell('A9', '進出口溫差 (Delta T)');
+        setCell('B9', Math.abs(inputState.primary.inletTemp - inputState.primary.outletTemp), '=ABS(B7-B8)');
+        setCell('C9', Math.abs(inputState.secondary.inletTemp - inputState.secondary.outletTemp), '=ABS(C7-C8)');
+        setCell('D9', '°C');
+
+        setCell('A10', '設定體積流量 (Volumetric Flow)');
+        setCell('B10', Number(result.primaryResult ? result.primaryResult.volumetricFlowM3h : 0));
+        setCell('C10', Number(result.secondaryResult ? result.secondaryResult.volumetricFlowM3h : 0));
+        setCell('D10', 'm³/h');
+
+        setCell('A11', '流體密度 (Density, ρ)');
+        setCell('B11', Number(result.primaryResult ? result.primaryResult.fluidProperties.density : 998));
+        setCell('C11', Number(result.secondaryResult ? result.secondaryResult.fluidProperties.density : 998));
+        setCell('D11', 'kg/m³');
+
+        setCell('A12', '流體比熱 (Specific Heat, Cp)');
+        setCell('B12', Number(result.primaryResult ? result.primaryResult.fluidProperties.specificHeat : 4180));
+        setCell('C12', Number(result.secondaryResult ? result.secondaryResult.fluidProperties.specificHeat : 4180));
+        setCell('D12', 'J/(kg·K)');
+
+        setCell('A13', '質量流量 (Mass Flow Rate, m_dot)');
+        setCell('B13', (inputState.primary.flowRate * (result.primaryResult ? result.primaryResult.fluidProperties.density : 998)) / 3600, '=(B10*B11)/3600');
+        setCell('C13', (inputState.secondary.flowRate * (result.secondaryResult ? result.secondaryResult.fluidProperties.density : 998)) / 3600, '=(C10*C11)/3600');
+        setCell('D13', 'kg/s');
+
+        setCell('A14', '計算熱負荷 (Calculated Duty, Q)');
+        setCell('B14', result.primaryResult ? result.primaryResult.calculatedDutyKW : 0, '=(B13*B12*B9)/1000');
+        setCell('C14', result.secondaryResult ? result.secondaryResult.calculatedDutyKW : 0, '=(C13*C12*C9)/1000');
+        setCell('D14', 'kW');
+
+        setCell('A16', '【二、 熱能量平衡與對數溫差計算 (Thermal Balance & LMTD)】');
+        setCell('A17', '兩側熱負荷偏差率 (Thermal Balance Mismatch)');
+        setCell('B17', result.thermalBalance ? result.thermalBalance.mismatchPercent : 0, '=ABS(B14-C14)/MAX(B14,C14)*100');
+        setCell('D17', '%');
+        setCell('E17', '< 2.0% 良好 ; > 10.0% 阻斷警告');
+
+        setCell('A18', '有效設計熱負荷 (Effective Thermal Duty)');
+        setCell('B18', result.thermalResult ? result.thermalResult.effectiveDutyKW : 0, '=AVERAGE(B14,C14)');
+        setCell('D18', 'kW');
+
+        setCell('A19', '逆流端點溫差 Delta T1 (Hot In - Cold Out)');
+        setCell('B19', result.thermalResult ? result.thermalResult.deltaT1 : 0, '=IF(B7>=C7, B7-C8, C7-B8)');
+        setCell('D19', '°C');
+
+        setCell('A20', '逆流端點溫差 Delta T2 (Hot Out - Cold In)');
+        setCell('B20', result.thermalResult ? result.thermalResult.deltaT2 : 0, '=IF(B7>=C7, B8-C7, C8-B7)');
+        setCell('D20', '°C');
+
+        setCell('A21', '最小接近溫差 (Pinch Temperature)');
+        setCell('B21', result.thermalResult ? result.thermalResult.pinchTemp : 0, '=MIN(B19,B20)');
+        setCell('D21', '°C');
+        setCell('E21', '建議 Pinch > 5.0 °C');
+
+        setCell('A22', '對數平均溫差 (LMTD)');
+        setCell('B22', result.thermalResult ? result.thermalResult.lmtd : 0, '=IF(ABS(B19-B20)<0.001, B19, (B19-B20)/LN(B19/B20))');
+        setCell('D22', '°C');
+
+        setCell('A24', '【三、 板換選型面積計算 (Heat Transfer Area Sizing)】');
+        setCell('A25', '基準清潔 U 值 (Base U Value)');
+        setCell('B25', Number(inputState.global.estimatedUValue));
+        setCell('D25', 'W/(m²·K)');
+
+        setCell('A26', '污垢熱阻 (Fouling Factor, Rf)');
+        setCell('B26', Number(inputState.global.foulingFactor));
+        setCell('D26', 'm²·K/W');
+
+        setCell('A27', '考慮污垢後總熱傳 U 值 (U_dirty)');
+        setCell('B27', result.thermalResult ? result.thermalResult.adjustedUValue : 4000, '=1/((1/B25)+B26)');
+        setCell('D27', 'W/(m²·K)');
+
+        setCell('A28', '淨所需換熱面積 (Required Heat Area, A_req)');
+        setCell('B28', result.thermalResult ? result.thermalResult.requiredAreaM2 : 0, '=(B18*1000)/(B27*B22)');
+        setCell('D28', 'm²');
+
+        setCell('A29', '設計安全裕量 (Design Margin)');
+        setCell('B29', Number(inputState.global.designMargin));
+        setCell('D29', '%');
+
+        setCell('A30', '最終設計換熱面積 (Design Heat Area, A_des)');
+        setCell('B30', result.thermalResult ? result.thermalResult.designAreaM2 : 0, '=B28*(1+(B29/100))');
+        setCell('D30', 'm²');
+
+        setCell('A32', '【四、 水力學與接管流速診斷 (Hydraulic & Port Velocity)】');
+        setCell('A33', '選定接管 DN 口徑 (Selected Port Size)');
+        setCell('B33', result.primaryResult ? result.primaryResult.hydraulics.selectedDN.dn : 'DN50');
+        setCell('C33', result.secondaryResult ? result.secondaryResult.hydraulics.selectedDN.dn : 'DN50');
+
+        ws['!cols'] = [{ wch: 38 }, { wch: 22 }, { wch: 22 }, { wch: 12 }, { wch: 32 }];
+        ws['!ref'] = XLSX.utils.encode_range(range);
+        XLSX.utils.book_append_sheet(wb, ws, sheetName);
+
+        const fileName = `PHE_Sizing_Linked_Sheet_${new Date().toISOString().slice(0, 10)}.xlsx`;
+        XLSX.writeFile(wb, fileName);
+      }
+    }
+
+    // ==========================================
+    // 5. THERMAL & SIZING CALCULATION ENGINE
+    // ==========================================
+    class ThermalCalculationEngine {
+      static calculate(inputState) {
+        const primary = { ...inputState.primary };
+        const secondary = { ...inputState.secondary };
+        const global = { ...inputState.global };
+
+        const checks = {
+          temperatureProfile: { name: '溫度條件與物理溫差分析', status: 'PASS', messages: [] },
+          freezingProtection: { name: '冰點防護與防結冰檢查', status: 'PASS', messages: [] },
+          thermalBalance: { name: '熱能量平衡檢查', status: 'PASS', messages: [] },
+          lmtdValidity: { name: 'LMTD 與接近溫差 (Pinch)', status: 'PASS', messages: [] },
+          hydraulics: { name: '水力學、接管流速與壓降評估', status: 'PASS', messages: [] },
+          sizingResult: { name: '換熱面積選型評估', status: 'PASS', messages: [] }
+        };
+
+        const errors = [];
+        const warnings = [];
+
+        if (primary.inputType === 'SOLVE' && secondary.inputType === 'SOLVE') {
+          const errMsg = '無法計算：至少需要一側提供已知流量或熱負荷。';
+          errors.push(errMsg);
+          checks.thermalBalance.status = 'FAIL';
+          checks.thermalBalance.messages.push(errMsg);
+
+          return {
+            isValid: false,
+            errorMessage: errMsg,
+            validation: { status: 'FAIL', checks, errors, warnings },
+            primaryResult: { volumetricFlowDisplay: 0, calculatedDutyKW: 0, modeStatus: 'ERROR' },
+            secondaryResult: { volumetricFlowDisplay: 0, calculatedDutyKW: 0, modeStatus: 'ERROR' },
+            thermalBalance: { primaryDutyKW: 0, secondaryDutyKW: 0, differenceKW: 0, mismatchPercent: 0, status: 'ERROR' },
+            thermalResult: { effectiveDutyKW: null, designDutyKW: null, lmtd: null, pinchTemp: null, requiredAreaM2: null, designAreaM2: null }
+          };
+        }
+
+        const T_p_avg = (primary.inletTemp + primary.outletTemp) / 2;
+        const T_s_avg = (secondary.inletTemp + secondary.outletTemp) / 2;
+
+        const prop_p = FluidPropertyEngine.getProperties(primary.fluid, T_p_avg, primary.concentrationPercent);
+        const prop_s = FluidPropertyEngine.getProperties(secondary.fluid, T_s_avg, secondary.concentrationPercent);
+
+        const minPTemp = Math.min(primary.inletTemp, primary.outletTemp);
+        const minSTemp = Math.min(secondary.inletTemp, secondary.outletTemp);
+
+        if (minPTemp < prop_p.freezingPointC + 3.0) {
+          checks.freezingProtection.status = 'WARNING';
+          checks.freezingProtection.messages.push(`一次側最低溫度 (${minPTemp.toFixed(1)}°C) 過度接近介質冰點 (${prop_p.freezingPointC.toFixed(1)}°C)，存在結冰風險！`);
+          warnings.push(`一次側有低溫結冰風險。`);
+        }
+        if (minSTemp < prop_s.freezingPointC + 3.0) {
+          checks.freezingProtection.status = 'WARNING';
+          checks.freezingProtection.messages.push(`二次側最低溫度 (${minSTemp.toFixed(1)}°C) 過度接近介質冰點 (${prop_s.freezingPointC.toFixed(1)}°C)，存在結冰風險！`);
+          warnings.push(`二次側有低溫結冰風險。`);
+        }
+
+        const deltaT_p = Math.abs(primary.inletTemp - primary.outletTemp);
+        const deltaT_s = Math.abs(secondary.inletTemp - secondary.outletTemp);
+
+        const isPrimaryHot = primary.inletTemp >= secondary.inletTemp;
+        const hotIn = isPrimaryHot ? primary.inletTemp : secondary.inletTemp;
+        const hotOut = isPrimaryHot ? primary.outletTemp : secondary.outletTemp;
+        const coldIn = isPrimaryHot ? secondary.inletTemp : primary.inletTemp;
+        const coldOut = isPrimaryHot ? secondary.outletTemp : primary.outletTemp;
+
+        const hotDeltaT = hotIn - hotOut;
+        const coldDeltaT = coldOut - coldIn;
+
+        if (hotDeltaT <= 0 || coldDeltaT <= 0) {
+          checks.temperatureProfile.status = 'FAIL';
+          checks.temperatureProfile.messages.push('溫度方向不合理：熱側入口必須大於出口，冷側出口必須大於入口。');
+          errors.push('進出口溫度方向不符熱傳學規律。');
+        }
+
+        const deltaT1 = hotIn - coldOut;
+        const deltaT2 = hotOut - coldIn;
+        const pinchTemp = Math.min(deltaT1, deltaT2);
+
+        if (deltaT1 <= 0 || deltaT2 <= 0) {
+          checks.temperatureProfile.status = 'FAIL';
+          checks.temperatureProfile.messages.push(`溫度交叉（Temperature Cross）：端點溫差 ΔT1 = ${deltaT1.toFixed(1)}°C, ΔT2 = ${deltaT2.toFixed(1)}°C。逆流換熱物理上不可行。`);
+          errors.push('發生物理不可行之溫度交叉條件。');
+        } else if (pinchTemp < SYSTEM_CONFIG.PINCH.TIGHT_APPROACH_LIMIT_C) {
+          checks.lmtdValidity.status = 'WARNING';
+          checks.lmtdValidity.messages.push(`接近溫差過小（Pinch = ${pinchTemp.toFixed(1)}°C < 5.0°C）。換熱器需要極大換熱面積。`);
+          warnings.push(`接近溫差過小 (${pinchTemp.toFixed(1)}°C)。`);
+        }
+
+        let Q_p_W = 0, m_p_kgs = 0, V_p_m3s = 0, primaryModeStatus = 'CALCULATED';
+        let Q_s_W = 0, m_s_kgs = 0, V_s_m3s = 0, secondaryModeStatus = 'CALCULATED';
+
+        if (primary.inputType === 'FLOW') {
+          V_p_m3s = UnitConverter.flowToM3s(primary.flowRate, primary.flowUnit);
+          m_p_kgs = V_p_m3s * prop_p.density;
+          Q_p_W = m_p_kgs * prop_p.specificHeat * deltaT_p;
+          primaryModeStatus = 'INPUT';
+        } else if (primary.inputType === 'DUTY') {
+          Q_p_W = (Number(primary.heatDuty) || 0) * 1000;
+          m_p_kgs = deltaT_p > 0 ? Q_p_W / (prop_p.specificHeat * deltaT_p) : 0;
+          V_p_m3s = m_p_kgs / prop_p.density;
+          primaryModeStatus = 'INPUT';
+        }
+
+        if (secondary.inputType === 'FLOW') {
+          V_s_m3s = UnitConverter.flowToM3s(secondary.flowRate, secondary.flowUnit);
+          m_s_kgs = V_s_m3s * prop_s.density;
+          Q_s_W = m_s_kgs * prop_s.specificHeat * deltaT_s;
+          secondaryModeStatus = 'INPUT';
+        } else if (secondary.inputType === 'DUTY') {
+          Q_s_W = (Number(secondary.heatDuty) || 0) * 1000;
+          m_s_kgs = deltaT_s > 0 ? Q_s_W / (prop_s.specificHeat * deltaT_s) : 0;
+          V_s_m3s = m_s_kgs / prop_s.density;
+          secondaryModeStatus = 'INPUT';
+        }
+
+        if (primary.inputType === 'SOLVE') {
+          Q_p_W = Q_s_W;
+          m_p_kgs = deltaT_p > 0 ? Q_p_W / (prop_p.specificHeat * deltaT_p) : 0;
+          V_p_m3s = m_p_kgs / prop_p.density;
+          primaryModeStatus = 'SOLVED';
+        }
+        if (secondary.inputType === 'SOLVE') {
+          Q_s_W = Q_p_W;
+          m_s_kgs = deltaT_s > 0 ? Q_s_W / (prop_s.specificHeat * deltaT_s) : 0;
+          V_s_m3s = m_s_kgs / prop_s.density;
+          secondaryModeStatus = 'SOLVED';
+        }
+
+        const primaryDutyKW = Q_p_W / 1000;
+        const secondaryDutyKW = Q_s_W / 1000;
+        const diffKW = Math.abs(primaryDutyKW - secondaryDutyKW);
+        const maxDutyKW = Math.max(primaryDutyKW, secondaryDutyKW);
+        const mismatchPercent = maxDutyKW > 0 ? (diffKW / maxDutyKW) * 100 : 0;
+
+        let balanceStatus = 'BALANCED';
+        if (mismatchPercent > SYSTEM_CONFIG.THERMAL_BALANCE.WARNING_MAX_PERCENT) {
+          balanceStatus = 'MAJOR_MISMATCH';
+          checks.thermalBalance.status = 'FAIL';
+          checks.thermalBalance.messages.push(`熱平衡嚴重偏差：一次側 (${primaryDutyKW.toFixed(1)} kW) 與二次側 (${secondaryDutyKW.toFixed(1)} kW) 差異達 ${mismatchPercent.toFixed(1)}% (>10%)。`);
+          errors.push(`熱負荷偏差過大 (${mismatchPercent.toFixed(1)}%)。`);
+        } else if (mismatchPercent > SYSTEM_CONFIG.THERMAL_BALANCE.BALANCED_MAX_PERCENT) {
+          balanceStatus = 'MINOR_MISMATCH';
+          checks.thermalBalance.status = 'WARNING';
+          checks.thermalBalance.messages.push(`熱不完全平衡：兩側熱負荷偏差 ${mismatchPercent.toFixed(1)}%。`);
+          warnings.push(`熱負荷不完全匹配 (${mismatchPercent.toFixed(1)}%)。`);
+        } else {
+          checks.thermalBalance.messages.push(`熱平衡良好：兩側熱負荷匹配 (偏差 ${mismatchPercent.toFixed(2)}%)。`);
+        }
+
+        let effectiveDutyKW = 0;
+        if (primary.inputType === 'SOLVE') effectiveDutyKW = secondaryDutyKW;
+        else if (secondary.inputType === 'SOLVE') effectiveDutyKW = primaryDutyKW;
+        else effectiveDutyKW = (primaryDutyKW + secondaryDutyKW) / 2;
+
+        const effectiveDutyW = effectiveDutyKW * 1000;
+
+        const hydro_p = HydraulicSizingEngine.evaluate(V_p_m3s, prop_p, primary.overrideDN);
+        const hydro_s = HydraulicSizingEngine.evaluate(V_s_m3s, prop_s, secondary.overrideDN);
+
+        if (hydro_p.status === 'WARNING') {
+          checks.hydraulics.status = 'WARNING';
+          hydro_p.warnings.forEach(w => checks.hydraulics.messages.push(`[一次側] ${w}`));
+        }
+        if (hydro_s.status === 'WARNING') {
+          checks.hydraulics.status = 'WARNING';
+          hydro_s.warnings.forEach(w => checks.hydraulics.messages.push(`[二次側] ${w}`));
+        }
+
+        const maxAllowableDP = Number(global.maxAllowableDP) || SYSTEM_CONFIG.PRESSURE_DROP.DEFAULT_MAX_ALLOWABLE_KPA;
+        if (hydro_p.estimatedTotalDPKPa > maxAllowableDP) {
+          checks.hydraulics.status = 'WARNING';
+          checks.hydraulics.messages.push(`一次側預估總壓降 (${hydro_p.estimatedTotalDPKPa.toFixed(1)} kPa) 超過允許上限 (${maxAllowableDP} kPa)。`);
+        }
+        if (hydro_s.estimatedTotalDPKPa > maxAllowableDP) {
+          checks.hydraulics.status = 'WARNING';
+          checks.hydraulics.messages.push(`二次側預估總壓降 (${hydro_s.estimatedTotalDPKPa.toFixed(1)} kPa) 超過允許上限 (${maxAllowableDP} kPa)。`);
+        }
+
+        let lmtd = 0;
+        if (deltaT1 > 0 && deltaT2 > 0) {
+          if (Math.abs(deltaT1 - deltaT2) < 1e-4) {
+            lmtd = deltaT1;
+          } else {
+            lmtd = (deltaT1 - deltaT2) / Math.log(deltaT1 / deltaT2);
+          }
+        }
+
+        const baseU = Number(global.estimatedUValue) || SYSTEM_CONFIG.DEFAULT_U_VALUE;
+        const waterProp = FluidPropertyEngine.getProperties(FLUID_TYPES.WATER, 25, 0);
+
+        const condFactor_p = Math.pow(prop_p.thermalConductivity / waterProp.thermalConductivity, 0.6);
+        const viscFactor_p = Math.pow(waterProp.viscosity / prop_p.viscosity, 0.15);
+        const condFactor_s = Math.pow(prop_s.thermalConductivity / waterProp.thermalConductivity, 0.6);
+        const viscFactor_s = Math.pow(waterProp.viscosity / prop_s.viscosity, 0.15);
+
+        const adjustedUValue = baseU * condFactor_p * viscFactor_p * condFactor_s * viscFactor_s;
+
+        const F_factor = SYSTEM_CONFIG.DEFAULT_LMTD_F_FACTOR;
+        const marginPercent = Number(global.designMargin) || SYSTEM_CONFIG.DEFAULT_DESIGN_MARGIN;
+        const foulingR = Number(global.foulingFactor) || 0;
+
+        let requiredAreaM2 = null;
+        let designAreaM2 = null;
+
+        const isPhysicallyValid = errors.length === 0 && balanceStatus !== 'MAJOR_MISMATCH';
+
+        if (isPhysicallyValid && lmtd > 0 && adjustedUValue > 0) {
+          const U_dirty = 1 / ((1 / adjustedUValue) + foulingR);
+          requiredAreaM2 = effectiveDutyW / (U_dirty * lmtd * F_factor);
+          designAreaM2 = requiredAreaM2 * (1 + marginPercent / 100);
+        } else {
+          checks.sizingResult.status = 'FAIL';
+          checks.sizingResult.messages.push('條件不符熱傳物理，停止計算換熱面積。');
+        }
+
+        let overallStatus = 'PASS';
+        if (errors.length > 0 || balanceStatus === 'MAJOR_MISMATCH') overallStatus = 'FAIL';
+        else if (warnings.length > 0 || balanceStatus === 'MINOR_MISMATCH' || checks.hydraulics.status === 'WARNING') overallStatus = 'WARNING';
+
+        return {
+          isValid: isPhysicallyValid,
+          isPrimaryHot,
+          primaryResult: {
+            inletTemp: primary.inletTemp,
+            outletTemp: primary.outletTemp,
+            deltaT: deltaT_p,
+            massFlowKgS: m_p_kgs,
+            volumetricFlowM3h: UnitConverter.m3sToFlow(V_p_m3s, 'm3/h'),
+            volumetricFlowDisplay: UnitConverter.m3sToFlow(V_p_m3s, primary.flowUnit),
+            calculatedDutyKW: primaryDutyKW,
+            modeStatus: primaryModeStatus,
+            fluidProperties: prop_p,
+            hydraulics: hydro_p
+          },
+          secondaryResult: {
+            inletTemp: secondary.inletTemp,
+            outletTemp: secondary.outletTemp,
+            deltaT: deltaT_s,
+            massFlowKgS: m_s_kgs,
+            volumetricFlowM3h: UnitConverter.m3sToFlow(V_s_m3s, 'm3/h'),
+            volumetricFlowDisplay: UnitConverter.m3sToFlow(V_s_m3s, secondary.flowUnit),
+            calculatedDutyKW: secondaryDutyKW,
+            modeStatus: secondaryModeStatus,
+            fluidProperties: prop_s,
+            hydraulics: hydro_s
+          },
+          thermalBalance: {
+            primaryDutyKW,
+            secondaryDutyKW,
+            differenceKW: diffKW,
+            mismatchPercent,
+            status: balanceStatus,
+            effectiveDutyKW
+          },
+          thermalResult: {
+            effectiveDutyKW,
+            designDutyKW: effectiveDutyKW * (1 + marginPercent / 100),
+            hotIn,
+            hotOut,
+            coldIn,
+            coldOut,
+            deltaT1,
+            deltaT2,
+            lmtd,
+            pinchTemp,
+            baseUValue: baseU,
+            adjustedUValue,
+            requiredAreaM2,
+            designAreaM2,
+            designMarginPercent: marginPercent,
+            foulingFactor: foulingR
+          },
+          validation: {
+            status: overallStatus,
+            checks,
+            errors,
+            warnings
+          }
+        };
+      }
+    }
+
+    // ==========================================
+    // 6. BENCHMARK CASES
+    // ==========================================
+    const BENCHMARK_CASES = [
+      {
+        id: 1,
+        name: 'ASHRAE W27 — 標準 Facility Water 系統 (求解二次側)',
+        description: '一次側 32°C→27°C, 30 m³/h；二次側 22°C→27°C 求解流量。',
+        expectedStatus: 'PASS',
+        input: {
+          primary: { fluid: FLUID_TYPES.WATER, concentrationPercent: 0, inletTemp: 32, outletTemp: 27, inputType: 'FLOW', flowRate: 30, flowUnit: 'm3/h', heatDuty: 0, overrideDN: null },
+          secondary: { fluid: FLUID_TYPES.WATER, concentrationPercent: 0, inletTemp: 22, outletTemp: 27, inputType: 'SOLVE', flowRate: 0, flowUnit: 'm3/h', heatDuty: 0, overrideDN: null },
+          global: { estimatedUValue: 4000, designMargin: 10, maxAllowableDP: 50, foulingFactor: 0.00003 }
+        }
+      },
+      {
+        id: 2,
+        name: 'CDU 液冷迴路 — 丙二醇 PG25/水 (求解一次側)',
+        description: '二次側 PG25 22°C→27°C, 30 m³/h；一次側 32°C→27°C 求解水流量。',
+        expectedStatus: 'PASS',
+        input: {
+          primary: { fluid: FLUID_TYPES.WATER, concentrationPercent: 0, inletTemp: 32, outletTemp: 27, inputType: 'SOLVE', flowRate: 0, flowUnit: 'm3/h', heatDuty: 0, overrideDN: null },
+          secondary: { fluid: FLUID_TYPES.PG, concentrationPercent: 25, inletTemp: 22, outletTemp: 27, inputType: 'FLOW', flowRate: 30, flowUnit: 'm3/h', heatDuty: 0, overrideDN: null },
+          global: { estimatedUValue: 4000, designMargin: 10, maxAllowableDP: 50, foulingFactor: 0.00003 }
+        }
+      },
+      {
+        id: 3,
+        name: 'ASHRAE W45 — 高溫晶片直接液冷 (D2C Direct Liquid Cooling)',
+        description: '高溫二次側迴路 40°C→45°C, 50 m³/h；一次側 32°C→42°C。',
+        expectedStatus: 'PASS',
+        input: {
+          primary: { fluid: FLUID_TYPES.WATER, concentrationPercent: 0, inletTemp: 32, outletTemp: 42, inputType: 'SOLVE', flowRate: 0, flowUnit: 'm3/h', heatDuty: 0, overrideDN: null },
+          secondary: { fluid: FLUID_TYPES.WATER, concentrationPercent: 0, inletTemp: 40, outletTemp: 45, inputType: 'FLOW', flowRate: 50, flowUnit: 'm3/h', heatDuty: 0, overrideDN: null },
+          global: { estimatedUValue: 4200, designMargin: 10, maxAllowableDP: 50, foulingFactor: 0.00003 }
+        }
+      },
+      {
+        id: 4,
+        name: '已知 1000 kW 超大型 AI 機架設計熱負荷',
+        description: '指定熱負荷 1000 kW；自動計算雙側高流量與 DN150/DN200 接管口徑。',
+        expectedStatus: 'PASS',
+        input: {
+          primary: { fluid: FLUID_TYPES.WATER, concentrationPercent: 0, inletTemp: 32, outletTemp: 25, inputType: 'DUTY', flowRate: 0, flowUnit: 'm3/h', heatDuty: 1000, overrideDN: null },
+          secondary: { fluid: FLUID_TYPES.WATER, concentrationPercent: 0, inletTemp: 20, outletTemp: 27, inputType: 'DUTY', flowRate: 0, flowUnit: 'm3/h', heatDuty: 1000, overrideDN: null },
+          global: { estimatedUValue: 4000, designMargin: 10, maxAllowableDP: 50, foulingFactor: 0.00003 }
+        }
+      }
+    ];
+
+    // ==========================================
+    // 7. THREE.JS 3D PHE VISUALIZER COMPONENT
+    // ==========================================
+    function PHE3DViewer({ result, isDarkMode }) {
+      const containerRef = useRef(null);
+      const sceneRef = useRef(null);
+      const cameraRef = useRef(null);
+      const rendererRef = useRef(null);
+      const controlsRef = useRef(null);
+      const pheGroupRef = useRef(null);
+      const [autoRotate, setAutoRotate] = useState(false); // 預設關閉自動旋轉，操作更穩定
+      const autoRotateRef = useRef(false);
+
+      // 動態換熱面積與接管直徑
+      const designArea = (result && result.thermalResult && result.thermalResult.designAreaM2) || 8.5;
+      const primaryDN = (result && result.primaryResult && result.primaryResult.hydraulics.selectedDN) || STANDARD_DN_SIZES[3];
+      const secondaryDN = (result && result.secondaryResult && result.secondaryResult.hydraulics.selectedDN) || STANDARD_DN_SIZES[3];
+
+      // 監聽 autoRotate 變更，同步給 ref 與 controls
+      const handleToggleRotate = () => {
+        const nextState = !autoRotate;
+        setAutoRotate(nextState);
+        autoRotateRef.current = nextState;
+        if (controlsRef.current) {
+          controlsRef.current.autoRotate = nextState;
+        }
+      };
+
+      // 初始化 Three.js 場景
+      useEffect(() => {
+        const container = containerRef.current;
+        if (!container) return;
+
+        const width = container.clientWidth || 360;
+        const height = container.clientHeight || 340;
+
+        // 1. 場景
+        const scene = new THREE.Scene();
+        sceneRef.current = scene;
+
+        // 2. 攝影機
+        const camera = new THREE.PerspectiveCamera(40, width / height, 0.1, 100);
+        camera.position.set(4.2, 2.6, 5.0);
+        cameraRef.current = camera;
+
+        // 3. 渲染器
+        const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+        renderer.setSize(width, height);
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+        renderer.shadowMap.enabled = true;
+        renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+        container.innerHTML = '';
+        container.appendChild(renderer.domElement);
+        rendererRef.current = renderer;
+
+        // 4. 控制器 (OrbitControls)
+        let controls = null;
+        if (window.THREE && window.THREE.OrbitControls) {
+          controls = new THREE.OrbitControls(camera, renderer.domElement);
+          controls.enableDamping = true;
+          controls.dampingFactor = 0.08;
+          controls.maxDistance = 20;
+          controls.minDistance = 1.5;
+          controls.autoRotate = autoRotateRef.current;
+          controls.autoRotateSpeed = 1.8;
+          controls.target.set(0, 0, 0);
+          controlsRef.current = controls;
+        }
+
+        // 5. 燈光配置
+        const ambientLight = new THREE.AmbientLight(0xffffff, isDarkMode ? 0.75 : 0.95);
+        scene.add(ambientLight);
+
+        const dirLight1 = new THREE.DirectionalLight(0xffffff, 1.2);
+        dirLight1.position.set(6, 9, 7);
+        dirLight1.castShadow = true;
+        scene.add(dirLight1);
+
+        const dirLight2 = new THREE.DirectionalLight(0x94a3b8, 0.6);
+        dirLight2.position.set(-6, -4, -5);
+        scene.add(dirLight2);
+
+        // 主 PHE 實體群組
+        const pheGroup = new THREE.Group();
+        scene.add(pheGroup);
+        pheGroupRef.current = pheGroup;
+
+        // 動畫渲染迴圈 - 修正 autoRotate 閉包 bug
+        let animationFrameId;
+        const animate = () => {
+          animationFrameId = requestAnimationFrame(animate);
+          if (controlsRef.current) {
+            controlsRef.current.autoRotate = autoRotateRef.current;
+            controlsRef.current.update();
+          }
+          if (rendererRef.current && sceneRef.current && cameraRef.current) {
+            rendererRef.current.render(sceneRef.current, cameraRef.current);
+          }
+        };
+        animate();
+
+        // 響應式調整視窗
+        const handleResize = () => {
+          if (!container || !cameraRef.current || !rendererRef.current) return;
+          const w = container.clientWidth;
+          const h = container.clientHeight || 340;
+          cameraRef.current.aspect = w / h;
+          cameraRef.current.updateProjectionMatrix();
+          rendererRef.current.setSize(w, h);
+        };
+        window.addEventListener('resize', handleResize);
+
+        return () => {
+          cancelAnimationFrame(animationFrameId);
+          window.removeEventListener('resize', handleResize);
+          if (renderer.domElement && renderer.domElement.parentNode) {
+            renderer.domElement.parentNode.removeChild(renderer.domElement);
+          }
+          renderer.dispose();
+        };
+      }, []);
+
+      // 當選型計算結果 (換熱面積、管徑口徑、深色模式) 改變時，動態重構 3D 模型
+      useEffect(() => {
+        const pheGroup = pheGroupRef.current;
+        if (!pheGroup) return;
+
+        // 清空既有幾何體
+        while (pheGroup.children.length > 0) {
+          const obj = pheGroup.children[0];
+          if (obj.geometry) obj.geometry.dispose();
+          if (obj.material) {
+            if (Array.isArray(obj.material)) obj.material.forEach(m => m.dispose());
+            else obj.material.dispose();
+          }
+          pheGroup.remove(obj);
+        }
+
+        // ==========================================================
+        // 工業級板框動態系列匹配 (消除大口徑/大熱負荷下的接管重疊碰撞)
+        // ==========================================================
+        const maxPortDiameterM = Math.max(primaryDN.diameterM, secondaryDN.diameterM);
+
+        // 依據接管直徑保證管口中心距與法蘭寬度不干涉 (幾何約束):
+        // 最小板寬需求 W_min = 2 * 法蘭直徑 (1.6 * D) + 中間螺桿安全間隙 (0.15m)
+        const flangeEstDia = maxPortDiameterM * 1.55;
+        const minClearanceWidth = flangeEstDia * 2 + 0.18;
+
+        // 依換熱面積需求調整板片基準尺寸 (真實板熱標準單板面積從 0.1 m² 到 1.8 m²)
+        let basePlateArea = 0.25;
+        if (designArea > 60 || maxPortDiameterM >= 0.20) {
+          basePlateArea = 1.3; // 超大型板框 (如 DN200~DN300, 適合 MW 級大熱負荷)
+        } else if (designArea > 25 || maxPortDiameterM >= 0.125) {
+          basePlateArea = 0.8; // 大型板框 (DN125~DN150)
+        } else if (designArea > 10 || maxPortDiameterM >= 0.08) {
+          basePlateArea = 0.45; // 中型板框 (DN80~DN100)
+        }
+
+        // 依單板面積計算板寬 W 與板高 H (標準長寬比約 2.4 : 1)
+        let calcW = Math.sqrt(basePlateArea / 2.4);
+        let calcH = calcW * 2.4;
+
+        // 幾何防干涉強制約束：板寬不得小於兩側法蘭排布的最小安全寬度
+        const W = Math.max(minClearanceWidth, calcW * 1.25);
+        // 板高不得小於法蘭與上下導桿的安全高度
+        const minClearanceHeight = flangeEstDia * 2 + 0.55;
+        const H = Math.max(minClearanceHeight, calcH * 1.15, W * 2.1);
+
+        // 板片總數量預估 (含換熱裕量)
+        const singlePlateNetArea = W * 0.75 * H * 0.75;
+        const rawPlates = Math.round(designArea / Math.max(0.15, singlePlateNetArea) * 1.3);
+        const plateCount = Math.min(75, Math.max(16, rawPlates));
+        
+        // 板片間距與板包厚度 (Plate Pack Length)
+        const platePitch = 0.022;
+        const packLength = plateCount * platePitch;
+        const frameThickness = Math.max(0.08, H * 0.035); // 壓緊端板隨尺寸增厚
+
+        // 動態調整相機距離，確保大尺寸板熱不會跑出視角
+        if (cameraRef.current && controlsRef.current) {
+          const maxDim = Math.max(H, packLength, W);
+          const targetDist = maxDim * 2.1;
+          cameraRef.current.position.set(targetDist * 0.75, targetDist * 0.45, targetDist * 0.95);
+          controlsRef.current.minDistance = maxDim * 0.8;
+          controlsRef.current.maxDistance = maxDim * 4.5;
+          controlsRef.current.update();
+        }
+
+        // 材質定義
+        const framePlateColor = isDarkMode ? 0x1e293b : 0x334155;
+        const frameMat = new THREE.MeshStandardMaterial({
+          color: framePlateColor,
+          metalness: 0.65,
+          roughness: 0.35
+        });
+
+        const tieRodMat = new THREE.MeshStandardMaterial({
+          color: 0x94a3b8,
+          metalness: 0.85,
+          roughness: 0.2
+        });
+
+        const plateHotMat = new THREE.MeshStandardMaterial({
+          color: 0xea580c, // 一次側/熱側 橙紅
+          metalness: 0.4,
+          roughness: 0.5
+        });
+
+        const plateColdMat = new THREE.MeshStandardMaterial({
+          color: 0x0891b2, // 二次側/冷側 冰青
+          metalness: 0.4,
+          roughness: 0.5
+        });
+
+        const steelPlateMat = new THREE.MeshStandardMaterial({
+          color: isDarkMode ? 0x475569 : 0x64748b,
+          metalness: 0.7,
+          roughness: 0.3
+        });
+
+        // 1. 前固定壓緊板 (Front Fixed Head Plate)
+        const frontPlateGeo = new THREE.BoxGeometry(W, H, frameThickness);
+        const frontPlate = new THREE.Mesh(frontPlateGeo, frameMat);
+        frontPlate.position.set(0, 0, packLength / 2 + frameThickness / 2);
+        frontPlate.castShadow = true;
+        frontPlate.receiveShadow = true;
+        pheGroup.add(frontPlate);
+
+        // 2. 後活動壓緊板 (Back Movable Pressure Plate / Follower)
+        const backPlateGeo = new THREE.BoxGeometry(W, H, frameThickness);
+        const backPlate = new THREE.Mesh(backPlateGeo, frameMat);
+        backPlate.position.set(0, 0, -packLength / 2 - frameThickness / 2);
+        backPlate.castShadow = true;
+        backPlate.receiveShadow = true;
+        pheGroup.add(backPlate);
+
+        // 3. 中間板包堆疊 (Plate Pack)
+        const singlePlateGeo = new THREE.BoxGeometry(W * 0.90, H * 0.90, 0.006);
+        for (let i = 0; i < plateCount; i++) {
+          const z = (packLength / 2) - (i * platePitch) - (platePitch / 2);
+          const mat = i % 2 === 0 ? plateHotMat : plateColdMat;
+          const plateMesh = new THREE.Mesh(singlePlateGeo, mat);
+          plateMesh.position.set(0, 0, z);
+          pheGroup.add(plateMesh);
+        }
+
+        // 4. 接管法蘭生成器 (Nozzle & Flange Builder)
+        // 依據各自 DN 口徑真實半徑縮放
+        const pRadius = primaryDN.diameterM * 0.5;
+        const sRadius = secondaryDN.diameterM * 0.5;
+        const nozzleLength = Math.max(0.24, maxPortDiameterM * 1.3);
+
+        const buildNozzle = (radius, colorHex, posX, posY, label) => {
+          const nozzleSubGroup = new THREE.Group();
+          
+          // 管頸 (Neck)
+          const pipeGeo = new THREE.CylinderGeometry(radius, radius, nozzleLength, 28);
+          const pipeMat = new THREE.MeshStandardMaterial({
+            color: colorHex,
+            metalness: 0.65,
+            roughness: 0.3
+          });
+          const pipe = new THREE.Mesh(pipeGeo, pipeMat);
+          pipe.rotation.x = Math.PI / 2;
+          pipe.position.set(0, 0, nozzleLength / 2);
+          pipe.castShadow = true;
+          nozzleSubGroup.add(pipe);
+
+          // 法蘭環 (Flange Disk)
+          const flangeRadius = radius * 1.55;
+          const flangeThick = Math.max(0.035, radius * 0.3);
+          const flangeGeo = new THREE.CylinderGeometry(flangeRadius, flangeRadius, flangeThick, 28);
+          const flangeMat = new THREE.MeshStandardMaterial({
+            color: colorHex,
+            metalness: 0.75,
+            roughness: 0.25
+          });
+          const flange = new THREE.Mesh(flangeGeo, flangeMat);
+          flange.rotation.x = Math.PI / 2;
+          flange.position.set(0, 0, nozzleLength);
+          flange.castShadow = true;
+          nozzleSubGroup.add(flange);
+
+          // 法蘭孔螺孔示意環 (Inner Bore)
+          const boreGeo = new THREE.CylinderGeometry(radius * 0.85, radius * 0.85, flangeThick + 0.005, 24);
+          const boreMat = new THREE.MeshBasicMaterial({ color: 0x0f172a });
+          const bore = new THREE.Mesh(boreGeo, boreMat);
+          bore.rotation.x = Math.PI / 2;
+          bore.position.set(0, 0, nozzleLength + 0.002);
+          nozzleSubGroup.add(bore);
+
+          nozzleSubGroup.position.set(posX, posY, packLength / 2 + frameThickness);
+          return nozzleSubGroup;
+        };
+
+        // 關鍵計算：精確且充足的管口中心間距，絕對不碰撞
+        const maxR = Math.max(pRadius, sRadius);
+        const portOffsetX = Math.max(maxR * 1.6 + 0.05, W * 0.26);
+        const portOffsetY = Math.max(maxR * 1.6 + 0.08, H * 0.35);
+
+        // P1 一次側入口 (左上 - 橙色高溫)
+        pheGroup.add(buildNozzle(pRadius, 0xea580c, -portOffsetX, portOffsetY, 'P1'));
+        // P2 一次側出口 (左下 - 橙紅降溫)
+        pheGroup.add(buildNozzle(pRadius, 0xc2410c, -portOffsetX, -portOffsetY, 'P2'));
+        // S2 二次側出口 (右上 - 青色升溫)
+        pheGroup.add(buildNozzle(sRadius, 0x0891b2, portOffsetX, portOffsetY, 'S2'));
+        // S1 二次側入口 (右下 - 冰青低溫)
+        pheGroup.add(buildNozzle(sRadius, 0x0e7490, portOffsetX, -portOffsetY, 'S1'));
+
+        // 5. 上下導向承載桿 (Top Carrying Bar & Bottom Guide Bar)
+        const totalSpanZ = packLength + frameThickness * 2 + 0.6;
+        const barRadius = Math.max(0.035, H * 0.018);
+        const barGeo = new THREE.CylinderGeometry(barRadius, barRadius, totalSpanZ, 16);
+        
+        const topBar = new THREE.Mesh(barGeo, steelPlateMat);
+        topBar.rotation.x = Math.PI / 2;
+        topBar.position.set(0, H / 2 + barRadius + 0.03, 0);
+        pheGroup.add(topBar);
+
+        const bottomBar = new THREE.Mesh(barGeo, steelPlateMat);
+        bottomBar.rotation.x = Math.PI / 2;
+        bottomBar.position.set(0, -H / 2 - barRadius - 0.03, 0);
+        pheGroup.add(bottomBar);
+
+        // 6. 支撐立柱與腳座 (End Support Column & Feet)
+        const colH = H + 0.35;
+        const colGeo = new THREE.BoxGeometry(0.09, colH, 0.09);
+        const backCol = new THREE.Mesh(colGeo, frameMat);
+        backCol.position.set(0, 0, -packLength / 2 - frameThickness - 0.22);
+        pheGroup.add(backCol);
+
+        // 前後支撐底座 (Foot Pads)
+        const footGeo = new THREE.BoxGeometry(W * 1.18, 0.06, 0.22);
+        const frontFoot = new THREE.Mesh(footGeo, frameMat);
+        frontFoot.position.set(0, -H / 2 - 0.12, packLength / 2 + frameThickness / 2);
+        pheGroup.add(frontFoot);
+
+        const backFoot = new THREE.Mesh(footGeo, frameMat);
+        backFoot.position.set(0, -H / 2 - 0.12, -packLength / 2 - frameThickness - 0.22);
+        pheGroup.add(backFoot);
+
+        // 7. 兩側夾緊側拉桿 (Side Tightening Tie Bolts)
+        const tieBoltRadius = Math.max(0.016, H * 0.009);
+        const boltSpanZ = packLength + frameThickness * 2 + 0.24;
+        const boltGeo = new THREE.CylinderGeometry(tieBoltRadius, tieBoltRadius, boltSpanZ, 12);
+        
+        const boltX = W / 2 + 0.045;
+        const boltYs = [H * 0.38, H * 0.13, -H * 0.13, -H * 0.38];
+
+        boltYs.forEach(y => {
+          // 左側螺桿
+          const leftBolt = new THREE.Mesh(boltGeo, tieRodMat);
+          leftBolt.rotation.x = Math.PI / 2;
+          leftBolt.position.set(-boltX, y, 0);
+          pheGroup.add(leftBolt);
+
+          // 右側螺桿
+          const rightBolt = new THREE.Mesh(boltGeo, tieRodMat);
+          rightBolt.rotation.x = Math.PI / 2;
+          rightBolt.position.set(boltX, y, 0);
+          pheGroup.add(rightBolt);
+        });
+
+      }, [designArea, primaryDN, secondaryDN, isDarkMode]);
+
+      // 重設視角控制器
+      const resetCameraView = () => {
+        if (cameraRef.current && controlsRef.current) {
+          const maxDim = Math.max(2.0, Math.sqrt(designArea) * 0.4);
+          const targetDist = maxDim * 2.2;
+          cameraRef.current.position.set(targetDist * 0.75, targetDist * 0.45, targetDist * 0.95);
+          controlsRef.current.target.set(0, 0, 0);
+          controlsRef.current.update();
+        }
+      };
+
+      return (
+        <div className="relative w-full h-[340px] bg-slate-900/5 dark:bg-slate-950/90 rounded-xl overflow-hidden border border-slate-200 dark:border-slate-800 shadow-inner flex flex-col justify-between">
+          
+          {/* 3D 畫布頂端 HUD 狀態列 */}
+          <div className="absolute top-2 left-2 right-2 z-10 flex items-center justify-between pointer-events-none">
+            <div className="flex items-center gap-1.5 bg-white/90 dark:bg-slate-900/90 backdrop-blur-md px-2.5 py-1 rounded-md border border-slate-200 dark:border-slate-800 shadow-xs pointer-events-auto">
+              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+              <span className="text-[10px] font-mono font-bold text-slate-700 dark:text-slate-200">
+                PHE 3D 工業幾何連動引擎
+              </span>
+            </div>
+
+            {/* 操作控制按鈕 - 可即時暫停/開始旋轉 */}
+            <div className="flex items-center gap-1.5 pointer-events-auto">
+              <button
+                type="button"
+                onClick={handleToggleRotate}
+                className={`text-[10px] font-mono px-2.5 py-1 rounded border font-bold transition-all shadow-xs ${
+                  autoRotate 
+                    ? 'bg-amber-500 text-white border-amber-600 dark:bg-amber-600 dark:border-amber-500' 
+                    : 'bg-white/90 text-slate-700 border-slate-300 dark:bg-slate-800/90 dark:text-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-700'
+                }`}
+                title={autoRotate ? '點擊暫停自動旋轉' : '點擊開始自動旋轉'}
+              >
+                {autoRotate ? '⏸ 暫停旋轉' : '▶ 開始旋轉'}
+              </button>
+
+              <button
+                type="button"
+                onClick={resetCameraView}
+                className="text-[10px] font-mono px-2 py-1 rounded bg-white/90 dark:bg-slate-800/90 hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 border border-slate-300 dark:border-slate-700 transition-all shadow-xs"
+                title="重置視角"
+              >
+                ↺ 重設視角
+              </button>
+            </div>
+          </div>
+
+          {/* Three.js Canvas 掛載節點 */}
+          <div ref={containerRef} className="w-full h-full cursor-grab active:cursor-grabbing" />
+
+          {/* 3D 底部幾何資訊面板 */}
+          <div className="absolute bottom-2 left-2 right-2 z-10 flex flex-wrap items-center justify-between gap-1.5 pointer-events-none">
+            <div className="flex items-center gap-2 bg-white/90 dark:bg-slate-900/90 backdrop-blur-md px-2.5 py-1 rounded-md border border-slate-200 dark:border-slate-800 text-[10px] font-mono text-slate-600 dark:text-slate-300 shadow-xs pointer-events-auto">
+              <span>換熱面積: <strong className="text-emerald-600 dark:text-emerald-400">{designArea.toFixed(2)} m²</strong></span>
+              <span className="text-slate-300 dark:text-slate-700">|</span>
+              <span className="text-hot-600 dark:text-hot-400">P1/P2: <strong>{primaryDN.dn}</strong></span>
+              <span className="text-slate-300 dark:text-slate-700">|</span>
+              <span className="text-cold-600 dark:text-cold-400">S1/S2: <strong>{secondaryDN.dn}</strong></span>
+            </div>
+
+            <div className="text-[9px] font-mono text-slate-500 dark:text-slate-400 bg-white/70 dark:bg-slate-900/70 backdrop-blur-xs px-2 py-0.5 rounded border border-slate-200/60 dark:border-slate-800/60 hidden sm:block">
+              🖱️ 左鍵旋轉 | 右鍵平移 | 滾輪縮放
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    // ==========================================
+    // 8. SVG T-Q PROFILE CHART
+    // ==========================================
+    function TQProfileChart({ result, isDarkMode }) {
+      if (!result || !result.isValid) {
+        return (
+          <div className="panel-card p-6 text-center text-xs text-slate-400 font-mono">
+            請修正輸入條件以繪製 T-Q 換熱溫差曲線圖
+          </div>
+        );
+      }
+
+      const { hotIn, hotOut, coldIn, coldOut, effectiveDutyKW, pinchTemp, deltaT1, deltaT2 } = result.thermalResult;
+
+      const width = 600;
+      const height = 220;
+      const margin = { top: 30, right: 40, bottom: 40, left: 50 };
+
+      const plotW = width - margin.left - margin.right;
+      const plotH = height - margin.top - margin.bottom;
+
+      const maxT = Math.max(hotIn, hotOut, coldIn, coldOut) + 3;
+      const minT = Math.min(hotIn, hotOut, coldIn, coldOut) - 3;
+      const rangeT = maxT - minT || 1;
+
+      const scaleX = (qPercent) => margin.left + (qPercent / 100) * plotW;
+      const scaleY = (tempC) => margin.top + plotH - ((tempC - minT) / rangeT) * plotH;
+
+      const points = [0, 25, 50, 75, 100].map(pct => {
+        const qFrac = pct / 100;
+        const hotT = hotOut + (hotIn - hotOut) * qFrac;
+        const coldT = coldIn + (coldOut - coldIn) * qFrac;
+        return { pct, qFrac, hotT, coldT, deltaT: hotT - coldT };
+      });
+
+      const hotPathD = `M ${scaleX(0)} ${scaleY(hotOut)} L ${scaleX(100)} ${scaleY(hotIn)}`;
+      const coldPathD = `M ${scaleX(0)} ${scaleY(coldIn)} L ${scaleX(100)} ${scaleY(coldOut)}`;
+
+      const gridColor = isDarkMode ? "#21262d" : "#e2e8f0";
+      const axisColor = isDarkMode ? "#30363d" : "#94a3b8";
+      const textColor = isDarkMode ? "#94a3b8" : "#64748b";
+
+      return (
+        <div className="panel-card p-4 space-y-2">
+          <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-2">
+            <div className="flex items-center gap-2">
+              <span className="w-2.5 h-2.5 rounded-full bg-amber-500"></span>
+              <h3 className="text-xs font-bold uppercase tracking-wider text-slate-800 dark:text-slate-200">
+                T-Q (溫度-熱負荷) 逆流剖面分佈圖
+              </h3>
+            </div>
+            <span className="text-[10px] font-mono text-emerald-700 bg-emerald-50 dark:bg-emerald-950/60 dark:text-emerald-400 px-2 py-0.5 rounded border border-emerald-200 dark:border-emerald-800/40 font-bold">
+              Pinch 接近溫差: {pinchTemp.toFixed(1)} °C
+            </span>
+          </div>
+
+          <div className="relative w-full overflow-x-auto bg-slate-50 dark:bg-slate-950 rounded-lg p-2 border border-slate-200 dark:border-slate-800">
+            <svg viewBox={`0 0 ${width} ${height}`} className="w-full h-auto max-h-64 select-none">
+              {[0, 25, 50, 75, 100].map(pct => (
+                <g key={pct}>
+                  <line
+                    x1={scaleX(pct)}
+                    y1={margin.top}
+                    x2={scaleX(pct)}
+                    y2={margin.top + plotH}
+                    stroke={gridColor}
+                    strokeDasharray="3 3"
+                  />
+                  <text
+                    x={scaleX(pct)}
+                    y={height - 12}
+                    fill={textColor}
+                    fontSize="10"
+                    fontFamily="JetBrains Mono"
+                    textAnchor="middle"
+                  >
+                    {pct}%
+                  </text>
+                </g>
+              ))}
+
+              <line x1={margin.left} y1={margin.top} x2={margin.left} y2={margin.top + plotH} stroke={axisColor} />
+              <line x1={margin.left} y1={margin.top + plotH} x2={margin.left + plotW} y2={margin.top + plotH} stroke={axisColor} />
+
+              <path d={hotPathD} fill="none" stroke="#ea580c" strokeWidth="3" strokeLinecap="round" />
+              <path d={coldPathD} fill="none" stroke="#0891b2" strokeWidth="3" strokeLinecap="round" />
+
+              {points.map((p, idx) => (
+                <g key={idx}>
+                  <circle cx={scaleX(p.pct)} cy={scaleY(p.hotT)} r="4" fill="#ea580c" />
+                  <text
+                    x={scaleX(p.pct)}
+                    y={scaleY(p.hotT) - 8}
+                    fill="#c2410c"
+                    fontSize="9"
+                    fontFamily="JetBrains Mono"
+                    fontWeight="bold"
+                    textAnchor="middle"
+                    className="dark:fill-orange-400"
+                  >
+                    {p.hotT.toFixed(1)}°C
+                  </text>
+
+                  <circle cx={scaleX(p.pct)} cy={scaleY(p.coldT)} r="4" fill="#0891b2" />
+                  <text
+                    x={scaleX(p.pct)}
+                    y={scaleY(p.coldT) + 14}
+                    fill="#0e7490"
+                    fontSize="9"
+                    fontFamily="JetBrains Mono"
+                    fontWeight="bold"
+                    textAnchor="middle"
+                    className="dark:fill-cyan-400"
+                  >
+                    {p.coldT.toFixed(1)}°C
+                  </text>
+
+                  <line
+                    x1={scaleX(p.pct)}
+                    y1={scaleY(p.hotT)}
+                    x2={scaleX(p.pct)}
+                    y2={scaleY(p.coldT)}
+                    stroke={textColor}
+                    strokeDasharray="2 2"
+                  />
+                </g>
+              ))}
+
+              <text x={scaleX(100) + 5} y={scaleY(hotIn) + 3} fill="#ea580c" fontSize="10" fontWeight="bold">
+                熱側入口 (P1)
+              </text>
+              <text x={scaleX(0) - 45} y={scaleY(hotOut) + 3} fill="#ea580c" fontSize="10" fontWeight="bold">
+                熱側出口 (P2)
+              </text>
+              <text x={scaleX(100) + 5} y={scaleY(coldOut) + 3} fill="#0891b2" fontSize="10" fontWeight="bold">
+                冷側出口 (S2)
+              </text>
+              <text x={scaleX(0) - 45} y={scaleY(coldIn) + 3} fill="#0891b2" fontSize="10" fontWeight="bold">
+                冷側入口 (S1)
+              </text>
+            </svg>
+          </div>
+          
+          <div className="flex justify-between text-[11px] font-mono text-slate-500 dark:text-slate-400 px-1 pt-1">
+            <span>端點 ΔT1 = {deltaT1.toFixed(1)} °C (P1 熱進 - S2 冷出)</span>
+            <span>端點 ΔT2 = {deltaT2.toFixed(1)} °C (P2 熱出 - S1 冷進)</span>
+          </div>
+        </div>
+      );
+    }
+
+    // ==========================================
+    // 9. INTERACTIVE 4-PORT PHE DIAGRAM (WITH 3D VIEW TOGGLE)
+    // ==========================================
+    function InteractivePHEDiagram({ inputState, result, onTempChange, onDNChange, isDarkMode }) {
+      const [viewMode, setViewMode] = useState('3D'); // '3D' | '2D'
+      const p = inputState.primary;
+      const s = inputState.secondary;
+      const res = result.primaryResult ? result : null;
+
+      const pHydro = res ? res.primaryResult.hydraulics : null;
+      const sHydro = res ? res.secondaryResult.hydraulics : null;
+
+      return (
+        <div className="panel-card p-4 md:p-5 flex flex-col justify-between space-y-3">
+          <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-2">
+            <div className="flex items-center gap-2">
+              <span className="w-2.5 h-2.5 rounded-full bg-brand-500"></span>
+              <h3 className="font-bold text-xs uppercase tracking-wider text-slate-800 dark:text-slate-200">
+                中央流程系統圖 (1-1 逆流 PHE 佈局 & 管口選型)
+              </h3>
+            </div>
+
+            {/* 視圖切換按鈕 3D / 2D */}
+            <div className="flex items-center bg-slate-100 dark:bg-slate-900 p-0.5 rounded-lg border border-slate-200 dark:border-slate-800 text-[10px] font-mono">
+              <button
+                type="button"
+                onClick={() => setViewMode('3D')}
+                className={`px-2.5 py-1 rounded font-bold transition-all ${
+                  viewMode === '3D'
+                    ? 'bg-brand-600 text-white shadow-xs'
+                    : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
+                }`}
+              >
+                🎮 3D 實體模型
+              </button>
+              <button
+                type="button"
+                onClick={() => setViewMode('2D')}
+                className={`px-2.5 py-1 rounded font-bold transition-all ${
+                  viewMode === '2D'
+                    ? 'bg-brand-600 text-white shadow-xs'
+                    : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
+                }`}
+              >
+                📐 2D 流程管線
+              </button>
+            </div>
+          </div>
+
+          {/* 網格改版：精確 12 欄格，左右欄徹底防止溢出，中欄 3D 模型寬敞 */}
+          <div className="p-3.5 bg-slate-50 dark:bg-slate-950 rounded-xl border border-slate-200 dark:border-slate-800 grid grid-cols-1 md:grid-cols-12 gap-3 items-stretch">
+            
+            {/* 左側：一次側 (Primary Side: P1 Top Inlet, P2 Bottom Outlet) - 佔 3.5 欄 */}
+            <div className="md:col-span-3 flex flex-col justify-between gap-3">
+              {/* Primary Inlet Port (P1 Top Inlet) */}
+              <div className="p-3 rounded-lg bg-white dark:bg-slate-900 border border-hot-500/40 shadow-xs flex flex-col gap-2">
+                <div className="flex items-center justify-between gap-1">
+                  <span className="text-[10px] font-bold text-hot-600 dark:text-hot-400 uppercase flex items-center gap-1 truncate">
+                    <span className="w-2 h-2 rounded-full bg-hot-500 shrink-0"></span> P1 一次側入口
+                  </span>
+                  <span className="text-[10px] font-mono text-hot-700 dark:text-hot-300 font-bold shrink-0">
+                    {pHydro ? pHydro.selectedDN.dn : 'DN50'}
+                  </span>
+                </div>
+
+                <div className="space-y-1.5">
+                  <div className="flex items-center gap-1.5">
+                    <input
+                      type="number"
+                      step="0.1"
+                      value={p.inletTemp}
+                      onChange={(e) => onTempChange('primary', 'inletTemp', parseFloat(e.target.value) || 0)}
+                      className="w-full input-field rounded px-2 py-1 text-xs font-mono text-hot-600 dark:text-hot-300 font-bold"
+                    />
+                    <span className="text-xs font-mono text-slate-500 dark:text-slate-400 shrink-0">°C</span>
+                  </div>
+                  <select
+                    value={p.overrideDN || (pHydro ? pHydro.recommendedDN.dn : 'DN50')}
+                    onChange={(e) => onDNChange('primary', e.target.value)}
+                    className="w-full text-[10px] font-mono input-field rounded px-1.5 py-1 bg-white dark:bg-slate-950 text-hot-600 dark:text-hot-300 border-hot-500/30"
+                  >
+                    {STANDARD_DN_SIZES.map(d => (
+                      <option key={d.dn} value={d.dn}>{d.dn} ({d.inches})</option>
+                    ))}
+                  </select>
+                </div>
+
+                {pHydro && (
+                  <div className="text-[10px] font-mono text-slate-500 dark:text-slate-400 flex flex-wrap justify-between pt-1 border-t border-slate-100 dark:border-slate-800">
+                    <span>流速: <strong className={pHydro.status === 'WARNING' ? 'text-amber-600' : 'text-slate-700 dark:text-slate-200'}>{pHydro.velocityMS.toFixed(2)} m/s</strong></span>
+                    <span>壓降: {pHydro.estimatedTotalDPKPa.toFixed(1)} kPa</span>
+                  </div>
+                )}
+              </div>
+
+              {/* Primary Outlet Port (P2 Bottom Outlet) */}
+              <div className="p-3 rounded-lg bg-white dark:bg-slate-900 border border-hot-500/20 shadow-xs flex flex-col gap-2">
+                <div className="flex items-center justify-between gap-1">
+                  <span className="text-[10px] font-bold text-hot-600/80 dark:text-hot-500 uppercase flex items-center gap-1 truncate">
+                    <span className="w-2 h-2 rounded-full bg-hot-500/60 shrink-0"></span> P2 一次側出口
+                  </span>
+                  <span className="text-[10px] font-mono text-hot-600 dark:text-hot-400 font-bold shrink-0">
+                    {pHydro ? pHydro.selectedDN.dn : 'DN50'}
+                  </span>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <input
+                    type="number"
+                    step="0.1"
+                    value={p.outletTemp}
+                    onChange={(e) => onTempChange('primary', 'outletTemp', parseFloat(e.target.value) || 0)}
+                    className="w-full input-field rounded px-2 py-1 text-xs font-mono text-hot-600 dark:text-hot-400 font-bold"
+                  />
+                  <span className="text-xs font-mono text-slate-500 dark:text-slate-400 shrink-0">°C</span>
+                </div>
+              </div>
+            </div>
+
+            {/* 中央：3D 實體模型 或 2D 流程向量圖 - 佔 6 欄 */}
+            <div className="md:col-span-6 flex flex-col items-center justify-center min-w-0">
+              {viewMode === '3D' ? (
+                <div className="w-full flex flex-col">
+                  <PHE3DViewer result={result} isDarkMode={isDarkMode} />
+                  <div className="mt-2 text-[10px] font-mono text-slate-600 dark:text-slate-400 flex items-center justify-center gap-4 font-semibold">
+                    <span className="text-hot-600 dark:text-hot-400 flex items-center gap-1">
+                      <span className="w-2 h-2 rounded-full bg-hot-500"></span> P1/P2 一次側流向 (左)
+                    </span>
+                    <span className="text-cold-600 dark:text-cold-400 flex items-center gap-1">
+                      <span className="w-2 h-2 rounded-full bg-cold-500"></span> S1/S2 二次側流向 (右)
+                    </span>
+                  </div>
+                </div>
+              ) : (
+                <div className="w-full h-[340px] flex flex-col items-center justify-center">
+                  <div className="w-48 h-64 bg-white dark:bg-slate-900 border-2 border-slate-300 dark:border-slate-700 rounded-lg p-2 relative flex items-center justify-center shadow-xs overflow-hidden">
+                    <div className="w-full h-full border-x border-dashed border-slate-300 dark:border-slate-700 flex justify-around items-center px-1">
+                      {[...Array(12)].map((_, i) => (
+                        <div key={i} className={`h-full w-0.5 rounded-full ${i % 2 === 0 ? 'bg-hot-500/60' : 'bg-cold-500/60'}`}></div>
+                      ))}
+                    </div>
+                    <div className="absolute inset-0 flex items-center justify-center bg-white/80 dark:bg-slate-900/80 backdrop-blur-[1px]">
+                      <div className="text-center p-2">
+                        <div className="text-[10px] font-bold text-slate-500 dark:text-slate-400 tracking-widest uppercase">PHE 2D PLATE PACK</div>
+                        <div className="text-sm text-brand-600 dark:text-sky-400 font-mono font-bold mt-1">
+                          {res && res.thermalResult.effectiveDutyKW ? `${res.thermalResult.effectiveDutyKW.toFixed(1)} kW` : '—'}
+                        </div>
+                        <div className="text-[10px] font-mono text-slate-500 dark:text-slate-400 mt-0.5">
+                          {res && res.thermalResult.designAreaM2 ? `設計面積 = ${res.thermalResult.designAreaM2.toFixed(2)} m²` : ''}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="mt-2 text-[10px] font-mono text-slate-600 dark:text-slate-400 flex items-center gap-4 font-semibold">
+                    <span className="text-hot-600 dark:text-hot-400">↓ 一次側流向 (左)</span>
+                    <span className="text-cold-600 dark:text-cold-400">↑ 二次側流向 (右)</span>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* 右側：二次側 (Secondary Side: S2 Top Outlet, S1 Bottom Inlet) - 佔 3 欄 */}
+            <div className="md:col-span-3 flex flex-col justify-between gap-3">
+              {/* Secondary Outlet Port (S2 Top Outlet) */}
+              <div className="p-3 rounded-lg bg-white dark:bg-slate-900 border border-cold-500/40 shadow-xs flex flex-col gap-2">
+                <div className="flex items-center justify-between gap-1">
+                  <span className="text-[10px] font-bold text-cold-600 dark:text-cold-400 uppercase flex items-center gap-1 truncate">
+                    <span className="w-2 h-2 rounded-full bg-cold-500 shrink-0"></span> S2 二次側出口
+                  </span>
+                  <span className="text-[10px] font-mono text-cold-700 dark:text-cold-300 font-bold shrink-0">
+                    {sHydro ? sHydro.selectedDN.dn : 'DN50'}
+                  </span>
+                </div>
+
+                <div className="space-y-1.5">
+                  <div className="flex items-center gap-1.5">
+                    <input
+                      type="number"
+                      step="0.1"
+                      value={s.outletTemp}
+                      onChange={(e) => onTempChange('secondary', 'outletTemp', parseFloat(e.target.value) || 0)}
+                      className="w-full input-field rounded px-2 py-1 text-xs font-mono text-cold-600 dark:text-cold-300 font-bold"
+                    />
+                    <span className="text-xs font-mono text-slate-500 dark:text-slate-400 shrink-0">°C</span>
+                  </div>
+                  <select
+                    value={s.overrideDN || (sHydro ? sHydro.recommendedDN.dn : 'DN50')}
+                    onChange={(e) => onDNChange('secondary', e.target.value)}
+                    className="w-full text-[10px] font-mono input-field rounded px-1.5 py-1 bg-white dark:bg-slate-950 text-cold-600 dark:text-cold-300 border-cold-500/30"
+                  >
+                    {STANDARD_DN_SIZES.map(d => (
+                      <option key={d.dn} value={d.dn}>{d.dn} ({d.inches})</option>
+                    ))}
+                  </select>
+                </div>
+
+                {sHydro && (
+                  <div className="text-[10px] font-mono text-slate-500 dark:text-slate-400 flex flex-wrap justify-between pt-1 border-t border-slate-100 dark:border-slate-800">
+                    <span>流速: <strong className={sHydro.status === 'WARNING' ? 'text-amber-600' : 'text-slate-700 dark:text-slate-200'}>{sHydro.velocityMS.toFixed(2)} m/s</strong></span>
+                    <span>壓降: {sHydro.estimatedTotalDPKPa.toFixed(1)} kPa</span>
+                  </div>
+                )}
+              </div>
+
+              {/* Secondary Inlet Port (S1 Bottom Inlet) */}
+              <div className="p-3 rounded-lg bg-white dark:bg-slate-900 border border-cold-500/20 shadow-xs flex flex-col gap-2">
+                <div className="flex items-center justify-between gap-1">
+                  <span className="text-[10px] font-bold text-cold-600/80 dark:text-cold-500 uppercase flex items-center gap-1 truncate">
+                    <span className="w-2 h-2 rounded-full bg-cold-500/60 shrink-0"></span> S1 二次側入口
+                  </span>
+                  <span className="text-[10px] font-mono text-cold-600 dark:text-cold-400 font-bold shrink-0">
+                    {sHydro ? sHydro.selectedDN.dn : 'DN50'}
+                  </span>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <input
+                    type="number"
+                    step="0.1"
+                    value={s.inletTemp}
+                    onChange={(e) => onTempChange('secondary', 'inletTemp', parseFloat(e.target.value) || 0)}
+                    className="w-full input-field rounded px-2 py-1 text-xs font-mono text-cold-600 dark:text-cold-400 font-bold"
+                  />
+                  <span className="text-xs font-mono text-slate-500 dark:text-slate-400 shrink-0">°C</span>
+                </div>
+              </div>
+            </div>
+
+          </div>
+        </div>
+      );
+    }
+
+    // ==========================================
+    // 10. PRINTABLE ENGINEERING DATASHEET MODAL
+    // ==========================================
+    function PrintDataSheetModal({ isOpen, onClose, inputState, result }) {
+      if (!isOpen || !result || !result.isValid) return null;
+
+      const p = result.primaryResult;
+      const s = result.secondaryResult;
+      const t = result.thermalResult;
+
+      return (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto">
+          <div className="bg-white dark:bg-slate-900 print-card text-slate-900 dark:text-slate-100 max-w-3xl w-full p-6 rounded-xl border border-slate-300 dark:border-slate-700 shadow-2xl space-y-5">
+            
+            <div className="flex justify-between items-start border-b border-slate-200 dark:border-slate-800 pb-3">
+              <div>
+                <h2 className="text-base font-bold text-brand-600 dark:text-sky-400">板式熱交換器工程選型規格書 (PHE Technical Data Sheet)</h2>
+                <p className="text-xs text-slate-500 dark:text-slate-400">Data Center Cooling PHE Engineering Specification — Phase 2.5</p>
+              </div>
+              <div className="flex gap-2 no-print">
+                <button
+                  onClick={() => window.print()}
+                  className="px-3 py-1 bg-brand-600 hover:bg-brand-500 text-white text-xs font-bold rounded shadow-xs"
+                >
+                  🖨️ 列印/PDF 匯出
+                </button>
+                <button
+                  onClick={onClose}
+                  className="px-3 py-1 bg-slate-200 dark:bg-slate-800 hover:bg-slate-300 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 text-xs font-bold rounded"
+                >
+                  關閉
+                </button>
+              </div>
+            </div>
+
+            <div className="space-y-4 text-xs font-mono">
+              <div className="bg-slate-50 dark:bg-slate-950 p-3 rounded border border-slate-200 dark:border-slate-800 space-y-2">
+                <div className="font-bold text-brand-600 dark:text-sky-400 border-b border-slate-200 dark:border-slate-800 pb-1">1. 熱傳設計總覽 (Thermal Sizing Summary)</div>
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+                  <div>有效設計熱負荷: <strong>{t.effectiveDutyKW.toFixed(1)} kW</strong></div>
+                  <div>設計熱負荷 (+{t.designMarginPercent}%): <strong>{t.designDutyKW.toFixed(1)} kW</strong></div>
+                  <div>對數平均溫差 LMTD: <strong>{t.lmtd.toFixed(2)} °C</strong></div>
+                  <div>最小接近溫差 Pinch: <strong>{t.pinchTemp.toFixed(1)} °C</strong></div>
+                  <div>估算 U 值 (清潔): <strong>{t.adjustedUValue.toFixed(0)} W/m²·K</strong></div>
+                  <div>污垢熱阻 Rf: <strong>{(t.foulingFactor * 1000).toFixed(2)} × 10⁻³</strong></div>
+                  <div>淨所需換熱面積 A_req: <strong>{t.requiredAreaM2.toFixed(2)} m²</strong></div>
+                  <div>設計換熱面積 A_des: <strong>{t.designAreaM2.toFixed(2)} m²</strong></div>
+                  <div>工程狀態: <strong className="text-emerald-600 dark:text-emerald-400">{result.validation.status}</strong></div>
+                </div>
+              </div>
+
+              <div className="bg-slate-50 dark:bg-slate-950 p-3 rounded border border-slate-200 dark:border-slate-800 space-y-2">
+                <div className="font-bold text-brand-600 dark:text-sky-400 border-b border-slate-200 dark:border-slate-800 pb-1">2. 雙側水力與物性數據表 (Side-by-Side Operational Data)</div>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left border-collapse">
+                    <thead>
+                      <tr className="border-b border-slate-200 dark:border-slate-800 text-slate-500">
+                        <th className="py-1">參數項目</th>
+                        <th className="py-1 text-hot-600 dark:text-hot-400">一次側 (Primary)</th>
+                        <th className="py-1 text-cold-600 dark:text-cold-400">二次側 (Secondary)</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-200 dark:divide-slate-800/60">
+                      <tr>
+                        <td className="py-1 text-slate-500">介質名稱</td>
+                        <td>{p.fluidProperties.displayName}</td>
+                        <td>{s.fluidProperties.displayName}</td>
+                      </tr>
+                      <tr>
+                        <td className="py-1 text-slate-500">進口 / 出口溫度</td>
+                        <td>{p.inletTemp.toFixed(1)} °C / {p.outletTemp.toFixed(1)} °C</td>
+                        <td>{s.inletTemp.toFixed(1)} °C / {s.outletTemp.toFixed(1)} °C</td>
+                      </tr>
+                      <tr>
+                        <td className="py-1 text-slate-500">體積流量</td>
+                        <td>{p.volumetricFlowM3h.toFixed(2)} m³/h ({p.volumetricFlowDisplay.toFixed(1)} {inputState.primary.flowUnit})</td>
+                        <td>{s.volumetricFlowM3h.toFixed(2)} m³/h ({s.volumetricFlowDisplay.toFixed(1)} {inputState.secondary.flowUnit})</td>
+                      </tr>
+                      <tr>
+                        <td className="py-1 text-slate-500">質量流量</td>
+                        <td>{p.massFlowKgS.toFixed(2)} kg/s</td>
+                        <td>{s.massFlowKgS.toFixed(2)} kg/s</td>
+                      </tr>
+                      <tr>
+                        <td className="py-1 text-slate-500">密度 / 比熱 (T_mean)</td>
+                        <td>{p.fluidProperties.density.toFixed(1)} kg/m³ | {(p.fluidProperties.specificHeat/1000).toFixed(2)} kJ/kg·K</td>
+                        <td>{s.fluidProperties.density.toFixed(1)} kg/m³ | {(s.fluidProperties.specificHeat/1000).toFixed(2)} kJ/kg·K</td>
+                      </tr>
+                      <tr>
+                        <td className="py-1 text-slate-500">推薦接管 DN / 實際流速</td>
+                        <td>{p.hydraulics.selectedDN.dn} ({p.hydraulics.selectedDN.inches}) / {p.hydraulics.velocityMS.toFixed(2)} m/s</td>
+                        <td>{s.hydraulics.selectedDN.dn} ({s.hydraulics.selectedDN.inches}) / {s.hydraulics.velocityMS.toFixed(2)} m/s</td>
+                      </tr>
+                      <tr>
+                        <td className="py-1 text-slate-500">預估設備總壓降</td>
+                        <td>{p.hydraulics.estimatedTotalDPKPa.toFixed(1)} kPa</td>
+                        <td>{s.hydraulics.estimatedTotalDPKPa.toFixed(1)} kPa</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+
+            <div className="pt-2 border-t border-slate-200 dark:border-slate-800 text-[10px] text-slate-500 font-mono flex justify-between">
+              <span>產生時間: {new Date().toLocaleString()}</span>
+              <span>PHE Sizing Engine Phase 2.5 (3D Visualizer Integrated)</span>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    // ==========================================
+    // 11. MAIN APP COMPONENT
+    // ==========================================
+    function App() {
+      const [inputState, setInputState] = useState(BENCHMARK_CASES[0].input);
+      const [activeTab, setActiveTab] = useState('sizing');
+      const [developerMode, setDeveloperMode] = useState(false);
+      const [copied, setCopied] = useState(false);
+      const [isDataSheetOpen, setIsDataSheetOpen] = useState(false);
+      const [isDarkMode, setIsDarkMode] = useState(false);
+
+      useEffect(() => {
+        const root = document.documentElement;
+        if (isDarkMode) {
+          root.classList.remove('light');
+          root.classList.add('dark');
+        } else {
+          root.classList.remove('dark');
+          root.classList.add('light');
+        }
+      }, [isDarkMode]);
+
+      const result = useMemo(() => {
+        return ThermalCalculationEngine.calculate(inputState);
+      }, [inputState]);
+
+      const handleInputChange = (side, field, value) => {
+        setInputState(prev => ({
+          ...prev,
+          [side]: {
+            ...prev[side],
+            [field]: value
+          }
+        }));
+      };
+
+      const handleDNChange = (side, dnValue) => {
+        setInputState(prev => ({
+          ...prev,
+          [side]: {
+            ...prev[side],
+            overrideDN: dnValue
+          }
+        }));
+      };
+
+      const loadPreset = (presetType) => {
+        if (presetType === 'W27') setInputState(BENCHMARK_CASES[0].input);
+        else if (presetType === 'CDU_PG25') setInputState(BENCHMARK_CASES[1].input);
+        else if (presetType === 'W45_D2C') setInputState(BENCHMARK_CASES[2].input);
+        else if (presetType === 'DUTY_1000KW') setInputState(BENCHMARK_CASES[3].input);
+      };
+
+      const exportFormulaExcel = () => {
+        LinkedExcelExporter.exportToExcel(inputState, result);
+      };
+
+      const copyResultsToClipboard = async () => {
+        if (!result.isValid) return;
+        const text = `=== 板式熱交換器 (PHE) 3D選型結果 ===
+有效熱負荷: ${result.thermalResult.effectiveDutyKW.toFixed(1)} kW
+對數平均溫差 (LMTD): ${result.thermalResult.lmtd.toFixed(2)} °C
+最小接近溫差 (Pinch): ${result.thermalResult.pinchTemp.toFixed(1)} °C
+所需換熱面積: ${result.thermalResult.requiredAreaM2.toFixed(2)} m²
+設計換熱面積 (+${inputState.global.designMargin}%): ${result.thermalResult.designAreaM2.toFixed(2)} m²
+一次側接管: ${result.primaryResult.hydraulics.selectedDN.dn} (${result.primaryResult.hydraulics.velocityMS.toFixed(2)} m/s, ΔP=${result.primaryResult.hydraulics.estimatedTotalDPKPa.toFixed(1)} kPa)
+二次側接管: ${result.secondaryResult.hydraulics.selectedDN.dn} (${result.secondaryResult.hydraulics.velocityMS.toFixed(2)} m/s, ΔP=${result.secondaryResult.hydraulics.estimatedTotalDPKPa.toFixed(1)} kPa)
+工程狀態: ${result.validation.status}`;
+
+        try {
+          if (navigator.clipboard && navigator.clipboard.writeText) {
+            await navigator.clipboard.writeText(text);
+          } else {
+            document.execCommand('copy');
+          }
+          setCopied(true);
+          setTimeout(() => setCopied(false), 2000);
+        } catch (e) {
+          console.error("Clipboard copy failed", e);
+        }
+      };
+
+      return (
+        <div className="max-w-7xl mx-auto px-4 py-5 w-full flex-grow flex flex-col space-y-5">
+          
+          {/* HEADER BAR */}
+          <header className="border-b border-slate-200 dark:border-slate-800 pb-4 flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div className="flex items-center gap-3">
+              <div className="bg-brand-600 text-white p-2.5 rounded-xl font-black text-lg font-mono tracking-wider shadow-sm flex items-center justify-center">
+                PHE
+              </div>
+              <div>
+                <div className="flex items-center gap-2">
+                  <h1 className="text-lg font-bold text-slate-900 dark:text-slate-100 tracking-tight">板式熱交換器選型與 3D 視覺化工具</h1>
+                  <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-brand-50 text-brand-700 dark:bg-brand-500/10 dark:text-sky-400 border border-brand-200 dark:border-sky-500/20">
+                    Phase 2.5 (Three.js 3D Dynamic Sync)
+                  </span>
+                </div>
+                <p className="text-xs text-slate-500 dark:text-slate-400">
+                  資料中心伺服器散熱、CDU 液冷迴路與冷卻水系統選型計算
+                </p>
+              </div>
+            </div>
+
+            {/* Navigation Tabs & Theme Switcher */}
+            <div className="flex items-center gap-3">
+              <nav className="flex bg-slate-100 dark:bg-slate-900 p-1 rounded-lg border border-slate-200 dark:border-slate-800 text-xs overflow-x-auto">
+                <button
+                  onClick={() => setActiveTab('sizing')}
+                  className={`px-3 py-1.5 font-semibold rounded transition-all whitespace-nowrap ${
+                    activeTab === 'sizing' ? 'bg-white dark:bg-sky-500 text-brand-700 dark:text-slate-950 font-bold shadow-xs' : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
+                  }`}
+                >
+                  選型計算 & 3D
+                </button>
+                <button
+                  onClick={() => setActiveTab('tq_chart')}
+                  className={`px-3 py-1.5 font-semibold rounded transition-all whitespace-nowrap ${
+                    activeTab === 'tq_chart' ? 'bg-white dark:bg-sky-500 text-brand-700 dark:text-slate-950 font-bold shadow-xs' : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
+                  }`}
+                >
+                  T-Q 溫差圖表
+                </button>
+                <button
+                  onClick={() => setActiveTab('validation')}
+                  className={`px-3 py-1.5 font-semibold rounded transition-all whitespace-nowrap ${
+                    activeTab === 'validation' ? 'bg-white dark:bg-sky-500 text-brand-700 dark:text-slate-950 font-bold shadow-xs' : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
+                  }`}
+                >
+                  工程診斷
+                </button>
+                <button
+                  onClick={() => setActiveTab('details')}
+                  className={`px-3 py-1.5 font-semibold rounded transition-all whitespace-nowrap ${
+                    activeTab === 'details' ? 'bg-white dark:bg-sky-500 text-brand-700 dark:text-slate-950 font-bold shadow-xs' : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
+                  }`}
+                >
+                  計算明細
+                </button>
+                <button
+                  onClick={() => setActiveTab('settings')}
+                  className={`px-3 py-1.5 font-semibold rounded transition-all whitespace-nowrap ${
+                    activeTab === 'settings' ? 'bg-white dark:bg-sky-500 text-brand-700 dark:text-slate-950 font-bold shadow-xs' : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
+                  }`}
+                >
+                  進階設定
+                </button>
+              </nav>
+
+              <button
+                onClick={() => setIsDarkMode(!isDarkMode)}
+                className="px-2.5 py-1.5 rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-xs font-semibold text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition-all shadow-xs"
+                title="切換主題風格"
+              >
+                {isDarkMode ? '🌙 深色' : '☀️ 淺色'}
+              </button>
+            </div>
+          </header>
+
+          {}
+          {activeTab === 'sizing' && (
+            <div className="space-y-5">
+              
+              {/* Presets & Excel Export Bar */}
+              <div className="flex flex-wrap items-center justify-between gap-3 bg-white dark:bg-slate-900 p-3 rounded-xl border border-slate-200 dark:border-slate-800 shadow-xs">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="text-xs font-bold text-slate-500 dark:text-slate-400">工況快選：</span>
+                  <button onClick={() => loadPreset('W27')} className="px-2.5 py-1 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 rounded text-xs font-medium border border-slate-200 dark:border-slate-700">
+                    ASHRAE W27 水/水
+                  </button>
+                  <button onClick={() => loadPreset('CDU_PG25')} className="px-2.5 py-1 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 rounded text-xs font-medium border border-slate-200 dark:border-slate-700">
+                    CDU 迴路 (水/PG25)
+                  </button>
+                  <button onClick={() => loadPreset('W45_D2C')} className="px-2.5 py-1 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 rounded text-xs font-medium border border-slate-200 dark:border-slate-700">
+                    W45 高溫液冷 (D2C)
+                  </button>
+                  <button onClick={() => loadPreset('DUTY_1000KW')} className="px-2.5 py-1 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 rounded text-xs font-medium border border-slate-200 dark:border-slate-700">
+                    1000 kW 超大熱負荷
+                  </button>
+                </div>
+
+                <div className="flex items-center gap-2 flex-wrap">
+                  <button
+                    onClick={exportFormulaExcel}
+                    disabled={!result.isValid}
+                    className={`px-3 py-1.5 text-xs font-bold rounded-lg border transition-all flex items-center gap-1.5 shadow-xs ${
+                      result.isValid 
+                        ? 'bg-emerald-600 text-white border-emerald-600 hover:bg-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-300 dark:border-emerald-500/30' 
+                        : 'bg-slate-100 text-slate-400 border-slate-200 cursor-not-allowed'
+                    }`}
+                  >
+                    <span>📊 匯出連動版 EXCEL (.xlsx)</span>
+                  </button>
+
+                  <button
+                    onClick={() => setIsDataSheetOpen(true)}
+                    disabled={!result.isValid}
+                    className={`px-3 py-1.5 text-xs font-semibold rounded-lg border transition-all ${
+                      result.isValid ? 'bg-brand-50 text-brand-700 border-brand-200 hover:bg-brand-100 dark:bg-slate-800 dark:text-slate-200 dark:border-slate-700' : 'bg-slate-100 text-slate-400 border-slate-200 cursor-not-allowed'
+                    }`}
+                  >
+                    📄 工程規格書
+                  </button>
+
+                  <button
+                    onClick={copyResultsToClipboard}
+                    disabled={!result.isValid}
+                    className={`px-3 py-1.5 text-xs font-semibold rounded-lg border transition-all ${
+                      result.isValid ? 'bg-slate-100 text-slate-700 border-slate-300 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-700' : 'bg-slate-100 text-slate-400 border-slate-200 cursor-not-allowed'
+                    }`}
+                  >
+                    {copied ? '✓ 已複製' : '複製摘要'}
+                  </button>
+                </div>
+              </div>
+
+              {/* 6 CORE KPI SUMMARY BANNER */}
+              <div className="grid grid-cols-2 md:grid-cols-6 gap-3">
+                <div className="panel-card p-3 border-l-4 border-l-brand-500">
+                  <div className="text-[10px] font-bold uppercase text-slate-500 dark:text-slate-400">有效熱負荷</div>
+                  <div className="text-xl font-bold font-mono text-brand-600 dark:text-sky-400 mt-1">
+                    {result.thermalResult.effectiveDutyKW !== null ? result.thermalResult.effectiveDutyKW.toFixed(1) : '—'} <span className="text-[10px] font-normal text-slate-500">kW</span>
+                  </div>
+                  <div className="text-[9px] text-slate-500 font-mono mt-1">
+                    設計: {result.thermalResult.designDutyKW ? `${result.thermalResult.designDutyKW.toFixed(1)} kW` : '—'}
+                  </div>
+                </div>
+
+                <div className="panel-card p-3 border-l-4 border-l-cold-500">
+                  <div className="text-[10px] font-bold uppercase text-slate-500 dark:text-slate-400">LMTD 溫差</div>
+                  <div className="text-xl font-bold font-mono text-cold-600 dark:text-cyan-400 mt-1">
+                    {result.thermalResult.lmtd !== null ? result.thermalResult.lmtd.toFixed(2) : '—'} <span className="text-[10px] font-normal text-slate-500">°C</span>
+                  </div>
+                  <div className="text-[9px] text-slate-500 font-mono mt-1">
+                    U: {result.thermalResult.adjustedUValue ? `${result.thermalResult.adjustedUValue.toFixed(0)} W/m²K` : '—'}
+                  </div>
+                </div>
+
+                <div className="panel-card p-3 border-l-4 border-l-amber-500">
+                  <div className="text-[10px] font-bold uppercase text-slate-500 dark:text-slate-400">Pinch 接近溫差</div>
+                  <div className={`text-xl font-bold font-mono mt-1 ${result.thermalResult.pinchTemp < 5 ? 'text-amber-600 dark:text-amber-400' : 'text-slate-800 dark:text-slate-200'}`}>
+                    {result.thermalResult.pinchTemp !== null ? result.thermalResult.pinchTemp.toFixed(1) : '—'} <span className="text-[10px] font-normal text-slate-500">°C</span>
+                  </div>
+                  <div className="text-[9px] text-slate-500 font-mono mt-1">門檻 &gt; 5.0 °C</div>
+                </div>
+
+                <div className="panel-card p-3 border-l-4 border-l-emerald-500">
+                  <div className="text-[10px] font-bold uppercase text-slate-500 dark:text-slate-400">設計換熱面積</div>
+                  <div className="text-xl font-bold font-mono text-emerald-600 dark:text-emerald-400 mt-1">
+                    {result.thermalResult.designAreaM2 !== null ? result.thermalResult.designAreaM2.toFixed(2) : '—'} <span className="text-[10px] font-normal text-slate-500">m²</span>
+                  </div>
+                  <div className="text-[9px] text-slate-500 font-mono mt-1">
+                    淨面積: {result.thermalResult.requiredAreaM2 ? `${result.thermalResult.requiredAreaM2.toFixed(2)} m²` : '—'}
+                  </div>
+                </div>
+
+                <div className="panel-card p-3 border-l-4 border-l-hot-500">
+                  <div className="text-[10px] font-bold uppercase text-slate-500 dark:text-slate-400">一次側接管 & 壓降</div>
+                  <div className="text-sm font-bold font-mono text-hot-600 dark:text-hot-400 mt-1">
+                    {result.primaryResult ? `${result.primaryResult.hydraulics.selectedDN.dn}` : '—'}
+                  </div>
+                  <div className="text-[9px] text-slate-500 dark:text-slate-400 font-mono mt-0.5">
+                    {result.primaryResult ? `${result.primaryResult.hydraulics.velocityMS.toFixed(2)} m/s | ${result.primaryResult.hydraulics.estimatedTotalDPKPa.toFixed(1)} kPa` : '—'}
+                  </div>
+                </div>
+
+                <div className="panel-card p-3 border-l-4 border-l-cold-500">
+                  <div className="text-[10px] font-bold uppercase text-slate-500 dark:text-slate-400">二次側接管 & 壓降</div>
+                  <div className="text-sm font-bold font-mono text-cold-600 dark:text-cold-400 mt-1">
+                    {result.secondaryResult ? `${result.secondaryResult.hydraulics.selectedDN.dn}` : '—'}
+                  </div>
+                  <div className="text-[9px] text-slate-500 dark:text-slate-400 font-mono mt-0.5">
+                    {result.secondaryResult ? `${result.secondaryResult.hydraulics.velocityMS.toFixed(2)} m/s | ${result.secondaryResult.hydraulics.estimatedTotalDPKPa.toFixed(1)} kPa` : '—'}
+                  </div>
+                </div>
+              </div>
+
+              {}
+              <div className="grid grid-cols-1 lg:grid-cols-12 gap-5">
+                
+                {/* Left Column: Primary & Secondary Inputs (5 Cols) */}
+                <div className="lg:col-span-5 space-y-5">
+                  
+                  {/* 一次側 PRIMARY CARD */}
+                  <div className="panel-card p-4 border-l-4 border-l-hot-500 space-y-3">
+                    <div className="flex justify-between items-center border-b border-slate-200 dark:border-slate-800 pb-2">
+                      <div className="flex items-center gap-2">
+                        <span className="font-bold text-xs text-hot-600 dark:text-hot-400 uppercase">一次側 PRIMARY</span>
+                        <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded ${result.isPrimaryHot ? 'bg-hot-50 text-hot-700 border border-hot-200' : 'bg-cold-50 text-cold-700 border border-cold-200'}`}>
+                          {result.isPrimaryHot ? '熱側' : '冷側'}
+                        </span>
+                      </div>
+                      <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-slate-100 dark:bg-slate-900 text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-800">
+                        {inputState.primary.inputType === 'FLOW' ? '已知流量' : inputState.primary.inputType === 'DUTY' ? '已知熱負荷' : '待求解'}
+                      </span>
+                    </div>
+
+                    <div className="space-y-3 text-xs">
+                      <div className="grid grid-cols-2 gap-2">
+                        <div>
+                          <label className="text-slate-600 dark:text-slate-400 block mb-1 font-medium">介質類型</label>
+                          <select
+                            value={inputState.primary.fluid}
+                            onChange={(e) => handleInputChange('primary', 'fluid', e.target.value)}
+                            className="w-full input-field rounded px-2 py-1.5 text-slate-800 dark:text-slate-200 font-medium"
+                          >
+                            <option value={FLUID_TYPES.WATER}>純水 (Water)</option>
+                            <option value={FLUID_TYPES.PG}>丙二醇 (PG)</option>
+                            <option value={FLUID_TYPES.EG}>乙二醇 (EG)</option>
+                          </select>
+                        </div>
+                        {inputState.primary.fluid !== FLUID_TYPES.WATER && (
+                          <div>
+                            <label className="text-slate-600 dark:text-slate-400 block mb-1 font-medium">體積濃度 (%)</label>
+                            <input
+                              type="number"
+                              min="0"
+                              max="60"
+                              value={inputState.primary.concentrationPercent}
+                              onChange={(e) => handleInputChange('primary', 'concentrationPercent', parseFloat(e.target.value) || 0)}
+                              className="w-full input-field rounded px-2.5 py-1.5 font-mono"
+                            />
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-2">
+                        <div>
+                          <label className="text-slate-600 dark:text-slate-400 block mb-1 font-medium">入口溫度 (°C)</label>
+                          <input
+                            type="number"
+                            step="0.1"
+                            value={inputState.primary.inletTemp}
+                            onChange={(e) => handleInputChange('primary', 'inletTemp', parseFloat(e.target.value) || 0)}
+                            className="w-full input-field rounded px-2.5 py-1.5 font-mono"
+                          />
+                        </div>
+                        <div>
+                          <label className="text-slate-600 dark:text-slate-400 block mb-1 font-medium">出口溫度 (°C)</label>
+                          <input
+                            type="number"
+                            step="0.1"
+                            value={inputState.primary.outletTemp}
+                            onChange={(e) => handleInputChange('primary', 'outletTemp', parseFloat(e.target.value) || 0)}
+                            className="w-full input-field rounded px-2.5 py-1.5 font-mono"
+                          />
+                        </div>
+                      </div>
+
+                      <div className="pt-2 border-t border-slate-200 dark:border-slate-800 space-y-2">
+                        <label className="text-slate-600 dark:text-slate-400 block font-semibold">求解條件模式：</label>
+                        <div className="grid grid-cols-3 gap-1 bg-slate-100 dark:bg-slate-950 p-1 rounded border border-slate-200 dark:border-slate-800 text-[11px]">
+                          <button
+                            type="button"
+                            onClick={() => handleInputChange('primary', 'inputType', 'FLOW')}
+                            className={`py-1 rounded font-medium transition-all ${inputState.primary.inputType === 'FLOW' ? 'bg-hot-600 text-white font-bold shadow-xs' : 'text-slate-600 dark:text-slate-400'}`}
+                          >
+                            ● 已知流量
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleInputChange('primary', 'inputType', 'DUTY')}
+                            className={`py-1 rounded font-medium transition-all ${inputState.primary.inputType === 'DUTY' ? 'bg-hot-600 text-white font-bold shadow-xs' : 'text-slate-600 dark:text-slate-400'}`}
+                          >
+                            ● 已知熱負荷
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleInputChange('primary', 'inputType', 'SOLVE')}
+                            className={`py-1 rounded font-medium transition-all ${inputState.primary.inputType === 'SOLVE' ? 'bg-emerald-600 text-white font-bold shadow-xs' : 'text-slate-600 dark:text-slate-400'}`}
+                          >
+                            ○ 待求解
+                          </button>
+                        </div>
+
+                        {inputState.primary.inputType === 'FLOW' && (
+                          <div className="grid grid-cols-3 gap-2 pt-1">
+                            <div className="col-span-2">
+                              <label className="text-[10px] text-slate-500 block mb-1">體積流量</label>
+                              <input
+                                type="number"
+                                value={inputState.primary.flowRate}
+                                onChange={(e) => handleInputChange('primary', 'flowRate', parseFloat(e.target.value) || 0)}
+                                className="w-full input-field rounded px-2.5 py-1.5 font-mono"
+                              />
+                            </div>
+                            <div>
+                              <label className="text-[10px] text-slate-500 block mb-1">單位</label>
+                              <select
+                                value={inputState.primary.flowUnit}
+                                onChange={(e) => handleInputChange('primary', 'flowUnit', e.target.value)}
+                                className="w-full input-field rounded px-1 py-1.5"
+                              >
+                                <option value="m3/h">m³/h</option>
+                                <option value="L/min">L/min</option>
+                                <option value="GPM">GPM</option>
+                              </select>
+                            </div>
+                          </div>
+                        )}
+
+                        {inputState.primary.inputType === 'DUTY' && (
+                          <div className="pt-1">
+                            <label className="text-[10px] text-slate-500 block mb-1">設定熱負荷 (kW)</label>
+                            <input
+                              type="number"
+                              value={inputState.primary.heatDuty}
+                              onChange={(e) => handleInputChange('primary', 'heatDuty', parseFloat(e.target.value) || 0)}
+                              className="w-full input-field rounded px-2.5 py-1.5 font-mono"
+                            />
+                          </div>
+                        )}
+
+                        {inputState.primary.inputType === 'SOLVE' && (
+                          <div className="p-2 rounded bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-500/30 text-xs font-mono">
+                            <span className="text-[10px] text-emerald-700 dark:text-emerald-400 block font-bold">求解體積流量：</span>
+                            <span className="text-sm font-bold text-emerald-700 dark:text-emerald-300">
+                              {result.primaryResult ? `${result.primaryResult.volumetricFlowDisplay.toFixed(2)} ${inputState.primary.flowUnit}` : '—'}
+                            </span>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* 二次側 SECONDARY CARD */}
+                  <div className="panel-card p-4 border-l-4 border-l-cold-500 space-y-3">
+                    <div className="flex justify-between items-center border-b border-slate-200 dark:border-slate-800 pb-2">
+                      <div className="flex items-center gap-2">
+                        <span className="font-bold text-xs text-cold-600 dark:text-cold-400 uppercase">二次側 SECONDARY</span>
+                        <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded ${!result.isPrimaryHot ? 'bg-hot-50 text-hot-700 border border-hot-200' : 'bg-cold-50 text-cold-700 border border-cold-200'}`}>
+                          {!result.isPrimaryHot ? '熱側' : '冷側'}
+                        </span>
+                      </div>
+                      <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-slate-100 dark:bg-slate-900 text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-800">
+                        {inputState.secondary.inputType === 'FLOW' ? '已知流量' : inputState.secondary.inputType === 'DUTY' ? '已知熱負荷' : '待求解'}
+                      </span>
+                    </div>
+
+                    <div className="space-y-3 text-xs">
+                      <div className="grid grid-cols-2 gap-2">
+                        <div>
+                          <label className="text-slate-600 dark:text-slate-400 block mb-1 font-medium">介質類型</label>
+                          <select
+                            value={inputState.secondary.fluid}
+                            onChange={(e) => handleInputChange('secondary', 'fluid', e.target.value)}
+                            className="w-full input-field rounded px-2 py-1.5 text-slate-800 dark:text-slate-200 font-medium"
+                          >
+                            <option value={FLUID_TYPES.WATER}>純水 (Water)</option>
+                            <option value={FLUID_TYPES.PG}>丙二醇 (PG)</option>
+                            <option value={FLUID_TYPES.EG}>乙二醇 (EG)</option>
+                          </select>
+                        </div>
+                        {inputState.secondary.fluid !== FLUID_TYPES.WATER && (
+                          <div>
+                            <label className="text-slate-600 dark:text-slate-400 block mb-1 font-medium">體積濃度 (%)</label>
+                            <input
+                              type="number"
+                              min="0"
+                              max="60"
+                              value={inputState.secondary.concentrationPercent}
+                              onChange={(e) => handleInputChange('secondary', 'concentrationPercent', parseFloat(e.target.value) || 0)}
+                              className="w-full input-field rounded px-2.5 py-1.5 font-mono"
+                            />
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-2">
+                        <div>
+                          <label className="text-slate-600 dark:text-slate-400 block mb-1 font-medium">入口溫度 (°C)</label>
+                          <input
+                            type="number"
+                            step="0.1"
+                            value={inputState.secondary.inletTemp}
+                            onChange={(e) => handleInputChange('secondary', 'inletTemp', parseFloat(e.target.value) || 0)}
+                            className="w-full input-field rounded px-2.5 py-1.5 font-mono"
+                          />
+                        </div>
+                        <div>
+                          <label className="text-slate-600 dark:text-slate-400 block mb-1 font-medium">出口溫度 (°C)</label>
+                          <input
+                            type="number"
+                            step="0.1"
+                            value={inputState.secondary.outletTemp}
+                            onChange={(e) => handleInputChange('secondary', 'outletTemp', parseFloat(e.target.value) || 0)}
+                            className="w-full input-field rounded px-2.5 py-1.5 font-mono"
+                          />
+                        </div>
+                      </div>
+
+                      <div className="pt-2 border-t border-slate-200 dark:border-slate-800 space-y-2">
+                        <label className="text-slate-600 dark:text-slate-400 block font-semibold">求解條件模式：</label>
+                        <div className="grid grid-cols-3 gap-1 bg-slate-100 dark:bg-slate-950 p-1 rounded border border-slate-200 dark:border-slate-800 text-[11px]">
+                          <button
+                            type="button"
+                            onClick={() => handleInputChange('secondary', 'inputType', 'FLOW')}
+                            className={`py-1 rounded font-medium transition-all ${inputState.secondary.inputType === 'FLOW' ? 'bg-cold-600 text-white font-bold shadow-xs' : 'text-slate-600 dark:text-slate-400'}`}
+                          >
+                            ● 已知流量
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleInputChange('secondary', 'inputType', 'DUTY')}
+                            className={`py-1 rounded font-medium transition-all ${inputState.secondary.inputType === 'DUTY' ? 'bg-cold-600 text-white font-bold shadow-xs' : 'text-slate-600 dark:text-slate-400'}`}
+                          >
+                            ● 已知熱負荷
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleInputChange('secondary', 'inputType', 'SOLVE')}
+                            className={`py-1 rounded font-medium transition-all ${inputState.secondary.inputType === 'SOLVE' ? 'bg-emerald-600 text-white font-bold shadow-xs' : 'text-slate-600 dark:text-slate-400'}`}
+                          >
+                            ○ 待求解
+                          </button>
+                        </div>
+
+                        {inputState.secondary.inputType === 'FLOW' && (
+                          <div className="grid grid-cols-3 gap-2 pt-1">
+                            <div className="col-span-2">
+                              <label className="text-[10px] text-slate-500 block mb-1">體積流量</label>
+                              <input
+                                type="number"
+                                value={inputState.secondary.flowRate}
+                                onChange={(e) => handleInputChange('secondary', 'flowRate', parseFloat(e.target.value) || 0)}
+                                className="w-full input-field rounded px-2.5 py-1.5 font-mono"
+                              />
+                            </div>
+                            <div>
+                              <label className="text-[10px] text-slate-500 block mb-1">單位</label>
+                              <select
+                                value={inputState.secondary.flowUnit}
+                                onChange={(e) => handleInputChange('secondary', 'flowUnit', e.target.value)}
+                                className="w-full input-field rounded px-1 py-1.5"
+                              >
+                                <option value="m3/h">m³/h</option>
+                                <option value="L/min">L/min</option>
+                                <option value="GPM">GPM</option>
+                              </select>
+                            </div>
+                          </div>
+                        )}
+
+                        {inputState.secondary.inputType === 'DUTY' && (
+                          <div className="pt-1">
+                            <label className="text-[10px] text-slate-500 block mb-1">設定熱負荷 (kW)</label>
+                            <input
+                              type="number"
+                              value={inputState.secondary.heatDuty}
+                              onChange={(e) => handleInputChange('secondary', 'heatDuty', parseFloat(e.target.value) || 0)}
+                              className="w-full input-field rounded px-2.5 py-1.5 font-mono"
+                            />
+                          </div>
+                        )}
+
+                        {inputState.secondary.inputType === 'SOLVE' && (
+                          <div className="p-2 rounded bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-500/30 text-xs font-mono">
+                            <span className="text-[10px] text-emerald-700 dark:text-emerald-400 block font-bold">求解體積流量：</span>
+                            <span className="text-sm font-bold text-emerald-700 dark:text-emerald-300">
+                              {result.secondaryResult ? `${result.secondaryResult.volumetricFlowDisplay.toFixed(2)} ${inputState.secondary.flowUnit}` : '—'}
+                            </span>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
+                </div>
+
+                {/* Right Column: Interactive 3D/2D Diagram & Thermal Balance (7 Cols) */}
+                <div className="lg:col-span-7 space-y-5">
+                  
+                  <InteractivePHEDiagram
+                    inputState={inputState}
+                    result={result}
+                    onTempChange={handleInputChange}
+                    onDNChange={handleDNChange}
+                    isDarkMode={isDarkMode}
+                  />
+
+                  {!result.isValid && (
+                    <div className="p-4 rounded-lg bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-500/40 space-y-1">
+                      <div className="flex items-center gap-2 text-rose-700 dark:text-rose-400 font-bold text-xs">
+                        ⚠️ 無法完成有效選型計算
+                      </div>
+                      <div className="text-xs text-slate-600 dark:text-slate-300 font-mono">
+                        {result.errorMessage || '目前輸入條件不合乎熱傳物理，已自動阻斷換熱面積計算。'}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* 熱平衡卡片 */}
+                  <div className="panel-card p-4 space-y-3">
+                    <div className="flex justify-between items-center border-b border-slate-200 dark:border-slate-800 pb-2">
+                      <h3 className="text-xs font-bold text-slate-800 dark:text-slate-200 uppercase tracking-wider">熱能量平衡檢查 (Thermal Energy Balance)</h3>
+                      <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
+                        result.thermalBalance.status === 'BALANCED' ? 'bg-emerald-50 text-emerald-700 border border-emerald-200 dark:bg-emerald-500/20 dark:text-emerald-400' :
+                        result.thermalBalance.status === 'MINOR_MISMATCH' ? 'bg-amber-50 text-amber-700 border border-amber-200 dark:bg-amber-500/20 dark:text-amber-400' :
+                        'bg-rose-50 text-rose-700 border border-rose-200 dark:bg-rose-500/20 dark:text-rose-400'
+                      }`}>
+                        {result.thermalBalance.status === 'BALANCED' ? '✓ 完全熱平衡' :
+                         result.thermalBalance.status === 'MINOR_MISMATCH' ? '⚠️ 輕微熱偏差' : '✕ 熱不平衡'}
+                      </span>
+                    </div>
+
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-2.5 text-xs font-mono">
+                      <div className="sub-card p-2 rounded">
+                        <span className="text-slate-500 text-[10px] block">一次側熱負荷</span>
+                        <span className="text-hot-600 dark:text-hot-400 font-bold">{result.thermalBalance.primaryDutyKW.toFixed(1)} kW</span>
+                      </div>
+                      <div className="sub-card p-2 rounded">
+                        <span className="text-slate-500 text-[10px] block">二次側熱負荷</span>
+                        <span className="text-cold-600 dark:text-cold-400 font-bold">{result.thermalBalance.secondaryDutyKW.toFixed(1)} kW</span>
+                      </div>
+                      <div className="sub-card p-2 rounded">
+                        <span className="text-slate-500 text-[10px] block">熱負荷差異</span>
+                        <span className="text-slate-800 dark:text-slate-200 font-bold">{result.thermalBalance.differenceKW.toFixed(1)} kW</span>
+                      </div>
+                      <div className="sub-card p-2 rounded">
+                        <span className="text-slate-500 text-[10px] block">偏差百分比</span>
+                        <span className={`font-bold ${result.thermalBalance.mismatchPercent > 2 ? 'text-amber-600 dark:text-amber-400' : 'text-emerald-600 dark:text-emerald-400'}`}>
+                          {result.thermalBalance.mismatchPercent.toFixed(2)} %
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
+                </div>
+              </div>
+
+            </div>
+          )}
+
+          {}
+          {/* T-Q PROFILE CHART TAB */}
+          {activeTab === 'tq_chart' && (
+            <div className="max-w-4xl mx-auto w-full space-y-4">
+              <TQProfileChart result={result} isDarkMode={isDarkMode} />
+            </div>
+          )}
+
+          {/* ENGINEERING DIAGNOSTICS TAB */}
+          {activeTab === 'validation' && (
+            <div className="space-y-4 max-w-4xl mx-auto w-full">
+              <div className="panel-card p-5 space-y-4">
+                <div className="flex justify-between items-center border-b border-slate-200 dark:border-slate-800 pb-3">
+                  <h2 className="text-sm font-bold uppercase tracking-wider text-slate-800 dark:text-slate-100 flex items-center gap-2">
+                    <span className="w-2.5 h-2.5 rounded-full bg-emerald-500"></span>
+                    工程可行性診斷診斷報告 (Diagnostic Suite Phase 2.5)
+                  </h2>
+                  <span className={`px-2 py-0.5 rounded text-xs font-bold ${
+                    result.validation.status === 'PASS' ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' :
+                    result.validation.status === 'WARNING' ? 'bg-amber-50 text-amber-700 border border-amber-200' :
+                    'bg-rose-50 text-rose-700 border border-rose-200'
+                  }`}>
+                    總體評估：{result.validation.status}
+                  </span>
+                </div>
+
+                <div className="space-y-3">
+                  {Object.keys(result.validation.checks).map(key => {
+                    const item = result.validation.checks[key];
+                    const isPass = item.status === 'PASS';
+                    const isWarn = item.status === 'WARNING';
+
+                    return (
+                      <div key={key} className={`p-3 rounded border text-xs space-y-1.5 ${
+                        isPass ? 'sub-card' : isWarn ? 'bg-amber-50/50 border-amber-200' : 'bg-rose-50/50 border-rose-200'
+                      }`}>
+                        <div className="flex items-center justify-between">
+                          <span className="font-semibold text-slate-800 dark:text-slate-200">{item.name}</span>
+                          <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
+                            isPass ? 'bg-emerald-100 text-emerald-800' : isWarn ? 'bg-amber-100 text-amber-800' : 'bg-rose-100 text-rose-800'
+                          }`}>
+                            {item.status}
+                          </span>
+                        </div>
+                        {item.messages.length > 0 && (
+                          <div className="space-y-1 text-slate-600 dark:text-slate-400 font-mono text-[11px] pt-1">
+                            {item.messages.map((m, idx) => (
+                              <div key={idx} className="flex items-start gap-1.5">
+                                <span className="text-slate-400">•</span>
+                                <span>{m}</span>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* CALCULATION DETAILS TAB */}
+          {activeTab === 'details' && (
+            <div className="panel-card p-5 space-y-5 max-w-4xl mx-auto w-full text-slate-700 dark:text-slate-300 text-xs font-mono">
+              <div className="border-b border-slate-200 dark:border-slate-800 pb-3">
+                <h2 className="text-base font-bold text-slate-900 dark:text-slate-100">計算明細與工程公式 (Calculation Details Phase 2.5)</h2>
+                <p className="text-[11px] text-slate-500 mt-0.5">熱力學、水力學與 3D 尺寸映射導向追溯</p>
+              </div>
+
+              <div className="space-y-4">
+                <div className="sub-card p-3.5 rounded space-y-2">
+                  <h3 className="text-xs font-bold text-brand-600 dark:text-sky-400">1. 平均流體物性與冰點數據</h3>
+                  {result.primaryResult && (
+                    <>
+                      <div>一次側 ({result.primaryResult.fluidProperties.displayName} @ T_mean = {result.primaryResult.fluidProperties.meanTemperatureC.toFixed(1)}°C):</div>
+                      <div className="pl-3 text-slate-500">
+                        ρ = {result.primaryResult.fluidProperties.density.toFixed(1)} kg/m³ | Cp = {result.primaryResult.fluidProperties.specificHeat.toFixed(1)} J/(kg·K) | μ = {(result.primaryResult.fluidProperties.viscosity * 1000).toFixed(3)} cP | 冰點 = {result.primaryResult.fluidProperties.freezingPointC.toFixed(1)} °C
+                      </div>
+                      <div>二次側 ({result.secondaryResult.fluidProperties.displayName} @ T_mean = {result.secondaryResult.fluidProperties.meanTemperatureC.toFixed(1)}°C):</div>
+                      <div className="pl-3 text-slate-500">
+                        ρ = {result.secondaryResult.fluidProperties.density.toFixed(1)} kg/m³ | Cp = {result.secondaryResult.fluidProperties.specificHeat.toFixed(1)} J/(kg·K) | μ = {(result.secondaryResult.viscosity * 1000 || 0.89).toFixed(3)} cP | 冰點 = {result.secondaryResult.fluidProperties.freezingPointC.toFixed(1)} °C
+                      </div>
+                    </>
+                  )}
+                </div>
+
+                <div className="sub-card p-3.5 rounded space-y-2">
+                  <h3 className="text-xs font-bold text-brand-600 dark:text-sky-400">2. 水力學與 3D 幾何映射公式</h3>
+                  <div>接管實際流速: v_port = V_dot / ((π / 4) × D_port²)</div>
+                  <div>接管局部壓降: ΔP_port = 1.5 × (ρ × v²) / 2  [kPa]</div>
+                  <div>3D 板包總長度: L_pack = N_plates × t_pitch (依換熱面積 A_des 動態微調)</div>
+                  <div>3D 接管法蘭半徑: R_flange = 1.55 × R_port (依雙側 DN 口徑尺寸同步縮放)</div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* ADVANCED SETTINGS TAB */}
+          {activeTab === 'settings' && (
+            <div className="space-y-5 max-w-4xl mx-auto w-full">
+              <div className="panel-card p-5 space-y-4">
+                <h2 className="text-sm font-bold text-slate-800 dark:text-slate-100 uppercase tracking-wider border-b border-slate-200 dark:border-slate-800 pb-2">
+                  進階選型與水力參數設定 (Advanced Sizing Parameters)
+                </h2>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
+                  <div>
+                    <label className="text-slate-600 dark:text-slate-400 block mb-1 font-medium">基準水/水 U 值 (W/m²·K)</label>
+                    <input
+                      type="number"
+                      value={inputState.global.estimatedUValue}
+                      onChange={(e) => handleInputChange('global', 'estimatedUValue', parseFloat(e.target.value) || 0)}
+                      className="w-full input-field rounded px-2.5 py-1.5 font-mono"
+                    />
+                    <span className="text-[10px] text-slate-500 mt-1 block">預設水/水熱傳導基準 U 值為 4000 W/(m²·K)</span>
+                  </div>
+
+                  <div>
+                    <label className="text-slate-600 dark:text-slate-400 block mb-1 font-medium">設計裕量 Design Margin (%)</label>
+                    <input
+                      type="number"
+                      value={inputState.global.designMargin}
+                      onChange={(e) => handleInputChange('global', 'designMargin', parseFloat(e.target.value) || 0)}
+                      className="w-full input-field rounded px-2.5 py-1.5 font-mono"
+                    />
+                    <span className="text-[10px] text-slate-500 mt-1 block">增加板片面積裕量，確保因應公差與長效運轉</span>
+                  </div>
+
+                  <div>
+                    <label className="text-slate-600 dark:text-slate-400 block mb-1 font-medium">污垢熱阻 Fouling Factor Rf (m²·K/W)</label>
+                    <input
+                      type="number"
+                      step="0.00001"
+                      value={inputState.global.foulingFactor}
+                      onChange={(e) => handleInputChange('global', 'foulingFactor', parseFloat(e.target.value) || 0)}
+                      className="w-full input-field rounded px-2.5 py-1.5 font-mono"
+                    />
+                    <span className="text-[10px] text-slate-500 mt-1 block">預設 0.00003 m²·K/W (乾淨水/乙二醇迴路)</span>
+                  </div>
+
+                  <div>
+                    <label className="text-slate-600 dark:text-slate-400 block mb-1 font-medium">最大允許壓降 (kPa)</label>
+                    <input
+                      type="number"
+                      value={inputState.global.maxAllowableDP}
+                      onChange={(e) => handleInputChange('global', 'maxAllowableDP', parseFloat(e.target.value) || 0)}
+                      className="w-full input-field rounded px-2.5 py-1.5 font-mono"
+                    />
+                    <span className="text-[10px] text-slate-500 mt-1 block">資料中心常見上限 50 kPa (0.5 bar)</span>
+                  </div>
+                </div>
+
+                <div className="pt-4 border-t border-slate-200 dark:border-slate-800">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h3 className="text-xs font-bold text-slate-800 dark:text-slate-200">開發者測試模式 (Phase 2.5 Suite)</h3>
+                      <p className="text-[10px] text-slate-500">開啟後可測試標準工程驗證案例與 3D 渲染壓力</p>
+                    </div>
+                    <button
+                      onClick={() => setDeveloperMode(!developerMode)}
+                      className={`px-3 py-1 rounded text-xs font-bold transition-all ${
+                        developerMode ? 'bg-amber-500 text-white' : 'bg-slate-200 text-slate-700 hover:bg-slate-300'
+                      }`}
+                    >
+                      {developerMode ? '開啟中' : '已關閉'}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          <PrintDataSheetModal
+            isOpen={isDataSheetOpen}
+            onClose={() => setIsDataSheetOpen(false)}
+            inputState={inputState}
+            result={result}
+          />
+
+          {}
+          {/* FOOTER */}
+          <footer className="border-t border-slate-200 dark:border-slate-800 pt-3 text-center text-[11px] text-slate-500 font-mono">
+            板式熱交換器 (PHE) 選型、水力學診斷與 3D 實體模型視覺化工具 Phase 2.5
+          </footer>
+
+        </div>
+      );
+    }
+
+    ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+  </script>
+</body>
+</html>

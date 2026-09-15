@@ -1,0 +1,3159 @@
+<!DOCTYPE html>
+<html lang="zh-TW" class="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HVAC & Semiconductor Digital Twin 3D Workbench | Cinematic Director 2.0</title>
+    
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700;800&family=Noto+Sans+TC:wght@400;500;700;900&display=swap" rel="stylesheet">
+    
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['"Plus Jakarta Sans"', '"Noto Sans TC"', 'sans-serif'],
+                        mono: ['"JetBrains Mono"', 'monospace'],
+                    },
+                    colors: {
+                        ind: {
+                            blue: '#0284c7',
+                            chw: '#1d4ed8',
+                            cw: '#15803d',
+                            tcs: '#0284c7',
+                            tcsHot: '#ea580c',
+                            steel: '#64748b',
+                            base: '#f1f5f9'
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        :root {
+            --bg-canvas: #f1f5f9;
+            --panel-bg: rgba(255, 255, 255, 0.94);
+            --panel-border: rgba(148, 163, 184, 0.38);
+            --text-main: #0f172a;
+            --text-muted: #64748b;
+        }
+
+        body {
+            background-color: var(--bg-canvas);
+            color: var(--text-main);
+            font-family: 'Plus Jakarta Sans', 'Noto Sans TC', sans-serif;
+            overflow-x: hidden;
+            margin: 0;
+            padding: 0;
+            user-select: none;
+        }
+
+        /* 擴展為高解析度長程捲動軌道 (600vh) 給予充足故事時間 */
+        #scroll-track {
+            height: 620vh;
+            position: relative;
+            width: 100%;
+        }
+
+        /* 視口釘選容器 */
+        #viewport-wrapper {
+            position: sticky;
+            top: 0;
+            height: 100vh;
+            width: 100vw;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+        }
+
+        #webgl-canvas {
+            position: absolute;
+            inset: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 0;
+            outline: none;
+        }
+
+        /* 明亮工程座標與校準十字線 (移至最底部地面層，不遮擋主設備視野) */
+        .engineering-grid-overlay {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: 180px;
+            background-image: 
+                linear-gradient(to right, rgba(148, 163, 184, 0.12) 1px, transparent 1px),
+                linear-gradient(to bottom, rgba(148, 163, 184, 0.12) 1px, transparent 1px);
+            background-size: 48px 48px;
+            mask-image: linear-gradient(to top, rgba(0,0,0,0.85) 0%, rgba(0,0,0,0.3) 60%, transparent 100%);
+            -webkit-mask-image: linear-gradient(to top, rgba(0,0,0,0.85) 0%, rgba(0,0,0,0.3) 60%, transparent 100%);
+            pointer-events: none;
+            z-index: 1;
+        }
+
+        /* 潔淨邊緣微暈透光 */
+        .bright-vignette {
+            position: absolute;
+            inset: 0;
+            background: radial-gradient(circle at center, transparent 65%, rgba(203, 213, 225, 0.38) 100%);
+            pointer-events: none;
+            z-index: 2;
+        }
+
+        /* 玻璃態高對比控制卡片 */
+        .glass-panel-light {
+            background: var(--panel-bg);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid var(--panel-border);
+            box-shadow: 0 20px 40px -15px rgba(15, 23, 42, 0.09), 0 0 0 1px rgba(255, 255, 255, 0.95) inset;
+        }
+
+        /* 現代極簡工程 HUD 卡片 (不遮擋設備主體，置於左下方) */
+        .hud-card {
+            pointer-events: none;
+            opacity: 0;
+            transform: translateY(12px) scale(0.98);
+            transition: opacity 0.4s cubic-bezier(0.16, 1, 0.3, 1), transform 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+            position: absolute;
+            left: 24px;
+            bottom: 24px;
+            max-width: 380px;
+            width: calc(100% - 48px);
+        }
+        .hud-card.active {
+            opacity: 1;
+            transform: translateY(0) scale(1);
+            pointer-events: auto;
+        }
+
+        /* 工規手動 Range 滑桿 */
+        input[type="range"] {
+            -webkit-appearance: none;
+            height: 6px;
+            background: #e2e8f0;
+            border-radius: 99px;
+            outline: none;
+        }
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            background: #0284c7;
+            cursor: pointer;
+            box-shadow: 0 2px 8px rgba(2, 132, 199, 0.45);
+            border: 2px solid #ffffff;
+            transition: transform 0.15s ease;
+        }
+        input[type="range"]::-webkit-slider-thumb:hover {
+            transform: scale(1.25);
+        }
+
+        /* 故事軸熱量流動動畫徽章 */
+        @keyframes pulse-heat {
+            0%, 100% { transform: scale(1); opacity: 0.9; }
+            50% { transform: scale(1.08); opacity: 1; filter: drop-shadow(0 0 8px rgba(234, 88, 12, 0.5)); }
+        }
+        .animate-heat-pulse {
+            animation: pulse-heat 2s ease-in-out infinite;
+        }
+
+        /* 敘事嵌入模式 (當作為 Index 頁面的 3D 引擎時隱藏重複 UI) */
+        body.is-narrative-embed #scroll-track {
+            height: 100vh !important;
+        }
+        body.is-narrative-embed {
+            overflow: hidden !important;
+        }
+        body.is-narrative-embed footer,
+        body.is-narrative-embed main {
+            display: none !important;
+        }
+    </style>
+</head>
+<body>
+    <div id="scroll-track">
+        <div id="viewport-wrapper">
+            <!-- 3D WebGL Canvas Layer -->
+            <canvas id="webgl-canvas"></canvas>
+            
+            <!-- 氛圍與輔助座標層 -->
+            <div class="engineering-grid-overlay"></div>
+            <div class="bright-vignette"></div>
+
+            <!-- 底部左側精簡工程 HUD：對應 10 大工業紀錄片分鏡，不遮蔽設備本體 -->
+
+            <!-- 底部左側精簡工程 HUD：對應 10 大工業紀錄片分鏡，不遮蔽設備本體 -->
+            <main class="relative flex-1 w-full pointer-events-none z-20">
+                
+                <!-- SHOT 01: CAMPUS ESTABLISHING (0 - 6%) -->
+                <div id="hud-shot-1" class="hud-card active">
+                    <div class="glass-panel-light rounded-xl p-3 border-l-4 border-l-blue-600 shadow-lg">
+                        <div class="flex items-center justify-between mb-1">
+                            <span class="text-[10px] font-mono font-bold text-blue-700 bg-blue-50 px-2 py-0.5 rounded border border-blue-200">
+                                01 // CAMPUS GRAND ESTABLISHING
+                            </span>
+                            <span class="text-[10px] font-mono font-bold text-blue-600">PUE = 1.07 · ISO 1</span>
+                        </div>
+                        <p class="text-[11px] text-slate-600 leading-snug font-medium">
+                            全廠高空宏觀全景開場，完美等距俯瞰晶圓廠、算力中心、機房與冷卻水塔。
+                        </p>
+                    </div>
+                </div>
+
+                <!-- SHOT 02: FAB PROCESS QUAD-STATION ORBIT (6 - 24%) -->
+                <div id="hud-shot-2" class="hud-card">
+                    <div class="glass-panel-light rounded-xl p-3 border-l-4 border-l-cyan-600 shadow-lg">
+                        <div class="flex items-center justify-between mb-1">
+                            <span class="text-[10px] font-mono font-bold text-cyan-700 bg-cyan-50 px-2 py-0.5 rounded border border-cyan-200">
+                                02 // FAB PROCESS QUAD-STATION ORBIT
+                            </span>
+                            <span class="text-[10px] font-mono font-bold text-cyan-600">SEMI E47.1 · 22.0°C</span>
+                        </div>
+                        <p class="text-[11px] text-slate-600 leading-snug font-medium">
+                            連續 288 度環繞無塵室四大核心機台：微影曝光、電漿蝕刻、立式爐管與晶圓倉儲。
+                        </p>
+                    </div>
+                </div>
+
+                <!-- SHOT 03: UTILITY SPINE TRANSITION (22 - 33%) -->
+                <div id="hud-shot-3" class="hud-card">
+                    <div class="glass-panel-light rounded-xl p-3 border-l-4 border-l-sky-600 shadow-lg">
+                        <div class="flex items-center justify-between mb-1">
+                            <span class="text-[10px] font-mono font-bold text-sky-700 bg-sky-50 px-2 py-0.5 rounded border border-sky-200">
+                                03 // UTILITY SPINE TRANSITION
+                            </span>
+                            <span class="text-[10px] font-mono font-bold text-sky-600">Level 3 Trestle · 7°C / 12°C</span>
+                        </div>
+                        <p class="text-[11px] text-slate-600 leading-snug font-medium">
+                            鏡頭飛越潔淨氣閘出廠，沿架空公用管廊巡弋前往 AIDC。
+                        </p>
+                    </div>
+                </div>
+
+                <!-- SHOT 04: AIDC HIGH-ANGLE PANORAMA (33 - 45%) -->
+                <div id="hud-shot-4" class="hud-card">
+                    <div class="glass-panel-light rounded-xl p-3 border-l-4 border-l-indigo-600 shadow-lg">
+                        <div class="flex items-center justify-between mb-1">
+                            <span class="text-[10px] font-mono font-bold text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded border border-indigo-200">
+                                04 // AIDC HIGH-ANGLE PANORAMA
+                            </span>
+                            <span class="text-[10px] font-mono font-bold text-indigo-600">Tier IV Clean Aisle</span>
+                        </div>
+                        <p class="text-[11px] text-slate-600 leading-snug font-medium">
+                            高空俯瞰 AIDC 機房全貌，縱覽雙列高密機櫃與冷通道圍封。
+                        </p>
+                    </div>
+                </div>
+
+                <!-- SHOT 05: AIDC GB200 SPATIAL ORBIT (45 - 58%) -->
+                <div id="hud-shot-5" class="hud-card">
+                    <div class="glass-panel-light rounded-xl p-3 border-l-4 border-l-amber-500 shadow-lg">
+                        <div class="flex items-center justify-between mb-1">
+                            <span class="text-[10px] font-mono font-bold text-amber-700 bg-amber-50 px-2 py-0.5 rounded border border-amber-200">
+                                05 // AIDC GB200 SPATIAL ORBIT
+                            </span>
+                            <span id="ui-density" class="text-[10px] font-mono font-bold text-amber-600">132.0 kW / Rack</span>
+                        </div>
+                        <p class="text-[11px] text-slate-600 leading-snug font-medium">
+                            中景高空環繞機櫃群，冷板吸收算力熱量經頂部分流管排出。
+                        </p>
+                    </div>
+                </div>
+
+                <!-- SHOT 06: CDU 1.3MW OVERHEAD ANGLE (58 - 68%) -->
+                <div id="hud-shot-6" class="hud-card">
+                    <div class="glass-panel-light rounded-xl p-3 border-l-4 border-l-orange-600 shadow-lg">
+                        <div class="flex items-center justify-between mb-1">
+                            <span class="text-[10px] font-mono font-bold text-orange-700 bg-orange-50 px-2 py-0.5 rounded border border-orange-200">
+                                06 // CDU 1.3MW OVERHEAD ANGLE
+                            </span>
+                            <span class="text-[10px] font-mono font-bold text-orange-600">1.3 MW In-Row PHE</span>
+                        </div>
+                        <p class="text-[11px] text-slate-600 leading-snug font-medium">
+                            中景俯視 CDU 液冷換熱單元，二次側熱量導入一次側冰水。
+                        </p>
+                    </div>
+                </div>
+
+                <!-- SHOT 07: HYDRONIC OVERHEAD FLYTHROUGH (68 - 78%) -->
+                <div id="hud-shot-7" class="hud-card">
+                    <div class="glass-panel-light rounded-xl p-3 border-l-4 border-l-teal-600 shadow-lg">
+                        <div class="flex items-center justify-between mb-1">
+                            <span class="text-[10px] font-mono font-bold text-teal-700 bg-teal-50 px-2 py-0.5 rounded border border-teal-200">
+                                07 // HYDRONIC OVERHEAD FLYTHROUGH
+                            </span>
+                            <span class="text-[10px] font-mono font-bold text-teal-600">Dual Orthogonal Loop</span>
+                        </div>
+                        <p class="text-[11px] text-slate-600 leading-snug font-medium">
+                            沿正交公用管廊高空飛越，正交冰水管筆直奔向中央能源站。
+                        </p>
+                    </div>
+                </div>
+
+                <!-- SHOT 08: CHILLER PLANT EQUIPMENT LOCK (77 - 89%) -->
+                <div id="hud-shot-8" class="hud-card">
+                    <div class="glass-panel-light rounded-xl p-3 border-l-4 border-l-blue-700 shadow-lg">
+                        <div class="flex items-center justify-between mb-1">
+                            <span class="text-[10px] font-mono font-bold text-blue-700 bg-blue-50 px-2 py-0.5 rounded border border-blue-200">
+                                08 // CHILLER PLANT EQUIPMENT LOCK
+                            </span>
+                            <span id="ui-cop" class="text-[10px] font-mono font-bold text-blue-600">COP 7.25 · 1200 RT</span>
+                        </div>
+                        <p class="text-[11px] text-slate-600 leading-snug font-medium">
+                            鏡頭精準鎖定對準 1200 RT 離心冰機筒體與雙排一次側水泵，零偏移檢視。
+                        </p>
+                    </div>
+                </div>
+
+                <!-- SHOT 09: COOLING TOWER HEAT SINK (88 - 94%) -->
+                <div id="hud-shot-9" class="hud-card">
+                    <div class="glass-panel-light rounded-xl p-3 border-l-4 border-l-indigo-800 shadow-lg">
+                        <div class="flex items-center justify-between mb-1">
+                            <span class="text-[10px] font-mono font-bold text-indigo-800 bg-indigo-50 px-2 py-0.5 rounded border border-indigo-200">
+                                09 // COOLING TOWER HEAT SINK
+                            </span>
+                            <span class="text-[10px] font-mono font-bold text-indigo-700">900 RT · 37°C / 32°C</span>
+                        </div>
+                        <p class="text-[11px] text-slate-600 leading-snug font-medium">
+                            中景俯視散熱庭院，冷卻水塔經蒸發潛熱將熱量排入大氣。
+                        </p>
+                    </div>
+                </div>
+
+                <!-- SHOT 10: GRAND CLOSED-LOOP OVERVIEW (94 - 100%) -->
+                <div id="hud-shot-10" class="hud-card">
+                    <div class="glass-panel-light rounded-xl p-3 border-l-4 border-l-emerald-600 shadow-lg">
+                        <div class="flex items-center justify-between mb-1">
+                            <span class="text-[10px] font-mono font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
+                                10 // GRAND CLOSED-LOOP OVERVIEW
+                            </span>
+                            <span id="ui-pue" class="text-[10px] font-mono font-bold text-emerald-600">PUE = 1.07</span>
+                        </div>
+                        <p class="text-[11px] text-slate-600 leading-snug font-medium">
+                            全廠高空宏觀全景，串聯晶圓廠、算力中心、機房與水塔。
+                        </p>
+                    </div>
+                </div>
+
+            </main>
+
+            <!-- 底部時間軸控制器與狀態 Bar -->
+            <footer class="relative z-30 px-6 py-3 flex flex-col gap-2 border-t border-slate-200/80 bg-white/88 backdrop-blur-xl shadow-xs">
+                <div class="flex items-center gap-4">
+                    <span class="font-mono text-xs font-bold text-blue-700 min-w-[150px]" id="scrub-label">PROGRESS: 0.0%</span>
+                    <input type="range" id="timeline-slider" min="0" max="100" value="0" step="0.05" class="w-full cursor-pointer" oninput="onSliderScrub(this.value)">
+                    <button onclick="togglePlayPause()" class="px-4 py-1.5 rounded-lg bg-slate-900 hover:bg-slate-800 text-xs font-mono font-bold text-white flex items-center gap-2 transition-all shadow-xs min-w-[125px] justify-center" id="play-btn">
+                        <i class="fa-solid fa-play text-blue-400"></i> <span>AUTO PLAY</span>
+                    </button>
+                </div>
+                <div class="flex items-center justify-between text-[11px] font-mono text-slate-500">
+                    <div class="flex items-center gap-4">
+                        <span class="text-slate-800 font-bold" id="director-shot-name">CURRENT SHOT: 01 // FAB ESTABLISHING WIDE</span>
+                        <span id="cam-coord" class="text-slate-500">POS [0.0, 6.2, 16.0]</span>
+                    </div>
+                    <div class="flex items-center gap-3">
+                        <span class="text-slate-500 hidden md:inline">SCROLL / DRAG TIMELINE TO DIRECT STORY</span>
+                        <button id="toggle-cam-mode-btn" onclick="toggleCameraControlMode()" class="px-2.5 py-1 rounded-lg bg-slate-100 border border-slate-300 text-slate-700 text-xs font-mono font-bold hover:bg-slate-200 transition-all flex items-center gap-2 shadow-xs">
+                            <i class="fa-solid fa-film text-blue-600"></i>
+                            <span id="cam-mode-label">CINEMATIC DIRECTOR</span>
+                        </button>
+                        <button onclick="toggleDevPanel()" class="w-7 h-7 rounded-lg bg-slate-100 border border-slate-300 text-slate-700 hover:bg-slate-200 flex items-center justify-center transition-all shadow-xs" title="開啟工程控制台">
+                            <i class="fa-solid fa-sliders text-xs"></i>
+                        </button>
+                    </div>
+                </div>
+            </footer>
+        </div>
+    </div>
+
+    <!-- 開發者調試與圖層控制抽屜 -->
+    <div id="dev-drawer" class="glass-panel-light fixed top-16 right-6 z-50 w-80 rounded-2xl p-5 text-xs font-mono transition-transform duration-300 translate-x-[115%] shadow-2xl">
+        <div class="flex items-center justify-between border-b border-slate-200 pb-3 mb-4">
+            <div class="font-bold text-blue-700 flex items-center gap-2">
+                <i class="fa-solid fa-sliders"></i>
+                <span>DIRECTOR & LAB CONTROLS</span>
+            </div>
+            <button onclick="toggleDevPanel()" class="text-slate-400 hover:text-slate-700"><i class="fa-solid fa-xmark text-sm"></i></button>
+        </div>
+
+        <div class="flex flex-col gap-4">
+            <!-- 攝影機自動巡航速度倍率 -->
+            <div>
+                <div class="flex justify-between text-slate-600 mb-1 font-semibold">
+                    <span>Playback Speed (30s Base):</span>
+                    <span id="val-playspeed" class="text-blue-600 font-bold">1.0x (30.0s)</span>
+                </div>
+                <input type="range" min="0.5" max="3.0" value="1.0" step="0.1" class="w-full" oninput="updateParam('playSpeed', this.value)">
+            </div>
+
+            <!-- 氣流速度倍率 -->
+            <div>
+                <div class="flex justify-between text-slate-600 mb-1 font-semibold">
+                    <span>Cleanroom Airflow Speed:</span>
+                    <span id="val-airspeed" class="text-blue-600 font-bold">1.0x</span>
+                </div>
+                <input type="range" min="0.2" max="3.0" value="1.0" step="0.1" class="w-full" oninput="updateParam('airSpeed', this.value)">
+            </div>
+
+            <!-- GPU 熱通量強度 -->
+            <div>
+                <div class="flex justify-between text-slate-600 mb-1 font-semibold">
+                    <span>GPU Heatmap Intensity:</span>
+                    <span id="val-heat" class="text-amber-600 font-bold">1.0x</span>
+                </div>
+                <input type="range" min="0.2" max="2.5" value="1.0" step="0.1" class="w-full" oninput="updateParam('heatIntensity', this.value)">
+            </div>
+
+            <!-- 管網系統隔離顯示 (System Layers) -->
+            <div class="pt-2 border-t border-slate-200 flex flex-col gap-2">
+                <span class="text-slate-700 font-bold">Hydraulic Loops Focus:</span>
+                <div class="grid grid-cols-2 gap-2 text-[10px]">
+                    <button onclick="setLoopFocus('all')" class="p-1.5 rounded bg-blue-50 border border-blue-400 text-blue-700 font-bold" id="btn-loop-all">ALL LOOPS</button>
+                    <button onclick="setLoopFocus('chw')" class="p-1.5 rounded bg-slate-100 border border-slate-200 text-slate-600" id="btn-loop-chw">CHW (7°C/12°C)</button>
+                    <button onclick="setLoopFocus('cw')" class="p-1.5 rounded bg-slate-100 border border-slate-200 text-slate-600" id="btn-loop-cw">CW (32°C/37°C)</button>
+                    <button onclick="setLoopFocus('tcs')" class="p-1.5 rounded bg-slate-100 border border-slate-200 text-slate-600" id="btn-loop-tcs">TCS (32°C/45°C)</button>
+                </div>
+            </div>
+
+            <!-- Wireframe 輔助模式 -->
+            <div class="pt-2 border-t border-slate-200 flex items-center justify-between">
+                <span class="text-slate-600 font-semibold">Wireframe Inspector:</span>
+                <input type="checkbox" id="wireframe-toggle" onchange="toggleWireframe(this.checked)" class="cursor-pointer">
+            </div>
+
+            <!-- 相機 FOV 廣角調整 -->
+            <div>
+                <div class="flex justify-between text-slate-600 mb-1 font-semibold">
+                    <span>Camera FOV:</span>
+                    <span id="val-fov" class="text-blue-600 font-bold">42°</span>
+                </div>
+                <input type="range" min="30" max="70" value="42" step="1" class="w-full" oninput="updateParam('cameraFov', this.value)">
+            </div>
+        </div>
+    </div>
+
+    <!-- Three.js Global & Standalone Equipment Model Generators -->
+    <script src="https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js"></script>
+    <script src="./model_rack.js"></script>
+    <script src="./model_cdu.js"></script>
+    <script src="./model_chiller.js"></script>
+    <script src="./model_pump.js"></script>
+    <script src="./model_cooling_tower.js"></script>
+    <script src="./models_library.js"></script>
+
+    <!-- Three.js + OrbitControls ES Modules -->
+    <script type="importmap">
+    {
+        "imports": {
+            "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+            "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+        }
+    }
+    </script>
+
+    <script type="module">
+        import * as THREE from 'three';
+        import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+        window.THREE = THREE;
+
+        // 全域狀態機
+        const AppState = {
+            progress: 0,
+            targetProgress: 0,
+            isAutoPlaying: false,
+            playSpeedMultiplier: 1.0,
+            isOrbitMode: false,
+            airSpeedMultiplier: 1.0,
+            heatIntensity: 1.0,
+            isWireframe: false,
+            activeLoop: 'all',
+            ohtSpeed: 0.035
+        };
+
+        // ======================================================================
+        // REAL-WORLD ASME A13.1 & SEMICONDUCTOR COLOR DEFINITIONS
+        // ======================================================================
+        const REAL_COLOR = {
+            fabFloor:       0xe2e8f0, // 亮灰環氧樹脂穿孔高架地板
+            fabWall:        0xf8fafc, // 烤漆鋼板隔間牆
+            ffuCasing:      0xf1f5f9, // 白鋅鋼板 FFU 濾網外框
+            cleanLamp:      0xffffff, // 5500K 淚滴型潔淨白光
+            ohtRail:        0x94a3b8, // 鋁合金陽極氧化天軌
+            ohtPod:         0xffffff, // OHT 白色流線機體
+            foupCasing:     0x0284c7, // 半透明耐衝擊抗靜電晶圓盒
+            siliconWafer:   0x10b981, // 鍍膜彩光 12 吋矽晶圓
+            efemTool:       0xe2e8f0, // 半導體製程機台香檳灰白塗裝
+            
+            rackBody:       0x1e293b, // 機房消光深灰抗靜電冷軋鋼板
+            coldAisleDoor:  0x38bdf8, // 鋼化超白夾膠玻璃圍封
+            stainlessPipe:  0xcbd5e1, // 304 不鏽鋼立式分流集管 (Manifold)
+            tcsSupply:      0x0284c7, // 32°C 晶片冷水 (ASME 標準深天藍)
+            tcsReturn:      0xea580c, // 45°C GPU 高熱回水 (ASME 標準暖橙)
+            cduBody:        0xf8fafc, // 現代資料中心白色高光烤漆 CDU 櫃體
+
+            chwSupply:      0x1d4ed8, // 7°C 冰水供水 (ASME Royal Blue 寶藍色)
+            chwReturn:      0x38bdf8, // 12°C 冰水回水 (淺藍色標帶)
+            cwSupply:       0x15803d, // 32°C 冷卻水供水 (ASME Kelly Green 深綠)
+            cwReturn:       0x22c55e, // 37°C 回水至水塔 (鮮綠色)
+            chillerBlue:    0x1e3a8a, // 離心式冰機蒸發器保溫層 (深藍重防蝕漆)
+            chillerGreen:   0x14532d, // 離心式冰機冷凝器筒身 (工業墨綠)
+            concreteBase:   0x94a3b8, // 水泵混凝土避震慣性基座
+            valveRed:       0xdc2626  // 安全與隔離閥門亮紅手輪
+        };
+
+        // ======================================================================
+        // PROCEDURAL PBR TEXTURE SYNTHESIZERS (零外部依賴之高精度程序化紋理生成)
+        // ======================================================================
+        class ProceduralTextureFactory {
+            static createEpoxyNormalMap() {
+                const size = 256;
+                const canvas = document.createElement('canvas');
+                canvas.width = canvas.height = size;
+                const ctx = canvas.getContext('2d');
+                const imgData = ctx.createImageData(size, size);
+                for (let i = 0; i < size * size * 4; i += 4) {
+                    const noiseX = (Math.random() - 0.5) * 22;
+                    const noiseY = (Math.random() - 0.5) * 22;
+                    imgData.data[i] = 128 + noiseX;     // R -> X 法線
+                    imgData.data[i + 1] = 128 + noiseY; // G -> Y 法線
+                    imgData.data[i + 2] = 255;          // B -> Z 垂直方向
+                    imgData.data[i + 3] = 255;
+                }
+                ctx.putImageData(imgData, 0, 0);
+                const tex = new THREE.CanvasTexture(canvas);
+                tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
+                tex.repeat.set(16, 16);
+                return tex;
+            }
+
+            static createPerforatedFloorTexture() {
+                const size = 512;
+                const canvas = document.createElement('canvas');
+                canvas.width = canvas.height = size;
+                const ctx = canvas.getContext('2d');
+
+                ctx.fillStyle = '#e2e8f0';
+                ctx.fillRect(0, 0, size, size);
+
+                ctx.strokeStyle = '#94a3b8';
+                ctx.lineWidth = 6;
+                ctx.strokeRect(3, 3, size - 6, size - 6);
+
+                ctx.fillStyle = '#1e293b';
+                const holes = 12;
+                const step = (size - 40) / holes;
+                for (let x = 0; x < holes; x++) {
+                    for (let y = 0; y < holes; y++) {
+                        const cx = 20 + x * step + step / 2;
+                        const cy = 20 + y * step + step / 2;
+                        ctx.beginPath();
+                        ctx.arc(cx, cy, 5.5, 0, Math.PI * 2);
+                        ctx.fill();
+                    }
+                }
+
+                const tex = new THREE.CanvasTexture(canvas);
+                tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
+                tex.repeat.set(8, 8);
+                return tex;
+            }
+
+            static createBrushedMetalNormalMap() {
+                const w = 256, h = 256;
+                const canvas = document.createElement('canvas');
+                canvas.width = w; canvas.height = h;
+                const ctx = canvas.getContext('2d');
+                const imgData = ctx.createImageData(w, h);
+                for (let y = 0; y < h; y++) {
+                    const lineNoise = (Math.random() - 0.5) * 35;
+                    for (let x = 0; x < w; x++) {
+                        const idx = (y * w + x) * 4;
+                        imgData.data[idx] = 128;
+                        imgData.data[idx + 1] = Math.max(0, Math.min(255, 128 + lineNoise));
+                        imgData.data[idx + 2] = 255;
+                        imgData.data[idx + 3] = 255;
+                    }
+                }
+                ctx.putImageData(imgData, 0, 0);
+                const tex = new THREE.CanvasTexture(canvas);
+                tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
+                tex.repeat.set(4, 1);
+                return tex;
+            }
+
+            static createContactShadowTexture() {
+                const size = 256;
+                const canvas = document.createElement('canvas');
+                canvas.width = canvas.height = size;
+                const ctx = canvas.getContext('2d');
+
+                const gradient = ctx.createRadialGradient(size / 2, size / 2, 20, size / 2, size / 2, size / 2);
+                gradient.addColorStop(0, 'rgba(15, 23, 42, 0.65)');
+                gradient.addColorStop(0.5, 'rgba(15, 23, 42, 0.35)');
+                gradient.addColorStop(1, 'rgba(15, 23, 42, 0)');
+
+                ctx.fillStyle = gradient;
+                ctx.fillRect(0, 0, size, size);
+
+                return new THREE.CanvasTexture(canvas);
+            }
+
+            static createCleanroomPanelTexture() {
+                const w = 512, h = 512;
+                const canvas = document.createElement('canvas');
+                canvas.width = w; canvas.height = h;
+                const ctx = canvas.getContext('2d');
+
+                ctx.fillStyle = '#f8fafc';
+                ctx.fillRect(0, 0, w, h);
+
+                // 1.2m 模組化矽利康防塵打膠微倒角接縫線 (Silicone Sealant Bevel Line)
+                ctx.strokeStyle = '#94a3b8';
+                ctx.lineWidth = 4;
+                ctx.strokeRect(2, 2, w - 4, h - 4);
+
+                ctx.strokeStyle = '#cbd5e1';
+                ctx.lineWidth = 2;
+                ctx.strokeRect(5, 5, w - 10, h - 10);
+
+                const tex = new THREE.CanvasTexture(canvas);
+                tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
+                tex.repeat.set(6, 2);
+                return tex;
+            }
+
+            static createDataCenterTileTexture() {
+                const size = 512;
+                const canvas = document.createElement('canvas');
+                canvas.width = canvas.height = size;
+                const ctx = canvas.getContext('2d');
+
+                // 現代高規資料中心抗靜電 ESD 高架地板基底深碳灰/冷石板灰
+                ctx.fillStyle = '#1e293b'; // Slate 800
+                ctx.fillRect(0, 0, size, size);
+
+                // 防滑微紋理 / ESD 碳纖維微雜訊散布
+                const imgData = ctx.getImageData(0, 0, size, size);
+                for (let i = 0; i < imgData.data.length; i += 4) {
+                    const noise = (Math.random() - 0.5) * 12;
+                    imgData.data[i] = Math.min(255, Math.max(0, imgData.data[i] + noise));
+                    imgData.data[i + 1] = Math.min(255, Math.max(0, imgData.data[i + 1] + noise));
+                    imgData.data[i + 2] = Math.min(255, Math.max(0, imgData.data[i + 2] + noise));
+                }
+                ctx.putImageData(imgData, 0, 0);
+
+                // 地板接縫勾縫陰影與防靜電邊框
+                ctx.strokeStyle = '#0f172a'; // 深色接縫
+                ctx.lineWidth = 6;
+                ctx.strokeRect(3, 3, size - 6, size - 6);
+
+                ctx.strokeStyle = '#334155'; // 邊緣導角高光線
+                ctx.lineWidth = 2;
+                ctx.strokeRect(6, 6, size - 12, size - 12);
+
+                const tex = new THREE.CanvasTexture(canvas);
+                tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
+                tex.repeat.set(16, 14); // 600mm x 600mm 工規抗靜電地磚比例
+                return tex;
+            }
+        }
+
+        // ======================================================================
+        // CAMERA TIMELINE 6.0: UNIFIED CONTINUOUS INDUSTRIAL DOCUMENTARY TRAJECTORY
+        // 單一連續 3D 樣條軌跡 (C1 連續無縫)，嚴格遵守 5.5m+ 工規安全距離，全景宏觀收尾
+        // ======================================================================
+
+        class Spline1D {
+            constructor(keys, prop) {
+                this.keys = keys.map(k => ({ p: k.p, v: k[prop] }));
+                const n = this.keys.length;
+                const d = [];
+                const m = new Array(n).fill(0);
+
+                // 1. 計算區段割線斜率
+                for (let i = 0; i < n - 1; i++) {
+                    const h = this.keys[i + 1].p - this.keys[i].p;
+                    d.push(h > 0 ? (this.keys[i + 1].v - this.keys[i].v) / h : 0);
+                }
+
+                // 2. 初始端點與內部切線
+                m[0] = d[0];
+                m[n - 1] = d[n - 2];
+                for (let i = 1; i < n - 1; i++) {
+                    m[i] = (d[i - 1] + d[i]) / 2;
+                }
+
+                // 3. Fritsch-Carlson 單調性約束 (保證設備鎖定時 100% 零超調、零漂移晃動)
+                for (let i = 0; i < n - 1; i++) {
+                    if (Math.abs(d[i]) < 1e-7) {
+                        m[i] = 0;
+                        m[i + 1] = 0;
+                    } else {
+                        const alpha = m[i] / d[i];
+                        const beta = m[i + 1] / d[i];
+                        if (alpha < 0) m[i] = 0;
+                        if (beta < 0) m[i + 1] = 0;
+                        if (alpha * alpha + beta * beta > 9) {
+                            const tau = 3 / Math.sqrt(alpha * alpha + beta * beta);
+                            m[i] = tau * alpha * d[i];
+                            m[i + 1] = tau * beta * d[i];
+                        }
+                    }
+                }
+                this.m = m;
+            }
+            eval(p) {
+                const pClamp = Math.max(0, Math.min(1, p));
+                let i = 0;
+                while (i < this.keys.length - 2 && pClamp > this.keys[i + 1].p) i++;
+                const k0 = this.keys[i], k1 = this.keys[i + 1];
+                const dt = k1.p - k0.p;
+                const t = dt > 0 ? (pClamp - k0.p) / dt : 0;
+                const t2 = t * t, t3 = t2 * t;
+                const h00 = 2 * t3 - 3 * t2 + 1;
+                const h10 = t3 - 2 * t2 + t;
+                const h01 = -2 * t3 + 3 * t2;
+                const h11 = t3 - t2;
+                return h00 * k0.v + h10 * dt * this.m[i] + h01 * k1.v + h11 * dt * this.m[i + 1];
+            }
+        }
+
+        class ContinuousCameraTrajectory {
+            constructor(keyframes) {
+                this.camX = new Spline1D(keyframes.map(k => ({ p: k.p, val: k.cam.x })), 'val');
+                this.camY = new Spline1D(keyframes.map(k => ({ p: k.p, val: k.cam.y })), 'val');
+                this.camZ = new Spline1D(keyframes.map(k => ({ p: k.p, val: k.cam.z })), 'val');
+                this.lookX = new Spline1D(keyframes.map(k => ({ p: k.p, val: k.look.x })), 'val');
+                this.lookY = new Spline1D(keyframes.map(k => ({ p: k.p, val: k.look.y })), 'val');
+                this.lookZ = new Spline1D(keyframes.map(k => ({ p: k.p, val: k.look.z })), 'val');
+                this.fov = new Spline1D(keyframes.map(k => ({ p: k.p, val: k.fov })), 'val');
+            }
+            evaluate(p) {
+                return {
+                    cam: new THREE.Vector3(this.camX.eval(p), this.camY.eval(p), this.camZ.eval(p)),
+                    look: new THREE.Vector3(this.lookX.eval(p), this.lookY.eval(p), this.lookZ.eval(p)),
+                    fov: this.fov.eval(p)
+                };
+            }
+        }
+
+        const UNIFIED_CAMERA_KEYFRAMES = [
+            // 1. GRAND CAMPUS ESTABLISHING & FAB CLEANROOM ZONE (0.00 ~ 0.24)
+            // 0.00: 全廠高空宏觀全景開場 (與 1.00 終章完全相同之等距視角，達成無縫銜接與極致滑順之循環啟動)
+            { p: 0.00, cam: { x: 42.0, y: 52.0, z: 92.0 }, look: { x: 42.0, y: 0.0, z: -2.0 }, fov: 48 },
+            // 0.03: 宏觀開場後由全廠高空斜向俯衝切入晶圓廠區 (FAB)
+            { p: 0.03, cam: { x: 16.0, y: 24.0, z: 42.0 }, look: { x: 0.0, y: 1.0, z: 0.0 }, fov: 49 },
+            // 0.06: 穿入 FAB 無塵室前側觀察廊道，斜俯瞰中央晶圓作業區 (原 0.04 點)
+            { p: 0.06, cam: { x: 0.0, y: 4.8, z: 8.8 }, look: { x: 0.0, y: -0.5, z: 0.0 }, fov: 48 },
+            // 0.09: 機台環繞第 1 站 — 轉入西前側，精準對準 Station 1: ASML EUV/DUV 曝光機物鏡與塗佈顯影機組
+            { p: 0.09, cam: { x: -7.2, y: 3.2, z: 6.2 }, look: { x: -3.8, y: -0.4, z: 3.2 }, fov: 46 },
+            // 0.13: 機台環繞第 2 站 — 沿西側檢修通道推進，精準對準 Station 2: Lam/AMAT 真空八角電漿蝕刻機與匹配箱
+            { p: 0.13, cam: { x: -7.5, y: 3.0, z: -3.2 }, look: { x: -3.8, y: -0.5, z: -3.2 }, fov: 45 },
+            // 0.17: 機台環繞第 3 站 — 環繞至後走道，精準對準 Station 3: CVD/ALD 立式雙石英反應爐與氣體質量流量箱
+            { p: 0.17, cam: { x: -1.5, y: 3.2, z: -8.2 }, look: { x: 3.8, y: -0.4, z: -3.2 }, fov: 45 },
+            // 0.21: 機台環繞第 4 站 — 轉入東側廊道，精準對準 Station 4: AMHS 300mm 自動晶圓立體倉儲 (16 FOUP) 與天車
+            { p: 0.21, cam: { x: 7.2, y: 3.4, z: -2.5 }, look: { x: 3.8, y: -0.2, z: 3.2 }, fov: 46 },
+            // 0.24: 環繞圓滿完成，攝影機向東側氣閘平滑拉升撤出，準備進入戶外管廊
+            { p: 0.24, cam: { x: 7.5, y: 6.5, z: 7.5 }, look: { x: 16.0, y: 2.5, z: -2.0 }, fov: 47 },
+
+            // 2. UTILITY SPINE TRANSITION (0.24 ~ 0.33): PULL BACK -> FLY-THROUGH -> GOD VIEW
+            // 0.28: 沿戶外鋼構公用管廊 (Utility Spine) 上空高位巡弋
+            { p: 0.28, cam: { x: 20.0, y: 12.0, z: 15.5 }, look: { x: 30.0, y: 3.0, z: -4.5 }, fov: 48 },
+            // 0.33: 抵達資料中心西側，展開 AIDC 宏觀視野
+            { p: 0.33, cam: { x: 32.0, y: 13.0, z: 18.0 }, look: { x: 38.0, y: 2.5, z: -2.0 }, fov: 50 },
+
+            // 3. AIDC DATA CENTER ZONE (0.33 ~ 0.68): GOD VIEW -> DESCEND -> MEDIUM ORBIT -> PULL BACK
+            // 0.38: AIDC 上帝高空大景 (開闊斜俯角，縱覽冷通道玻璃頂棚、雙列 16 座無縫機櫃與外側分流管)
+            { p: 0.38, cam: { x: 42.0, y: 14.0, z: 20.0 }, look: { x: 42.0, y: 1.5, z: 0.6 }, fov: 50 },
+            // 0.45: 斜向溫和降高，逼近機房中景層 (距離機櫃 > 5.8m，絕不穿模)
+            { p: 0.45, cam: { x: 49.0, y: 8.5, z: 15.0 }, look: { x: 42.0, y: 1.5, z: 0.6 }, fov: 47 },
+            // 0.51: GB200 NVL72 叢集中景環繞 (中高角度俯瞰冷通道正面 LED 藍光與冷板熱成像)
+            { p: 0.51, cam: { x: 52.5, y: 6.5, z: 7.5 }, look: { x: 42.0, y: 1.4, z: 0.6 }, fov: 46 },
+            // 0.58: 環繞至機房後側，俯視機櫃背部分流歧管與熱流走向
+            { p: 0.58, cam: { x: 52.0, y: 5.8, z: -1.0 }, look: { x: 42.0, y: 1.5, z: -2.0 }, fov: 45 },
+            // 0.63: 空間開闊斜上方 45 度俯視 CDU 1.3MW 液冷換熱單元 (距離 > 5.8m，精準鎖定 Z=-7.8)
+            { p: 0.63, cam: { x: 50.0, y: 5.5, z: -8.0 }, look: { x: 42.0, y: 1.2, z: -7.8 }, fov: 45 },
+            // 0.68: CDU 檢視完畢，攝影機後撤爬升轉向東側管廊
+            { p: 0.68, cam: { x: 42.0, y: 6.5, z: -14.0 }, look: { x: 42.0, y: 1.0, z: -7.8 }, fov: 47 },
+
+            // 4. TRANSITION TO CHILLER PLANT (0.68 ~ 0.77): HIGH FLIGHT ALONG PIPE SPUR
+            // 0.73: 高空滑翔跨越 X=54~72 公用管廊，正交雙向冰水管清晰可見
+            { p: 0.73, cam: { x: 62.0, y: 13.0, z: 16.0 }, look: { x: 74.0, y: 2.5, z: -3.0 }, fov: 48 },
+            // 0.77: 中央能源站上帝高空建立大景，直接鎖定 1200 RT 冰機 CH-01
+            { p: 0.77, cam: { x: 76.0, y: 12.0, z: 16.0 }, look: { x: 84.0, y: -0.6, z: -3.2 }, fov: 48 },
+
+            // 5. CHILLER & COOLING TOWER ZONE (0.77 ~ 0.94): ZERO-DRIFT PRECISION EQUIPMENT LOCK & ORBIT
+            // 0.81: 降高滑向冰機正面 3/4 視角，嚴格對準 1200 RT 離心式主機 CH-01 (X=84, Y=-0.6, Z=-3.2)
+            { p: 0.81, cam: { x: 78.5, y: 5.5, z: 7.5 }, look: { x: 84.0, y: -0.6, z: -3.2 }, fov: 46 },
+            // 0.85: 橫移橫跨中央檢修走廊，鏡頭持續精準對準 1200 RT 主機蒸發器與冷凝器筒體
+            { p: 0.85, cam: { x: 87.5, y: 5.2, z: 6.8 }, look: { x: 84.0, y: -0.6, z: -3.2 }, fov: 45 },
+            // 0.88: 轉向對準大水泵走廊與分流聯管 (CHWP 與 CWP 泵群中軸 X=84, Z=5.2, Y=-1.2)
+            { p: 0.88, cam: { x: 92.0, y: 5.5, z: 4.5 }, look: { x: 86.0, y: -1.0, z: 4.0 }, fov: 45 },
+            // 0.91: 進入散熱庭院，鏡頭精準對準 900 RT 冷卻水塔 CT-01 (X=97.8, Y=0.8, Z=-1.5)
+            { p: 0.91, cam: { x: 103.5, y: 5.8, z: 4.0 }, look: { x: 97.8, y: 0.8, z: -1.5 }, fov: 44 },
+            // 0.94: 水塔中景環繞，鏡頭持續精準對準水塔旋轉風機與鋼構爬梯
+            { p: 0.94, cam: { x: 104.5, y: 6.5, z: -3.5 }, look: { x: 97.8, y: 0.8, z: -1.5 }, fov: 44 },
+
+            // 6. FINAL TRUE GRAND OVERVIEW (0.94 ~ 1.00): PULL BACK & ASCENT INTO ULTIMATE PANORAMA
+            // 0.97: 雄偉斜後撤升空，全廠三座建築地坪與管架進入視野
+            { p: 0.97, cam: { x: 72.0, y: 32.0, z: 68.0 }, look: { x: 42.0, y: 0.0, z: -2.0 }, fov: 46 },
+            // 1.00: 終章全園區宏觀全景 (完美等距俯瞰 FAB 左、AIDC 中、冰機水塔右與貫穿管廊)
+            { p: 1.00, cam: { x: 42.0, y: 52.0, z: 92.0 }, look: { x: 42.0, y: 0.0, z: -2.0 }, fov: 48 }
+        ];
+
+        const globalCameraTrajectory = new ContinuousCameraTrajectory(UNIFIED_CAMERA_KEYFRAMES);
+
+        // 10 大工業紀錄片分鏡節點元數據
+        const CAMERA_TIMELINE = [
+            {
+                id: 1,
+                name: '01 // CAMPUS GRAND ESTABLISHING',
+                start: 0.00,
+                end: 0.06,
+                hold: [0.35, 0.70]
+            },
+            {
+                id: 2,
+                name: '02 // FAB PROCESS QUAD-STATION ORBIT',
+                start: 0.06,
+                end: 0.24,
+                hold: [0.30, 0.70]
+            },
+            {
+                id: 3,
+                name: '03 // UTILITY SPINE TRANSITION',
+                start: 0.24,
+                end: 0.33,
+                hold: null
+            },
+            {
+                id: 4,
+                name: '04 // AIDC HIGH-ANGLE PANORAMA',
+                start: 0.33,
+                end: 0.45,
+                hold: [0.35, 0.75]
+            },
+            {
+                id: 5,
+                name: '05 // AIDC GB200 SPATIAL ORBIT',
+                start: 0.45,
+                end: 0.58,
+                hold: [0.30, 0.75]
+            },
+            {
+                id: 6,
+                name: '06 // CDU 1.3MW OVERHEAD ANGLE',
+                start: 0.58,
+                end: 0.68,
+                hold: [0.30, 0.70]
+            },
+            {
+                id: 7,
+                name: '07 // HYDRONIC OVERHEAD FLYTHROUGH',
+                start: 0.68,
+                end: 0.77,
+                hold: null
+            },
+            {
+                id: 8,
+                name: '08 // CHILLER PLANT EQUIPMENT LOCK',
+                start: 0.77,
+                end: 0.89,
+                hold: [0.30, 0.75]
+            },
+            {
+                id: 9,
+                name: '09 // COOLING TOWER HEAT SINK',
+                start: 0.89,
+                end: 0.94,
+                hold: [0.25, 0.75]
+            },
+            {
+                id: 10,
+                name: '10 // GRAND CLOSED-LOOP OVERVIEW',
+                start: 0.94,
+                end: 1.00,
+                hold: [0.40, 1.00]
+            }
+        ];
+
+        // 綁定各分鏡端點座標供外部引用
+        CAMERA_TIMELINE.forEach(shot => {
+            const sEval = globalCameraTrajectory.evaluate(shot.start);
+            const eEval = globalCameraTrajectory.evaluate(shot.end);
+            shot.camStart = sEval.cam;
+            shot.camEnd = eEval.cam;
+            shot.lookStart = sEval.look;
+            shot.lookEnd = eEval.look;
+        });
+
+        const CINEMATIC_SHOTS = CAMERA_TIMELINE;
+
+        // 全局進度 p 求解連續運鏡
+        function evaluateCinematicDirector(p) {
+            const clampedP = THREE.MathUtils.clamp(p, 0, 1);
+            let shot = CAMERA_TIMELINE[0];
+            for (let i = 0; i < CAMERA_TIMELINE.length; i++) {
+                if (clampedP >= CAMERA_TIMELINE[i].start - 0.0001) {
+                    shot = CAMERA_TIMELINE[i];
+                }
+            }
+
+            const duration = Math.max(0.0001, shot.end - shot.start);
+            const uRaw = THREE.MathUtils.clamp((clampedP - shot.start) / duration, 0, 1);
+
+            const evalRes = globalCameraTrajectory.evaluate(clampedP);
+
+            return {
+                shot,
+                uRaw,
+                camPos: evalRes.cam,
+                lookPos: evalRes.look,
+                targetFov: evalRes.fov
+            };
+        }
+
+        function getActiveShotName(p) {
+            const { shot } = evaluateCinematicDirector(p);
+            return shot.name;
+        }
+
+        class DigitalTwinEngine {
+            constructor() {
+                this.canvas = document.getElementById('webgl-canvas');
+                this.width = window.innerWidth;
+                this.height = window.innerHeight;
+                this.init();
+            }
+
+            init() {
+                // 1. Scene & 明亮大氣空氣散色 (Soft Industrial Fog)
+                this.scene = new THREE.Scene();
+                this.scene.background = new THREE.Color(0xf1f5f9);
+                this.scene.fog = new THREE.FogExp2(0xf1f5f9, 0.0032);
+
+                // 2. Camera Setup (視角與實體高度校準)
+                this.camera = new THREE.PerspectiveCamera(45, this.width / this.height, 0.1, 350);
+                const initCam = evaluateCinematicDirector(0.0);
+                this.camera.position.copy(initCam.camPos);
+                this.camera.lookAt(initCam.lookPos);
+
+                // 3. Renderer Setup (啟用 PCF 軟陰影與 ACES Filmic Tone Mapping)
+                this.renderer = new THREE.WebGLRenderer({
+                    canvas: this.canvas,
+                    alpha: false,
+                    antialias: true,
+                    powerPreference: 'high-performance'
+                });
+                this.renderer.setSize(this.width, this.height);
+                this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.75));
+                this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
+                this.renderer.toneMappingExposure = 1.08;
+                this.renderer.shadowMap.enabled = true;
+                this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+
+                // 4. OrbitControls (提供自由檢視模式)
+                this.controls = new OrbitControls(this.camera, this.renderer.domElement);
+                this.controls.enableDamping = true;
+                this.controls.dampingFactor = 0.06;
+                this.controls.enabled = false;
+
+                // 5. Realistic Industrial Lighting (天頂漫射天光 + 實體工作燈 + 局部投影燈)
+                const hemiLight = new THREE.HemisphereLight(0xffffff, 0xcbd5e1, 1.45);
+                hemiLight.position.set(0, 40, 0);
+                this.scene.add(hemiLight);
+
+                // 主投射陽光 (Key Directional Light with Soft Shadows)
+                const mainDirLight = new THREE.DirectionalLight(0xffffff, 1.75);
+                mainDirLight.position.set(22, 38, 24);
+                mainDirLight.castShadow = true;
+                mainDirLight.shadow.mapSize.width = 2048;
+                mainDirLight.shadow.mapSize.height = 2048;
+                mainDirLight.shadow.camera.near = 5;
+                mainDirLight.shadow.camera.far = 85;
+                mainDirLight.shadow.camera.left = -22;
+                mainDirLight.shadow.camera.right = 22;
+                mainDirLight.shadow.camera.top = 22;
+                mainDirLight.shadow.camera.bottom = -22;
+                mainDirLight.shadow.bias = -0.0004;
+                this.scene.add(mainDirLight);
+
+                // 側向環境柔和補光
+                const fillLight = new THREE.DirectionalLight(0xe2e8f0, 0.7);
+                fillLight.position.set(-25, 20, -20);
+                this.scene.add(fillLight);
+
+                // 全廠一體化重型工業地面與公用道路基礎 (Integrated Campus Apron & Utility Roadway)
+                const campusApronGeo = new THREE.PlaneGeometry(140, 48);
+                const campusApronMat = new THREE.MeshStandardMaterial({
+                    color: 0x94a3b8,
+                    roughness: 0.82,
+                    metalness: 0.12
+                });
+                const campusApron = new THREE.Mesh(campusApronGeo, campusApronMat);
+                campusApron.rotation.x = -Math.PI / 2;
+                campusApron.position.set(42.0, -2.26, 0.0);
+                campusApron.receiveShadow = true;
+                this.scene.add(campusApron);
+
+                // 全廠底層工規 3D 參考地坪網格 (Ground Grid at lowest elevation Y = -2.25)
+                const campusGrid = new THREE.GridHelper(160, 80, 0x94a3b8, 0xd8e0ea);
+                campusGrid.position.set(42.0, -2.25, 0.0);
+                if (campusGrid.material) {
+                    campusGrid.material.opacity = 0.55;
+                    campusGrid.material.transparent = true;
+                }
+                this.scene.add(campusGrid);
+
+                // 沿公用管廊架貫穿全廠的工規鋪面道路 (Spine Service Roadway @ Z = -4.5, X: -20 ~ 104)
+                const roadwayGeo = new THREE.PlaneGeometry(126, 6.0);
+                const roadwayMat = new THREE.MeshStandardMaterial({
+                    color: 0x64748b,
+                    roughness: 0.75,
+                    metalness: 0.15
+                });
+                const roadway = new THREE.Mesh(roadwayGeo, roadwayMat);
+                roadway.rotation.x = -Math.PI / 2;
+                roadway.position.set(42.0, -2.25, -4.5);
+                roadway.receiveShadow = true;
+                this.scene.add(roadway);
+
+                // 工業安全黃黑管架防護標線 (Yellow Safety Boundary Stripes)
+                [-7.2, -1.8].forEach(stripeZ => {
+                    const stripeGeo = new THREE.PlaneGeometry(124, 0.18);
+                    const stripeMat = new THREE.MeshBasicMaterial({ color: 0xf59e0b });
+                    const stripeMesh = new THREE.Mesh(stripeGeo, stripeMat);
+                    stripeMesh.rotation.x = -Math.PI / 2;
+                    stripeMesh.position.set(42.0, -2.24, stripeZ);
+                    this.scene.add(stripeMesh);
+                });
+
+                // 共享程序化材質貼圖庫
+                this.matLib = {
+                    epoxyNormal: ProceduralTextureFactory.createEpoxyNormalMap(),
+                    perforatedFloorTex: ProceduralTextureFactory.createPerforatedFloorTexture(),
+                    brushedMetalNormal: ProceduralTextureFactory.createBrushedMetalNormalMap(),
+                    contactShadowTex: ProceduralTextureFactory.createContactShadowTexture(),
+                    cleanroomPanelTex: ProceduralTextureFactory.createCleanroomPanelTexture(),
+                    dataCenterTileTex: ProceduralTextureFactory.createDataCenterTileTexture()
+                };
+
+                // 6. 建構三大真實工程場景與互聯管道
+                this.buildCleanroom(0);          // Scene 1: Fab (X = 0)
+                this.buildDataCenter(42);        // Scene 2: AI DC (X = 42)
+                this.buildCentralPlant(84);      // Scene 3: Chiller Plant (X = 84)
+                this.buildHydronicDistribution();// 跨廠區主管網與排熱視覺
+
+                this.camLookTarget = new THREE.Vector3().copy(initCam.lookPos);
+
+                window.addEventListener('resize', () => this.onResize(), { passive: true });
+            }
+
+            buildCleanroom(offsetX) {
+                this.cleanroomGroup = new THREE.Group();
+                this.cleanroomGroup.position.set(offsetX, 0, 0);
+                const dummy = new THREE.Object3D();
+
+                // 1. SUB-FAB 深度空間視覺與華夫格板 (Waffle Slab at Y = -3.1 & Raised Perforated Floor at Y = -2.2)
+                // 1.1 下層 Sub-Fab 實體混凝土基礎板 (深灰色防潮抗震底板)
+                const subFabBase = new THREE.Mesh(
+                    new THREE.PlaneGeometry(28, 24),
+                    new THREE.MeshStandardMaterial({ color: 0x1e293b, roughness: 0.9, metalness: 0.1 })
+                );
+                subFabBase.rotation.x = -Math.PI / 2;
+                subFabBase.position.y = -3.15;
+                subFabBase.receiveShadow = true;
+                this.cleanroomGroup.add(subFabBase);
+
+                // 1.2 Sub-Fab 內部工業管網：不鏽鋼排氣總管 (General & Acid Exhaust Ducts)
+                const exhaustMat = new THREE.MeshStandardMaterial({ color: 0x94a3b8, metalness: 0.88, roughness: 0.22 });
+                [-7.0, 0.0, 7.0].forEach(pipeZ => {
+                    const exDuct = new THREE.Mesh(
+                        new THREE.CylinderGeometry(0.35, 0.35, 26, 16),
+                        exhaustMat
+                    );
+                    exDuct.rotation.z = Math.PI / 2;
+                    exDuct.position.set(0, -2.75, pipeZ);
+                    this.cleanroomGroup.add(exDuct);
+                });
+
+                // 1.3 Sub-Fab 製程乾式真空泵機組 (Dry Vacuum Pumps 群組)
+                const pumpBoxMat = new THREE.MeshStandardMaterial({ color: 0x334155, metalness: 0.7, roughness: 0.35 });
+                const pumpMotorMat = new THREE.MeshStandardMaterial({ color: 0x0284c7, metalness: 0.8, roughness: 0.25 });
+                [[-3.8, 3.2], [-3.8, -3.2], [3.8, -3.2], [3.8, 3.2]].forEach(([px, pz]) => {
+                    // 機台下方的實體抗震基座墩 (Inertia Plinth)
+                    const plinth = new THREE.Mesh(
+                        new THREE.BoxGeometry(3.8, 0.8, 3.2),
+                        new THREE.MeshStandardMaterial({ color: 0x475569, roughness: 0.85 })
+                    );
+                    plinth.position.set(px, -2.7, pz);
+                    this.cleanroomGroup.add(plinth);
+
+                    // 乾式真空泵箱體
+                    const vPump = new THREE.Mesh(new THREE.BoxGeometry(0.8, 0.45, 0.5), pumpBoxMat);
+                    vPump.position.set(px + 1.2, -2.85, pz - 1.2);
+                    const vMotor = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.12, 0.4, 12), pumpMotorMat);
+                    vMotor.rotation.x = Math.PI / 2;
+                    vMotor.position.set(px + 1.2, -2.75, pz - 0.85);
+                    this.cleanroomGroup.add(vPump, vMotor);
+                });
+
+                // 1.4 穿孔高架抗靜電地板 (Raised Floor at Y = -2.2)
+                const floorGeo = new THREE.PlaneGeometry(26, 22);
+                const floorMat = new THREE.MeshStandardMaterial({
+                    map: this.matLib.perforatedFloorTex,
+                    normalMap: this.matLib.epoxyNormal,
+                    roughness: 0.25,
+                    metalness: 0.15,
+                    transparent: true,
+                    opacity: 0.95
+                });
+                const floorMesh = new THREE.Mesh(floorGeo, floorMat);
+                floorMesh.rotation.x = -Math.PI / 2;
+                floorMesh.position.y = -2.2;
+                floorMesh.receiveShadow = true;
+                this.cleanroomGroup.add(floorMesh);
+
+                // 2. 天花板 1200x1200mm 模組化鋁合金 T-Grid 與 100% 滿佈 FFU 單元 (5 x 4 陣列)
+                const ffuGeo = new THREE.BoxGeometry(3.0, 0.38, 3.0);
+                const ffuMat = new THREE.MeshStandardMaterial({
+                    color: REAL_COLOR.ffuCasing,
+                    normalMap: this.matLib.brushedMetalNormal,
+                    roughness: 0.35,
+                    metalness: 0.4
+                });
+                const ffuInstanced = new THREE.InstancedMesh(ffuGeo, ffuMat, 20);
+                ffuInstanced.castShadow = true;
+
+                const filterFaceGeo = new THREE.PlaneGeometry(2.8, 2.8);
+                const filterFaceMat = new THREE.MeshStandardMaterial({
+                    color: 0xffffff,
+                    roughness: 0.75,
+                    metalness: 0.1
+                });
+                const filterInstanced = new THREE.InstancedMesh(filterFaceGeo, filterFaceMat, 20);
+
+                const teardropGeo = new THREE.CylinderGeometry(0.045, 0.045, 2.6, 16);
+                const teardropMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
+                const lampInstanced = new THREE.InstancedMesh(teardropGeo, teardropMat, 20);
+
+                let ffuIdx = 0;
+                for (let xi = 0; xi < 5; xi++) {
+                    for (let zi = 0; zi < 4; zi++) {
+                        const px = (xi - 2) * 3.3;
+                        const pz = (zi - 1.5) * 3.3;
+
+                        dummy.position.set(px, 5.4, pz);
+                        dummy.rotation.set(0, 0, 0);
+                        dummy.updateMatrix();
+                        ffuInstanced.setMatrixAt(ffuIdx, dummy.matrix);
+
+                        dummy.position.set(px, 5.20, pz);
+                        dummy.rotation.set(Math.PI / 2, 0, 0);
+                        dummy.updateMatrix();
+                        filterInstanced.setMatrixAt(ffuIdx, dummy.matrix);
+
+                        dummy.position.set(px + 1.25, 5.16, pz);
+                        dummy.rotation.set(0, 0, Math.PI / 2);
+                        dummy.updateMatrix();
+                        lampInstanced.setMatrixAt(ffuIdx, dummy.matrix);
+
+                        ffuIdx++;
+                    }
+                }
+                ffuInstanced.instanceMatrix.needsUpdate = true;
+                filterInstanced.instanceMatrix.needsUpdate = true;
+                lampInstanced.instanceMatrix.needsUpdate = true;
+                this.cleanroomGroup.add(ffuInstanced);
+                this.cleanroomGroup.add(filterInstanced);
+                this.cleanroomGroup.add(lampInstanced);
+
+                // 3. 兩側實體隔牆 (貼合 1.2m 矽利康膠縫庫板材質) 與回風夾道 (Return Chase at X = ±9.2)
+                [-9.2, 9.2].forEach(chaseX => {
+                    const wall = new THREE.Mesh(
+                        new THREE.BoxGeometry(0.35, 7.6, 20),
+                        new THREE.MeshStandardMaterial({
+                            map: this.matLib.cleanroomPanelTex,
+                            roughness: 0.35,
+                            metalness: 0.15
+                        })
+                    );
+                    wall.position.set(chaseX, 1.6, 0);
+                    wall.receiveShadow = true;
+                    this.cleanroomGroup.add(wall);
+
+                    // 45度不鏽鋼工安防撞踢腳板 (Stainless Steel Kickplate)
+                    const kickplate = new THREE.Mesh(
+                        new THREE.BoxGeometry(0.45, 0.25, 20),
+                        new THREE.MeshStandardMaterial({ color: 0x94a3b8, metalness: 0.9, roughness: 0.15 })
+                    );
+                    kickplate.position.set(chaseX > 0 ? chaseX - 0.05 : chaseX + 0.05, -2.08, 0);
+                    this.cleanroomGroup.add(kickplate);
+
+                    // 指針式室內外壓差計 (Magnehelic Differential Pressure Gauge)
+                    const gauge = new THREE.Mesh(
+                        new THREE.CylinderGeometry(0.12, 0.12, 0.05, 16),
+                        new THREE.MeshStandardMaterial({ color: 0x1e293b, metalness: 0.8 })
+                    );
+                    gauge.rotation.z = Math.PI / 2;
+                    gauge.position.set(chaseX > 0 ? chaseX - 0.2 : chaseX + 0.2, 0.2, 2.5);
+                    this.cleanroomGroup.add(gauge);
+
+                    const damper = new THREE.Mesh(
+                        new THREE.BoxGeometry(0.4, 0.75, 18),
+                        new THREE.MeshStandardMaterial({ color: 0x64748b, metalness: 0.7, roughness: 0.3 })
+                    );
+                    damper.position.set(chaseX > 0 ? chaseX - 0.08 : chaseX + 0.08, -1.8, 0);
+                    this.cleanroomGroup.add(damper);
+
+                    // 夾道內部 DCC 乾冷盤管 (15°C 高溫冰水循環，防結露)
+                    for (let ci = -6; ci <= 6; ci += 4) {
+                        const dcc = new THREE.Mesh(
+                            new THREE.BoxGeometry(0.55, 2.8, 2.5),
+                            new THREE.MeshStandardMaterial({ color: 0x0284c7, metalness: 0.85, roughness: 0.25 })
+                        );
+                        dcc.position.set(chaseX > 0 ? chaseX + 0.65 : chaseX - 0.65, 0.6, ci);
+                        this.cleanroomGroup.add(dcc);
+                    }
+                });
+
+                // 4. AMHS 工規懸吊天軌 (Dual Unistrut Ceiling Braced Rail System)
+                const ohtPts = [
+                    new THREE.Vector3(-4.8, 4.3, -7.0),
+                    new THREE.Vector3(4.8, 4.3, -7.0),
+                    new THREE.Vector3(4.8, 4.3, 7.0),
+                    new THREE.Vector3(-4.8, 4.3, 7.0),
+                    new THREE.Vector3(-4.8, 4.3, -7.0)
+                ];
+                this.ohtCurve = new THREE.CatmullRomCurve3(ohtPts);
+
+                const ohtTrack = new THREE.Mesh(
+                    new THREE.TubeGeometry(this.ohtCurve, 90, 0.085, 8, true),
+                    new THREE.MeshStandardMaterial({
+                        color: REAL_COLOR.ohtRail,
+                        normalMap: this.matLib.brushedMetalNormal,
+                        metalness: 0.9,
+                        roughness: 0.2
+                    })
+                );
+                ohtTrack.castShadow = true;
+                this.cleanroomGroup.add(ohtTrack);
+
+                // 天花板 Unistrut 懸吊雙斜撐吊桿與內側銅合金滑觸線 (Busbar)
+                const unistrutMat = new THREE.MeshStandardMaterial({ color: 0x475569, metalness: 0.9, roughness: 0.3 });
+                const busbarMat = new THREE.MeshStandardMaterial({ color: 0xd97706, metalness: 0.95, roughness: 0.1 });
+                for (let hi = 0; hi <= 10; hi++) {
+                    const pt = this.ohtCurve.getPointAt(hi / 10);
+                    // 主垂直吊桿
+                    const hanger = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, 1.1, 8), unistrutMat);
+                    hanger.position.set(pt.x, 4.85, pt.z);
+                    // 雙斜撐支撐桿
+                    const brace1 = new THREE.Mesh(new THREE.CylinderGeometry(0.015, 0.015, 1.25, 8), unistrutMat);
+                    brace1.rotation.z = Math.PI / 6;
+                    brace1.position.set(pt.x - 0.25, 4.85, pt.z);
+                    // 導電滑觸線
+                    const busbar = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.03, 0.3), busbarMat);
+                    busbar.position.set(pt.x, 4.38, pt.z);
+                    this.cleanroomGroup.add(hanger, brace1, busbar);
+                }
+
+                // OHT 自走天車本體與 300mm FOUP
+                this.ohtVehicles = [];
+                for (let vi = 0; vi < 2; vi++) {
+                    const vehGroup = new THREE.Group();
+                    
+                    const carBody = new THREE.Mesh(
+                        new THREE.BoxGeometry(0.95, 0.38, 0.95),
+                        new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.15, metalness: 0.2 })
+                    );
+                    carBody.castShadow = true;
+                    vehGroup.add(carBody);
+
+                    const bogie = new THREE.Mesh(
+                        new THREE.CylinderGeometry(0.12, 0.12, 0.2, 16),
+                        new THREE.MeshStandardMaterial({ color: 0x334155, metalness: 0.85 })
+                    );
+                    bogie.position.set(0, 0.25, 0);
+                    vehGroup.add(bogie);
+
+                    const led = new THREE.Mesh(
+                        new THREE.BoxGeometry(0.65, 0.04, 0.05),
+                        new THREE.MeshBasicMaterial({ color: 0x16a34a })
+                    );
+                    led.position.set(0, 0.12, 0.48);
+                    vehGroup.add(led);
+
+                    const gripper = new THREE.Mesh(
+                        new THREE.BoxGeometry(0.7, 0.08, 0.7),
+                        new THREE.MeshStandardMaterial({ color: 0x475569, metalness: 0.85 })
+                    );
+                    gripper.position.set(0, -0.22, 0);
+                    vehGroup.add(gripper);
+
+                    // SEMI E47.1 300mm FOUP (半透明聚碳酸酯外殼)
+                    const foupGroup = new THREE.Group();
+                    foupGroup.position.set(0, -0.65, 0);
+
+                    const foup = new THREE.Mesh(
+                        new THREE.BoxGeometry(0.78, 0.68, 0.72),
+                        new THREE.MeshPhysicalMaterial({
+                            color: REAL_COLOR.foupCasing,
+                            transparent: true,
+                            opacity: 0.82,
+                            roughness: 0.15,
+                            metalness: 0.2,
+                            transmission: 0.6,
+                            ior: 1.52
+                        })
+                    );
+                    foup.castShadow = true;
+                    foupGroup.add(foup);
+
+                    const topFlange = new THREE.Mesh(
+                        new THREE.CylinderGeometry(0.12, 0.12, 0.06, 16),
+                        new THREE.MeshStandardMaterial({ color: 0x1e293b, metalness: 0.9 })
+                    );
+                    topFlange.position.set(0, 0.36, 0);
+                    foupGroup.add(topFlange);
+
+                    const waferSlice = new THREE.Mesh(
+                        new THREE.CylinderGeometry(0.28, 0.28, 0.015, 24),
+                        new THREE.MeshStandardMaterial({ color: REAL_COLOR.siliconWafer, metalness: 0.95, roughness: 0.05 })
+                    );
+                    waferSlice.position.set(0, 0, 0);
+                    foupGroup.add(waferSlice);
+
+                    vehGroup.add(foupGroup);
+                    this.cleanroomGroup.add(vehGroup);
+                    this.ohtVehicles.push({ group: vehGroup, offset: vi * 0.5, progress: vi * 0.5 });
+                }
+
+                // 5. 12 吋半導體先進製程機台群 (4 大核心製程工位，超高精度工規細節重構)
+                // Helper: 工規 4 色高階警示訊號塔 (Patlite 4-Tier Signal Tower with Acoustic Buzzer)
+                const createSignalTower = (x, y, z) => {
+                    const towerG = new THREE.Group();
+                    towerG.position.set(x, y, z);
+                    const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, 0.75, 12), new THREE.MeshStandardMaterial({ color: 0x94a3b8, metalness: 0.92, roughness: 0.2 }));
+                    towerG.add(pole);
+                    const buzzer = new THREE.Mesh(new THREE.CylinderGeometry(0.045, 0.045, 0.05, 16), new THREE.MeshStandardMaterial({ color: 0x1e293b, metalness: 0.7 }));
+                    buzzer.position.y = 0.42;
+                    towerG.add(buzzer);
+                    const colors = [0xef4444, 0xf59e0b, 0x10b981, 0x0284c7];
+                    colors.forEach((col, idx) => {
+                        const lamp = new THREE.Mesh(new THREE.CylinderGeometry(0.042, 0.042, 0.065, 16), new THREE.MeshBasicMaterial({ color: col }));
+                        lamp.position.y = 0.12 + idx * 0.072;
+                        const divider = new THREE.Mesh(new THREE.CylinderGeometry(0.044, 0.044, 0.008, 16), new THREE.MeshStandardMaterial({ color: 0x334155, metalness: 0.8 }));
+                        divider.position.y = 0.156 + idx * 0.072;
+                        towerG.add(lamp, divider);
+                    });
+                    return towerG;
+                };
+
+                // Helper: SEMI E15.1 300mm 自動負載端口 (Load Port) 與 25 晶圓 FOUP
+                const createLoadPort = (px, py, pz) => {
+                    const lpg = new THREE.Group();
+                    lpg.position.set(px, py, pz);
+
+                    // 端口基座與氣動開門機構 (Docking Nest & Door Opener Mechanism)
+                    const dock = new THREE.Mesh(
+                        new THREE.BoxGeometry(0.74, 0.16, 0.74),
+                        new THREE.MeshStandardMaterial({ color: 0x1e293b, metalness: 0.85, roughness: 0.25 })
+                    );
+                    dock.position.y = 0.0;
+                    dock.castShadow = true;
+                    lpg.add(dock);
+
+                    // 端口正面操作觸控顯示器與狀態燈條 (Status Bar & Port GUI)
+                    const portDisplay = new THREE.Mesh(
+                        new THREE.BoxGeometry(0.24, 0.06, 0.02),
+                        new THREE.MeshBasicMaterial({ color: 0x10b981 }) // Green Ready LED
+                    );
+                    portDisplay.position.set(0, 0.04, 0.38);
+                    const eStop = new THREE.Mesh(
+                        new THREE.CylinderGeometry(0.025, 0.025, 0.03, 12),
+                        new THREE.MeshBasicMaterial({ color: 0xef4444 }) // E-Stop button
+                    );
+                    eStop.rotation.x = Math.PI / 2;
+                    eStop.position.set(0.28, 0.04, 0.38);
+                    lpg.add(portDisplay, eStop);
+
+                    // 3 點運動副定位銷 (Kinematic Coupling Pins)
+                    [[-0.22, -0.2], [0.22, -0.2], [0, 0.24]].forEach(([kx, kz]) => {
+                        const pin = new THREE.Mesh(
+                            new THREE.CylinderGeometry(0.012, 0.016, 0.05, 8),
+                            new THREE.MeshStandardMaterial({ color: 0xf1f5f9, metalness: 0.95, roughness: 0.1 })
+                        );
+                        pin.position.set(kx, 0.1, kz);
+                        lpg.add(pin);
+                    });
+
+                    // SEMI E47.1 300mm 晶圓盒本體 (FOUP - 聚碳酸酯透光外殼 + 人體工學頂提把)
+                    const foupGroup = new THREE.Group();
+                    foupGroup.position.set(0, 0.40, 0);
+
+                    const foupBody = new THREE.Mesh(
+                        new THREE.BoxGeometry(0.68, 0.60, 0.64),
+                        new THREE.MeshPhysicalMaterial({
+                            color: REAL_COLOR.foupCasing,
+                            transparent: true,
+                            opacity: 0.88,
+                            roughness: 0.12,
+                            metalness: 0.22,
+                            transmission: 0.58,
+                            clearcoat: 0.8
+                        })
+                    );
+                    foupBody.castShadow = true;
+                    foupGroup.add(foupBody);
+
+                    // FOUP 頂部提把 (Robotic Flange / Top Carrying Handle)
+                    const handle = new THREE.Mesh(
+                        new THREE.BoxGeometry(0.18, 0.04, 0.18),
+                        new THREE.MeshStandardMaterial({ color: 0x0f172a, roughness: 0.5 })
+                    );
+                    handle.position.y = 0.32;
+                    foupGroup.add(handle);
+
+                    // FOUP 內部 25 片鏡面矽晶圓 (Silicon Wafers Stack)
+                    for (let w = -4; w <= 4; w++) {
+                        const wafer = new THREE.Mesh(
+                            new THREE.CylinderGeometry(0.28, 0.28, 0.008, 28),
+                            new THREE.MeshStandardMaterial({
+                                color: REAL_COLOR.siliconWafer,
+                                metalness: 0.98,
+                                roughness: 0.04
+                            })
+                        );
+                        wafer.position.y = w * 0.045;
+                        foupGroup.add(wafer);
+                    }
+
+                    // FOUP 正面條碼標籤與門鎖機構
+                    const label = new THREE.Mesh(
+                        new THREE.PlaneGeometry(0.22, 0.08),
+                        new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.8 })
+                    );
+                    label.position.set(0, -0.16, 0.325);
+                    foupGroup.add(label);
+
+                    lpg.add(foupGroup);
+                    return lpg;
+                };
+
+                // Helper: 懸吊雙關節操作員終端 (Articulated Dual-Monitor Operator Console)
+                const createOperatorConsole = (px, py, pz, rotY = 0) => {
+                    const conG = new THREE.Group();
+                    conG.position.set(px, py, pz);
+                    conG.rotation.y = rotY;
+
+                    // 懸吊立柱與雙旋轉關節
+                    const armPole = new THREE.Mesh(
+                        new THREE.CylinderGeometry(0.035, 0.035, 1.2, 12),
+                        new THREE.MeshStandardMaterial({ color: 0x94a3b8, metalness: 0.9, roughness: 0.2 })
+                    );
+                    armPole.position.y = 0.2;
+                    const joint = new THREE.Mesh(
+                        new THREE.SphereGeometry(0.06, 12, 12),
+                        new THREE.MeshStandardMaterial({ color: 0x475569, metalness: 0.85 })
+                    );
+                    joint.position.y = 0.7;
+                    conG.add(armPole, joint);
+
+                    // 24 吋工業防塵觸控螢幕 (GUI Display with Backlit Screen)
+                    const screenBox = new THREE.Mesh(
+                        new THREE.BoxGeometry(0.68, 0.44, 0.06),
+                        new THREE.MeshStandardMaterial({ color: 0x1e293b, metalness: 0.7, roughness: 0.3 })
+                    );
+                    screenBox.position.set(0.25, 0.7, 0.2);
+                    screenBox.rotation.y = -0.25;
+
+                    const screenDisplay = new THREE.Mesh(
+                        new THREE.PlaneGeometry(0.62, 0.38),
+                        new THREE.MeshBasicMaterial({ color: 0x0284c7 })
+                    );
+                    screenDisplay.position.set(0, 0, 0.032);
+                    screenBox.add(screenDisplay);
+
+                    // 懸吊鍵盤托架 (Stainless Keyboard Tray)
+                    const kbTray = new THREE.Mesh(
+                        new THREE.BoxGeometry(0.55, 0.02, 0.22),
+                        new THREE.MeshStandardMaterial({ color: 0x334155, metalness: 0.8 })
+                    );
+                    kbTray.position.set(0, -0.26, 0.12);
+                    screenBox.add(kbTray);
+
+                    conG.add(screenBox);
+                    return conG;
+                };
+
+                // ======================================================================
+                // STATION 1: ASML TWINSCAN Style EUV/DUV Scanner + Coater/Developer Track
+                // 全球頂級微影曝光主機 + 塗佈顯影機連線 (雙工位精密工規外觀)
+                // ======================================================================
+                const lithoGroup = new THREE.Group();
+                lithoGroup.position.set(-3.8, 0, 3.2);
+
+                // 1.1 重型抗震防微振基座 (Inertia Seismic Plinth)
+                const lithoBase = new THREE.Mesh(
+                    new THREE.BoxGeometry(4.8, 0.35, 3.2),
+                    new THREE.MeshStandardMaterial({ color: 0x0f172a, roughness: 0.85, metalness: 0.3 })
+                );
+                lithoBase.position.y = -2.03;
+                lithoBase.castShadow = true;
+                lithoGroup.add(lithoBase);
+
+                // 1.2 曝光主機多重庫板外殼 (Twinscan Multi-Panel Medical-Grade Powder White Enclosure)
+                const lithoMainBody = new THREE.Mesh(
+                    new THREE.BoxGeometry(2.9, 2.55, 2.6),
+                    new THREE.MeshStandardMaterial({
+                        color: 0xf8fafc,
+                        roughness: 0.18,
+                        metalness: 0.25
+                    })
+                );
+                lithoMainBody.position.set(-0.75, -0.65, 0.05);
+                lithoMainBody.castShadow = true;
+                lithoGroup.add(lithoMainBody);
+
+                // 斜角倒邊修飾邊柱 (Beveled Corner Profiles)
+                const bevelMat = new THREE.MeshStandardMaterial({ color: 0x334155, metalness: 0.8, roughness: 0.25 });
+                [[-2.22, 1.36], [0.72, 1.36], [-2.22, -1.26], [0.72, -1.26]].forEach(([bx, bz]) => {
+                    const post = new THREE.Mesh(new THREE.BoxGeometry(0.08, 2.55, 0.08), bevelMat);
+                    post.position.set(bx, -0.65, bz);
+                    lithoGroup.add(post);
+                });
+
+                // 機身金色陽極氧化裝飾飾條 (Champagne Gold Accent Trim)
+                const lithoTrim = new THREE.Mesh(
+                    new THREE.BoxGeometry(2.92, 0.08, 2.62),
+                    new THREE.MeshStandardMaterial({ color: 0xd4af37, metalness: 0.95, roughness: 0.15 })
+                );
+                lithoTrim.position.set(-0.75, 0.52, 0.05);
+                lithoGroup.add(lithoTrim);
+
+                // 1.3 巨型高數值孔徑投影物鏡鏡筒 (High-NA Catadioptric Lens Column)
+                const lensGroup = new THREE.Group();
+                lensGroup.position.set(-0.75, 1.62, 0.05);
+                const lensColumn = new THREE.Mesh(
+                    new THREE.CylinderGeometry(0.58, 0.72, 1.3, 32),
+                    new THREE.MeshStandardMaterial({ color: 0x334155, metalness: 0.92, roughness: 0.12 })
+                );
+                lensColumn.castShadow = true;
+                lensGroup.add(lensColumn);
+
+                // 鏡筒金色光學干涉度量參考環 (Interferometer Metrology Rings)
+                [-0.35, 0.0, 0.35].forEach(my => {
+                    const ring = new THREE.Mesh(
+                        new THREE.CylinderGeometry(0.66, 0.66, 0.06, 32),
+                        new THREE.MeshStandardMaterial({ color: 0xd4af37, metalness: 0.95, roughness: 0.1 })
+                    );
+                    ring.position.y = my;
+                    lensGroup.add(ring);
+                });
+                lithoGroup.add(lensGroup);
+
+                // 1.4 雙晶圓工作台 (Dual Wafer Stage) 琥珀色防雷射觀測視窗 (Anti-Actinic Laser Window)
+                const stageWin = new THREE.Mesh(
+                    new THREE.PlaneGeometry(1.8, 0.85),
+                    new THREE.MeshPhysicalMaterial({
+                        color: 0xf59e0b,
+                        transparent: true,
+                        opacity: 0.60,
+                        roughness: 0.08,
+                        transmission: 0.75,
+                        side: THREE.DoubleSide
+                    })
+                );
+                stageWin.position.set(-0.75, 0.0, 1.36);
+                lithoGroup.add(stageWin);
+
+                // 視窗內部照亮的雙工作台磁浮反射鏡模組 (Magnetic Levitation Wafer Stage Chuck)
+                const stageChuck = new THREE.Mesh(
+                    new THREE.CylinderGeometry(0.42, 0.42, 0.12, 24),
+                    new THREE.MeshStandardMaterial({ color: 0xe2e8f0, metalness: 0.95, roughness: 0.05 })
+                );
+                stageChuck.position.set(-0.75, -0.15, 0.85);
+                lithoGroup.add(stageChuck);
+
+                // 1.5 頂部 TCU 空氣精密恆溫系統 (Thermal Conditioning Unit)
+                const tcuBox = new THREE.Mesh(
+                    new THREE.BoxGeometry(2.7, 0.75, 2.3),
+                    new THREE.MeshStandardMaterial({ color: 0x1e293b, metalness: 0.85, roughness: 0.25 })
+                );
+                tcuBox.position.set(-0.75, 0.98, 0.05);
+                lithoGroup.add(tcuBox);
+
+                // TCU 前進風百葉窗散熱格柵 (Stainless Louvers)
+                for (let lv = -0.22; lv <= 0.22; lv += 0.08) {
+                    const louver = new THREE.Mesh(
+                        new THREE.BoxGeometry(2.4, 0.02, 0.05),
+                        new THREE.MeshStandardMaterial({ color: 0x94a3b8, metalness: 0.9 })
+                    );
+                    louver.position.set(-0.75, 0.98 + lv, 1.21);
+                    lithoGroup.add(louver);
+                }
+
+                // 1.6 連線塗佈顯影機組 (Inline Coater / Developer Track System @ X = +1.4)
+                const trackBody = new THREE.Mesh(
+                    new THREE.BoxGeometry(1.6, 2.35, 2.4),
+                    new THREE.MeshStandardMaterial({ color: 0xe2e8f0, roughness: 0.25, metalness: 0.35 })
+                );
+                trackBody.position.set(1.4, -0.75, 0.05);
+                trackBody.castShadow = true;
+                lithoGroup.add(trackBody);
+
+                // Track 旋轉塗佈防濺透明罩 (Spin Coater Cups with Fluid Containment)
+                [-0.5, 0.5].forEach(tz => {
+                    const cup = new THREE.Mesh(
+                        new THREE.CylinderGeometry(0.32, 0.28, 0.35, 20),
+                        new THREE.MeshPhysicalMaterial({ color: 0x0284c7, transparent: true, opacity: 0.5, transmission: 0.6 })
+                    );
+                    cup.position.set(1.4, -0.3, tz);
+                    lithoGroup.add(cup);
+                });
+
+                // 1.7 機台後側重型柔性電纜拖鏈 (High-Density Cable Drag Chains into Sub-Fab)
+                for (let ch = 0; ch < 2; ch++) {
+                    const chZ = -1.35 + ch * 0.35;
+                    for (let dc = 0; dc < 8; dc++) {
+                        const link = new THREE.Mesh(
+                            new THREE.BoxGeometry(0.14, 0.12, 0.16),
+                            new THREE.MeshStandardMaterial({ color: 0x0f172a, roughness: 0.6 })
+                        );
+                        link.position.set(-1.8 + dc * 0.24, -0.4 - dc * 0.18, chZ);
+                        lithoGroup.add(link);
+                    }
+                }
+
+                // 1.8 前方 3 座 300mm FOUP 負載端口 (SEMI E15.1 Load Ports)
+                [-1.5, -0.75, 0.0].forEach(lx => {
+                    lithoGroup.add(createLoadPort(lx, -1.35, 1.75));
+                });
+
+                // 1.9 懸吊操作終端與 4 色警示訊號塔
+                lithoGroup.add(createOperatorConsole(0.85, -1.35, 1.85, -0.3));
+                lithoGroup.add(createSignalTower(2.0, 0.55, 1.05));
+                this.cleanroomGroup.add(lithoGroup);
+
+                // ======================================================================
+                // STATION 2: Lam / AMAT Style Vacuum Cluster Plasma Etcher
+                // 真空多腔體電漿多模組蝕刻機 (八角真空傳輸中心、RF匹配箱、渦輪分子泵)
+                // ======================================================================
+                const etcherGroup = new THREE.Group();
+                etcherGroup.position.set(-3.8, 0, -3.2);
+
+                const etcherBase = new THREE.Mesh(
+                    new THREE.BoxGeometry(4.2, 0.35, 4.2),
+                    new THREE.MeshStandardMaterial({ color: 0x0f172a, roughness: 0.85, metalness: 0.3 })
+                );
+                etcherBase.position.y = -2.03;
+                etcherBase.castShadow = true;
+                etcherGroup.add(etcherBase);
+
+                // 2.1 前端大氣模組 (EFEM - Equipment Front End Module)
+                const efemCabinet = new THREE.Mesh(
+                    new THREE.BoxGeometry(2.6, 1.95, 1.3),
+                    new THREE.MeshStandardMaterial({ color: 0xf8fafc, roughness: 0.25, metalness: 0.35 })
+                );
+                efemCabinet.position.set(0, -0.95, 1.35);
+                efemCabinet.castShadow = true;
+                etcherGroup.add(efemCabinet);
+
+                // EFEM 雙負載端口
+                [-0.65, 0.65].forEach(lx => {
+                    etcherGroup.add(createLoadPort(lx, -1.35, 2.15));
+                });
+
+                // 雙卡匣真空負載過渡室 (Dual Cassette Load Locks LL1 & LL2 with Slit Valves)
+                [-0.55, 0.55].forEach(lx => {
+                    const loadLock = new THREE.Mesh(
+                        new THREE.BoxGeometry(0.82, 0.65, 0.72),
+                        new THREE.MeshStandardMaterial({ color: 0x475569, metalness: 0.9, roughness: 0.18 })
+                    );
+                    loadLock.position.set(lx, -0.65, 0.45);
+                    etcherGroup.add(loadLock);
+
+                    // 氣動狹縫閥開關氣缸 (Pneumatic Slit Valve Actuators)
+                    const cyl = new THREE.Mesh(
+                        new THREE.CylinderGeometry(0.04, 0.04, 0.22, 12),
+                        new THREE.MeshStandardMaterial({ color: 0x0284c7, metalness: 0.9 })
+                    );
+                    cyl.position.set(lx, -0.22, 0.45);
+                    etcherGroup.add(cyl);
+                });
+
+                // 2.2 八角中央真空傳輸核心腔體 (Octagonal Vacuum Transfer Module - VTM)
+                const vtmChamber = new THREE.Mesh(
+                    new THREE.CylinderGeometry(1.28, 1.28, 0.82, 8),
+                    new THREE.MeshStandardMaterial({ color: 0x64748b, metalness: 0.94, roughness: 0.15 })
+                );
+                vtmChamber.position.set(0, -0.65, -0.35);
+                vtmChamber.castShadow = true;
+                etcherGroup.add(vtmChamber);
+
+                // VTM 頂部石英觀測法蘭盤 (ConFlat CF Flange with Quartz Viewport)
+                const vtmFlange = new THREE.Mesh(
+                    new THREE.CylinderGeometry(0.48, 0.52, 0.08, 24),
+                    new THREE.MeshStandardMaterial({ color: 0x94a3b8, metalness: 0.95, roughness: 0.1 })
+                );
+                vtmFlange.position.set(0, -0.21, -0.35);
+                const vtmGlass = new THREE.Mesh(
+                    new THREE.CylinderGeometry(0.38, 0.38, 0.02, 24),
+                    new THREE.MeshPhysicalMaterial({ color: 0x38bdf8, transparent: true, opacity: 0.7, transmission: 0.85 })
+                );
+                vtmGlass.position.set(0, -0.16, -0.35);
+                etcherGroup.add(vtmFlange, vtmGlass);
+
+                // 2.3 4 座徑向製程反應腔體 (Process Modules PM1 ~ PM4 with RF Match & TMP)
+                const chamberAngles = [-Math.PI * 0.75, -Math.PI * 0.5, -Math.PI * 0.25, 0];
+                chamberAngles.forEach((ang) => {
+                    const cx = Math.cos(ang) * 1.55;
+                    const cz = -0.35 + Math.sin(ang) * 1.55;
+
+                    // PM 腔體本體 (316L 不鏽鋼)
+                    const pm = new THREE.Mesh(
+                        new THREE.CylinderGeometry(0.46, 0.46, 0.92, 24),
+                        new THREE.MeshStandardMaterial({ color: 0x94a3b8, metalness: 0.92, roughness: 0.18 })
+                    );
+                    pm.position.set(cx, -0.60, cz);
+                    pm.castShadow = true;
+                    etcherGroup.add(pm);
+
+                    // 電漿輝光觀測窗 (Plasma Discharge Viewport with Purple Emissive Glow)
+                    const glowWin = new THREE.Mesh(
+                        new THREE.CylinderGeometry(0.12, 0.12, 0.04, 16),
+                        new THREE.MeshBasicMaterial({ color: 0xa855f7 })
+                    );
+                    glowWin.rotation.x = Math.PI / 2;
+                    glowWin.position.set(cx, -0.55, cz + 0.46);
+                    etcherGroup.add(glowWin);
+
+                    // 腔體底部 渦輪分子泵 (Turbo Molecular Pump - TMP)
+                    const tmp = new THREE.Mesh(
+                        new THREE.CylinderGeometry(0.18, 0.18, 0.55, 20),
+                        new THREE.MeshStandardMaterial({ color: 0x0f172a, metalness: 0.9, roughness: 0.25 })
+                    );
+                    tmp.position.set(cx, -1.32, cz);
+                    etcherGroup.add(tmp);
+
+                    // 腔體頂部 RF 射頻阻抗匹配箱 (Auto-Match Network Box)
+                    const rfBox = new THREE.Mesh(
+                        new THREE.BoxGeometry(0.46, 0.26, 0.46),
+                        new THREE.MeshStandardMaterial({ color: 0x1e293b, metalness: 0.75, roughness: 0.3 })
+                    );
+                    rfBox.position.set(cx, 0.02, cz);
+                    etcherGroup.add(rfBox);
+
+                    // 金色陽極氧化散熱金屬鰭片排 (Gold-plated Anodized Cooling Fins)
+                    for (let f = -0.18; f <= 0.18; f += 0.045) {
+                        const fin = new THREE.Mesh(
+                            new THREE.BoxGeometry(0.015, 0.18, 0.42),
+                            new THREE.MeshStandardMaterial({ color: 0xd4af37, metalness: 0.98, roughness: 0.1 })
+                        );
+                        fin.position.set(cx + f, 0.22, cz);
+                        etcherGroup.add(fin);
+                    }
+
+                    // 製程氣體微型 VCR 歧管排與 MFC 流量控制器 (Mass Flow Controllers)
+                    const gasStick = new THREE.Mesh(
+                        new THREE.CylinderGeometry(0.02, 0.02, 0.38, 12),
+                        new THREE.MeshStandardMaterial({ color: 0xd4af37, metalness: 0.95 })
+                    );
+                    gasStick.position.set(cx + 0.22, -0.25, cz);
+                    etcherGroup.add(gasStick);
+                });
+
+                // 2.4 懸吊觸控操作台與 4 色訊號塔
+                etcherGroup.add(createOperatorConsole(1.35, -1.35, 1.8, -0.2));
+                etcherGroup.add(createSignalTower(1.35, 0.65, 0.85));
+                this.cleanroomGroup.add(etcherGroup);
+
+                // ======================================================================
+                // STATION 3: AMAT Centura Style CVD / ALD Thin-Film Deposition Tool
+                // 立式雙反應爐套筒、工規氣體分配箱與晶圓傳輸系統
+                // ======================================================================
+                const cvdGroup = new THREE.Group();
+                cvdGroup.position.set(3.8, 0, -3.2);
+
+                const cvdBase = new THREE.Mesh(
+                    new THREE.BoxGeometry(3.8, 0.35, 3.6),
+                    new THREE.MeshStandardMaterial({ color: 0x0f172a, roughness: 0.85, metalness: 0.3 })
+                );
+                cvdBase.position.y = -2.03;
+                cvdBase.castShadow = true;
+                cvdGroup.add(cvdBase);
+
+                const cvdBody = new THREE.Mesh(
+                    new THREE.BoxGeometry(3.4, 2.35, 3.0),
+                    new THREE.MeshStandardMaterial({ color: 0xf1f5f9, roughness: 0.25, metalness: 0.38 })
+                );
+                cvdBody.position.y = -0.75;
+                cvdBody.castShadow = true;
+                cvdGroup.add(cvdBody);
+
+                // 立式雙石英反應爐套筒 (Dual Vertical High-Temperature Quartz Reactor Vessels)
+                [-0.72, 0.72].forEach(rx => {
+                    const reactor = new THREE.Mesh(
+                        new THREE.CylinderGeometry(0.44, 0.44, 1.6, 24),
+                        new THREE.MeshStandardMaterial({ color: 0x475569, metalness: 0.9, roughness: 0.15 })
+                    );
+                    reactor.position.set(rx, 1.05, -0.45);
+                    reactor.castShadow = true;
+                    cvdGroup.add(reactor);
+
+                    // 反應爐不鏽鋼加強防護箍環 (Stainless Reinforcing Bands)
+                    [0.6, 1.1, 1.6].forEach(by => {
+                        const band = new THREE.Mesh(
+                            new THREE.CylinderGeometry(0.46, 0.46, 0.04, 24),
+                            new THREE.MeshStandardMaterial({ color: 0xd4af37, metalness: 0.95 })
+                        );
+                        band.position.set(rx, by, -0.45);
+                        cvdGroup.add(band);
+                    });
+
+                    // 反應爐底部自動晶圓晶舟升降機構 (Wafer Boat Vertical Elevator)
+                    const elevator = new THREE.Mesh(
+                        new THREE.CylinderGeometry(0.04, 0.04, 1.1, 12),
+                        new THREE.MeshStandardMaterial({ color: 0x94a3b8, metalness: 0.92 })
+                    );
+                    elevator.position.set(rx, -0.15, -0.45);
+                    cvdGroup.add(elevator);
+                });
+
+                // 背側工規特殊製程氣體分配箱 (Hazardous Process Gas Delivery Box)
+                const gasCab = new THREE.Mesh(
+                    new THREE.BoxGeometry(2.8, 0.75, 1.9),
+                    new THREE.MeshStandardMaterial({ color: 0x1e293b, metalness: 0.85, roughness: 0.3 })
+                );
+                gasCab.position.set(0, 0.65, -0.4);
+                cvdGroup.add(gasCab);
+
+                // 氣體面板 8 道質量流量控制器 (8-Channel Mass Flow Controllers - MFCs)
+                for (let gi = 0; gi < 8; gi++) {
+                    const mfc = new THREE.Mesh(
+                        new THREE.CylinderGeometry(0.035, 0.035, 0.24, 12),
+                        new THREE.MeshStandardMaterial({ color: gi % 2 === 0 ? 0xd4af37 : 0x0284c7, metalness: 0.95 })
+                    );
+                    mfc.rotation.x = Math.PI / 2;
+                    mfc.position.set(-1.05 + gi * 0.30, 0.65, 0.58);
+                    cvdGroup.add(mfc);
+                }
+
+                // 前方 2 座 300mm FOUP 負載端口
+                [-0.65, 0.65].forEach(lx => {
+                    cvdGroup.add(createLoadPort(lx, -1.35, 1.75));
+                });
+
+                cvdGroup.add(createOperatorConsole(-1.4, -1.35, 1.65, 0.25));
+                cvdGroup.add(createSignalTower(-1.45, 0.75, 1.15));
+                this.cleanroomGroup.add(cvdGroup);
+
+                // ======================================================================
+                // STATION 4: Daifuku / Murata Style AMHS 300mm Automated Wafer Stocker
+                // 高架全自動晶圓立體儲存倉 (鋁型材框架、雙軌立體堆垛機、多層晶圓盒矩陣)
+                // ======================================================================
+                const stockerGroup = new THREE.Group();
+                stockerGroup.position.set(3.8, 0, 3.2);
+
+                const stockerH = 3.8;
+                // 外圍防靜電壓克力透明遮罩 (Anti-Static Polycarbonate Clean Enclosure)
+                const stockerFrame = new THREE.Mesh(
+                    new THREE.BoxGeometry(3.0, stockerH, 2.6),
+                    new THREE.MeshPhysicalMaterial({
+                        color: 0x0284c7,
+                        transparent: true,
+                        opacity: 0.20,
+                        roughness: 0.08,
+                        transmission: 0.82,
+                        side: THREE.DoubleSide
+                    })
+                );
+                stockerFrame.position.y = -2.2 + stockerH / 2;
+                stockerGroup.add(stockerFrame);
+
+                // 工規重型擠型鋁合金結構立柱 (Heavy Extruded Aluminum T-Slot Columns)
+                const postGeo = new THREE.BoxGeometry(0.09, stockerH, 0.09);
+                const aluMat = new THREE.MeshStandardMaterial({ color: 0x94a3b8, metalness: 0.92, roughness: 0.22 });
+                [[-1.45, -1.25], [1.45, -1.25], [-1.45, 1.25], [1.45, 1.25]].forEach(([px, pz]) => {
+                    const post = new THREE.Mesh(postGeo, aluMat);
+                    post.position.set(px, -2.2 + stockerH / 2, pz);
+                    stockerGroup.add(post);
+                });
+
+                // 4 層高密度晶圓儲存貨架與 16 個 300mm FOUP (Storage Shelf Matrix)
+                [-1.3, -0.6, 0.1, 0.8].forEach((sy) => {
+                    const shelf = new THREE.Mesh(new THREE.BoxGeometry(2.7, 0.04, 2.3), aluMat);
+                    shelf.position.y = sy;
+                    stockerGroup.add(shelf);
+
+                    [-0.75, 0.75].forEach(sx => {
+                        [-0.55, 0.55].forEach(sz => {
+                            const foupMini = new THREE.Mesh(
+                                new THREE.BoxGeometry(0.52, 0.42, 0.48),
+                                new THREE.MeshPhysicalMaterial({
+                                    color: REAL_COLOR.foupCasing,
+                                    transparent: true,
+                                    opacity: 0.78,
+                                    transmission: 0.52,
+                                    roughness: 0.15
+                                })
+                            );
+                            foupMini.position.set(sx, sy + 0.22, sz);
+                            stockerGroup.add(foupMini);
+                        });
+                    });
+                });
+
+                // 中央雙軌立體天車升降主桅杆與夾爪取放機構 (Robotic Hoist Mast & Gripper Carriage)
+                const craneMast = new THREE.Mesh(
+                    new THREE.CylinderGeometry(0.07, 0.07, stockerH - 0.2, 16),
+                    new THREE.MeshStandardMaterial({ color: 0x475569, metalness: 0.92, roughness: 0.18 })
+                );
+                craneMast.position.set(0, -2.2 + stockerH / 2, 0);
+                const gripperArm = new THREE.Mesh(
+                    new THREE.BoxGeometry(0.38, 0.12, 0.38),
+                    new THREE.MeshStandardMaterial({ color: 0xd4af37, metalness: 0.95 })
+                );
+                gripperArm.position.set(0, 0.3, 0);
+                stockerGroup.add(craneMast, gripperArm);
+
+                // 人員手動 I/O 端口與安全光柵 (Manual I/O Station with Light Curtains)
+                stockerGroup.add(createLoadPort(0, -1.35, 1.55));
+                stockerGroup.add(createOperatorConsole(1.15, -1.35, 1.6, -0.25));
+                stockerGroup.add(createSignalTower(-1.3, 1.35, 1.2));
+                this.cleanroomGroup.add(stockerGroup);
+
+                // ======================================================================
+                // 5.5 無塵室中央移動檢驗工作站 (Mobile Cleanroom Stainless Inspection Station)
+                // ======================================================================
+                const benchGroup = new THREE.Group();
+                benchGroup.position.set(0, -2.2, 0);
+                const benchTop = new THREE.Mesh(
+                    new THREE.BoxGeometry(1.6, 0.08, 0.9),
+                    new THREE.MeshStandardMaterial({ color: 0xe2e8f0, metalness: 0.92, roughness: 0.15 })
+                );
+                benchTop.position.y = 0.85;
+                benchGroup.add(benchTop);
+                // 桌腳與腳輪
+                [[-0.72, -0.38], [0.72, -0.38], [-0.72, 0.38], [0.72, 0.38]].forEach(([bx, bz]) => {
+                    const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.025, 0.025, 0.85, 12), new THREE.MeshStandardMaterial({ color: 0x94a3b8, metalness: 0.9 }));
+                    leg.position.set(bx, 0.425, bz);
+                    benchGroup.add(leg);
+                });
+                // 桌上無塵室筆電
+                const laptop = new THREE.Mesh(
+                    new THREE.BoxGeometry(0.38, 0.015, 0.28),
+                    new THREE.MeshStandardMaterial({ color: 0x1e293b, metalness: 0.8 })
+                );
+                laptop.position.set(-0.35, 0.90, 0);
+                const laptopScreen = new THREE.Mesh(
+                    new THREE.BoxGeometry(0.38, 0.26, 0.015),
+                    new THREE.MeshBasicMaterial({ color: 0x0284c7 })
+                );
+                laptopScreen.position.set(-0.35, 1.04, -0.13);
+                laptopScreen.rotation.x = -0.2;
+                benchGroup.add(laptop, laptopScreen);
+                this.cleanroomGroup.add(benchGroup);
+
+                // 工安地面警示線 (High-Contrast Cleanroom Floor Demarcation Stripes)
+                const createFloorStripe = (sx, sz, sw, sd) => {
+                    const stripe = new THREE.Mesh(
+                        new THREE.PlaneGeometry(sw, sd),
+                        new THREE.MeshBasicMaterial({ color: 0xf59e0b, side: THREE.DoubleSide })
+                    );
+                    stripe.rotation.x = -Math.PI / 2;
+                    stripe.position.set(sx, -2.18, sz);
+                    this.cleanroomGroup.add(stripe);
+                };
+                createFloorStripe(-3.8, 3.2, 5.2, 3.6);
+                createFloorStripe(-3.8, -3.2, 4.6, 4.4);
+                createFloorStripe(3.8, -3.2, 4.2, 4.0);
+                createFloorStripe(3.8, 3.2, 3.6, 3.2);
+
+                // 6. 垂直活塞層流流線粒子
+                const pCount = 700;
+                const posArr = new Float32Array(pCount * 3);
+                this.cleanroomAirSpeeds = new Float32Array(pCount);
+
+                for (let i = 0; i < pCount; i++) {
+                    posArr[i * 3] = (Math.random() - 0.5) * 16.0;
+                    posArr[i * 3 + 1] = -2.1 + Math.random() * 7.3;
+                    posArr[i * 3 + 2] = (Math.random() - 0.5) * 14.0;
+                    this.cleanroomAirSpeeds[i] = 0.042 + Math.random() * 0.045;
+                }
+
+                const pGeo = new THREE.BufferGeometry();
+                pGeo.setAttribute('position', new THREE.BufferAttribute(posArr, 3));
+                const pMat = new THREE.PointsMaterial({
+                    color: 0x0284c7,
+                    size: 0.075,
+                    transparent: true,
+                    opacity: 0.65
+                });
+                this.cleanroomAirParticles = new THREE.Points(pGeo, pMat);
+                this.cleanroomGroup.add(this.cleanroomAirParticles);
+
+                this.scene.add(this.cleanroomGroup);
+            }
+
+            buildDataCenter(offsetX) {
+                this.datacenterGroup = new THREE.Group();
+                this.datacenterGroup.position.set(offsetX, 0, 0);
+
+                // 1. 地板與接地陰影 (高對比專業抗靜電高架地板 ESD Tile)
+                const floorMesh = new THREE.Mesh(
+                    new THREE.PlaneGeometry(24, 22),
+                    new THREE.MeshStandardMaterial({
+                        map: this.matLib.dataCenterTileTex,
+                        normalMap: this.matLib.epoxyNormal,
+                        roughness: 0.38,
+                        metalness: 0.22
+                    })
+                );
+                floorMesh.rotation.x = -Math.PI / 2;
+                floorMesh.position.y = -2.2;
+                floorMesh.receiveShadow = true;
+                this.datacenterGroup.add(floorMesh);
+
+                // 冷通道中央走道防滑警示黃色標線與走廊邊界
+                const aisleStripeLeft = new THREE.Mesh(
+                    new THREE.PlaneGeometry(0.12, 10.4),
+                    new THREE.MeshBasicMaterial({ color: 0xf59e0b })
+                );
+                aisleStripeLeft.rotation.x = -Math.PI / 2;
+                aisleStripeLeft.position.set(-2.3, -2.19, 0.6);
+                this.datacenterGroup.add(aisleStripeLeft);
+
+                const aisleStripeRight = new THREE.Mesh(
+                    new THREE.PlaneGeometry(0.12, 10.4),
+                    new THREE.MeshBasicMaterial({ color: 0xf59e0b })
+                );
+                aisleStripeRight.rotation.x = -Math.PI / 2;
+                aisleStripeRight.position.set(2.3, -2.19, 0.6);
+                this.datacenterGroup.add(aisleStripeRight);
+
+                // 2. 16 座高精度現代 GB200 NVL72 伺服器機櫃 (雙排各 8 座，無縫緊貼工規配置)
+                this.dcGpuBlades = [];
+                const rackCreator = window.createDetailedRack || window.HVACModels?.createRack;
+
+                const rackTypesRowLeft = ['compute', 'compute', 'compute', 'switch', 'compute', 'compute', 'compute', 'power'];
+                const rackTypesRowRight = ['switch', 'compute', 'compute', 'compute', 'compute', 'compute', 'power', 'compute'];
+
+                const rackPitchZ = 1.20; // 機櫃寬度 1.2m，等距 1.2m 達成無縫緊貼
+                const rowOutwardX = 3.2; // 整體外推至 ±3.2m，徹底消除管架與走廊干涉
+
+                for (let row = -1; row <= 1; row += 2) {
+                    const px = row * rowOutwardX;
+                    const rTypes = row === -1 ? rackTypesRowLeft : rackTypesRowRight;
+
+                    for (let colIdx = 0; colIdx < 8; colIdx++) {
+                        const pz = (colIdx - 3.5) * rackPitchZ + 0.6;
+                        const rType = rTypes[colIdx] || 'compute';
+                        const rName = `NVL72-${row === -1 ? 'L' : 'R'}0${colIdx + 1}`;
+
+                        if (rackCreator) {
+                            const rack = rackCreator({
+                                x: 0,
+                                y: 0,
+                                z: 0,
+                                name: rName,
+                                type: rType,
+                                showDoor: true,
+                                showManifolds: true,
+                                showColdPlates: true
+                            });
+                            // 縮放 2.0 倍契合冷通道高度 (h = 2.2 * 2 = 4.4m，頂端達 y = +2.2)
+                            rack.scale.set(2.0, 2.0, 2.0);
+                            rack.position.set(px, 0.0, pz);
+                            
+                            // 藍紅分流歧管 (Manifolds) 全面朝向中央通道！
+                            // row = -1 (左側機櫃 @ X = -3.2): 旋轉 +90° 使 local +Z (Manifolds) 朝向 +X (中央通道)
+                            // row = 1 (右側機櫃 @ X = +3.2): 旋轉 -90° 使 local +Z (Manifolds) 朝向 -X (中央通道)
+                            const rackRotY = row === -1 ? Math.PI / 2 : -Math.PI / 2;
+                            rack.rotation.y = rackRotY;
+                            rack.userData.frontDirection = row === -1 ? -1 : 1; // 門面朝向外側熱通道
+                            this.datacenterGroup.add(rack);
+
+                            // 收集冷板與熱成像材質以供動態升溫演變
+                            rack.traverse(child => {
+                                if (child.isMesh && child.material) {
+                                    if (child.material.color && (child.material.color.getHex() === 0x00bfff || child.material.color.getHex() === 0x76b900)) {
+                                        child.material = child.material.clone();
+                                        this.dcGpuBlades.push(child);
+                                    }
+                                }
+                            });
+                        }
+
+                        // 機櫃正面動態熱成像指示光條：貼合於外側門面邊緣
+                        const frontX = px + (row === -1 ? -1.20 : 1.20);
+                        const ledRotY = row === -1 ? Math.PI / 2 : -Math.PI / 2;
+                        for (let k = 0; k < 6; k++) {
+                            const trayY = -2.2 + 0.9 + k * 0.52;
+                            const ledStrip = new THREE.Mesh(
+                                new THREE.PlaneGeometry(0.85, 0.05),
+                                new THREE.MeshBasicMaterial({ color: REAL_COLOR.tcsSupply, side: THREE.DoubleSide })
+                            );
+                            ledStrip.position.set(frontX, trayY, pz);
+                            ledStrip.rotation.y = ledRotY;
+                            this.datacenterGroup.add(ledStrip);
+                            this.dcGpuBlades.push(ledStrip);
+                        }
+
+                        // 機櫃接地接觸陰影 (緊密貼合)
+                        const rackShadow = new THREE.Mesh(
+                            new THREE.PlaneGeometry(2.5, 1.20),
+                            new THREE.MeshBasicMaterial({
+                                map: this.matLib.contactShadowTex,
+                                transparent: true,
+                                opacity: 0.85,
+                                depthWrite: false
+                            })
+                        );
+                        rackShadow.rotation.x = -Math.PI / 2;
+                        rackShadow.position.set(px, -2.18, pz);
+                        this.datacenterGroup.add(rackShadow);
+                    }
+                }
+
+                // 3. 冷通道圍封 (CAC - 覆蓋 8 連櫃長度與外推後之通道寬度)
+                const roofGlass = new THREE.Mesh(
+                    new THREE.PlaneGeometry(4.8, 10.4),
+                    new THREE.MeshPhysicalMaterial({
+                        color: 0xffffff,
+                        transparent: true,
+                        opacity: 0.32,
+                        roughness: 0.08,
+                        metalness: 0.1,
+                        transmission: 0.75,
+                        side: THREE.DoubleSide
+                    })
+                );
+                roofGlass.rotation.x = Math.PI / 2;
+                roofGlass.position.set(0, 2.52, 0.6);
+                this.datacenterGroup.add(roofGlass);
+
+                [-4.6, 5.8].forEach(doorZ => {
+                    const door = new THREE.Mesh(
+                        new THREE.PlaneGeometry(4.8, 4.6),
+                        new THREE.MeshPhysicalMaterial({
+                            color: 0x0284c7,
+                            transparent: true,
+                            opacity: 0.25,
+                            roughness: 0.1,
+                            transmission: 0.8,
+                            side: THREE.DoubleSide
+                        })
+                    );
+                    door.position.set(0, 0.2, doorZ);
+                    this.datacenterGroup.add(door);
+                });
+
+                // 4. 列間型冷卻分配單元 (In-Row CDU 1.3 MW 液冷中樞 @ Z = -7.8，與南側端門保持 3.2m 淨距)
+                const cduCreator = window.createDetailedCDU || window.HVACModels?.createCDU;
+                if (cduCreator) {
+                    const cdu = cduCreator({
+                        x: 0,
+                        y: 0,
+                        z: 0,
+                        name: 'CDU-01 (1.3 MW In-Row)',
+                        supplyTemp: 32.0,
+                        returnTemp: 45.2,
+                        flow: 650.0,
+                        pressure: 2.85,
+                        showGlass: true,
+                        glassOpacity: 0.55
+                    });
+                    cdu.scale.set(1.9, 1.9, 1.9);
+                    cdu.position.set(0, -0.11, -7.8);
+                    this.datacenterGroup.add(cdu);
+
+                    const cduShadow = new THREE.Mesh(
+                        new THREE.PlaneGeometry(3.0, 2.6),
+                        new THREE.MeshBasicMaterial({
+                            map: this.matLib.contactShadowTex,
+                            transparent: true,
+                            opacity: 0.85,
+                            depthWrite: false
+                        })
+                    );
+                    cduShadow.rotation.x = -Math.PI / 2;
+                    cduShadow.position.set(0, -2.18, -7.8);
+                    this.datacenterGroup.add(cduShadow);
+                }
+
+                // 5. 資料中心實體圍護庫板牆與設備進出氣密門 (Airlock & Perimeter Enclosure)
+                // 兩側主牆 (X = ±11.8)
+                [-11.8, 11.8].forEach(wx => {
+                    const sideWall = new THREE.Mesh(
+                        new THREE.BoxGeometry(0.35, 7.2, 21.6),
+                        new THREE.MeshStandardMaterial({
+                            color: 0xf1f5f9,
+                            roughness: 0.35,
+                            metalness: 0.2
+                        })
+                    );
+                    sideWall.position.set(wx, 1.4, 0);
+                    this.datacenterGroup.add(sideWall);
+
+                    // 穿牆高壓管路套管 (Wall Penetration Seals for Chilled Water Pipes)
+                    for (let sy = 1.8; sy <= 3.2; sy += 1.4) {
+                        const seal = new THREE.Mesh(
+                            new THREE.CylinderGeometry(0.32, 0.32, 0.45, 16),
+                            new THREE.MeshStandardMaterial({ color: 0x334155, metalness: 0.85 })
+                        );
+                        seal.rotation.z = Math.PI / 2;
+                        seal.position.set(wx, sy, -4.5);
+                        this.datacenterGroup.add(seal);
+                    }
+                });
+
+                // 資料中心西側氣密門與人員氣閘 (Airlock @ X = -11.8, Z = 0)
+                const airlockDoor = new THREE.Mesh(
+                    new THREE.BoxGeometry(0.12, 3.2, 2.4),
+                    new THREE.MeshStandardMaterial({ color: 0x0284c7, metalness: 0.7, roughness: 0.25 })
+                );
+                airlockDoor.position.set(-11.75, -0.6, 0);
+                this.datacenterGroup.add(airlockDoor);
+
+                this.scene.add(this.datacenterGroup);
+            }
+
+            buildCentralPlant(offsetX) {
+                this.chillerGroup = new THREE.Group();
+                this.chillerGroup.position.set(offsetX, 0, 0);
+
+                // 1. 擴展中央機房防塵耐磨環氧樹脂地坪 (36m x 26m)，提供主機拉管檢修、水泵走廊與寬闊通道
+                const plantFloor = new THREE.Mesh(
+                    new THREE.PlaneGeometry(36, 26),
+                    new THREE.MeshStandardMaterial({
+                        color: 0xcbd5e1,
+                        normalMap: this.matLib.epoxyNormal,
+                        roughness: 0.22,
+                        metalness: 0.2
+                    })
+                );
+                plantFloor.rotation.x = -Math.PI / 2;
+                plantFloor.position.y = -2.2;
+                plantFloor.receiveShadow = true;
+                this.chillerGroup.add(plantFloor);
+
+                // 廠房地面主要走道安全黃黑斑馬線與檢修走廊標線
+                const walkwayMat = new THREE.MeshBasicMaterial({ color: 0xe2e8f0 });
+                const mainAisle = new THREE.Mesh(new THREE.PlaneGeometry(3.6, 25.6), walkwayMat);
+                mainAisle.rotation.x = -Math.PI / 2;
+                mainAisle.position.set(0, -2.19, 0);
+                this.chillerGroup.add(mainAisle);
+
+                // 2. 1200 RT 工業離心式水水主機 (擺放於後側 z = -3.2，正面朝南，前方留空 6m 供蒸發器/冷凝器通管清洗)
+                const chillerCreator = window.createWaterCooledChiller || window.HVACModels?.createChiller;
+                if (chillerCreator) {
+                    const chiller = chillerCreator({
+                        x: 0,
+                        y: -2.2,
+                        z: -3.2,
+                        name: 'CH-01 (1200 RT High-Efficiency Centrifugal)',
+                        cop: 7.25,
+                        load: 82.5,
+                        chws: 7.0,
+                        chwr: 12.0,
+                        cws: 32.0,
+                        cwr: 37.0
+                    });
+                    chiller.scale.set(2.0, 2.0, 2.0);
+                    chiller.position.set(0, -2.2, -3.2);
+                    this.chillerGroup.add(chiller);
+
+                    const chShadow = new THREE.Mesh(
+                        new THREE.PlaneGeometry(9.0, 5.5),
+                        new THREE.MeshBasicMaterial({
+                            map: this.matLib.contactShadowTex,
+                            transparent: true,
+                            opacity: 0.88,
+                            depthWrite: false
+                        })
+                    );
+                    // 1200 RT 主機陰影與基座
+                    chShadow.rotation.x = -Math.PI / 2;
+                    chShadow.position.set(0, -2.18, -3.2);
+                    this.chillerGroup.add(chShadow);
+                }
+
+                // 3. 工規端吸式離心水泵組藝廊 (Pump Gallery @ z = 5.2，左右兩側分流對稱，中間保留 4.4m 寬敞檢修道)
+                const pumpCreator = window.createCentrifugalPump || window.HVACModels?.createPump;
+                if (pumpCreator) {
+                    // 左翼：冰水泵組 (Primary Chilled Water Pumps, ASME Royal Blue)
+                    [-6.5, -3.2].forEach((px, idx) => {
+                        const pump = pumpCreator({
+                            name: `CHWP-0${idx + 1}`,
+                            type: 'chwp',
+                            suctionPressureRatio: 0.38,
+                            dischargePressureRatio: 0.76
+                        });
+                        pump.scale.set(1.8, 1.8, 1.8);
+                        pump.position.set(px, -2.2, 5.2);
+                        pump.rotation.y = Math.PI;
+                        this.chillerGroup.add(pump);
+
+                        const pShadow = new THREE.Mesh(
+                            new THREE.PlaneGeometry(2.4, 3.4),
+                            new THREE.MeshBasicMaterial({
+                                map: this.matLib.contactShadowTex,
+                                transparent: true,
+                                opacity: 0.82,
+                                depthWrite: false
+                            })
+                        );
+                        pShadow.rotation.x = -Math.PI / 2;
+                        pShadow.position.set(px, -2.18, 5.2);
+                        this.chillerGroup.add(pShadow);
+                    });
+
+                    // 右翼：冷卻水泵組 (Condenser Water Pumps, ASME Kelly Green)
+                    [3.2, 6.5].forEach((px, idx) => {
+                        const pump = pumpCreator({
+                            name: `CWP-0${idx + 1}`,
+                            type: 'cwp',
+                            suctionPressureRatio: 0.32,
+                            dischargePressureRatio: 0.68
+                        });
+                        pump.scale.set(1.8, 1.8, 1.8);
+                        pump.position.set(px, -2.2, 5.2);
+                        pump.rotation.y = Math.PI;
+                        this.chillerGroup.add(pump);
+
+                        const pShadow = new THREE.Mesh(
+                            new THREE.PlaneGeometry(2.4, 3.4),
+                            new THREE.MeshBasicMaterial({
+                                map: this.matLib.contactShadowTex,
+                                transparent: true,
+                                opacity: 0.82,
+                                depthWrite: false
+                            })
+                        );
+                        pShadow.rotation.x = -Math.PI / 2;
+                        pShadow.position.set(px, -2.18, 5.2);
+                        this.chillerGroup.add(pShadow);
+                    });
+                }
+
+                // 4. 戶外專屬散熱庭院 (Outdoor Cooling Yard @ x = 13.8, z = -1.5)
+                // 庭院加厚抗震混擬土基座 + 工業雙階鋼架防護圍欄
+                const yardBase = new THREE.Mesh(
+                    new THREE.BoxGeometry(7.8, 0.4, 7.8),
+                    new THREE.MeshStandardMaterial({ color: 0x64748b, roughness: 0.7 })
+                );
+                yardBase.position.set(13.8, -2.0, -1.5);
+                yardBase.receiveShadow = true;
+                this.chillerGroup.add(yardBase);
+
+                // 圍欄基座周邊工業防護欄 (Perimeter Guardrail)
+                const fenceMat = new THREE.MeshStandardMaterial({ color: 0xf59e0b, metalness: 0.8, roughness: 0.3 });
+                [-3.7, 3.7].forEach(fx => {
+                    const post1 = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 1.2, 8), fenceMat);
+                    post1.position.set(13.8 + fx, -1.2, -5.2);
+                    const post2 = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 1.2, 8), fenceMat);
+                    post2.position.set(13.8 + fx, -1.2, 2.2);
+                    this.chillerGroup.add(post1, post2);
+                });
+                const rail1 = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 7.4, 8), fenceMat);
+                rail1.rotation.z = Math.PI / 2;
+                rail1.position.set(13.8, -0.7, -5.2);
+                const rail2 = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 7.4, 8), fenceMat);
+                rail2.rotation.z = Math.PI / 2;
+                rail2.position.set(13.8, -0.7, 2.2);
+                this.chillerGroup.add(rail1, rail2);
+
+                // 5. 900 RT 誘導抽風式冷卻水塔 (矗立於戶外庭院中央，帶籠爬梯、頂部護網與 6 葉片橘色旋轉風機)
+                const towerCreator = window.createCoolingTower || window.HVACModels?.createCoolingTower;
+                if (towerCreator) {
+                    const tower = towerCreator({
+                        x: 0,
+                        y: 0,
+                        z: 0,
+                        name: 'CT-01',
+                        capacity: '900 RT',
+                        ladderSide: 'left'
+                    });
+                    tower.scale.set(1.4, 1.4, 1.4);
+                    tower.position.set(13.8, -1.8, -1.5);
+                    this.chillerGroup.add(tower);
+
+                    if (tower.userData && tower.userData.fanRotator) {
+                        this.coolingTowerFan = tower.userData.fanRotator;
+                    }
+
+                    const ctShadow = new THREE.Mesh(
+                        new THREE.PlaneGeometry(6.6, 6.6),
+                        new THREE.MeshBasicMaterial({
+                            map: this.matLib.contactShadowTex,
+                            transparent: true,
+                            opacity: 0.85,
+                            depthWrite: false
+                        })
+                    );
+                    ctShadow.rotation.x = -Math.PI / 2;
+                    ctShadow.position.set(13.8, -1.78, -1.5);
+                    this.chillerGroup.add(ctShadow);
+
+                    // 水塔頂部大氣逸散水氣粒子群 (Thermal Vapor Cloud)
+                    const vaporCount = 150;
+                    const vPos = new Float32Array(vaporCount * 3);
+                    this.vaporSpeeds = new Float32Array(vaporCount);
+                    for (let vi = 0; vi < vaporCount; vi++) {
+                        vPos[vi * 3] = 13.8 + (Math.random() - 0.5) * 2.4;
+                        vPos[vi * 3 + 1] = 2.6 + Math.random() * 4.2;
+                        vPos[vi * 3 + 2] = -1.5 + (Math.random() - 0.5) * 2.4;
+                        this.vaporSpeeds[vi] = 0.026 + Math.random() * 0.030;
+                    }
+                    const vGeo = new THREE.BufferGeometry();
+                    vGeo.setAttribute('position', new THREE.BufferAttribute(vPos, 3));
+                    const vMat = new THREE.PointsMaterial({
+                        color: 0xffffff,
+                        size: 0.26,
+                        transparent: true,
+                        opacity: 0.68
+                    });
+                    this.towerVapor = new THREE.Points(vGeo, vMat);
+                    this.chillerGroup.add(this.towerVapor);
+                }
+
+                this.scene.add(this.chillerGroup);
+            }
+
+            buildHydronicDistribution() {
+                // 1. 架設立體重型 H 型鋼管橋與實體公用走廊 (Utility Spine Bridge Bents across X = 10 to 80)
+                // 戶外管廊專屬管架：僅分佈於西側戶外 (X = 14, 22, 30) 與東側戶外 (X = 54, 62, 70, 78)
+                // 絕對不在 AIDC 室內 (X: 30.2 ~ 53.8) 放置地面立柱與中層走道，徹底消除鋼構穿透機櫃衝突！
+                const trestleGroup = new THREE.Group();
+                const steelMat = new THREE.MeshStandardMaterial({
+                    color: 0x475569,
+                    metalness: 0.85,
+                    roughness: 0.35
+                });
+                const bentXList = [14.0, 22.0, 30.0, 54.0, 62.0, 70.0, 78.0];
+                bentXList.forEach(bx => {
+                    const bent = new THREE.Group();
+                    bent.position.set(bx, 0, -4.5);
+                    
+                    // 左立柱與右立柱 (H-columns)
+                    const colGeo = new THREE.BoxGeometry(0.22, 5.8, 0.22);
+                    const leftCol = new THREE.Mesh(colGeo, steelMat);
+                    leftCol.position.set(0, 0.7, -1.5);
+                    const rightCol = new THREE.Mesh(colGeo, steelMat);
+                    rightCol.position.set(0, 0.7, 1.5);
+                    bent.add(leftCol, rightCol);
+
+                    // 頂部主橫樑 (Transverse Beam)
+                    const beamGeo = new THREE.BoxGeometry(0.25, 0.22, 3.3);
+                    const topBeam = new THREE.Mesh(beamGeo, steelMat);
+                    topBeam.position.set(0, 3.5, 0);
+                    bent.add(topBeam);
+
+                    // 中層管架橫樑 (Mid-level Beam)
+                    const midBeam = new THREE.Mesh(beamGeo, steelMat);
+                    midBeam.position.set(0, 1.8, 0);
+                    bent.add(midBeam);
+
+                    // 45度斜撐 (Diagonal Braces)
+                    const braceGeo = new THREE.CylinderGeometry(0.04, 0.04, 2.2, 8);
+                    const b1 = new THREE.Mesh(braceGeo, steelMat);
+                    b1.rotation.x = Math.PI / 4;
+                    b1.position.set(0, 2.6, 0);
+                    bent.add(b1);
+
+                    // 柱腳加強基座 (Column Footings)
+                    const footGeo = new THREE.BoxGeometry(0.5, 0.25, 0.5);
+                    const f1 = new THREE.Mesh(footGeo, steelMat);
+                    f1.position.set(0, -2.08, -1.5);
+                    const f2 = new THREE.Mesh(footGeo, steelMat);
+                    f2.position.set(0, -2.08, 1.5);
+                    bent.add(f1, f2);
+
+                    trestleGroup.add(bent);
+                });
+
+                // 實體戶外公用走廊檢修走道 (僅設置於西側與東側戶外跨段，不穿入 AIDC 室內)
+                // 西側段 (X: 14 to 30, 長度 16m)
+                const westGangway = new THREE.Mesh(
+                    new THREE.BoxGeometry(16, 0.1, 1.4),
+                    new THREE.MeshStandardMaterial({ color: 0x334155, metalness: 0.8, roughness: 0.4 })
+                );
+                westGangway.position.set(22.0, 1.6, -4.5);
+                trestleGroup.add(westGangway);
+
+                // 東側段 (X: 54 to 78, 長度 24m)
+                const eastGangway = new THREE.Mesh(
+                    new THREE.BoxGeometry(24, 0.1, 1.4),
+                    new THREE.MeshStandardMaterial({ color: 0x334155, metalness: 0.8, roughness: 0.4 })
+                );
+                eastGangway.position.set(66.0, 1.6, -4.5);
+                trestleGroup.add(eastGangway);
+
+                // 管廊戶外遮蔽頂棚 (Utility Canopy @ Y = 3.7)
+                const westCanopy = new THREE.Mesh(
+                    new THREE.BoxGeometry(16, 0.08, 3.2),
+                    new THREE.MeshStandardMaterial({ color: 0x64748b, roughness: 0.5, metalness: 0.3 })
+                );
+                westCanopy.position.set(22.0, 3.7, -4.5);
+                trestleGroup.add(westCanopy);
+
+                const eastCanopy = new THREE.Mesh(
+                    new THREE.BoxGeometry(24, 0.08, 3.2),
+                    new THREE.MeshStandardMaterial({ color: 0x64748b, roughness: 0.5, metalness: 0.3 })
+                );
+                eastCanopy.position.set(66.0, 3.7, -4.5);
+                trestleGroup.add(eastCanopy);
+
+                this.scene.add(trestleGroup);
+
+                // 2. 正交配管系統 (True Orthogonal Piping Network)
+                // 依據工規高程分層：
+                // Level 3 (架空鋼架主幹管): Y = 5.2 (CHW Supply), Y = 4.4 (CHW Return)
+                // Level 2 (設備/CDU集管層): Y = 3.2 (Supply Branch), Y = 2.6 (Return Branch)
+                // Level 1 (設備進出水支管): Y = 1.6 / 1.0 (機台/CDU/冰機進出)
+
+                // 2.1 7°C 冰水供水正交主管 (CHW Supply - ASME Royal Blue 0x1d4ed8)
+                // 冰機蒸發器出水 (X=84, Y=-0.6, Z=-3.2) -> 垂直爬升至 Level 3 主幹管層 Y=5.2 -> 沿管廊延伸至 DC (X=42) -> 延伸至戶外公用管廊端 (X=14.0) 垂直落管
+                // 嚴格遵守工業規範：主管止於廠區外側管廊架 (X=14.0)，絕不穿入無塵室主體室內 (X in [-9.2, 9.2])
+                const supplyOrthogonalPts = [
+                    new THREE.Vector3(84.0, -0.6, -3.2),  // 冰機蒸發器出口
+                    new THREE.Vector3(84.0, 5.2, -3.2),   // 垂直爬升至 Level 3 主幹管層
+                    new THREE.Vector3(84.0, 5.2, -4.2),   // 90度轉入公用走廊主軸線
+                    new THREE.Vector3(42.0, 5.2, -4.2),   // 沿管廊延伸至 DC
+                    new THREE.Vector3(14.0, 5.2, -4.2),   // 沿管廊延伸至戶外公用管架西端 (X=14.0, 位於無塵室外側)
+                    new THREE.Vector3(14.0, 2.2, -4.2),   // 戶外管廊垂直落管分流閥組
+                    new THREE.Vector3(14.0, 2.2, -2.5)    // 戶外管廊閥組盲板端 (完全在無塵室外)
+                ];
+                this.chwSupplyCurve = new THREE.CatmullRomCurve3(supplyOrthogonalPts, false, 'catmullrom', 0.05);
+                const chwSupplyMat = new THREE.MeshStandardMaterial({
+                    color: 0x1d4ed8, // 寶藍
+                    metalness: 0.85,
+                    roughness: 0.25,
+                    transparent: true,
+                    opacity: 0.92
+                });
+                this.chwSupplyMesh = new THREE.Mesh(
+                    new THREE.TubeGeometry(this.chwSupplyCurve, 180, 0.20, 16, false),
+                    chwSupplyMat
+                );
+                this.scene.add(this.chwSupplyMesh);
+
+                // 2.2 12°C 冰水回水正交主管 (CHW Return - ASME Light Cyan-Blue 0x38bdf8)
+                // 戶外管廊回水閥組 (X=14.0, Y=1.4, Z=-2.5) -> 垂直升至 Level 3 回水層 Y=4.4 -> 沿管廊 Z=-4.8 東向主管 -> 途經 DC (X=42) -> 冰機蒸發器回水口
+                const returnOrthogonalPts = [
+                    new THREE.Vector3(14.0, 1.4, -2.5),   // 戶外管架回水閥端 (X=14.0, 無塵室外側)
+                    new THREE.Vector3(14.0, 1.4, -4.8),   // 延伸至公用走廊回水軸線
+                    new THREE.Vector3(14.0, 4.4, -4.8),   // 垂直升至 Level 3 回水層
+                    new THREE.Vector3(42.0, 4.4, -4.8),   // 沿管廊延伸經 DC
+                    new THREE.Vector3(84.0, 4.4, -4.8),   // 延伸至中央冰機房
+                    new THREE.Vector3(84.0, 4.4, -3.8),   // 90度正交轉向冰機上方
+                    new THREE.Vector3(84.0, -0.8, -3.8)   // 垂直落管接回蒸發器回水口
+                ];
+                this.chwReturnCurve = new THREE.CatmullRomCurve3(returnOrthogonalPts, false, 'catmullrom', 0.05);
+                const chwReturnMat = new THREE.MeshStandardMaterial({
+                    color: 0x38bdf8, // 淺藍
+                    metalness: 0.85,
+                    roughness: 0.25,
+                    transparent: true,
+                    opacity: 0.92
+                });
+                this.chwReturnMesh = new THREE.Mesh(
+                    new THREE.TubeGeometry(this.chwReturnCurve, 180, 0.20, 16, false),
+                    chwReturnMat
+                );
+                this.scene.add(this.chwReturnMesh);
+
+                // 2.3 資料中心 CDU 垂直分歧落管組 (DC CDU Orthogonal Take-Off Branches @ X=42，對準 Z = -7.8 的 CDU 管路接合點)
+                const cduBranchSupplyPts = [
+                    new THREE.Vector3(42.0, 5.2, -4.2),
+                    new THREE.Vector3(42.0, 3.2, -4.2),
+                    new THREE.Vector3(42.0, 3.2, -7.5),
+                    new THREE.Vector3(42.0, 1.6, -7.5)
+                ];
+                const cduBranchSupplyCurve = new THREE.CatmullRomCurve3(cduBranchSupplyPts, false, 'catmullrom', 0.05);
+                const cduSupplyBranchMesh = new THREE.Mesh(
+                    new THREE.TubeGeometry(cduBranchSupplyCurve, 60, 0.13, 12, false),
+                    chwSupplyMat
+                );
+                this.scene.add(cduSupplyBranchMesh);
+
+                const cduBranchReturnPts = [
+                    new THREE.Vector3(42.0, 1.6, -7.8),
+                    new THREE.Vector3(42.0, 2.6, -7.8),
+                    new THREE.Vector3(42.0, 2.6, -4.8),
+                    new THREE.Vector3(42.0, 4.4, -4.8)
+                ];
+                const cduBranchReturnCurve = new THREE.CatmullRomCurve3(cduBranchReturnPts, false, 'catmullrom', 0.05);
+                const cduReturnBranchMesh = new THREE.Mesh(
+                    new THREE.TubeGeometry(cduBranchReturnCurve, 60, 0.13, 12, false),
+                    chwReturnMat
+                );
+                this.scene.add(cduReturnBranchMesh);
+
+                // 2.5 冷卻水回水獨立正交管路 (CW Return: 水塔底盤出水 32°C 經 CWP 泵送回冰機冷凝器，ASME Deep Green 0x15803d)
+                // 與供水管保持 0.8m 實體空間間隔，正交敷設於泵房地坪管溝
+                const cwReturnPts = [
+                    new THREE.Vector3(97.8, -1.2, -2.3),  // 水塔底盤集水坑 (32°C)
+                    new THREE.Vector3(92.0, -1.2, -2.3),  // 轉向水泵房進水總管
+                    new THREE.Vector3(92.0, -1.2, 5.2),   // 抵達冷卻水泵 (CWP) 吸入口
+                    new THREE.Vector3(85.2, -1.2, 5.2),   // CWP 泵送加壓沿地面管槽西進
+                    new THREE.Vector3(85.2, -1.2, -3.6),  // 90度轉向冰機冷凝器回水側
+                    new THREE.Vector3(85.2, 0.2, -3.6)    // 垂直升至冷凝器進水法蘭
+                ];
+                this.cwReturnCurve = new THREE.CatmullRomCurve3(cwReturnPts, false, 'catmullrom', 0.05);
+                const cwReturnMat = new THREE.MeshStandardMaterial({
+                    color: 0x15803d, // 32°C 工業深綠
+                    metalness: 0.85,
+                    roughness: 0.28,
+                    transparent: true,
+                    opacity: 0.90
+                });
+                this.cwReturnMesh = new THREE.Mesh(
+                    new THREE.TubeGeometry(this.cwReturnCurve, 90, 0.18, 14, false),
+                    cwReturnMat
+                );
+                this.scene.add(this.cwReturnMesh);
+
+                // 2.6 正交配管法蘭盤與閥門裝飾 (ANSI Flanges & Valves)
+                const flangeMat = new THREE.MeshStandardMaterial({ color: 0x64748b, metalness: 0.9, roughness: 0.2 });
+                const valveMat = new THREE.MeshStandardMaterial({ color: 0xd97706, metalness: 0.9, roughness: 0.2 });
+                [18.0, 42.0, 66.0].forEach(vx => {
+                    // 供水法蘭與手輪
+                    const f1 = new THREE.Mesh(new THREE.CylinderGeometry(0.28, 0.28, 0.08, 16), flangeMat);
+                    f1.rotation.z = Math.PI / 2;
+                    f1.position.set(vx, 5.2, -4.2);
+                    const wheelGeo = new THREE.TorusGeometry(0.18, 0.035, 8, 16);
+                    const w1 = new THREE.Mesh(wheelGeo, valveMat);
+                    w1.rotation.x = Math.PI / 2;
+                    w1.position.set(vx, 5.5, -4.2);
+                    const stem1 = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, 0.25, 8), steelMat);
+                    stem1.position.set(vx, 5.35, -4.2);
+
+                    // 回水法蘭與手輪
+                    const f2 = new THREE.Mesh(new THREE.CylinderGeometry(0.28, 0.28, 0.08, 16), flangeMat);
+                    f2.rotation.z = Math.PI / 2;
+                    f2.position.set(vx, 4.4, -4.8);
+                    const w2 = new THREE.Mesh(wheelGeo, valveMat);
+                    w2.rotation.x = Math.PI / 2;
+                    w2.position.set(vx, 4.7, -4.8);
+                    const stem2 = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, 0.25, 8), steelMat);
+                    stem2.position.set(vx, 4.55, -4.8);
+
+                    this.scene.add(f1, w1, stem1, f2, w2, stem2);
+                });
+
+                // 3. 工規定向流向指示器 (Directional Flow Indicators - 具備明確流向尖頭與工規慢速巡航)
+                const pulseConeGeo = new THREE.ConeGeometry(0.14, 0.42, 12);
+
+                // 3.1 7°C 冰水供水脈衝 (順向流動：冰機 -> DC/FAB)
+                const supplyPulseCount = 8;
+                this.flowPulsesSupply = [];
+                for (let pi = 0; pi < supplyPulseCount; pi++) {
+                    const mesh = new THREE.Mesh(
+                        pulseConeGeo,
+                        new THREE.MeshStandardMaterial({
+                            color: 0x60a5fa,
+                            emissive: 0x3b82f6,
+                            emissiveIntensity: 0.4,
+                            metalness: 0.3,
+                            roughness: 0.2
+                        })
+                    );
+                    this.scene.add(mesh);
+                    this.flowPulsesSupply.push({ mesh, progress: pi / supplyPulseCount, speed: 0.036 });
+                }
+
+                // 3.2 12°C 冰水回水脈衝 (逆向流動：FAB/DC -> 冰機)
+                const returnPulseCount = 8;
+                this.flowPulsesReturn = [];
+                for (let pi = 0; pi < returnPulseCount; pi++) {
+                    const mesh = new THREE.Mesh(
+                        pulseConeGeo,
+                        new THREE.MeshStandardMaterial({
+                            color: 0x38bdf8,
+                            emissive: 0x0284c7,
+                            emissiveIntensity: 0.4,
+                            metalness: 0.3,
+                            roughness: 0.2
+                        })
+                    );
+                    this.scene.add(mesh);
+                    this.flowPulsesReturn.push({ mesh, progress: pi / returnPulseCount, speed: 0.036 });
+                }
+
+                // 3.4 冷卻水回水脈衝 (32°C 戶外水塔底盤 -> CWP -> 冰機冷凝器)
+                const cwReturnPulseCount = 5;
+                this.cwReturnPulses = [];
+                for (let pi = 0; pi < cwReturnPulseCount; pi++) {
+                    const mesh = new THREE.Mesh(
+                        pulseConeGeo,
+                        new THREE.MeshStandardMaterial({
+                            color: 0x16a34a,
+                            emissive: 0x15803d,
+                            emissiveIntensity: 0.4,
+                            metalness: 0.3,
+                            roughness: 0.2
+                        })
+                    );
+                    this.scene.add(mesh);
+                    this.cwReturnPulses.push({ mesh, progress: pi / cwReturnPulseCount, speed: 0.042 });
+                }
+            }
+
+            renderFrame(delta = 0.016) {
+                // 1. 基於 deltaTime 的指數慣性平滑插值，徹底消除滾輪「一格一格跳動感」，維持如同電影般絲滑過渡
+                const smoothing = 1 - Math.exp(-12 * delta);
+                AppState.progress += (AppState.targetProgress - AppState.progress) * smoothing;
+                const p = THREE.MathUtils.clamp(AppState.progress, 0, 1);
+
+                // 2. 執行 CAMERA TIMELINE 5.0 工業紀錄片樣條運鏡求值 (10 大分鏡 + 樣條曲線 + 緩停凝視)
+                if (!AppState.isOrbitMode) {
+                    const { shot, camPos, lookPos, targetFov } = evaluateCinematicDirector(p);
+
+                    // 細微攝影師手持呼吸感 (Subtle Cinematic Breathing)
+                    const time = performance.now() * 0.001;
+                    const breathX = Math.sin(time * 0.7) * 0.015;
+                    const breathY = Math.cos(time * 0.9) * 0.012;
+
+                    this.camera.position.set(camPos.x + breathX, camPos.y + breathY, camPos.z);
+                    this.camera.lookAt(lookPos);
+
+                    // 攝影機 FOV 樣條平滑插值 (避免廣角硬跳)
+                    if (targetFov && Math.abs(this.camera.fov - targetFov) > 0.02) {
+                        this.camera.fov += (targetFov - this.camera.fov) * (1 - Math.exp(-8 * delta));
+                        this.camera.updateProjectionMatrix();
+                    }
+
+                    // 更新 Shot 名稱到 UI
+                    const shotTagEl = document.getElementById('current-shot-tag');
+                    if (shotTagEl) shotTagEl.innerText = shot.name;
+
+                    const shotNameEl = document.getElementById('director-shot-name');
+                    if (shotNameEl) shotNameEl.innerText = `SHOT: ${shot.name}`;
+
+                } else {
+                    this.controls.update();
+                }
+
+                // 3. GPU 熱成像動態演變：在進入 AIDC 區域 (0.33 之後) 逐漸升溫點燃
+                if (this.dcGpuBlades) {
+                    let heatRatio = 0.0;
+                    if (p >= 0.33 && p <= 0.68) {
+                        heatRatio = (p - 0.33) / 0.35;
+                    } else if (p > 0.68) {
+                        heatRatio = 1.0;
+                    }
+                    const factor = heatRatio * AppState.heatIntensity;
+                    this.dcGpuBlades.forEach(blade => {
+                        // 0.55 (深天藍 32°C) -> 0.07 (火熱橙紅 45.2°C)
+                        blade.material.color.setHSL(0.55 - factor * 0.48, 0.95, 0.55);
+                    });
+                }
+
+                // 4. 跨場景雙迴路管網雙向水流脈衝運轉 (具備正確方向與 DeltaTime 平順推進)
+                const yAxis = new THREE.Vector3(0, 1, 0);
+
+                // 4.1 7°C 冰水供水脈衝 (順向流動：冰機 -> 資料中心/無塵室)
+                if (this.flowPulsesSupply && this.chwSupplyCurve) {
+                    this.flowPulsesSupply.forEach(pulse => {
+                        pulse.progress = (pulse.progress + delta * pulse.speed) % 1.0;
+                        const pt = this.chwSupplyCurve.getPointAt(pulse.progress);
+                        const tangent = this.chwSupplyCurve.getTangentAt(pulse.progress);
+                        pulse.mesh.position.copy(pt);
+                        pulse.mesh.quaternion.setFromUnitVectors(yAxis, tangent);
+                    });
+                }
+
+                // 4.2 12°C 冰水回水脈衝 (逆向流動：資料中心/無塵室 -> 冰機)
+                if (this.flowPulsesReturn && this.chwReturnCurve) {
+                    this.flowPulsesReturn.forEach(pulse => {
+                        pulse.progress = (pulse.progress + delta * pulse.speed) % 1.0;
+                        const pt = this.chwReturnCurve.getPointAt(pulse.progress);
+                        const tangent = this.chwReturnCurve.getTangentAt(pulse.progress);
+                        pulse.mesh.position.copy(pt);
+                        pulse.mesh.quaternion.setFromUnitVectors(yAxis, tangent);
+                    });
+                }
+
+                // 4.4 冷卻水回水脈衝 (散熱水塔 32°C -> CWP -> 冰機冷凝器)
+                if (this.cwReturnPulses && this.cwReturnCurve) {
+                    this.cwReturnPulses.forEach(pulse => {
+                        pulse.progress = (pulse.progress + delta * pulse.speed) % 1.0;
+                        const pt = this.cwReturnCurve.getPointAt(pulse.progress);
+                        const tangent = this.cwReturnCurve.getTangentAt(pulse.progress);
+                        pulse.mesh.position.copy(pt);
+                        pulse.mesh.quaternion.setFromUnitVectors(yAxis, tangent);
+                    });
+                }
+
+                // 5. 無塵室 0.45 m/s 垂直層流沉降動態
+                if (this.cleanroomAirParticles) {
+                    const pos = this.cleanroomAirParticles.geometry.attributes.position.array;
+                    const spdMul = AppState.airSpeedMultiplier * (p < 0.35 ? 1.3 : 0.6);
+                    for (let i = 0; i < this.cleanroomAirSpeeds.length; i++) {
+                        pos[i * 3 + 1] -= this.cleanroomAirSpeeds[i] * spdMul;
+                        if (pos[i * 3 + 1] < -2.1) pos[i * 3 + 1] = 5.2;
+                    }
+                    this.cleanroomAirParticles.geometry.attributes.position.needsUpdate = true;
+                }
+
+                // 6. OHT 晶圓自走天車巡航動態 (以 DeltaTime 與 AppState.ohtSpeed 精準驅動)
+                if (this.ohtVehicles && this.ohtCurve) {
+                    this.ohtVehicles.forEach(veh => {
+                        veh.progress = (veh.progress + delta * AppState.ohtSpeed) % 1.0;
+                        const pos = this.ohtCurve.getPointAt(veh.progress);
+                        const tangent = this.ohtCurve.getTangentAt(veh.progress);
+                        veh.group.position.copy(pos);
+                        veh.group.quaternion.setFromUnitVectors(new THREE.Vector3(0, 0, 1), tangent);
+                    });
+                }
+
+                // 6. 冷卻水塔抽風扇葉旋轉與大氣排熱水氣微浮
+                if (this.coolingTowerFan) {
+                    this.coolingTowerFan.rotation.y += 0.08;
+                }
+                if (window.HVACModels && typeof window.HVACModels.animate === 'function') {
+                    window.HVACModels.animate(0.016, 4.0);
+                }
+                if (this.towerVapor) {
+                    const vPos = this.towerVapor.geometry.attributes.position.array;
+                    for (let i = 0; i < this.vaporSpeeds.length; i++) {
+                        vPos[i * 3 + 1] += this.vaporSpeeds[i];
+                        if (vPos[i * 3 + 1] > 6.8) vPos[i * 3 + 1] = 2.2;
+                    }
+                    this.towerVapor.geometry.attributes.position.needsUpdate = true;
+                }
+
+                // 7. 更新座標資訊到 UI
+                const camCoordEl = document.getElementById('cam-coord');
+                if (camCoordEl) {
+                    camCoordEl.innerText = `POS [${this.camera.position.x.toFixed(1)}, ${this.camera.position.y.toFixed(1)}, ${this.camera.position.z.toFixed(1)}]`;
+                }
+
+                this.renderer.render(this.scene, this.camera);
+            }
+
+            onResize() {
+                this.width = window.innerWidth;
+                this.height = window.innerHeight;
+                this.camera.aspect = this.width / this.height;
+                this.camera.updateProjectionMatrix();
+                this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.75));
+                this.renderer.setSize(this.width, this.height);
+            }
+        }
+
+        const engine = new DigitalTwinEngine();
+
+        // 偵測是否以敘事嵌入模式加載
+        const urlParams = new URLSearchParams(window.location.search);
+        if (urlParams.get('embed') === 'narrative' || urlParams.get('embed') === '1' || urlParams.get('embed') === 'true') {
+            document.body.classList.add('is-narrative-embed');
+        }
+
+        // 轉發滾輪事件至父頁面 (若在 iframe 中)
+        window.addEventListener('wheel', (e) => {
+            if (window !== window.top) {
+                window.parent.postMessage({
+                    type: 'HVAC_WHEEL',
+                    deltaY: e.deltaY,
+                    deltaX: e.deltaX
+                }, '*');
+            }
+        }, { passive: true });
+
+        // 頁面自然滾動監聽
+        window.addEventListener('scroll', () => {
+            if (AppState.isAutoPlaying) return;
+            const track = document.getElementById('scroll-track');
+            const totalScroll = track.offsetHeight - window.innerHeight;
+            const p = Math.max(0, Math.min(1, window.scrollY / totalScroll));
+            syncProgress(p, false);
+        }, { passive: true });
+
+        // 支援父頁面 postMessage 雙向進度同步控制 (當作為 iframe 嵌入時)
+        window.addEventListener('message', (event) => {
+            if (!event.data) return;
+            if (event.data.type === 'HVAC_SET_PROGRESS') {
+                const p = typeof event.data.progress === 'number' ? event.data.progress : 0;
+                syncProgress(p, false, event.data.instant || false);
+                if (!engineActive && event.data.instant) {
+                    engine.renderFrame(0.016);
+                }
+            } else if (event.data.type === 'HVAC_TOGGLE_PLAY') {
+                togglePlayPause();
+            } else if (event.data.type === 'HVAC_VISIBILITY') {
+                const wasActive = engineActive;
+                engineActive = !!event.data.visible;
+                if (!wasActive && engineActive) {
+                    lastTime = performance.now();
+                    requestAnimationFrame(animationLoop);
+                }
+            }
+        });
+
+        // 進度同步處理器
+        function syncProgress(p, syncScroll = true, instant = false) {
+            AppState.targetProgress = p;
+            if (instant) {
+                AppState.progress = p;
+            }
+
+            const slider = document.getElementById('timeline-slider');
+            if (slider) slider.value = (p * 100).toFixed(2);
+
+            const label = document.getElementById('scrub-label');
+            if (label) label.innerText = `PROGRESS: ${(p * 100).toFixed(1)}%`;
+
+            updateHUDCards(p);
+
+            // 更新 10 大分鏡快速跳轉按鈕啟用狀態
+            let activeShotIdx = 0;
+            for (let i = 0; i < CINEMATIC_SHOTS.length; i++) {
+                if (p >= CINEMATIC_SHOTS[i].start - 0.005) activeShotIdx = i;
+            }
+            for (let i = 1; i <= 10; i++) {
+                const btn = document.getElementById(`btn-shot-${i}`);
+                if (btn) {
+                    if (i - 1 === activeShotIdx) {
+                        btn.className = 'shot-btn px-2 py-1 rounded border border-blue-600/30 bg-blue-50 text-blue-700 font-bold whitespace-nowrap';
+                    } else {
+                        btn.className = 'shot-btn px-2 py-1 rounded border border-slate-200 text-slate-600 hover:bg-slate-50 whitespace-nowrap';
+                    }
+                }
+            }
+
+            if (syncScroll) {
+                const track = document.getElementById('scroll-track');
+                const totalScroll = track.offsetHeight - window.innerHeight;
+                window.scrollTo({ top: p * totalScroll, behavior: 'auto' });
+            }
+        }
+
+        // 10 大工業紀錄片 HUD 卡片淡入淡出與數據同步機制
+        function updateHUDCards(p) {
+            const { shot, uRaw } = evaluateCinematicDirector(p);
+            const activeId = `hud-shot-${shot.id}`;
+
+            for (let i = 1; i <= 10; i++) {
+                const cardId = `hud-shot-${i}`;
+                const el = document.getElementById(cardId);
+                if (!el) continue;
+
+                if (cardId === activeId) {
+                    el.classList.add('active');
+                    // 進場與離場透明度過渡 (首尾 8% 區間微調平滑)
+                    let alpha = 1.0;
+                    if (uRaw < 0.08) {
+                        alpha = uRaw / 0.08;
+                    } else if (uRaw > 0.92) {
+                        alpha = (1.0 - uRaw) / 0.08;
+                    }
+                    el.style.opacity = alpha.toFixed(3);
+                } else {
+                    el.classList.remove('active');
+                    el.style.opacity = '0';
+                }
+            }
+
+            // 動態數據連動更新
+            const densEl = document.getElementById('ui-density');
+            if (densEl) {
+                if (p < 0.33) densEl.innerText = '40.0 kW / Rack';
+                else if (p < 0.58) densEl.innerText = `${(40.0 + ((p - 0.33) / 0.25) * 92.0).toFixed(1)} kW / Rack`;
+                else densEl.innerText = '132.0 kW / Rack';
+            }
+
+            const pueEl = document.getElementById('ui-pue');
+            if (pueEl) {
+                if (p < 0.45) pueEl.innerText = 'PUE = 1.35';
+                else if (p < 0.88) pueEl.innerText = `PUE = ${(1.35 - ((p - 0.45) / 0.43) * 0.28).toFixed(2)}`;
+                else pueEl.innerText = 'PUE = 1.07';
+            }
+
+            const copEl = document.getElementById('ui-cop');
+            if (copEl) {
+                if (p < 0.68) copEl.innerText = 'COP 5.60 · 1200 RT';
+                else if (p < 0.88) copEl.innerText = `COP ${(5.60 + ((p - 0.68) / 0.20) * 1.65).toFixed(2)} · 1200 RT`;
+                else copEl.innerText = 'COP 7.25 · 1200 RT';
+            }
+        }
+
+        // 分鏡按鈕跳轉
+        window.jumpToShotProgress = function(p) {
+            AppState.isAutoPlaying = false;
+            updatePlayBtn();
+            syncProgress(p, true);
+        };
+
+        window.onSliderScrub = function(val) {
+            AppState.isAutoPlaying = false;
+            updatePlayBtn();
+            syncProgress(parseFloat(val) / 100, true);
+        };
+
+        // 自動播放控制：到 100% 停住顯示 END STATE，不倒放！
+        window.togglePlayPause = function() {
+            if (AppState.isOrbitMode) {
+                toggleCameraControlMode(); // 切回導演運鏡模式
+            }
+            if (AppState.targetProgress >= 0.999) {
+                // 若已在終點，點擊則從頭開始 30 秒完整巡航 (開場與結尾畫面完全一致，瞬態等值無跳變)
+                syncProgress(0.0, true, true);
+                AppState.isAutoPlaying = true;
+            } else {
+                AppState.isAutoPlaying = !AppState.isAutoPlaying;
+            }
+            updatePlayBtn();
+        };
+
+        function updatePlayBtn() {
+            const btn = document.getElementById('play-btn');
+            if (!btn) return;
+            if (AppState.targetProgress >= 0.999 && !AppState.isAutoPlaying) {
+                btn.innerHTML = '<i class="fa-solid fa-rotate-left text-blue-400"></i> <span>REPLAY</span>';
+            } else {
+                btn.innerHTML = AppState.isAutoPlaying 
+                    ? '<i class="fa-solid fa-pause text-amber-400"></i> <span>PAUSE</span>' 
+                    : '<i class="fa-solid fa-play text-blue-400"></i> <span>AUTO PLAY</span>';
+            }
+        }
+
+        window.toggleCameraControlMode = function() {
+            AppState.isOrbitMode = !AppState.isOrbitMode;
+            if (engine && engine.controls) engine.controls.enabled = AppState.isOrbitMode;
+            const label = document.getElementById('cam-mode-label');
+            const btn = document.getElementById('toggle-cam-mode-btn');
+
+            if (AppState.isOrbitMode) {
+                if (label) label.innerText = 'FREE ORBIT ACTIVE';
+                if (btn) btn.className = 'px-2.5 py-1 rounded-lg bg-amber-50 border border-amber-300 text-amber-800 text-xs font-mono font-bold transition-all flex items-center gap-2 shadow-xs';
+            } else {
+                if (label) label.innerText = 'CINEMATIC DIRECTOR';
+                if (btn) btn.className = 'px-2.5 py-1 rounded-lg bg-slate-100 border border-slate-300 text-slate-700 text-xs font-mono font-bold transition-all flex items-center gap-2 shadow-xs';
+            }
+        };
+
+        window.toggleDevPanel = function() {
+            const drawer = document.getElementById('dev-drawer');
+            drawer.classList.toggle('translate-x-[115%]');
+        };
+
+        window.updateParam = function(key, val) {
+            const num = parseFloat(val);
+            if (key === 'playSpeed') {
+                AppState.playSpeedMultiplier = num;
+                const dur = (30.0 / num).toFixed(1);
+                document.getElementById('val-playspeed').innerText = `${num.toFixed(1)}x (${dur}s)`;
+            } else if (key === 'airSpeed') {
+                AppState.airSpeedMultiplier = num;
+                document.getElementById('val-airspeed').innerText = `${num.toFixed(1)}x`;
+            } else if (key === 'heatIntensity') {
+                AppState.heatIntensity = num;
+                document.getElementById('val-heat').innerText = `${num.toFixed(1)}x`;
+            } else if (key === 'cameraFov') {
+                engine.camera.fov = num;
+                engine.camera.updateProjectionMatrix();
+                document.getElementById('val-fov').innerText = `${num}°`;
+            }
+        };
+
+        window.setLoopFocus = function(mode) {
+            AppState.activeLoop = mode;
+            ['all', 'chw', 'cw', 'tcs'].forEach(m => {
+                const btn = document.getElementById(`btn-loop-${m}`);
+                if (btn) {
+                    btn.className = m === mode 
+                        ? 'p-1.5 rounded bg-blue-50 border border-blue-400 text-blue-700 font-bold' 
+                        : 'p-1.5 rounded bg-slate-100 border border-slate-200 text-slate-600';
+                }
+            });
+
+            const chwAlpha = (mode === 'all' || mode === 'chw') ? 0.92 : 0.15;
+            const cwAlpha = (mode === 'all' || mode === 'cw') ? 0.90 : 0.15;
+            if (engine.chwSupplyMesh) engine.chwSupplyMesh.material.opacity = chwAlpha;
+            if (engine.chwReturnMesh) engine.chwReturnMesh.material.opacity = chwAlpha;
+            if (engine.cwSupplyMesh) engine.cwSupplyMesh.material.opacity = cwAlpha;
+            if (engine.cwReturnMesh) engine.cwReturnMesh.material.opacity = cwAlpha;
+            if (engine.crossPipeMesh) engine.crossPipeMesh.material.opacity = chwAlpha;
+        };
+
+        window.toggleWireframe = function(checked) {
+            AppState.isWireframe = checked;
+            engine.scene.traverse((obj) => {
+                if (obj.isMesh && obj.material) {
+                    if (Array.isArray(obj.material)) {
+                        obj.material.forEach(m => m.wireframe = checked);
+                    } else {
+                        obj.material.wireframe = checked;
+                    }
+                }
+            });
+        };
+
+        // 主紀錄片運鏡時鐘循環
+        let lastTime = performance.now();
+        // 嵌入父頁面敘事捲動時，預設暫停主時鐘循環，待父頁面確認位於畫面內才啟動，避免拖慢首頁門面
+        const isEmbedded = (window !== window.top) || (urlParams.get('embed') === 'narrative' || urlParams.get('embed') === '1' || urlParams.get('embed') === 'true');
+        let engineActive = !isEmbedded;
+        function animationLoop(now) {
+            const delta = Math.min((now - lastTime) / 1000, 0.1);
+            lastTime = now;
+
+            if (!engineActive) {
+                return;
+            }
+
+            if (AppState.isAutoPlaying) {
+                // 自動播放速率：全程基準 30.0 秒等時精確完成整體播放 (0.0 -> 1.0)
+                const TOTAL_PLAY_DURATION = 30.0;
+                const speedStep = (delta / TOTAL_PLAY_DURATION) * AppState.playSpeedMultiplier;
+
+                let nextP = AppState.targetProgress + speedStep;
+
+                if (nextP >= 1.0) {
+                    nextP = 1.0;
+                    AppState.isAutoPlaying = false; // 抵達終點停住，絕不倒車！
+                    updatePlayBtn();
+                }
+                syncProgress(nextP, true);
+            }
+
+            engine.renderFrame(delta);
+            requestAnimationFrame(animationLoop);
+        }
+
+        // 啟動主循環或首幀渲染就緒
+        requestAnimationFrame((time) => {
+            lastTime = time;
+            // 渲染一幀以完成初始場景與著色器準備
+            engine.renderFrame(0.016);
+
+            // 僅在非嵌入模式時自動持續主時鐘循環
+            if (engineActive) {
+                animationLoop(time);
+            }
+
+            // 引擎就緒通知 (若嵌入在父頁面中)
+            if (window !== window.top) {
+                window.parent.postMessage({ type: 'HVAC_WORKBENCH_READY' }, '*');
+            }
+        });
+    </script>
+</body>
+</html>

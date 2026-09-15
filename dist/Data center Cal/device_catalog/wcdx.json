@@ -1,0 +1,64 @@
+{
+  "_meta": {
+    "version": "1.0",
+    "description": "WCDX (水冷直膨機組 / Water-Cooled Direct Expansion) — 自帶壓縮機的列間/風牆型冷卻單元，只需冷凝水(不需冰水系統)即可運作。",
+    "last_updated": "2026-08-28",
+    "note": "⚠️ 目前 store.js/catalog_manager.js 尚未有對應的 fanwallSystem 架構分支可以消費這份資料 —— 現有 Fanwall 架構全部假設「外部冰機供應冰水給CRAH/RDHX盤管」，WCDX 是自帶壓縮機、直接用冷凝水散熱的機組，屬於不同的系統拓樸，需要另外新增一個架構選項(例如 'wcdx')才能在Step4選型並接入計算。此檔案先保存使用者提供的真實選型數據，供之後決定要不要開發此架構時直接取用，目前不影響現有計算。"
+  },
+  "Vertiv FA080HW": {
+    "category": "wcdx",
+    "model": "Vertiv FA080HW",
+    "vendor": "Vertiv",
+    "cooling_capacity_kw": 320,
+    "condenser_type": "water_cooled",
+    "compressor_qty": 4,
+    "fan_qty": 6,
+    "dx_coil_qty": 2,
+    "operating_points": [
+      {
+        "water_in_c": 35, "water_out_c": 45,
+        "total_power_kw": 81.5, "eer": 3.9
+      },
+      {
+        "water_in_c": 30, "water_out_c": 40,
+        "total_power_kw": 65.5, "eer": 4.9, "water_flow_ls": 4.61
+      }
+    ],
+    "notes": "資料來源：使用者提供的 Vertiv 官方選型報告(共2份，同機型不同冷凝水溫工況)，真實工程數據非型錄泛用值。EER(冷量/總耗電)隨冷凝水溫下降而上升(35/45°C→EER3.9；30/40°C→EER4.9)，驗證了WCDX機組COP對冷凝水溫敏感的物理行為。RAT=35°C, SAT=23°C, 供水氣流量79800 CMH。",
+    "_source": "[Vertiv] FA080HW (320kW) 水冷直膨機組 [選型報告] (35-45°C版 + 30-40°C版)",
+    "_ai_confidence": 0.9,
+    "_verified": false
+  },
+  "Schneider Uniflair IDWV2422A": {
+    "category": "wcdx",
+    "model": "Schneider Uniflair IDWV2422A",
+    "vendor": "Schneider Electric",
+    "cooling_capacity_kw": 93.3,
+    "condenser_type": "water_cooled",
+    "compressor_qty": 2,
+    "compressor_type": "1顆定頻+1顆變頻(Inverter)渦卷式壓縮機，各自獨立冷媒迴路",
+    "fan_qty": 2,
+    "operating_points": [
+      {
+        "water_in_c": 30, "water_out_c": 35,
+        "return_air_c": 24, "return_air_rh_pct": 50,
+        "cooling_capacity_kw": 93.3,
+        "fan_power_kw": 3.03, "compressor_power_kw": 19.6,
+        "total_power_kw": 22.63, "eer": 4.12,
+        "water_pressure_drop_kpa": 45.2
+      },
+      {
+        "water_in_c": 30, "water_out_c": 35,
+        "return_air_c": 35, "return_air_rh_pct": 25,
+        "cooling_capacity_kw": 110.0,
+        "fan_power_kw": 3.03, "compressor_power_kw": 19.3,
+        "total_power_kw": 22.33, "eer": 4.93,
+        "water_pressure_drop_kpa": 57.8
+      }
+    ],
+    "notes": "資料來源：Schneider Electric官方技術規格書「Uniflair Direct Expansion Air Cooled, Water Cooled and Indirect Free Cooling Room Cooling Technical Specifications」(990-5756E-001, 2024/04)，真實原廠性能表非估算值。此為IDWV系列(下吹式、水冷直膨、變頻壓縮機)機型，屬於WCDX類別 — 機組內建壓縮機做冷媒蒸氣壓縮循環，透過內部不鏽鋼brazed plate熱交換器將冷凝熱排至冷凝水迴路(非直接消費冰水系統冷量)。表列兩個工況(相同30/35°C冷凝水溫，不同回風溫濕度)：24°C/50%RH時容量93.3kW/總功率22.63kW(EER4.12)；35°C/25%RH時容量110.0kW/總功率22.33kW(EER4.93，因回風溫度升高帶動蒸發溫度上升COP改善)。原規格書另有IDWV1511A/1922A/2022A/2922A/3822A等容量段(58-138kW)及30/36°C高溫迴路(IDEV系列)完整表格，此處僅取代表性單一機型/兩個工況；如需完整型號陣列可再擴充。",
+    "_source": "[Schneider Electric] Uniflair Direct Expansion Air Cooled, Water Cooled and Indirect Free Cooling Room Cooling [Technical Specifications] 990-5756E-001, Release 04/2024, p.36 (Performance Specifications - Water-Cooled Units - IDWV Models)",
+    "_ai_confidence": 0.95,
+    "_verified": false
+  }
+}

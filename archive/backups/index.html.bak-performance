@@ -1,0 +1,1950 @@
+<!DOCTYPE html>
+<html lang="zh-TW" class="scroll-smooth">
+<head>
+    <!-- 安全防護 -->
+    <script src="./security.js"></script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>東旭的空調工具箱 | HVAC Pro-Suite</title>
+    
+    <!-- SEO & Social Sharing -->
+    <meta name="description" content="東旭的空調工具箱為專業 HVAC 工程師提供冰機水泵換算、風管尺寸檢核、無塵室大師 Pro、AI 液冷資料中心等精準計算工具。">
+    <meta property="og:title" content="東旭的空調工具箱 | HVAC Pro-Suite">
+    <meta property="og:type" content="website">
+    <meta property="og:image" content="https://hvac-pro-shiu.web.app/icon-192.png">
+    <meta name="theme-color" content="#2563eb">
+    
+    <!-- Icons -->
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='20' fill='%231a73e8'/><text x='50%' y='55%' dominant-baseline='central' text-anchor='middle' font-family='sans-serif' font-size='60' font-weight='bold' fill='white'>H</text></svg>">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800;900&family=Noto+Sans+TC:wght@400;500;700;900&family=JetBrains+Mono:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['"Plus Jakarta Sans"', '"Noto Sans TC"', 'sans-serif'],
+                        mono: ['"JetBrains Mono"', 'monospace'],
+                    },
+                    colors: {
+                        google: {
+                            blue: '#1a73e8',
+                            red: '#ea4335',
+                            yellow: '#fbbc04',
+                            green: '#34a853',
+                            grey: '#f1f3f4',
+                            text: '#202124',
+                            sub: '#5f6368'
+                        }
+                    },
+                    animation: {
+                        'float': 'float 6s ease-in-out infinite',
+                        'fade-in-up': 'fadeInUp 0.8s ease-out forwards',
+                        'icon-bounce': 'iconBounce 0.5s cubic-bezier(0.25, 0.46, 0.45, 0.94) both',
+                        'spin-slow': 'spin 15s linear infinite',
+                        'pulse-fast': 'pulse 1s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+                    },
+                    keyframes: {
+                        float: {
+                            '0%, 100%': { transform: 'translateY(0)' },
+                            '50%': { transform: 'translateY(-20px)' },
+                        },
+                        fadeInUp: {
+                            '0%': { opacity: '0', transform: 'translateY(20px)' },
+                            '100%': { opacity: '1', transform: 'translateY(0)' },
+                        },
+                        iconBounce: {
+                            '0%, 100%': { transform: 'translateY(0)' },
+                            '50%': { transform: 'translateY(-6px)' }
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+
+    <!-- Clerk Auth -->
+    <script crossorigin="anonymous" data-clerk-publishable-key="pk_test_ZGlzY3JldGUtZmlsbHktNTkuY2xlcmsuYWNjb3VudHMuZGV2JA" src="https://discrete-filly-59.clerk.accounts.dev/npm/@clerk/clerk-js@latest/dist/clerk.browser.js" type="text/javascript"></script>
+
+    <style>
+        /* === Animation System 2.0 Motion Design Language & Foundation === */
+        :root {
+            --bg-base: #ffffff;
+            --bg-alt: #f8fafc;
+            --text-main: #0f172a;
+            --text-muted: #64748b;
+            --border-light: #f1f5f9;
+            --card-bg: #ffffff;
+            --canvas-overlay: rgba(255, 255, 255, 0.85);
+            --grid-line: rgba(148, 163, 184, 0.12);
+            --hud-glass: rgba(11, 18, 32, 0.82);
+            --hud-border: rgba(56, 189, 248, 0.22);
+            --accent-cyan: #06b6d4;
+            --accent-sky: #38bdf8;
+            --accent-blue: #1a73e8;
+            --accent-amber: #f59e0b;
+        }
+
+        html.dark {
+            --bg-base: #070d18;
+            --bg-alt: #0b1324;
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+            --border-light: #1e293b;
+            --card-bg: #0f1a2e;
+            --canvas-overlay: rgba(7, 13, 24, 0.85);
+            --grid-line: rgba(255, 255, 255, 0.05);
+            --hud-glass: rgba(5, 10, 20, 0.90);
+            --hud-border: rgba(56, 189, 248, 0.35);
+            color-scheme: dark;
+        }
+
+        body {
+            background-color: var(--bg-base) !important;
+            color: var(--text-main) !important;
+            transition: background-color 0.4s cubic-bezier(0.16, 1, 0.3, 1), color 0.4s ease;
+            overflow-x: hidden;
+        }
+
+        /* === Engineering Precision Grid Layer === */
+        .engineering-grid-bg {
+            background-image: 
+                linear-gradient(to right, var(--grid-line) 1px, transparent 1px),
+                linear-gradient(to bottom, var(--grid-line) 1px, transparent 1px);
+            background-size: 48px 48px;
+            background-position: center center;
+        }
+
+        /* === Boot Loader === */
+        #boot-loader {
+            position: fixed; inset: 0; z-index: 9999;
+            background: linear-gradient(160deg, #ffffff 0%, #eef4ff 40%, #dbeafe 100%);
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            overflow: hidden;
+            transition: opacity 0.5s cubic-bezier(0.16, 1, 0.3, 1), transform 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+        #boot-loader::before {
+            content: ''; position: absolute; width: 680px; height: 680px;
+            background: radial-gradient(circle, rgba(26,115,232,0.15) 0%, transparent 70%);
+            top: 50%; left: 50%; transform: translate(-50%,-50%);
+            animation: boot-glow 3s ease-in-out infinite alternate;
+        }
+        @keyframes boot-glow {
+            0% { transform: translate(-50%,-50%) scale(0.85); opacity: 0.4; }
+            100% { transform: translate(-50%,-50%) scale(1.15); opacity: 0.9; }
+        }
+
+        .boot-brand { position: relative; z-index: 2; display: flex; flex-direction: column; align-items: center; gap: 16px; }
+        .boot-logo-ring {
+            width: 104px; height: 104px; border-radius: 28px; position: relative;
+            background: linear-gradient(135deg, #1a73e8, #3b82f6, #06b6d4);
+            display: flex; align-items: center; justify-content: center;
+            box-shadow: 0 20px 50px -10px rgba(26,115,232,0.45), 0 0 0 1px rgba(255,255,255,0.7) inset;
+            animation: boot-logo-in 0.7s cubic-bezier(0.34,1.56,0.64,1) both;
+        }
+        .boot-logo-ring::after {
+            content: ''; position: absolute; inset: -4px; border-radius: 32px;
+            background: conic-gradient(from 0deg, transparent 0%, #38bdf8 30%, transparent 60%);
+            animation: boot-ring-spin 1.8s linear infinite; opacity: 0.6; z-index: -1;
+        }
+        @keyframes boot-ring-spin { to { transform: rotate(360deg); } }
+        @keyframes boot-logo-in { 0%{opacity:0;transform:scale(0.4) rotate(-12deg)} 100%{opacity:1;transform:scale(1) rotate(0deg)} }
+
+        .boot-logo-text { font-family: 'Plus Jakarta Sans','Noto Sans TC',sans-serif; font-size: 42px; font-weight: 900; color: white; line-height: 1; text-shadow: 0 2px 10px rgba(0,0,0,0.18); }
+        .boot-title { font-family: 'Plus Jakarta Sans',sans-serif; font-size: 15px; font-weight: 800; color: #1a73e8; letter-spacing: 6px; text-transform: uppercase; animation: boot-text-in 0.5s 0.3s both; }
+        .boot-subtitle { font-family: 'JetBrains Mono',monospace; font-size: 11px; color: #64748b; letter-spacing: 2px; animation: boot-text-in 0.5s 0.45s both; }
+        @keyframes boot-text-in { 0%{opacity:0;transform:translateY(10px)} 100%{opacity:1;transform:translateY(0)} }
+        .boot-bar { width: 220px; height: 3px; background: #e2e8f0; border-radius: 99px; margin-top: 24px; position: relative; overflow: hidden; }
+        .boot-progress { position: absolute; height: 100%; width: 0%; background: linear-gradient(90deg,#3b82f6,#06b6d4); border-radius: 99px; transition: width 0.18s cubic-bezier(0.16,1,0.3,1); box-shadow: 0 0 12px rgba(6,182,212,0.6); }
+
+        /* === View Transitions === */
+        .view-section { width: 100%; min-height: 100vh; transition: opacity 0.35s ease, transform 0.35s cubic-bezier(0.16,1,0.3,1); position: absolute; top: 0; left: 0; }
+        .view-hidden { opacity: 0; pointer-events: none; transform: scale(0.985); display: none; }
+        .view-active { opacity: 1; pointer-events: auto; transform: scale(1); display: block; position: relative; }
+        .reveal { opacity: 0; transform: translateY(30px); transition: all 0.6s cubic-bezier(0.16, 1, 0.3, 1); }
+        .reveal.active { opacity: 1; transform: translateY(0); }
+
+        #module-container { position: fixed; inset: 0; z-index: 9999; display: none; flex-direction: column; transform-origin: center bottom; transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
+        .module-active { animation: expandOverlay 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+        @keyframes expandOverlay { from { opacity: 0; transform: scale(0.96) translateY(24px); border-radius: 32px; } to { opacity: 1; transform: scale(1) translateY(0); border-radius: 0; } }
+
+        .weather-widget { display: flex; align-items: center; gap: 12px; border: 1px solid var(--border-light); padding: 6px 18px; border-radius: 99px; background: rgba(255,255,255,0.05); }
+        .weather-value { font-family: 'JetBrains Mono', monospace; font-size: 13px; font-weight: 700; color: #1a73e8; }
+        html.dark .weather-value { color: #38bdf8; }
+
+        /* === Hero Section: Engineering Title & Ambient Lighting === */
+        .hero-title-line-1 {
+            opacity: 0;
+            filter: blur(12px);
+            transform: translateY(40px);
+            animation: heroLine1In 0.85s 0.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        }
+        @keyframes heroLine1In {
+            0% { opacity: 0; filter: blur(12px); transform: translateY(40px); }
+            100% { opacity: 1; filter: blur(0px); transform: translateY(0); }
+        }
+
+        .hero-title-line-2 {
+            opacity: 0;
+            filter: blur(12px);
+            transform: translateY(40px);
+            letter-spacing: 0.06em;
+            animation: heroLine2In 0.9s 0.38s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+            position: relative;
+            display: inline-block;
+        }
+        @keyframes heroLine2In {
+            0% { opacity: 0; filter: blur(12px); transform: translateY(40px); letter-spacing: 0.06em; }
+            100% { opacity: 1; filter: blur(0px); transform: translateY(0); letter-spacing: -0.01em; }
+        }
+
+        /* 標題工程光束微閃 (只在進場時發生一次) */
+        .hero-shimmer-sweep::after {
+            content: '';
+            position: absolute;
+            inset: -4px -20px;
+            background: linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.9) 50%, transparent 100%);
+            transform: translateX(-120%) skewX(-20deg);
+            animation: heroShimmerOnce 1.2s 1.1s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+            pointer-events: none;
+            mix-blend-mode: overlay;
+        }
+        @keyframes heroShimmerOnce {
+            0% { transform: translateX(-120%) skewX(-20deg); opacity: 0; }
+            30% { opacity: 1; }
+            100% { transform: translateX(180%) skewX(-20deg); opacity: 0; }
+        }
+
+        /* === Engineering Objects Floating System (Depth Layer Z3) === */
+        .hero-float-element {
+            position: absolute;
+            pointer-events: auto;
+            z-index: 12;
+            cursor: default;
+            user-select: none;
+            will-change: transform;
+            transition: box-shadow 0.3s ease, border-color 0.3s ease;
+        }
+        .hero-geo {
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(56, 189, 248, 0.25);
+            background: linear-gradient(135deg, rgba(255,255,255,0.55), rgba(240,249,255,0.3));
+            box-shadow: 0 12px 36px -8px rgba(14,165,233,0.15), 0 0 0 1px rgba(255,255,255,0.4) inset;
+        }
+        html.dark .hero-geo {
+            border: 1px solid rgba(56, 189, 248, 0.22);
+            background: linear-gradient(135deg, rgba(15,23,42,0.7), rgba(8,16,32,0.5));
+            box-shadow: 0 16px 40px -10px rgba(0,0,0,0.5), 0 0 0 1px rgba(255,255,255,0.06) inset;
+        }
+        .hero-geo:hover {
+            border-color: rgba(56, 189, 248, 0.6);
+            box-shadow: 0 20px 48px -10px rgba(56,189,248,0.3), 0 0 0 1px rgba(56,189,248,0.3) inset;
+        }
+
+        .hero-geo-icon {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 100%;
+            height: 100%;
+            color: #0284c7;
+            transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+        html.dark .hero-geo-icon { color: #38bdf8; }
+        .hero-geo:hover .hero-geo-icon { transform: scale(1.12); }
+        .hero-geo-label {
+            position: absolute;
+            bottom: 8px;
+            left: 0;
+            right: 0;
+            text-align: center;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 8px;
+            font-weight: 700;
+            color: #0284c7;
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+            opacity: 0.85;
+        }
+        html.dark .hero-geo-label { color: #7dd3fc; }
+
+        /* Dynamic Mesh Glow Behind Hero */
+        .hero-ambient-mesh {
+            position: absolute;
+            inset: 0;
+            pointer-events: none;
+            z-index: 1;
+            overflow: hidden;
+        }
+        .hero-ambient-mesh::before {
+            content: '';
+            position: absolute;
+            width: 600px;
+            height: 600px;
+            border-radius: 50%;
+            background: radial-gradient(circle, rgba(56,189,248,0.14) 0%, transparent 70%);
+            top: -12%;
+            right: 2%;
+            filter: blur(50px);
+            animation: ambientMeshDrift 20s ease-in-out infinite alternate;
+        }
+        .hero-ambient-mesh::after {
+            content: '';
+            position: absolute;
+            width: 500px;
+            height: 500px;
+            border-radius: 50%;
+            background: radial-gradient(circle, rgba(26,115,232,0.12) 0%, transparent 70%);
+            bottom: -8%;
+            left: 3%;
+            filter: blur(60px);
+            animation: ambientMeshDrift 24s 2s ease-in-out infinite alternate-reverse;
+        }
+        @keyframes ambientMeshDrift {
+            0% { transform: translate(0, 0) scale(1); }
+            50% { transform: translate(-40px, 35px) scale(1.08); }
+            100% { transform: translate(30px, -25px) scale(0.95); }
+        }
+
+        /* === Premium Magnetic CTA Buttons === */
+        .magnetic-cta {
+            position: relative;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            will-change: transform;
+            transition: transform 0.25s cubic-bezier(0.25, 0.46, 0.45, 0.94), box-shadow 0.25s ease;
+            overflow: hidden;
+        }
+        .magnetic-cta::after {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(circle, rgba(255,255,255,0.25) 0%, transparent 60%);
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s ease, transform 0.3s ease;
+        }
+        .magnetic-cta:hover::after {
+            opacity: 1;
+        }
+
+        /* === Engineering Scroll Interface === */
+        #hero-scroll-indicator {
+            position: absolute;
+            bottom: 24px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 8px;
+            pointer-events: none;
+            z-index: 20;
+            transition: opacity 0.3s ease, transform 0.3s ease;
+        }
+        .scroll-caliper {
+            width: 22px;
+            height: 40px;
+            border: 1.5px solid rgba(56, 189, 248, 0.4);
+            border-radius: 99px;
+            position: relative;
+            display: flex;
+            justify-content: center;
+            padding-top: 6px;
+            background: rgba(255,255,255,0.05);
+            backdrop-filter: blur(4px);
+        }
+        .scroll-caliper-dot {
+            width: 4px;
+            height: 8px;
+            border-radius: 99px;
+            background: #0284c7;
+            box-shadow: 0 0 10px #38bdf8;
+            animation: caliperPulse 1.8s ease-in-out infinite;
+        }
+        html.dark .scroll-caliper-dot { background: #38bdf8; }
+        @keyframes caliperPulse {
+            0% { transform: translateY(0); opacity: 1; }
+            60% { transform: translateY(14px); opacity: 0.3; }
+            100% { transform: translateY(0); opacity: 1; }
+        }
+
+        /* === 3D Sticky Narrative Section (Fixed Dark Industrial Engineering Environment) === */
+        .story-fixed-dark {
+            background-color: #050811 !important;
+            color: #f8fafc !important;
+            position: relative;
+        }
+        .hud-card {
+            pointer-events: auto;
+            opacity: 0;
+            transform: translateY(16px) scale(0.98);
+            transition: opacity 0.35s cubic-bezier(0.16, 1, 0.3, 1), transform 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+            position: absolute;
+            left: 24px;
+            bottom: 20px;
+            max-width: 420px;
+            width: calc(100% - 48px);
+            pointer-events: none;
+            z-index: 25;
+        }
+        .hud-card.active {
+            opacity: 1;
+            transform: translateY(0) scale(1);
+            pointer-events: auto;
+        }
+        .hud-chip {
+            transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+            backdrop-filter: blur(12px);
+        }
+        .hud-chip:hover {
+            transform: translateY(-2px);
+            border-color: #38bdf8 !important;
+            box-shadow: 0 10px 24px -4px rgba(56,189,248,0.35);
+        }
+
+        /* HUD Live Metric Counter Card */
+        .hud-metric-box {
+            background: rgba(15, 23, 42, 0.85);
+            border: 1px solid rgba(56, 189, 248, 0.25);
+            border-radius: 12px;
+            padding: 8px 14px;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* Technical Scanline Effect */
+        .hud-scanline {
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(to bottom, transparent 50%, rgba(0,0,0,0.2) 51%);
+            background-size: 100% 4px;
+            pointer-events: none;
+            opacity: 0.6;
+        }
+
+        /* Tools Grid Cards */
+        .tool-card .tool-icon { transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1); }
+        .tool-card:hover .tool-icon { transform: scale(1.18) rotate(8deg); }
+        .tool-bg-image { transition: opacity 0.5s ease, transform 6s ease; transform: scale(1.08); filter: grayscale(100%); }
+        .group:hover .tool-bg-image { transform: scale(1); filter: grayscale(0%); }
+        .tech-overlay { position: absolute; inset: 0; opacity: 0; transition: opacity 0.3s ease; background: linear-gradient(0deg, rgba(255,255,255,0) 0%, rgba(255,255,255,0.8) 100%); pointer-events: none; z-index: 5; overflow: hidden; }
+        .dark-card .tech-overlay { background: linear-gradient(0deg, rgba(0,0,0,0) 0%, rgba(59,130,246,0.3) 100%); }
+        .group:hover .tech-overlay { opacity: 1; }
+        .tech-overlay::after { content: ''; position: absolute; top: -50%; left: 0; right: 0; height: 50%; background: linear-gradient(to bottom, transparent, rgba(59,130,246,0.2) 90%, rgba(59,130,246,0.8) 100%); animation: scanLine 2s linear infinite; opacity: 0; transition: opacity 0.3s; }
+        .group:hover .tech-overlay::after { opacity: 1; }
+        @keyframes scanLine { 0% { transform: translateY(-100%); } 100% { transform: translateY(400%); } }
+    </style>
+</head>
+<body class="bg-white text-slate-900 antialiased selection:bg-blue-100 selection:text-blue-900">
+
+    <!-- BOOT LOADER — 白藍工程啟動 Splash -->
+    <div id="boot-loader">
+        <div class="boot-brand">
+            <div class="boot-logo-ring">
+                <span class="boot-logo-text">東旭</span>
+            </div>
+            <div class="boot-title">HVAC Pro-Suite</div>
+            <div class="boot-subtitle font-mono text-xs">ANIMATION SYSTEM 2.0 // PRECISION ENGINE</div>
+            <div class="boot-bar"><div class="boot-progress" id="boot-bar-progress" style="width: 0%"></div></div>
+        </div>
+        <!-- 相容隱藏結構保留 -->
+        <div style="display:none"><div class="terminal-box"><div id="terminal-lines"></div><span id="typing-text"></span></div></div>
+    </div>
+
+    <!-- ============================================== -->
+    <!-- 1. LANDING PAGE VIEW (INDEX / SHEET 1)         -->
+    <!-- ============================================== -->
+    <div id="landing-view" class="view-section view-active z-10">
+        
+        <!-- Sticky Nav -->
+        <nav class="sticky top-0 z-50 bg-white/80 dark:bg-slate-950/80 backdrop-blur-md border-b border-slate-100 dark:border-white/10 px-6 py-4 flex justify-between items-center transition-colors">
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 bg-google-blue rounded-xl flex items-center justify-center text-white font-black shadow-lg shadow-blue-500/20">東旭</div>
+                <div class="flex flex-col justify-center">
+                    <span class="text-lg font-black text-slate-800 dark:text-white leading-none tracking-tight">HVAC <span class="text-google-blue">PRO</span></span>
+                    <span class="text-[10px] text-slate-400 font-bold tracking-wider" data-i18n="nav-subtitle">專業空調工具箱</span>
+                </div>
+            </div>
+            <div class="hidden md:flex gap-8 text-sm font-bold text-slate-500 dark:text-slate-400">
+                <a href="#scene-1-cleanroom" class="hover:text-google-blue dark:hover:text-sky-400 transition-colors" data-i18n="nav-tools">工具庫</a>
+                <a href="#scene-2-datacenter" class="hover:text-google-blue dark:hover:text-sky-400 transition-colors" data-i18n="nav-features">特點</a>
+                <a href="#standards" class="hover:text-google-blue dark:hover:text-sky-400 transition-colors" data-i18n="nav-standards">標準</a>
+            </div>
+            
+            <div class="flex items-center gap-4">
+                <!-- Theme Toggle Button -->
+                <button onclick="toggleTheme()" class="flex items-center justify-center w-10 h-10 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors font-bold text-xs theme-btn" aria-label="Toggle Theme">
+                    <i class="fa-solid fa-moon"></i>
+                </button>
+                <button onclick="toggleLanguage()" class="flex items-center justify-center w-10 h-10 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors font-bold text-xs" id="lang-btn" aria-label="Toggle Language">
+                    <i class="fa-solid fa-globe"></i>
+                </button>
+                <button onclick="enterDashboard()" class="magnetic-cta bg-slate-900 dark:bg-google-blue text-white px-6 py-2.5 rounded-full font-bold text-sm shadow-lg hover:shadow-blue-500/30 transition-all">
+                    <span id="landing-cta-text" data-i18n="nav-enter">進入工具箱</span>
+                </button>
+            </div>
+        </nav>
+
+        <!-- Scene 0: Hero Section (Animation System 2.0 Depth Layers) -->
+        <header id="hero-section" class="relative pt-28 pb-20 px-6 text-center overflow-hidden min-h-[94vh] flex flex-col justify-center items-center engineering-grid-bg">
+            
+            <!-- Layer 01: Dynamic Fluid Vector Field Background Canvas (Z0-Z2) -->
+            <canvas id="hero-canvas" class="absolute inset-0 w-full h-full pointer-events-none z-0"></canvas>
+
+            <!-- Dynamic Ambient Gradient Mesh (Z1) -->
+            <div class="hero-ambient-mesh"></div>
+            <div class="absolute inset-0 bg-gradient-to-b from-transparent via-[var(--canvas-overlay)] to-[var(--bg-base)] pointer-events-none z-[2]"></div>
+
+            <!-- Layer 02: Engineering Objects Floating System (Z3) -->
+            <!-- 1. Hydraulic Object (Slow buoyancy drift, depth 0.45) -->
+            <div id="float-obj-1" class="hero-float-element hero-geo rounded-3xl w-32 h-32 md:w-36 md:h-36 p-4 hidden sm:flex flex-col items-center justify-center shadow-xl" style="top:14%; left:7%;">
+                <div class="hero-geo-icon text-3xl"><i class="fa-solid fa-droplet"></i></div>
+                <div class="hero-geo-label">Hydraulic ΔP</div>
+            </div>
+
+            <!-- 2. Temperature Object (Thermal oscillation, depth 0.35) -->
+            <div id="float-obj-2" class="hero-float-element hero-geo rounded-full w-24 h-24 md:w-28 md:h-28 p-3 hidden sm:flex flex-col items-center justify-center shadow-xl" style="top:20%; right:9%;">
+                <div class="hero-geo-icon text-2xl"><i class="fa-solid fa-temperature-half"></i></div>
+                <div class="hero-geo-label">Tdb / Twb</div>
+            </div>
+
+            <!-- 3. Ducting Object (Aerodynamic diagonal vector, depth 0.55) -->
+            <div id="float-obj-3" class="hero-float-element hero-geo rounded-2xl w-32 h-24 md:w-36 md:h-24 p-3 hidden sm:flex flex-col items-center justify-center shadow-xl" style="bottom:26%; left:9%;">
+                <div class="hero-geo-icon text-2xl"><i class="fa-solid fa-wind"></i></div>
+                <div class="hero-geo-label">Ducting CFM</div>
+            </div>
+
+            <!-- 4. Heat Loop Object (Thermal flux vibration, depth 0.28) -->
+            <div id="float-obj-4" class="hero-float-element hero-geo rounded-3xl w-24 h-24 md:w-28 md:h-28 p-3 hidden sm:flex flex-col items-center justify-center shadow-xl" style="bottom:18%; right:8%;">
+                <div class="hero-geo-icon text-2xl text-amber-500"><i class="fa-solid fa-bolt"></i></div>
+                <div class="hero-geo-label">Heat Load</div>
+            </div>
+
+            <!-- 5. Node Object (Micro floating node, depth 0.60) -->
+            <div id="float-obj-5" class="hero-float-element hero-geo rounded-2xl w-16 h-16 p-2 flex items-center justify-center shadow-md hidden sm:flex" style="top:48%; left:3%;">
+                <div class="hero-geo-icon text-base"><i class="fa-solid fa-cube"></i></div>
+            </div>
+
+            <!-- 6. CFD Vector Object (Streamline tracking, depth 0.40) -->
+            <div id="float-obj-6" class="hero-float-element hero-geo rounded-full px-5 py-2.5 flex items-center gap-2 shadow-lg hidden sm:flex" style="top:32%; right:4%;">
+                <div class="hero-geo-icon text-sm"><i class="fa-solid fa-gauge-high"></i></div>
+                <span class="font-mono text-[11px] font-bold tracking-widest text-sky-600 dark:text-sky-400">CFD 0.45 m/s</span>
+            </div>
+
+            <!-- Layer 03: Hero Content (Z4) -->
+            <div class="max-w-5xl mx-auto relative z-10 mt-[-2vh]">
+                <!-- Engineering Badge -->
+                <div class="inline-flex items-center gap-2.5 bg-blue-50/90 dark:bg-slate-800/80 backdrop-blur-md border border-blue-200/60 dark:border-sky-500/30 text-google-blue dark:text-sky-400 px-4 py-1.5 rounded-full text-xs font-mono font-bold mb-8 tracking-widest shadow-sm">
+                    <span class="relative flex h-2 w-2">
+                        <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-sky-400 opacity-75"></span>
+                        <span class="relative inline-flex rounded-full h-2 w-2 bg-blue-600 dark:bg-sky-400"></span>
+                    </span>
+                    HVAC ENGINEERING INTELLIGENCE PLATFORM 2.0
+                </div>
+
+                <!-- Animated Title -->
+                <h1 class="text-5xl md:text-8xl font-black text-slate-900 dark:text-white mb-6 leading-tight tracking-tight overflow-visible">
+                    <span class="hero-title-line-1 block" data-i18n="hero-title-1">專業空調工程師的</span>
+                    <span class="hero-title-line-2 block text-transparent bg-clip-text bg-gradient-to-r from-google-blue via-cyan-500 to-sky-400 hero-shimmer-sweep" data-i18n="hero-title-2">數位瑞士刀</span>
+                </h1>
+
+                <!-- Engineering Metadata Pill -->
+                <div class="flex flex-col md:flex-row items-center justify-center gap-2 md:gap-6 text-xs md:text-sm font-mono text-slate-400 dark:text-slate-400 mb-10">
+                    <div class="flex items-center gap-2"><i class="fa-solid fa-microchip text-sky-500"></i> BUILT BY 東旭</div>
+                    <div class="hidden md:block w-1.5 h-1.5 rounded-full bg-slate-300 dark:bg-slate-700"></div>
+                    <div>MEP ENGINEER | CLEANROOM DESIGNER</div>
+                    <div class="hidden md:block w-1.5 h-1.5 rounded-full bg-slate-300 dark:bg-slate-700"></div>
+                    <div class="text-google-blue dark:text-sky-400 font-bold">DIGITAL TWIN × HYDRONICS × CFD</div>
+                </div>
+
+                <p class="text-slate-600 dark:text-slate-300 text-lg md:text-xl mb-12 leading-relaxed max-w-2xl mx-auto font-normal" data-i18n="hero-desc">
+                    整合負荷計算、系統模擬與規範校核。我們不只提供計算結果，更為您的設計方案提供公信力與精確度。
+                </p>
+
+                <!-- Magnetic CTA Group -->
+                <div class="flex flex-col sm:flex-row justify-center items-center gap-4">
+                    <button id="cta-primary-btn" onclick="enterDashboard()" class="magnetic-cta bg-google-blue hover:bg-blue-600 text-white px-10 py-4 rounded-full font-bold text-lg shadow-[0_12px_36px_-6px_rgba(26,115,232,0.6)] transition-all flex items-center gap-3 group">
+                        <i class="fa-solid fa-rocket group-hover:translate-x-1 group-hover:-translate-y-1 transition-transform"></i>
+                        <span data-i18n="hero-btn-start">開始系統計算</span>
+                    </button>
+                    <a id="cta-secondary-btn" href="#scene-1-cleanroom" class="magnetic-cta bg-white/80 dark:bg-slate-900/80 backdrop-blur-md border border-slate-200 dark:border-white/10 text-slate-700 dark:text-slate-200 px-10 py-4 rounded-full font-bold text-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-all flex items-center gap-2">
+                        <span data-i18n="hero-btn-learn">探索物理展廳</span>
+                        <i class="fa-solid fa-arrow-down text-sm opacity-60"></i>
+                    </a>
+                </div>
+            </div>
+
+            <!-- Layer 05: Engineering Scroll Interface Caliper -->
+            <div id="hero-scroll-indicator">
+                <span class="text-[10px] font-mono font-bold tracking-[0.25em] text-slate-400 uppercase" data-i18n="scroll-hint">SCROLL TO DIRECT ENGINE</span>
+                <div class="scroll-caliper">
+                    <div class="scroll-caliper-dot"></div>
+                </div>
+            </div>
+        </header>
+
+        <!-- ====================================================================== -->
+        <!-- ANIMATION SYSTEM 2.0: SCENE 1–3 SCROLL NARRATIVE CAMERA DIRECTOR       -->
+        <!-- 480vh 滾動時空軸，Three.js WebGL 實時流場與數位孿生                   -->
+        <!-- ====================================================================== -->
+        <div id="story-narrative-section" class="relative w-full story-fixed-dark" style="height: 480vh;">
+            
+            <!-- Nav 錨點定位器 -->
+            <div id="scene-1-cleanroom" class="absolute top-[3%] pointer-events-none w-1 h-1"></div>
+            <div id="scene-2-datacenter" class="absolute top-[40%] pointer-events-none w-1 h-1"></div>
+            <div id="scene-3-energyhub" class="absolute top-[75%] pointer-events-none w-1 h-1"></div>
+
+            <!-- Sticky Viewport -->
+            <div id="story-viewport" class="sticky top-0 h-screen w-full overflow-hidden story-fixed-dark flex flex-col justify-between select-none">
+                
+                <!-- 3D WebGL Digital Twin Workbench Layer (Embedded) -->
+                <iframe id="story-workbench-iframe" data-src="./hvac_digital_twin_3d_animation_workbench%20(3).html?embed=narrative&v=2" class="absolute inset-0 w-full h-full border-0 z-0 pointer-events-auto" allow="fullscreen"></iframe>
+
+                <!-- 工業環境氛圍濾鏡與細微科技掃描線 -->
+                <div class="absolute inset-0 bg-[radial-gradient(circle_at_50%_45%,rgba(56,189,248,0.08)_0%,transparent_65%)] pointer-events-none z-[1]"></div>
+                <div class="absolute inset-0 bg-[linear-gradient(to_right,#ffffff03_1px,transparent_1px),linear-gradient(to_bottom,#ffffff03_1px,transparent_1px)] bg-[size:48px_48px] pointer-events-none z-[1]"></div>
+                <div class="hud-scanline z-[2]"></div>
+
+                <!-- 頂部 HUD 指令列與三幕敘事進度條 -->
+                <header class="relative z-20 px-6 md:px-12 pt-6 pb-4 flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-white/10 bg-slate-950/60 backdrop-blur-xl">
+                    <div class="flex items-center gap-3">
+                        <div class="w-2.5 h-2.5 rounded-full bg-sky-400 animate-pulse"></div>
+                        <span class="font-mono text-xs font-bold uppercase tracking-widest text-slate-200">HVAC ENGINEERING DIGITAL TWIN 2.0</span>
+                        <span class="hidden lg:inline-block px-2 py-0.5 rounded bg-white/5 border border-white/10 text-[10px] font-mono text-sky-400">CAMERA DIRECTOR ACTIVE</span>
+                    </div>
+
+                    <!-- 三幕進度追蹤 -->
+                    <div class="flex items-center gap-3 sm:gap-6 font-mono text-xs font-bold text-slate-400">
+                        <div id="pipeline-phase-1" class="flex items-center gap-2 text-sky-400 transition-colors">
+                            <span class="w-5 h-5 rounded-full border border-sky-400/60 flex items-center justify-center text-[10px] bg-sky-400/10 shrink-0">01</span>
+                            <span class="hidden sm:inline">CLEANROOM</span>
+                        </div>
+                        <div class="w-4 sm:w-6 h-px bg-white/15 shrink-0"></div>
+                        <div id="pipeline-phase-2" class="flex items-center gap-2 transition-colors">
+                            <span class="w-5 h-5 rounded-full border border-white/20 flex items-center justify-center text-[10px] shrink-0">02</span>
+                            <span class="hidden sm:inline">AI LIQUID COOLING</span>
+                        </div>
+                        <div class="w-4 sm:w-6 h-px bg-white/15 shrink-0"></div>
+                        <div id="pipeline-phase-3" class="flex items-center gap-2 transition-colors">
+                            <span class="w-5 h-5 rounded-full border border-white/20 flex items-center justify-center text-[10px] shrink-0">03</span>
+                            <span class="hidden sm:inline">ENERGY HUB</span>
+                        </div>
+                    </div>
+                </header>
+
+                <!-- 底部左側精簡工程 HUD 指揮卡片 (不遮擋 3D 核心視野) -->
+                <main class="relative flex-1 w-full pointer-events-none z-20">
+                    
+                    <!-- SCENE 1: STEP 1 (0.00 - 0.18) -->
+                    <div id="hud-s1-1" class="hud-card active">
+                        <div class="hud-card-container w-full bg-slate-950/85 border border-sky-500/30 rounded-2xl p-4 shadow-2xl backdrop-blur-xl pointer-events-auto">
+                            <!-- 折疊後摘要 (預設隱藏) -->
+                            <div class="hud-collapsed-pill hidden items-center justify-between gap-3 cursor-pointer" onclick="toggleHudCard(this)">
+                                <span class="text-[10px] font-mono font-bold text-sky-400 bg-sky-500/10 px-2 py-0.5 rounded border border-sky-500/20">
+                                    <i class="fa-solid fa-atom mr-1"></i> SCENE 01 · ISO 14644
+                                </span>
+                                <i class="fa-solid fa-chevron-up text-[10px] text-slate-400"></i>
+                            </div>
+
+                            <!-- 展開內容主體 -->
+                            <div class="hud-card-content">
+                                <div class="flex items-center justify-between mb-2">
+                                    <div class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-cyan-500/15 border border-cyan-500/30 text-cyan-400 font-mono text-[10px] font-bold tracking-wider">
+                                        <i class="fa-solid fa-atom"></i> SCENE 01 // STEP 1
+                                    </div>
+                                    <div class="flex items-center gap-2">
+                                        <span class="text-[10px] font-mono text-slate-400">VELOCITY: <b id="counter-velocity" class="text-sky-400">0.45 m/s</b></span>
+                                        <button onclick="toggleHudCard(this)" class="w-5 h-5 rounded-md bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white flex items-center justify-center text-[10px] transition-all cursor-pointer" title="折疊/展開">
+                                            <i class="fa-solid fa-minus"></i>
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <h3 class="text-sm font-bold text-white mb-1 leading-snug tracking-tight" data-i18n="scene1-step1-title">微塵控制的極限：ISO 14644 標準</h3>
+                                <p class="text-slate-300 text-[11px] leading-relaxed mb-2.5 font-normal line-clamp-2" data-i18n="scene1-step1-desc">半導體晶圓廠的生死線在於次微米粒子，藉由微正壓梯度與流場死區消除，達成極限純淨。</p>
+                                
+                                <!-- Telemetry Indicators -->
+                                <div class="grid grid-cols-2 gap-2 mb-2.5 font-mono text-[10px]">
+                                    <div class="hud-metric-box">
+                                        <span class="text-[9px] text-slate-400">CLASS PURITY</span>
+                                        <span class="text-xs font-bold text-sky-400" id="counter-class">ISO Class 1</span>
+                                    </div>
+                                    <div class="hud-metric-box">
+                                        <span class="text-[9px] text-slate-400">ROOM PRESSURE</span>
+                                        <span class="text-xs font-bold text-emerald-400" id="counter-press">+15.2 Pa</span>
+                                    </div>
+                                </div>
+
+                                <div class="pt-2 border-t border-white/10 flex flex-wrap gap-2">
+                                    <button onclick="openToolById('FAB-50')" class="hud-chip px-2.5 py-1 rounded-lg bg-white/5 border border-white/10 text-[10px] font-mono font-bold text-sky-300 flex items-center gap-1.5 hover:bg-white/10">
+                                        <i class="fa-solid fa-hurricane"></i> <span>FAB-50 無塵室模擬器</span>
+                                    </button>
+                                    <button onclick="openToolById('CRM-03')" class="hud-chip px-2.5 py-1 rounded-lg bg-white/5 border border-white/10 text-[10px] font-mono font-bold text-indigo-300 flex items-center gap-1.5 hover:bg-white/10">
+                                        <i class="fa-solid fa-industry"></i> <span>CRM-03 無塵室大師</span>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- SCENE 1: STEP 2 (0.18 - 0.35) -->
+                    <div id="hud-s1-2" class="hud-card">
+                        <div class="hud-card-container w-full bg-slate-950/85 border border-sky-500/30 rounded-2xl p-4 shadow-2xl backdrop-blur-xl pointer-events-auto">
+                            <div class="hud-collapsed-pill hidden items-center justify-between gap-3 cursor-pointer" onclick="toggleHudCard(this)">
+                                <span class="text-[10px] font-mono font-bold text-sky-400 bg-sky-500/10 px-2 py-0.5 rounded border border-sky-500/20">
+                                    <i class="fa-solid fa-droplet mr-1"></i> SCENE 01 · MAU + DCC
+                                </span>
+                                <i class="fa-solid fa-chevron-up text-[10px] text-slate-400"></i>
+                            </div>
+
+                            <div class="hud-card-content">
+                                <div class="flex items-center justify-between mb-2">
+                                    <div class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-sky-500/15 border border-sky-500/30 text-sky-400 font-mono text-[10px] font-bold tracking-wider">
+                                        <i class="fa-solid fa-droplet"></i> SCENE 01 // STEP 2
+                                    </div>
+                                    <div class="flex items-center gap-2">
+                                        <span class="text-[10px] font-mono text-slate-400">COIL: <b class="text-emerald-400">14.0°C</b></span>
+                                        <button onclick="toggleHudCard(this)" class="w-5 h-5 rounded-md bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white flex items-center justify-center text-[10px] transition-all cursor-pointer" title="折疊/展開">
+                                            <i class="fa-solid fa-minus"></i>
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <h3 class="text-sm font-bold text-white mb-1 leading-snug tracking-tight" data-i18n="scene1-step2-title">熱濕微氣候平衡：MAU + DCC 架構</h3>
+                                <p class="text-slate-300 text-[11px] leading-relaxed mb-2.5 font-normal line-clamp-2" data-i18n="scene1-step2-desc">外氣空調箱精準控制絕對濕度與焓值，室內乾冷盤管以不結露水溫帶走高熱。</p>
+                                
+                                <div class="grid grid-cols-2 gap-2 mb-2.5 font-mono text-[10px]">
+                                    <div class="hud-metric-box">
+                                        <span class="text-[9px] text-slate-400">TEMP TOLERANCE</span>
+                                        <span class="text-xs font-bold text-sky-400">±0.05 °C</span>
+                                    </div>
+                                    <div class="hud-metric-box">
+                                        <span class="text-[9px] text-slate-400">RH CONTROL</span>
+                                        <span class="text-xs font-bold text-cyan-400">45.0% ± 3%</span>
+                                    </div>
+                                </div>
+
+                                <div class="pt-2 border-t border-white/10 flex flex-wrap gap-2">
+                                    <button onclick="openToolById('CRM-03')" class="hud-chip px-2.5 py-1 rounded-lg bg-white/5 border border-white/10 text-[10px] font-mono font-bold text-indigo-300 flex items-center gap-1.5 hover:bg-white/10">
+                                        <i class="fa-solid fa-temperature-arrow-down"></i> <span>CRM-03 MAU/DCC 平衡</span>
+                                    </button>
+                                    <button onclick="openToolById('CDA-07')" class="hud-chip px-2.5 py-1 rounded-lg bg-white/5 border border-white/10 text-[10px] font-mono font-bold text-purple-300 flex items-center gap-1.5 hover:bg-white/10">
+                                        <i class="fa-solid fa-wind"></i> <span>CDA-07 CDA 加濕</span>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- SCENE 2: STEP 1 (0.35 - 0.52) -->
+                    <div id="hud-s2-1" class="hud-card">
+                        <div class="hud-card-container w-full bg-slate-950/85 border border-emerald-500/30 rounded-2xl p-4 shadow-2xl backdrop-blur-xl pointer-events-auto">
+                            <div class="hud-collapsed-pill hidden items-center justify-between gap-3 cursor-pointer" onclick="toggleHudCard(this)">
+                                <span class="text-[10px] font-mono font-bold text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20">
+                                    <i class="fa-solid fa-server mr-1"></i> SCENE 02 · 132kW/Rack D2C
+                                </span>
+                                <i class="fa-solid fa-chevron-up text-[10px] text-slate-400"></i>
+                            </div>
+
+                            <div class="hud-card-content">
+                                <div class="flex items-center justify-between mb-2">
+                                    <div class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 font-mono text-[10px] font-bold tracking-wider">
+                                        <i class="fa-solid fa-server"></i> SCENE 02 // STEP 1
+                                    </div>
+                                    <div class="flex items-center gap-2">
+                                        <span class="text-[10px] font-mono text-amber-400 font-bold"><i class="fa-solid fa-fire-flame-curved"></i> HIGH DENSITY</span>
+                                        <button onclick="toggleHudCard(this)" class="w-5 h-5 rounded-md bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white flex items-center justify-center text-[10px] transition-all cursor-pointer" title="折疊/展開">
+                                            <i class="fa-solid fa-minus"></i>
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <h3 class="text-sm font-bold text-white mb-1 leading-snug tracking-tight" data-i18n="scene2-step1-title">單機櫃百萬瓦挑戰：突破空氣對流極限</h3>
+                                <p class="text-slate-300 text-[11px] leading-relaxed mb-2.5 font-normal line-clamp-2" data-i18n="scene2-step1-desc">傳統風冷在熱密度大於 40 kW/Rack 時宣告失效，直達晶片液冷技術掌控 GPU 澎湃算力核心命脈。</p>
+                                
+                                <div class="grid grid-cols-2 gap-2 mb-2.5 font-mono text-[10px]">
+                                    <div class="hud-metric-box">
+                                        <span class="text-[9px] text-slate-400">RACK POWER DENSITY</span>
+                                        <span class="text-xs font-bold text-amber-400" id="counter-kw">42.5 kW / Rack</span>
+                                    </div>
+                                    <div class="hud-metric-box">
+                                        <span class="text-[9px] text-slate-400">COOLING MODE</span>
+                                        <span class="text-xs font-bold text-emerald-400">Direct-to-Chip</span>
+                                    </div>
+                                </div>
+
+                                <div class="pt-2 border-t border-white/10 flex flex-wrap gap-2">
+                                    <button onclick="openToolById('DC-01')" class="hud-chip px-2.5 py-1 rounded-lg bg-white/5 border border-white/10 text-[10px] font-mono font-bold text-emerald-400 flex items-center gap-1.5 hover:bg-white/10">
+                                        <i class="fa-solid fa-microchip"></i> <span>DC-01 數位展廳</span>
+                                    </button>
+                                    <button onclick="openToolById('DC-02')" class="hud-chip px-2.5 py-1 rounded-lg bg-white/5 border border-white/10 text-[10px] font-mono font-bold text-teal-300 flex items-center gap-1.5 hover:bg-white/10">
+                                        <i class="fa-solid fa-calculator"></i> <span>DC-02 計算器</span>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- SCENE 2: STEP 2 (0.52 - 0.70) -->
+                    <div id="hud-s2-2" class="hud-card">
+                        <div class="hud-card-container w-full bg-slate-950/85 border border-teal-500/30 rounded-2xl p-4 shadow-2xl backdrop-blur-xl pointer-events-auto">
+                            <div class="hud-collapsed-pill hidden items-center justify-between gap-3 cursor-pointer" onclick="toggleHudCard(this)">
+                                <span class="text-[10px] font-mono font-bold text-teal-400 bg-teal-500/10 px-2 py-0.5 rounded border border-teal-500/20">
+                                    <i class="fa-solid fa-chart-line mr-1"></i> SCENE 02 · CDU Loop & PUE
+                                </span>
+                                <i class="fa-solid fa-chevron-up text-[10px] text-slate-400"></i>
+                            </div>
+
+                            <div class="hud-card-content">
+                                <div class="flex items-center justify-between mb-2">
+                                    <div class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-teal-500/15 border border-teal-500/30 text-teal-400 font-mono text-[10px] font-bold tracking-wider">
+                                        <i class="fa-solid fa-chart-line"></i> SCENE 02 // STEP 2
+                                    </div>
+                                    <div class="flex items-center gap-2">
+                                        <span class="text-[10px] font-mono text-slate-400">CDU LOOP: <b class="text-cyan-400">180 LPM</b></span>
+                                        <button onclick="toggleHudCard(this)" class="w-5 h-5 rounded-md bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white flex items-center justify-center text-[10px] transition-all cursor-pointer" title="折疊/展開">
+                                            <i class="fa-solid fa-minus"></i>
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <h3 class="text-sm font-bold text-white mb-1 leading-snug tracking-tight" data-i18n="scene2-step2-title">CDU 隔離迴路與 PUE &lt; 1.15 能源優化</h3>
+                                <p class="text-slate-300 text-[11px] leading-relaxed mb-2.5 font-normal line-clamp-2" data-i18n="scene2-step2-desc">透過中溫水供水與自然冷卻深度結合，重構綠色資料中心的水力平衡。</p>
+                                
+                                <div class="grid grid-cols-2 gap-2 mb-2.5 font-mono text-[10px]">
+                                    <div class="hud-metric-box">
+                                        <span class="text-[9px] text-slate-400">SYSTEM PUE</span>
+                                        <span class="text-xs font-bold text-emerald-400" id="counter-pue">PUE = 1.12</span>
+                                    </div>
+                                    <div class="hud-metric-box">
+                                        <span class="text-[9px] text-slate-400">SUPPLY TEMP (W32)</span>
+                                        <span class="text-xs font-bold text-sky-400">32.0 °C</span>
+                                    </div>
+                                </div>
+
+                                <div class="pt-2 border-t border-white/10 flex flex-wrap gap-2">
+                                    <button onclick="openToolById('WEA-01')" class="hud-chip px-2.5 py-1 rounded-lg bg-white/5 border border-white/10 text-[10px] font-mono font-bold text-amber-300 flex items-center gap-1.5 hover:bg-white/10">
+                                        <i class="fa-solid fa-cloud-sun"></i> <span>WEA-01 氣候分析</span>
+                                    </button>
+                                    <button onclick="openToolById('PHE-01')" class="hud-chip px-2.5 py-1 rounded-lg bg-white/5 border border-white/10 text-[10px] font-mono font-bold text-sky-300 flex items-center gap-1.5 hover:bg-white/10">
+                                        <i class="fa-solid fa-exchange-alt"></i> <span>PHE-01 板熱選型</span>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- SCENE 3: CENTRAL ENERGY HUB (0.70 - 1.00) -->
+                    <div id="hud-s3" class="hud-card">
+                        <div class="hud-card-container w-full bg-slate-950/85 border border-blue-500/30 rounded-2xl p-4 shadow-2xl backdrop-blur-xl pointer-events-auto">
+                            <div class="hud-collapsed-pill hidden items-center justify-between gap-3 cursor-pointer" onclick="toggleHudCard(this)">
+                                <span class="text-[10px] font-mono font-bold text-blue-400 bg-blue-500/10 px-2 py-0.5 rounded border border-blue-500/20">
+                                    <i class="fa-solid fa-network-wired mr-1"></i> SCENE 03 · Energy Hub
+                                </span>
+                                <i class="fa-solid fa-chevron-up text-[10px] text-slate-400"></i>
+                            </div>
+
+                            <div class="hud-card-content">
+                                <div class="flex items-center justify-between mb-2">
+                                    <div class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-blue-500/15 border border-blue-500/30 text-blue-400 font-mono text-[10px] font-bold tracking-wider">
+                                        <i class="fa-solid fa-network-wired"></i> SCENE 03 // ENERGY HUB
+                                    </div>
+                                    <div class="flex items-center gap-2">
+                                        <span class="text-[10px] font-mono text-emerald-400 font-bold"><i class="fa-solid fa-circle-check"></i> SYNCHRONIZED</span>
+                                        <button onclick="toggleHudCard(this)" class="w-5 h-5 rounded-md bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white flex items-center justify-center text-[10px] transition-all cursor-pointer" title="折疊/展開">
+                                            <i class="fa-solid fa-minus"></i>
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <h3 class="text-sm font-bold text-white mb-1 leading-snug tracking-tight" data-i18n="scene3-title">系統級能源中樞：水力管網與熱力平衡</h3>
+                                <p class="text-slate-300 text-[11px] leading-relaxed mb-2.5 font-normal line-clamp-2" data-i18n="scene3-desc">所有負荷最終交由冰水機、冷卻水塔與變頻泵群精密調度，形成整體工程智慧中樞。</p>
+                                
+                                <div class="grid grid-cols-2 gap-2 mb-2.5 font-mono text-[10px]">
+                                    <div class="hud-metric-box">
+                                        <span class="text-[9px] text-slate-400">CHILLER COP</span>
+                                        <span class="text-xs font-bold text-sky-400" id="counter-cop">COP 6.85</span>
+                                    </div>
+                                    <div class="hud-metric-box">
+                                        <span class="text-[9px] text-slate-400">COOLING LOAD</span>
+                                        <span class="text-xs font-bold text-blue-400" id="counter-load">1,850 RT</span>
+                                    </div>
+                                </div>
+
+                                <div class="pt-2 border-t border-white/10 flex flex-wrap gap-2">
+                                    <button onclick="enterDashboard()" class="magnetic-cta px-3.5 py-1.5 rounded-xl bg-google-blue hover:bg-blue-600 text-white font-bold text-xs shadow-lg transition-all flex items-center justify-center gap-1.5">
+                                        <span data-i18n="scene3-cta">進入水力沙盤 →</span>
+                                        <i class="fa-solid fa-arrow-right text-[9px]"></i>
+                                    </button>
+                                    <button onclick="openToolById('PMP-01')" class="hud-chip px-2.5 py-1 rounded-xl bg-white/5 border border-white/10 text-[10px] font-mono font-bold text-slate-300 hover:text-white flex items-center justify-center gap-1.5">
+                                        <i class="fa-solid fa-bolt text-yellow-400"></i> <span>PMP-01 水泵換算</span>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </main>
+
+                <!-- 底部 HUD 狀態追蹤條 -->
+                <footer class="relative z-20 px-6 md:px-12 py-4 flex items-center justify-between border-t border-white/10 text-[11px] font-mono text-slate-400 bg-slate-950/40 backdrop-blur-md">
+                    <div class="flex items-center gap-3">
+                        <span class="text-slate-500">ENGINE STATE:</span>
+                        <span id="engine-state-text" class="text-sky-400 font-bold">LAMINAR REGIME</span>
+                    </div>
+                    <div class="flex items-center gap-4">
+                        <button id="story-autoplay-btn" onclick="toggleStoryAutoPlay()" class="pointer-events-auto px-3 py-1 rounded bg-sky-500/20 hover:bg-sky-500/30 border border-sky-400/40 text-sky-300 font-mono text-xs flex items-center gap-2 transition-all cursor-pointer">
+                            <i class="fa-solid fa-play text-[10px]"></i>
+                            <span>30S AUTO TOUR</span>
+                        </button>
+                        <a href="./hvac_digital_twin_3d_animation_workbench%20(3).html" target="_blank" class="pointer-events-auto hidden sm:flex items-center gap-1.5 px-3 py-1 rounded bg-white/5 hover:bg-white/10 border border-white/10 text-slate-300 hover:text-white font-mono text-xs transition-all">
+                            <i class="fa-solid fa-expand text-[10px]"></i>
+                            <span>WORKBENCH</span>
+                        </a>
+                        <div id="story-progress-pct" class="font-bold text-sky-400 min-w-[95px] text-right">PROGRESS: 0%</div>
+                    </div>
+                </footer>
+            </div>
+        </div>
+
+        <!-- ============================================== -->
+        <!-- SCENE 4: 國際標準收尾區塊（恢復主題響應）       -->
+        <!-- ============================================== -->
+        <section id="standards" class="py-24 px-6 bg-slate-50 dark:bg-slate-900 text-slate-900 dark:text-white relative overflow-hidden transition-colors border-t border-slate-200 dark:border-white/10">
+            <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[650px] h-[650px] bg-google-blue rounded-full blur-[180px] opacity-10 pointer-events-none"></div>
+            
+            <div class="max-w-6xl mx-auto relative z-10 text-center">
+                <div class="inline-block px-3 py-1 bg-blue-100 dark:bg-blue-900/40 text-google-blue dark:text-blue-400 rounded-md text-[10px] font-mono font-bold mb-4 tracking-widest uppercase">Global Engineering Compliance</div>
+                <h2 class="text-3xl md:text-5xl font-black mb-12 text-slate-900 dark:text-white tracking-tight" data-i18n="standards-title">對標國際工程標準</h2>
+                
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-4 text-left mb-16">
+                    <div class="p-5 bg-white dark:bg-white/5 rounded-2xl border border-slate-200 dark:border-white/10 shadow-sm hover:border-google-blue transition-all"><div class="text-xs text-google-blue dark:text-blue-400 font-bold uppercase mb-1">General HVAC</div><div class="font-bold text-slate-800 dark:text-slate-200">ASHRAE Fundamentals</div></div>
+                    <div class="p-5 bg-white dark:bg-white/5 rounded-2xl border border-slate-200 dark:border-white/10 shadow-sm hover:border-google-blue transition-all"><div class="text-xs text-google-blue dark:text-blue-400 font-bold uppercase mb-1">National Std</div><div class="font-bold text-slate-800 dark:text-slate-200">CNS 國家標準</div></div>
+                    <div class="p-5 bg-white dark:bg-white/5 rounded-2xl border border-slate-200 dark:border-white/10 shadow-sm hover:border-google-blue transition-all"><div class="text-xs text-google-blue dark:text-blue-400 font-bold uppercase mb-1">Cleanroom</div><div class="font-bold text-slate-800 dark:text-slate-200">ISO 14644</div></div>
+                    <div class="p-5 bg-white dark:bg-white/5 rounded-2xl border border-slate-200 dark:border-white/10 shadow-sm hover:border-google-blue transition-all"><div class="text-xs text-google-blue dark:text-blue-400 font-bold uppercase mb-1">Hydronics</div><div class="font-bold text-slate-800 dark:text-slate-200">Hazen-Williams eq.</div></div>
+                    <div class="p-5 bg-white dark:bg-white/5 rounded-2xl border border-slate-200 dark:border-white/10 shadow-sm hover:border-google-blue transition-all"><div class="text-xs text-google-blue dark:text-blue-400 font-bold uppercase mb-1">Pipe Friction</div><div class="font-bold text-slate-800 dark:text-slate-200">Darcy-Weisbach</div></div>
+                    <div class="p-5 bg-white dark:bg-white/5 rounded-2xl border border-slate-200 dark:border-white/10 shadow-sm hover:border-google-blue transition-all"><div class="text-xs text-google-blue dark:text-blue-400 font-bold uppercase mb-1">Process Gas</div><div class="font-bold text-slate-800 dark:text-slate-200">Bulk Gas / SEMI</div></div>
+                    <div class="p-5 bg-white dark:bg-white/5 rounded-2xl border border-slate-200 dark:border-white/10 shadow-sm hover:border-google-blue transition-all"><div class="text-xs text-google-blue dark:text-blue-400 font-bold uppercase mb-1">Process Cooling</div><div class="font-bold text-slate-800 dark:text-slate-200">Facility Design</div></div>
+                    <div class="p-5 bg-white dark:bg-white/5 rounded-2xl border border-slate-200 dark:border-white/10 shadow-sm hover:border-google-blue transition-all"><div class="text-xs text-google-blue dark:text-blue-400 font-bold uppercase mb-1">Ductwork</div><div class="font-bold text-slate-800 dark:text-slate-200">SMACNA Standards</div></div>
+                </div>
+
+                <!-- 收尾 CTA -->
+                <div class="text-center">
+                    <button onclick="enterDashboard()" class="magnetic-cta inline-flex items-center gap-3 px-10 py-5 rounded-full bg-slate-900 dark:bg-google-blue text-white font-black text-lg shadow-xl hover:scale-105 active:scale-95 transition-all">
+                        <i class="fa-solid fa-compass-drafting"></i>
+                        <span data-i18n="standards-cta">進入工程師工作台</span>
+                        <i class="fa-solid fa-arrow-right"></i>
+                    </button>
+                </div>
+            </div>
+        </section>
+
+        <!-- Footer -->
+        <footer class="py-12 px-6 border-t border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-950 text-center transition-colors">
+            <p class="text-slate-400 text-xs font-bold uppercase tracking-widest mb-4">© 2026 HVAC Pro-Suite • Enterprise Edition</p>
+            <div class="flex justify-center gap-6 text-slate-300 text-xl">
+                <a href="https://www.instagram.com/shiu_orz/" target="_blank" rel="noopener noreferrer" class="hover:text-pink-500 transition-colors transform hover:scale-110" aria-label="Instagram"><i class="fa-brands fa-instagram"></i></a>
+                <a href="/cdn-cgi/l/email-protection#f68585c4c5c6cec5cfc5c1b6919b979f9ad895999b" class="hover:text-red-500 transition-colors transform hover:scale-110" aria-label="Email"><i class="fa-solid fa-envelope"></i></a>
+                <a href="https://www.linkedin.com/in/shiu47/" target="_blank" rel="noopener noreferrer" class="hover:text-blue-700 transition-colors transform hover:scale-110" aria-label="LinkedIn"><i class="fa-brands fa-linkedin"></i></a>
+            </div>
+        </footer>
+    </div>
+
+    <!-- ============================================== -->
+    <!-- 2. DASHBOARD VIEW (SHEET 2 & TOOLS)           -->
+    <!-- ============================================== -->
+    <div id="dashboard-view" class="view-section view-hidden bg-[#f8f9fa] dark:bg-slate-950">
+        <header id="main-header" class="sticky top-0 z-40 bg-white/90 dark:bg-slate-950/90 backdrop-blur-md border-b border-slate-200 dark:border-white/10 px-6 py-4 flex items-center justify-between">
+            <div class="flex items-center gap-6">
+                <button onclick="exitDashboard()" class="w-10 h-10 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 flex items-center justify-center text-slate-500 transition-colors" aria-label="Home"><i class="fa-solid fa-house"></i></button>
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 bg-google-blue rounded-xl flex items-center justify-center text-white font-black text-sm shadow-md">東旭</div>
+                    <div class="hidden md:block">
+                        <h1 class="text-lg font-black text-slate-800 dark:text-white leading-none">HVAC <span class="text-google-blue">Pro</span></h1>
+                        <div class="text-[9px] text-slate-400 font-bold uppercase tracking-wider">ENGINE RUNNING</div>
+                    </div>
+                </div>
+                <div class="hidden lg:flex items-center gap-4 ml-4 pl-4 border-l border-slate-200 dark:border-slate-800">
+                    <div class="flex items-center gap-1.5 bg-slate-50 dark:bg-slate-900 px-2.5 py-1 rounded-md border border-slate-100 dark:border-slate-800"><div class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></div><span class="text-[9px] font-mono text-slate-500 dark:text-slate-400 font-bold uppercase">Flow Engine: Active</span></div>
+                    <div class="flex items-center gap-1.5 bg-slate-50 dark:bg-slate-900 px-2.5 py-1 rounded-md border border-slate-100 dark:border-slate-800"><div class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" style="animation-delay: 0.2s"></div><span class="text-[9px] font-mono text-slate-500 dark:text-slate-400 font-bold uppercase">CFD Solver: Ready</span></div>
+                    <div class="flex items-center gap-1.5 bg-slate-50 dark:bg-slate-900 px-2.5 py-1 rounded-md border border-slate-100 dark:border-slate-800"><div class="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse" style="animation-delay: 0.4s"></div><span class="text-[9px] font-mono text-slate-500 dark:text-slate-400 font-bold uppercase">Hydronic Sync: On</span></div>
+                </div>
+            </div>
+            
+            <div class="flex items-center gap-4">
+                <div class="hidden md:flex gap-1 p-1 bg-slate-100 dark:bg-slate-900 rounded-full border border-slate-200 dark:border-slate-800">
+                    <button onclick="filterTools('all')" class="filter-btn active px-6 py-1.5 rounded-full text-xs font-bold bg-white dark:bg-slate-800 text-slate-800 dark:text-white shadow-sm transition-all" data-filter="all" data-i18n="filter-all">全部</button>
+                    <button onclick="filterTools('general')" class="filter-btn px-6 py-1.5 rounded-full text-xs font-bold text-slate-500 hover:text-slate-900 dark:hover:text-white transition-all" data-filter="general" data-i18n="filter-general">基礎</button>
+                    <button onclick="filterTools('advanced')" class="filter-btn px-6 py-1.5 rounded-full text-xs font-bold text-slate-500 hover:text-slate-900 dark:hover:text-white transition-all" data-filter="advanced" data-i18n="filter-advanced">進階</button>
+                    <button onclick="filterTools('others')" class="filter-btn px-6 py-1.5 rounded-full text-xs font-bold text-slate-500 hover:text-slate-900 dark:hover:text-white transition-all" data-filter="others" data-i18n="filter-others">其他</button>
+                </div>
+                
+                <!-- Theme Toggle -->
+                <button onclick="toggleTheme()" class="flex items-center justify-center w-10 h-10 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors font-bold text-xs theme-btn" aria-label="Toggle Theme">
+                    <i class="fa-solid fa-moon"></i>
+                </button>
+                <button onclick="toggleLanguage()" class="flex items-center justify-center w-10 h-10 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors font-bold text-xs" id="lang-btn" aria-label="Toggle Language">
+                    <i class="fa-solid fa-globe"></i>
+                </button>
+                
+                <div class="weather-widget hidden sm:flex">
+                    <div class="flex flex-col items-center"><span class="text-[8px] text-slate-400 font-bold uppercase">Temp</span><span id="live-temp" class="weather-value">--.-°C</span></div>
+                    <div class="w-px h-6 bg-slate-200 dark:bg-slate-800"></div>
+                    <div class="flex flex-col items-center"><span class="text-[8px] text-slate-400 font-bold uppercase">Rh%</span><span id="live-rh" class="weather-value">--%</span></div>
+                </div>
+                <div id="user-button"></div>
+            </div>
+        </header>
+
+        <main class="max-w-[1600px] mx-auto px-6 py-10">
+            <div class="md:hidden mb-8 overflow-x-auto pb-2 no-scrollbar flex gap-2">
+                <button onclick="filterTools('all')" class="whitespace-nowrap px-4 py-2 bg-google-blue text-white rounded-full text-sm font-bold shadow-md" data-i18n="filter-all">全部</button>
+                <button onclick="filterTools('general')" class="whitespace-nowrap px-4 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 rounded-full text-sm font-bold" data-i18n="filter-general">基礎</button>
+                <button onclick="filterTools('advanced')" class="whitespace-nowrap px-4 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 rounded-full text-sm font-bold" data-i18n="filter-advanced">進階</button>
+                <button onclick="filterTools('others')" class="whitespace-nowrap px-4 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 rounded-full text-sm font-bold" data-i18n="filter-others">其他</button>
+            </div>
+
+            <div class="mb-10 animate-fade-in-up">
+                 <div id="welcome-badge" class="inline-block px-4 py-1.5 bg-blue-100 dark:bg-blue-900/40 text-google-blue dark:text-blue-400 text-[10px] font-bold uppercase tracking-widest rounded-full mb-4">GUEST MODE</div>
+                 <h2 class="text-3xl font-bold text-slate-800 dark:text-white" data-i18n="dash-title">工程師工作台</h2>
+                 <p class="text-slate-500 dark:text-slate-400 mt-2" data-i18n="dash-sub">選擇計算模組以開始。所有工具均支援即時運算。</p>
+            </div>
+
+            <div id="tools-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 pb-20"></div>
+        </main>
+    </div>
+
+    <!-- APP MODULE OVERLAY -->
+    <div id="module-container">
+        <div class="h-16 bg-slate-900 text-white flex items-center px-4 md:px-8 justify-between shrink-0 shadow-xl relative z-50">
+            <button onclick="closeModule()" class="flex items-center gap-3 px-4 py-2 rounded-full bg-white/10 hover:bg-white/20 text-white font-bold text-xs transition-all">
+                <i class="fa-solid fa-arrow-left"></i> <span data-i18n="overlay-exit">EXIT</span>
+            </button>
+            <div class="flex flex-col items-center">
+                <span id="active-tool-title" class="text-lg font-black tracking-widest uppercase text-blue-400">LOADING...</span>
+                <span class="text-[8px] opacity-50 font-bold uppercase tracking-[0.2em]" data-i18n="overlay-status">CORE LOGIC ACTIVE</span>
+            </div>
+            <button onclick="iframeReload()" class="w-10 h-10 rounded-full bg-white/5 hover:bg-white/10 flex items-center justify-center"><i class="fa-solid fa-rotate-right"></i></button>
+        </div>
+        <div class="flex-1 relative bg-white dark:bg-slate-900">
+             <div id="loader" class="absolute inset-0 flex items-center justify-center bg-white dark:bg-slate-900 z-10">
+                <div class="w-10 h-10 border-4 border-slate-100 dark:border-slate-800 border-t-google-blue rounded-full animate-spin"></div>
+            </div>
+            <iframe id="module-viewport" class="w-full h-full border-0" src="about:blank"></iframe>
+        </div>
+    </div>
+
+    <!-- ====================================================================== -->
+    <!-- ANIMATION SYSTEM 2.0 MODULAR ARCHITECTURE SCRIPTS                      -->
+    <!-- ====================================================================== -->
+    <script data-cfasync="false" src="/cdn-cgi/scripts/5c5dd728/cloudflare-static/email-decode.min.js"></script>
+    <script>
+        // ======================================================================
+        // MODULE 1: PerformanceController & Capability Profiling
+        // ======================================================================
+        const PerformanceController = {
+            isMobile: false,
+            prefersReducedMotion: false,
+            dprCap: 1.75,
+            init() {
+                this.isMobile = window.innerWidth < 768;
+                this.prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+                this.dprCap = this.isMobile ? 1.25 : Math.min(window.devicePixelRatio || 1, 1.75);
+                window.addEventListener('resize', () => {
+                    this.isMobile = window.innerWidth < 768;
+                }, { passive: true });
+            }
+        };
+        PerformanceController.init();
+
+        // === Theme System ===
+        function toggleTheme() {
+            const html = document.documentElement;
+            html.classList.toggle('dark');
+            const isDark = html.classList.contains('dark');
+            
+            document.querySelectorAll('.theme-btn i').forEach(icon => {
+                icon.className = isDark ? 'fa-solid fa-sun' : 'fa-solid fa-moon';
+            });
+        }
+
+        // ======================================================================
+        // MODULE 2: VectorField2D — Hero Ambient Airflow Vector Simulation
+        // ======================================================================
+        class VectorField2D {
+            constructor(canvasId) {
+                this.canvas = document.getElementById(canvasId);
+                if (!this.canvas) return;
+                this.ctx = this.canvas.getContext('2d');
+                this.particles = [];
+                this.mouse = { x: -9999, y: -9999, radius: 140, strength: 0 };
+                this.time = 0;
+                
+                this.resize = this.resize.bind(this);
+                this.onMouseMove = this.onMouseMove.bind(this);
+                this.onMouseLeave = this.onMouseLeave.bind(this);
+                
+                window.addEventListener('resize', this.resize, { passive: true });
+                window.addEventListener('mousemove', this.onMouseMove, { passive: true });
+                window.addEventListener('mouseleave', this.onMouseLeave, { passive: true });
+                
+                this.resize();
+                this.animate = this.animate.bind(this);
+                requestAnimationFrame(this.animate);
+            }
+            
+            resize() {
+                if (!this.canvas) return;
+                const rect = this.canvas.parentElement.getBoundingClientRect();
+                this.width = this.canvas.width = rect.width || window.innerWidth;
+                this.height = this.canvas.height = rect.height || window.innerHeight;
+                this.initStreamlines();
+            }
+            
+            onMouseMove(e) {
+                const rect = this.canvas.getBoundingClientRect();
+                this.mouse.x = e.clientX - rect.left;
+                this.mouse.y = e.clientY - rect.top;
+                this.mouse.strength = 1.0;
+            }
+            
+            onMouseLeave() {
+                this.mouse.strength = 0;
+            }
+            
+            initStreamlines() {
+                this.particles = [];
+                // 自動降級：行動端降低粒子數量
+                const count = PerformanceController.isMobile ? 55 : 140;
+                for (let i = 0; i < count; i++) {
+                    this.particles.push({
+                        x: Math.random() * this.width,
+                        y: Math.random() * this.height,
+                        vx: 0.4 + Math.random() * 0.7,
+                        vy: -0.3 + (Math.random() - 0.5) * 0.4,
+                        len: 12 + Math.random() * 24,
+                        width: 1.0 + Math.random() * 1.5,
+                        phase: Math.random() * Math.PI * 2,
+                        alpha: 0.15 + Math.random() * 0.35
+                    });
+                }
+            }
+            
+            animate() {
+                if (!this.ctx) return;
+                this.ctx.clearRect(0, 0, this.width, this.height);
+                this.time += 0.015;
+                const isDark = document.documentElement.classList.contains('dark');
+                
+                const rgb = isDark ? '56, 189, 248' : '26, 115, 232';
+
+                // 繪製細緻有方向性的空氣流動線段
+                this.particles.forEach((p) => {
+                    // 滑鼠排斥流體引力擾動
+                    const dx = p.x - this.mouse.x;
+                    const dy = p.y - this.mouse.y;
+                    const dist = Math.sqrt(dx * dx + dy * dy);
+                    let pushX = 0, pushY = 0;
+                    if (dist < this.mouse.radius && dist > 0) {
+                        const force = (1 - dist / this.mouse.radius) * 1.5 * this.mouse.strength;
+                        pushX = (dx / dist) * force;
+                        pushY = (dy / dist) * force;
+                    }
+
+                    // 微弱層流波動計算
+                    const wave = Math.sin(this.time * 0.8 + p.phase) * 0.3;
+                    p.x += p.vx + pushX;
+                    p.y += p.vy + wave + pushY;
+
+                    // 循環邊界
+                    if (p.x > this.width + 30) p.x = -30;
+                    if (p.y < -30) p.y = this.height + 30;
+                    if (p.y > this.height + 30) p.y = -30;
+
+                    // 繪製流線
+                    this.ctx.beginPath();
+                    this.ctx.moveTo(p.x, p.y);
+                    this.ctx.lineTo(p.x - p.len, p.y - (p.vy + wave) * 8);
+                    this.ctx.strokeStyle = `rgba(${rgb}, ${p.alpha})`;
+                    this.ctx.lineWidth = p.width;
+                    this.ctx.lineCap = 'round';
+                    this.ctx.stroke();
+                });
+                
+                requestAnimationFrame(this.animate);
+            }
+        }
+
+        // ======================================================================
+        // MODULE 3: HeroMotionController & Mouse Parallax System
+        // ======================================================================
+        const HeroMotionController = {
+            elements: [],
+            mouse: { x: 0, y: 0, targetX: 0, targetY: 0 },
+            rafId: null,
+            
+            init() {
+                // 定義 6 個懸浮工程物件之物理特性
+                this.elements = [
+                    { id: 'float-obj-1', depth: 0.45, rotFactor: 0.08, baseFreq: 0.0018, phase: 0, curX: 0, curY: 0, curR: 0 },
+                    { id: 'float-obj-2', depth: 0.35, rotFactor: 0.15, baseFreq: 0.0022, phase: 1.5, curX: 0, curY: 0, curR: 0 },
+                    { id: 'float-obj-3', depth: 0.55, rotFactor: 0.06, baseFreq: 0.0015, phase: 2.8, curX: 0, curY: 0, curR: 0 },
+                    { id: 'float-obj-4', depth: 0.28, rotFactor: 0.12, baseFreq: 0.0025, phase: 4.2, curX: 0, curY: 0, curR: 0 },
+                    { id: 'float-obj-5', depth: 0.60, rotFactor: 0.05, baseFreq: 0.0012, phase: 5.1, curX: 0, curY: 0, curR: 0 },
+                    { id: 'float-obj-6', depth: 0.40, rotFactor: 0.07, baseFreq: 0.0020, phase: 3.4, curX: 0, curY: 0, curR: 0 },
+                ].map(item => {
+                    item.dom = document.getElementById(item.id);
+                    return item;
+                }).filter(item => item.dom !== null);
+
+                window.addEventListener('mousemove', (e) => {
+                    const cx = window.innerWidth / 2;
+                    const cy = window.innerHeight / 2;
+                    this.mouse.targetX = (e.clientX - cx) / cx; // -1.0 to 1.0
+                    this.mouse.targetY = (e.clientY - cy) / cy;
+                }, { passive: true });
+
+                this.initMagneticCTA();
+                this.update = this.update.bind(this);
+                requestAnimationFrame(this.update);
+            },
+
+            initMagneticCTA() {
+                const buttons = document.querySelectorAll('.magnetic-cta');
+                buttons.forEach(btn => {
+                    btn.addEventListener('mousemove', (e) => {
+                        const rect = btn.getBoundingClientRect();
+                        const x = e.clientX - rect.left - rect.width / 2;
+                        const y = e.clientY - rect.top - rect.height / 2;
+                        // 最大位移克制在 5~7px
+                        const maxShift = 6.0;
+                        const nx = Math.max(-maxShift, Math.min(maxShift, x * 0.15));
+                        const ny = Math.max(-maxShift, Math.min(maxShift, y * 0.15));
+                        btn.style.transform = `translate3d(${nx}px, ${ny}px, 0)`;
+                    });
+                    btn.addEventListener('mouseleave', () => {
+                        btn.style.transform = 'translate3d(0, 0, 0)';
+                    });
+                });
+            },
+
+            update(now) {
+                // 平滑緩動插值 (Smooth Lerp)
+                this.mouse.x += (this.mouse.targetX - this.mouse.x) * 0.08;
+                this.mouse.y += (this.mouse.targetY - this.mouse.y) * 0.08;
+
+                if (!PerformanceController.prefersReducedMotion) {
+                    this.elements.forEach(item => {
+                        // 固有諧振波形 (Intrinsic Engineering Motion)
+                        const t = now * item.baseFreq + item.phase;
+                        const harmonicY = Math.sin(t) * 12.0;
+                        const harmonicX = Math.cos(t * 0.8) * 8.0;
+                        const harmonicRot = Math.sin(t * 0.7) * 4.0;
+
+                        // 視差計算 (Parallax Offset)
+                        const targetX = item.curX + ((-this.mouse.x * 35 * item.depth + harmonicX) - item.curX) * 0.08;
+                        const targetY = item.curY + ((-this.mouse.y * 30 * item.depth + harmonicY) - item.curY) * 0.08;
+                        const targetR = item.curR + ((-this.mouse.x * 12 * item.rotFactor + harmonicRot) - item.curR) * 0.08;
+
+                        item.curX = targetX;
+                        item.curY = targetY;
+                        item.curR = targetR;
+
+                        item.dom.style.transform = `translate3d(${targetX.toFixed(2)}px, ${targetY.toFixed(2)}px, 0) rotate(${targetR.toFixed(2)}deg)`;
+                    });
+                }
+
+                requestAnimationFrame(this.update);
+            }
+        };
+
+        // ======================================================================
+        // MODULE 4: 3D Digital Twin Workbench Bridge Controller
+        // ======================================================================
+        class NarrativeBridgeController {
+            constructor() {
+                this.iframe = null;
+                this.isReady = false;
+                this.lastProgress = 0;
+                this.listenerAttached = false;
+            }
+
+            init() {
+                this.iframe = document.getElementById('story-workbench-iframe');
+                if (this.listenerAttached) return;
+                this.listenerAttached = true;
+                window.addEventListener('message', (e) => {
+                    if (!e.data) return;
+                    if (e.data.type === 'HVAC_WORKBENCH_READY') {
+                        this.isReady = true;
+                        this.setProgress(this.lastProgress, true);
+                    } else if (e.data.type === 'HVAC_WHEEL') {
+                        window.scrollBy({ top: e.data.deltaY, behavior: 'auto' });
+                    }
+                });
+            }
+
+            load() {
+                if (this.iframe && !this.iframe.getAttribute('src') && this.iframe.dataset.src) {
+                    this.iframe.src = this.iframe.dataset.src;
+                }
+            }
+
+            setProgress(p, instant = false) {
+                this.lastProgress = p;
+                if (!this.iframe) {
+                    this.iframe = document.getElementById('story-workbench-iframe');
+                }
+                if (this.iframe && this.iframe.contentWindow) {
+                    this.iframe.contentWindow.postMessage({
+                        type: 'HVAC_SET_PROGRESS',
+                        progress: p,
+                        instant: instant
+                    }, '*');
+                }
+            }
+        }
+
+        let narrative3DInstance = new NarrativeBridgeController();
+        narrative3DInstance.init();
+
+        // 延遲載入/確認 3D 引擎通訊
+        function lazyLoadNarrativeEngine() {
+            if (!narrative3DInstance.isReady) {
+                narrative3DInstance.init();
+            }
+            narrative3DInstance.load();
+            handleStoryScroll();
+        }
+
+        // HUD 指揮卡片折疊/展開控制
+        function toggleHudCard(btn) {
+            const container = btn.closest('.hud-card-container');
+            if (!container) return;
+            const content = container.querySelector('.hud-card-content');
+            const pill = container.querySelector('.hud-collapsed-pill');
+            if (!content || !pill) return;
+            if (content.classList.contains('hidden')) {
+                content.classList.remove('hidden');
+                pill.classList.add('hidden');
+                pill.classList.remove('flex');
+            } else {
+                content.classList.add('hidden');
+                pill.classList.remove('hidden');
+                pill.classList.add('flex');
+            }
+        }
+
+        // ======================================================================
+        // MODULE 5: HUDController & Live Telemetry Count-up Engine
+        // ======================================================================
+        const HUDController = {
+            currentStep: -1,
+            cards: ['hud-s1-1', 'hud-s1-2', 'hud-s2-1', 'hud-s2-2', 'hud-s3'],
+            
+            update(progress) {
+                // 1. 決定目前活躍卡片
+                let activeIdx = 0;
+                if (progress < 0.18) activeIdx = 0;
+                else if (progress < 0.35) activeIdx = 1;
+                else if (progress < 0.52) activeIdx = 2;
+                else if (progress < 0.70) activeIdx = 3;
+                else activeIdx = 4;
+
+                if (this.currentStep !== activeIdx) {
+                    this.currentStep = activeIdx;
+                    this.cards.forEach((id, idx) => {
+                        const el = document.getElementById(id);
+                        if (!el) return;
+                        if (idx === activeIdx) {
+                            el.classList.add('active');
+                        } else {
+                            el.classList.remove('active');
+                        }
+                    });
+                }
+
+                // 2. 數值連動 Count-up 與工程遙測更新
+                this.updateCounters(progress);
+                this.updatePhaseTabs(progress);
+            },
+
+            updateCounters(p) {
+                // Scene 1: Air Velocity (0.25 -> 0.45 m/s)
+                const velEl = document.getElementById('counter-velocity');
+                if (velEl) {
+                    const vel = p < 0.35 ? (0.20 + (p / 0.35) * 0.25).toFixed(2) : '0.45';
+                    velEl.innerText = `${vel} m/s`;
+                }
+
+                // Scene 2: Heat Load Density (10 -> 42.5 kW/Rack)
+                const kwEl = document.getElementById('counter-kw');
+                if (kwEl) {
+                    if (p < 0.35) kwEl.innerText = '10.0 kW / Rack';
+                    else if (p < 0.70) {
+                        const val = (10.0 + ((p - 0.35) / 0.35) * 32.5).toFixed(1);
+                        kwEl.innerText = `${val} kW / Rack`;
+                    } else {
+                        kwEl.innerText = '42.5 kW / Rack';
+                    }
+                }
+
+                // Scene 2: PUE (< 1.15)
+                const pueEl = document.getElementById('counter-pue');
+                if (pueEl) {
+                    if (p < 0.52) pueEl.innerText = 'PUE = 1.42';
+                    else if (p < 0.70) {
+                        const val = (1.42 - ((p - 0.52) / 0.18) * 0.30).toFixed(2);
+                        pueEl.innerText = `PUE = ${val}`;
+                    } else {
+                        pueEl.innerText = 'PUE = 1.12';
+                    }
+                }
+
+                // Scene 3: Chiller COP (5.2 -> 6.85)
+                const copEl = document.getElementById('counter-cop');
+                if (copEl) {
+                    if (p < 0.70) copEl.innerText = 'COP 5.20';
+                    else {
+                        const val = (5.20 + ((p - 0.70) / 0.30) * 1.65).toFixed(2);
+                        copEl.innerText = `COP ${val}`;
+                    }
+                }
+
+                // Engine State Label
+                const stateEl = document.getElementById('engine-state-text');
+                if (stateEl) {
+                    if (p < 0.35) stateEl.innerText = 'ISO LAMINAR REGIME';
+                    else if (p < 0.70) stateEl.innerText = 'D2C LIQUID THERMAL RUNAWAY SAFE';
+                    else stateEl.innerText = 'ALL HYDRONIC LOOPS CONNECTED';
+                }
+            },
+
+            updatePhaseTabs(progress) {
+                const p1 = document.getElementById('pipeline-phase-1');
+                const p2 = document.getElementById('pipeline-phase-2');
+                const p3 = document.getElementById('pipeline-phase-3');
+
+                if (p1 && p2 && p3) {
+                    if (progress < 0.35) {
+                        p1.className = 'flex items-center gap-2 text-sky-400 transition-colors font-bold';
+                        p2.className = 'flex items-center gap-2 text-slate-500 transition-colors';
+                        p3.className = 'flex items-center gap-2 text-slate-500 transition-colors';
+                    } else if (progress < 0.70) {
+                        p1.className = 'flex items-center gap-2 text-slate-500 transition-colors';
+                        p2.className = 'flex items-center gap-2 text-emerald-400 transition-colors font-bold';
+                        p3.className = 'flex items-center gap-2 text-slate-500 transition-colors';
+                    } else {
+                        p1.className = 'flex items-center gap-2 text-slate-500 transition-colors';
+                        p2.className = 'flex items-center gap-2 text-slate-500 transition-colors';
+                        p3.className = 'flex items-center gap-2 text-blue-400 transition-colors font-bold';
+                    }
+                }
+            }
+        };
+
+        // ======================================================================
+        // MODULE 6: ScrollDirector (Smooth Virtual Progress & Director Syncer)
+        // ======================================================================
+        function handleStoryScroll() {
+            const section = document.getElementById('story-narrative-section');
+            if (!section) return;
+
+            const rect = section.getBoundingClientRect();
+            const totalScrollable = section.offsetHeight - window.innerHeight;
+            let progress = -rect.top / totalScrollable;
+            progress = Math.max(0, Math.min(1, progress));
+
+            // 同步至 3D WebGL 引擎
+            if (narrative3DInstance) {
+                narrative3DInstance.setProgress(progress);
+            }
+
+            // 更新 HUD 指揮中心
+            HUDController.update(progress);
+
+            // 更新進度文字
+            const progressEl = document.getElementById('story-progress-pct');
+            if (progressEl) progressEl.innerText = `PROGRESS: ${(progress * 100).toFixed(0)}%`;
+
+            // Hero 捲動提示指示器平滑淡出
+            const indicator = document.getElementById('hero-scroll-indicator');
+            if (indicator) {
+                indicator.style.opacity = window.scrollY > 70 ? '0' : '1';
+                indicator.style.pointerEvents = window.scrollY > 70 ? 'none' : 'auto';
+            }
+        }
+
+        window.addEventListener('scroll', handleStoryScroll, { passive: true });
+
+        // ======================================================================
+        // 30 秒平滑自動導覽控制 (30S Cinema Tour)
+        // ======================================================================
+        let isStoryTouring = false;
+        let storyTourStartTime = 0;
+        let storyTourStartScroll = 0;
+        let storyTourTargetScroll = 0;
+        const STORY_TOUR_DURATION = 30000; // 30 seconds
+
+        function toggleStoryAutoPlay() {
+            const section = document.getElementById('story-narrative-section');
+            if (!section) return;
+
+            const sectionTop = section.offsetTop;
+            const maxScroll = sectionTop + section.offsetHeight - window.innerHeight;
+
+            if (isStoryTouring) {
+                isStoryTouring = false;
+                updateStoryTourButton(false);
+                return;
+            }
+
+            isStoryTouring = true;
+            updateStoryTourButton(true);
+
+            // 若目前不在區段內或已在終點，平滑捲回起點後開跑
+            if (window.scrollY >= maxScroll - 10 || window.scrollY < sectionTop - 100) {
+                window.scrollTo({ top: sectionTop, behavior: 'smooth' });
+                setTimeout(() => {
+                    if (!isStoryTouring) return;
+                    startStoryTourAnimation(sectionTop, maxScroll);
+                }, 700);
+            } else {
+                startStoryTourAnimation(window.scrollY, maxScroll);
+            }
+        }
+
+        function startStoryTourAnimation(startPos, endPos) {
+            storyTourStartTime = performance.now();
+            storyTourStartScroll = startPos;
+            storyTourTargetScroll = endPos;
+
+            function stepTour(now) {
+                if (!isStoryTouring) return;
+                const elapsed = now - storyTourStartTime;
+                const p = Math.min(1, elapsed / STORY_TOUR_DURATION);
+                
+                const targetY = storyTourStartScroll + (storyTourTargetScroll - storyTourStartScroll) * p;
+                window.scrollTo(0, targetY);
+
+                if (p < 1) {
+                    requestAnimationFrame(stepTour);
+                } else {
+                    isStoryTouring = false;
+                    updateStoryTourButton(false);
+                }
+            }
+            requestAnimationFrame(stepTour);
+        }
+
+        function updateStoryTourButton(playing) {
+            const btn = document.getElementById('story-autoplay-btn');
+            if (!btn) return;
+            if (playing) {
+                btn.innerHTML = '<i class="fa-solid fa-pause text-[10px]"></i> <span>PAUSE TOUR</span>';
+                btn.className = 'pointer-events-auto px-3 py-1 rounded bg-amber-500/20 hover:bg-amber-500/30 border border-amber-400/40 text-amber-300 font-mono text-xs flex items-center gap-2 transition-all cursor-pointer';
+            } else {
+                btn.innerHTML = '<i class="fa-solid fa-play text-[10px]"></i> <span>30S AUTO TOUR</span>';
+                btn.className = 'pointer-events-auto px-3 py-1 rounded bg-sky-500/20 hover:bg-sky-500/30 border border-sky-400/40 text-sky-300 font-mono text-xs flex items-center gap-2 transition-all cursor-pointer';
+            }
+        }
+
+        // 使用者主動滾動時中斷自動導覽
+        window.addEventListener('wheel', (e) => {
+            if (isStoryTouring && Math.abs(e.deltaY) > 2) {
+                isStoryTouring = false;
+                updateStoryTourButton(false);
+            }
+        }, { passive: true });
+        window.addEventListener('touchstart', () => {
+            if (isStoryTouring) {
+                isStoryTouring = false;
+                updateStoryTourButton(false);
+            }
+        }, { passive: true });
+
+        // ======================================================================
+        // MODULE 7: HVAC Pro-Suite Tools Data & Core Business Logic (Preserved)
+        // ======================================================================
+        let currentLang = 'zh'; 
+        const translations = { 
+            zh: { 
+                'nav-subtitle': '專業空調工具箱', 
+                'nav-tools': '工具庫', 
+                'nav-features': '特點', 
+                'nav-standards': '標準', 
+                'nav-enter': '進入工具箱', 
+                'hero-title-1': '專業空調工程師的', 
+                'hero-title-2': '數位瑞士刀', 
+                'hero-desc': '整合負荷計算、系統模擬與規範校核。我們不只提供計算結果，更為您的設計方案提供公信力與精確度。', 
+                'hero-btn-start': '開始系統計算', 
+                'hero-btn-learn': '探索物理展廳', 
+                'scroll-hint': '向下滾動引導空調數位孿生 ↓',
+                'scene1-step1-title': '微塵控制的極限：ISO 14644 標準',
+                'scene1-step1-desc': '半導體晶圓廠的生死線在於次微米粒子，藉由微正壓梯度與流場死區消除，達成極限純淨。',
+                'scene1-step2-title': '熱濕微氣候平衡：MAU + DCC 架構',
+                'scene1-step2-desc': '外氣空調箱精準控制絕對濕度與焓值，室內乾冷盤管以不結露水溫帶走高熱。',
+                'scene2-step1-title': '單機櫃百萬瓦挑戰：突破空氣對流極限',
+                'scene2-step1-desc': '傳統風冷在熱密度大於 40 kW/Rack 時宣告失效，直達晶片液冷技術掌控 GPU 澎湃算力核心命脈。',
+                'scene2-step2-title': 'CDU 隔離迴路與 PUE < 1.15 能源優化',
+                'scene2-step2-desc': '透過中溫水供水與自然冷卻深度結合，重構綠色資料中心的水力平衡。',
+                'scene3-title': '系統級能源中樞：水力管網與熱力平衡',
+                'scene3-desc': '所有負荷最終交由冰水機、冷卻水塔與變頻泵群精密調度，形成整體工程智慧中樞。',
+                'scene3-cta': '進入完整水力沙盤 →',
+                'standards-title': '對標國際工程標準', 
+                'standards-cta': '進入工程師工作台',
+                'dash-title': '工程師工作台', 
+                'dash-sub': '選擇計算模組以開始。所有工具均支援即時運算。', 
+                'filter-all': '全部', 
+                'filter-general': '基礎', 
+                'filter-advanced': '進階', 
+                'filter-others': '其他', 
+                'overlay-exit': 'EXIT', 
+                'overlay-status': 'CORE LOGIC ACTIVE' 
+            },
+            en: { 
+                'nav-subtitle': 'Pro HVAC Toolkit', 
+                'nav-tools': 'Tools', 
+                'nav-features': 'Features', 
+                'nav-standards': 'Standards', 
+                'nav-enter': 'Dashboard', 
+                'hero-title-1': 'The Engineer\'s', 
+                'hero-title-2': 'Digital Swiss Knife', 
+                'hero-desc': 'Integrated load calculation, system simulation, and code verification. We provide precision and credibility for your HVAC designs.', 
+                'hero-btn-start': 'Start Calculation', 
+                'hero-btn-learn': 'Explore 3D Film', 
+                'scroll-hint': 'Scroll to Direct Digital Twin ↓',
+                'scene1-step1-title': 'The Limits of Particle Control: ISO 14644',
+                'scene1-step1-desc': 'Sub-micron particle control via micro-positive pressure gradients and dead-zone elimination.',
+                'scene1-step2-title': 'Thermal-Humidity Balance: MAU + DCC',
+                'scene1-step2-desc': 'Precise humidity/enthalpy control with condensation-free coil water temperature.',
+                'scene2-step1-title': 'Megawatt-per-Rack: Beyond Air Cooling',
+                'scene2-step1-desc': 'Air cooling fails beyond 40kW/rack — Direct-to-Chip liquid cooling takes over.',
+                'scene2-step2-title': 'CDU Isolation & PUE < 1.15 Optimization',
+                'scene2-step2-desc': 'Warm-water supply combined with free cooling reshapes green DC hydraulics.',
+                'scene3-title': 'System-Level Energy Hub',
+                'scene3-desc': 'All loads are orchestrated by chillers, cooling towers, and VFD pump groups.',
+                'scene3-cta': 'Explore Full Hydraulic Sandbox →',
+                'standards-title': 'International Standards', 
+                'standards-cta': 'Enter Engineer Workbench',
+                'dash-title': 'Engineer Workbench', 
+                'dash-sub': 'Select a module to begin. All tools support real-time calculation.', 
+                'filter-all': 'All', 
+                'filter-general': 'Basic', 
+                'filter-advanced': 'Advanced', 
+                'filter-others': 'Others', 
+                'overlay-exit': 'EXIT', 
+                'overlay-status': 'CORE LOGIC ACTIVE' 
+            }
+        };
+
+        function toggleLanguage() {
+            currentLang = currentLang === 'zh' ? 'en' : 'zh';
+            updateContent();
+            renderTools('all'); 
+        }
+
+        function updateContent() {
+            document.querySelectorAll('[data-i18n]').forEach(el => {
+                const key = el.getAttribute('data-i18n');
+                if (translations[currentLang] && translations[currentLang][key]) {
+                    el.innerText = translations[currentLang][key];
+                }
+            });
+        }
+
+        const toolsData = {
+            general: [
+                { id: 'PMP-01', type: 'hydraulic', name: { zh: '冰機水泵換算', en: 'Chiller Pump Calc' }, desc: { zh: 'RT 同步推算 CHW/CW 流量耗電與揚程。', en: 'Calculate Flow, Power & Head from RT.' }, icon: 'fa-bolt', color: 'text-yellow-600', bg: 'bg-yellow-50', file: '冰機換算水泵.html', theme: 'light', bgImage: '/assets/bg/PMP-01.jpg' },
+                { id: 'TNK-02', type: 'hydraulic', name: { zh: '膨脹水箱選型', en: 'Expansion Tank' }, desc: { zh: '密閉系統膨脹體積核算與安全係數審查。', en: 'Closed loop expansion volume & safety check.' }, icon: 'fa-box-open', color: 'text-indigo-600', bg: 'bg-indigo-50', file: '膨脹水箱計算.html', theme: 'light', bgImage: '/assets/bg/TNK-02.jpg' },
+                { id: 'WT-03', type: 'hydraulic', name: { zh: '冷卻塔補水量', en: 'Cooling Tower Water' }, desc: { zh: '蒸發、飛散與排放損耗精準水平衡核算。', en: 'Evaporation, drift & blowdown balance calc.' }, icon: 'fa-droplet', color: 'text-blue-600', bg: 'bg-blue-50', file: '冷卻水塔補水量計算.html', theme: 'light', bgImage: '/assets/bg/WT-03.jpg' },
+                { id: 'CDA-07', type: 'ducting', name: { zh: 'CDA 加濕計算', en: 'CDA Humidification' }, desc: { zh: '製程 CDA 噴霧加濕需求與絕對濕度分析。', en: 'Process CDA spray demand.' }, icon: 'fa-wind', color: 'text-purple-600', bg: 'bg-purple-50', file: 'CDA加濕需求計算機.html', theme: 'light', bgImage: '/assets/bg/CDA-07.jpg' },
+                { id: 'CON-04', type: 'calc', name: { zh: '工程換算器', en: 'Unit Converter' }, desc: { zh: 'RT, KW, GPM, CFM 多單位精準連動。', en: 'Precise conversion for RT, KW, GPM, CFM.' }, icon: 'fa-arrow-right-arrow-left', color: 'text-slate-600', bg: 'bg-slate-100', file: '空調工程專業換算工具.html', theme: 'light', bgImage: '/assets/bg/CON-04.jpg' },
+                { id: 'PSY-05', type: 'sim', name: { zh: '空氣性質分析', en: 'Psychrometrics' }, desc: { zh: '含濕量、焓值、露點高精度核算。', en: 'High precision humidity, enthalpy, dew point.' }, icon: 'fa-cloud', color: 'text-sky-600', bg: 'bg-sky-50', file: '空氣性質分析.html', theme: 'light', bgImage: '/assets/bg/PSY-05.jpg' },
+                { id: 'RES-00', type: 'heat', name: { zh: '家用空調估算器', en: 'Home AC Estimator' }, desc: { zh: '住宅冷氣噸數估算與 VRF 多聯系統規劃顧問。', en: 'Residential sizing & VRF planning advisor.' }, icon: 'fa-house', color: 'text-emerald-600', bg: 'bg-emerald-50', file: '家用空調估算器.html', theme: 'light', bgImage: '/assets/bg/RES-00.png' },
+                { id: 'WEA-01', type: 'sim', name: { zh: '全球天氣與外氣條件', en: 'Global Weather Conditions' }, desc: { zh: '全球 165 測站 EPW 氣候大數據與 Free Cooling 深度解析。', en: 'Global 165 stations EPW climate big data & free cooling analysis.' }, icon: 'fa-cloud-sun', color: 'text-amber-500', bg: 'bg-amber-50', file: '天氣資料/Weather_Pro.html', theme: 'light', bgImage: '/assets/bg/WEA-01.png' }
+            ],
+            advanced: [
+                { id: 'DC-01', type: 'sim', name: { zh: 'AI資料中心數位展廳', en: 'AI Data Center Sim' }, desc: { zh: 'NVIDIA GB200 NVL72 液冷資料中心 3D 模擬。', en: 'NVIDIA GB200 NVL72 Liquid Cooling 3D Simulation.' }, icon: 'fa-server', color: 'text-white', bg: 'bg-gradient-to-br from-[#76b900] to-[#080c14]', file: 'hvac_digital_twin_3d_animation_workbench (3).html', theme: 'dark', bgImage: '/assets/bg/DC-01.png' },
+                { id: 'DC-02', type: 'calc', name: { zh: '資料中心計算器', en: 'AI Data Center Calc' }, desc: { zh: 'AIDC 快速熱負荷計算與設備選型評估。', en: 'AIDC rapid heat load calculation and equipment sizing.' }, icon: 'fa-calculator', color: 'text-white', bg: 'bg-gradient-to-br from-teal-500 to-emerald-800', file: 'Data center Cal/index.html', theme: 'dark', bgImage: '/assets/bg/DC-02.png' },
+                { id: 'FAB-50', type: 'cfd', name: { zh: '無塵室模擬器 Lite', en: 'Cleanroom Sim Lite' }, desc: { zh: '無塵室 3D 氣流模擬與佈置分析。', en: '3D airflow sim & layout analysis.' }, icon: 'fa-hurricane', color: 'text-white', bg: 'bg-gradient-to-br from-google-blue to-blue-700', file: '無塵室氣流模擬.html', theme: 'dark', bgImage: '/assets/bg/FAB-50.jpg' },
+                { id: 'PRL-01', type: 'hydraulic', name: { zh: '專業壓損計算書', en: 'Pro Pressure Loss' }, desc: { zh: '最不利環路壓力損失計算。', en: 'Critical path calculation.' }, icon: 'fa-file-invoice', color: 'text-white', bg: 'bg-gradient-to-br from-slate-700 to-black', file: '水管風管壓損計算.html', theme: 'dark', bgImage: '/assets/bg/PRL-01.jpg' },
+                { id: 'PSY-PRO', type: 'heat', name: { zh: '空氣線圖 Pro', en: 'Psychrometrics Pro' }, desc: { zh: '混風系統與盤管負荷 Mapping 邏輯分析。', en: 'Mixing system & coil load mapping logic.' }, icon: 'fa-chart-area', color: 'text-white', bg: 'bg-gradient-to-br from-emerald-500 to-teal-700', file: '空氣線圖Pro 計算器.html', theme: 'dark', bgImage: '/assets/bg/PSY-PRO.jpg' },
+                { id: 'CRM-03', type: 'cfd', name: { zh: '無塵室大師 Pro', en: 'Cleanroom Master' }, desc: { zh: 'MAU、FFU、DCC 熱平衡與氣流平衡。', en: 'MAU, FFU, RCU heat & airflow balance.' }, icon: 'fa-industry', color: 'text-white', bg: 'bg-gradient-to-br from-purple-600 to-indigo-800', file: 'Clean room master.html', theme: 'dark', bgImage: '/assets/bg/CRM-03.png' },
+                { id: 'CHW-04', type: 'hydraulic', name: { zh: '冰水管路計算', en: 'CHW Piping Calc' }, desc: { zh: '自動計算壓損與等效管徑。', en: 'Puzzle modeling, auto pressure drop calc.' }, icon: 'fa-snowflake', color: 'text-white', bg: 'bg-gradient-to-br from-blue-400 to-cyan-600', file: '冰水管路計算.html', theme: 'dark', bgImage: '/assets/bg/CHW-04.png' },
+                { id: 'DCT-06', type: 'ducting', name: { zh: '風管尺寸檢核', en: 'Duct Sizing Check' }, desc: { zh: '等摩擦法與等流速自動計算選型。', en: 'Equal friction & velocity method sizing.' }, icon: 'fa-ruler-combined', color: 'text-white', bg: 'bg-gradient-to-br from-orange-500 to-red-600', file: '風管計算.html', theme: 'dark', bgImage: '/assets/bg/DCT-06.png' },
+                { id: 'DCT-09', type: 'ducting', name: { zh: '風管鐵皮計算', en: 'Duct Material Estimator' }, desc: { zh: '精算風管鐵皮重量、保溫面積與板材用量。', en: 'Precise calc for duct weight.' }, icon: 'fa-layer-group', color: 'text-white', bg: 'bg-gradient-to-br from-slate-600 to-slate-900', file: '風管鐵皮計算.html', theme: 'dark', bgImage: '/assets/bg/DCT-09.png' }
+            ],
+            others: [
+                { id: 'PCW-08', type: 'hydraulic', name: { zh: 'PCW 系統估算', en: 'PCW Estimation' }, desc: { zh: '製程冷卻水系統需求分析與設備選型。', en: 'Process cooling water demand & selection.' }, icon: 'fa-microchip', color: 'text-rose-600', bg: 'bg-rose-50', file: 'PCW計算.html', theme: 'light', bgImage: '/assets/bg/PCW-08.png' },
+                { id: 'PHE-01', type: 'hydraulic', name: { zh: '板式熱交換器計算', en: 'PHE Estimation' }, desc: { zh: '板式熱交換器效能分析與設備選型。', en: 'Plate heat exchanger performance & selection.' }, icon: 'fa-exchange-alt', color: 'text-sky-600', bg: 'bg-sky-50', file: '板熱計算器.html', theme: 'light', bgImage: '/assets/bg/PHE-01.jpg' },
+                { id: 'GAS-09', type: 'ducting', name: { zh: 'Bulk Gas 系統', en: 'Bulk Gas System' }, desc: { zh: '大宗氣體管路壓損與流速工程審查。', en: 'Bulk gas piping pressure drop & velocity.' }, icon: 'fa-gas-pump', color: 'text-green-600', bg: 'bg-green-50', file: 'Bulk gas system.html', theme: 'light', bgImage: '/assets/bg/GAS-09.png' },
+                { id: 'CDS-10', type: 'hydraulic', name: { zh: 'CDS 化學系統', en: 'CDS Chemical Sys' }, desc: { zh: 'CDS 化學系統水力計算與管徑選型分析。', en: 'Chemical delivery system hydraulic calc.' }, icon: 'fa-flask', color: 'text-teal-600', bg: 'bg-teal-50', file: 'CDS 化學系統.html', theme: 'light', bgImage: '/assets/bg/CDS-10.png' },
+                { id: 'PEX-11', type: 'ducting', name: { zh: '製程排氣壓損計算', en: 'Process Exhaust Calc' }, desc: { zh: '管徑選型與壓損模擬 (Sizing & Loss)。', en: 'Duct sizing and pressure loss simulation.' }, icon: 'fa-fan', color: 'text-slate-600', bg: 'bg-slate-100', file: '製程排氣計算.html', theme: 'light', bgImage: '/assets/bg/PEX-11.png' },
+                { id: 'WBAL-12', type: 'hydraulic', name: { zh: '用水平衡圖計算', en: 'Water Balance Diagram' }, desc: { zh: '工廠用水流向、回收率與平衡計算。', en: 'Water flow, recovery rate & balance calc.' }, icon: 'fa-droplet', color: 'text-blue-500', bg: 'bg-blue-50', file: '用水平衡圖.html', theme: 'light', bgImage: '/assets/bg/WBAL-12.png' }
+            ]
+        };
+
+        // 供 3D HUD 快捷調用指定工具
+        window.openToolById = function(toolId) {
+            for (const category of ['general', 'advanced', 'others']) {
+                const found = toolsData[category].find(t => t.id === toolId);
+                if (found) {
+                    openModule(found);
+                    return;
+                }
+            }
+            enterDashboard();
+        };
+
+        function enterDashboard() {
+            const landing = document.getElementById('landing-view');
+            const dashboard = document.getElementById('dashboard-view');
+            landing.style.opacity = '0'; landing.style.transform = 'scale(0.98)';
+            setTimeout(() => {
+                landing.classList.add('view-hidden'); landing.classList.remove('view-active');
+                dashboard.classList.remove('view-hidden'); dashboard.classList.add('view-active');
+                requestAnimationFrame(() => { dashboard.style.opacity = '1'; dashboard.style.transform = 'scale(1)'; });
+                renderTools('all');
+            }, 300);
+        }
+
+        function exitDashboard() {
+            const landing = document.getElementById('landing-view');
+            const dashboard = document.getElementById('dashboard-view');
+            dashboard.style.opacity = '0'; dashboard.style.transform = 'scale(0.98)';
+            setTimeout(() => {
+                dashboard.classList.add('view-hidden'); dashboard.classList.remove('view-active');
+                landing.classList.remove('view-hidden'); landing.classList.add('view-active');
+                landing.style.display = ''; landing.style.opacity = '0'; 
+                requestAnimationFrame(() => { landing.style.opacity = '1'; landing.style.transform = 'scale(1)'; });
+            }, 300);
+        }
+
+        function renderTools(category) {
+            const grid = document.getElementById('tools-grid');
+            if (!grid) return;
+            grid.innerHTML = ''; 
+            let toolsToRender = category === 'all' ? [...toolsData.general, ...toolsData.advanced, ...toolsData.others] : toolsData[category] || [];
+
+            toolsToRender.forEach((tool, index) => {
+                const card = document.createElement('div');
+                card.className = "tool-card opacity-0 translate-y-4 group relative rounded-[2rem] p-6 h-72 cursor-pointer overflow-hidden flex flex-col justify-between transition-all duration-300";
+                
+                const isDark = tool.theme === 'dark';
+                card.classList.add(isDark ? 'dark-card' : 'light-card');
+                
+                if (isDark) { card.classList.add(...tool.bg.split(' '), 'text-white', 'shadow-lg', 'hover:scale-[1.02]'); } 
+                else { card.classList.add('bg-white', 'dark:bg-slate-900', 'border', 'border-slate-100', 'dark:border-slate-800', 'shadow-sm', 'hover:-translate-y-1', 'hover:shadow-xl'); }
+
+                card.style.animation = `fadeInUp 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards ${index * 0.04}s`;
+                card.onclick = () => openModule(tool);
+
+                let cardHTML = `
+                    <div class="absolute inset-0 bg-cover bg-center opacity-10 group-hover:opacity-30 transition-all duration-700 tool-bg-image ${isDark ? 'mix-blend-overlay' : ''}" style="background-image: url('${tool.bgImage}');"></div>
+                    <div class="tech-overlay"></div>
+                `;
+
+                if (isDark) {
+                    cardHTML += `
+                        <div class="absolute top-0 right-0 p-24 bg-white opacity-5 rounded-full -mr-10 -mt-10 transition-transform group-hover:scale-150 duration-700"></div>
+                        <div class="relative z-10 pointer-events-none">
+                            <div class="w-12 h-12 bg-white/20 backdrop-blur-md rounded-xl flex items-center justify-center text-xl mb-4 shadow-inner tool-icon group-hover:animate-icon-bounce">
+                                <i class="fa-solid ${tool.icon}"></i>
+                            </div>
+                            <h3 class="text-2xl font-bold mb-2 tracking-tight">${tool.name[currentLang]}</h3>
+                            <p class="text-white/80 text-sm font-medium leading-relaxed">${tool.desc[currentLang]}</p>
+                        </div>
+                    `;
+                } else {
+                    cardHTML += `
+                        <div class="relative z-10 pointer-events-none">
+                            <div class="w-14 h-14 ${tool.bg} ${tool.color} rounded-2xl flex items-center justify-center text-2xl mb-4 transition-transform tool-icon group-hover:scale-110 group-hover:rotate-12">
+                                <i class="fa-solid ${tool.icon}"></i>
+                            </div>
+                            <h3 class="text-xl font-bold text-slate-800 dark:text-white mb-2">${tool.name[currentLang]}</h3>
+                            <p class="text-slate-500 dark:text-slate-400 text-sm leading-relaxed">${tool.desc[currentLang]}</p>
+                        </div>
+                    `;
+                }
+                card.innerHTML = cardHTML;
+                grid.appendChild(card);
+            });
+        }
+
+        function filterTools(category) {
+            document.querySelectorAll('.filter-btn').forEach(btn => {
+                if(btn.dataset.filter === category) {
+                    btn.classList.remove('text-slate-500'); btn.classList.add('bg-white', 'dark:bg-slate-800', 'text-slate-800', 'dark:text-white', 'shadow-sm');
+                } else {
+                    btn.classList.remove('bg-white', 'dark:bg-slate-800', 'text-slate-800', 'dark:text-white', 'shadow-sm'); btn.classList.add('text-slate-500');
+                }
+            });
+            renderTools(category);
+        }
+
+        function openModule(tool) {
+            if (!Clerk.user) { Clerk.openSignIn({ afterSignInUrl: window.location.href }); return; }
+            const container = document.getElementById('module-container');
+            const iframe = document.getElementById('module-viewport');
+            document.getElementById('active-tool-title').innerText = tool.name[currentLang];
+            iframe.src = encodeURI(tool.file) + '?v=' + Date.now() + '&lang=' + currentLang;
+            container.style.display = 'flex'; requestAnimationFrame(() => container.classList.add('module-active'));
+            document.body.style.overflow = 'hidden';
+            document.getElementById('loader').style.display = 'flex';
+            iframe.onload = () => document.getElementById('loader').style.display = 'none';
+        }
+
+        function closeModule() {
+            const container = document.getElementById('module-container');
+            container.classList.remove('module-active');
+            setTimeout(() => { container.style.display = 'none'; document.getElementById('module-viewport').src = 'about:blank'; document.body.style.overflow = 'auto'; }, 300);
+        }
+        function iframeReload() { document.getElementById('module-viewport').contentWindow.location.reload(); }
+
+        function initObservers() {
+             const observer = new IntersectionObserver((entries) => { entries.forEach(entry => { if (entry.isIntersecting) { entry.target.classList.add('active'); } }); }, { threshold: 0.1 });
+             document.querySelectorAll('.reveal').forEach(el => observer.observe(el));
+        }
+
+        let vectorFieldAnim = null;
+
+        // === Boot Loader 與核心初始化 ===
+        window.onload = async () => {
+            // 1. 初始化 Hero 流場背景與懸浮視差控制器
+            vectorFieldAnim = new VectorField2D('hero-canvas');
+            HeroMotionController.init();
+            
+            // 2. 監看 .story-narrative-section，真正捲到附近才延遲載入 3D 引擎
+            //    （rootMargin 太大會在首屏就判定「接近」，導致開頁瞬間就載入 Three.js，拖慢初始開機動畫）
+            const storyContainer = document.getElementById('story-narrative-section');
+            if (storyContainer) {
+                const lazyObserver = new IntersectionObserver((entries) => {
+                    entries.forEach(entry => {
+                        if (entry.isIntersecting) {
+                            lazyLoadNarrativeEngine();
+                            lazyObserver.unobserve(entry.target);
+                        }
+                    });
+                }, { rootMargin: '0px', threshold: 0 });
+                lazyObserver.observe(storyContainer);
+
+                // 2b. 3D 引擎載入後，離開可視範圍就暫停渲染，避免整站持續吃 GPU/CPU
+                const visibilityObserver = new IntersectionObserver((entries) => {
+                    entries.forEach(entry => {
+                        const iframe = document.getElementById('story-workbench-iframe');
+                        if (iframe && iframe.contentWindow) {
+                            iframe.contentWindow.postMessage({ type: 'HVAC_VISIBILITY', visible: entry.isIntersecting }, '*');
+                        }
+                    });
+                }, { threshold: 0 });
+                visibilityObserver.observe(storyContainer);
+            }
+
+            // 3. Boot Loader Sequence
+            const loader = document.getElementById('boot-loader');
+            const progress = document.getElementById('boot-bar-progress');
+            const terminalLines = document.getElementById('terminal-lines');
+            const typingText = document.getElementById('typing-text');
+            
+            const bootSequence = [
+                { msg: "Initializing HVAC Core 2.0...", delay: 160, prog: 33 },
+                { msg: "Calibrating CFD Vector Engine...", delay: 160, prog: 66 },
+                { msg: "Synchronizing Hydronic Digital Twin...", delay: 160, prog: 100 }
+            ];
+
+            let sequencePromise = Promise.resolve();
+            const typeText = async (text, delay) => {
+                if (!typingText) return;
+                typingText.innerText = '';
+                return new Promise(resolve => {
+                    let i = 0;
+                    const typeInterval = setInterval(() => {
+                        typingText.innerText += text.charAt(i); i++;
+                        if (i >= text.length) { clearInterval(typeInterval); setTimeout(() => resolve(), delay); }
+                    }, 8); 
+                });
+            };
+            const pushLine = (text) => {
+                if (!terminalLines) return;
+                const div = document.createElement('div'); div.innerText = "> " + text;
+                terminalLines.appendChild(div);
+                if (terminalLines.children.length > 3) terminalLines.removeChild(terminalLines.firstChild);
+            };
+
+            for (const step of bootSequence) {
+                sequencePromise = sequencePromise.then(async () => {
+                    await typeText(step.msg, step.delay);
+                    pushLine(step.msg);
+                    if (progress) progress.style.width = step.prog + '%';
+                });
+            }
+
+            try {
+                await Promise.all([ sequencePromise, Clerk.load({ afterSignInUrl: window.location.href, afterSignOutUrl: window.location.href }) ]);
+                
+                if (Clerk.user) {
+                    const userName = Clerk.user.firstName || "Engineer";
+                    document.getElementById('landing-cta-text').innerText = `進入系統 (${userName})`;
+                    document.getElementById('welcome-badge').innerHTML = `WELCOME BACK, ${userName.toUpperCase()}`;
+                    Clerk.mountUserButton(document.getElementById('user-button'), { afterSignOutUrl: window.location.href });
+
+                    const landing = document.getElementById('landing-view');
+                    const dashboard = document.getElementById('dashboard-view');
+                    landing.classList.remove('view-active'); landing.classList.add('view-hidden');
+                    landing.style.display = 'none'; landing.style.opacity = '0';
+                    dashboard.classList.remove('view-hidden'); dashboard.classList.add('view-active');
+                    dashboard.style.display = 'block'; dashboard.style.opacity = '1'; dashboard.style.transform = 'scale(1)';
+                    renderTools('all');
+                }
+                
+                // 平滑淡出 Boot Loader
+                if (loader) {
+                    loader.style.opacity = '0';
+                    loader.style.transform = 'scale(1.04)';
+                    setTimeout(() => { loader.style.display = 'none'; }, 500);
+                }
+                initObservers();
+                
+                // Live Weather Data
+                fetch('https://api.open-meteo.com/v1/forecast?latitude=25.0375&longitude=121.5637&current=temperature_2m,relative_humidity_2m')
+                    .then(res => res.json()).then(data => {
+                        const tEl = document.getElementById('live-temp');
+                        const rEl = document.getElementById('live-rh');
+                        if (tEl) tEl.innerText = `${data.current.temperature_2m}°C`;
+                        if (rEl) rEl.innerText = `${data.current.relative_humidity_2m}%`;
+                    }).catch(()=>{});
+
+            } catch (err) {
+                console.error(err);
+                if (typingText) {
+                    typingText.innerText = "CRITICAL ERROR: OFFLINE MODE"; typingText.style.color = "#ef4444";
+                }
+                setTimeout(() => { if (loader) loader.style.display = 'none'; }, 700);
+            }
+        };
+    </script>
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+  const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : { apiKey: "", authDomain: "", projectId: "hvac-pro-shiu", storageBucket: "", messagingSenderId: "", appId: "" };
+  try { 
+      initializeApp(firebaseConfig); 
+  } catch(e) { 
+      console.log('Firebase optional'); 
+  }
+</script>
+</body>
+</html>

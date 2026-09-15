@@ -1,0 +1,93 @@
+{
+  "_meta": {
+    "vendor": "Johnson Controls (York)",
+    "vendor_website": "https://www.johnsoncontrols.com",
+    "category": "chiller",
+    "schema_version": "1.1",
+    "last_updated": "2026-06",
+    "note": "以下資料基於 York/JCI 公開規格書。YVFA 系列為磁浮變頻離心，IPLV 特別高，請提供規格書核對。"
+  },
+
+  "York YT 2500kW": {
+    "model": "York YT 2500kW",
+    "vendor": "Johnson Controls (York)",
+    "chiller_type": "water_cooled",
+    "category": "Centrifugal Chiller",
+    "cooling_capacity_kw": 2500,
+    "cop_design": 7.0,
+    "iplv": 9.8,
+    "power_input_kw": 357.1,
+    "refrigerant": "R-514A",
+    "t_chws_c": 7.0,
+    "t_cewt_design_c": 30.0,
+    "cop_curve": { "type": "ahri_biquadratic", "preset": "centrifugal_standard" },
+    "compressor_stages": 2,
+    "weight_kg": 11200,
+    "notes": "磁浮離心，HFO 冷媒 R-514A，低 GWP，大型園區主力機種",
+    "_source": "York YT Chiller Product Guide YK-PG-1",
+    "_ai_confidence": 0.85,
+    "_verified": false
+  },
+
+  "York YVFA 1200kW": {
+    "model": "York YVFA 1200kW",
+    "vendor": "Johnson Controls (York)",
+    "chiller_type": "water_cooled",
+    "category": "Centrifugal Chiller (Variable Speed)",
+    "cooling_capacity_kw": 1200,
+    "cop_design": 7.8,
+    "iplv": 12.5,
+    "power_input_kw": 153.8,
+    "refrigerant": "R-134a",
+    "t_chws_c": 7.0,
+    "t_cewt_design_c": 30.0,
+    "cop_curve": { "type": "ahri_biquadratic", "preset": "centrifugal_higheff" },
+    "compressor_stages": 2,
+    "weight_kg": 4800,
+    "min_plr": 0.10,
+    "notes": "變頻磁浮離心，IPLV 超高效，適合負載多變的資料中心",
+    "_source": "York YVFA Product Guide Form 160.00-EG1",
+    "_ai_confidence": 0.88,
+    "_verified": false
+  },
+
+  "York YVAA 1050kW": {
+    "model": "York YVAA 1050kW",
+    "vendor": "Johnson Controls (York)",
+    "chiller_type": "air_cooled",
+    "category": "VSD Screw Chiller (Air-Cooled)",
+    "cooling_capacity_kw": 1050,
+    "cop_design": 3.15,
+    "iplv": 4.5,
+    "power_input_kw": 333.3,
+    "refrigerant": "R-134a",
+    "t_chws_c": 7.0,
+    "t_cewt_design_c": null,
+    "cop_curve": { "type": "fixed" },
+    "weight_kg": 8200,
+    "notes": "氣冷變頻螺旋，VSD 壓縮機，快速部署，WUE=0",
+    "_source": "York YVAA Product Guide",
+    "_ai_confidence": 0.78,
+    "_verified": false
+  },
+
+  "York YVAA 600kW": {
+    "model": "York YVAA 600kW",
+    "vendor": "Johnson Controls (York)",
+    "chiller_type": "air_cooled",
+    "category": "VSD Screw Chiller (Air-Cooled)",
+    "cooling_capacity_kw": 600,
+    "cop_design": 3.1,
+    "iplv": 4.3,
+    "power_input_kw": 193.5,
+    "refrigerant": "R-134a",
+    "t_chws_c": 7.0,
+    "t_cewt_design_c": null,
+    "cop_curve": { "type": "fixed" },
+    "weight_kg": 5100,
+    "notes": "中型氣冷變頻螺旋，模組化部署",
+    "_source": "York YVAA Product Guide",
+    "_ai_confidence": 0.78,
+    "_verified": false
+  }
+}

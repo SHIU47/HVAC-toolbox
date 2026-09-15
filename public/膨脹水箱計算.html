@@ -1,0 +1,725 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <!-- 安全防護 -->
+    <script src="./security.js"></script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Expansion Tank Engineering Audit</title>
+    
+    <!-- 載入核心與字體 -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"></script>
+    
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@400;500;700&family=Inter:wght@300;400;500;600;700;800&display=swap');
+        
+        :root {
+            --primary: #0f172a;
+            --accent: #6366f1;
+            --success: #10b981;
+            --danger: #ef4444;
+            --warning: #f59e0b;
+            --bg-main: #f8fafc;
+        }
+
+        body { 
+            font-family: 'Inter', 'Microsoft JhengHei', sans-serif; 
+            background-color: var(--bg-main); 
+            color: #1e293b;
+            letter-spacing: -0.01em;
+        }
+
+        .mono { font-family: 'Roboto Mono', monospace; }
+        
+        .pro-card { 
+            background: white; 
+            border-radius: 24px; 
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.05);
+            border: 1px solid #e2e8f0;
+        }
+
+        .input-pro {
+            border: 1px solid #cbd5e1;
+            padding: 10px 14px;
+            border-radius: 12px;
+            font-size: 0.9rem;
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+            width: 100%;
+        }
+        .input-pro:focus {
+            outline: none;
+            border-color: var(--accent);
+            box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.15);
+        }
+
+        .tab-btn {
+            padding: 12px 32px;
+            font-size: 0.9rem;
+            font-weight: 700;
+            border-radius: 16px;
+            transition: all 0.3s ease;
+            color: #64748b;
+        }
+        .tab-active { 
+            background: white; 
+            color: var(--accent); 
+            box-shadow: 0 4px 15px rgba(0,0,0,0.08);
+        }
+
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        .animate-fade { animation: fadeIn 0.5s ease-out forwards; }
+
+        .result-highlight {
+            background: #1e293b;
+            color: white;
+            padding: 2rem;
+            border-radius: 24px;
+            box-shadow: 0 20px 40px -10px rgba(15, 23, 42, 0.3);
+        }
+
+        /* 說明書表格樣式 */
+        .help-table { width: 100%; font-size: 0.75rem; border-collapse: collapse; margin: 1rem 0; }
+        .help-table th { background: #f1f5f9; padding: 8px; text-align: left; border: 1px solid #e2e8f0; font-weight: 800; }
+        .help-table td { padding: 8px; border: 1px solid #e2e8f0; vertical-align: top; }
+
+        @media print { .no-print { display: none !important; } body { background: white; } .pro-card { border: none; box-shadow: none; } }
+    </style>
+</head>
+<body class="p-6 md:p-10">
+
+    <div class="max-w-[1400px] mx-auto space-y-8">
+        
+        <!-- Header Section -->
+        <header class="flex flex-col lg:flex-row justify-between items-start lg:items-center bg-[#0f172a] p-10 rounded-[3rem] shadow-2xl animate-fade text-white relative overflow-hidden">
+            <div class="absolute right-0 top-0 w-80 h-80 bg-indigo-500/10 rounded-full blur-[100px]"></div>
+            <div class="z-10 flex items-center gap-6">
+                <div class="p-5 bg-indigo-600 rounded-3xl shadow-2xl shadow-indigo-500/20">
+                    <svg class="w-10 h-10 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"></path></svg>
+                </div>
+                <div>
+                    <h1 class="text-3xl font-black tracking-tight uppercase" data-i18n="app_title">Expansion Tank Engineering Audit</h1>
+                    <div class="flex items-center gap-3 mt-2 text-indigo-400">
+                        <span class="text-[11px] font-bold uppercase tracking-widest text-indigo-300" data-i18n="app_subtitle">膨脹水箱選型審查工具</span>
+                        <div class="h-1 w-1 rounded-full bg-slate-600"></div>
+                        <span class="text-[11px] text-slate-400 font-mono" data-i18n="verified_text">Verified for Process Utility / Wafer Fab Standards</span>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="flex items-center gap-4 mt-8 lg:mt-0 z-10">
+                <button onclick="toggleHelp()" class="flex items-center gap-2 px-6 py-3 bg-white/10 hover:bg-white/20 rounded-2xl transition-all font-bold text-sm backdrop-blur-md border border-white/10 no-print">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.246 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"></path></svg>
+                    <span data-i18n="btn_help">操作說明與指南</span>
+                </button>
+                <div class="flex bg-slate-800/50 p-2 rounded-[1.5rem] backdrop-blur-md border border-white/5 shadow-inner">
+                    <button onclick="switchMode('heating')" id="btnHeating" class="tab-btn" data-i18n="tab_heating">Heating (熱水)</button>
+                    <button onclick="switchMode('cooling')" id="btnCooling" class="tab-btn tab-active" data-i18n="tab_cooling">Cooling (冰水)</button>
+                </div>
+            </div>
+        </header>
+
+        <main class="grid grid-cols-1 xl:grid-cols-12 gap-8 animate-fade" style="animation-delay: 0.1s;">
+            
+            <!-- Left: Input Panel -->
+            <div class="xl:col-span-8 space-y-8">
+                <div class="pro-card p-8">
+                    <h2 class="text-xl font-black mb-8 flex items-center gap-3 border-b pb-4">
+                        <span class="p-2 bg-indigo-50 text-indigo-600 rounded-lg">01</span>
+                        <span data-i18n="sec_design">Design Parameters / 系統參數設定</span>
+                    </h2>
+                    
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-10">
+                        <div class="space-y-6">
+                            <h3 class="text-xs font-black text-slate-400 uppercase tracking-widest tracking-widest" data-i18n="sub_fluid">Fluid Properties (流體性質)</h3>
+                            <div class="space-y-4">
+                                <div class="space-y-2">
+                                    <label class="text-[10px] font-bold text-slate-500 uppercase" data-i18n="label_vs">總系統水量 $V_s$ (Liters)</label>
+                                    <input type="number" id="sysVol" value="5000" oninput="calculate()" class="input-pro font-black text-lg">
+                                </div>
+                                <div class="grid grid-cols-2 gap-4">
+                                    <div class="space-y-2">
+                                        <label id="temp1Label" class="text-[10px] font-bold text-slate-500 uppercase font-bold">初始溫度 $T_1$ (°C)</label>
+                                        <input type="number" id="temp1" value="7" oninput="calculate()" class="input-pro font-bold">
+                                    </div>
+                                    <div class="space-y-2">
+                                        <label id="temp2Label" class="text-[10px] font-bold text-slate-500 uppercase font-bold">最高/低溫度 $T_2$ (°C)</label>
+                                        <input type="number" id="temp2" value="35" oninput="calculate()" class="input-pro font-bold">
+                                    </div>
+                                </div>
+                                <div class="bg-indigo-50 p-3 rounded-xl border border-indigo-100">
+                                    <p id="modeDescription" class="text-[10px] text-indigo-700 font-bold leading-relaxed italic"></p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="space-y-6">
+                            <h3 class="text-xs font-black text-slate-400 uppercase tracking-widest tracking-widest" data-i18n="sub_press">Pressure Limits (壓力限制)</h3>
+                            <div class="space-y-4">
+                                <div class="space-y-2">
+                                    <label class="text-[10px] font-bold text-slate-500 uppercase font-bold" data-i18n="label_p1">初充壓力 $P_1$ (kg/cm²G)</label>
+                                    <div class="flex items-center gap-3">
+                                        <input type="number" id="press1" value="1.5" step="0.1" oninput="calculate()" class="input-pro font-bold">
+                                        <span class="text-[9px] text-slate-400 leading-tight italic" data-i18n="note_p1">Static Head + 0.35</span>
+                                    </div>
+                                </div>
+                                <div class="space-y-2">
+                                    <label class="text-[10px] font-bold text-slate-500 uppercase font-bold" data-i18n="label_p2">極限壓力 $P_2$ (kg/cm²G)</label>
+                                    <div class="flex items-center gap-3">
+                                        <input type="number" id="press2" value="4.0" step="0.1" oninput="calculate()" class="input-pro font-bold border-red-200">
+                                        <span class="text-[9px] text-slate-400 leading-tight italic" data-i18n="note_p2">Relief Valve Setpoint</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="pro-card p-8 border-t-8 border-indigo-600">
+                    <h2 class="text-xl font-black mb-8 flex items-center gap-3">
+                        <span class="p-2 bg-indigo-50 text-indigo-600 rounded-lg">02</span>
+                        <span data-i18n="sec_result">Audit Simulation Result / 審查計算結果</span>
+                    </h2>
+                    
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                        <div class="result-highlight relative overflow-hidden">
+                            <div class="absolute -right-4 -bottom-4 w-32 h-32 bg-white/5 rounded-full blur-2xl"></div>
+                            <span class="text-[10px] font-bold text-indigo-300 uppercase tracking-widest" data-i18n="label_req_vol">Required Nominal Volume ($V_t$)</span>
+                            <div class="flex items-baseline gap-2 mt-4">
+                                <span class="text-6xl font-black mono text-white" id="totalVol">0.0</span>
+                                <span class="text-sm font-bold text-indigo-300 uppercase">Liters</span>
+                            </div>
+                            <div class="mt-6 pt-6 border-t border-white/10 flex justify-between items-center text-xs font-mono text-indigo-200">
+                                <span><span data-i18n="label_exp_vol">Expansion $\Delta V$:</span> <span id="expVol">0.0</span> L</span>
+                                <span><span data-i18n="label_exp_rate">Expansion Rate:</span> <span id="densRate">0.00%</span></span>
+                            </div>
+                        </div>
+
+                        <div class="space-y-6">
+                            <div class="p-5 bg-slate-50 rounded-2xl border border-slate-100">
+                                <div class="flex justify-between items-center mb-1">
+                                    <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest" data-i18n="label_acc_ratio">Theoretical Acceptance Ratio</label>
+                                    <span class="text-[9px] bg-slate-200 text-slate-600 px-2 py-0.5 rounded uppercase font-bold tracking-tighter">Efficiency</span>
+                                </div>
+                                <div class="flex justify-between items-baseline mt-2 font-bold">
+                                    <span class="text-sm text-slate-600 uppercase" data-i18n="label_acc_ratio_sub">理論接受率 ($\eta_{theo}$)</span>
+                                    <span class="mono font-black text-indigo-600 text-xl" id="acceptance">0.0%</span>
+                                </div>
+                                <p class="text-[9px] text-slate-400 mt-2 italic leading-tight" data-i18n="note_acc">實際可用比例須依製造商型錄 (Actual Acceptance) 進行修正。</p>
+                            </div>
+                            <div class="p-5 bg-slate-50 rounded-2xl border border-slate-100">
+                                <div class="flex justify-between items-center mb-2 font-bold">
+                                    <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest" data-i18n="label_sf">Selection Safety Factor ($SF$)</label>
+                                    <span class="mono text-indigo-600 text-lg" id="sfVal">1.20</span>
+                                </div>
+                                <input type="range" id="sfSlider" min="1" max="2" step="0.05" value="1.2" oninput="syncSF(this.value)" class="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-indigo-500">
+                                <div class="flex justify-between text-[9px] text-slate-400 mt-2 uppercase font-black">
+                                    <span data-i18n="label_sf_limit">Engineering Limit</span>
+                                    <span data-i18n="label_sf_aggr">Aggressive Sizing</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right: Audit Sidebar -->
+            <div class="xl:col-span-4 space-y-8">
+                <div class="pro-card p-8 border-l-8 border-red-500 bg-red-50/10">
+                    <h3 class="font-black text-red-800 text-xs uppercase tracking-widest mb-6 flex items-center gap-2">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>
+                        <span data-i18n="sec_audit">Engineering Audit Log</span>
+                    </h3>
+                    <div id="auditContainer" class="space-y-3"></div>
+                </div>
+
+                <div class="pro-card p-8">
+                    <h3 class="font-black text-slate-800 text-xs uppercase tracking-widest mb-6" data-i18n="sec_assumptions">Standard Assumptions (技術前提)</h3>
+                    <div class="text-[11px] leading-relaxed space-y-3 text-slate-500 font-black uppercase tracking-tight">
+                        <div class="flex items-center gap-2 italic"><div class="w-1.5 h-1.5 bg-blue-600 rounded-full"></div> <span data-i18n="ass_1">Closed Loop System (密閉迴路)</span></div>
+                        <div class="flex items-center gap-2 italic"><div class="w-1.5 h-1.5 bg-blue-600 rounded-full"></div> <span data-i18n="ass_2">Pure Water (無添加 Glycol)</span></div>
+                        <div class="flex items-center gap-2 italic"><div class="w-1.5 h-1.5 bg-blue-600 rounded-full"></div> <span data-i18n="ass_3">Rigid Piping (忽略管材彈性)</span></div>
+                        <div class="flex items-center gap-2 italic"><div class="w-1.5 h-1.5 bg-blue-600 rounded-full"></div> <span data-i18n="ass_4">Diaphragm / Bladder Type Tank</span></div>
+                    </div>
+                    <div class="mt-6 p-5 bg-slate-900 rounded-2xl">
+                         <div class="text-[11px] font-mono text-blue-300 leading-loose">
+                            $V_t = \frac{\Delta V}{\eta_{theo}} \times SF$ <br>
+                            $\eta_{theo} = 1 - \frac{P_{1,abs}}{P_{2,abs}}$
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Help Modal - 完整整合使用說明 -->
+    <div id="helpModal" class="fixed inset-0 bg-slate-900/90 backdrop-blur-md z-50 flex items-center justify-center hidden p-6">
+        <div class="bg-white w-full max-w-5xl rounded-[3rem] shadow-2xl overflow-hidden animate-fade border border-white/20">
+            <div class="p-8 border-b border-slate-100 flex justify-between items-center bg-slate-50">
+                <div class="flex items-center gap-4">
+                    <div class="p-3 bg-indigo-600 rounded-2xl text-white">
+                        <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.246 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"></path></svg>
+                    </div>
+                    <h2 class="text-2xl font-black tracking-tighter uppercase" data-i18n="modal_title">膨脹水箱選型指南：機電審查標準作業程序</h2>
+                </div>
+                <button onclick="toggleHelp()" class="p-3 hover:bg-slate-200 rounded-full transition-all text-xl">✕</button>
+            </div>
+            
+            <div class="p-10 max-h-[75vh] overflow-y-auto space-y-10">
+                
+                <!-- 1. 模式切換與物理定義 -->
+                <section class="space-y-4">
+                    <h4 class="font-black text-indigo-600 uppercase text-xs tracking-[0.2em] border-b pb-2" data-i18n="modal_step1">Step 1-2：選擇系統模式與物理定義</h4>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div class="p-5 bg-blue-50 rounded-2xl border border-blue-100">
+                            <p class="font-black text-blue-800 mb-2">Cooling (冰水系統):</p>
+                            <p class="text-xs text-blue-700 leading-relaxed" data-i18n="modal_cool_def">定義為「停機回溫 (Cold → Warm)」。膨脹發生於冰機停機後，系統水向環境吸熱升溫的過程。起始溫度採運轉低溫 ($7^\circ\text{C}$)，結束溫度採環境平衡溫 ($35^\circ\text{C}$)。</p>
+                        </div>
+                        <div class="p-5 bg-amber-50 rounded-2xl border border-amber-100">
+                            <p class="font-black text-amber-800 mb-2">Heating (熱水系統):</p>
+                            <p class="text-xs text-amber-700 leading-relaxed" data-i18n="modal_heat_def">定義為「啟動升溫 (Warm → Hot)」。膨脹發生於注水後開始加熱運轉的過程。起始溫度採初始填充溫 ($10^\circ\text{C}$)，結束溫度採設計最高運轉溫 ($80^\circ\text{C}$)。</p>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- 2. 參數輸入表 -->
+                <section class="space-y-4">
+                    <h4 class="font-black text-indigo-600 uppercase text-xs tracking-[0.2em] border-b pb-2" data-i18n="modal_step3">Step 3：關鍵參數輸入 (Design Inputs)</h4>
+                    <table class="help-table">
+                        <thead>
+                            <tr><th data-i18n="th_cat">類別</th><th data-i18n="th_name">欄位名稱</th><th data-i18n="th_desc">說明與工程建議</th><th data-i18n="th_note">備註</th></tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td rowspan="3" class="font-bold" data-i18n="td_fluid">流體性質</td>
+                                <td data-i18n="td_vs">系統總水量 $V_s$</td>
+                                <td data-i18n="td_vs_desc">包含設備、管路及儲槽內的水量總和。</td>
+                                <td data-i18n="td_core">選型核心基準</td>
+                            </tr>
+                            <tr>
+                                <td data-i18n="td_t1">初始溫度 $T_1$</td>
+                                <td data-i18n="td_t1_desc">Cooling: 運轉最低溫；Heating: 填充環境溫。</td>
+                                <td data-i18n="td_max_rho">對應最高密度狀態</td>
+                            </tr>
+                            <tr>
+                                <td data-i18n="td_t2">結束溫度 $T_2$</td>
+                                <td data-i18n="td_t2_desc">Cooling: 停機平衡溫；Heating: 設計最高溫。</td>
+                                <td data-i18n="td_min_rho">對應最低密度狀態</td>
+                            </tr>
+                            <tr>
+                                <td rowspan="2" class="font-bold" data-i18n="td_press">壓力限制</td>
+                                <td data-i18n="td_p1">初充壓力 $P_1$</td>
+                                <td data-i18n="td_p1_desc">建議為系統最高點靜壓 $+ 0.35 \text{ kg/cm}^2$。太低會導致頂部負壓風險。</td>
+                                <td data-i18n="td_static">靜壓維持</td>
+                            </tr>
+                            <tr>
+                                <td data-i18n="td_p2">極限壓力 $P_2$</td>
+                                <td data-i18n="td_p2_desc">系統安全閥動作壓力，必須小於設備耐壓值。</td>
+                                <td data-i18n="td_limit">安全極限</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </section>
+
+                <!-- 3. 實務經驗估算 (New) -->
+                <section class="space-y-4">
+                    <h4 class="font-black text-indigo-600 uppercase text-xs tracking-[0.2em] border-b pb-2" data-i18n="modal_step4_est">Step 4：實務經驗估算法 (Practical Estimations)</h4>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div class="p-5 bg-indigo-50 rounded-2xl border border-indigo-100 shadow-sm">
+                            <h5 class="font-black text-indigo-800 mb-2 border-b border-indigo-200 pb-2" data-i18n="est_vol_title">水量盲估原則 ($V_s$)</h5>
+                            <ul class="space-y-2 list-disc list-outside ml-4 text-xs text-indigo-700 marker:text-indigo-400 font-medium leading-relaxed">
+                                <li data-i18n="est_vol_1"><strong>精算法：</strong>設備內建水量 + 水槽容積 + (管徑截面積 × 長度)。</li>
+                                <li data-i18n="est_vol_2"><strong>舒適空調 (HVAC)：</strong>約 9 ~ 12 Liters / RT。</li>
+                                <li data-i18n="est_vol_3"><strong>廠務冰水 (PCW)：</strong>管線較長，約 15 ~ 20 Liters / RT。</li>
+                            </ul>
+                        </div>
+                        <div class="p-5 bg-indigo-50 rounded-2xl border border-indigo-100 shadow-sm">
+                            <h5 class="font-black text-indigo-800 mb-2 border-b border-indigo-200 pb-2" data-i18n="est_press_title">壓力設定技巧 ($P_1, P_2$)</h5>
+                            <ul class="space-y-2 list-disc list-outside ml-4 text-xs text-indigo-700 marker:text-indigo-400 font-medium leading-relaxed">
+                                <li data-i18n="est_press_1"><strong>初充 $P_1$：</strong>(系統最高點高差m ÷ 10) + 0.35。若水箱放頂樓無高差，建議填 1.0 或 1.5。</li>
+                                <li data-i18n="est_press_2"><strong>極限 $P_2$：</strong>安全閥設定值 (例如 5.0)。絕對不可超過設備最弱的耐壓極限。</li>
+                                <li data-i18n="est_press_3"><strong>工作區間：</strong>若 $P_1$ 與 $P_2$ 靠得太近，會導致接受率過低，水箱會變得異常巨大。</li>
+                            </ul>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- 4. 安全係數審查邏輯 -->
+                <section class="space-y-4">
+                    <h4 class="font-black text-indigo-600 uppercase text-xs tracking-[0.2em] border-b pb-2" data-i18n="modal_step4">Step 5-6：選型係數與審查邏輯 (Audit)</h4>
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                        <div class="p-5 bg-slate-50 rounded-2xl border border-slate-100 text-center">
+                            <span class="block font-black text-emerald-600 text-xl mb-1">OK</span>
+                            <p class="text-[10px] text-slate-500 font-bold uppercase" data-i18n="res_normal">符合常規</p>
+                            <p class="text-[9px] mt-2 text-slate-400" data-i18n="res_normal_desc">參數設定合理，符合 ASHRAE 與晶圓廠機電標準。</p>
+                        </div>
+                        <div class="p-5 bg-amber-50 rounded-2xl border border-amber-100 text-center">
+                            <span class="block font-black text-amber-600 text-xl mb-1">WARNING</span>
+                            <p class="text-[10px] text-amber-500 font-bold uppercase" data-i18n="res_warn">係數過高</p>
+                            <p class="text-[9px] mt-2 text-amber-700 font-medium" data-i18n="res_warn_desc">Cooling SF > 1.3 或 Heating SF > 1.5。通常暗示設計者對水量估算缺乏信心，建議重新核對 $V_s$。</p>
+                        </div>
+                        <div class="p-5 bg-red-50 rounded-2xl border border-red-100 text-center text-red-700">
+                            <span class="block font-black text-xl mb-1">RISK</span>
+                            <p class="text-[10px] font-bold uppercase" data-i18n="res_risk">設計失效</p>
+                            <p class="text-[9px] mt-2 font-medium" data-i18n="res_risk_desc">Acceptance < 15% 或 P1 < 0.5。壓力區間過窄或壓力不足，極易造成爆管或氣塞。</p>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- 5. 故障排除指南 -->
+                <section class="space-y-4">
+                    <h4 class="font-black text-indigo-600 uppercase text-xs tracking-[0.2em] border-b pb-2" data-i18n="modal_step8">Step 7：常見錯誤解決方案 (Troubleshooting)</h4>
+                    <table class="help-table">
+                        <thead><tr><th data-i18n="th_err">異常狀況</th><th data-i18n="th_cause">可能原因</th><th data-i18n="th_fix">建議修正方法</th></tr></thead>
+                        <tbody>
+                            <tr><td data-i18n="td_err1">膨脹量 $\Delta V \le 0$</td><td data-i18n="td_cause1">$T_2 \le T_1$ (溫度輸入方向錯誤)</td><td data-i18n="td_fix1">調整溫度參數，確保 $T_2$ (膨脹後) 的密度小於 $T_1$。</td></tr>
+                            <tr><td data-i18n="td_err2">水箱體積 $V_t$ 異常巨大</td><td data-i18n="td_cause2">壓力工作區間 ($P_2 - P_1$) 過窄</td><td data-i18n="td_fix2">調整 $P_1$ 或 $P_2$，提高 Theoretical Acceptance Ratio。</td></tr>
+                            <tr><td data-i18n="td_err3">初充壓力警告</td><td data-i18n="td_cause3">$P_1$ 低於靜水壓建議值</td><td data-i18n="td_fix3">增加預充壓力，確保系統頂部不產生負壓 (防止吸入空氣)。</td></tr>
+                        </tbody>
+                    </table>
+                </section>
+
+                <!-- 5. 乙二醇系統特別說明 (Glycol/Brine) -->
+                <div class="bg-indigo-900 p-10 rounded-[3rem] text-white shadow-3xl">
+                    <h4 class="font-black text-indigo-300 uppercase text-xs tracking-[0.2em] mb-4" data-i18n="glycol_title">🔧 關於乙二醇系統 (Glycol System) 的重要補充</h4>
+                    <div class="space-y-4 text-xs leading-relaxed opacity-90 font-medium">
+                        <p data-i18n="glycol_p1">本工具目前基於「純水」物理性質。若您的系統含有 Glycol（防凍劑），請務必注意：</p>
+                        <ul class="list-disc ml-5 space-y-2">
+                            <li data-i18n="glycol_li1"><strong>膨脹率差異</strong>：30% 乙二醇溶液的膨脹係數約比純水高出 15-20%。</li>
+                            <li data-i18n="glycol_li2"><strong>修正方法</strong>：使用本工具計算後，建議手動將總容量 $V_t$ 再額外乘以 1.25 的修正係數，或參考 DOWFROST 等專業化學品型錄之密度表進行修正。</li>
+                            <li data-i18n="glycol_li3"><strong>黏度考量</strong>：高濃度 Glycol 會影響管路壓損，但對水箱容積的主要影響仍在於密度變化率。</li>
+                        </ul>
+                    </div>
+                </div>
+
+            </div>
+            
+            <div class="p-10 bg-slate-50 border-t flex flex-col md:flex-row items-center justify-between gap-6">
+                <div class="text-[10px] text-slate-400 font-bold uppercase tracking-widest italic" data-i18n="footer_note">設計完成後請截圖 Audit Log 作為計算書附件</div>
+                <button onclick="toggleHelp()" class="bg-slate-900 text-white px-20 py-5 rounded-[2rem] font-black transition-all hover:scale-105 shadow-2xl" data-i18n="btn_confirm">Confirm & Start Design</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // --- Localization ---
+        var urlParams = new URLSearchParams(window.location.search);
+        var lang = urlParams.get('lang') || 'zh'; // Default to Traditional Chinese
+        document.documentElement.lang = lang === 'en' ? 'en' : 'zh-TW';
+
+        var i18nData = {
+            zh: {
+                app_title: "Expansion Tank Engineering Audit",
+                app_subtitle: "膨脹水箱選型審查工具",
+                verified_text: "Verified for Process Utility / Wafer Fab Standards",
+                btn_help: "操作說明與指南",
+                tab_heating: "Heating (熱水)",
+                tab_cooling: "Cooling (冰水)",
+                sec_design: "Design Parameters / 系統參數設定",
+                sub_fluid: "Fluid Properties (流體性質)",
+                label_vs: "總系統水量 $V_s$ (Liters)",
+                label_t1_heat: "填充環境溫度 $T_1$ (°C)",
+                label_t2_heat: "運轉最高溫度 $T_2$ (°C)",
+                desc_heat: "Heating Mode: Expansion from Ambient Filling (Cold) to Design Maximum (Hot).",
+                label_t1_cool: "運轉最低溫度 $T_1$ (°C)",
+                label_t2_cool: "停機平衡溫度 $T_2$ (°C)",
+                desc_cool: "Cooling Mode: Expansion during Shutdown (Cold Operating to Ambient Warm).",
+                sub_press: "Pressure Limits (壓力限制)",
+                label_p1: "初充壓力 $P_1$ (kg/cm²G)",
+                note_p1: "Static Head + 0.35",
+                label_p2: "極限壓力 $P_2$ (kg/cm²G)",
+                note_p2: "Relief Valve Setpoint",
+                sec_result: "Audit Simulation Result / 審查計算結果",
+                label_req_vol: "Required Nominal Volume ($V_t$)",
+                label_exp_vol: "Expansion $\\Delta V$:",
+                label_exp_rate: "Expansion Rate:",
+                label_acc_ratio: "Theoretical Acceptance Ratio",
+                label_acc_ratio_sub: "理論接受率 ($\\eta_{theo}$)",
+                note_acc: "實際可用比例須依製造商型錄 (Actual Acceptance) 進行修正。",
+                label_sf: "Selection Safety Factor ($SF$)",
+                label_sf_limit: "Engineering Limit",
+                label_sf_aggr: "Aggressive Sizing",
+                sec_audit: "Engineering Audit Log",
+                sec_assumptions: "Standard Assumptions (技術前提)",
+                ass_1: "Closed Loop System (密閉迴路)",
+                ass_2: "Pure Water (無添加 Glycol)",
+                ass_3: "Rigid Piping (忽略管材彈性)",
+                ass_4: "Diaphragm / Bladder Type Tank",
+                footer_note: "設計完成後請截圖 Audit Log 作為計算書附件",
+                btn_confirm: "Confirm & Start Design",
+                // Help Modal
+                modal_title: "膨脹水箱選型指南：機電審查標準作業程序",
+                modal_step1: "Step 1-2：選擇系統模式與物理定義",
+                modal_cool_def: "定義為「停機回溫 (Cold → Warm)」。膨脹發生於冰機停機後，系統水向環境吸熱升溫的過程。起始溫度採運轉低溫 ($7^\\circ\\text{C}$)，結束溫度採環境平衡溫 ($35^\\circ\\text{C}$)。",
+                modal_heat_def: "定義為「啟動升溫 (Warm → Hot)」。膨脹發生於注水後開始加熱運轉的過程。起始溫度採初始填充溫 ($10^\\circ\\text{C}$)，結束溫度採設計最高運轉溫 ($80^\\circ\\text{C}$)。",
+                modal_step3: "Step 3：關鍵參數輸入 (Design Inputs)",
+                th_cat: "類別", th_name: "欄位名稱", th_desc: "說明與工程建議", th_note: "備註",
+                td_fluid: "流體性質", td_vs: "系統總水量 $V_s$", td_vs_desc: "包含設備、管路及儲槽內的水量總和。", td_core: "選型核心基準",
+                td_t1: "初始溫度 $T_1$", td_t1_desc: "Cooling: 運轉最低溫；Heating: 填充環境溫。", td_max_rho: "對應最高密度狀態",
+                td_t2: "結束溫度 $T_2$", td_t2_desc: "Cooling: 停機平衡溫；Heating: 設計最高溫。", td_min_rho: "對應最低密度狀態",
+                td_press: "壓力限制", td_p1: "初充壓力 $P_1$", td_p1_desc: "建議為系統最高點靜壓 $+ 0.35 \\text{ kg/cm}^2$。太低會導致頂部負壓風險。", td_static: "靜壓維持",
+                td_p2: "極限壓力 $P_2$", td_p2_desc: "系統安全閥動作壓力，必須小於設備耐壓值。", td_limit: "安全極限",
+                modal_step4_est: "Step 4：實務經驗估算法 (Practical Estimations)",
+                est_vol_title: "水量盲估原則 ($V_s$)",
+                est_vol_1: "<strong>精算法：</strong>設備內建水量 + 水槽容積 + (管徑截面積 × 長度)。",
+                est_vol_2: "<strong>舒適空調 (HVAC)：</strong>約 9 ~ 12 Liters / RT。",
+                est_vol_3: "<strong>廠務冰水 (PCW)：</strong>管線較長，約 15 ~ 20 Liters / RT。",
+                est_press_title: "壓力設定技巧 ($P_1, P_2$)",
+                est_press_1: "<strong>初充 $P_1$：</strong>(系統最高點高差m ÷ 10) + 0.35。若水箱放頂樓無高差，建議填 1.0 或 1.5。",
+                est_press_2: "<strong>極限 $P_2$：</strong>安全閥設定值 (例如 5.0)。絕對不可超過設備最弱的耐壓極限。",
+                est_press_3: "<strong>工作區間：</strong>若 $P_1$ 與 $P_2$ 靠得太近，會導致接受率過低，水箱體積會變得異常巨大。",
+                modal_step4: "Step 5-6：選型係數與審查邏輯 (Audit)",
+                res_normal: "符合常規", res_normal_desc: "參數設定合理，符合 ASHRAE 與晶圓廠機電標準。",
+                res_warn: "係數過高", res_warn_desc: "Cooling SF > 1.3 或 Heating SF > 1.5。通常暗示設計者對水量估算缺乏信心，建議重新核對 $V_s$。",
+                res_risk: "設計失效", res_risk_desc: "Acceptance < 15% 或 P1 < 0.5。壓力區間過窄或壓力不足，極易造成爆管或氣塞。",
+                modal_step8: "Step 7：常見錯誤解決方案 (Troubleshooting)",
+                th_err: "異常狀況", th_cause: "可能原因", th_fix: "建議修正方法",
+                td_err1: "膨脹量 $\\Delta V \\le 0$", td_cause1: "$T_2 \\le T_1$ (溫度輸入方向錯誤)", td_fix1: "調整溫度參數，確保 $T_2$ (膨脹後) 的密度小於 $T_1$。",
+                td_err2: "水箱體積 $V_t$ 異常巨大", td_cause2: "壓力工作區間 ($P_2 - P_1$) 過窄", td_fix2: "調整 $P_1$ 或 $P_2$，提高 Theoretical Acceptance Ratio。",
+                td_err3: "初充壓力警告", td_cause3: "$P_1$ 低於靜水壓建議值", td_fix3: "增加預充壓力，確保系統頂部不產生負壓 (防止吸入空氣)。",
+                glycol_title: "🔧 關於乙二醇系統 (Glycol System) 的重要補充",
+                glycol_p1: "本工具目前基於「純水」物理性質。若您的系統含有 Glycol（防凍劑），請務必注意：",
+                glycol_li1: "<strong>膨脹率差異</strong>：30% 乙二醇溶液的膨脹係數約比純水高出 15-20%。",
+                glycol_li2: "<strong>修正方法</strong>：使用本工具計算後，建議手動將總容量 $V_t$ 再額外乘以 1.25 的修正係數，或參考 DOWFROST 等專業化學品型錄之密度表進行修正。",
+                glycol_li3: "<strong>黏度考量</strong>：高濃度 Glycol 會影響管路壓損，但對水箱容積的主要影響仍在於密度變化率。",
+                // Audit Messages
+                audit_cool_sf_high: "Cooling $SF > 1.3$ ($SF={sf}$): 選型係數異常偏高。通常暗示管路水量估算誤差過大，建議重新檢討 $V_s$。",
+                audit_heat_sf_high: "Heating $SF > 1.5$ ($SF={sf}$): 選型係數異常偏高。請確認壓力設定是否與安全閥一致。",
+                audit_p2_p1: "工程錯誤：極限壓力 $P_2$ 必須大於初充壓力 $P_1$。",
+                audit_acc_low: "Theoretical Acceptance Ratio $< 15\\%$：水箱利用率過低，將導致體積異常巨大，請檢討工作壓力區間。",
+                audit_p1_low: "初充壓力 $P_1 < 0.5\\text{ kg/cm}^2$：無法提供足夠靜壓，系統頂部存在氣塞與負壓損害風險。",
+                audit_dv_zero: "溫差不符膨脹定義（$T_2$ 密度應小於 $T_1$），計算結果為 0。",
+                audit_ok: "機電審查通過：參數設定合理，選型結果符合工程標準。"
+            },
+            en: {
+                app_title: "Expansion Tank Engineering Audit",
+                app_subtitle: "Selection & Verification Tool",
+                verified_text: "Verified for Process Utility / Wafer Fab Standards",
+                btn_help: "User Manual & Guide",
+                tab_heating: "Heating",
+                tab_cooling: "Cooling",
+                sec_design: "Design Parameters",
+                sub_fluid: "Fluid Properties",
+                label_vs: "Total System Volume $V_s$ (Liters)",
+                label_t1_heat: "Fill Temp $T_1$ (°C)",
+                label_t2_heat: "Max Op Temp $T_2$ (°C)",
+                desc_heat: "Heating Mode: Expansion from Ambient Filling (Cold) to Design Maximum (Hot).",
+                label_t1_cool: "Min Op Temp $T_1$ (°C)",
+                label_t2_cool: "Shutdown Eq. Temp $T_2$ (°C)",
+                desc_cool: "Cooling Mode: Expansion during Shutdown (Cold Operating to Ambient Warm).",
+                sub_press: "Pressure Limits",
+                label_p1: "Pre-charge Pressure $P_1$ (kg/cm²G)",
+                note_p1: "Static Head + 0.35",
+                label_p2: "Max Pressure $P_2$ (kg/cm²G)",
+                note_p2: "Relief Valve Setpoint",
+                sec_result: "Audit Simulation Result",
+                label_req_vol: "Required Nominal Volume ($V_t$)",
+                label_exp_vol: "Expansion $\\Delta V$:",
+                label_exp_rate: "Expansion Rate:",
+                label_acc_ratio: "Theoretical Acceptance Ratio",
+                label_acc_ratio_sub: "Acceptance Factor ($\\eta_{theo}$)",
+                note_acc: "Verify Actual Acceptance against manufacturer catalog.",
+                label_sf: "Selection Safety Factor ($SF$)",
+                label_sf_limit: "Engineering Limit",
+                label_sf_aggr: "Aggressive Sizing",
+                sec_audit: "Engineering Audit Log",
+                sec_assumptions: "Standard Assumptions",
+                ass_1: "Closed Loop System",
+                ass_2: "Pure Water (No Glycol)",
+                ass_3: "Rigid Piping",
+                ass_4: "Diaphragm / Bladder Type Tank",
+                footer_note: "Screenshot Audit Log for documentation after design.",
+                btn_confirm: "Confirm & Start Design",
+                // Help Modal
+                modal_title: "Engineering Audit SOP: Expansion Tank Selection",
+                modal_step1: "Step 1-2: System Mode & Definition",
+                modal_cool_def: "Cold → Warm. Expansion occurs when chillers stop and system warms up to ambient. Start at Min Op Temp ($7^\\circ\\text{C}$), End at Ambient ($35^\\circ\\text{C}$).",
+                modal_heat_def: "Warm → Hot. Expansion occurs from filling to max heating. Start at Fill Temp ($10^\\circ\\text{C}$), End at Max Op Temp ($80^\\circ\\text{C}$).",
+                modal_step3: "Step 3: Design Inputs",
+                th_cat: "Category", th_name: "Parameter", th_desc: "Description & Advice", th_note: "Note",
+                td_fluid: "Fluid Props", td_vs: "Total Volume $V_s$", td_vs_desc: "Sum of equipment, piping, and tanks.", td_core: "Key Base",
+                td_t1: "Start Temp $T_1$", td_t1_desc: "Cooling: Min Op; Heating: Ambient Fill.", td_max_rho: "Max Density",
+                td_t2: "End Temp $T_2$", td_t2_desc: "Cooling: Shutdown; Heating: Max Design.", td_min_rho: "Min Density",
+                td_press: "Pressure", td_p1: "Pre-charge $P_1$", td_p1_desc: "Static Head $+ 0.35 \\text{ kg/cm}^2$. Prevents negative pressure.", td_static: "Maintain Static",
+                td_p2: "Max Pressure $P_2$", td_p2_desc: "Safety Valve Setpoint. Must be < Equipment Rating.", td_limit: "Safety Limit",
+                modal_step4_est: "Step 4: Practical Estimations",
+                est_vol_title: "Volume Estimation Rule of Thumb ($V_s$)",
+                est_vol_1: "<strong>Precise:</strong> Equipment vol + Buffer Tanks + (Pipe Area × Length).",
+                est_vol_2: "<strong>Comfort HVAC:</strong> ~9 to 12 Liters / RT.",
+                est_vol_3: "<strong>Process Cooling (PCW):</strong> Longer piping, ~15 to 20 Liters / RT.",
+                est_press_title: "Pressure Setting Tips ($P_1, P_2$)",
+                est_press_1: "<strong>Pre-charge $P_1$:</strong> (System highest point elevation (m) ÷ 10) + 0.35. If tank is on roof, default to 1.0 or 1.5.",
+                est_press_2: "<strong>Max Limit $P_2$:</strong> Relief valve setpoint (e.g., 5.0). Must NOT exceed weakest equipment rating.",
+                est_press_3: "<strong>Working Range:</strong> If $P_1$ and $P_2$ are too close, acceptance ratio will be very low, resulting in a massive tank.",
+                modal_step4: "Step 5-6: Safety Factor & Audit Logic",
+                res_normal: "OK", res_normal_desc: "Parameters reasonable. Meets ASHRAE standards.",
+                res_warn: "WARNING", res_warn_desc: "Cooling SF > 1.3 or Heating SF > 1.5. Suggests low confidence in $V_s$ estimation.",
+                res_risk: "RISK", res_risk_desc: "Acceptance < 15% or P1 < 0.5. High risk of bursting or air locking.",
+                modal_step8: "Step 7: Troubleshooting",
+                th_err: "Issue", th_cause: "Cause", th_fix: "Fix",
+                td_err1: "Expansion $\\Delta V \\le 0$", td_cause1: "$T_2 \\le T_1$ (Wrong Direction)", td_fix1: "Adjust temps. $T_2$ density must be < $T_1$.",
+                td_err2: "Huge Tank Size $V_t$", td_cause2: "Pressure range ($P_2 - P_1$) too narrow", td_fix2: "Adjust $P_1$ or $P_2$ to increase Acceptance Ratio.",
+                td_err3: "Pre-charge Warning", td_cause3: "$P_1$ < Static Head", td_fix3: "Increase $P_1$ to prevent negative pressure.",
+                glycol_title: "🔧 Important Note on Glycol Systems",
+                glycol_p1: "This tool is based on Pure Water properties. If using Glycol:",
+                glycol_li1: "<strong>Expansion Rate</strong>: 30% Glycol expands ~15-20% more than water.",
+                glycol_li2: "<strong>Correction</strong>: Multiply result $V_t$ by 1.25 manually, or check chemical catalogs.",
+                glycol_li3: "<strong>Viscosity</strong>: Affects pressure drop, but density change is key for tank sizing.",
+                // Audit Messages
+                audit_cool_sf_high: "Cooling $SF > 1.3$ ($SF={sf}$): Safety factor too high. Re-verify $V_s$ estimation.",
+                audit_heat_sf_high: "Heating $SF > 1.5$ ($SF={sf}$): Safety factor too high. Check pressure settings.",
+                audit_p2_p1: "Engineering Error: $P_2$ must be greater than $P_1$.",
+                audit_acc_low: "Theoretical Acceptance Ratio $< 15\\%$: Tank utilization too low. Review pressure range.",
+                audit_p1_low: "Pre-charge $P_1 < 0.5\\text{ kg/cm}^2$: Insufficient static head. Risk of air lock.",
+                audit_dv_zero: "Temp difference invalid for expansion ($T_2$ density should be < $T_1$), result is 0.",
+                audit_ok: "Audit Passed: Parameters reasonable and meet engineering standards."
+            }
+        };
+
+        let currentMode = 'cooling';
+
+        function updateStaticText() {
+            document.querySelectorAll('[data-i18n]').forEach(el => {
+                const key = el.getAttribute('data-i18n');
+                if (i18nData[lang][key]) {
+                    el.innerHTML = i18nData[lang][key];
+                }
+            });
+        }
+
+        function getWaterDensity(temp) {
+            return 999.85 + (0.0678117 * temp) - (0.0090857 * temp**2) + (0.0001021 * temp**3) - (1.391e-6 * temp**4) + (6.71e-9 * temp**5);
+        }
+
+        function switchMode(mode) {
+            currentMode = mode;
+            document.getElementById('btnHeating').className = (mode === 'heating') ? 'tab-btn tab-active' : 'tab-btn';
+            document.getElementById('btnCooling').className = (mode === 'cooling') ? 'tab-btn tab-active' : 'tab-btn';
+            
+            const desc = document.getElementById('modeDescription');
+            const label1 = document.getElementById('temp1Label');
+            const label2 = document.getElementById('temp2Label');
+
+            if (mode === 'heating') {
+                document.getElementById('temp1').value = 10;
+                document.getElementById('temp2').value = 80;
+                desc.innerHTML = i18nData[lang].desc_heat;
+                label1.innerHTML = i18nData[lang].label_t1_heat;
+                label2.innerHTML = i18nData[lang].label_t2_heat;
+            } else {
+                document.getElementById('temp1').value = 7;
+                document.getElementById('temp2').value = 35;
+                desc.innerHTML = i18nData[lang].desc_cool;
+                label1.innerHTML = i18nData[lang].label_t1_cool;
+                label2.innerHTML = i18nData[lang].label_t2_cool;
+            }
+            calculate();
+        }
+
+        function toggleHelp() { document.getElementById('helpModal').classList.toggle('hidden'); }
+
+        function syncSF(val) {
+            document.getElementById('sfVal').innerText = parseFloat(val).toFixed(2);
+            calculate();
+        }
+
+        // Local Expansion Tank Calculation (Boyle's Law & Density formula)
+        async function calculate() {
+            const sysVol = parseFloat(document.getElementById('sysVol').value) || 0;
+            const temp1 = parseFloat(document.getElementById('temp1').value) || 0;
+            const temp2 = parseFloat(document.getElementById('temp2').value) || 0;
+            const press1 = parseFloat(document.getElementById('press1').value) || 0;
+            const press2 = parseFloat(document.getElementById('press2').value) || 0;
+            const sf = parseFloat(document.getElementById('sfSlider').value) || 1.2;
+
+            const rho1 = getWaterDensity(temp1);
+            const rho2 = getWaterDensity(temp2);
+
+            let expVol = 0;
+            let densRate = 0;
+            if (rho1 > rho2 && rho2 > 0) {
+                // Volume expands when density decreases
+                expVol = sysVol * ((rho1 / rho2) - 1);
+                densRate = (expVol / sysVol) * 100;
+            }
+
+            const p1_abs = press1 + 1.033; // 1 atm = 1.033 kg/cm2
+            const p2_abs = press2 + 1.033;
+            
+            let acceptanceRatio = 0;
+            if (press2 > press1) {
+                acceptanceRatio = (p2_abs - p1_abs) / p2_abs;
+            }
+
+            let totalVol = 0;
+            if (acceptanceRatio > 0 && expVol > 0) {
+                totalVol = (expVol * sf) / acceptanceRatio;
+            }
+
+            const acceptancePercent = acceptanceRatio * 100;
+
+            document.getElementById('expVol').innerText    = expVol.toFixed(3);
+            document.getElementById('totalVol').innerText  = totalVol.toFixed(1);
+            document.getElementById('densRate').innerText  = densRate.toFixed(3) + "%";
+            document.getElementById('acceptance').innerText = acceptancePercent.toFixed(1) + "%";
+            document.getElementById('sfVal').innerText     = sf.toFixed(2);
+            
+            runAudit(expVol, totalVol, press1, press2, acceptanceRatio, sf);
+            renderMath();
+        }
+
+        function runAudit(dv, vt, p1, p2, ratio, sf) {
+            const container = document.getElementById('auditContainer');
+            container.innerHTML = '';
+            let logs = [];
+
+            if (currentMode === 'cooling' && sf > 1.3) {
+                logs.push({type: 'warn', msg: i18nData[lang].audit_cool_sf_high.replace('{sf}', sf)});
+            }
+            if (currentMode === 'heating' && sf > 1.5) {
+                logs.push({type: 'warn', msg: i18nData[lang].audit_heat_sf_high.replace('{sf}', sf)});
+            }
+            if (p2 <= p1) {
+                logs.push({type: 'risk', msg: i18nData[lang].audit_p2_p1});
+            }
+            if (ratio < 0.15 && vt > 0) {
+                logs.push({type: 'risk', msg: i18nData[lang].audit_acc_low});
+            }
+            if (p1 < 0.5) {
+                logs.push({type: 'risk', msg: i18nData[lang].audit_p1_low});
+            }
+            if (dv <= 0 && vt === 0) {
+                logs.push({type: 'warn', msg: i18nData[lang].audit_dv_zero});
+            }
+
+            if (logs.length === 0 && vt > 0) {
+                logs.push({type: 'ok', msg: i18nData[lang].audit_ok});
+            }
+
+            logs.forEach(log => {
+                const d = document.createElement('div');
+                const colors = { risk: 'bg-red-600', warn: 'bg-amber-500', ok: 'bg-emerald-500' };
+                const textCol = { risk: 'text-red-800', warn: 'text-amber-800', ok: 'text-emerald-800' };
+                const bgCol = { risk: 'bg-red-50', warn: 'bg-amber-50', ok: 'bg-emerald-50' };
+                d.className = `text-[10px] font-black p-4 rounded-2xl border border-current/10 leading-relaxed animate-fade ${textCol[log.type]} ${bgCol[log.type]}`;
+                d.innerHTML = `<span class="${colors[log.type]} text-white px-2 py-0.5 rounded-md uppercase italic tracking-tighter mr-2 font-black">Audit</span> ${log.msg}`;
+                container.appendChild(d);
+            });
+        }
+
+        function renderMath() {
+            if (typeof renderMathInElement === 'function') {
+                renderMathInElement(document.body, { delimiters: [{left: '$', right: '$', display: false}] });
+            }
+        }
+
+        window.onload = () => {
+            updateStaticText();
+            switchMode('cooling');
+            setTimeout(renderMath, 500);
+        };
+    </script>
+</body>
+</html>

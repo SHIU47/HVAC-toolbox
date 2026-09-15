@@ -1,0 +1,33 @@
+"                        // VRM 設計
+                        [-0.12, 0.12].forEach(vx => {
+                            pushInst(instData.vrm, vx, ty + 0.005, -0.05, 0.08, 0.01, 0.04);
+                        });
+
+                        // 運算節點正面 (面板兩側) 明顯的 QDC 金屬盲插接頭
+                        pushInst(instData.qdcMale, -trayW / 2 + 0.035, ty, trayD / 2 + 0.015, 0.022, 0.022, 0.06);
+                        pushInst(instData.qdcMale, trayW / 2 - 0.035, ty, trayD / 2 + 0.015, 0.022, 0.022, 0.06);
+
+                        // 後方液冷盲插接頭 (配合 Manifold) - 移至後方 (trayD / 2 + 0.008)
+                        const qdcZ_Male = trayD / 2 + 0.008;
+                        const qdcZ_Female = trayD / 2 + 0.035;
+                        [-0.13, 0.13].forEach(qx => {
+                            pushInst(instData.qdcMale, qx, ty, qdcZ_Male, 0.018, 0.018, 0.035);
+                            pushInst(instData.qdcFemale, qx, ty, qdcZ_Female, 0.022, 0.022, 0.035);
+                        });
+
+                        // 冷卻板水管連接
+                        [-0.15, -0.05, 0.05, 0.15].forEach(tx => {
+                            pushInst(instData.coldTube, tx, ty + 0.01, 0.05, 0.006, 0.006, 0.38);
+                        });
+                    }
+                    else if (isSwitch) {
+                        pushInst(instData.pcb, 0, ty - uHeight * 0.25, 0, trayW * 0.92, 0.004, trayD * 0.88);
+                        
+                        // 大型 NVSwitch 核心晶片 (取代原本長條 SwitchPlate)
+                        pushInst(instData.switchPlate, 0, ty, 0, trayW * 0.5, 0.015, 0.35);
+
+                        // NVSwitch 正面面板高密度 OSFP 接口陣列 (排 24 個金屬方塊)
+                        for (let port = 0; port < 24; port++) {
+                            const px = -trayW / 2 + 0.03 + port * 0.018;
+                            pushInst(instData.osfpPort, px, ty, trayD / 2 + 0.005, 0.012, uHeight * 0.35, 0.02
+<truncated 9938 bytes>

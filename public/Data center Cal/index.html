@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PUE 計算系統 — 全球 8,760hr 年度能耗與水耗評估工具</title>
+    <link rel="icon" type="image/png" href="app_icon.png">
+    <!-- Google Fonts: Inter -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <!-- Tailwind CSS (Offline Local + CDN Fallback) -->
+    <script src="js/vendor/tailwind.min.js"></script>
+    <script>if (!window.tailwind) document.write('<script src="https://cdn.tailwindcss.com"><\\/script>');</script>
+    <script>
+        // v30 設計系統: 語意化 token 取代散落各檔案的 emerald/indigo/purple 直接色相 class。
+        // 一個深沉、低飽和的工程綠 (brand) 作為全站唯一強調色，中性 zinc 作為底色/邊框/文字。
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', '-apple-system', 'BlinkMacSystemFont', '"Segoe UI"', 'Roboto', 'sans-serif']
+                    },
+                    colors: {
+                        bg: '#FAFAFA',
+                        surface: '#FFFFFF',
+                        border: '#E4E4E7',
+                        'border-subtle': '#F1F1F3',
+                        primary: '#18181B',
+                        secondary: '#71717A',
+                        tertiary: '#A1A1AA',
+                        brand: {
+                            50: '#EEF5F2',
+                            100: '#D9EAE3',
+                            200: '#B3D5C6',
+                            300: '#7FB8A4',
+                            400: '#4C9A81',
+                            500: '#2F7E68',
+                            600: '#1F6354',
+                            700: '#16483F',
+                            800: '#0F332C',
+                            900: '#0A211D'
+                        },
+                        warn: { 50: '#FEF6E7', 500: '#B45309', 600: '#92400E' },
+                        danger: { 50: '#FDF1F0', 500: '#B3261E', 600: '#8C1D17' }
+                    }
+                }
+            }
+        }
+    </script>
+    <!-- Lucide 圖示 (Offline Local + CDN Fallback) -->
+    <script src="js/vendor/lucide.min.js"></script>
+    <script>if (!window.lucide) document.write('<script src="https://unpkg.com/lucide@latest"><\\/script>');</script>
+    <!-- Chart.js (Offline Local + CDN Fallback) -->
+    <script src="js/vendor/chart.min.js"></script>
+    <script>if (!window.Chart) document.write('<script src="https://cdn.jsdelivr.net/npm/chart.js"><\\/script>');</script>
+    <style>
+        body { font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; }
+        .tabular-nums { font-variant-numeric: tabular-nums; }
+    </style>
+</head>
+<body class="bg-bg text-primary min-h-screen flex flex-col antialiased">
+    <!-- Header -->
+    <header class="bg-surface border-b border-border sticky top-0 z-40 shadow-[0_1px_2px_rgba(24,24,27,0.04),0_2px_8px_rgba(24,24,27,0.03)]">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3 flex flex-col md:flex-row items-center justify-between gap-3">
+            <div class="flex items-center gap-3">
+                <img src="app_icon.png" class="w-9 h-9 rounded-lg shadow-[0_2px_6px_-1px_rgba(31,99,84,0.4)] object-cover" alt="PUE Logo">
+                <div>
+                    <h1 class="text-base font-semibold text-primary leading-tight">PUE 計算系統 <span class="text-[11px] px-2 py-0.5 rounded-md bg-brand-50 text-brand-700 font-medium ml-1">v30</span></h1>
+                    <p class="text-[11px] text-secondary"> 全球 8,760hr 年度PUE估算</p>
+                </div>
+            </div>
+
+            <div class="flex items-center gap-3 flex-wrap">
+                <!-- 專案存檔 / 開啟 / 重置控制 -->
+                <div class="flex items-center gap-1.5 bg-bg px-2.5 py-1.5 rounded-lg border border-border">
+                    <button onclick="window.App.exportProjectFile()" class="px-2.5 py-1 bg-surface hover:bg-border-subtle text-primary text-[11px] font-medium rounded-md border border-border transition flex items-center gap-1.5">
+                        <i data-lucide="save" class="w-3.5 h-3.5"></i> 儲存專案
+                    </button>
+                    <button onclick="document.getElementById('projectFileInput').click()" class="px-2.5 py-1 bg-surface hover:bg-border-subtle text-primary text-[11px] font-medium rounded-md border border-border transition flex items-center gap-1.5">
+                        <i data-lucide="folder-open" class="w-3.5 h-3.5"></i> 開啟專案
+                    </button>
+                    <input type="file" id="projectFileInput" accept=".json" class="hidden" onchange="window.App.importProjectFile(event)">
+                    <button onclick="window.App.resetProject()" class="px-2 py-1 bg-surface hover:bg-danger-50 hover:text-danger-600 text-tertiary text-[11px] font-medium rounded-md border border-border transition" title="重置為初始範例專案">
+                        <i data-lucide="rotate-ccw" class="w-3.5 h-3.5"></i>
+                    </button>
+                </div>
+
+                <!-- 常駐 KPI -->
+                <div class="flex items-center gap-3 bg-bg px-3.5 py-1.5 rounded-lg border border-border text-xs shadow-[inset_0_1px_2px_rgba(24,24,27,0.03)]">
+                    <div>
+                        <span class="text-[9px] font-medium text-tertiary uppercase tracking-wide">設計 PUE</span>
+                        <div class="text-sm font-semibold text-brand-600 tabular-nums" id="stickyPue">1.071</div>
+                    </div>
+                    <div class="border-l border-border pl-2.5">
+                        <span class="text-[9px] font-medium text-tertiary uppercase tracking-wide">耗水 WUE</span>
+                        <div class="text-sm font-semibold text-primary tabular-nums" id="stickyWue">0.00 L/kWh</div>
+                    </div>
+                    <div class="border-l border-border pl-2.5">
+                        <span class="text-[9px] font-medium text-tertiary uppercase tracking-wide">IT 容量</span>
+                        <div class="text-sm font-semibold text-primary tabular-nums" id="stickyIt">1.08 MW</div>
+                    </div>
+                    <div class="border-l border-border pl-2.5">
+                        <span class="text-[9px] font-medium text-tertiary uppercase tracking-wide" title="CDU 液冷自然冷卻時數佔比 (Free Cooling Ratio)">自然冷卻 FC</span>
+                        <div class="text-sm font-semibold text-brand-600 tabular-nums" id="stickyFc">100.0%</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 5 步驟導航條 -->
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-2 border-t border-border-subtle overflow-x-auto flex items-center gap-2">
+            <button data-step="1" class="step-btn flex items-center gap-2 px-3 py-2 rounded-lg transition bg-brand-50 text-brand-800 border border-brand-200 font-semibold">
+                <span class="step-circle w-6 h-6 rounded-md bg-brand-600 text-white flex items-center justify-center text-xs font-semibold">1</span>
+                <span class="step-title text-xs font-semibold text-brand-800">案場 8760h 氣象</span>
+            </button>
+            <span class="text-tertiary">›</span>
+            <button data-step="2" class="step-btn flex items-center gap-2 px-3 py-2 rounded-lg transition text-secondary hover:bg-border-subtle font-medium">
+                <span class="step-circle w-6 h-6 rounded-md bg-border text-secondary flex items-center justify-center text-xs font-semibold">2</span>
+                <span class="step-title text-xs font-medium text-secondary">Hall → DU → SU 模組</span>
+            </button>
+            <span class="text-tertiary">›</span>
+            <button data-step="3" class="step-btn flex items-center gap-2 px-3 py-2 rounded-lg transition text-secondary hover:bg-border-subtle font-medium">
+                <span class="step-circle w-6 h-6 rounded-md bg-border text-secondary flex items-center justify-center text-xs font-semibold">3</span>
+                <span class="step-title text-xs font-medium text-secondary">CorePOD 核心機房</span>
+            </button>
+            <span class="text-tertiary">›</span>
+            <button data-step="4" class="step-btn flex items-center gap-2 px-3 py-2 rounded-lg transition text-secondary hover:bg-border-subtle font-medium">
+                <span class="step-circle w-6 h-6 rounded-md bg-border text-secondary flex items-center justify-center text-xs font-semibold">4</span>
+                <span class="step-title text-xs font-medium text-secondary">逐 DU 雙冷卻系統</span>
+            </button>
+            <span class="text-tertiary">›</span>
+            <button data-step="5" class="step-btn flex items-center gap-2 px-3 py-2 rounded-lg transition text-secondary hover:bg-border-subtle font-medium">
+                <span class="step-circle w-6 h-6 rounded-md bg-border text-secondary flex items-center justify-center text-xs font-semibold">5</span>
+                <span class="step-title text-xs font-medium text-secondary">8,760h 成果儀表板</span>
+            </button>
+        </div>
+    </header>
+
+    <!-- Main Step Content Container -->
+    <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6" id="stepContent"></main>
+
+    <!-- Footer -->
+    <footer class="bg-surface border-t border-border py-4 text-center text-xs text-tertiary">
+        PUE 計算系統 &middot; 專業 AI 資料中心全生命週期能耗與耗水動力學評估工具
+    </footer>
+
+    <!-- Scripts -->
+    <script src="js/vendor/exceljs.min.js"></script>
+    <script>if (!window.ExcelJS) document.write('<script src="https://cdn.jsdelivr.net/npm/exceljs@4.4.0/dist/exceljs.min.js"><\\/script>');</script>
+    <script src="js/assumptions.js"></script>
+    <script src="js/engines_core.js"></script>
+    <script src="js/engines_cdu.js"></script>
+    <script src="js/engines_crah.js"></script>
+    <script src="js/engines_chiller.js"></script>
+    <script src="js/engines_cooling_tower.js"></script>
+    <script src="js/engines_free_cooling.js"></script>
+    <script src="js/engines_hx.js"></script>
+    <script src="js/engines_pump.js"></script>
+    <script src="js/weather_builtin.js"></script>
+    <script src="js/epw_parser.js"></script>
+    <script src="js/components/equipment_designer.js"></script>
+    <script src="js/device_catalog_builtin.js"></script>
+    <script src="js/catalog_manager.js"></script>
+    <script src="js/ui_kit.js"></script>
+    <script src="js/store.js"></script>
+    <script src="js/excel_export.js"></script>
+    <script src="js/views/view_weather.js"></script>
+    <script src="js/views/view_hall_su.js"></script>
+    <script src="js/views/view_corepod.js"></script>
+    <script src="js/views/view_cooling.js"></script>
+    <script src="js/views/view_dashboard.js"></script>
+    <script src="js/app.js"></script>
+</body>
+</html>

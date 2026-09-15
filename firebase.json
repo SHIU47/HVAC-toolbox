@@ -1,0 +1,87 @@
+{
+  "functions": {
+    "source": "functions"
+  },
+  "hosting": {
+    "public": "dist",
+    "redirects": [
+      {
+        "source": "/data center.html",
+        "destination": "/Data center.html",
+        "type": 301
+      },
+      {
+        "source": "/data-center.html",
+        "destination": "/Data center.html",
+        "type": 301
+      },
+      {
+        "source": "/data center Cal.html",
+        "destination": "/Data center Cal/index.html",
+        "type": 301
+      },
+      {
+        "source": "/Data center Cal.html",
+        "destination": "/Data center Cal/index.html",
+        "type": 301
+      },
+      {
+        "source": "/data-center-cal.html",
+        "destination": "/Data center Cal/index.html",
+        "type": 301
+      },
+      {
+        "source": "/Weather.html",
+        "destination": "/天氣資料/Weather_Pro.html",
+        "type": 301
+      },
+      {
+        "source": "/weather.html",
+        "destination": "/天氣資料/Weather_Pro.html",
+        "type": 301
+      },
+      {
+        "source": "/版熱計算器.html",
+        "destination": "/板熱計算器.html",
+        "type": 301
+      }
+    ],
+    "ignore": [
+      "firebase.json",
+      "**/.*",
+      "**/node_modules/**",
+      "**/archive/**",
+      "**/ZIP檔/**",
+      "**/舊版備份檔案/**",
+      "**/舊備份檔案/**",
+      "**/資料中心研究清單*/**"
+    ],
+    "headers": [
+      {
+        "source": "**",
+        "headers": [
+          {
+            "key": "X-Frame-Options",
+            "value": "SAMEORIGIN"
+          },
+          {
+            "key": "X-Content-Type-Options",
+            "value": "nosniff"
+          },
+          {
+            "key": "X-XSS-Protection",
+            "value": "1; mode=block"
+          },
+          {
+            "key": "Referrer-Policy",
+            "value": "strict-origin-when-cross-origin"
+          },
+          {
+            "key": "Permissions-Policy",
+            "value": "camera=(), microphone=(), geolocation=()"
+          }
+        ]
+      }
+    ]
+  }
+}

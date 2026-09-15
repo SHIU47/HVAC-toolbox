@@ -1,0 +1,115 @@
+{
+  "_meta": {
+    "version": "1.0",
+    "description": "液冷分配單元 CDU/XDU 型錄 (Cooling Distribution Unit / Heat Exchanger Distribution Unit)"
+  },
+
+  "Vertiv XDU 80kW": {
+    "category": "XDU",
+    "model": "Vertiv XDU 80kW",
+    "vendor": "Vertiv",
+    "cooling_capacity_kw": 80,
+    "power_kw": 3.5,
+    "flow_rate_lpm": 60,
+    "secondary_supply_temp_c": 20,
+    "primary_return_temp_c": 24,
+    "pump_type": "redundant",
+    "weight_kg": 180,
+    "notes": "液冷機架群分配，次側 20-24°C，支援 AI GPU rack"
+  },
+
+  "Vertiv XDU 150kW": {
+    "category": "XDU",
+    "model": "Vertiv XDU 150kW",
+    "vendor": "Vertiv",
+    "cooling_capacity_kw": 150,
+    "power_kw": 5.2,
+    "flow_rate_lpm": 100,
+    "secondary_supply_temp_c": 18,
+    "primary_return_temp_c": 24,
+    "pump_type": "redundant",
+    "weight_kg": 240,
+    "notes": "高容量 XDU，適用 NVIDIA H100/GB200 DGX 機架群"
+  },
+
+  "CoolIT CDU 100kW": {
+    "category": "CDU",
+    "model": "CoolIT CDU 100kW",
+    "vendor": "CoolIT Systems",
+    "cooling_capacity_kw": 100,
+    "power_kw": 4.2,
+    "flow_rate_lpm": 75,
+    "secondary_supply_temp_c": 20,
+    "primary_return_temp_c": 26,
+    "pump_type": "redundant",
+    "weight_kg": 160,
+    "notes": "OCP 標準 CDU，業界廣泛採用"
+  },
+
+  "Airedale CoolTrap CDU 200kW": {
+    "category": "CDU",
+    "model": "Airedale CoolTrap CDU 200kW",
+    "vendor": "Airedale",
+    "cooling_capacity_kw": 200,
+    "power_kw": 7.8,
+    "flow_rate_lpm": 140,
+    "secondary_supply_temp_c": 18,
+    "primary_return_temp_c": 26,
+    "pump_type": "N+1 redundant",
+    "weight_kg": 320,
+    "notes": "大型 CDU，支援多機架液冷環路"
+  },
+
+  "nVent CDU 60kW": {
+    "category": "CDU",
+    "model": "nVent CDU 60kW",
+    "vendor": "nVent",
+    "cooling_capacity_kw": 60,
+    "power_kw": 2.8,
+    "flow_rate_lpm": 40,
+    "secondary_supply_temp_c": 22,
+    "primary_return_temp_c": 28,
+    "pump_type": "single",
+    "weight_kg": 110,
+    "notes": "中型 CDU，適合 DLC 改裝機架"
+  },
+
+  "Schneider InRow 30kW": {
+    "category": "CRAH-InRow",
+    "model": "Schneider InRow 30kW",
+    "vendor": "Schneider Electric",
+    "cooling_capacity_kw": 30,
+    "power_kw": 2.2,
+    "flow_rate_lpm": 0,
+    "notes": "機列空調，不含泵，使用冷凍水側接"
+  },
+
+  "Vertiv Liebert DSE 40kW": {
+    "category": "CRAH-InRow",
+    "model": "Vertiv Liebert DSE 40kW",
+    "vendor": "Vertiv",
+    "cooling_capacity_kw": 40,
+    "power_kw": 2.8,
+    "flow_rate_lpm": 0,
+    "notes": "下送風冷凍水型 InRow，ECM 風機"
+  },
+
+  "Vertiv CoolChip CDU2300": {
+    "category": "CDU",
+    "model": "Vertiv CoolChip CDU2300",
+    "vendor": "Vertiv",
+    "cooling_capacity_kw": 2300,
+    "power_kw": 47.8,
+    "flow_rate_lpm": 3400,
+    "pump_type": "dual pump (N+1)",
+    "external_pressure_drop_bar": 3.2,
+    "weight_kg": 1971,
+    "dimensions_mm": { "width": 1200, "depth": 1200, "height": 2300 },
+    "primary_coolant": "water or water/glycol",
+    "secondary_coolant": "water or water/glycol",
+    "notes": "資料來源：使用者提供的 Vertiv 官方「CoolChip CDU2300 (2.3MW) 液冷CDU 安裝調試與維護手冊」(Installation, Commissioning and Maintenance Guide)，真實工程數據非型錄泛用值。2300kW=容量分類命名(2.3MW)，非單獨額定測試值；47.8kW為雙泵運轉模式下的最大耗電量(Table 4.6 Maximum power consumption)，換算EER概念值=2300/47.8≈48.1(純泵浦驅動之液對液熱交換，無壓縮機)。3400 lpm為雙泵運轉最大流量，對應外部管路壓降3.2 bar。電氣規格：400V±10% 50/60Hz，FLA 77.4A(with ATS)/76.7A(without ATS)，MCA 87A。操作重量1971kg含滿水重量。",
+    "_source": "[Vertiv] CoolChip CDU2300 (2.3MW) 液冷CDU [安裝調試與維護手冊].pdf Table 4.1/4.5/4.6 (p.15-16)",
+    "_ai_confidence": 0.95,
+    "_verified": false
+  }
+}

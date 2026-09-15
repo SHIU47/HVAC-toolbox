@@ -1,0 +1,29 @@
+{
+  "_meta": {
+    "schema_version": "1.1",
+    "category": "ups",
+    "description": "UPS 不斷電系統型錄 AI 填入範本",
+    "ai_fill_guide": {
+      "efficiency_pct":      "雙轉換在線 (Online Double Conversion) 滿載效率 %",
+      "efficiency_eco_pct":  "ECO 模式效率 % (通常 99-99.5%)，若規格書有提供",
+      "capacity_kva":        "額定容量 kVA",
+      "power_factor":        "輸出功率因數，新型機種多為 1.0 (kVA = kW)"
+    },
+    "field_definitions": {
+      "model":               "完整型號名稱",
+      "vendor":              "廠牌名稱",
+      "capacity_kva":        "額定容量 kVA",
+      "power_factor":        "功率因數 (0.9 or 1.0)",
+      "efficiency_pct":      "雙轉換滿載效率 %",
+      "efficiency_eco_pct":  "ECO 模式效率 % (選填)",
+      "topology":            "Double Conversion Online / Line Interactive / etc.",
+      "battery_type":        "VRLA / Li-Ion / NiCd",
+      "redundancy_modes":    "支援備援模式 [N, N+1, 2N]",
+      "weight_kg":           "設備重量 kg (選填)",
+      "notes":               "應用說明",
+      "_source":             "資料來源",
+      "_ai_confidence":      "0.0~1.0",
+      "_verified":           "true/false"
+    }
+  }
+}
