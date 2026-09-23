@@ -84,6 +84,12 @@ function freshCtx() {
   test('P0-1 addCorePod() adds its IT load to overall.totalItKw', () => {
     assert(S.state.results.overall.totalItKw > beforeIt, `totalItKw ${S.state.results.overall.totalItKw} should be > ${beforeIt}`);
   });
+  test('P0-1 deserializeProject preserves/defaults missing enabled to true', () => {
+    const rawState = JSON.parse(JSON.stringify(S.state));
+    delete rawState.corePods[0].enabled;
+    S.deserializeProject(JSON.stringify({ state: rawState }));
+    assert.strictEqual(S.state.corePods[0].enabled, true, 'missing enabled should default to true');
+  });
 })();
 
 // ── P0-2: water_chiller 架構要抓到 Step4 選型的冰機（改選高 COP 型號一定要影響結果）──

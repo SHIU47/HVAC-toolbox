@@ -221,7 +221,10 @@
                     this.state.halls = stateData.halls;
                 }
                 if (stateData.corePods && Array.isArray(stateData.corePods)) {
-                    this.state.corePods = stateData.corePods;
+                    this.state.corePods = stateData.corePods.map(pod => ({
+                        ...pod,
+                        enabled: pod.enabled !== false
+                    }));
                 }
                 if (stateData.assumptions_override) {
                     this.state.assumptions_override = stateData.assumptions_override;
@@ -461,6 +464,10 @@
             const newPod = {
                 id: podId,
                 name: data.name || `CorePOD-${letter} (核心網通/集中儲存)`,
+                // P0-1 fix: 沒有這個欄位時，calculate()/canProceedStep4() 用的
+                // `p.enabled` 過濾（嚴格真值）會把新增的 CorePOD 整組排除在 PUE
+                // 計算與 N+1 檢核之外，即使它明明出現在 Step4 畫面和 Excel 匯出。
+                enabled: (data.enabled !== undefined) ? data.enabled : true,
                 topologyMode: data.topologyMode || 'dedicated',
                 electricalLossFactorPct: 0.0,
                 equipment: data.equipment ? JSON.parse(JSON.stringify(data.equipment)) : [
@@ -1158,7 +1165,9 @@
                 });
             });
 
-            this.state.corePods.filter(p => p.enabled).forEach(pod => {
+            // P0-1 fix: 跟 view_cooling.js / excel_export.js 使用同一個判定
+            // (`!== false`)，避免缺 `enabled` 欄位的舊專案 CorePOD 被悄悄排除。
+            this.state.corePods.filter(p => p.enabled !== false).forEach(pod => {
                 checkSys(pod.name, pod.id, pod.plantDesign.cduSystem, true);
                 checkSys(pod.name, pod.id, pod.plantDesign.fanwallSystem, false);
             });
@@ -1861,7 +1870,8 @@
             let totalCorePodItKwh = 0;
             let totalCorePodWaterM3 = 0;
 
-            this.state.corePods.filter(p => p.enabled).forEach(pod => {
+            // P0-1 fix: 同上，改用 `!== false` 跟 UI/Excel 一致
+            this.state.corePods.filter(p => p.enabled !== false).forEach(pod => {
                 const ps = this.calcCorePodSummary(pod);
                 const podLossKw = ps.totalItKw * (facilityLossPct / 100);
                 this.bridgeDuToPlantModel(pod, ps);
