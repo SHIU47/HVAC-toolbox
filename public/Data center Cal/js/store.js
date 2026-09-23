@@ -323,7 +323,9 @@
                 airHeatKw += s.airHeatKw;
             });
             const dlcPct = totalItKw > 0 ? (liquidHeatKw / totalItKw) * 100 : 0;
-            return { totalItKw, liquidHeatKw, airHeatKw, dlcPct, lossKw: 0 };
+            const lossPct = (this.state && this.state.facilityElectricalLossPct) ? this.state.facilityElectricalLossPct : 0;
+            const lossKw = totalItKw * (lossPct / 100);
+            return { totalItKw, liquidHeatKw, airHeatKw, dlcPct, lossKw };
         },
 
         calcHallSummary(hall) {
@@ -335,7 +337,9 @@
                 airHeatKw += d.airHeatKw;
             });
             const dlcPct = totalItKw > 0 ? (liquidHeatKw / totalItKw) * 100 : 0;
-            return { totalItKw, liquidHeatKw, airHeatKw, dlcPct, lossKw: 0 };
+            const lossPct = (this.state && this.state.facilityElectricalLossPct) ? this.state.facilityElectricalLossPct : 0;
+            const lossKw = totalItKw * (lossPct / 100);
+            return { totalItKw, liquidHeatKw, airHeatKw, dlcPct, lossKw };
         },
 
         calcCorePodSummary(pod) {
@@ -350,7 +354,9 @@
                 airHeatKw += air;
             });
             const dlcPct = totalItKw > 0 ? (liquidHeatKw / totalItKw) * 100 : 0;
-            return { totalItKw, liquidHeatKw, airHeatKw, dlcPct, lossKw: 0 };
+            const lossPct = (this.state && this.state.facilityElectricalLossPct) ? this.state.facilityElectricalLossPct : 0;
+            const lossKw = totalItKw * (lossPct / 100);
+            return { totalItKw, liquidHeatKw, airHeatKw, dlcPct, lossKw };
         },
 
         setFacilityElectricalLossPct(pct) {
@@ -1690,6 +1696,9 @@
                 ? 'free'
                 : ((cduMode === 'mechanical' && fwMode === 'mechanical') ? 'mechanical' : 'partial');
 
+            // P1-2: 實際移除熱量 = 需冷卻之總熱量 (液冷熱 + 氣冷熱 + 損失熱) - 容量缺口
+            const heatRemovedKw = Math.max(0, summ.liquidHeatKw + airHeatTotal - capacityDeficitKw);
+
             return {
                 // v42 fix: 這個欄位是「全廠泵浦耗電(pPUE刻意排除的那塊)」的加總，不是只有CDU一次泵，
                 // 名稱沿用 cduPumpKw 是為了不動到所有既有呼叫端(duKwh/podKwh/hourlyFacilityStats
@@ -1702,6 +1711,7 @@
                 waterM3,
                 isFreeHour,
                 capacityDeficitKw,
+                heatRemovedKw,
                 cduMode,
                 fwMode,
                 combinedMode,
@@ -1794,6 +1804,7 @@
             const byDuResults = [];
             let totalAllItKw = 0;
             let totalAllWaterM3 = 0;
+            let totalAllHeatRemovedKwh = 0;
             let overallKwh = { it: 0, cduPump: 0, crahFan: 0, heatRejection: 0, chiller: 0, loss: 0 };
             let monthlyStats = Array.from({ length: 12 }, () => ({ totalKwh: 0, itKwh: 0, coolKwh: 0 }));
             const hourlyFacilityStats = Array.from({ length: 8760 }, () => ({
@@ -1810,6 +1821,7 @@
                 hall.dus.forEach(du => {
                     const duSumm = this.calcDuSummary(du);
                     const duLossKw = duSumm.totalItKw * (facilityLossPct / 100);
+                    duSumm.lossKw = duLossKw;
                     totalAllItKw += duSumm.totalItKw;
 
                     this.bridgeDuToPlantModel(du, duSumm);
@@ -1840,6 +1852,7 @@
                         duKwh.chiller += hr.chillerKw;
                         duKwh.loss += duLossKw;
                         duWaterM3 += hr.waterM3;
+                        totalAllHeatRemovedKwh += hr.heatRemovedKw;
                         if (hr.isFreeHour) duFcHours++;
                         if (hr.capacityDeficitKw > 0) {
                             duDeficitHours++;
@@ -1934,6 +1947,7 @@
             this.state.corePods.filter(p => p.enabled !== false).forEach(pod => {
                 const ps = this.calcCorePodSummary(pod);
                 const podLossKw = ps.totalItKw * (facilityLossPct / 100);
+                ps.lossKw = podLossKw;
                 this.bridgeDuToPlantModel(pod, ps);
                 totalCorePodItKw += ps.totalItKw;
                 totalAllItKw += ps.totalItKw;
@@ -1963,6 +1977,7 @@
                     podKwh.chiller += hr.chillerKw;
                     podKwh.loss += podLossKw;
                     podWaterM3 += hr.waterM3;
+                    totalAllHeatRemovedKwh += hr.heatRemovedKw;
                     if (hr.isFreeHour) podFcHours++;
                     if (hr.capacityDeficitKw > 0) {
                         podDeficitHours++;
@@ -2084,13 +2099,12 @@
 
             const hvacTotalKwh = overallKwh.cduPump + overallKwh.crahFan + overallKwh.heatRejection + overallKwh.chiller;
             const totalGenHeatKwh = overallKwh.it + overallKwh.loss;
-            // v32 Phase 9-8: 用「未四捨五入」的 lossKw(kW，非之前重建自四捨五入 lossMwh 的近似值)，
-            // 讓 liquid_heat_kwh/air_heat_kwh 是從 byDu/byCorePod 逐項獨立重新加總算出來的，
-            // 跟 overallKwh 是兩條不同的計算路徑 — 這才是真正有意義的 double-entry 交叉驗證，
-            // 不是「反正這個值本來就等於那個值」的套套邏輯。
+            // P1-2: 用未四捨五入的 lossKw 獨立加總 liquid/air 熱量；
+            // totalHeatRemovedKwh 改用 8760h 逐時實際移除之 heatRemovedKw (扣除容量缺口)，
+            // 真正達成 double-entry 交叉驗證：若有任何小時容量不足，totalHeatRemovedKwh < totalGenHeatKwh。
             const totalLiquidHeatKwh = byDuResults.reduce((s, d) => s + (d.liquidHeatKw * 8760), 0) + byCorePodResults.reduce((s, p) => s + (p.liquidHeatKw * 8760), 0);
             const totalAirHeatKwh = byDuResults.reduce((s, d) => s + (((d.airHeatKw || 0) + (d.lossKw || 0)) * 8760), 0) + byCorePodResults.reduce((s, p) => s + (((p.airHeatKw || 0) + (p.lossKw || 0)) * 8760), 0);
-            const totalHeatRemovedKwh = totalLiquidHeatKwh + totalAirHeatKwh;
+            const totalHeatRemovedKwh = totalAllHeatRemovedKwh;
             const thermalImbalanceKwh = totalGenHeatKwh - totalHeatRemovedKwh;
             // 相對容差(百萬分之一)取代絕對 1e-3，因為年度熱量常是百萬 kWh 等級的數字，
             // 絕對容差在這個量級下沒有意義；同時保留一個很小的絕對下限應付近零負載的極端情況。

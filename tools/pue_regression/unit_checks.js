@@ -236,6 +236,40 @@ function freshCtx() {
   });
 })();
 
+// ── P1-2: 損失熱計算與動態熱平衡帳本 ─────────────────────────────────────
+(function () {
+  const ctx = freshCtx();
+  const S = ctx.AppStore;
+
+  // Test 1: calcHourlyEnergy returns heatRemovedKw
+  S.calculate();
+  const du = S.state.halls[0].dus[0];
+  const duSumm = S.calcDuSummary(du);
+  const totalHeat = duSumm.liquidHeatKw + duSumm.airHeatKw + duSumm.lossKw;
+  const hrNormal = S.calcHourlyEnergy(du.plantDesign, duSumm, { db: 25, wb: 20 });
+  test('P1-2 calcHourlyEnergy returns heatRemovedKw equal to total heat when no deficit', () => {
+    assert.strictEqual(hrNormal.capacityDeficitKw, 0);
+    assert(Math.abs(hrNormal.heatRemovedKw - totalHeat) < 1e-4);
+  });
+
+  const hrDeficit = S.calcHourlyEnergy(du.plantDesign, duSumm, { db: 45, wb: 35 });
+  test('P1-2 calcHourlyEnergy heatRemovedKw subtracts capacityDeficitKw', () => {
+    assert(hrDeficit.capacityDeficitKw > 0, 'extreme weather should trigger capacity deficit');
+    assert(Math.abs(hrDeficit.heatRemovedKw - (totalHeat - hrDeficit.capacityDeficitKw)) < 1e-4);
+  });
+
+  // Test 2: setFacilityElectricalLossPct propagates to byDu and thermalLedger
+  S.setFacilityElectricalLossPct(5);
+  const byDu = S.state.results.byDu[0];
+  const ledger = S.state.results.overall.thermalLedger;
+
+  test('P1-2 setFacilityElectricalLossPct sets lossKw and reflects in thermalLedger', () => {
+    assert.strictEqual(byDu.lossKw, byDu.totalItKw * 0.05);
+    assert(ledger.loss_heat_kwh > 0);
+    assert(Math.abs(ledger.total_heat_generated_kwh - (ledger.it_heat_kwh + ledger.loss_heat_kwh)) < 1e-4);
+  });
+})();
+
 console.log(`\n${passCount} passed, ${failCount} failed, ${skipCount} skipped`);
 process.exit(failCount > 0 ? 1 : 0);
 
