@@ -726,6 +726,40 @@
             return false;
         },
 
+        designConditions() {
+            if (this.state.site.design) return this.state.site.design;
+            const hourly = this.state.site.hourly;
+            let designDb, designWb, maxDb;
+            if (hourly && hourly.length >= 8760) {
+                const dbSorted = hourly.map(h => h.db).sort((a, b) => b - a);
+                const wbSorted = hourly.map(h => h.wb).sort((a, b) => b - a);
+                designDb = dbSorted[34]; // 35th largest (0.4% exceedance: 8760 * 0.004 = 35.04)
+                designWb = wbSorted[34];
+                maxDb = dbSorted[0];
+            } else {
+                maxDb = this.state.site.stats?.maxDB ?? 38.0;
+                designDb = this.state.site.stats?.maxDB ?? 35.0;
+                designWb = (typeof A === 'function') ? A('design_wb_fallback_c') : 28.0;
+            }
+            this.state.site.design = { designDb, designWb, maxDb };
+            return this.state.site.design;
+        },
+
+        trimOperatingPoint(cduSys, db_c) {
+            const dcApp   = cduSys.dryCoolerApproachC ?? 5.0;          // 乾冷器 approach
+            const pheApp  = cduSys.pheApproachC ?? 2.0;                // Primary HX approach
+            const tSup    = cduSys.fwsSupplyC ?? 40.0;
+            const tRet    = cduSys.fwsReturnC ?? 55.0;
+            const tDc     = db_c + dcApp;                              // 乾冷器出水
+            const eco     = FreeCoolingEngine.calcSeriesEconomizer(tDc + pheApp, tSup, tRet);
+            const tPre    = eco.t_precooled_c;                         // FWS 經 Primary HX 預冷後溫度
+            const tChws   = cduSys.trimChwSupplyC ?? Math.min(30, tSup - 7);   // 與 view_cooling.js:724 同一公式
+            const minCewt = (typeof A === 'function') ? A('min_cewt_c') : 16.0;
+            // 乾冷器側水在 Primary HX 吸收預冷熱後進冷凝器（平衡流量假設，與拓樸圖一致）
+            const tCewt   = Math.max(minCewt, tDc + (tRet - tPre));
+            return { ...eco, tDc, tPre, tChws, tCewt, tRet, tSup };
+        },
+
         // V21 依架構生成專屬的 sizing 清單
         generateCduSizing(arch, reqKw, hydKw) {
             const minCduUnits = Math.max(1, Math.ceil(reqKw / 100));
@@ -770,7 +804,10 @@
                 { model: 'Trane RTHD 800kW Water Chiller (COP 6.2)', capKw: 800, cop: 6.2 },
                 { model: 'York YVWH 1000kW VFD Chiller (COP 6.5)', capKw: 1000, cop: 6.5 }
             ];
-            const trimReqKw = Math.max(50, Math.round(reqKw * 0.35)); // NVIDIA Mode 2 Trim 負擔約 35% 尖峰修整量
+            const designCond = this.designConditions();
+            const dummyCduSys = { fwsSupplyC: 40.0, fwsReturnC: 55.0, dryCoolerApproachC: 5.0, pheApproachC: 2.0 };
+            const opDesign = this.trimOperatingPoint(dummyCduSys, designCond.designDb);
+            const trimReqKw = Math.max(50, Math.round(reqKw * opDesign.chiller_fraction));
             const minTrimUnits = Math.max(1, Math.ceil(trimReqKw / (trimChillerCat[0]?.capKw || 500)));
             const trimChiller = {
                 key: 'trim_chiller',
@@ -781,7 +818,8 @@
                 unitCapKw: trimChillerCat[0]?.capKw || 500,
                 selectedQty: minTrimUnits + 1,
                 requiredKw: trimReqKw,
-                requiredUnitsN1: minTrimUnits + 1
+                requiredUnitsN1: minTrimUnits + 1,
+                peakRatio: opDesign.chiller_fraction
             };
 
             if (arch === 'dry_cooler_trim' || arch === 'dry_cooler_hx') {
@@ -1288,9 +1326,9 @@
             const cycles = cduSys.cyclesOfConcentration || 5;
 
             // === CDU 液冷系統 (以 Step 4 水溫設定為唯一基準) ===
-            const cduApproach = cduSys.dryCoolerApproachC || 5.0;
+            const dcApproach = cduSys.dryCoolerApproachC || 5.0;
             const pheApproach = (cduArch === 'dry_cooler_trim' || cduArch === 'dry_cooler_hx') ? (cduSys.pheApproachC ?? 2.0) : 0.0;
-            const freeThresh = cduSys.fwsSupplyC - cduApproach - pheApproach;
+            const freeThresh = cduSys.fwsSupplyC - dcApproach - pheApproach;
             const mechThresh = freeThresh + 5.7;
 
             // v31 Phase 2: CDU主機本身 + 一次側循環泵，一律先用 Step4 選定的真實設備算，
@@ -1351,23 +1389,21 @@
                     cduMode = isFc ? 'free' : 'partial';
                     // 當外氣大於門檻且無冰機時，觸發氣候水溫超標 (Thermal Deficit)
                     if (!isFc) {
-                        const actualSupplyC = w.db + cduApproach + pheApproach;
+                        const actualSupplyC = w.db + dcApproach + pheApproach;
                         const tempOvershoot = actualSupplyC - cduSys.fwsSupplyC;
                         const unservedRatio = Math.min(1.0, tempOvershoot / Math.max(1.0, cduSys.fwsReturnC - cduSys.fwsSupplyC));
                         capacityDeficitKw += Math.round(summ.liquidHeatKw * unservedRatio);
                     }
                 } else if (cduArch === 'dry_cooler_trim' || cduArch === 'dry_cooler_hx') {
                     // NVIDIA DSX 標準混合三模式 (乾冷器預冷 + 串聯修整冰機)
-                    const dcFc = (typeof FreeCoolingEngine !== 'undefined')
-                        ? FreeCoolingEngine.calcDryCoolerFC(w.db, { dry_cooler_approach_c: cduApproach, hx_approach_c: pheApproach, t_supply_cdu_c: cduSys.fwsSupplyC })
-                        : null;
-                    const dcIsFullFc = dcFc ? (dcFc.mode === FreeCoolingEngine.MODE.FULL_FC) : (w.db <= freeThresh);
-                    const dcChillerFraction = dcFc ? dcFc.chiller_fraction : (w.db <= mechThresh ? 0 : 1);
+                    const op = this.trimOperatingPoint(cduSys, w.db);
+                    const dcIsFullFc = (op.mode === FreeCoolingEngine.MODE.FULL_FC);
+                    const trimLoadKw = summ.liquidHeatKw * op.chiller_fraction;
 
                     const dcItem = (cduSys.sizing || []).find(s => s.key === 'dry_cooler');
                     const dcDevices = this.resolveTowerFromSizing(dcItem);
                     const dcFanKw = (dcDevices.length > 0 && typeof CoolingTowerEngine !== 'undefined')
-                        ? CoolingTowerEngine.calcFanPower(dcDevices, cduLoadRatio, dcIsFullFc, cduFanMinSpeed)
+                        ? CoolingTowerEngine.calcFanPower(dcDevices, dcIsFullFc ? cduLoadRatio : 1.0, dcIsFullFc, cduFanMinSpeed)
                         : null;
                     if (dcIsFullFc) {
                         const fanRatio = Math.max(0.15, Math.min(1.0, (w.db + 273.15) / (freeThresh + 273.15)));
@@ -1378,18 +1414,15 @@
                         cduHeatRejKw += dcFanKw ?? ((summ.liquidHeatKw / 500) * 15.0);
                         const trimItem = (cduSys.sizing || []).find(s => s.key === 'trim_chiller');
                         const trimChillers = this.resolveChillerFromSizing(trimItem, 'water_cooled');
-                        const trimLoadKw = summ.liquidHeatKw * dcChillerFraction;
                         if (trimChillers.length > 0 && typeof ChillerEngine !== 'undefined' && trimLoadKw > 0) {
                             const staging = ChillerEngine.calcLeadLagStaging(trimLoadKw, trimChillers);
-                            const minCewt = (typeof A === 'function') ? A('min_cewt_c') : 16.0;
-                            const T_cewt = Math.max(minCewt, w.db + (cduSys.cduApproachC || 5.0));
-                            const chRes = trackChillerDeficit(ChillerEngine.calcPower(trimLoadKw, staging.staged, cduSys.fwsSupplyC, T_cewt, w.db));
+                            const chRes = trackChillerDeficit(ChillerEngine.calcPower(trimLoadKw, staging.staged, op.tChws, op.tCewt, w.db));
                             cduChillerKw += chRes.power_kw;
                         } else if (trimLoadKw > 0) {
                             const trimCop = trimItem?.catalog?.find(c => c.model === trimItem.selectedModel)?.cop || 6.2;
                             cduChillerKw += trimLoadKw / trimCop;
                         }
-                        cduMode = (dcChillerFraction < 1.0) ? 'partial' : 'mechanical';
+                        cduMode = (op.mode === FreeCoolingEngine.MODE.PARTIAL_FC) ? 'partial' : 'mechanical';
                     }
                 } else if (cduArch === 'adiabatic_tower') {
                     // BAC TrilliumSeries 絕熱冷卻塔 (Adiabatic Tower) — 100% 自然排熱 (零冰機)
@@ -2245,17 +2278,21 @@
                 // 全額設備一樣被要求覆蓋 reqCduKw，逼使用者多買遠超過設計意圖的冰機容量。
                 // 換算比例須與 generateCduSizing() 產生 trimReqKw 時用的 0.35 保持一致。
                 if (s.key === 'trim_chiller') {
-                    const fcThresh = (cduSys.fwsSupplyC || 40.0) - (cduSys.dryCoolerApproachC || 5.0) - (cduSys.pheApproachC ?? 2.0);
-                    const peakDb = 38.0;
-                    const dtSec = Math.max(1.0, (cduSys.secReturnC || 57.0) - (cduSys.secSupplyC || 45.0));
-                    const peakRatio = (peakDb <= fcThresh) ? 0.35 : Math.min(1.0, Math.max(0.35, (peakDb - fcThresh) / dtSec));
-                    s.requiredKw = Math.max(50, Math.round(reqCduKw * peakRatio));
-                    s.peakRatio = peakRatio;
-                    // v43: 「典型修整負載(peakRatio，多半落在35%附近)」跟「Mode 3 全機械製冷時
-                    // 最大可能負擔(100%液冷負載)」是兩件不同的事——上面的 requiredKw/passed 只檢查
-                    // 前者。這裡額外算一個不影響現有 passed 判定的「全機械最大需求」供 UI 額外顯示，
-                    // 讓使用者自己看得到兩個數字，不會誤把「典型工況通過」當成「任何天氣都夠用」。
-                    s.maxMechanicalKw = reqCduKw;
+                    const designCond = this.designConditions();
+                    const opDesign = this.trimOperatingPoint(cduSys, designCond.designDb);
+                    const opMax = this.trimOperatingPoint(cduSys, designCond.maxDb);
+                    s.peakRatio = opDesign.chiller_fraction;
+                    s.requiredKw = Math.max(50, Math.round(reqCduKw * opDesign.chiller_fraction));
+                    s.maxMechanicalKw = Math.round(reqCduKw * opMax.chiller_fraction);
+                }
+                if (s.key === 'dry_cooler') {
+                    const designCond = this.designConditions();
+                    const opDesign = this.trimOperatingPoint(cduSys, designCond.designDb);
+                    const trimLoadKw = reqCduKw * opDesign.chiller_fraction;
+                    const trimItem = (cduSys.sizing || []).find(x => x.key === 'trim_chiller');
+                    const trimCop = trimItem?.catalog?.find(c => c.model === trimItem.selectedModel)?.cop || 5.8;
+                    const trimDesignPowerKw = trimLoadKw > 0 ? trimLoadKw / trimCop : 0;
+                    s.requiredKw = Math.round(reqCduKw + trimDesignPowerKw);
                 }
 
                 const curItem = s.catalog.find(c => c.model === s.selectedModel) || s.catalog[0];

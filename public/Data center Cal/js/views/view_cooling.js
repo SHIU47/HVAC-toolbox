@@ -285,9 +285,9 @@
             cduSys.secReturnC = cduSys.secReturnC || 57.0;
             cduSys.cduApproachC = cduSys.cduApproachC || 3.0;
 
-            const cduApproach = cduSys.dryCoolerApproachC || 5.0;
+            const dcApproach = cduSys.dryCoolerApproachC || 5.0;
             const pheApproach = (arch === 'dry_cooler_trim' || arch === 'dry_cooler_hx') ? (cduSys.pheApproachC ?? 2.0) : 0.0;
-            const cduFcThresh = (cduSys.fwsSupplyC - cduApproach - pheApproach).toFixed(1);
+            const cduFcThresh = (cduSys.fwsSupplyC - dcApproach - pheApproach).toFixed(1);
             const mode1DbMax = parseFloat(cduFcThresh);
             const mode2DbMax = (mode1DbMax + 5.7).toFixed(1);
 
@@ -674,7 +674,7 @@
             let rejStroke = '#14b8a6';
             let rejIconSvg = '<circle cx="710" cy="62" r="12" fill="#0f766e" stroke="#2dd4bf" stroke-width="1" /><path d="M 710 53 L 710 71 M 701 62 L 719 62" stroke="#ccfbf1" stroke-width="1.5" />';
             let rejLine1 = '零耗水自然風冷';
-            let rejLine2 = `Approach: ${cduApproach}°C ｜ 門檻: ≤${cduFcThresh}°C DB`;
+            let rejLine2 = `Approach: ${dcApproach}°C ｜ 門檻: ≤${cduFcThresh}°C DB`;
 
             if (arch === 'adiabatic_tower') {
                 rejTitle = '絕熱冷卻塔 (Adiabatic Tower)';
@@ -704,7 +704,7 @@
                 rejTitle = '乾冷器 (Dry Cooler)';
                 rejSub = '純自然冷卻 (零冰機・WUE=0)';
                 rejLine1 = '100% 自然風冷，全年零冰機';
-                rejLine2 = `Approach: ${cduApproach}°C ｜ 無機械備援 (需高於門檻時降載)`;
+                rejLine2 = `Approach: ${dcApproach}°C ｜ 無機械備援 (需高於門檻時降載)`;
             }
 
             const liqLoadKw = (cduSys.designBasis?.liq_load_kw || t.summ.liquidHeatKw || 0);
@@ -717,11 +717,14 @@
             const trimChillerModel = trimChillerItem?.selectedModel || 'Carrier 30XW-500kW (COP 5.8)';
 
             // 專業廠務工程 P&ID 拓樸架構 — 確切單點物理設計水溫
-            const precoolTemp = Number((cduSys.fwsSupplyC + (cduSys.fwsReturnC - cduSys.fwsSupplyC) * 0.4).toFixed(1));
-            const dcWaterSupplyExact = (cduSys.fwsSupplyC - pheApproach).toFixed(1); // 乾冷器供水設計溫 (如 35.0°C)
-            const condWaterEnterExact = (cduSys.fwsReturnC - pheApproach).toFixed(1); // 預冷後進冷凝器設計溫 (如 45.0°C)
-            const condWaterLeaveExact = (cduSys.fwsReturnC - pheApproach + 4.8).toFixed(1); // 冷凝排熱總回水設計溫 (如 49.8°C)
-            const chwSupplyTemp = Math.min(30, cduSys.fwsSupplyC - 7); // 冰機供水設計溫 (如 30.0°C)
+            const designCond = (typeof AppStore !== 'undefined' && AppStore.designConditions) ? AppStore.designConditions() : { designDb: 35.0 };
+            const opTrim = (typeof AppStore !== 'undefined' && AppStore.trimOperatingPoint) ? AppStore.trimOperatingPoint(cduSys, designCond.designDb) : null;
+            const precoolTemp = opTrim ? Number(opTrim.tPre.toFixed(1)) : Number((cduSys.fwsSupplyC + (cduSys.fwsReturnC - cduSys.fwsSupplyC) * 0.4).toFixed(1));
+            const dcWaterSupplyExact = opTrim ? opTrim.tDc.toFixed(1) : (cduSys.fwsSupplyC - pheApproach).toFixed(1); // 乾冷器供水設計溫 (如 35.0°C)
+            const condWaterEnterExact = opTrim ? opTrim.tCewt.toFixed(1) : (cduSys.fwsReturnC - pheApproach).toFixed(1); // 預冷後進冷凝器設計溫 (如 45.0°C)
+            const trimCop = trimChillerItem?.catalog?.find(c => c.model === trimChillerItem.selectedModel)?.cop || 5.8;
+            const condWaterLeaveExact = opTrim ? (opTrim.tCewt + (opTrim.tPre - opTrim.tSup) * (1 + 1 / trimCop)).toFixed(1) : (cduSys.fwsReturnC - pheApproach + 4.8).toFixed(1); // 冷凝排熱總回水設計溫 (如 49.8°C)
+            const chwSupplyTemp = opTrim ? Number(opTrim.tChws.toFixed(1)) : Math.min(30, cduSys.fwsSupplyC - 7); // 冰機供水設計溫 (如 30.0°C)
             const chwReturnTempExact = (chwSupplyTemp + 5.0).toFixed(1); // 冰機回水設計溫 (如 35.0°C)
 
             const buildSingleLoopSchematic = (o) => {
@@ -980,7 +983,7 @@
                 <text x="1160" y="94" fill="#f8fafc" font-size="12" font-weight="bold" text-anchor="middle">Dry Coolers</text>
                 
                 <text x="1075" y="122" fill="#f1f5f9" font-size="11" font-weight="bold">零耗水自然風冷</text>
-                <text x="1075" y="142" fill="#a7f3d0" font-size="10">Approach: ${cduApproach}°C ｜ 門檻: ≤${cduFcThresh}°C</text>
+                <text x="1075" y="142" fill="#a7f3d0" font-size="10">Approach: ${dcApproach}°C ｜ 門檻: ≤${cduFcThresh}°C</text>
                 <text x="1075" y="162" fill="#cbd5e1" font-size="9.5">Mode 1: 滿載自然風冷</text>
                 <text x="1075" y="178" fill="#cbd5e1" font-size="9.5">Mode 2: 串聯預冷與主機冷凝排熱</text>
 
@@ -1166,7 +1169,7 @@
                                 </div>
                                 <div class="text-amber-950 font-medium leading-relaxed">
                                     當前案場氣候夏季氣溫（最高達 <strong>38.0°C</strong>）高於純乾冷器自然冷卻門檻（<strong>${cduFcThresh}°C DB</strong>）。<br>
-                                    由於本架構 <strong>100% 零冰機且無任何補冷設備</strong>，夏季高溫時段設施供水將飆升至 <strong>${(38.0 + cduApproach + pheApproach).toFixed(1)}°C</strong>（超出設計 ${cduSys.fwsSupplyC}°C），可能導致晶片過熱降載！
+                                    由於本架構 <strong>100% 零冰機且無任何補冷設備</strong>，夏季高溫時段設施供水將飆升至 <strong>${(38.0 + dcApproach + pheApproach).toFixed(1)}°C</strong>（超出設計 ${cduSys.fwsSupplyC}°C），可能導致晶片過熱降載！
                                 </div>
                                 <div class="text-[11px] text-amber-800 flex items-center gap-1.5 font-bold pt-1">
                                     <span>💡 建議方案：</span>
@@ -1247,7 +1250,7 @@
                                             </div>
                                             <div>
                                                 <label class="block text-[9px] text-slate-500">排熱端 Approach (°C)</label>
-                                                <input type="number" id="cduApproachIn_${targetId}" value="${cduApproach}" step="0.5" onchange="ViewCooling.updateCduParams('${targetId}')" class="w-full text-xs font-bold border rounded p-1 bg-white text-slate-800">
+                                                <input type="number" id="cduApproachIn_${targetId}" value="${dcApproach}" step="0.5" onchange="ViewCooling.updateCduParams('${targetId}')" class="w-full text-xs font-bold border rounded p-1 bg-white text-slate-800">
                                             </div>
                                             <div>
                                                 <label class="block text-[9px] text-slate-500">板換 (PHE) Approach (°C)</label>
@@ -1287,7 +1290,7 @@
                                         <div>
                                             <span class="font-bold text-[11px]">Free Cooling 門檻 (以本頁水溫與 Approach 物理動態推算):</span>
                                             <div class="text-[10px] text-emerald-700">
-                                                T_fc = ${cduSys.fwsSupplyC}°C (FWS) − ${cduApproach}°C (乾冷器) ${pheApproach > 0 ? ('− ' + pheApproach + '°C (板換)') : ''} = <strong class="text-xs font-black text-emerald-900">${cduFcThresh}°C DB</strong>
+                                                T_fc = ${cduSys.fwsSupplyC}°C (FWS) − ${dcApproach}°C (乾冷器) ${pheApproach > 0 ? ('− ' + pheApproach + '°C (板換)') : ''} = <strong class="text-xs font-black text-emerald-900">${cduFcThresh}°C DB</strong>
                                             </div>
                                         </div>
                                         <span class="px-1.5 py-0.5 bg-white text-emerald-900 border border-emerald-300 rounded font-black text-[9px]">物理連動</span>
