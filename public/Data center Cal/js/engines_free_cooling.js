@@ -32,6 +32,27 @@ const FreeCoolingEngine = {
   }),
 
   // ─────────────────────────────────────────────────────────
+  // Series Economizer Common Physics (P0-5)
+  //    f_mech = clamp((T_available - T_supply) / (T_return - T_supply), 0, 1)
+  // ─────────────────────────────────────────────────────────
+  calcSeriesEconomizer(t_available_c, t_supply_c, t_return_c) {
+    const dt = t_return_c - t_supply_c;
+    if (!(dt > 0)) return {
+      mode: t_available_c <= t_supply_c ? this.MODE.FULL_FC : this.MODE.MECHANICAL,
+      fc_fraction: t_available_c <= t_supply_c ? 1 : 0,
+      chiller_fraction: t_available_c <= t_supply_c ? 0 : 1
+    };
+    const f_mech = clamp((t_available_c - t_supply_c) / dt, 0, 1);
+    const mode = f_mech <= 0 ? this.MODE.FULL_FC : (f_mech >= 1 ? this.MODE.MECHANICAL : this.MODE.PARTIAL_FC);
+    return {
+      mode,
+      fc_fraction: 1 - f_mech,
+      chiller_fraction: f_mech,
+      t_precooled_c: clamp(t_available_c, t_supply_c, t_return_c)
+    };
+  },
+
+  // ─────────────────────────────────────────────────────────
   // A. WATERSIDE FREE COOLING
   //    CT → CT approach → CT leaving water → Plate HX → HX approach → Available CHWS
   //    Compare available CHWS against design CHWS to determine FC mode.
@@ -57,6 +78,20 @@ const FreeCoolingEngine = {
 
     // Step 2: Available CHWS after plate HX = CT leaving + HX approach
     const t_available_chws = t_ct_leaving + hx_approach_c;
+
+    const t_return_c = cc.t_return_chw_c ?? cc.t_return_cdu_c;
+    if (t_return_c !== undefined) {
+      const eco = this.calcSeriesEconomizer(t_available_chws, t_chws_design, t_return_c);
+      return {
+        ...eco,
+        t_ct_leaving, t_available_chws,
+        ct_approach_c, hx_approach_c, t_chws_design, fc_band_c, wb_c
+      };
+    }
+    if (!FreeCoolingEngine._warnedNoReturn) {
+      console.warn('[FreeCoolingEngine] calcWatersideFC missing return temperature, falling back to legacy 3K band');
+      FreeCoolingEngine._warnedNoReturn = true;
+    }
 
     // Step 3: Classify mode and compute fractions
     let mode, fc_fraction, chiller_fraction;
@@ -109,6 +144,19 @@ const FreeCoolingEngine = {
     // Available supply to CDU = dry cooler leaving + PHE/HX approach
     const t_available_supply = t_dc_leaving + safety_margin;
 
+    const t_return_c = cc.t_return_cdu_c ?? cc.t_return_chw_c;
+    if (t_return_c !== undefined) {
+      const eco = this.calcSeriesEconomizer(t_available_supply, t_supply_design, t_return_c);
+      return {
+        ...eco,
+        t_dc_leaving, t_available_supply, approach_c, t_supply_design, safety_margin, db_c
+      };
+    }
+    if (!FreeCoolingEngine._warnedNoReturn) {
+      console.warn('[FreeCoolingEngine] calcDryCoolerFC missing return temperature, falling back to legacy 3K band');
+      FreeCoolingEngine._warnedNoReturn = true;
+    }
+
     let mode, fc_fraction, chiller_fraction;
     if (t_available_supply <= t_supply_design) {
       mode             = this.MODE.FULL_FC;
@@ -149,6 +197,19 @@ const FreeCoolingEngine = {
 
     const t_ct_leaving       = CoolingTowerEngine.calcLeavingWaterTemp(wb_c, ct_approach_c);
     const t_available_supply = t_ct_leaving + safety_margin;
+
+    const t_return_c = cc.t_return_cdu_c ?? cc.t_return_chw_c;
+    if (t_return_c !== undefined) {
+      const eco = this.calcSeriesEconomizer(t_available_supply, t_supply_design, t_return_c);
+      return {
+        ...eco,
+        t_ct_leaving, t_available_supply, ct_approach_c, t_supply_design, wb_c
+      };
+    }
+    if (!FreeCoolingEngine._warnedNoReturn) {
+      console.warn('[FreeCoolingEngine] calcCoolingTowerFC missing return temperature, falling back to legacy 3K band');
+      FreeCoolingEngine._warnedNoReturn = true;
+    }
 
     let mode, fc_fraction, chiller_fraction;
     if (t_available_supply <= t_supply_design) {
@@ -331,6 +392,20 @@ const FreeCoolingEngine = {
     // Step 2: Available CDU supply = HX leaving + loop margin (pump/pipe heat gain)
     const t_available_primary = t_hx_leaving + loop_margin_c;
 
+    const t_return_c = cc.t_return_cdu_c ?? cc.t_return_chw_c;
+    if (t_return_c !== undefined) {
+      const eco = this.calcSeriesEconomizer(t_available_primary, t_cdu_supply, t_return_c);
+      return {
+        ...eco,
+        t_seawater_c, t_hx_leaving, t_available_primary,
+        hx_approach_c, loop_margin_c, t_cdu_supply, fc_band_c
+      };
+    }
+    if (!FreeCoolingEngine._warnedNoReturn) {
+      console.warn('[FreeCoolingEngine] calcSeaWaterFC missing return temperature, falling back to legacy 3K band');
+      FreeCoolingEngine._warnedNoReturn = true;
+    }
+
     // Step 3: Compare against CDU supply design set point
     let mode, fc_fraction, chiller_fraction;
     if (t_available_primary <= t_cdu_supply) {
@@ -374,6 +449,20 @@ const FreeCoolingEngine = {
     // CT leaves water = WB + approach; CDU receives CT leaving + safety
     const t_ct_leaving       = CoolingTowerEngine.calcLeavingWaterTemp(wb_c, ct_approach_c);
     const t_available_supply = t_ct_leaving + safety_margin;
+
+    const t_return_c = cc.t_return_cdu_c ?? cc.t_return_chw_c;
+    if (t_return_c !== undefined) {
+      const eco = this.calcSeriesEconomizer(t_available_supply, t_cdu_supply, t_return_c);
+      return {
+        ...eco,
+        wb_c, t_ct_leaving, t_available_supply,
+        ct_approach_c, safety_margin, t_cdu_supply, fc_band_c
+      };
+    }
+    if (!FreeCoolingEngine._warnedNoReturn) {
+      console.warn('[FreeCoolingEngine] calcDLCWarmWaterFC missing return temperature, falling back to legacy 3K band');
+      FreeCoolingEngine._warnedNoReturn = true;
+    }
 
     let mode, fc_fraction, chiller_fraction;
     if (t_available_supply <= t_cdu_supply) {
