@@ -185,6 +185,18 @@ const ChillerEngine = {
 
     const is_air_cooled = (spec.chiller_type === 'air_cooled');
     if (is_air_cooled) {
+      const curve = spec.cop_curve ?? { type: 'fixed' };
+      if (curve.type === 'ahri_biquadratic') {
+        const coefs = AHRI_PRESETS[curve.preset] ?? curve.coef_override;
+        if (coefs) {
+          const [T_lo, T_hi] = coefs.t_chws_range ?? [4, 25];
+          const [C_lo, C_hi] = coefs.t_cewt_range ?? [10, 48];
+          const T_c = clamp(T_chws_design ?? 7, T_lo, T_hi);
+          const C_c = clamp(db_design ?? 35, C_lo, C_hi);
+          const factor = clamp(biQuad(coefs.CapFT, T_c, C_c), 0.4, 1.6);
+          return { derated_kw: nominal_kw * factor, nominal_kw, derate_factor: factor };
+        }
+      }
       const pct_per_c = A('chiller_air_derate_pct_per_c_above35');
       const factor = Math.max(0.5, 1 - (pct_per_c / 100) * Math.max(0, (db_design ?? 35) - 35));
       return { derated_kw: nominal_kw * factor, nominal_kw, derate_factor: factor };

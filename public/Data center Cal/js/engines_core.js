@@ -79,6 +79,17 @@ const AHRI_PRESETS = {
   }
 };
 
+// 額定點：AHRI 550/590 水冷 LCHWT 7°C / ECWT 30°C；氣冷 LCHWT 7°C / 外氣 DB 35°C
+const AHRI_RATING_POINT = { water: { t_chws: 7, t_cond: 30 }, air: { t_chws: 7, t_cond: 35 } };
+for (const [key, p] of Object.entries(AHRI_PRESETS)) {
+  const r = key.startsWith('air_') ? AHRI_RATING_POINT.air : AHRI_RATING_POINT.water;
+  const fCap = biQuad(p.CapFT, r.t_chws, r.t_cond);
+  const fEir = biQuad(p.EIR_FT, r.t_chws, r.t_cond);
+  p.CapFT  = p.CapFT.map(c => c / fCap);
+  p.EIR_FT = p.EIR_FT.map(c => c / fEir);
+  p.rating = r;
+}
+
 const LOAD_PROFILE_PRESETS = {
   constant:   { name: '恆定滿載 (Constant 100%)', states: [{ load_pct: 100, weight_pct: 100, note: '基準滿載運行' }] },
   ai:         { name: 'AI 訓練週期 (AI Training Cycle)', states: [{ load_pct: 100, weight_pct: 70, note: 'AI 訓練階段' }, { load_pct: 25, weight_pct: 30, note: '待機 / 存檔點' }] },
