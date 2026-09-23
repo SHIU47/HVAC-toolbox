@@ -215,8 +215,9 @@ function freshCtx() {
   // Test 2: CDU 降額選型 (40°C FWS -> 0.80 derate)
   const ctx2 = freshCtx();
   const S2 = ctx2.AppStore;
-  S2.calculate();
   const du = S2.state.halls[0].dus[0];
+  du.plantDesign.cduSystem.fwsSupplyC = 40.0;
+  S2.calculate();
   const cduSizing = du.plantDesign.cduSystem.sizing.find(s => s.key === 'cdu_unit');
 
   test('P1-1 CDU sizing applies derateFactor at 40C FWS', () => {
@@ -382,6 +383,82 @@ function freshCtx() {
     assert(summerHour && summerHour.mechLoadKw !== undefined && summerHour.chillerKw !== undefined);
     assert(summerHour.chillerKw > 0, 'chiller must be running in summer peak');
     assert(summerHour.mechLoadKw > 0, 'mechanical load must be positive when chiller is running');
+  });
+})();
+
+// ═══════════════════════════════════════════════════════════════
+// P1-9 Catalog Async Gate & P1-10 Input Handling / CDU Defaults
+// ═══════════════════════════════════════════════════════════════
+(function () {
+  const ctx = freshCtx();
+  const { CatalogManager, AppStore: S } = ctx;
+
+  test('P1-9 CatalogManager.ready is a Promise', () => {
+    assert(CatalogManager && CatalogManager.ready && typeof CatalogManager.ready.then === 'function');
+  });
+
+  test('P1-10 defaultCduSystem returns consistent thermodynamic temperatures', () => {
+    const cdu = S.defaultCduSystem('dry_cooler_hx');
+    assert.strictEqual(cdu.secSupplyC, 45.0);
+    assert.strictEqual(cdu.secReturnC, 57.0);
+    assert.strictEqual(cdu.cduApproachC, 3.0);
+    assert.strictEqual(cdu.fwsSupplyC, 42.0);
+    assert.strictEqual(cdu.fwsReturnC, 54.0);
+    assert.strictEqual(cdu.pheApproachC, 2.0);
+    assert.strictEqual(cdu.dryCoolerApproachC, 5.0);
+  });
+
+  test('P1-10 addDU uses defaultCduSystem with FWS derived from sec and approach', () => {
+    const hallId = S.state.halls[0].id;
+    const du = S.addDU(hallId, 'Test-DU');
+    assert(du && du.plantDesign && du.plantDesign.cduSystem);
+    const cdu = du.plantDesign.cduSystem;
+    assert.strictEqual(cdu.secSupplyC, 45.0);
+    assert.strictEqual(cdu.cduApproachC, 3.0);
+    assert.strictEqual(cdu.fwsSupplyC, 42.0);
+    assert.strictEqual(cdu.fwsReturnC, 54.0);
+  });
+
+  test('P1-10 addCorePod uses defaultCduSystem with FWS derived from sec and approach', () => {
+    const pod = S.addCorePod({ name: 'Test-CorePOD' });
+    assert(pod && pod.plantDesign && pod.plantDesign.cduSystem);
+    const cdu = pod.plantDesign.cduSystem;
+    assert.strictEqual(cdu.secSupplyC, 45.0);
+    assert.strictEqual(cdu.cduApproachC, 3.0);
+    assert.strictEqual(cdu.fwsSupplyC, 42.0);
+    assert.strictEqual(cdu.fwsReturnC, 54.0);
+  });
+
+  test('P1-10 deserializeProject backfills missing CDU parameters', () => {
+    const dummyProject = {
+      state: {
+        halls: [
+          {
+            id: 'h1',
+            dus: [
+              {
+                id: 'd1',
+                sus: [],
+                plantDesign: {
+                  cduSystem: {
+                    architecture: 'dry_cooler_hx'
+                    // missing secSupplyC, secReturnC, cduApproachC, etc.
+                  },
+                  fanwallSystem: { architecture: 'air_cooled_chiller' }
+                }
+              }
+            ]
+          }
+        ]
+      }
+    };
+    S.deserializeProject(dummyProject);
+    const cdu = S.state.halls[0].dus[0].plantDesign.cduSystem;
+    assert.strictEqual(cdu.secSupplyC, 45.0);
+    assert.strictEqual(cdu.secReturnC, 57.0);
+    assert.strictEqual(cdu.cduApproachC, 3.0);
+    assert.strictEqual(cdu.fwsSupplyC, 42.0);
+    assert.strictEqual(cdu.fwsReturnC, 54.0);
   });
 })();
 

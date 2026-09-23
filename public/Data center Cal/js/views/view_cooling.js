@@ -281,13 +281,15 @@
             const fwSys = t.obj.plantDesign.fanwallSystem;
             const arch = cduSys.architecture || 'dry_cooler_hx';
 
-            cduSys.secSupplyC = cduSys.secSupplyC || 45.0;
-            cduSys.secReturnC = cduSys.secReturnC || 57.0;
-            cduSys.cduApproachC = cduSys.cduApproachC || 3.0;
+            // P1-10: 唯讀存取，預設值已在 store.js / defaultCduSystem 補齊，不在此改寫 state
+            const secSupplyC = cduSys.secSupplyC ?? 45.0;
+            const secReturnC = cduSys.secReturnC ?? 57.0;
+            const cduApproachC = cduSys.cduApproachC ?? 3.0;
 
-            const dcApproach = cduSys.dryCoolerApproachC || 5.0;
+            const dcApproach = cduSys.dryCoolerApproachC ?? 5.0;
             const pheApproach = (arch === 'dry_cooler_trim' || arch === 'dry_cooler_hx') ? (cduSys.pheApproachC ?? 2.0) : 0.0;
-            const cduFcThresh = (cduSys.fwsSupplyC - dcApproach - pheApproach).toFixed(1);
+            const fwsSupplyC = cduSys.fwsSupplyC ?? Number((secSupplyC - cduApproachC).toFixed(1));
+            const cduFcThresh = (fwsSupplyC - dcApproach - pheApproach).toFixed(1);
             const mode1DbMax = parseFloat(cduFcThresh);
             const mode2DbMax = (mode1DbMax + 5.7).toFixed(1);
 
@@ -1061,7 +1063,7 @@
                             <text x="85" y="92" fill="#f1f5f9" font-size="9.5" font-weight="bold" text-anchor="middle">Cold Plate 晶片液冷</text>
                             <text x="85" y="118" fill="#ec4899" font-size="14" font-weight="900" text-anchor="middle">${liqLoadKw.toFixed(0)} kW</text>
 
-                            <text x="85" y="160" fill="#38bdf8" font-size="10.5" font-weight="bold" text-anchor="middle">晶片水溫: ${cduSys.secSupplyC} ⇄ ${cduSys.secReturnC}°C</text>
+                            <text x="85" y="160" fill="#38bdf8" font-size="10.5" font-weight="bold" text-anchor="middle">晶片水溫: ${secSupplyC} ⇄ ${secReturnC}°C</text>
                             <text x="85" y="185" fill="#a5b4fc" font-size="10" text-anchor="middle">二次側流量: ${flowSecLpm.toLocaleString()} LPM</text>
                             <text x="85" y="208" fill="#94a3b8" font-size="9" text-anchor="middle">ΔT = ${dtSec}°C (晶片溫升)</text>
 
@@ -1071,12 +1073,12 @@
                             <!-- Hot Secondary Return: ≤56°C -->
                             <line x1="150" y1="95" x2="190" y2="95" stroke="#f43f5e" stroke-width="4" stroke-linecap="round" />
                             <rect x="150" y="68" width="40" height="18" rx="3" fill="#881337" />
-                            <text x="170" y="81" fill="#ffe4e6" font-size="8" font-weight="bold" text-anchor="middle">≤${cduSys.secReturnC}°C</text>
+                            <text x="170" y="81" fill="#ffe4e6" font-size="8" font-weight="bold" text-anchor="middle">≤${secReturnC}°C</text>
 
                             <!-- Cold Secondary Supply: ≤45°C -->
                             <line x1="190" y1="245" x2="150" y2="245" stroke="#0284c7" stroke-width="4" stroke-linecap="round" />
                             <rect x="150" y="218" width="40" height="18" rx="3" fill="#0c4a6e" />
-                            <text x="170" y="231" fill="#e0f2fe" font-size="8" font-weight="bold" text-anchor="middle">≤${cduSys.secSupplyC}°C</text>
+                            <text x="170" y="231" fill="#e0f2fe" font-size="8" font-weight="bold" text-anchor="middle">≤${secSupplyC}°C</text>
 
                             <!-- ======================================================= -->
                             <!-- 3. CDU - LC (100% 液冷分配單元) -->
@@ -1090,7 +1092,7 @@
                             <path d="M 230 82 L 238 157 M 244 82 L 252 157 M 258 82 L 266 157 M 272 82 L 280 157" stroke="#a78bfa" stroke-width="2" stroke-linecap="round" />
                             
                             <rect x="215" y="110" width="80" height="20" rx="4" fill="#2e1065" stroke="#c084fc" stroke-width="1" />
-                            <text x="255" y="124" fill="#f5d0fe" font-size="9" font-weight="bold" text-anchor="middle">Approach ${cduSys.cduApproachC}°C</text>
+                            <text x="255" y="124" fill="#f5d0fe" font-size="9" font-weight="bold" text-anchor="middle">Approach ${cduApproachC}°C</text>
 
                             <text x="255" y="195" fill="#e9d5ff" font-size="11" font-weight="bold" text-anchor="middle">${cduUnitQty} 台 (N+1)</text>
                             <text x="255" y="215" fill="#a78bfa" font-size="9.5" text-anchor="middle">一二次側 100% 隔離</text>
@@ -1162,21 +1164,26 @@
                             </div>
 
                             <!-- 純乾冷器氣候不可行警示橫幅 (當案場夏季氣溫超出 FC 門檻時自動警示) -->
-                            ${arch === 'dry_cooler_pure' && parseFloat(cduFcThresh) < 36.0 ? `
+                            ${(() => {
+                                const maxDb = window.AppStore?.state?.site?.stats?.maxDB ?? 38.0;
+                                const fcThreshNum = parseFloat(cduFcThresh);
+                                if (arch !== 'dry_cooler_pure' || maxDb <= fcThreshNum) return '';
+                                return `
                             <div class="p-4 bg-amber-500/10 border-2 border-amber-500 rounded-xl space-y-2 text-xs">
                                 <div class="flex items-center gap-2 font-black text-amber-900 text-sm">
                                     <span>⚠️</span> 氣候超溫與無冰機備援警示 (Pure Dry Cooler Climate Risk)
                                 </div>
                                 <div class="text-amber-950 font-medium leading-relaxed">
-                                    當前案場氣候夏季氣溫（最高達 <strong>38.0°C</strong>）高於純乾冷器自然冷卻門檻（<strong>${cduFcThresh}°C DB</strong>）。<br>
-                                    由於本架構 <strong>100% 零冰機且無任何補冷設備</strong>，夏季高溫時段設施供水將飆升至 <strong>${(38.0 + dcApproach + pheApproach).toFixed(1)}°C</strong>（超出設計 ${cduSys.fwsSupplyC}°C），可能導致晶片過熱降載！
+                                    當前案場氣候夏季氣溫（最高達 <strong>${maxDb.toFixed(1)}°C</strong>）高於純乾冷器自然冷卻門檻（<strong>${cduFcThresh}°C DB</strong>）。<br>
+                                    由於本架構 <strong>100% 零冰機且無任何補冷設備</strong>，夏季高溫時段設施供水將飆升至 <strong>${(maxDb + dcApproach + pheApproach).toFixed(1)}°C</strong>（超出設計 ${cduSys.fwsSupplyC}°C），可能導致晶片過熱降載！
                                 </div>
                                 <div class="text-[11px] text-amber-800 flex items-center gap-1.5 font-bold pt-1">
                                     <span>💡 建議方案：</span>
                                     <span>切換為 <strong>「乾冷器 + Trim 冰機 (NVIDIA 推薦)」</strong>，或改用 <strong>「絕熱冷卻塔 / 密閉水塔」</strong> 即可確保全年不超溫。</span>
                                 </div>
                             </div>
-                            ` : ''}
+                            `;
+                            })()}
 
                             <!-- CDU 架構選擇器 (整排清晰可見) -->
                             <div class="max-w-2xl">
@@ -1209,20 +1216,20 @@
                                     <div class="p-2.5 bg-purple-50/60 rounded-lg border border-purple-200 space-y-1.5">
                                         <div class="flex justify-between items-center">
                                             <span class="text-[10px] font-extrabold text-purple-900">二次側 (晶片側 / IT ↔ CDU):</span>
-                                            <span class="text-[9px] text-purple-600 font-bold">晶片溫升 ΔT = ${(cduSys.secReturnC - cduSys.secSupplyC).toFixed(1)}°C</span>
+                                            <span class="text-[9px] text-purple-600 font-bold">晶片溫升 ΔT = ${(secReturnC - secSupplyC).toFixed(1)}°C</span>
                                         </div>
                                         <div class="grid grid-cols-3 gap-2">
                                             <div>
                                                 <label class="block text-[9px] text-slate-500">晶片供水 (°C)</label>
-                                                <input type="number" id="cduSecSupplyIn_${targetId}" value="${cduSys.secSupplyC}" step="0.5" onchange="ViewCooling.updateCduParams('${targetId}')" class="w-full text-xs font-bold border rounded p-1 bg-white text-purple-950">
+                                                <input type="number" id="cduSecSupplyIn_${targetId}" value="${secSupplyC}" step="0.5" onchange="ViewCooling.updateCduParams('${targetId}')" class="w-full text-xs font-bold border rounded p-1 bg-white text-purple-950">
                                             </div>
                                             <div>
                                                 <label class="block text-[9px] text-slate-500">晶片回水 (°C)</label>
-                                                <input type="number" id="cduSecReturnIn_${targetId}" value="${cduSys.secReturnC}" step="0.5" onchange="ViewCooling.updateCduParams('${targetId}')" class="w-full text-xs font-bold border rounded p-1 bg-white text-purple-950">
+                                                <input type="number" id="cduSecReturnIn_${targetId}" value="${secReturnC}" step="0.5" onchange="ViewCooling.updateCduParams('${targetId}')" class="w-full text-xs font-bold border rounded p-1 bg-white text-purple-950">
                                             </div>
                                             <div>
                                                 <label class="block text-[9px] text-slate-500">CDU Approach (°C)</label>
-                                                <input type="number" id="cduAppIn_${targetId}" value="${cduSys.cduApproachC}" step="0.5" onchange="ViewCooling.updateCduParams('${targetId}')" class="w-full text-xs font-bold border rounded p-1 bg-white text-slate-800">
+                                                <input type="number" id="cduAppIn_${targetId}" value="${cduApproachC}" step="0.5" onchange="ViewCooling.updateCduParams('${targetId}')" class="w-full text-xs font-bold border rounded p-1 bg-white text-slate-800">
                                             </div>
                                         </div>
                                     </div>
@@ -1502,17 +1509,23 @@
         },
 
         updateCduParams(targetId) {
-            const secSup = parseFloat(document.getElementById('cduSecSupplyIn_' + targetId)?.value) || 45.0;
-            const secRet = parseFloat(document.getElementById('cduSecReturnIn_' + targetId)?.value) || 57.0;
-            const cduApp = parseFloat(document.getElementById('cduAppIn_' + targetId)?.value) || 4.0;
+            const num = (id, d) => {
+                const el = document.getElementById(id);
+                const v = parseFloat(el?.value);
+                return Number.isFinite(v) ? v : d;
+            };
+
+            const secSup = num('cduSecSupplyIn_' + targetId, 45.0);
+            const secRet = num('cduSecReturnIn_' + targetId, 57.0);
+            const cduApp = num('cduAppIn_' + targetId, 3.0);
 
             // 1. 自動熱力學連動: 設施供水 FWS = 晶片供水 - CDU Approach
             const sup = Number((secSup - cduApp).toFixed(1));
             // 設施回水 FWR = 晶片回水 - CDU Approach (保持溫升 ΔT 守恆)
             const ret = Number((secRet - cduApp).toFixed(1));
 
-            const outdoorApp = parseFloat(document.getElementById('cduApproachIn_' + targetId)?.value) || 5.0;
-            const pheApp = parseFloat(document.getElementById('cduPheAppIn_' + targetId)?.value) || 2.0;
+            const outdoorApp = num('cduApproachIn_' + targetId, 5.0);
+            const pheApp = num('cduPheAppIn_' + targetId, 2.0);
 
             const target = this.getTargetObj(targetId);
             if (target) {
@@ -1527,11 +1540,12 @@
 
                 // 絕熱冷卻塔專屬欄位 (只有該架構才會渲染出這兩個輸入框，其他架構這裡會是 null)
                 const satEffEl = document.getElementById('atSatEffIn_' + targetId);
-                if (satEffEl) cdu.adiabaticSaturationEfficiencyPct = parseFloat(satEffEl.value) || 85;
+                if (satEffEl) cdu.adiabaticSaturationEfficiencyPct = num('atSatEffIn_' + targetId, 85.0);
                 const switchpointEl = document.getElementById('atSwitchpointIn_' + targetId);
                 if (switchpointEl) {
                     const v = switchpointEl.value.trim();
-                    cdu.adiabaticDrySwitchpointC = v === '' ? null : parseFloat(v);
+                    const n = parseFloat(v);
+                    cdu.adiabaticDrySwitchpointC = v === '' || !Number.isFinite(n) ? null : n;
                 }
 
                 window.AppStore.notify();
@@ -1540,8 +1554,14 @@
         },
 
         updateFwParams(targetId) {
-            const sup = parseFloat(document.getElementById('fwSupplyIn_' + targetId)?.value) || 12.0;
-            const ret = parseFloat(document.getElementById('fwReturnIn_' + targetId)?.value) || 18.0;
+            const num = (id, d) => {
+                const el = document.getElementById(id);
+                const v = parseFloat(el?.value);
+                return Number.isFinite(v) ? v : d;
+            };
+
+            const sup = num('fwSupplyIn_' + targetId, 12.0);
+            const ret = num('fwReturnIn_' + targetId, 18.0);
 
             const target = this.getTargetObj(targetId);
             if (target) {

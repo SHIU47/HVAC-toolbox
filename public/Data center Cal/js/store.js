@@ -98,9 +98,10 @@
                                     secSupplyC: 45.0,              // 二次側 (晶片側) 供水溫
                                     secReturnC: 57.0,              // 二次側 (晶片側) 回水溫
                                     cduApproachC: 3.0,             // CDU 熱交換 Approach
-                                    fwsSupplyC: 40.0,              // 一次側 (設施側) 供水溫
-                                    fwsReturnC: 55.0,              // 一次側 (設施側) 回水溫
+                                    fwsSupplyC: 42.0,              // 一次側 (設施側) 供水溫 (45 - 3)
+                                    fwsReturnC: 54.0,              // 一次側 (設施側) 回水溫 (57 - 3)
                                     dryCoolerApproachC: 5.0,       // 排熱端 (乾冷器/水塔) Approach
+                                    pheApproachC: 2.0,
                                     adiabaticSaturationEfficiencyPct: 85.0,
                                     blowdownLossPct: 15.0,
                                     cyclesOfConcentration: 5,
@@ -144,7 +145,8 @@
                         cduSystem: {
                             architecture: 'dry_cooler_hx',
                             secSupplyC: 45.0, secReturnC: 57.0, cduApproachC: 3.0,
-                            fwsSupplyC: 40.0, fwsReturnC: 55.0, dryCoolerApproachC: 5.0,
+                            fwsSupplyC: 42.0, fwsReturnC: 54.0, dryCoolerApproachC: 5.0, pheApproachC: 2.0,
+                            adiabaticSaturationEfficiencyPct: 85.0, blowdownLossPct: 15.0, cyclesOfConcentration: 5,
                             designBasis: {}, sizing: [], hydraulics: {}, validation: { ok: true, checks: [] }
                         },
                         fanwallSystem: {
@@ -225,6 +227,23 @@
                         ...pod,
                         enabled: pod.enabled !== false
                     }));
+                }
+                // P1-10: 補齊 CDU 系統預設值（避免舊檔或缺漏欄位造成 render 時改寫 state 或 NaN）
+                const backfillCdu = (cdu) => {
+                    if (!cdu) return;
+                    if (cdu.secSupplyC === undefined) cdu.secSupplyC = 45.0;
+                    if (cdu.secReturnC === undefined) cdu.secReturnC = 57.0;
+                    if (cdu.cduApproachC === undefined) cdu.cduApproachC = 3.0;
+                    if (cdu.fwsSupplyC === undefined) cdu.fwsSupplyC = Number((cdu.secSupplyC - cdu.cduApproachC).toFixed(1));
+                    if (cdu.fwsReturnC === undefined) cdu.fwsReturnC = Number((cdu.secReturnC - cdu.cduApproachC).toFixed(1));
+                    if (cdu.dryCoolerApproachC === undefined) cdu.dryCoolerApproachC = 5.0;
+                    if (cdu.pheApproachC === undefined) cdu.pheApproachC = 2.0;
+                };
+                if (this.state.halls && Array.isArray(this.state.halls)) {
+                    this.state.halls.forEach(h => (h.dus || []).forEach(d => backfillCdu(d.plantDesign?.cduSystem)));
+                }
+                if (this.state.corePods && Array.isArray(this.state.corePods)) {
+                    this.state.corePods.forEach(p => backfillCdu(p.plantDesign?.cduSystem));
                 }
                 if (stateData.assumptions_override) {
                     this.state.assumptions_override = stateData.assumptions_override;
@@ -461,6 +480,30 @@
             this.state.site.binAnalysis = { db: dbBins, wb: wbBins, dp: dpBins, rh: rhBins };
         },
 
+        // P1-10: 產生標準 CDU 系統設定，確保 sec、approach、fws 衍生關係一致
+        defaultCduSystem(arch = 'dry_cooler_hx') {
+            const secSupplyC = 45.0;
+            const secReturnC = 57.0;
+            const cduApproachC = 3.0;
+            return {
+                architecture: arch,
+                secSupplyC,
+                secReturnC,
+                cduApproachC,
+                fwsSupplyC: Number((secSupplyC - cduApproachC).toFixed(1)), // 42.0
+                fwsReturnC: Number((secReturnC - cduApproachC).toFixed(1)), // 54.0
+                dryCoolerApproachC: 5.0,
+                pheApproachC: 2.0,
+                adiabaticSaturationEfficiencyPct: 85.0,
+                blowdownLossPct: 15.0,
+                cyclesOfConcentration: 5,
+                designBasis: {},
+                sizing: [],
+                hydraulics: {},
+                validation: { ok: true, checks: [] }
+            };
+        },
+
         // ═══════════════════════════════════════════════════════════════
         // CorePOD CRUD & 複製管理方法
         // ═══════════════════════════════════════════════════════════════
@@ -483,16 +526,7 @@
                     { id: 'eq_' + Date.now() + '_3', category: 'STG', model: 'High-Density NVMe Storage Rack', qty: 10, itLoadKw: 25.0, liquidPct: 0, airPct: 100 }
                 ],
                 plantDesign: data.plantDesign ? JSON.parse(JSON.stringify(data.plantDesign)) : {
-                    cduSystem: {
-                        architecture: 'dry_cooler_hx',
-                        secSupplyC: 45.0,
-                        secReturnC: 55.0,
-                        cduApproachC: 3.0,
-                        fwsSupplyC: 37.0,
-                        fwsReturnC: 47.0,
-                        dryCoolerApproachC: 5.0,
-                        sizing: []
-                    },
+                    cduSystem: this.defaultCduSystem('dry_cooler_hx'),
                     fanwallSystem: {
                         architecture: 'air_cooled_chiller',
                         chwSupplyC: 12.0,
@@ -611,16 +645,7 @@
                     }
                 ],
                 plantDesign: {
-                    cduSystem: {
-                        architecture: 'dry_cooler_hx',
-                        secSupplyC: 45.0,
-                        secReturnC: 57.0,
-                        cduApproachC: 3.0,
-                        fwsSupplyC: 37.0,
-                        fwsReturnC: 47.0,
-                        dryCoolerApproachC: 5.0,
-                        sizing: []
-                    },
+                    cduSystem: this.defaultCduSystem('dry_cooler_hx'),
                     fanwallSystem: {
                         architecture: 'air_cooled_chiller',
                         chwSupplyC: 12.0,

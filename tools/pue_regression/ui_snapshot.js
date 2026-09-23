@@ -123,9 +123,11 @@ function toStructural(html) {
   return html.replace(/\d/g, '#');
 }
 
-function captureAllSteps() {
+async function captureAllSteps() {
   const win = buildWindow();
-  win.App.init();
+  if (win.App && typeof win.App.init === 'function') {
+    await win.App.init();
+  }
   const container = win.document.getElementById('stepContent');
   const snap = {};
   for (let step = 1; step <= 5; step++) {
@@ -138,14 +140,14 @@ function captureAllSteps() {
   return snap;
 }
 
-function main() {
+async function main() {
   const args = process.argv.slice(2);
   const mode = args[0];
   const idx = args.indexOf('--mode');
   const compareMode = idx >= 0 ? args[idx + 1] : 'structural';
   const file = args[1] && !args[1].startsWith('--') ? args[1] : path.join(__dirname, 'ui_snapshot_baseline.json');
 
-  const raw = captureAllSteps();
+  const raw = await captureAllSteps();
 
   if (mode === '--save') {
     fs.writeFileSync(file, JSON.stringify(raw, null, 2));
@@ -179,4 +181,7 @@ function main() {
   console.log('Usage: node ui_snapshot.js --save <file> | --compare <file> [--mode structural|full]');
 }
 
-main();
+main().catch(err => {
+  console.error(err);
+  process.exit(1);
+});

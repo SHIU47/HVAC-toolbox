@@ -97,8 +97,11 @@
                     console.log('[CatalogManager] fetch 載入失敗，改用內嵌廠商型錄資料');
                     this.loadEmbeddedCatalogs();
                 }
+            } else {
+                this.loadEmbeddedCatalogs();
             }
             this.loaded = true;
+            return this;
         },
 
         loadEmbeddedCatalogs() {
@@ -271,5 +274,5 @@
     };
 
     window.CatalogManager = CatalogManager;
-    CatalogManager.init();
+    CatalogManager.ready = CatalogManager.init();
 })(typeof window !== 'undefined' ? window : global);
