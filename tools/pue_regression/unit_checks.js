@@ -135,5 +135,39 @@ function freshCtx() {
   }
 })();
 
+// ── P0-7: Fanwall 氣冷系統自然冷卻門檻（外氣需低於供水溫減盤管 approach 才能全冷）────
+(function () {
+  const ctx = freshCtx();
+  const S = ctx.AppStore;
+  const plant = {
+    cduSystem: { architecture: 'dry_cooler_pure', fwsSupplyC: 40, fwsReturnC: 55, dryCoolerApproachC: 5, pheApproachC: 2 },
+    fanwallSystem: { architecture: 'air_cooled_chiller', chwSupplyC: 12.0, chwReturnC: 18.0 }
+  };
+  const summ = { totalItKw: 1000, liquidHeatKw: 0, airHeatKw: 100, lossKw: 0 };
+
+  // Case 1: 外氣 DB 7°C，coil approach 4K -> T_avail = 11°C <= 12°C -> 100% full FC
+  const r7 = S.calcHourlyEnergy(plant, summ, { db: 7.0, wb: 5.0 });
+  test('P0-7 air_cooled_chiller DB=7C (T_avail 11 <= 12) is 100% free cooling', () => {
+    assert.strictEqual(r7.fwMode, 'free');
+    assert.strictEqual(r7.fwKwh.chiller, 0);
+    assert(Math.abs(r7.heatRejKw - 100 * 0.05) < 1e-4, 'fan power should be 5% of air load');
+  });
+
+  // Case 2: 外氣 DB 12°C，coil approach 4K -> T_avail = 16°C (between 12 and 18) -> partial FC
+  const r12 = S.calcHourlyEnergy(plant, summ, { db: 12.0, wb: 10.0 });
+  test('P0-7 air_cooled_chiller DB=12C (T_avail 16 in 12-18) is partial cooling, not 100% free', () => {
+    assert.strictEqual(r12.fwMode, 'partial');
+    assert(r12.fwKwh.chiller > 0, 'chiller must run for 66.7% mechanical load');
+  });
+
+  // Case 3: 外氣 DB 16°C，coil approach 4K -> T_avail = 20°C >= 18°C -> 100% mechanical
+  const r16 = S.calcHourlyEnergy(plant, summ, { db: 16.0, wb: 14.0 });
+  test('P0-7 air_cooled_chiller DB=16C (T_avail 20 >= 18) is mechanical, not free under old <=18 threshold', () => {
+    assert.strictEqual(r16.fwMode, 'mechanical');
+    assert(r16.fwKwh.chiller > 0, 'chiller must handle 100% load');
+  });
+})();
+
 console.log(`\n${passCount} passed, ${failCount} failed, ${skipCount} skipped`);
 process.exit(failCount > 0 ? 1 : 0);
+

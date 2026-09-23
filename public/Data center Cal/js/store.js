@@ -1542,8 +1542,9 @@
             }
 
             // === Fanwall / RDHX 氣冷系統 ===
-            const fwChwIn = fwSys.chwSupplyC || 12.0;
-            const fwBaseCop = fwChwIn >= 20 ? 5.8 : (fwChwIn >= 12 ? 4.2 : 3.0);
+            const chwSupplyC = fwSys.chwSupplyC || 12.0;
+            const chwReturnC = fwSys.chwReturnC || 18.0;
+            const fwBaseCop = chwSupplyC >= 20 ? 5.8 : (chwSupplyC >= 12 ? 4.2 : 3.0);
             const airHeatTotal = summ.airHeatKw + summ.lossKw;
             const fwArch = fwSys.architecture || 'air_cooled_chiller';
 
@@ -1590,29 +1591,33 @@
             if (airHeatTotal > 0) {
                 if (fwArch === 'rdhx') {
                     // RDHX 背板式熱交換器 (氣-液背板換熱 + 氣冷冰機)
-                    if (w.db <= (fwSys.airSideEconomizerThresholdC || 18)) {
-                        fwRejKw += airHeatTotal * 0.03;
-                        if (!isFreeHour) isFreeHour = true;
-                        fwMode = 'free';
-                    } else if (fwAirChillers.length > 0 && typeof ChillerEngine !== 'undefined') {
-                        const staging = ChillerEngine.calcLeadLagStaging(airHeatTotal, fwAirChillers);
-                        const chRes = trackChillerDeficit(ChillerEngine.calcPower(airHeatTotal, staging.staged, fwSys.chwSupplyC || 12.0, undefined, w.db));
-                        fwChillerKw += chRes.power_kw;
-                        fwRejKw += (airHeatTotal / 500) * 8.0;
-                        fwMode = 'mechanical';
-                    } else {
-                        fwChillerKw += airHeatTotal / fwBaseCop;
-                        fwRejKw += (airHeatTotal / 500) * 8.0;
-                        fwMode = 'mechanical';
+                    const fcApproach = (typeof A === 'function') ? A('air_chiller_fc_coil_approach_c') : 4.0;
+                    const rdhxFanKwPerKw = (typeof A === 'function') ? A('rdhx_fc_fan_kw_per_kw') : 0.03;
+                    const eco = FreeCoolingEngine.calcSeriesEconomizer(w.db + fcApproach, chwSupplyC, chwReturnC);
+                    const Q_fc = airHeatTotal * eco.fc_fraction;
+                    const Q_mech = airHeatTotal * eco.chiller_fraction;
+
+                    fwRejKw += Q_fc * rdhxFanKwPerKw;
+
+                    if (Q_mech > 0) {
+                        if (fwAirChillers.length > 0 && typeof ChillerEngine !== 'undefined') {
+                            const staging = ChillerEngine.calcLeadLagStaging(Q_mech, fwAirChillers);
+                            const chRes = trackChillerDeficit(ChillerEngine.calcPower(Q_mech, staging.staged, chwSupplyC, undefined, w.db));
+                            fwChillerKw += chRes.power_kw;
+                        } else {
+                            fwChillerKw += Q_mech / fwBaseCop;
+                        }
+                        fwRejKw += (Q_mech / 500) * 8.0;
                     }
+                    fwMode = (eco.mode === FreeCoolingEngine.MODE.FULL_FC) ? 'free' : ((eco.mode === FreeCoolingEngine.MODE.PARTIAL_FC) ? 'partial' : 'mechanical');
+                    if (fwMode === 'free' && !isFreeHour) isFreeHour = true;
                 } else if (fwArch === 'water_cooled_chiller' || fwArch === 'water_cooled_chiller_tower') {
                     // 水冷式冰水主機 + 濕式冷卻塔
-                    // v32 Phase 9-2: 同上，改用 FreeCoolingEngine.calcCoolingTowerFC() 統一判定。
-                    const fwFc = (typeof FreeCoolingEngine !== 'undefined')
-                        ? FreeCoolingEngine.calcCoolingTowerFC(w.wb, fwWaterTowerApproach, { t_supply_cdu_c: fwSys.chwSupplyC || 12.0 })
-                        : null;
-                    const fwIsFullFc = fwFc ? (fwFc.mode === FreeCoolingEngine.MODE.FULL_FC) : (w.wb <= ((fwSys.chwSupplyC || 12.0) - 3.0 - 1.5));
-                    const fwChillerFraction = fwFc ? fwFc.chiller_fraction : (fwIsFullFc ? 0 : 1);
+                    const hxApproach = (typeof A === 'function') ? A('hx_approach_c') : 1.5;
+                    const tAvail = w.wb + fwWaterTowerApproach + hxApproach;
+                    const eco = FreeCoolingEngine.calcSeriesEconomizer(tAvail, chwSupplyC, chwReturnC);
+                    const fwIsFullFc = (eco.mode === FreeCoolingEngine.MODE.FULL_FC);
+                    const fwChillerFraction = eco.chiller_fraction;
                     const fwTowerItem = (fwSys.sizing || []).find(s => s.key === 'cooling_tower');
                     const fwTowerDevices = this.resolveTowerFromSizing(fwTowerItem);
                     const fwTowerFanKw = (fwTowerDevices.length > 0 && typeof CoolingTowerEngine !== 'undefined')
@@ -1628,16 +1633,16 @@
                             const minCewt = (typeof A === 'function') ? A('min_cewt_c') : 16.0;
                             const T_cewt = Math.max(minCewt, w.wb + fwWaterTowerApproach);
                             const staging = ChillerEngine.calcLeadLagStaging(fwChillerLoadKw, fwWaterChillers);
-                            const chRes = trackChillerDeficit(ChillerEngine.calcPower(fwChillerLoadKw, staging.staged, fwSys.chwSupplyC || 12.0, T_cewt, w.db));
+                            const chRes = trackChillerDeficit(ChillerEngine.calcPower(fwChillerLoadKw, staging.staged, chwSupplyC, T_cewt, w.db));
                             fwChillerKw += chRes.power_kw;
                         } else if (fwChillerLoadKw > 0) {
                             fwChillerKw += fwChillerLoadKw / fwBaseCop;
                         }
                         fwRejKw += fwTowerFanKw ?? ((airHeatTotal / 500) * 14.0);
-                        fwMode = (fwChillerFraction < 1.0) ? 'partial' : 'mechanical';
+                        fwMode = (eco.mode === FreeCoolingEngine.MODE.PARTIAL_FC) ? 'partial' : 'mechanical';
                     }
                     const fwEvap = airHeatTotal * evapFactor;
-                    const fwBd = fwEvap / (cycles - 1);
+                    const fwBd = fwEvap / Math.max(1, cycles - 1);
                     waterM3 += (fwEvap + fwBd);
                 } else if (fwArch === 'chilled_water_plant' || fwArch === 'campus_chilled_water') {
                     // 廠區集中冰水管網 — 冷卻能耗由外部中央冷站承擔，此處僅計 CRAH 風扇與集中冷站分配
@@ -1645,18 +1650,25 @@
                     fwMode = 'mechanical';
                 } else {
                     // 預設: air_cooled_chiller 氣冷式冰水主機
-                    if (w.db <= (fwSys.airSideEconomizerThresholdC || 18)) {
-                        fwRejKw += airHeatTotal * 0.05;
-                        fwMode = 'free';
-                    } else if (fwAirChillers.length > 0 && typeof ChillerEngine !== 'undefined') {
-                        const staging = ChillerEngine.calcLeadLagStaging(airHeatTotal, fwAirChillers);
-                        const chRes = trackChillerDeficit(ChillerEngine.calcPower(airHeatTotal, staging.staged, fwSys.chwSupplyC || 12.0, undefined, w.db));
-                        fwChillerKw += chRes.power_kw;
-                        fwMode = 'mechanical';
-                    } else {
-                        fwChillerKw += airHeatTotal / fwBaseCop;
-                        fwMode = 'mechanical';
+                    const fcApproach = (typeof A === 'function') ? A('air_chiller_fc_coil_approach_c') : 4.0;
+                    const airFcKwPerKw = (typeof A === 'function') ? A('air_chiller_fc_fan_kw_per_kw') : 0.05;
+                    const eco = FreeCoolingEngine.calcSeriesEconomizer(w.db + fcApproach, chwSupplyC, chwReturnC);
+                    const Q_fc = airHeatTotal * eco.fc_fraction;
+                    const Q_mech = airHeatTotal * eco.chiller_fraction;
+
+                    fwRejKw += Q_fc * airFcKwPerKw;
+
+                    if (Q_mech > 0) {
+                        if (fwAirChillers.length > 0 && typeof ChillerEngine !== 'undefined') {
+                            const staging = ChillerEngine.calcLeadLagStaging(Q_mech, fwAirChillers);
+                            const chRes = trackChillerDeficit(ChillerEngine.calcPower(Q_mech, staging.staged, chwSupplyC, undefined, w.db));
+                            fwChillerKw += chRes.power_kw;
+                        } else {
+                            fwChillerKw += Q_mech / fwBaseCop;
+                        }
                     }
+                    fwMode = (eco.mode === FreeCoolingEngine.MODE.FULL_FC) ? 'free' : ((eco.mode === FreeCoolingEngine.MODE.PARTIAL_FC) ? 'partial' : 'mechanical');
+                    if (fwMode === 'free' && !isFreeHour) isFreeHour = true;
                 }
             }
 
