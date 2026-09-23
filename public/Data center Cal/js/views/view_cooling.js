@@ -823,7 +823,7 @@
                 // 專屬參數面板的說明)，若使用者已手動輸入實測值就顯示那個。
                 const atSwitchpointDisp = (cduSys.adiabaticDrySwitchpointC !== undefined && cduSys.adiabaticDrySwitchpointC !== null && cduSys.adiabaticDrySwitchpointC !== '')
                     ? cduSys.adiabaticDrySwitchpointC
-                    : Math.max(26.0, cduSys.fwsSupplyC - 9.2).toFixed(1);
+                    : Math.max(26.0, cduSys.fwsSupplyC - ((typeof A === 'function') ? A('adiabatic_switchpoint_offset_c') : 9.2)).toFixed(1);
                 facilitySchematicSvg = buildSingleLoopSchematic({
                     boxTitle: 'PHE-1 絕熱預冷板換 (Adiabatic PHE)',
                     boxHeaderFill: '#0c4a6e', boxStroke: '#38bdf8', pheStroke: '#7dd3fc',
@@ -1261,7 +1261,7 @@
 
                                     ${arch === 'adiabatic_tower' ? (() => {
                                         const satEffIn = cduSys.adiabaticSaturationEfficiencyPct ?? 85;
-                                        const estimatedSwitchpoint = Math.max(26.0, cduSys.fwsSupplyC - 9.2);
+                                        const estimatedSwitchpoint = Math.max(26.0, cduSys.fwsSupplyC - ((typeof A === 'function') ? A('adiabatic_switchpoint_offset_c') : 9.2));
                                         const hasOverride = cduSys.adiabaticDrySwitchpointC !== undefined && cduSys.adiabaticDrySwitchpointC !== null && cduSys.adiabaticDrySwitchpointC !== '';
                                         const effectiveSwitchpoint = hasOverride ? cduSys.adiabaticDrySwitchpointC : estimatedSwitchpoint;
                                         return `

@@ -1329,7 +1329,7 @@
             const cduSys = plantDesign.cduSystem;
             const fwSys  = plantDesign.fanwallSystem;
             const cduArch = cduSys.architecture || 'dry_cooler_hx';
-            const evapFactor = 0.00124;
+            const evapFactor = (typeof A === 'function') ? A('ct_evap_m3h_per_kw') : 0.00124;
             const cycles = cduSys.cyclesOfConcentration || 5;
 
             // === CDU 液冷系統 (以 Step 4 水溫設定為唯一基準) ===
@@ -1443,7 +1443,8 @@
                     // 1. 乾球溫 ≤ 乾式切換點 (Dry Switchpoint, 約 T_supply - 9°C ~ 31°C) 時：100% 乾式運轉，噴水泵關閉，0 耗水。
                     // 2. 乾球溫 > 乾式切換點時：開啟噴水泵潤濕預冷墊片，利用絕熱蒸發將進風溫降至有效乾球溫，此時產生蒸發耗水與排污耗水。
                     const satEff = (cduSys.adiabaticSaturationEfficiencyPct || 85) / 100;
-                    const drySwitchpoint = cduSys.adiabaticDrySwitchpointC || Math.max(26.0, (cduSys.fwsSupplyC || 40.0) - 9.2);
+                    const switchpointOffset = (typeof A === 'function') ? A('adiabatic_switchpoint_offset_c') : 9.2;
+                    const drySwitchpoint = cduSys.adiabaticDrySwitchpointC || Math.max(26.0, (cduSys.fwsSupplyC || 40.0) - switchpointOffset);
                     const atItem = (cduSys.sizing || []).find(s => s.key === 'adiabatic_tower');
                     const atDevices = this.resolveTowerFromSizing(atItem);
                     const isDry = w.db <= drySwitchpoint;
@@ -1456,26 +1457,26 @@
                         cduHeatRejKw += atFanKw ?? ((summ.liquidHeatKw / 500) * 7.5);
                         effectiveDb = w.db;
                     } else {
-                        // 絕熱噴霧預冷模式 (依 BAC 絕熱預冷熱平衡計算耗水量)
+                        // 絕熱噴霧預冷模式 (依熱平衡計算空氣側蒸發降溫所需水量)
                         cduHeatRejKw += atFanKw ?? ((summ.liquidHeatKw / 500) * 11.0);
                         // 噴水泵額外功耗 (約 0.25 kW/台，或負載之 0.03%)
                         cduHeatRejKw += (summ.liquidHeatKw * 0.0003);
 
-                        // 蒸發量計算：當乾球超出切換點時，噴霧蒸發降溫所需水量
-                        const deltaT = Math.max(0.5, w.db - drySwitchpoint);
-                        const maxWetDepression = Math.max(1.0, (w.db - w.wb) * satEff);
-                        const wetFraction = Math.min(1.0, Math.max(0.2, deltaT / maxWetDepression));
-                        // 依 BAC 實測數據：15MW 在台北夏季尖峰蒸發量約 1.2~1.5 m3/h per MW，年均約 0.4~0.6 L/kWh per wetted hour
-                        const evapRatePerKw = evapFactor * 0.45 * wetFraction;
-                        const evap = summ.liquidHeatKw * evapRatePerKw;
-                        const bd = evap / Math.max(1.0, cycles - 1);
+                        // P1-4: 依空氣側能量平衡計算絕熱蒸發耗水量 (把空氣從 DB 降至有效乾球所需的蒸發量)
+                        // T_eff = db - (db - wb) * satEff
+                        // ΔT_air = A('adiabatic_coil_air_dt_k') (預設 10 K, 盤管空氣側溫升)
+                        // m_air = Q_rej / (1.006 * ΔT_air) (kg/s)
+                        // m_evap = m_air * 1.006 * (db - T_eff) / 2450 (kg/s, h_fg ≈ 2450 kJ/kg)
+                        // evapM3h = m_evap * 3.6 (m³/h)
+                        // bd = evapM3h / max(1, cycles - 1)
+                        const T_eff = w.db - (w.db - w.wb) * satEff;
+                        const dtAir = (typeof A === 'function') ? A('adiabatic_coil_air_dt_k') : 10.0;
+                        const m_air = summ.liquidHeatKw / (1.006 * Math.max(1.0, dtAir));
+                        const m_evap = Math.max(0, m_air * 1.006 * (w.db - T_eff) / 2450.0);
+                        const evap = m_evap * 3.6;
+                        const bd = evap / Math.max(1, cycles - 1);
                         waterM3 += (evap + bd);
-                        // 絕熱預冷後的「有效乾球溫」= 濕球溫 + (1-飽和效率)*(乾球-濕球)，
-                        // 對應 BAC TrilliumSeries 選型報告的物理模型：噴霧只能讓進風溫逼近
-                        // 濕球溫(依飽和效率打折)，不是逼近乾球溫，所以絕熱模式終究被濕球溫度卡住
-                        // (BAC 選型報告的 Reserve Capability / Maximum Heat Rejection at 0% Reserve
-                        // 就是在講這件事)。
-                        effectiveDb = w.db - (w.db - w.wb) * satEff;
+                        effectiveDb = T_eff;
                     }
                     // v44: 之前這裡完全沒有像 dry_cooler_pure 一樣做「外氣超出冷卻能力」的
                     // 超標判定，導致不管天氣多熱多濕，模型永遠假設絕熱塔成功達到設計供水溫，
@@ -1501,7 +1502,7 @@
                         : null;
                     cduHeatRejKw += ctFanKw ?? ((summ.liquidHeatKw / 500) * (isLowFan ? 8.0 : 12.0));
                     const evap = summ.liquidHeatKw * evapFactor;
-                    const bd = evap / (cycles - 1);
+                    const bd = evap / Math.max(1, cycles - 1);
                     waterM3 += (evap + bd);
                     // v44: 同 adiabatic_tower 的修正 — 密閉式冷卻水塔的冷卻能力終究被濕球溫度
                     // 卡住(供水溫 ≈ WB + 密閉式塔approach，approach通常比開放式塔高，因為多一層
@@ -1522,9 +1523,10 @@
                     // T_cewt 用氣象濕球溫 + 冷卻塔 approach 概估（完整冷卻塔熱平衡模型留待 Phase 3）。
                     const wcTowerItem = (cduSys.sizing || []).find(s => s.key === 'cooling_tower');
                     const wcTowerDevices = this.resolveTowerFromSizing(wcTowerItem);
-                    cduHeatRejKw += (wcTowerDevices.length > 0 && typeof CoolingTowerEngine !== 'undefined')
+                    const wcTowerFanKw = (wcTowerDevices.length > 0 && typeof CoolingTowerEngine !== 'undefined')
                         ? CoolingTowerEngine.calcFanPower(wcTowerDevices, cduLoadRatio, false, cduFanMinSpeed)
                         : (summ.liquidHeatKw / 500) * 14.0;
+                    cduHeatRejKw += wcTowerFanKw;
                     const cduChillerItem = (cduSys.sizing || []).find(s => s.key === 'water_cooled_chiller');
                     const cduChillers = this.resolveChillerFromSizing(cduChillerItem, 'water_cooled');
                     let cduChillerPowerKwThisHour;
@@ -1545,7 +1547,7 @@
                     // 之前漏算這塊會讓全額水冷架構的耗水量/WUE系統性低估。
                     const wcHeatRejKw = summ.liquidHeatKw + cduChillerPowerKwThisHour;
                     const evap = wcHeatRejKw * evapFactor;
-                    const bd = evap / (cycles - 1);
+                    const bd = evap / Math.max(1, cycles - 1);
                     waterM3 += (evap + bd);
                 } else {
                     cduHeatRejKw += (summ.liquidHeatKw / 500) * 14.0;
@@ -1643,6 +1645,7 @@
                     const fwTowerFanKw = (fwTowerDevices.length > 0 && typeof CoolingTowerEngine !== 'undefined')
                         ? CoolingTowerEngine.calcFanPower(fwTowerDevices, fwLoadRatio, fwIsFullFc, fwFanMinSpeed)
                         : null;
+                    let fwChillerPowerKwThisHour = 0;
                     if (fwIsFullFc) {
                         fwRejKw += fwTowerFanKw ?? (airHeatTotal * 0.04);
                         if (!isFreeHour) isFreeHour = true;
@@ -1654,14 +1657,17 @@
                             const T_cewt = Math.max(minCewt, w.wb + fwWaterTowerApproach);
                             const staging = ChillerEngine.calcLeadLagStaging(fwChillerLoadKw, fwWaterChillers);
                             const chRes = trackChillerDeficit(ChillerEngine.calcPower(fwChillerLoadKw, staging.staged, chwSupplyC, T_cewt, w.db));
-                            fwChillerKw += chRes.power_kw;
+                            fwChillerPowerKwThisHour = chRes.power_kw;
                         } else if (fwChillerLoadKw > 0) {
-                            fwChillerKw += fwChillerLoadKw / fwBaseCop;
+                            fwChillerPowerKwThisHour = fwChillerLoadKw / fwBaseCop;
                         }
+                        fwChillerKw += fwChillerPowerKwThisHour;
                         fwRejKw += fwTowerFanKw ?? ((airHeatTotal / 500) * 14.0);
                         fwMode = (eco.mode === FreeCoolingEngine.MODE.PARTIAL_FC) ? 'partial' : 'mechanical';
                     }
-                    const fwEvap = airHeatTotal * evapFactor;
+                    // P1-3: 水冷冰機排熱至冷卻塔包含冰水負載與壓縮機耗電 (Q_mech + P_chiller)
+                    const fwHeatRejKw = airHeatTotal + fwChillerPowerKwThisHour;
+                    const fwEvap = fwHeatRejKw * evapFactor;
                     const fwBd = fwEvap / Math.max(1, cycles - 1);
                     waterM3 += (fwEvap + fwBd);
                 } else if (fwArch === 'chilled_water_plant' || fwArch === 'campus_chilled_water') {

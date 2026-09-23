@@ -23,7 +23,7 @@ const ASSUMPTIONS = {
   sizing_margin_target:   { val: 15,   unit: '%',   label: '選型建議目標裕度', ref: '公司內規（可調）' },
   cooling_diversity_factor: { val: 0.9, unit: '-', label: '冷卻負載同時使用係數（多迴路/多機列不會同時達峰值）', ref: 'ASHRAE 系統設計常用 0.85–0.95' },
   future_margin_pct:       { val: 10,  unit: '%', label: '未來擴充設計裕度（放大至 Design Load 再進行設備選型）', ref: '公司內規（可調，AI DC 常見 10–20%）' },
-  ct_evap_m3h_per_kw:      { val: 0.00124, unit: 'm³/(h·kW)', label: '濕式冷卻塔蒸發耗水係數（每 kW 排熱）', ref: 'ASHRAE Handbook — CT evaporation ≈1.8 L/min / 100 kW 排熱' },
+  ct_evap_m3h_per_kw:      { val: 0.00124, unit: 'm³/(h·kW)', label: '濕式冷卻塔蒸發耗水係數（每 kW 排熱）', ref: '蒸發量 = Q × 潛熱比 / h_fg；h_fg≈2430 kJ/kg、潛熱比≈0.84 → 0.00124 m³/h/kW' },
   min_cewt_c:              { val: 16.0, unit: '°C', label: '冰機冷凝器最低進水溫下限（condenser water relief 下限，避免冬季 COP 失真偏高）', ref: 'AHRI 550/590；典型離心/螺旋式冰機油壓與潤滑限制常見下限 15–18°C' },
   cdu_approach_c:          { val: 3.0, unit: '°C', label: 'CDU 二次側供水（FWS）相對一次側供水（TCS）的最小溫差（approach）', ref: 'ASHRAE TC9.9 液冷白皮書 CDU approach 典型 2–4°C' },
   cdu_derate_pct_per_c:    { val: 2.0, unit: '%/°C', label: 'CDU 容量隨一次側供水溫每升高 1°C 的線性降額率', ref: '廠商型錄常見趨勢（板式換熱器 UA 固定、驅動溫差縮小），概估非實測曲線' },
@@ -32,6 +32,10 @@ const ASSUMPTIONS = {
   ct_rerate_pct_per_c_above_std: { val: 2.5, unit: '%/°C', label: '冷卻水塔容量隨設計濕球溫超過 CTI 標準額定濕球每升高 1°C 的降額率', ref: 'CTI ATC-105 標準額定條件下型錄值，實際設計 WB 偏高時容量下降，概估值' },
   ct_standard_rating_wb_c: { val: 25.6, unit: '°C', label: '冷卻水塔型錄額定容量對應的 CTI 標準額定濕球溫（78°F）', ref: 'CTI ATC-105 標準額定條件' },
   design_wb_fallback_c:    { val: 28.0, unit: '°C', label: '無氣象逐時資料可查時的設計濕球溫度後備值（設備選型降額用）', ref: '台灣主要城市夏季 p99 濕球溫度概估區間 27–29°C' },
+
+  // ── 絕熱冷卻塔常數 (P1-4) ─────────────────────────────────────────────
+  adiabatic_coil_air_dt_k:        { val: 10.0, unit: 'K',  label: '絕熱預冷盤管空氣側溫升', ref: '乾冷器／絕熱盤管空氣側溫升典型 8–12 K' },
+  adiabatic_switchpoint_offset_c: { val: 9.2,  unit: '°C', label: '絕熱乾轉濕切換溫差偏移', ref: '外氣乾球高於 (FWS - approach - 此值) 時啟動絕熱噴淋預冷' },
 
   // ── NVIDIA DSX 設施設計指引基準常數 ────────────────────────────────────
   nvidia_dsx_t_chip_s45:          { val: 45.0,  unit: '°C',     label: 'NVIDIA Vera Rubin (S45) 晶片進水溫度上限', ref: 'NVIDIA DSX Facilities Guide v2.0 p.62' },

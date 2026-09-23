@@ -270,6 +270,51 @@ function freshCtx() {
   });
 })();
 
+// ── P1-3 & P1-4: 耗水計算標準化、保護與絕熱冷卻塔熱平衡 ───────────────────
+(function () {
+  const ctx = freshCtx();
+  const S = ctx.AppStore;
+  S.calculate();
+
+  // Test 1: P1-3 cooling_tower_hx cyclesOfConcentration = 1 does not divide by 0
+  const du = S.state.halls[0].dus[0];
+  const pd1 = JSON.parse(JSON.stringify(du.plantDesign));
+  pd1.cduSystem.architecture = 'cooling_tower_hx';
+  pd1.cduSystem.cyclesOfConcentration = 1;
+  const duSumm = S.calcDuSummary(du);
+  const hrCt1 = S.calcHourlyEnergy(pd1, duSumm, { db: 25, wb: 20 });
+  test('P1-3 cooling_tower_hx cycles=1 does not produce NaN/Infinity', () => {
+    assert(Number.isFinite(hrCt1.waterM3) && hrCt1.waterM3 > 0);
+  });
+
+  // Test 2: P1-3 Fanwall water_cooled_chiller includes compressor power in water consumption
+  const pd2 = JSON.parse(JSON.stringify(du.plantDesign));
+  pd2.cduSystem.architecture = 'dry_cooler_trim';
+  pd2.fanwallSystem.architecture = 'water_cooled_chiller';
+  const hrWc = S.calcHourlyEnergy(pd2, duSumm, { db: 35, wb: 28 });
+  test('P1-3 Fanwall water_cooled_chiller includes compressor power in evaporative water', () => {
+    assert(hrWc.fwKwh.chiller > 0, 'mechanical chiller must run at WB 28');
+    const airHeatTotal = duSumm.airHeatKw + duSumm.lossKw;
+    const expectedWater = (airHeatTotal + hrWc.fwKwh.chiller) * 0.00124 * (1 + 1/4);
+    assert(Math.abs(hrWc.waterM3 - expectedWater) < 1e-4);
+  });
+
+  // Test 3: P1-4 adiabatic_tower wet mode uses sensible air-side heat balance
+  const pd3 = JSON.parse(JSON.stringify(du.plantDesign));
+  pd3.cduSystem.architecture = 'adiabatic_tower';
+  pd3.cduSystem.fwsSupplyC = 40;
+  pd3.fanwallSystem.architecture = 'air_cooled_chiller';
+  const db = 35, wb = 28, satEff = 0.85;
+  const hrAt = S.calcHourlyEnergy(pd3, duSumm, { db, wb });
+  test('P1-4 adiabatic_tower wet mode calculates water via sensible energy balance', () => {
+    const T_eff = db - (db - wb) * satEff;
+    const m_air = duSumm.liquidHeatKw / (1.006 * 10.0);
+    const m_evap = m_air * 1.006 * (db - T_eff) / 2450.0;
+    const expectedWater = (m_evap * 3.6) * (1 + 1/4);
+    assert(Math.abs(hrAt.waterM3 - expectedWater) < 1e-4);
+  });
+})();
+
 console.log(`\n${passCount} passed, ${failCount} failed, ${skipCount} skipped`);
 process.exit(failCount > 0 ? 1 : 0);
 
