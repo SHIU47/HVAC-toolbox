@@ -315,6 +315,42 @@ function freshCtx() {
   });
 })();
 
+// ── P1-7: isFreeHour 統一定義 ──────────────────────────────────────────
+(function () {
+  const ctx = freshCtx();
+  const S = ctx.AppStore;
+  S.calculate();
+
+  const du = S.state.halls[0].dus[0];
+  const pd = JSON.parse(JSON.stringify(du.plantDesign));
+  pd.cduSystem.architecture = 'dry_cooler_trim';
+  pd.fanwallSystem.architecture = 'air_cooled_chiller';
+  const duSumm = S.calcDuSummary(du);
+
+  // Case 1: 冬季外氣低溫 (DB 5°C, WB 3°C) -> CDU free, FW free -> isFreeHour is true
+  const hrWinter = S.calcHourlyEnergy(pd, duSumm, { db: 5, wb: 3 });
+  test('P1-7 isFreeHour is true only when both CDU and Fanwall are in free mode', () => {
+    assert.strictEqual(hrWinter.cduMode, 'free');
+    assert.strictEqual(hrWinter.fwMode, 'free');
+    assert.strictEqual(hrWinter.isFreeHour, true);
+  });
+
+  // Case 2: 過渡季 (DB 10°C, WB 8°C) -> CDU free, FW partial -> isFreeHour is false
+  const hrMild = S.calcHourlyEnergy(pd, duSumm, { db: 10, wb: 8 });
+  test('P1-7 isFreeHour is false when CDU is free but Fanwall is partial', () => {
+    assert.strictEqual(hrMild.cduMode, 'free');
+    assert.strictEqual(hrMild.fwMode, 'partial');
+    assert.strictEqual(hrMild.isFreeHour, false);
+  });
+
+  // Case 3: 純氣冷負載 (liquidHeatKw = 0) -> 僅由 Fanwall 決定
+  const airOnlySumm = { totalItKw: 100, liquidHeatKw: 0, airHeatKw: 100, lossKw: 0, dlcPct: 0 };
+  const hrAirOnlyFree = S.calcHourlyEnergy(pd, airOnlySumm, { db: 5, wb: 3 });
+  test('P1-7 isFreeHour ignores liquid loop when liquidHeatKw is 0', () => {
+    assert.strictEqual(hrAirOnlyFree.isFreeHour, true);
+  });
+})();
+
 console.log(`\n${passCount} passed, ${failCount} failed, ${skipCount} skipped`);
 process.exit(failCount > 0 ? 1 : 0);
 

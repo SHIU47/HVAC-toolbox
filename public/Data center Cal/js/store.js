@@ -1373,7 +1373,6 @@
             let cduHeatRejKw = 0;
             let cduChillerKw = 0;
             let waterM3 = 0;
-            let isFreeHour = false;
             let cduMode = 'free';
             let fwMode = 'free';
             // v32 Phase 9-3: 累計冰機容量不足缺口 (ChillerEngine.calcPower 內建的
@@ -1398,7 +1397,6 @@
                         : null;
                     const fanRatio = Math.max(0.2, Math.min(1.0, (w.db + 273.15) / (freeThresh + 273.15)));
                     cduHeatRejKw += dcFanKw ?? ((summ.liquidHeatKw / 500) * 8.0 * fanRatio);
-                    isFreeHour = isFc;
                     cduMode = isFc ? 'free' : 'partial';
                     // 當外氣大於門檻且無冰機時，觸發氣候水溫超標 (Thermal Deficit)
                     if (!isFc) {
@@ -1421,7 +1419,6 @@
                     if (dcIsFullFc) {
                         const fanRatio = Math.max(0.15, Math.min(1.0, (w.db + 273.15) / (freeThresh + 273.15)));
                         cduHeatRejKw += dcFanKw ?? ((summ.liquidHeatKw / 500) * 8.0 * fanRatio);
-                        isFreeHour = true;
                         cduMode = 'free';
                     } else {
                         cduHeatRejKw += dcFanKw ?? ((summ.liquidHeatKw / 500) * 15.0);
@@ -1490,7 +1487,6 @@
                         const atUnservedRatio = Math.min(1.0, atTempOvershoot / Math.max(1.0, cduSys.fwsReturnC - cduSys.fwsSupplyC));
                         capacityDeficitKw += Math.round(summ.liquidHeatKw * atUnservedRatio);
                     }
-                    isFreeHour = !atExceeded; // 供水溫實際達標時才計為完全自由冷卻
                     cduMode = atExceeded ? 'partial' : 'free';
                 } else if (cduArch === 'cooling_tower_hx') {
                     // 密閉式冷卻水塔 (Closed-Circuit Cooling Tower) — 100% 濕球蒸發自然冷卻 (零冰機)
@@ -1515,7 +1511,6 @@
                         const ctUnservedRatio = Math.min(1.0, ctTempOvershoot / Math.max(1.0, cduSys.fwsReturnC - cduSys.fwsSupplyC));
                         capacityDeficitKw += Math.round(summ.liquidHeatKw * ctUnservedRatio);
                     }
-                    isFreeHour = !ctExceeded; // 供水溫實際達標時才計為完全自由冷卻
                     cduMode = ctExceeded ? 'partial' : 'free';
                 } else if (cduArch === 'water_chiller') {
                     // V24 Phase 3: 全額水冷式冰水主機 + 濕式冷卻塔（需計算散熱塔耗水量）
@@ -1632,7 +1627,6 @@
                         fwRejKw += (Q_mech / 500) * 8.0;
                     }
                     fwMode = (eco.mode === FreeCoolingEngine.MODE.FULL_FC) ? 'free' : ((eco.mode === FreeCoolingEngine.MODE.PARTIAL_FC) ? 'partial' : 'mechanical');
-                    if (fwMode === 'free' && !isFreeHour) isFreeHour = true;
                 } else if (fwArch === 'water_cooled_chiller' || fwArch === 'water_cooled_chiller_tower') {
                     // 水冷式冰水主機 + 濕式冷卻塔
                     const hxApproach = (typeof A === 'function') ? A('hx_approach_c') : 1.5;
@@ -1648,7 +1642,6 @@
                     let fwChillerPowerKwThisHour = 0;
                     if (fwIsFullFc) {
                         fwRejKw += fwTowerFanKw ?? (airHeatTotal * 0.04);
-                        if (!isFreeHour) isFreeHour = true;
                         fwMode = 'free';
                     } else {
                         const fwChillerLoadKw = airHeatTotal * fwChillerFraction;
@@ -1694,13 +1687,15 @@
                         }
                     }
                     fwMode = (eco.mode === FreeCoolingEngine.MODE.FULL_FC) ? 'free' : ((eco.mode === FreeCoolingEngine.MODE.PARTIAL_FC) ? 'partial' : 'mechanical');
-                    if (fwMode === 'free' && !isFreeHour) isFreeHour = true;
                 }
             }
 
             const combinedMode = (cduMode === 'free' && fwMode === 'free')
                 ? 'free'
                 : ((cduMode === 'mechanical' && fwMode === 'mechanical') ? 'mechanical' : 'partial');
+
+            // P1-7: isFreeHour 結尾統一定義：液冷側(若有負載)與氣冷側(若有負載)皆為自由冷卻
+            const isFreeHour = (summ.liquidHeatKw === 0 || cduMode === 'free') && (airHeatTotal === 0 || fwMode === 'free');
 
             // P1-2: 實際移除熱量 = 需冷卻之總熱量 (液冷熱 + 氣冷熱 + 損失熱) - 容量缺口
             const heatRemovedKw = Math.max(0, summ.liquidHeatKw + airHeatTotal - capacityDeficitKw);
@@ -1761,50 +1756,6 @@
             const hourlyWeather = (this.state.site.hourly && this.state.site.hourly.length >= 8760) 
                 ? this.state.site.hourly 
                 : this.generateFallbackWeather();
-
-            // 動態分析全廠冷卻架構與排熱模式 (以 Step 4 為唯一真理源)
-            const allCduSystems = [
-                ...this.state.halls.flatMap(h => h.dus.map(d => d.plantDesign.cduSystem)),
-                ...this.state.corePods.map(p => p.plantDesign.cduSystem)
-            ];
-            const allCduArchs = allCduSystems.map(c => c.architecture || 'dry_cooler_hx');
-            const isAllZeroChiller = allCduArchs.length > 0 && allCduArchs.every(a => a === 'dry_cooler_pure' || a === 'adiabatic_tower' || a === 'cooling_tower_hx');
-            const isAllFullChiller = allCduArchs.length > 0 && allCduArchs.every(a => a === 'water_chiller');
-
-            const fcThresh = this.getEffectiveFcThresholds();
-            const mode1DbMax = fcThresh.mode1DbMax;
-            const mode2DbMax = fcThresh.mode2DbMax;
-
-            let climateFreeCount = 0, climateTrimCount = 0, climateMechCount = 0;
-            for (let i = 0; i < 8760; i++) {
-                const w = hourlyWeather[i] || { db: 25, wb: 20 };
-                if (isAllZeroChiller) {
-                    // v45 fix: 之前這裡不管實際天氣，零冰機架構一律算成自由冷卻，導致「氣候FC
-                    // 潛力」儀表板無論案場多熱都顯示100%。改成跟下面 hourlyProfile mode 分類
-                    // 迴圈(1975行附近)同一套邏輯 — 依真實外氣DB對比門檻，超標算「輔助/需注意」。
-                    if (w.db <= mode1DbMax) {
-                        climateFreeCount++;
-                    } else {
-                        climateTrimCount++;
-                    }
-                } else if (isAllFullChiller) {
-                    climateMechCount++;
-                } else if (w.db <= mode1DbMax) {
-                    climateFreeCount++;
-                } else if (w.db <= mode2DbMax) {
-                    climateTrimCount++;
-                } else {
-                    climateMechCount++;
-                }
-            }
-            this.state.results.fcPotential = {
-                freeHours: climateFreeCount,
-                freeHoursPct: parseFloat(((climateFreeCount / 8760) * 100).toFixed(1)),
-                trimHours: climateTrimCount,
-                trimHoursPct: parseFloat(((climateTrimCount / 8760) * 100).toFixed(1)),
-                mechanicalHours: climateMechCount,
-                mechanicalHoursPct: parseFloat(((climateMechCount / 8760) * 100).toFixed(1))
-            };
 
             const facilityLossPct = this.state.facilityElectricalLossPct ?? 0.0;
             const byDuResults = [];
