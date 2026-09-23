@@ -7,7 +7,15 @@ ctx.window = ctx; ctx.global = ctx; ctx.globalThis = ctx;
 vm.createContext(ctx);
 // ⚠ 順序需與 index.html 一致；Phase C 新增檔案時同步更新此清單
 const FILES = ['assumptions.js','engines_core.js','engines_cdu.js','engines_crah.js','engines_chiller.js',
-  'engines_cooling_tower.js','engines_free_cooling.js','engines_hx.js','engines_pump.js','weather_builtin.js',
+  'engines_cooling_tower.js','engines_free_cooling.js','engines_hx.js','engines_pump.js',
+  'cooling/registry.js',
+  'cooling/stages/stage_dry_cooler.js',
+  'cooling/stages/stage_evap_tower.js',
+  'cooling/stages/stage_closed_tower.js',
+  'cooling/stages/stage_adiabatic.js',
+  'cooling/stages/stage_chiller.js',
+  'cooling/stages/stage_district_chw.js',
+  'weather_builtin.js',
   'device_catalog_builtin.js','catalog_manager.js','store.js'];
 for (const f of FILES) vm.runInContext(fs.readFileSync(path.join(JS, f), 'utf8'), ctx, { filename: f });
 module.exports = ctx;

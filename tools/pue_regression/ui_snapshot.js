@@ -20,6 +20,13 @@ const JS_DIR = path.resolve(__dirname, '../../public/Data center Cal/js');
 const APP_FILES = [
   'assumptions.js', 'engines_core.js', 'engines_cdu.js', 'engines_crah.js', 'engines_chiller.js',
   'engines_cooling_tower.js', 'engines_free_cooling.js', 'engines_hx.js', 'engines_pump.js',
+  'cooling/registry.js',
+  'cooling/stages/stage_dry_cooler.js',
+  'cooling/stages/stage_evap_tower.js',
+  'cooling/stages/stage_closed_tower.js',
+  'cooling/stages/stage_adiabatic.js',
+  'cooling/stages/stage_chiller.js',
+  'cooling/stages/stage_district_chw.js',
   'weather_builtin.js', 'epw_parser.js', 'components/equipment_designer.js',
   'device_catalog_builtin.js', 'catalog_manager.js', 'ui_kit.js', 'store.js', 'excel_export.js',
   'views/view_weather.js', 'views/view_hall_su.js', 'views/view_corepod.js',

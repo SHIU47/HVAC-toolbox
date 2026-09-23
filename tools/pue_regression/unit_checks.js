@@ -462,6 +462,91 @@ function freshCtx() {
   });
 })();
 
+// ═══════════════════════════════════════════════════════════════
+// C-1: Cooling Architecture & Stage Registry
+// ═══════════════════════════════════════════════════════════════
+(function () {
+  const ctx = freshCtx();
+  const { CoolingStages, CoolingArchRegistry } = ctx;
+
+  test('C-1 CoolingStages registers all 6 built-in stages', () => {
+    assert(CoolingStages.has('dry_cooler'), 'dry_cooler stage must exist');
+    assert(CoolingStages.has('evap_tower'), 'evap_tower stage must exist');
+    assert(CoolingStages.has('closed_tower'), 'closed_tower stage must exist');
+    assert(CoolingStages.has('adiabatic'), 'adiabatic stage must exist');
+    assert(CoolingStages.has('chiller'), 'chiller stage must exist');
+    assert(CoolingStages.has('district_chw'), 'district_chw stage must exist');
+    assert(CoolingStages.list().length >= 6);
+  });
+
+  test('C-1 CoolingArchRegistry register, get, resolveAlias, and list work', () => {
+    CoolingArchRegistry.register({
+      id: 'mock_test_arch',
+      aliases: ['mock_alias_1', 'mock_alias_2'],
+      loop: 'liquid'
+    });
+    assert(CoolingArchRegistry.has('mock_test_arch'));
+    assert(CoolingArchRegistry.has('mock_alias_1'));
+    assert.strictEqual(CoolingArchRegistry.resolveAlias('mock_alias_1'), 'mock_test_arch');
+    assert.strictEqual(CoolingArchRegistry.get('mock_alias_2').id, 'mock_test_arch');
+    const liquidArchs = CoolingArchRegistry.list('liquid');
+    assert(liquidArchs.some(a => a.id === 'mock_test_arch'));
+  });
+
+  test('C-1 stage_dry_cooler simulate returns valid StageResult in pure mode', () => {
+    const s = CoolingStages.get('dry_cooler');
+    const res = s.simulate({
+      Q_kw: 500,
+      t_supply_c: 42.0,
+      t_return_c: 54.0,
+      approach_c: 5.0,
+      hx_approach_c: 2.0,
+      w: { db: 25, wb: 20 },
+      isTrimMode: false
+    });
+    assert(res.Q_removed_kw === 500);
+    assert(res.fanKw > 0);
+    assert.strictEqual(res.mode, 'free');
+    assert.strictEqual(res.waterM3, 0);
+  });
+
+  test('C-1 stage_adiabatic simulate handles dry vs wet mode', () => {
+    const s = CoolingStages.get('adiabatic');
+    const dryRes = s.simulate({
+      Q_kw: 500,
+      t_supply_c: 42.0,
+      t_return_c: 54.0,
+      w: { db: 20, wb: 15 },
+      sys: { adiabaticDrySwitchpointC: 30.0 }
+    });
+    assert.strictEqual(dryRes.waterM3, 0, 'dry mode must consume 0 water');
+    assert.strictEqual(dryRes.mode, 'free');
+
+    const wetRes = s.simulate({
+      Q_kw: 500,
+      t_supply_c: 42.0,
+      t_return_c: 54.0,
+      w: { db: 35, wb: 25 },
+      sys: { adiabaticDrySwitchpointC: 30.0 }
+    });
+    assert(wetRes.waterM3 > 0, 'wet mode must consume water');
+  });
+
+  test('C-1 stage_chiller simulate calculates compressor power and heat to sink', () => {
+    const s = CoolingStages.get('chiller');
+    const res = s.simulate({
+      Q_kw: 200,
+      chillerType: 'water_cooled',
+      t_chws_c: 30.0,
+      t_cewt_c: 35.0,
+      w: { db: 35, wb: 28 }
+    });
+    assert(res.compressorKw > 0, 'compressor must consume power');
+    assert.strictEqual(res.rejectToSinkKw, 200 + res.compressorKw, 'condenser must reject Q + P');
+    assert.strictEqual(res.mode, 'mechanical');
+  });
+})();
+
 console.log(`\n${passCount} passed, ${failCount} failed, ${skipCount} skipped`);
 process.exit(failCount > 0 ? 1 : 0);
 
