@@ -619,6 +619,84 @@ function freshCtx() {
   });
 })();
 
+// ═══════════════════════════════════════════════════════════════
+// C-3 Generic Sizing Engine (SizingEngine)
+// ═══════════════════════════════════════════════════════════════
+(function () {
+  const ctx = freshCtx();
+  const { SizingEngine } = ctx;
+
+  test('C-3 SizingEngine methods exist', () => {
+    assert(SizingEngine, 'SizingEngine must be defined');
+    assert(typeof SizingEngine.generateCduSizing === 'function', 'generateCduSizing must exist');
+    assert(typeof SizingEngine.generateFwSizing === 'function', 'generateFwSizing must exist');
+    assert(typeof SizingEngine.evaluateCduSizing === 'function', 'evaluateCduSizing must exist');
+    assert(typeof SizingEngine.evaluateFwSizing === 'function', 'evaluateFwSizing must exist');
+    assert(typeof SizingEngine.validateCdu === 'function', 'validateCdu must exist');
+    assert(typeof SizingEngine.validateFw === 'function', 'validateFw must exist');
+  });
+
+  test('C-3 SizingEngine generates CDU sizing items for all liquid archs', () => {
+    const liquidArchs = ['dry_cooler_trim', 'dry_cooler_pure', 'adiabatic_tower', 'cooling_tower_hx', 'water_chiller'];
+    for (const a of liquidArchs) {
+      const items = SizingEngine.generateCduSizing(a, 1000, 15);
+      assert(Array.isArray(items) && items.length >= 2, `CDU sizing for ${a} must have items`);
+      items.forEach(it => {
+        assert(it.key, 'item must have key');
+        assert(it.label, 'item must have label');
+        assert(typeof it.unitCapKw === 'number' && it.unitCapKw > 0, 'item must have unitCapKw');
+        assert(typeof it.selectedQty === 'number' && it.selectedQty >= 2, 'selectedQty must be >= 2');
+        assert(typeof it.requiredKw === 'number', 'requiredKw must be number');
+      });
+    }
+  });
+
+  test('C-3 SizingEngine generates Fanwall/RDHX sizing items for all air archs', () => {
+    const airArchs = ['air_cooled_chiller', 'water_cooled_chiller', 'chilled_water_plant', 'rdhx'];
+    for (const a of airArchs) {
+      const items = SizingEngine.generateFwSizing(a, 300, 10);
+      assert(Array.isArray(items) && items.length >= 2, `FW sizing for ${a} must have items`);
+      items.forEach(it => {
+        assert(it.key, 'item must have key');
+        assert(it.label, 'item must have label');
+        assert(typeof it.unitCapKw === 'number' && it.unitCapKw > 0, 'item must have unitCapKw');
+        assert(typeof it.selectedQty === 'number' && it.selectedQty >= 2, 'selectedQty must be >= 2');
+        assert(typeof it.requiredKw === 'number', 'requiredKw must be number');
+      });
+    }
+  });
+
+  test('C-3 SizingEngine evaluates CDU and Fanwall sizing and validates successfully', () => {
+    const cduSys = {
+      architecture: 'dry_cooler_trim',
+      fwsSupplyC: 40.0,
+      fwsReturnC: 55.0,
+      hydraulics: { pump_power_kw: 11.0 }
+    };
+    cduSys.sizing = SizingEngine.generateCduSizing('dry_cooler_trim', 1000, 11.0);
+    const designCond = { designDb: 34.0, designWb: 28.0, maxDb: 38.0 };
+    SizingEngine.evaluateCduSizing(cduSys, 1000, designCond, {
+      trimOperatingPoint: (sys, db) => ({ chiller_fraction: 0.35, tChws: 30, tCewt: 39 })
+    });
+    const cduVal = SizingEngine.validateCdu(cduSys, 1.8);
+    assert(typeof cduVal.ok === 'boolean', 'cduVal.ok must be boolean');
+    assert(Array.isArray(cduVal.checks) && cduVal.checks.length > 0, 'cduVal.checks must be non-empty');
+
+    const fwSys = {
+      architecture: 'air_cooled_chiller',
+      chwSupplyC: 12.0,
+      chwReturnC: 18.0,
+      hydraulics: { pump_power_kw: 8.0 }
+    };
+    fwSys.sizing = SizingEngine.generateFwSizing('air_cooled_chiller', 200, 8.0);
+    SizingEngine.evaluateFwSizing(fwSys, 200, designCond);
+    const fwVal = SizingEngine.validateFw(fwSys, 1.8);
+    assert(typeof fwVal.ok === 'boolean', 'fwVal.ok must be boolean');
+    assert(Array.isArray(fwVal.checks) && fwVal.checks.length > 0, 'fwVal.checks must be non-empty');
+  });
+})();
+
 console.log(`\n${passCount} passed, ${failCount} failed, ${skipCount} skipped`);
 process.exit(failCount > 0 ? 1 : 0);
+
 
