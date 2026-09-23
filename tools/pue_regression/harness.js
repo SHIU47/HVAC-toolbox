@@ -15,6 +15,15 @@ const FILES = ['assumptions.js','engines_core.js','engines_cdu.js','engines_crah
   'cooling/stages/stage_adiabatic.js',
   'cooling/stages/stage_chiller.js',
   'cooling/stages/stage_district_chw.js',
+  'cooling/archs/liquid_dry_cooler_trim.js',
+  'cooling/archs/liquid_dry_cooler_pure.js',
+  'cooling/archs/liquid_adiabatic_tower.js',
+  'cooling/archs/liquid_closed_tower.js',
+  'cooling/archs/liquid_water_chiller.js',
+  'cooling/archs/air_air_cooled_chiller.js',
+  'cooling/archs/air_water_cooled_chiller.js',
+  'cooling/archs/air_district_chw.js',
+  'cooling/archs/air_rdhx.js',
   'weather_builtin.js',
   'device_catalog_builtin.js','catalog_manager.js','store.js'];
 for (const f of FILES) vm.runInContext(fs.readFileSync(path.join(JS, f), 'utf8'), ctx, { filename: f });

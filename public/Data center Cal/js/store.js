@@ -1348,23 +1348,24 @@
         },
 
         // ═══════════════════════════════════════════════════════════════
-        // V22: 共用逐時能耗計算函式 — DU 與 CorePOD 共用同一套物理邏輯
+        // V22 / C-2: 共用逐時能耗計算函式 — 透過 CoolingArchRegistry 分派
         // ═══════════════════════════════════════════════════════════════
         calcHourlyEnergy(plantDesign, summ, w) {
             const cduSys = plantDesign.cduSystem;
             const fwSys  = plantDesign.fanwallSystem;
             const cduArch = cduSys.architecture || 'dry_cooler_hx';
+            const fwArch  = fwSys.architecture || 'air_cooled_chiller';
+
+            const cduArchDesc = (typeof CoolingArchRegistry !== 'undefined') ? CoolingArchRegistry.get(cduArch) : null;
+            const fwArchDesc  = (typeof CoolingArchRegistry !== 'undefined') ? CoolingArchRegistry.get(fwArch) : null;
+
+            if (!cduArchDesc) throw new Error(`Unknown CDU cooling architecture: "${cduArch}"`);
+            if (!fwArchDesc)  throw new Error(`Unknown Fanwall cooling architecture: "${fwArch}"`);
+
             const evapFactor = (typeof A === 'function') ? A('ct_evap_m3h_per_kw') : 0.00124;
             const cycles = cduSys.cyclesOfConcentration || 5;
 
-            // === CDU 液冷系統 (以 Step 4 水溫設定為唯一基準) ===
-            const dcApproach = cduSys.dryCoolerApproachC || 5.0;
-            const pheApproach = (cduArch === 'dry_cooler_trim' || cduArch === 'dry_cooler_hx') ? (cduSys.pheApproachC ?? 2.0) : 0.0;
-            const freeThresh = cduSys.fwsSupplyC - dcApproach - pheApproach;
-            const mechThresh = freeThresh + 5.7;
-
-            // v31 Phase 2: CDU主機本身 + 一次側循環泵，一律先用 Step4 選定的真實設備算，
-            // 找不到型錄資料(capKw/powerKw)時退回原本的熱負載比例近似值。
+            // --- CDU terminal and primary pump ---
             const designLiqKw = cduSys.designBasis?.liq_load_kw || summ.liquidHeatKw;
             const cduLoadRatio = designLiqKw > 0 ? Math.min(1.0, summ.liquidHeatKw / designLiqKw) : 1.0;
             const cduOperatingMode = (typeof FreeCoolingEngine !== 'undefined') ? FreeCoolingEngine.getOperatingMode(w.wb) : null;
@@ -1395,200 +1396,13 @@
                 : (summ.liquidHeatKw / 500) * (cduSys.hydraulics?.pump_power_kw || 11.0);
 
             const cduPumpKw = cduUnitKw + cduPrimaryPumpKw;
-            let cduHeatRejKw = 0;
-            let cduChillerKw = 0;
-            let cduChillerLoadKw = 0;
-            let waterM3 = 0;
-            let cduMode = 'free';
-            let fwMode = 'free';
-            // v32 Phase 9-3: 累計冰機容量不足缺口 (ChillerEngine.calcPower 內建的
-            // CHILLER_CAPACITY_DEFICIT warning，PLR>1.02 時才觸發)，供 Dashboard
-            // 顯示「此結果可能低估」的警示，不讓容量不足悄悄變成一個好看的低 PUE。
-            let capacityDeficitKw = cduDeficitKw;
-            const trackChillerDeficit = (chRes) => {
-                if (chRes && chRes.warnings && chRes.warnings.length) {
-                    capacityDeficitKw += chRes.warnings.reduce((s, x) => s + (x.deficit_kw || 0), 0);
-                }
-                return chRes;
-            };
 
-            if (summ.liquidHeatKw > 0) {
-                if (cduArch === 'dry_cooler_pure') {
-                    // 純乾冷器自然冷卻模式 (零冰機) — 嚴格物理檢核氣候超溫與冷量不足
-                    const dcItem = (cduSys.sizing || []).find(s => s.key === 'dry_cooler');
-                    const dcDevices = this.resolveTowerFromSizing(dcItem);
-                    const isFc = w.db <= freeThresh;
-                    const dcFanKw = (dcDevices.length > 0 && typeof CoolingTowerEngine !== 'undefined')
-                        ? CoolingTowerEngine.calcFanPower(dcDevices, cduLoadRatio, isFc, cduFanMinSpeed)
-                        : null;
-                    const fanRatio = Math.max(0.2, Math.min(1.0, (w.db + 273.15) / (freeThresh + 273.15)));
-                    cduHeatRejKw += dcFanKw ?? ((summ.liquidHeatKw / 500) * 8.0 * fanRatio);
-                    cduMode = isFc ? 'free' : 'partial';
-                    // 當外氣大於門檻且無冰機時，觸發氣候水溫超標 (Thermal Deficit)
-                    if (!isFc) {
-                        const actualSupplyC = w.db + dcApproach + pheApproach;
-                        const tempOvershoot = actualSupplyC - cduSys.fwsSupplyC;
-                        const unservedRatio = Math.min(1.0, tempOvershoot / Math.max(1.0, cduSys.fwsReturnC - cduSys.fwsSupplyC));
-                        capacityDeficitKw += Math.round(summ.liquidHeatKw * unservedRatio);
-                    }
-                } else if (cduArch === 'dry_cooler_trim' || cduArch === 'dry_cooler_hx') {
-                    // NVIDIA DSX 標準混合三模式 (乾冷器預冷 + 串聯修整冰機)
-                    const op = this.trimOperatingPoint(cduSys, w.db);
-                    const dcIsFullFc = (op.mode === FreeCoolingEngine.MODE.FULL_FC);
-                    const trimLoadKw = summ.liquidHeatKw * op.chiller_fraction;
-
-                    const dcItem = (cduSys.sizing || []).find(s => s.key === 'dry_cooler');
-                    const dcDevices = this.resolveTowerFromSizing(dcItem);
-                    const dcFanKw = (dcDevices.length > 0 && typeof CoolingTowerEngine !== 'undefined')
-                        ? CoolingTowerEngine.calcFanPower(dcDevices, dcIsFullFc ? cduLoadRatio : 1.0, dcIsFullFc, cduFanMinSpeed)
-                        : null;
-                    if (dcIsFullFc) {
-                        const fanRatio = Math.max(0.15, Math.min(1.0, (w.db + 273.15) / (freeThresh + 273.15)));
-                        cduHeatRejKw += dcFanKw ?? ((summ.liquidHeatKw / 500) * 8.0 * fanRatio);
-                        cduMode = 'free';
-                    } else {
-                        cduChillerLoadKw = trimLoadKw;
-                        cduHeatRejKw += dcFanKw ?? ((summ.liquidHeatKw / 500) * 15.0);
-                        const trimItem = (cduSys.sizing || []).find(s => s.key === 'trim_chiller');
-                        const trimChillers = this.resolveChillerFromSizing(trimItem, 'water_cooled');
-                        if (trimChillers.length > 0 && typeof ChillerEngine !== 'undefined' && trimLoadKw > 0) {
-                            const staging = ChillerEngine.calcLeadLagStaging(trimLoadKw, trimChillers);
-                            const chRes = trackChillerDeficit(ChillerEngine.calcPower(trimLoadKw, staging.staged, op.tChws, op.tCewt, w.db));
-                            cduChillerKw += chRes.power_kw;
-                        } else if (trimLoadKw > 0) {
-                            const trimCop = trimItem?.catalog?.find(c => c.model === trimItem.selectedModel)?.cop || 6.2;
-                            cduChillerKw += trimLoadKw / trimCop;
-                        }
-                        cduMode = (op.mode === FreeCoolingEngine.MODE.PARTIAL_FC) ? 'partial' : 'mechanical';
-                    }
-                } else if (cduArch === 'adiabatic_tower') {
-                    // BAC TrilliumSeries 絕熱冷卻塔 (Adiabatic Tower) — 100% 自然排熱 (零冰機)
-                    // 運作原理：
-                    // 1. 乾球溫 ≤ 乾式切換點 (Dry Switchpoint, 約 T_supply - 9°C ~ 31°C) 時：100% 乾式運轉，噴水泵關閉，0 耗水。
-                    // 2. 乾球溫 > 乾式切換點時：開啟噴水泵潤濕預冷墊片，利用絕熱蒸發將進風溫降至有效乾球溫，此時產生蒸發耗水與排污耗水。
-                    const satEff = (cduSys.adiabaticSaturationEfficiencyPct || 85) / 100;
-                    const switchpointOffset = (typeof A === 'function') ? A('adiabatic_switchpoint_offset_c') : 9.2;
-                    const drySwitchpoint = cduSys.adiabaticDrySwitchpointC || Math.max(26.0, (cduSys.fwsSupplyC || 40.0) - switchpointOffset);
-                    const atItem = (cduSys.sizing || []).find(s => s.key === 'adiabatic_tower');
-                    const atDevices = this.resolveTowerFromSizing(atItem);
-                    const isDry = w.db <= drySwitchpoint;
-                    const atFanKw = (atDevices.length > 0 && typeof CoolingTowerEngine !== 'undefined')
-                        ? CoolingTowerEngine.calcFanPower(atDevices, cduLoadRatio, isDry, cduFanMinSpeed)
-                        : null;
-                    let effectiveDb;
-                    if (isDry) {
-                        // 純乾式運轉模式 (0 耗水)
-                        cduHeatRejKw += atFanKw ?? ((summ.liquidHeatKw / 500) * 7.5);
-                        effectiveDb = w.db;
-                    } else {
-                        // 絕熱噴霧預冷模式 (依熱平衡計算空氣側蒸發降溫所需水量)
-                        cduHeatRejKw += atFanKw ?? ((summ.liquidHeatKw / 500) * 11.0);
-                        // 噴水泵額外功耗 (約 0.25 kW/台，或負載之 0.03%)
-                        cduHeatRejKw += (summ.liquidHeatKw * 0.0003);
-
-                        // P1-4: 依空氣側能量平衡計算絕熱蒸發耗水量 (把空氣從 DB 降至有效乾球所需的蒸發量)
-                        // T_eff = db - (db - wb) * satEff
-                        // ΔT_air = A('adiabatic_coil_air_dt_k') (預設 10 K, 盤管空氣側溫升)
-                        // m_air = Q_rej / (1.006 * ΔT_air) (kg/s)
-                        // m_evap = m_air * 1.006 * (db - T_eff) / 2450 (kg/s, h_fg ≈ 2450 kJ/kg)
-                        // evapM3h = m_evap * 3.6 (m³/h)
-                        // bd = evapM3h / max(1, cycles - 1)
-                        const T_eff = w.db - (w.db - w.wb) * satEff;
-                        const dtAir = (typeof A === 'function') ? A('adiabatic_coil_air_dt_k') : 10.0;
-                        const m_air = summ.liquidHeatKw / (1.006 * Math.max(1.0, dtAir));
-                        const m_evap = Math.max(0, m_air * 1.006 * (w.db - T_eff) / 2450.0);
-                        const evap = m_evap * 3.6;
-                        const bd = evap / Math.max(1, cycles - 1);
-                        waterM3 += (evap + bd);
-                        effectiveDb = T_eff;
-                    }
-                    // v44: 之前這裡完全沒有像 dry_cooler_pure 一樣做「外氣超出冷卻能力」的
-                    // 超標判定，導致不管天氣多熱多濕，模型永遠假設絕熱塔成功達到設計供水溫，
-                    // 在濕熱氣候(如高雄)這會讓 PUE 被系統性低估。改成比照 dry_cooler_pure 的
-                    // 判定方式，只是溫度基準換成絕熱預冷後的 effectiveDb (受濕球限制)，
-                    // 而不是原始乾球溫。
-                    const atActualSupplyC = effectiveDb + (cduSys.dryCoolerApproachC || 5.0) + pheApproach;
-                    const atExceeded = atActualSupplyC > cduSys.fwsSupplyC;
-                    if (atExceeded) {
-                        const atTempOvershoot = atActualSupplyC - cduSys.fwsSupplyC;
-                        const atUnservedRatio = Math.min(1.0, atTempOvershoot / Math.max(1.0, cduSys.fwsReturnC - cduSys.fwsSupplyC));
-                        capacityDeficitKw += Math.round(summ.liquidHeatKw * atUnservedRatio);
-                    }
-                    cduMode = atExceeded ? 'partial' : 'free';
-                } else if (cduArch === 'cooling_tower_hx') {
-                    // 密閉式冷卻水塔 (Closed-Circuit Cooling Tower) — 100% 濕球蒸發自然冷卻 (零冰機)
-                    const ctItem = (cduSys.sizing || []).find(s => s.key === 'cooling_tower');
-                    const ctDevices = this.resolveTowerFromSizing(ctItem);
-                    const isLowFan = w.wb <= (cduSys.fwsSupplyC - 8.0);
-                    const ctFanKw = (ctDevices.length > 0 && typeof CoolingTowerEngine !== 'undefined')
-                        ? CoolingTowerEngine.calcFanPower(ctDevices, cduLoadRatio, isLowFan, cduFanMinSpeed)
-                        : null;
-                    cduHeatRejKw += ctFanKw ?? ((summ.liquidHeatKw / 500) * (isLowFan ? 8.0 : 12.0));
-                    const evap = summ.liquidHeatKw * evapFactor;
-                    const bd = evap / Math.max(1, cycles - 1);
-                    waterM3 += (evap + bd);
-                    // v44: 同 adiabatic_tower 的修正 — 密閉式冷卻水塔的冷卻能力終究被濕球溫度
-                    // 卡住(供水溫 ≈ WB + 密閉式塔approach，approach通常比開放式塔高，因為多一層
-                    // 盤管熱交換)，之前完全沒做超標判定，等於假設濕球溫度再高都能達標。
-                    const ctApproach = cduSys.ctApproachC ?? 6.0;
-                    const ctActualSupplyC = w.wb + ctApproach;
-                    const ctExceeded = ctActualSupplyC > cduSys.fwsSupplyC;
-                    if (ctExceeded) {
-                        const ctTempOvershoot = ctActualSupplyC - cduSys.fwsSupplyC;
-                        const ctUnservedRatio = Math.min(1.0, ctTempOvershoot / Math.max(1.0, cduSys.fwsReturnC - cduSys.fwsSupplyC));
-                        capacityDeficitKw += Math.round(summ.liquidHeatKw * ctUnservedRatio);
-                    }
-                    cduMode = ctExceeded ? 'partial' : 'free';
-                } else if (cduArch === 'water_chiller') {
-                    // V24 Phase 3: 全額水冷式冰水主機 + 濕式冷卻塔（需計算散熱塔耗水量）
-                    // v31 Phase 1/2: 冰機耗電與冷卻塔風扇一律先用 Step4 選定的真實設備算，
-                    // T_cewt 用氣象濕球溫 + 冷卻塔 approach 概估（完整冷卻塔熱平衡模型留待 Phase 3）。
-                    cduChillerLoadKw = summ.liquidHeatKw;
-                    const wcTowerItem = (cduSys.sizing || []).find(s => s.key === 'cooling_tower');
-                    const wcTowerDevices = this.resolveTowerFromSizing(wcTowerItem);
-                    const wcTowerFanKw = (wcTowerDevices.length > 0 && typeof CoolingTowerEngine !== 'undefined')
-                        ? CoolingTowerEngine.calcFanPower(wcTowerDevices, cduLoadRatio, false, cduFanMinSpeed)
-                        : (summ.liquidHeatKw / 500) * 14.0;
-                    cduHeatRejKw += wcTowerFanKw;
-                    const cduChillerItem = (cduSys.sizing || []).find(s => s.key === 'water_cooled_chiller');
-                    const cduChillers = this.resolveChillerFromSizing(cduChillerItem, 'water_cooled');
-                    let cduChillerPowerKwThisHour;
-                    if (cduChillers.length > 0 && typeof ChillerEngine !== 'undefined') {
-                        const towerApproach = (typeof A === 'function') ? A('tower_approach_c') : 4.0;
-                        const minCewt = (typeof A === 'function') ? A('min_cewt_c') : 16.0;
-                        const T_cewt = Math.max(minCewt, w.wb + towerApproach);
-                        const staging = ChillerEngine.calcLeadLagStaging(summ.liquidHeatKw, cduChillers);
-                        const chRes = trackChillerDeficit(ChillerEngine.calcPower(summ.liquidHeatKw, staging.staged, cduSys.fwsSupplyC, T_cewt, w.db));
-                        cduChillerPowerKwThisHour = chRes.power_kw;
-                    } else {
-                        cduChillerPowerKwThisHour = summ.liquidHeatKw / 5.5; // 尚未選型或型錄缺COP資料時的保守近似值
-                    }
-                    cduChillerKw += cduChillerPowerKwThisHour;
-                    cduMode = 'mechanical';
-                    // v41 fix: 冷卻水塔實際要排的熱是「冰水負載 + 冰機壓縮機耗電」(冷凝器熱)，
-                    // 不是只有冰水負載本身 — 壓縮機耗電最終也是靠冷卻水塔蒸發排掉的熱，
-                    // 之前漏算這塊會讓全額水冷架構的耗水量/WUE系統性低估。
-                    const wcHeatRejKw = summ.liquidHeatKw + cduChillerPowerKwThisHour;
-                    const evap = wcHeatRejKw * evapFactor;
-                    const bd = evap / Math.max(1, cycles - 1);
-                    waterM3 += (evap + bd);
-                } else {
-                    cduChillerLoadKw = summ.liquidHeatKw;
-                    cduHeatRejKw += (summ.liquidHeatKw / 500) * 14.0;
-                    cduChillerKw += summ.liquidHeatKw / 5.5;
-                    cduMode = 'mechanical';
-                }
-            }
-
-            // === Fanwall / RDHX 氣冷系統 ===
+            // --- Fanwall / CRAH terminal and secondary pump ---
             const chwSupplyC = fwSys.chwSupplyC || 12.0;
             const chwReturnC = fwSys.chwReturnC || 18.0;
             const fwBaseCop = chwSupplyC >= 20 ? 5.8 : (chwSupplyC >= 12 ? 4.2 : 3.0);
             const airHeatTotal = summ.airHeatKw + summ.lossKw;
-            const fwArch = fwSys.architecture || 'air_cooled_chiller';
 
-            // v31 Phase 2: CRAH/RDHX 機組風扇 + 二次側循環泵，一律先用 Step4 選定的真實設備算，
-            // 找不到型錄資料時退回原本 RDHX ~2% / CRAH ~8% 功耗比的近似值。
             const designAirKw = fwSys.designBasis?.air_load_kw || airHeatTotal;
             const fwLoadRatio = designAirKw > 0 ? Math.min(1.0, airHeatTotal / designAirKw) : 1.0;
 
@@ -1596,11 +1410,12 @@
             const fwUnitItem = (fwSys.sizing || []).find(s => s.key === fwUnitKey);
             const fwUnits = this.resolveCrahFromSizing(fwUnitItem);
             let crahFanKw = 0;
+            let crahDeficitKw = 0;
             if (fwUnits.length > 0 && typeof CRAHEngine !== 'undefined' && airHeatTotal > 0) {
                 const crahRes = CRAHEngine.calcPower(fwUnits, airHeatTotal);
                 crahFanKw = crahRes.power_kw;
                 if (crahRes.deficit_kw > 0) {
-                    capacityDeficitKw += crahRes.deficit_kw;
+                    crahDeficitKw = crahRes.deficit_kw;
                 }
             } else {
                 crahFanKw = ((fwArch === 'rdhx') ? (airHeatTotal / 60) * 1.2 : (airHeatTotal / 60) * 4.8);
@@ -1618,142 +1433,134 @@
                 : 0.20;
             const fwPumpKw = (fwPumps.length > 0 && typeof PlantPumpEngine !== 'undefined' && airHeatTotal > 0)
                 ? PlantPumpEngine.calcPower(fwPumps, fwPumpSpeed)
-                : 0; // 舊版本從未計入此項，找不到型錄資料時維持 0（不新增未經驗證的假設值）
+                : 0;
 
-            let fwChillerKw = 0;
-            let fwChillerLoadKw = 0;
-            // v42 fix: fwRejKw 之前把 fwPumpKw 當初始值疊加進去，等於把 Fanwall 二次側泵浦
-            // 耗電歸進「散熱(heatRejKw)」，導致 pPUE(刻意排除泵浦耗電)其實還是漏網跑進了
-            // fwPumpKw。改成泵浦獨立累計，不再摻進 fwRejKw/heatRejKw。
-            let fwRejKw = 0;
+            // --- Resolve Equipment Lists from Sizing ---
+            const dcItem = (cduSys.sizing || []).find(s => s.key === 'dry_cooler');
+            const dcDevices = this.resolveTowerFromSizing(dcItem);
 
-            // v31 Phase 1: 氣冷/水冷冰機一律先算出 Step4 選定的真實設備陣列，
-            // 找不到真實COP資料時 chillers 為空陣列，各分支會退回舊有固定COP近似值。
+            const trimItem = (cduSys.sizing || []).find(s => s.key === 'trim_chiller');
+            const trimChillers = this.resolveChillerFromSizing(trimItem, 'water_cooled');
+            const trimCop = trimItem?.catalog?.find(c => c.model === trimItem.selectedModel)?.cop || 6.2;
+
+            const atItem = (cduSys.sizing || []).find(s => s.key === 'adiabatic_tower');
+            const atDevices = this.resolveTowerFromSizing(atItem);
+
+            const ctItem = (cduSys.sizing || []).find(s => s.key === 'cooling_tower');
+            const ctDevices = this.resolveTowerFromSizing(ctItem);
+
+            const cduChillerItem = (cduSys.sizing || []).find(s => s.key === 'water_cooled_chiller');
+            const cduChillers = this.resolveChillerFromSizing(cduChillerItem, 'water_cooled');
+
             const fwAirChillerItem = (fwSys.sizing || []).find(s => s.key === 'air_cooled_chiller');
             const fwAirChillers = this.resolveChillerFromSizing(fwAirChillerItem, 'air_cooled');
+
             const fwWaterChillerItem = (fwSys.sizing || []).find(s => s.key === 'water_cooled_chiller');
-            const fwWaterTowerApproach = (typeof A === 'function') ? A('tower_approach_c') : 4.0;
             const fwWaterChillers = this.resolveChillerFromSizing(fwWaterChillerItem, 'water_cooled');
 
-            if (airHeatTotal > 0) {
-                if (fwArch === 'rdhx') {
-                    // RDHX 背板式熱交換器 (氣-液背板換熱 + 氣冷冰機)
-                    const fcApproach = (typeof A === 'function') ? A('air_chiller_fc_coil_approach_c') : 4.0;
-                    const rdhxFanKwPerKw = (typeof A === 'function') ? A('rdhx_fc_fan_kw_per_kw') : 0.03;
-                    const eco = FreeCoolingEngine.calcSeriesEconomizer(w.db + fcApproach, chwSupplyC, chwReturnC);
-                    const Q_fc = airHeatTotal * eco.fc_fraction;
-                    const Q_mech = airHeatTotal * eco.chiller_fraction;
-                    fwChillerLoadKw = Q_mech;
+            const fwTowerItem = (fwSys.sizing || []).find(s => s.key === 'cooling_tower');
+            const fwTowerDevices = this.resolveTowerFromSizing(fwTowerItem);
 
-                    fwRejKw += Q_fc * rdhxFanKwPerKw;
+            // --- Dispatch CDU Simulation ---
+            const cduSim = (summ.liquidHeatKw > 0) ? cduArchDesc.simulateHour({
+                Q_kw: summ.liquidHeatKw,
+                t_supply_c: cduSys.fwsSupplyC,
+                t_return_c: cduSys.fwsReturnC,
+                w,
+                sys: cduSys,
+                equip: {
+                    dry_cooler: dcDevices,
+                    trim_chiller: trimChillers,
+                    adiabatic_tower: atDevices,
+                    cooling_tower: ctDevices,
+                    water_cooled_chiller: cduChillers
+                },
+                loadRatio: cduLoadRatio,
+                fanMinSpeed: cduFanMinSpeed,
+                evapFactor,
+                cycles,
+                trimCop,
+                terminalKw: cduUnitKw,
+                pumpKw: cduPrimaryPumpKw
+            }) : {
+                terminalKw: 0,
+                pumpKw: 0,
+                fanKw: 0,
+                compressorKw: 0,
+                waterM3: 0,
+                mode: 'free',
+                deficitKw: 0,
+                heatRemovedKw: 0,
+                mechLoadKw: 0
+            };
 
-                    if (Q_mech > 0) {
-                        if (fwAirChillers.length > 0 && typeof ChillerEngine !== 'undefined') {
-                            const staging = ChillerEngine.calcLeadLagStaging(Q_mech, fwAirChillers);
-                            const chRes = trackChillerDeficit(ChillerEngine.calcPower(Q_mech, staging.staged, chwSupplyC, undefined, w.db));
-                            fwChillerKw += chRes.power_kw;
-                        } else {
-                            fwChillerKw += Q_mech / fwBaseCop;
-                        }
-                        fwRejKw += (Q_mech / 500) * 8.0;
-                    }
-                    fwMode = (eco.mode === FreeCoolingEngine.MODE.FULL_FC) ? 'free' : ((eco.mode === FreeCoolingEngine.MODE.PARTIAL_FC) ? 'partial' : 'mechanical');
-                } else if (fwArch === 'water_cooled_chiller' || fwArch === 'water_cooled_chiller_tower') {
-                    // 水冷式冰水主機 + 濕式冷卻塔
-                    const hxApproach = (typeof A === 'function') ? A('hx_approach_c') : 1.5;
-                    const tAvail = w.wb + fwWaterTowerApproach + hxApproach;
-                    const eco = FreeCoolingEngine.calcSeriesEconomizer(tAvail, chwSupplyC, chwReturnC);
-                    const fwIsFullFc = (eco.mode === FreeCoolingEngine.MODE.FULL_FC);
-                    const fwChillerFraction = eco.chiller_fraction;
-                    fwChillerLoadKw = fwIsFullFc ? 0 : (airHeatTotal * fwChillerFraction);
-                    const fwTowerItem = (fwSys.sizing || []).find(s => s.key === 'cooling_tower');
-                    const fwTowerDevices = this.resolveTowerFromSizing(fwTowerItem);
-                    const fwTowerFanKw = (fwTowerDevices.length > 0 && typeof CoolingTowerEngine !== 'undefined')
-                        ? CoolingTowerEngine.calcFanPower(fwTowerDevices, fwLoadRatio, fwIsFullFc, fwFanMinSpeed)
-                        : null;
-                    let fwChillerPowerKwThisHour = 0;
-                    if (fwIsFullFc) {
-                        fwRejKw += fwTowerFanKw ?? (airHeatTotal * 0.04);
-                        fwMode = 'free';
-                    } else {
-                        if (fwWaterChillers.length > 0 && typeof ChillerEngine !== 'undefined' && fwChillerLoadKw > 0) {
-                            const minCewt = (typeof A === 'function') ? A('min_cewt_c') : 16.0;
-                            const T_cewt = Math.max(minCewt, w.wb + fwWaterTowerApproach);
-                            const staging = ChillerEngine.calcLeadLagStaging(fwChillerLoadKw, fwWaterChillers);
-                            const chRes = trackChillerDeficit(ChillerEngine.calcPower(fwChillerLoadKw, staging.staged, chwSupplyC, T_cewt, w.db));
-                            fwChillerPowerKwThisHour = chRes.power_kw;
-                        } else if (fwChillerLoadKw > 0) {
-                            fwChillerPowerKwThisHour = fwChillerLoadKw / fwBaseCop;
-                        }
-                        fwChillerKw += fwChillerPowerKwThisHour;
-                        fwRejKw += fwTowerFanKw ?? ((airHeatTotal / 500) * 14.0);
-                        fwMode = (eco.mode === FreeCoolingEngine.MODE.PARTIAL_FC) ? 'partial' : 'mechanical';
-                    }
-                    // P1-3: 水冷冰機排熱至冷卻塔包含冰水負載與壓縮機耗電 (Q_mech + P_chiller)
-                    const fwHeatRejKw = airHeatTotal + fwChillerPowerKwThisHour;
-                    const fwEvap = fwHeatRejKw * evapFactor;
-                    const fwBd = fwEvap / Math.max(1, cycles - 1);
-                    waterM3 += (fwEvap + fwBd);
-                } else if (fwArch === 'chilled_water_plant' || fwArch === 'campus_chilled_water') {
-                    // 廠區集中冰水管網 — 冷卻能耗由外部中央冷站承擔，此處僅計 CRAH 風扇與集中冷站分配
-                    fwChillerLoadKw = airHeatTotal;
-                    fwChillerKw += airHeatTotal / 5.0; // 集中冷站 COP 通常較高，且無 Step4 可選設備可綁定
-                    fwMode = 'mechanical';
-                } else {
-                    // 預設: air_cooled_chiller 氣冷式冰水主機
-                    const fcApproach = (typeof A === 'function') ? A('air_chiller_fc_coil_approach_c') : 4.0;
-                    const airFcKwPerKw = (typeof A === 'function') ? A('air_chiller_fc_fan_kw_per_kw') : 0.05;
-                    const eco = FreeCoolingEngine.calcSeriesEconomizer(w.db + fcApproach, chwSupplyC, chwReturnC);
-                    const Q_fc = airHeatTotal * eco.fc_fraction;
-                    const Q_mech = airHeatTotal * eco.chiller_fraction;
-                    fwChillerLoadKw = Q_mech;
+            // --- Dispatch Fanwall Simulation ---
+            const fwSim = (airHeatTotal > 0) ? fwArchDesc.simulateHour({
+                Q_kw: airHeatTotal,
+                t_supply_c: chwSupplyC,
+                t_return_c: chwReturnC,
+                w,
+                sys: fwSys,
+                equip: {
+                    air_cooled_chiller: fwAirChillers,
+                    water_cooled_chiller: fwWaterChillers,
+                    cooling_tower: fwTowerDevices
+                },
+                loadRatio: fwLoadRatio,
+                fanMinSpeed: fwFanMinSpeed,
+                evapFactor,
+                cycles,
+                fwBaseCop,
+                terminalKw: crahFanKw,
+                pumpKw: fwPumpKw
+            }) : {
+                terminalKw: 0,
+                pumpKw: 0,
+                fanKw: 0,
+                compressorKw: 0,
+                waterM3: 0,
+                mode: 'free',
+                deficitKw: 0,
+                heatRemovedKw: 0,
+                mechLoadKw: 0
+            };
 
-                    fwRejKw += Q_fc * airFcKwPerKw;
-
-                    if (Q_mech > 0) {
-                        if (fwAirChillers.length > 0 && typeof ChillerEngine !== 'undefined') {
-                            const staging = ChillerEngine.calcLeadLagStaging(Q_mech, fwAirChillers);
-                            const chRes = trackChillerDeficit(ChillerEngine.calcPower(Q_mech, staging.staged, chwSupplyC, undefined, w.db));
-                            fwChillerKw += chRes.power_kw;
-                        } else {
-                            fwChillerKw += Q_mech / fwBaseCop;
-                        }
-                    }
-                    fwMode = (eco.mode === FreeCoolingEngine.MODE.FULL_FC) ? 'free' : ((eco.mode === FreeCoolingEngine.MODE.PARTIAL_FC) ? 'partial' : 'mechanical');
-                }
-            }
-
-            const combinedMode = (cduMode === 'free' && fwMode === 'free')
+            const totalDeficitKw = cduDeficitKw + crahDeficitKw + (cduSim.deficitKw || 0) + (fwSim.deficitKw || 0);
+            const combinedMode = (cduSim.mode === 'free' && fwSim.mode === 'free')
                 ? 'free'
-                : ((cduMode === 'mechanical' && fwMode === 'mechanical') ? 'mechanical' : 'partial');
-
-            // P1-7: isFreeHour 結尾統一定義：液冷側(若有負載)與氣冷側(若有負載)皆為自由冷卻
-            const isFreeHour = (summ.liquidHeatKw === 0 || cduMode === 'free') && (airHeatTotal === 0 || fwMode === 'free');
-
-            // P1-2: 實際移除熱量 = 需冷卻之總熱量 (液冷熱 + 氣冷熱 + 損失熱) - 容量缺口
-            const heatRemovedKw = Math.max(0, summ.liquidHeatKw + airHeatTotal - capacityDeficitKw);
-            const mechLoadKw = cduChillerLoadKw + fwChillerLoadKw;
+                : ((cduSim.mode === 'mechanical' && fwSim.mode === 'mechanical') ? 'mechanical' : 'partial');
+            const isFreeHour = (summ.liquidHeatKw === 0 || cduSim.mode === 'free') && (airHeatTotal === 0 || fwSim.mode === 'free');
+            const heatRemovedKw = Math.max(0, summ.liquidHeatKw + airHeatTotal - totalDeficitKw);
+            const mechLoadKw = (cduSim.mechLoadKw || 0) + (fwSim.mechLoadKw || 0);
 
             return {
-                // v42 fix: 這個欄位是「全廠泵浦耗電(pPUE刻意排除的那塊)」的加總，不是只有CDU一次泵，
-                // 名稱沿用 cduPumpKw 是為了不動到所有既有呼叫端(duKwh/podKwh/hourlyFacilityStats
-                // 都用這個欄位名稱)，但實際值 = CDU一次泵 + Fanwall二次側泵。
                 cduPumpKw: cduPumpKw + fwPumpKw,
                 crahFanKw,
-                heatRejKw: cduHeatRejKw + fwRejKw,
-                chillerKw: cduChillerKw + fwChillerKw,
+                heatRejKw: cduSim.fanKw + fwSim.fanKw,
+                chillerKw: cduSim.compressorKw + fwSim.compressorKw,
                 lossKw: summ.lossKw,
-                waterM3,
+                waterM3: cduSim.waterM3 + fwSim.waterM3,
                 isFreeHour,
-                capacityDeficitKw,
+                capacityDeficitKw: totalDeficitKw,
                 heatRemovedKw,
-                cduMode,
-                fwMode,
+                cduMode: cduSim.mode,
+                fwMode: fwSim.mode,
                 combinedMode,
                 mechLoadKw,
-                // Phase 4: CDU vs Fanwall 拆分 (P1-8: cduKwh 拆成 unit 與 pump 分項)
-                cduKwh: { unit: cduUnitKw, pump: cduPrimaryPumpKw, heatRej: cduHeatRejKw, chiller: cduChillerKw, trimLoadKw: cduChillerLoadKw },
-                fwKwh:  { pump: fwPumpKw, crahFan: crahFanKw, heatRej: fwRejKw, chiller: fwChillerKw, chillerLoadKw: fwChillerLoadKw }
+                cduKwh: {
+                    unit: cduUnitKw,
+                    pump: cduPrimaryPumpKw,
+                    heatRej: cduSim.fanKw,
+                    chiller: cduSim.compressorKw,
+                    trimLoadKw: cduSim.mechLoadKw || 0
+                },
+                fwKwh: {
+                    pump: fwPumpKw,
+                    crahFan: crahFanKw,
+                    heatRej: fwSim.fanKw,
+                    chiller: fwSim.compressorKw,
+                    chillerLoadKw: fwSim.mechLoadKw || 0
+                }
             };
         },
 

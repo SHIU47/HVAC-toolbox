@@ -41,9 +41,10 @@
 
             // Rejection only mode (e.g. Rejecting chiller condenser heat)
             if (ctx.isCondenserRejection) {
+                const fanLoadKw = ctx.heatLoadKw ?? ctx.originalQ_kw ?? Q_kw;
                 const fanKw = (ctDevices.length > 0 && typeof root.CoolingTowerEngine !== 'undefined')
                     ? root.CoolingTowerEngine.calcFanPower(ctDevices, loadRatio, false, fanMinSpeed)
-                    : (Q_kw / 500) * 14.0;
+                    : (fanLoadKw / 500) * 14.0;
 
                 const evap = Q_kw * evapFactor;
                 const bd = evap / Math.max(1, cycles - 1);

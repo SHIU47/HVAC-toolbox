@@ -27,7 +27,7 @@
                 };
             }
 
-            const cop = ctx.cop ?? ((typeof root.A === 'function') ? root.A('district_chw_cop') : 5.0);
+            const cop = ctx.cop ?? ((typeof root.A === 'function' && root.ASSUMPTIONS && root.ASSUMPTIONS['district_chw_cop']) ? root.A('district_chw_cop') : 5.0);
             const compressorKw = Q_kw / cop;
 
             return {

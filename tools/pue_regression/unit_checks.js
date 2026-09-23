@@ -547,6 +547,78 @@ function freshCtx() {
   });
 })();
 
+// ═══════════════════════════════════════════════════════════════
+// C-2 9 Architecture Descriptors & calcHourlyEnergy Registry Dispatch
+// ═══════════════════════════════════════════════════════════════
+(function () {
+  const ctx = freshCtx();
+  const { CoolingArchRegistry, AppStore: S } = ctx;
+
+  const EXPECTED_ARCHS = [
+    'dry_cooler_trim', 'dry_cooler_pure', 'adiabatic_tower', 'cooling_tower_hx', 'water_chiller',
+    'air_cooled_chiller', 'water_cooled_chiller', 'chilled_water_plant', 'rdhx'
+  ];
+
+  test('C-2 CoolingArchRegistry has all 9 architecture descriptors registered', () => {
+    for (const id of EXPECTED_ARCHS) {
+      assert(CoolingArchRegistry.has(id), `CoolingArchRegistry must have "${id}"`);
+      const arch = CoolingArchRegistry.get(id);
+      assert(arch && arch.id === id, `arch descriptor "${id}" must have correct id`);
+      assert(typeof arch.simulateHour === 'function', `arch "${id}" must implement simulateHour`);
+      assert(Array.isArray(arch.params), `arch "${id}" must define params array`);
+      assert(arch.flags && typeof arch.flags.hasMechanical === 'boolean', `arch "${id}" must define flags`);
+    }
+  });
+
+  test('C-2 CoolingArchRegistry resolves all legacy aliases', () => {
+    assert.strictEqual(CoolingArchRegistry.get('dry_cooler_hx').id, 'dry_cooler_trim');
+    assert.strictEqual(CoolingArchRegistry.get('water_cooled_chiller_tower').id, 'water_cooled_chiller');
+    assert.strictEqual(CoolingArchRegistry.get('campus_chilled_water').id, 'chilled_water_plant');
+  });
+
+  test('C-2 simulateHour returns standard contract for zero and non-zero loads', () => {
+    for (const id of EXPECTED_ARCHS) {
+      const arch = CoolingArchRegistry.get(id);
+      const res0 = arch.simulateHour({ Q_kw: 0 });
+      assert.strictEqual(res0.fanKw, 0);
+      assert.strictEqual(res0.compressorKw, 0);
+      assert.strictEqual(res0.waterM3, 0);
+
+      const resLoad = arch.simulateHour({
+        Q_kw: 500,
+        t_supply_c: arch.loop === 'liquid' ? 42.0 : 12.0,
+        t_return_c: arch.loop === 'liquid' ? 54.0 : 18.0,
+        w: { db: 25, wb: 20 },
+        sys: { fwsSupplyC: 42.0, fwsReturnC: 54.0, chwSupplyC: 12.0, chwReturnC: 18.0 }
+      });
+      assert(typeof resLoad.fanKw === 'number');
+      assert(typeof resLoad.compressorKw === 'number');
+      assert(typeof resLoad.waterM3 === 'number');
+      assert(['free', 'partial', 'mechanical'].includes(resLoad.mode));
+      assert(typeof resLoad.heatRemovedKw === 'number');
+      assert(typeof resLoad.deficitKw === 'number');
+    }
+  });
+
+  test('C-2 calcHourlyEnergy dispatches through registry and preserves result contract', () => {
+    const du = S.state.halls[0].dus[0];
+    const duSumm = S.calcDuSummary(du);
+    duSumm.lossKw = duSumm.totalItKw * 0.03;
+    const hr = S.calcHourlyEnergy(du.plantDesign, duSumm, { db: 28, wb: 22 });
+
+    const requiredFields = [
+      'cduPumpKw', 'crahFanKw', 'heatRejKw', 'chillerKw', 'lossKw', 'waterM3',
+      'isFreeHour', 'capacityDeficitKw', 'heatRemovedKw', 'cduMode', 'fwMode',
+      'combinedMode', 'mechLoadKw', 'cduKwh', 'fwKwh'
+    ];
+    for (const f of requiredFields) {
+      assert(hr[f] !== undefined, `calcHourlyEnergy result must contain "${f}"`);
+    }
+    assert(hr.cduKwh.unit !== undefined && hr.cduKwh.pump !== undefined);
+    assert(hr.fwKwh.pump !== undefined && hr.fwKwh.crahFan !== undefined);
+  });
+})();
+
 console.log(`\n${passCount} passed, ${failCount} failed, ${skipCount} skipped`);
 process.exit(failCount > 0 ? 1 : 0);
 
