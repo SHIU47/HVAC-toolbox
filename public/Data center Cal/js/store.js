@@ -162,7 +162,7 @@
                 overall: {
                     annualPue: 1.000, annualP_Pue: 1.000, annualWue: 0.00, annualWaterM3: 0,
                     totalItKw: 0, annualTotalMwh: 0, annualItMwh: 0, fcHoursPct: 0,
-                    breakdownKwh: { it: 0, cduPump: 0, crahFan: 0, heatRejection: 0, chiller: 0, loss: 0 }
+                    breakdownKwh: { it: 0, cduPump: 0, crahFan: 0, heatRejection: 0, chiller: 0, loss: 0, cduUnitKwh: 0 }
                 },
                 byDu: [],
                 byCorePod: [],
@@ -1372,6 +1372,7 @@
             const cduPumpKw = cduUnitKw + cduPrimaryPumpKw;
             let cduHeatRejKw = 0;
             let cduChillerKw = 0;
+            let cduChillerLoadKw = 0;
             let waterM3 = 0;
             let cduMode = 'free';
             let fwMode = 'free';
@@ -1421,6 +1422,7 @@
                         cduHeatRejKw += dcFanKw ?? ((summ.liquidHeatKw / 500) * 8.0 * fanRatio);
                         cduMode = 'free';
                     } else {
+                        cduChillerLoadKw = trimLoadKw;
                         cduHeatRejKw += dcFanKw ?? ((summ.liquidHeatKw / 500) * 15.0);
                         const trimItem = (cduSys.sizing || []).find(s => s.key === 'trim_chiller');
                         const trimChillers = this.resolveChillerFromSizing(trimItem, 'water_cooled');
@@ -1516,6 +1518,7 @@
                     // V24 Phase 3: 全額水冷式冰水主機 + 濕式冷卻塔（需計算散熱塔耗水量）
                     // v31 Phase 1/2: 冰機耗電與冷卻塔風扇一律先用 Step4 選定的真實設備算，
                     // T_cewt 用氣象濕球溫 + 冷卻塔 approach 概估（完整冷卻塔熱平衡模型留待 Phase 3）。
+                    cduChillerLoadKw = summ.liquidHeatKw;
                     const wcTowerItem = (cduSys.sizing || []).find(s => s.key === 'cooling_tower');
                     const wcTowerDevices = this.resolveTowerFromSizing(wcTowerItem);
                     const wcTowerFanKw = (wcTowerDevices.length > 0 && typeof CoolingTowerEngine !== 'undefined')
@@ -1545,6 +1548,7 @@
                     const bd = evap / Math.max(1, cycles - 1);
                     waterM3 += (evap + bd);
                 } else {
+                    cduChillerLoadKw = summ.liquidHeatKw;
                     cduHeatRejKw += (summ.liquidHeatKw / 500) * 14.0;
                     cduChillerKw += summ.liquidHeatKw / 5.5;
                     cduMode = 'mechanical';
@@ -1592,6 +1596,7 @@
                 : 0; // 舊版本從未計入此項，找不到型錄資料時維持 0（不新增未經驗證的假設值）
 
             let fwChillerKw = 0;
+            let fwChillerLoadKw = 0;
             // v42 fix: fwRejKw 之前把 fwPumpKw 當初始值疊加進去，等於把 Fanwall 二次側泵浦
             // 耗電歸進「散熱(heatRejKw)」，導致 pPUE(刻意排除泵浦耗電)其實還是漏網跑進了
             // fwPumpKw。改成泵浦獨立累計，不再摻進 fwRejKw/heatRejKw。
@@ -1613,6 +1618,7 @@
                     const eco = FreeCoolingEngine.calcSeriesEconomizer(w.db + fcApproach, chwSupplyC, chwReturnC);
                     const Q_fc = airHeatTotal * eco.fc_fraction;
                     const Q_mech = airHeatTotal * eco.chiller_fraction;
+                    fwChillerLoadKw = Q_mech;
 
                     fwRejKw += Q_fc * rdhxFanKwPerKw;
 
@@ -1634,6 +1640,7 @@
                     const eco = FreeCoolingEngine.calcSeriesEconomizer(tAvail, chwSupplyC, chwReturnC);
                     const fwIsFullFc = (eco.mode === FreeCoolingEngine.MODE.FULL_FC);
                     const fwChillerFraction = eco.chiller_fraction;
+                    fwChillerLoadKw = fwIsFullFc ? 0 : (airHeatTotal * fwChillerFraction);
                     const fwTowerItem = (fwSys.sizing || []).find(s => s.key === 'cooling_tower');
                     const fwTowerDevices = this.resolveTowerFromSizing(fwTowerItem);
                     const fwTowerFanKw = (fwTowerDevices.length > 0 && typeof CoolingTowerEngine !== 'undefined')
@@ -1644,7 +1651,6 @@
                         fwRejKw += fwTowerFanKw ?? (airHeatTotal * 0.04);
                         fwMode = 'free';
                     } else {
-                        const fwChillerLoadKw = airHeatTotal * fwChillerFraction;
                         if (fwWaterChillers.length > 0 && typeof ChillerEngine !== 'undefined' && fwChillerLoadKw > 0) {
                             const minCewt = (typeof A === 'function') ? A('min_cewt_c') : 16.0;
                             const T_cewt = Math.max(minCewt, w.wb + fwWaterTowerApproach);
@@ -1665,6 +1671,7 @@
                     waterM3 += (fwEvap + fwBd);
                 } else if (fwArch === 'chilled_water_plant' || fwArch === 'campus_chilled_water') {
                     // 廠區集中冰水管網 — 冷卻能耗由外部中央冷站承擔，此處僅計 CRAH 風扇與集中冷站分配
+                    fwChillerLoadKw = airHeatTotal;
                     fwChillerKw += airHeatTotal / 5.0; // 集中冷站 COP 通常較高，且無 Step4 可選設備可綁定
                     fwMode = 'mechanical';
                 } else {
@@ -1674,6 +1681,7 @@
                     const eco = FreeCoolingEngine.calcSeriesEconomizer(w.db + fcApproach, chwSupplyC, chwReturnC);
                     const Q_fc = airHeatTotal * eco.fc_fraction;
                     const Q_mech = airHeatTotal * eco.chiller_fraction;
+                    fwChillerLoadKw = Q_mech;
 
                     fwRejKw += Q_fc * airFcKwPerKw;
 
@@ -1699,6 +1707,7 @@
 
             // P1-2: 實際移除熱量 = 需冷卻之總熱量 (液冷熱 + 氣冷熱 + 損失熱) - 容量缺口
             const heatRemovedKw = Math.max(0, summ.liquidHeatKw + airHeatTotal - capacityDeficitKw);
+            const mechLoadKw = cduChillerLoadKw + fwChillerLoadKw;
 
             return {
                 // v42 fix: 這個欄位是「全廠泵浦耗電(pPUE刻意排除的那塊)」的加總，不是只有CDU一次泵，
@@ -1716,9 +1725,10 @@
                 cduMode,
                 fwMode,
                 combinedMode,
-                // Phase 4: CDU vs Fanwall 拆分
-                cduKwh: { pump: cduPumpKw, heatRej: cduHeatRejKw, chiller: cduChillerKw },
-                fwKwh:  { pump: fwPumpKw, crahFan: crahFanKw, heatRej: fwRejKw, chiller: fwChillerKw }
+                mechLoadKw,
+                // Phase 4: CDU vs Fanwall 拆分 (P1-8: cduKwh 拆成 unit 與 pump 分項)
+                cduKwh: { unit: cduUnitKw, pump: cduPrimaryPumpKw, heatRej: cduHeatRejKw, chiller: cduChillerKw, trimLoadKw: cduChillerLoadKw },
+                fwKwh:  { pump: fwPumpKw, crahFan: crahFanKw, heatRej: fwRejKw, chiller: fwChillerKw, chillerLoadKw: fwChillerLoadKw }
             };
         },
 
@@ -1762,7 +1772,8 @@
             let totalAllItKw = 0;
             let totalAllWaterM3 = 0;
             let totalAllHeatRemovedKwh = 0;
-            let overallKwh = { it: 0, cduPump: 0, crahFan: 0, heatRejection: 0, chiller: 0, loss: 0 };
+            let overallKwh = { it: 0, cduPump: 0, crahFan: 0, heatRejection: 0, chiller: 0, loss: 0, cduUnitKwh: 0 };
+            let totalAllCduUnitKwh = 0;
             let monthlyStats = Array.from({ length: 12 }, () => ({ totalKwh: 0, itKwh: 0, coolKwh: 0 }));
             const hourlyFacilityStats = Array.from({ length: 8760 }, () => ({
                 itKw: 0,
@@ -1770,6 +1781,7 @@
                 coolingNoPumpKw: 0,
                 cduPumpKw: 0,
                 chillerKw: 0,
+                mechLoadKw: 0,
                 cduMode: 'free',
                 fwMode: 'free'
             }));
@@ -1789,7 +1801,7 @@
                     const fwArch = fwSys.architecture || 'air_cooled_chiller';
 
                     let duKwh = { it: 0, cduPump: 0, crahFan: 0, heatRejection: 0, chiller: 0, loss: 0 };
-                    let duCduKwh = { pump: 0, heatRej: 0, chiller: 0 }; // Phase 4
+                    let duCduKwh = { unit: 0, pump: 0, heatRej: 0, chiller: 0 }; // Phase 4
                     let duFwKwh  = { crahFan: 0, heatRej: 0, chiller: 0 }; // Phase 4
                     let duWaterM3 = 0;
                     let duFcHours = 0;
@@ -1817,6 +1829,7 @@
                         }
 
                         // Phase 4: CDU vs Fanwall 拆分累計
+                        duCduKwh.unit    += hr.cduKwh.unit;
                         duCduKwh.pump    += hr.cduKwh.pump;
                         duCduKwh.heatRej += hr.cduKwh.heatRej;
                         duCduKwh.chiller += hr.cduKwh.chiller;
@@ -1836,6 +1849,7 @@
                         hourlyFacilityStats[i].coolingNoPumpKw += hourCoolingNoPump;
                         hourlyFacilityStats[i].cduPumpKw += hr.cduPumpKw;
                         hourlyFacilityStats[i].chillerKw += hr.chillerKw;
+                        hourlyFacilityStats[i].mechLoadKw = (hourlyFacilityStats[i].mechLoadKw || 0) + (hr.mechLoadKw || 0);
 
                         if (hr.cduMode === 'mechanical' || (hr.cduMode === 'partial' && hourlyFacilityStats[i].cduMode !== 'mechanical')) {
                             hourlyFacilityStats[i].cduMode = hr.cduMode;
@@ -1873,8 +1887,10 @@
                         deficitHours: duDeficitHours,
                         maxDeficitKw: Math.round(duMaxDeficitKw),
                         // Phase 4: CDU vs Fanwall 系統能耗拆分
-                        cduSystemMwh: Math.round((duCduKwh.pump + duCduKwh.heatRej + duCduKwh.chiller) / 1000),
+                        cduSystemMwh: Math.round((duCduKwh.unit + duCduKwh.pump + duCduKwh.heatRej + duCduKwh.chiller) / 1000),
                         fwSystemMwh: Math.round((duFwKwh.crahFan + duFwKwh.heatRej + duFwKwh.chiller) / 1000),
+                        cduUnitKwh: Math.round(duCduKwh.unit),
+                        cduUnitMwh: Math.round(duCduKwh.unit / 1000),
                         // v29 Excel計算書: 逐分項真實能耗 (取代匯出模組原本的假比例推算)
                         cduPumpMwh: Math.round(duKwh.cduPump / 1000),
                         crahFanMwh: Math.round(duKwh.crahFan / 1000),
@@ -1884,6 +1900,7 @@
                     });
 
                     totalAllWaterM3 += duWaterM3;
+                    totalAllCduUnitKwh += duCduKwh.unit;
                     overallKwh.it += duKwh.it;
                     overallKwh.cduPump += duKwh.cduPump;
                     overallKwh.crahFan += duKwh.crahFan;
@@ -1915,7 +1932,7 @@
                 const fwArch = fwSys.architecture || 'air_cooled_chiller';
 
                 let podKwh = { it: 0, cduPump: 0, crahFan: 0, heatRejection: 0, chiller: 0, loss: 0 };
-                let podCduKwh = { pump: 0, heatRej: 0, chiller: 0 };
+                let podCduKwh = { unit: 0, pump: 0, heatRej: 0, chiller: 0 };
                 let podFwKwh  = { crahFan: 0, heatRej: 0, chiller: 0 };
                 let podWaterM3 = 0;
                 let podFcHours = 0;
@@ -1942,6 +1959,7 @@
                     }
 
                     // Phase 4: CDU vs Fanwall 拆分
+                    podCduKwh.unit    += hr.cduKwh.unit;
                     podCduKwh.pump    += hr.cduKwh.pump;
                     podCduKwh.heatRej += hr.cduKwh.heatRej;
                     podCduKwh.chiller += hr.cduKwh.chiller;
@@ -1961,6 +1979,7 @@
                     hourlyFacilityStats[i].coolingNoPumpKw += hourCoolingNoPump;
                     hourlyFacilityStats[i].cduPumpKw += hr.cduPumpKw;
                     hourlyFacilityStats[i].chillerKw += hr.chillerKw;
+                    hourlyFacilityStats[i].mechLoadKw = (hourlyFacilityStats[i].mechLoadKw || 0) + (hr.mechLoadKw || 0);
 
                     if (hr.cduMode === 'mechanical' || (hr.cduMode === 'partial' && hourlyFacilityStats[i].cduMode !== 'mechanical')) {
                         hourlyFacilityStats[i].cduMode = hr.cduMode;
@@ -1997,8 +2016,10 @@
                     deficitHours: podDeficitHours,
                     maxDeficitKw: Math.round(podMaxDeficitKw),
                     // Phase 4: CDU vs Fanwall 系統能耗拆分
-                    cduSystemMwh: Math.round((podCduKwh.pump + podCduKwh.heatRej + podCduKwh.chiller) / 1000),
+                    cduSystemMwh: Math.round((podCduKwh.unit + podCduKwh.pump + podCduKwh.heatRej + podCduKwh.chiller) / 1000),
                     fwSystemMwh: Math.round((podFwKwh.crahFan + podFwKwh.heatRej + podFwKwh.chiller) / 1000),
+                    cduUnitKwh: Math.round(podCduKwh.unit),
+                    cduUnitMwh: Math.round(podCduKwh.unit / 1000),
                     // v29 Excel計算書: 逐分項真實能耗
                     cduPumpMwh: Math.round(podKwh.cduPump / 1000),
                     crahFanMwh: Math.round(podKwh.crahFan / 1000),
@@ -2008,6 +2029,7 @@
                 });
 
                 totalAllWaterM3 += podWaterM3;
+                totalAllCduUnitKwh += podCduKwh.unit;
                 totalCorePodTotalKwh += podTotalFacKwh;
                 totalCorePodItKwh += podKwh.it;
                 totalCorePodWaterM3 += podWaterM3;
@@ -2019,6 +2041,9 @@
                 overallKwh.chiller += podKwh.chiller;
                 overallKwh.loss += podKwh.loss;
             });
+
+            overallKwh.cduUnitKwh = Math.round(totalAllCduUnitKwh);
+            overallKwh.cduUnit = overallKwh.cduUnitKwh;
 
             const overallTotalKwh = overallKwh.it + overallKwh.cduPump + overallKwh.crahFan + overallKwh.heatRejection + overallKwh.chiller + overallKwh.loss;
             const overallPue = overallKwh.it > 0 ? (overallTotalKwh / overallKwh.it).toFixed(3) : '1.000';
@@ -2152,6 +2177,7 @@
                     fwMode: fwMode,
                     combinedMode: combinedMode,
                     chillerKw: Math.round(chKw),
+                    mechLoadKw: Math.round(hourlyFacilityStats[i].mechLoadKw || 0),
                     cduPumpKw: Math.round(hourlyFacilityStats[i].cduPumpKw || 0),
                     coolingKw: Math.round(coolKw),
                     totalKw: Math.round(tot)

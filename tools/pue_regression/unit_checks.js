@@ -351,6 +351,40 @@ function freshCtx() {
   });
 })();
 
+// ── P1-8: Dashboard FLH 台帳真實資料與 cduUnitKwh 拆分 ─────────────────────────
+(function () {
+  const ctx = freshCtx();
+  const S = ctx.AppStore;
+  S.calculate();
+
+  const du = S.state.halls[0].dus[0];
+  const duSumm = S.calcDuSummary(du);
+  const hr = S.calcHourlyEnergy(du.plantDesign, duSumm, { db: 35, wb: 28 });
+
+  test('P1-8 calcHourlyEnergy returns split cduKwh.unit and cduKwh.pump and mechLoadKw', () => {
+    assert(hr.cduKwh && typeof hr.cduKwh.unit === 'number' && typeof hr.cduKwh.pump === 'number');
+    assert(typeof hr.mechLoadKw === 'number');
+    assert(hr.cduKwh.unit > 0, 'CDU unit power must be positive');
+  });
+
+  const bk = S.state.results.overall.breakdownKwh;
+  test('P1-8 overall.breakdownKwh and byDu contain cduUnitKwh', () => {
+    assert(bk && typeof bk.cduUnitKwh === 'number' && bk.cduUnitKwh > 0);
+    assert(typeof S.state.results.byDu[0].cduUnitKwh === 'number');
+    assert(typeof S.state.results.byDu[0].cduUnitMwh === 'number');
+    assert(bk.cduUnitKwh <= bk.cduPump, 'cduUnitKwh must not exceed total cduPump (unit + pumps)');
+  });
+
+  const hp = S.state.results.hourlyProfile || [];
+  test('P1-8 hourlyProfile contains mechLoadKw and chillerKw', () => {
+    assert(hp.length === 8760);
+    const summerHour = hp[4718]; // 7/15 14:00
+    assert(summerHour && summerHour.mechLoadKw !== undefined && summerHour.chillerKw !== undefined);
+    assert(summerHour.chillerKw > 0, 'chiller must be running in summer peak');
+    assert(summerHour.mechLoadKw > 0, 'mechanical load must be positive when chiller is running');
+  });
+})();
+
 console.log(`\n${passCount} passed, ${failCount} failed, ${skipCount} skipped`);
 process.exit(failCount > 0 ? 1 : 0);
 
