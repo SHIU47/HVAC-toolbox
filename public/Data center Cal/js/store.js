@@ -201,7 +201,7 @@
         serializeProject() {
             const s = this.state;
             const exportData = {
-                schemaVersion: 'v4',
+                schemaVersion: 'v5',
                 savedAt: new Date().toISOString(),
                 site: {
                     selectedCity: s.site.selectedCity,
@@ -215,35 +215,91 @@
             return JSON.stringify(exportData, null, 2);
         },
 
+        migrateProject(stateData) {
+            if (!stateData) return stateData;
+
+            // P0-1: 確保 corePods enabled 欄位存在
+            if (Array.isArray(stateData.corePods)) {
+                stateData.corePods.forEach(p => {
+                    p.enabled = (p.enabled !== false);
+                });
+            }
+
+            const migrateSystem = (sys) => {
+                if (!sys) return;
+
+                // 架構別名解析 (如 dry_cooler_hx -> dry_cooler_trim)
+                if (sys.architecture && typeof CoolingArchRegistry !== 'undefined') {
+                    sys.architecture = CoolingArchRegistry.resolveAlias(sys.architecture);
+                }
+
+                // 架構專屬 params 預設值補齊
+                if (sys.architecture && typeof CoolingArchRegistry !== 'undefined' && CoolingArchRegistry.has(sys.architecture)) {
+                    const archDesc = CoolingArchRegistry.get(sys.architecture);
+                    if (archDesc && Array.isArray(archDesc.params)) {
+                        for (const p of archDesc.params) {
+                            if (p.key && sys[p.key] === undefined && p.default !== undefined) {
+                                sys[p.key] = p.default;
+                            }
+                        }
+                    }
+                }
+
+                // Sizing 項目補齊 redundancy = 'N+1' (為 Phase E 預留)
+                if (Array.isArray(sys.sizing)) {
+                    sys.sizing.forEach(s => {
+                        if (!s.redundancy) s.redundancy = 'N+1';
+                    });
+                }
+            };
+
+            const backfillCdu = (cdu) => {
+                if (!cdu) return;
+                if (cdu.secSupplyC === undefined) cdu.secSupplyC = 45.0;
+                if (cdu.secReturnC === undefined) cdu.secReturnC = 57.0;
+                if (cdu.cduApproachC === undefined) cdu.cduApproachC = 3.0;
+                if (cdu.fwsSupplyC === undefined) cdu.fwsSupplyC = Number((cdu.secSupplyC - cdu.cduApproachC).toFixed(1));
+                if (cdu.fwsReturnC === undefined) cdu.fwsReturnC = Number((cdu.secReturnC - cdu.cduApproachC).toFixed(1));
+                if (cdu.dryCoolerApproachC === undefined) cdu.dryCoolerApproachC = 5.0;
+                if (cdu.pheApproachC === undefined) cdu.pheApproachC = 2.0;
+            };
+
+            if (Array.isArray(stateData.halls)) {
+                stateData.halls.forEach(h => {
+                    (h.dus || []).forEach(d => {
+                        if (d.plantDesign) {
+                            migrateSystem(d.plantDesign.cduSystem);
+                            backfillCdu(d.plantDesign.cduSystem);
+                            migrateSystem(d.plantDesign.fanwallSystem);
+                        }
+                    });
+                });
+            }
+
+            if (Array.isArray(stateData.corePods)) {
+                stateData.corePods.forEach(p => {
+                    if (p.plantDesign) {
+                        migrateSystem(p.plantDesign.cduSystem);
+                        backfillCdu(p.plantDesign.cduSystem);
+                        migrateSystem(p.plantDesign.fanwallSystem);
+                    }
+                });
+            }
+
+            stateData.schemaVersion = 'v5';
+            return stateData;
+        },
+
         deserializeProject(jsonStr) {
             try {
                 const parsed = typeof jsonStr === 'string' ? JSON.parse(jsonStr) : jsonStr;
-                const stateData = parsed.state || parsed;
+                const rawStateData = parsed.state || parsed;
+                const stateData = this.migrateProject(rawStateData);
                 if (stateData.halls && Array.isArray(stateData.halls)) {
                     this.state.halls = stateData.halls;
                 }
                 if (stateData.corePods && Array.isArray(stateData.corePods)) {
-                    this.state.corePods = stateData.corePods.map(pod => ({
-                        ...pod,
-                        enabled: pod.enabled !== false
-                    }));
-                }
-                // P1-10: 補齊 CDU 系統預設值（避免舊檔或缺漏欄位造成 render 時改寫 state 或 NaN）
-                const backfillCdu = (cdu) => {
-                    if (!cdu) return;
-                    if (cdu.secSupplyC === undefined) cdu.secSupplyC = 45.0;
-                    if (cdu.secReturnC === undefined) cdu.secReturnC = 57.0;
-                    if (cdu.cduApproachC === undefined) cdu.cduApproachC = 3.0;
-                    if (cdu.fwsSupplyC === undefined) cdu.fwsSupplyC = Number((cdu.secSupplyC - cdu.cduApproachC).toFixed(1));
-                    if (cdu.fwsReturnC === undefined) cdu.fwsReturnC = Number((cdu.secReturnC - cdu.cduApproachC).toFixed(1));
-                    if (cdu.dryCoolerApproachC === undefined) cdu.dryCoolerApproachC = 5.0;
-                    if (cdu.pheApproachC === undefined) cdu.pheApproachC = 2.0;
-                };
-                if (this.state.halls && Array.isArray(this.state.halls)) {
-                    this.state.halls.forEach(h => (h.dus || []).forEach(d => backfillCdu(d.plantDesign?.cduSystem)));
-                }
-                if (this.state.corePods && Array.isArray(this.state.corePods)) {
-                    this.state.corePods.forEach(p => backfillCdu(p.plantDesign?.cduSystem));
+                    this.state.corePods = stateData.corePods;
                 }
                 if (stateData.assumptions_override) {
                     this.state.assumptions_override = stateData.assumptions_override;

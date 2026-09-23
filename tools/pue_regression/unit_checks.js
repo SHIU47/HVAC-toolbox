@@ -757,6 +757,79 @@ function freshCtx() {
   });
 })();
 
+// ═══════════════════════════════════════════════════════════════
+// C-5 Schema v5 and migrateProject
+// ═══════════════════════════════════════════════════════════════
+(function () {
+  const ctx = freshCtx();
+  const fs = require('fs');
+  const path = require('path');
+  const { AppStore: S } = ctx;
+
+  test('C-5 serializeProject produces schemaVersion v5', () => {
+    const json = S.serializeProject();
+    const parsed = JSON.parse(json);
+    assert.strictEqual(parsed.schemaVersion, 'v5');
+  });
+
+  test('C-5 migrateProject resolves legacy aliases, adds redundancy and enabled', () => {
+    const v4State = {
+      schemaVersion: 'v4',
+      corePods: [{ id: 'pod1', name: 'POD 1' }],
+      halls: [{
+        id: 'h1',
+        dus: [{
+          id: 'du1',
+          plantDesign: {
+            cduSystem: {
+              architecture: 'dry_cooler_hx',
+              sizing: [{ key: 'cdu_unit', selectedModel: 'Vertiv XDU 80kW' }]
+            },
+            fanwallSystem: {
+              architecture: 'water_cooled_chiller_tower',
+              sizing: [{ key: 'crah_unit', selectedModel: 'Standard' }]
+            }
+          }
+        }]
+      }]
+    };
+
+    const migrated = S.migrateProject(v4State);
+    assert.strictEqual(migrated.schemaVersion, 'v5');
+    assert.strictEqual(migrated.corePods[0].enabled, true);
+    assert.strictEqual(migrated.halls[0].dus[0].plantDesign.cduSystem.architecture, 'dry_cooler_trim');
+    assert.strictEqual(migrated.halls[0].dus[0].plantDesign.fanwallSystem.architecture, 'water_cooled_chiller');
+    assert.strictEqual(migrated.halls[0].dus[0].plantDesign.cduSystem.sizing[0].redundancy, 'N+1');
+    assert.strictEqual(migrated.halls[0].dus[0].plantDesign.fanwallSystem.sizing[0].redundancy, 'N+1');
+    assert(migrated.halls[0].dus[0].plantDesign.cduSystem.secSupplyC !== undefined);
+  });
+
+  test('C-5 round-trip migration test with sample project file', () => {
+    const samplePath = path.resolve(__dirname, '../../public/Data center Cal/projects/PUE_Project_高雄 (Kaohsiung)_20260901.json');
+    if (!fs.existsSync(samplePath)) {
+      console.warn('Sample project file not found, skipping round-trip test');
+      return;
+    }
+    const sampleRaw = fs.readFileSync(samplePath, 'utf8');
+    const ok1 = S.deserializeProject(sampleRaw);
+    assert.strictEqual(ok1, true);
+    const pue1 = S.state.results.overall.annualPue;
+    const water1 = S.state.results.overall.annualWaterM3;
+
+    const savedV5 = S.serializeProject();
+    const parsedV5 = JSON.parse(savedV5);
+    assert.strictEqual(parsedV5.schemaVersion, 'v5');
+
+    const ok2 = S.deserializeProject(savedV5);
+    assert.strictEqual(ok2, true);
+    const pue2 = S.state.results.overall.annualPue;
+    const water2 = S.state.results.overall.annualWaterM3;
+
+    assert.strictEqual(pue1, pue2, `PUE after round-trip must match: ${pue1} vs ${pue2}`);
+    assert.strictEqual(water1, water2, `Water after round-trip must match: ${water1} vs ${water2}`);
+  });
+})();
+
 console.log(`\n${passCount} passed, ${failCount} failed, ${skipCount} skipped`);
 process.exit(failCount > 0 ? 1 : 0);
 
