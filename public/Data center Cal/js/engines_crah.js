@@ -20,12 +20,14 @@ const CRAHEngine = {
 
     const cap_total   = sumRunning(crah_list, 'cooling_capacity_kw');
     const power_rated = sumRunning(crah_list, 'power_kw');
-    const plr         = cap_total > 0 ? Math.min(1.0, it_air_kw / cap_total) : (it_air_kw > 0 ? 1.0 : 0);
+    const plr_raw     = cap_total > 0 ? (it_air_kw / cap_total) : (it_air_kw > 0 ? 1.0 : 0);
+    const plr         = Math.min(1.0, plr_raw);
+    const deficit_kw  = Math.max(0, it_air_kw - cap_total);
     const speed       = Math.max(0.30, Math.min(1.0, plr));
     // CRAH fan: 10% static base (AHU filter & duct resistance)
     const power_kw    = power_rated * (0.10 + 0.90 * Math.pow(speed, 3));
 
-    return { power_kw, plr, speed, cap_total };
+    return { power_kw, plr, plr_raw, deficit_kw, speed, cap_total };
   },
 
   validate(plr, cap_total, it_air_kw) {

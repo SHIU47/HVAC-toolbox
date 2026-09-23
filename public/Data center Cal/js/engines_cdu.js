@@ -23,11 +23,13 @@ const CDUEngine = {
 
     const cap_total   = sumRunning(cdu_list, 'capacity_kw');
     const power_rated = sumRunning(cdu_list, 'power_kw');
-    const plr         = cap_total > 0 ? Math.min(1.0, it_liquid_kw / cap_total) : 1.0;
+    const plr_raw     = cap_total > 0 ? (it_liquid_kw / cap_total) : (it_liquid_kw > 0 ? 1.0 : 0);
+    const plr         = Math.min(1.0, plr_raw);
+    const deficit_kw  = Math.max(0, it_liquid_kw - cap_total);
     const speed       = Math.max(0.45, Math.min(1.0, plr));
     const power_kw    = power_rated * (0.15 + 0.85 * Math.pow(speed, 3));
 
-    return { power_kw, plr, speed, cap_total, power_rated };
+    return { power_kw, plr, plr_raw, deficit_kw, speed, cap_total, power_rated };
   },
 
   /**

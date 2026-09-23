@@ -168,6 +168,30 @@ function freshCtx() {
   });
 })();
 
+// ── P1-5: CDU 與 CRAH 容量不足時回傳 plr_raw 與 deficit_kw ──────────────
+(function () {
+  const ctx = freshCtx();
+  const { CDUEngine, CRAHEngine } = ctx;
+
+  // CDU overload: 100 kW load > 80 kW capacity -> plr_raw = 1.25, deficit_kw = 20
+  const cduList = [{ capacity_kw: 80, power_kw: 2.0, qty_running: 1 }];
+  const rCdu = CDUEngine.calcPower(cduList, 100);
+  test('P1-5 CDUEngine.calcPower returns plr_raw and deficit_kw when overloaded', () => {
+    assert.strictEqual(rCdu.plr, 1.0);
+    assert.strictEqual(rCdu.plr_raw, 1.25);
+    assert.strictEqual(rCdu.deficit_kw, 20);
+  });
+
+  // CRAH overload: 150 kW load > 100 kW capacity -> plr_raw = 1.5, deficit_kw = 50
+  const crahList = [{ cooling_capacity_kw: 100, power_kw: 5.0, qty_running: 1 }];
+  const rCrah = CRAHEngine.calcPower(crahList, 150);
+  test('P1-5 CRAHEngine.calcPower returns plr_raw and deficit_kw when overloaded', () => {
+    assert.strictEqual(rCrah.plr, 1.0);
+    assert.strictEqual(rCrah.plr_raw, 1.5);
+    assert.strictEqual(rCrah.deficit_kw, 50);
+  });
+})();
+
 console.log(`\n${passCount} passed, ${failCount} failed, ${skipCount} skipped`);
 process.exit(failCount > 0 ? 1 : 0);
 

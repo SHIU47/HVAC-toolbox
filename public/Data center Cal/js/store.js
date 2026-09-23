@@ -1346,9 +1346,15 @@
 
             const cduUnitItem = (cduSys.sizing || []).find(s => s.key === 'cdu_unit');
             const cduUnits = this.resolveCduFromSizing(cduUnitItem);
-            const cduUnitKw = (cduUnits.length > 0 && typeof CDUEngine !== 'undefined' && summ.liquidHeatKw > 0)
-                ? CDUEngine.calcPower(cduUnits, summ.liquidHeatKw).power_kw
-                : (summ.liquidHeatKw / 400) * 2.0;
+            let cduUnitKw = 0;
+            let cduDeficitKw = 0;
+            if (cduUnits.length > 0 && typeof CDUEngine !== 'undefined' && summ.liquidHeatKw > 0) {
+                const cduRes = CDUEngine.calcPower(cduUnits, summ.liquidHeatKw);
+                cduUnitKw = cduRes.power_kw;
+                cduDeficitKw = cduRes.deficit_kw || 0;
+            } else if (summ.liquidHeatKw > 0) {
+                cduUnitKw = (summ.liquidHeatKw / 400) * 2.0;
+            }
 
             const cduPumpItem = (cduSys.sizing || []).find(s => s.key === 'cdu_pump');
             const cduPumps = this.resolvePumpFromSizing(cduPumpItem);
@@ -1366,7 +1372,7 @@
             // v32 Phase 9-3: 累計冰機容量不足缺口 (ChillerEngine.calcPower 內建的
             // CHILLER_CAPACITY_DEFICIT warning，PLR>1.02 時才觸發)，供 Dashboard
             // 顯示「此結果可能低估」的警示，不讓容量不足悄悄變成一個好看的低 PUE。
-            let capacityDeficitKw = 0;
+            let capacityDeficitKw = cduDeficitKw;
             const trackChillerDeficit = (chRes) => {
                 if (chRes && chRes.warnings && chRes.warnings.length) {
                     capacityDeficitKw += chRes.warnings.reduce((s, x) => s + (x.deficit_kw || 0), 0);
@@ -1556,9 +1562,16 @@
             const fwUnitKey = fwArch === 'rdhx' ? 'rdhx_unit' : 'crah_unit';
             const fwUnitItem = (fwSys.sizing || []).find(s => s.key === fwUnitKey);
             const fwUnits = this.resolveCrahFromSizing(fwUnitItem);
-            const crahFanKw = (fwUnits.length > 0 && typeof CRAHEngine !== 'undefined' && airHeatTotal > 0)
-                ? CRAHEngine.calcPower(fwUnits, airHeatTotal).power_kw
-                : ((fwArch === 'rdhx') ? (airHeatTotal / 60) * 1.2 : (airHeatTotal / 60) * 4.8);
+            let crahFanKw = 0;
+            if (fwUnits.length > 0 && typeof CRAHEngine !== 'undefined' && airHeatTotal > 0) {
+                const crahRes = CRAHEngine.calcPower(fwUnits, airHeatTotal);
+                crahFanKw = crahRes.power_kw;
+                if (crahRes.deficit_kw > 0) {
+                    capacityDeficitKw += crahRes.deficit_kw;
+                }
+            } else {
+                crahFanKw = ((fwArch === 'rdhx') ? (airHeatTotal / 60) * 1.2 : (airHeatTotal / 60) * 4.8);
+            }
 
             const fwPumpItem = (fwSys.sizing || []).find(s => s.key === 'fw_pump');
             const fwPumps = this.resolvePumpFromSizing(fwPumpItem);
