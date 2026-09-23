@@ -16,8 +16,17 @@ const ChillerEngine = {
     default: 0.15
   },
 
-  // COP physical ceiling — no real chiller exceeds 15 (2nd Law constraint)
-  COP_MAX: 15.0,
+  // COP physical ceiling (2nd Law constraint under minimum lift)
+  COP_MAX: 20.0,
+
+  carnotLiftFactor(T_chws, T_cond_in, is_air_cooled, ref) {
+    const Te  = (x) => x - A('chiller_evap_approach_k') + 273.15;
+    const off = is_air_cooled ? A('chiller_cond_offset_air_k') : A('chiller_cond_offset_water_k');
+    const Tc  = (x, te) => Math.max(x + off + 273.15, te + A('chiller_min_lift_k'));
+    const cop = (tchws, tcond) => { const te = Te(tchws); const tc = Tc(tcond, te); return te / (tc - te); };
+    const f = cop(T_chws, T_cond_in) / cop(ref.t_chws, ref.t_cond);
+    return clamp(f, 0.3, A('chiller_lift_factor_max'));
+  },
 
   /**
    * Compute chiller electrical power at given operating conditions.
@@ -74,12 +83,16 @@ const ChillerEngine = {
           const [C_lo, C_hi] = coefs.t_cewt_range ?? [18, 42];
           const T_c = clamp(T_chws, T_lo, T_hi);
           const C_c = clamp(T_cond, C_lo, C_hi);
+          CapFT  = clamp(biQuad(coefs.CapFT,  T_c, C_c), 0.4, 1.6);
+          EIR_FT = clamp(biQuad(coefs.EIR_FT, T_c, C_c), 0.4, 2.0);
           if (T_chws !== T_c || T_cond !== C_c) {
             warnings.push({ code: 'CHILLER_OUT_OF_RANGE', severity: 'info',
               message: `冰機工況超出曲線範圍：CHWS ${T_chws.toFixed(1)}°C [${T_lo}-${T_hi}], CEWT/DB ${T_cond.toFixed(1)}°C [${C_lo}-${C_hi}]，已截斷至邊界值計算` });
+            const ref = coefs.rating ?? { t_chws: 7, t_cond: is_air_cooled ? 35 : 30 };
+            const liftClamped = ChillerEngine.carnotLiftFactor(T_c, C_c, is_air_cooled, ref);
+            const liftActual = ChillerEngine.carnotLiftFactor(T_chws, T_cond, is_air_cooled, ref);
+            EIR_FT = clamp(EIR_FT * (liftClamped / liftActual), 0.2, 3.0);
           }
-          CapFT  = clamp(biQuad(coefs.CapFT,  T_c, C_c), 0.4, 1.6);
-          EIR_FT = clamp(biQuad(coefs.EIR_FT, T_c, C_c), 0.4, 2.0);
           current_fplr = coefs.EIR_FPLR;
         }
       } else if (curve.type === 'custom_poly') {
@@ -88,19 +101,11 @@ const ChillerEngine = {
         EIR_FT = cop / cop_t;
         current_fplr = [0, 1, 0]; // linear PLR for scroll/screw without AHRI data
       } else {
-        // type === 'fixed' 或預設：採用 ASHRAE 90.1 / AHRI 550/590 基準外氣與冰水供水溫度物理修正
-        const chws_base = ch.t_chws_design ?? 7.0;
-        if (is_air_cooled) {
-          // 氣冷式冰機額定基準：35°C 乾球溫 (DB)，chws_base 冰水供水 (CHWS)
-          CapFT  = clamp(1.0 - 0.012 * (T_cond - 35.0) + 0.025 * (T_chws - chws_base), 0.5, 1.4);
-          EIR_FT = clamp(1.0 + 0.018 * (T_cond - 35.0) - 0.015 * (T_chws - chws_base), 0.5, 2.0);
-          current_fplr = (cat.includes('centrifugal') || cat.includes('mag')) ? [0.025, 0.520, 0.455] : [0.040, 0.720, 0.240];
-        } else {
-          // 水冷式冰機額定基準：30°C 冷凝器進水 (CEWT)，chws_base 冰水供水 (CHWS)
-          CapFT  = clamp(1.0 - 0.015 * (T_cond - 30.0) + 0.025 * (T_chws - chws_base), 0.5, 1.5);
-          EIR_FT = clamp(1.0 + 0.016 * (T_cond - 30.0) - 0.018 * (T_chws - chws_base), 0.5, 2.0);
-          current_fplr = (cat.includes('centrifugal') || cat.includes('mag')) ? [0.030, 0.500, 0.470] : [0.020, 0.730, 0.250];
-        }
+        // type === 'fixed' 或預設：採用 Carnot 揚程比例物理修正
+        const ref = { t_chws: ch.t_chws_design ?? 7.0, t_cond: is_air_cooled ? 35.0 : 30.0 };
+        CapFT  = 1.0;
+        EIR_FT = 1.0 / ChillerEngine.carnotLiftFactor(T_chws, T_cond, is_air_cooled, ref);
+        current_fplr = [0, 1, 0];
       }
 
       total_available += n * cap * CapFT;
@@ -147,9 +152,10 @@ const ChillerEngine = {
       power_kw = total_rated_eir * EIR_FPLR;
     }
 
-    const cop_raw    = power_kw > 0 ? Q_load / power_kw : Infinity;
+    const Q_served   = (total_available > 0 && Q_load > total_available) ? total_available : Q_load;
+    const cop_raw    = power_kw > 0 ? Q_served / power_kw : Infinity;
     const cop_actual = Math.min(cop_raw, this.COP_MAX);
-    const power_final = (cop_actual < cop_raw && Q_load > 0) ? Q_load / cop_actual : power_kw;
+    const power_final = (cop_actual < cop_raw && Q_served > 0) ? Q_served / cop_actual : power_kw;
 
     // Warn if COP is unrealistically high even after ceiling
     if (cop_actual > 10.0 && Q_load > 10) {

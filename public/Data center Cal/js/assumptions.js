@@ -44,9 +44,15 @@ const ASSUMPTIONS = {
   nvidia_dsx_ht_supply_c:         { val: 37.0,  unit: '°C',     label: 'NVIDIA DSX HTFW 高溫一次側供水基準', ref: 'NVIDIA DSX BOD Rev5 Section 6.9.2 (98.6°F)' },
   nvidia_dsx_ht_return_c:         { val: 47.0,  unit: '°C',     label: 'NVIDIA DSX HTFW 高溫一次側回水基準', ref: 'NVIDIA DSX BOD Rev5 Section 6.9.2 (116.6°F)' },
   nvidia_dsx_mt_supply_c:         { val: 22.0,  unit: '°C',     label: 'NVIDIA DSX MTFW 中溫一次側供水基準', ref: 'NVIDIA DSX BOD Rev5 Section 6.9.2 (71.6°F)' },
-  nvidia_dsx_mt_return_c:         { val: 32.0,  unit: '°C',     label: 'NVIDIA DSX MTFW 中溫一次側回水基準', ref: 'NVIDIA DSX BOD Rev5 Section 6.9.2 (89.6°F)' },
   nvidia_dsx_mode1_db_max_c:      { val: 34.8,  unit: '°C',     label: 'NVIDIA DSX Full Free Cooling 乾球上限', ref: 'NVIDIA DSX Facilities Guide v2.0 p.42' },
   nvidia_dsx_mode2_db_max_c:      { val: 40.5,  unit: '°C',     label: 'NVIDIA DSX Trim Cooling 乾球上限', ref: 'NVIDIA DSX Facilities Guide v2.0 p.42' },
+
+  // ── 冰機揚程與外推保護常數 (P0-4) ──────────────────────────────────────
+  chiller_evap_approach_k:        { val: 2.0,   unit: 'K',      label: '冰機蒸發溫度 = 冰水出水溫 − 此值', ref: '殼管/板式蒸發器典型 1.5–3 K' },
+  chiller_cond_offset_water_k:    { val: 7.0,   unit: 'K',      label: '水冷冰機冷凝溫度 = 冷卻水進水溫 + 此值（含冷卻水溫升 5K + approach 2K）', ref: 'AHRI 550/590 標準工況 30→35°C，冷凝器 approach ≈ 2K' },
+  chiller_cond_offset_air_k:      { val: 15.0,  unit: 'K',      label: '氣冷冰機冷凝溫度 = 外氣乾球 + 此值', ref: '氣冷冷凝器典型 TD 12–17 K' },
+  chiller_min_lift_k:             { val: 10.0,  unit: 'K',      label: '壓縮機最小揚程（冷凝−蒸發），低於此值以此值計', ref: '離心/螺旋機油壓差與防喘振限制，磁浮機可低至 5–8 K' },
+  chiller_lift_factor_max:        { val: 2.0,   unit: '-',      label: '揚程修正後 COP 最多為設計 COP 的倍數', ref: '保守上限，避免低揚程外推過度樂觀' },
 };
 
 function A(key, state) {

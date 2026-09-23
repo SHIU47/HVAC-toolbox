@@ -1223,7 +1223,8 @@
                 cop_curve: catEntry?.cop_curve, // 有真實 AHRI 曲線資料時 ChillerEngine 會自動採用，否則退回 flat COP
                 qty_running: this.runningQtyFromSelected(item.selectedQty),
                 qty_total: item.selectedQty,
-                chiller_type: chillerType
+                category: catEntry?.category,
+                chiller_type: catEntry?.chiller_type ?? chillerType
             }];
         },
 
@@ -1478,7 +1479,7 @@
                     cduHeatRejKw += (wcTowerDevices.length > 0 && typeof CoolingTowerEngine !== 'undefined')
                         ? CoolingTowerEngine.calcFanPower(wcTowerDevices, cduLoadRatio, false, cduFanMinSpeed)
                         : (summ.liquidHeatKw / 500) * 14.0;
-                    const cduChillerItem = (cduSys.sizing || []).find(s => s.key === 'water_chiller');
+                    const cduChillerItem = (cduSys.sizing || []).find(s => s.key === 'water_cooled_chiller');
                     const cduChillers = this.resolveChillerFromSizing(cduChillerItem, 'water_cooled');
                     let cduChillerPowerKwThisHour;
                     if (cduChillers.length > 0 && typeof ChillerEngine !== 'undefined') {
