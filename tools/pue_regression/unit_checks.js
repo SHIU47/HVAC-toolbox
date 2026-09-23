@@ -192,6 +192,50 @@ function freshCtx() {
   });
 })();
 
+// ── P1-1: 設計工況快取/失效 與 設備降額選型 ────────────────────────────
+(function () {
+  const ctx = freshCtx();
+  const S = ctx.AppStore;
+  S.calculate();
+
+  // Test 1: 快取與 updateSite 失效
+  const d1 = S.designConditions();
+  test('P1-1 designConditions returns designDb/designWb/maxDb and caches in state.site.design', () => {
+    assert(d1 && d1.designDb !== undefined && d1.designWb !== undefined && d1.maxDb !== undefined);
+    assert.strictEqual(S.state.site.design, d1);
+  });
+
+  S.updateSite({ hourly: [], stats: { maxDB: 41.5 } });
+  const d2 = S.designConditions();
+  test('P1-1 updateSite invalidates state.site.design cache', () => {
+    assert.notStrictEqual(d2, d1);
+    assert.strictEqual(d2.maxDb, 41.5);
+  });
+
+  // Test 2: CDU 降額選型 (40°C FWS -> 0.80 derate)
+  const ctx2 = freshCtx();
+  const S2 = ctx2.AppStore;
+  S2.calculate();
+  const du = S2.state.halls[0].dus[0];
+  const cduSizing = du.plantDesign.cduSystem.sizing.find(s => s.key === 'cdu_unit');
+
+  test('P1-1 CDU sizing applies derateFactor at 40C FWS', () => {
+    assert(cduSizing, 'cdu_unit sizing must exist');
+    assert.strictEqual(cduSizing.derateFactor, 0.8);
+    // 10 台選用，N+1 可用台數 9，標稱 100 kW -> 9 * 100 * 0.8 = 720 kW
+    assert.strictEqual(cduSizing.effectiveCapKw, 720);
+    assert.strictEqual(cduSizing.unitCapKw, 100);
+    assert(cduSizing.requiredText.includes('（已依設計工況降額 ×0.80）'), 'requiredText should note derating');
+  });
+
+  const dcSizing = du.plantDesign.cduSystem.sizing.find(s => s.key === 'dry_cooler');
+  test('P1-1 Dry cooler keeps derateFactor 1.0 without derate note', () => {
+    assert(dcSizing, 'dry_cooler sizing must exist');
+    assert.strictEqual(dcSizing.derateFactor, 1.0);
+    assert(!dcSizing.requiredText.includes('已依設計工況降額'), 'should not have derate note for 1.0');
+  });
+})();
+
 console.log(`\n${passCount} passed, ${failCount} failed, ${skipCount} skipped`);
 process.exit(failCount > 0 ? 1 : 0);
 

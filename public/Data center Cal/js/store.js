@@ -362,6 +362,7 @@
 
         updateSite(siteData) {
             Object.assign(this.state.site, siteData);
+            this.state.site.design = null;
             if (siteData.hourly && siteData.hourly.length >= 8760) {
                 this.state.site.monthlyStats = this.computeMonthlyStats(siteData.hourly);
                 this.state.site.stats = this.computeGlobalStats(siteData.hourly, this.state.site.monthlyStats);
@@ -2322,10 +2323,45 @@
 
                 const curItem = s.catalog.find(c => c.model === s.selectedModel) || s.catalog[0];
                 s.unitCapKw = curItem.capKw;
-                s.requiredUnitsN1 = Math.max(2, Math.ceil(s.requiredKw / s.unitCapKw) + 1);
-                s.effectiveCapKw = Math.max(0, s.selectedQty - 1) * s.unitCapKw;
+
+                let derateFactor = 1.0;
+                if (s.key === 'cdu_unit' && typeof CDUEngine !== 'undefined') {
+                    const d = CDUEngine.deratedCapacityKW(curItem.capKw, cduSys.fwsSupplyC);
+                    derateFactor = d.derate_factor;
+                } else if (s.key === 'trim_chiller' && typeof ChillerEngine !== 'undefined') {
+                    const designCond = this.designConditions();
+                    const opDesign = this.trimOperatingPoint(cduSys, designCond.designDb);
+                    const spec = {
+                        cooling_capacity_kw: curItem.capKw,
+                        chiller_type: 'water_cooled',
+                        cop_curve: curItem.cop_curve || { type: 'fixed' }
+                    };
+                    const d = ChillerEngine.deratedCapacityKW(spec, opDesign.tChws, opDesign.tCewt, designCond.designDb);
+                    derateFactor = d.derate_factor;
+                } else if (s.key === 'water_cooled_chiller' && typeof ChillerEngine !== 'undefined') {
+                    const designCond = this.designConditions();
+                    const minCewt = (typeof A === 'function') ? A('min_cewt_c') : 16.0;
+                    const towerApp = (typeof A === 'function') ? A('tower_approach_c') : 4.0;
+                    const T_cewt = Math.max(minCewt, designCond.designWb + towerApp);
+                    const spec = {
+                        cooling_capacity_kw: curItem.capKw,
+                        chiller_type: 'water_cooled',
+                        cop_curve: curItem.cop_curve || { type: 'fixed' }
+                    };
+                    const d = ChillerEngine.deratedCapacityKW(spec, cduSys.fwsSupplyC || 40.0, T_cewt, designCond.designDb);
+                    derateFactor = d.derate_factor;
+                } else if ((s.key === 'cooling_tower' || s.key === 'closed_tower' || s.key === 'adiabatic_tower') && typeof CoolingTowerEngine !== 'undefined') {
+                    const designCond = this.designConditions();
+                    const spec = { heat_rejection_kw: curItem.capKw || curItem.heat_rejection_kw };
+                    const d = CoolingTowerEngine.deratedCapacityKW(spec, designCond.designWb);
+                    derateFactor = d.derate_factor;
+                }
+                s.derateFactor = Math.round(derateFactor * 1000) / 1000;
+                s.requiredUnitsN1 = Math.max(2, Math.ceil(s.requiredKw / (s.unitCapKw * s.derateFactor)) + 1);
+                s.effectiveCapKw = Math.round(Math.max(0, s.selectedQty - 1) * s.unitCapKw * s.derateFactor);
                 s.passed = (s.effectiveCapKw >= s.requiredKw) && (s.selectedQty >= 2);
-                s.requiredText = '需求 ≥ ' + s.requiredKw.toFixed(1) + ' kW (N+1 最少 ' + s.requiredUnitsN1 + ' 台)';
+                const derateNote = (s.derateFactor < 0.999) ? `（已依設計工況降額 ×${s.derateFactor.toFixed(2)}）` : '';
+                s.requiredText = '需求 ≥ ' + s.requiredKw.toFixed(1) + ' kW (N+1 最少 ' + s.requiredUnitsN1 + ' 台)' + derateNote;
                 if (s.key === 'cdu_pump') {
                     s.passed = s.selectedQty >= 2 && (s.effectiveCapKw >= s.requiredKw * 0.9);
                     s.requiredText = '水力揚程需求 ' + s.requiredKw + ' kW (2用1備 N+1)';
@@ -2388,10 +2424,41 @@
 
                 const curItem = s.catalog.find(c => c.model === s.selectedModel) || s.catalog[0];
                 s.unitCapKw = curItem.capKw;
-                s.requiredUnitsN1 = Math.max(2, Math.ceil(s.requiredKw / s.unitCapKw) + 1);
-                s.effectiveCapKw = Math.max(0, s.selectedQty - 1) * s.unitCapKw;
+
+                let derateFactor = 1.0;
+                if (s.key === 'air_cooled_chiller' && typeof ChillerEngine !== 'undefined') {
+                    const designCond = this.designConditions();
+                    const spec = {
+                        cooling_capacity_kw: curItem.capKw,
+                        chiller_type: 'air_cooled',
+                        cop_curve: curItem.cop_curve || { type: 'fixed' }
+                    };
+                    const d = ChillerEngine.deratedCapacityKW(spec, fwSys.chwSupplyC || 12.0, undefined, designCond.designDb);
+                    derateFactor = d.derate_factor;
+                } else if (s.key === 'water_cooled_chiller' && typeof ChillerEngine !== 'undefined') {
+                    const designCond = this.designConditions();
+                    const minCewt = (typeof A === 'function') ? A('min_cewt_c') : 16.0;
+                    const towerApp = (typeof A === 'function') ? A('tower_approach_c') : 4.0;
+                    const T_cewt = Math.max(minCewt, designCond.designWb + towerApp);
+                    const spec = {
+                        cooling_capacity_kw: curItem.capKw,
+                        chiller_type: 'water_cooled',
+                        cop_curve: curItem.cop_curve || { type: 'fixed' }
+                    };
+                    const d = ChillerEngine.deratedCapacityKW(spec, fwSys.chwSupplyC || 12.0, T_cewt, designCond.designDb);
+                    derateFactor = d.derate_factor;
+                } else if (s.key === 'cooling_tower' && typeof CoolingTowerEngine !== 'undefined') {
+                    const designCond = this.designConditions();
+                    const spec = { heat_rejection_kw: curItem.capKw || curItem.heat_rejection_kw };
+                    const d = CoolingTowerEngine.deratedCapacityKW(spec, designCond.designWb);
+                    derateFactor = d.derate_factor;
+                }
+                s.derateFactor = Math.round(derateFactor * 1000) / 1000;
+                s.requiredUnitsN1 = Math.max(2, Math.ceil(s.requiredKw / (s.unitCapKw * s.derateFactor)) + 1);
+                s.effectiveCapKw = Math.round(Math.max(0, s.selectedQty - 1) * s.unitCapKw * s.derateFactor);
                 s.passed = (s.effectiveCapKw >= s.requiredKw) && (s.selectedQty >= 2);
-                s.requiredText = '需求 ≥ ' + s.requiredKw.toFixed(1) + ' kW (N+1 最少 ' + s.requiredUnitsN1 + ' 台)';
+                const derateNote = (s.derateFactor < 0.999) ? `（已依設計工況降額 ×${s.derateFactor.toFixed(2)}）` : '';
+                s.requiredText = '需求 ≥ ' + s.requiredKw.toFixed(1) + ' kW (N+1 最少 ' + s.requiredUnitsN1 + ' 台)' + derateNote;
                 if (s.key === 'fw_pump') {
                     s.passed = s.selectedQty >= 2 && (s.effectiveCapKw >= s.requiredKw * 0.9);
                     s.requiredText = '二次側水力揚程需求 ' + s.requiredKw + ' kW (2用1備 N+1)';
