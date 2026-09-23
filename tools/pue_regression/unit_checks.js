@@ -696,6 +696,67 @@ function freshCtx() {
   });
 })();
 
+// ═══════════════════════════════════════════════════════════════
+// C-4 Annual Simulation Runner & simulateUnit (AnnualRunner)
+// ═══════════════════════════════════════════════════════════════
+(function () {
+  const ctx = freshCtx();
+  const { AnnualRunner, AppStore: S } = ctx;
+
+  test('C-4 AnnualRunner and AppStore.simulateUnit exist', () => {
+    assert(AnnualRunner, 'AnnualRunner must be defined');
+    assert(typeof AnnualRunner.simulateUnit === 'function', 'AnnualRunner.simulateUnit must exist');
+    assert(typeof AnnualRunner.formatUnitResult === 'function', 'AnnualRunner.formatUnitResult must exist');
+    assert(typeof AnnualRunner.calculateLedgers === 'function', 'AnnualRunner.calculateLedgers must exist');
+    assert(typeof AnnualRunner.buildHourlyProfile === 'function', 'AnnualRunner.buildHourlyProfile must exist');
+    assert(typeof AnnualRunner.run === 'function', 'AnnualRunner.run must exist');
+    assert(typeof S.simulateUnit === 'function', 'AppStore.simulateUnit must exist');
+  });
+
+  test('C-4 AnnualRunner.simulateUnit runs 8760h and returns complete unit metrics', () => {
+    const du = S.state.halls[0].dus[0];
+    const duSumm = S.calcDuSummary(du);
+    duSumm.lossKw = duSumm.totalItKw * 0.03;
+    const weather = S.state.site.hourly && S.state.site.hourly.length >= 8760
+      ? S.state.site.hourly
+      : S.generateFallbackWeather();
+
+    const sim = AnnualRunner.simulateUnit(du.plantDesign, duSumm, weather, {
+      calcHourlyEnergy: (plant, summ, w) => S.calcHourlyEnergy(plant, summ, w)
+    });
+
+    assert(sim.kwh && typeof sim.kwh.it === 'number', 'kwh.it must be number');
+    assert(typeof sim.kwh.cduPump === 'number', 'kwh.cduPump must be number');
+    assert(typeof sim.kwh.crahFan === 'number', 'kwh.crahFan must be number');
+    assert(typeof sim.kwh.heatRejection === 'number', 'kwh.heatRejection must be number');
+    assert(typeof sim.kwh.chiller === 'number', 'kwh.chiller must be number');
+    assert(typeof sim.kwh.loss === 'number', 'kwh.loss must be number');
+    assert(typeof sim.waterM3 === 'number', 'waterM3 must be number');
+    assert(typeof sim.fcHours === 'number', 'fcHours must be number');
+    assert(typeof sim.deficitHours === 'number', 'deficitHours must be number');
+    assert(typeof sim.maxDeficitKw === 'number', 'maxDeficitKw must be number');
+    assert(typeof sim.pue === 'number' && sim.pue >= 1.0, 'pue must be >= 1.0');
+    assert(typeof sim.wue === 'number' && sim.wue >= 0, 'wue must be >= 0');
+  });
+
+  test('C-4 AnnualRunner.run produces valid overall, byDu, byCorePod, and ledgers', () => {
+    S.calculate();
+    const r = S.state.results;
+    assert(r.overall, 'results.overall must exist');
+    assert(r.byDu && Array.isArray(r.byDu), 'results.byDu must be array');
+    assert(r.byCorePod && Array.isArray(r.byCorePod), 'results.byCorePod must be array');
+    assert(r.corePodGroup, 'results.corePodGroup must exist');
+    assert(r.overall.energyLedger, 'overall.energyLedger must exist');
+    assert(r.overall.thermalLedger, 'overall.thermalLedger must exist');
+    assert(r.overall.hydraulicLedger, 'overall.hydraulicLedger must exist');
+    assert(r.overall.energyLedger.is_balanced === true, 'energyLedger must be balanced');
+    assert(r.overall.thermalLedger.is_balanced === true, 'thermalLedger must be balanced');
+    assert(r.overall.hydraulicLedger.is_hydraulic_ok === true, 'hydraulicLedger must be ok');
+    assert(Array.isArray(r.hourlyProfile) && r.hourlyProfile.length === 8760, 'hourlyProfile must have 8760 records');
+    assert(Array.isArray(r.monthlyPue) && r.monthlyPue.length === 12, 'monthlyPue must have 12 records');
+  });
+})();
+
 console.log(`\n${passCount} passed, ${failCount} failed, ${skipCount} skipped`);
 process.exit(failCount > 0 ? 1 : 0);
 

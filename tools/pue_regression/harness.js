@@ -25,6 +25,7 @@ const FILES = ['assumptions.js','engines_core.js','engines_cdu.js','engines_crah
   'cooling/archs/air_district_chw.js',
   'cooling/archs/air_rdhx.js',
   'sizing/sizing_engine.js',
+  'simulation/annual_runner.js',
   'weather_builtin.js',
   'device_catalog_builtin.js','catalog_manager.js','store.js'];
 for (const f of FILES) vm.runInContext(fs.readFileSync(path.join(JS, f), 'utf8'), ctx, { filename: f });
