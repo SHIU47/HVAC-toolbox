@@ -41,6 +41,9 @@ const APP_FILES = [
   'weather_builtin.js', 'epw_parser.js', 'components/equipment_designer.js',
   'device_catalog_builtin.js', 'catalog_manager.js', 'ui_kit.js', 'store.js', 'excel_export.js',
   'views/view_weather.js', 'views/view_hall_su.js', 'views/view_corepod.js',
+  'views/schematics/schematic_single_loop.js',
+  'views/schematics/schematic_series_trim.js',
+  'views/schematics/schematic_air_plant.js',
   'views/view_cooling.js', 'views/view_dashboard.js', 'app.js'
 ];
 

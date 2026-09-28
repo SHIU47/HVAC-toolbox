@@ -941,6 +941,57 @@ function freshCtx() {
   });
 })();
 
+// ── D-2: CoolingSchematics & arch.schematic dispatching ─────────────────────────
+(function () {
+  const fs = require('fs');
+  const path = require('path');
+  const vm = require('vm');
+  const ctx = freshCtx();
+  const Registry = ctx.CoolingArchRegistry;
+
+  const schematicsDir = path.resolve(__dirname, '../../public/Data center Cal/js/views/schematics');
+  ['schematic_single_loop.js', 'schematic_series_trim.js', 'schematic_air_plant.js'].forEach(f => {
+    vm.runInContext(fs.readFileSync(path.join(schematicsDir, f), 'utf8'), ctx);
+  });
+
+  const Schematics = ctx.CoolingSchematics;
+
+  test('D-2 all 9 architectures specify valid schematic property matching registered schematics', () => {
+    const allArchs = Registry.list();
+    assert.strictEqual(allArchs.length, 9);
+    allArchs.forEach(arch => {
+      assert(typeof arch.schematic === 'string' && arch.schematic.length > 0, `${arch.id} must define schematic`);
+      assert(Schematics.get(arch.schematic), `${arch.id} schematic '${arch.schematic}' must be registered in CoolingSchematics`);
+    });
+  });
+
+  test('D-2 CoolingSchematics renders non-empty SVG for each schematic type', () => {
+    const dummyTarget = {
+      id: 'du_test',
+      name: 'Test DU',
+      summ: { totalItKw: 1000, liquidHeatKw: 800, airHeatKw: 200, lossKw: 0, dlcPct: 80 }
+    };
+    const dummyCduSys = {
+      architecture: 'dry_cooler_trim',
+      secSupplyC: 45, secReturnC: 57, cduApproachC: 3, fwsSupplyC: 42, fwsReturnC: 54,
+      dryCoolerApproachC: 5, pheApproachC: 2
+    };
+    const dummyFwSys = {
+      architecture: 'air_cooled_chiller',
+      chwSupplyC: 12, chwReturnC: 18
+    };
+
+    const outTrim = Schematics.render('series_trim', { t: dummyTarget, cduSys: dummyCduSys, arch: 'dry_cooler_trim' });
+    assert(outTrim.includes('<svg') && outTrim.includes('</svg>'), 'series_trim must produce SVG');
+
+    const outSingle = Schematics.render('single_loop', { t: dummyTarget, cduSys: dummyCduSys, arch: 'dry_cooler_pure' });
+    assert(outSingle.includes('<svg') && outSingle.includes('</svg>'), 'single_loop must produce SVG');
+
+    const outAir = Schematics.render('air_plant', { t: dummyTarget, fwSys: dummyFwSys, fwArch: 'air_cooled_chiller' });
+    assert(outAir.includes('<svg') && outAir.includes('</svg>'), 'air_plant must produce SVG');
+  });
+})();
+
 console.log(`\n${passCount} passed, ${failCount} failed, ${skipCount} skipped`);
 process.exit(failCount > 0 ? 1 : 0);
 
