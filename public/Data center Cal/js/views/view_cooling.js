@@ -276,6 +276,55 @@
             `;
         },
 
+        // 架構專屬參數面板 (D-3: 由 archDesc.params 驅動)
+        renderArchParamPanel(archDesc, sys, targetId, sysType = 'cdu') {
+            if (!archDesc || !Array.isArray(archDesc.params)) return '';
+            const customParams = archDesc.params.filter(p => p.archSpecific || p.panel === 'custom');
+            if (customParams.length === 0) return '';
+
+            const title = archDesc.paramPanelTitle || (archDesc.paramPanel && archDesc.paramPanel.title) || `${archDesc.cardLabel} 專屬參數:`;
+            const noteObj = typeof archDesc.paramPanelNote === 'function'
+                ? archDesc.paramPanelNote(sys)
+                : (archDesc.paramPanel && typeof archDesc.paramPanel.note === 'function' ? archDesc.paramPanel.note(sys) : null);
+            const updateFn = sysType === 'fw' ? `ViewCooling.updateFwParams('${targetId}')` : `ViewCooling.updateCduParams('${targetId}')`;
+
+            const inputsHtml = customParams.map(p => {
+                const id = (p.idPrefix || (p.key + '_')) + targetId;
+                let val;
+                if (p.nullable) {
+                    const hasVal = sys[p.key] !== undefined && sys[p.key] !== null && sys[p.key] !== '';
+                    val = hasVal ? sys[p.key] : '';
+                } else {
+                    val = sys[p.key] ?? (p.default !== undefined ? p.default : '');
+                }
+                const stepAttr = p.step !== undefined ? ` step="${p.step}"` : '';
+                const minAttr = p.min !== undefined ? ` min="${p.min}"` : '';
+                const maxAttr = p.max !== undefined ? ` max="${p.max}"` : '';
+                const placeholderStr = typeof p.placeholder === 'function' ? p.placeholder(sys) : (p.placeholder ? p.placeholder : '');
+                const placeholderAttr = placeholderStr ? ` placeholder="${placeholderStr}"` : '';
+
+                return `                                            <div>
+                                                <label class="block text-[9px] text-slate-500">${p.label}</label>
+                                                <input type="number" id="${id}" value="${val}"${stepAttr}${minAttr}${maxAttr}${placeholderAttr} onchange="${updateFn}" class="w-full text-xs font-bold border rounded p-1 bg-white text-slate-800">
+                                            </div>`;
+            }).join('\n');
+
+            const noteHtml = noteObj ? `
+                                        <div class="text-[9.5px] leading-snug ${noteObj.hasOverride ? 'text-sky-700' : 'text-amber-700'}">
+                                            ${noteObj.text}
+                                        </div>` : '';
+
+            return `
+                                    <div class="p-2.5 bg-sky-50 rounded-lg border border-sky-200 space-y-2">
+                                        <div class="flex justify-between items-center">
+                                            <span class="text-[10px] font-extrabold text-sky-900">${title}</span>
+                                        </div>
+                                        <div class="grid grid-cols-2 gap-2">
+${inputsHtml}
+                                        </div>${noteHtml}
+                                    </div>`;
+        },
+
         // 展開狀態卡片 (Expanded Card)
         renderExpandedUnitCard(t) {
             const targetId = t.id;
@@ -584,32 +633,7 @@
                                         </div>
                                     </div>
 
-                                    ${arch === 'adiabatic_tower' ? (() => {
-                                        const satEffIn = cduSys.adiabaticSaturationEfficiencyPct ?? 85;
-                                        const estimatedSwitchpoint = Math.max(26.0, cduSys.fwsSupplyC - ((typeof A === 'function') ? A('adiabatic_switchpoint_offset_c') : 9.2));
-                                        const hasOverride = cduSys.adiabaticDrySwitchpointC !== undefined && cduSys.adiabaticDrySwitchpointC !== null && cduSys.adiabaticDrySwitchpointC !== '';
-                                        const effectiveSwitchpoint = hasOverride ? cduSys.adiabaticDrySwitchpointC : estimatedSwitchpoint;
-                                        return `
-                                    <div class="p-2.5 bg-sky-50 rounded-lg border border-sky-200 space-y-2">
-                                        <div class="flex justify-between items-center">
-                                            <span class="text-[10px] font-extrabold text-sky-900">絕熱冷卻塔 (Adiabatic Tower) 專屬參數:</span>
-                                        </div>
-                                        <div class="grid grid-cols-2 gap-2">
-                                            <div>
-                                                <label class="block text-[9px] text-slate-500">噴霧飽和效率 (%)</label>
-                                                <input type="number" id="atSatEffIn_${targetId}" value="${satEffIn}" step="1" min="0" max="100" onchange="ViewCooling.updateCduParams('${targetId}')" class="w-full text-xs font-bold border rounded p-1 bg-white text-slate-800">
-                                            </div>
-                                            <div>
-                                                <label class="block text-[9px] text-slate-500">乾式切換點 (°C，留空=自動估算)</label>
-                                                <input type="number" id="atSwitchpointIn_${targetId}" value="${hasOverride ? cduSys.adiabaticDrySwitchpointC : ''}" step="0.5" placeholder="估算值 ${estimatedSwitchpoint.toFixed(1)}°C" onchange="ViewCooling.updateCduParams('${targetId}')" class="w-full text-xs font-bold border rounded p-1 bg-white text-slate-800">
-                                            </div>
-                                        </div>
-                                        <div class="text-[9.5px] leading-snug ${hasOverride ? 'text-sky-700' : 'text-amber-700'}">
-                                            ${hasOverride
-                                                ? `目前使用手動輸入值 <strong>${effectiveSwitchpoint}°C</strong>（來自實際廠商選型報告）。`
-                                                : `⚠ 目前使用粗估公式 <strong>供水溫 − 9.2°C = ${effectiveSwitchpoint.toFixed(1)}°C</strong>（此9.2°C是從單一份BAC參考案例反推，不同案子的設計乾濕球溫度會讓這個offset在4~9°C之間變動，準確度有限）。正式設計前建議向廠商索取針對本案實際供水溫與設計氣候條件的選型報告，並把報告上的真實 Dry Switchpoint 填入上方欄位覆蓋此估算值。`}
-                                        </div>
-                                    </div>`; })() : ''}
+                                    ${this.renderArchParamPanel(cduArchDesc, cduSys, targetId, 'cdu')}
 
                                     <div class="p-2.5 bg-emerald-50 rounded-lg border border-emerald-200 text-xs text-emerald-950 flex justify-between items-center">
                                         <div>
@@ -856,14 +880,34 @@
                 cdu.dryCoolerApproachC = outdoorApp;
                 cdu.pheApproachC = pheApp;
 
-                // 絕熱冷卻塔專屬欄位 (只有該架構才會渲染出這兩個輸入框，其他架構這裡會是 null)
-                const satEffEl = document.getElementById('atSatEffIn_' + targetId);
-                if (satEffEl) cdu.adiabaticSaturationEfficiencyPct = num('atSatEffIn_' + targetId, 85.0);
-                const switchpointEl = document.getElementById('atSwitchpointIn_' + targetId);
-                if (switchpointEl) {
-                    const v = switchpointEl.value.trim();
-                    const n = parseFloat(v);
-                    cdu.adiabaticDrySwitchpointC = v === '' || !Number.isFinite(n) ? null : n;
+                // 架構專屬參數更新 (D-3: 優先自 archDesc.params 動態讀取)
+                const cduArchDesc = typeof CoolingArchRegistry !== 'undefined' ? CoolingArchRegistry.get(cdu.architecture) : null;
+                let handledCustom = false;
+                if (cduArchDesc && Array.isArray(cduArchDesc.params)) {
+                    for (const p of cduArchDesc.params) {
+                        if (!p.archSpecific) continue;
+                        const id = (p.idPrefix || (p.key + '_')) + targetId;
+                        const el = document.getElementById(id);
+                        if (!el) continue;
+                        handledCustom = true;
+                        const v = el.value.trim();
+                        if (p.nullable && v === '') {
+                            cdu[p.key] = null;
+                        } else {
+                            const n = parseFloat(v);
+                            cdu[p.key] = Number.isFinite(n) ? n : (p.default !== undefined ? p.default : null);
+                        }
+                    }
+                }
+                if (!handledCustom) {
+                    const satEffEl = document.getElementById('atSatEffIn_' + targetId);
+                    if (satEffEl) cdu.adiabaticSaturationEfficiencyPct = num('atSatEffIn_' + targetId, 85.0);
+                    const switchpointEl = document.getElementById('atSwitchpointIn_' + targetId);
+                    if (switchpointEl) {
+                        const v = switchpointEl.value.trim();
+                        const n = parseFloat(v);
+                        cdu.adiabaticDrySwitchpointC = v === '' || !Number.isFinite(n) ? null : n;
+                    }
                 }
 
                 window.AppStore.notify();
@@ -886,6 +930,24 @@
                 const fw = target.plantDesign.fanwallSystem;
                 fw.chwSupplyC = sup;
                 fw.chwReturnC = ret;
+
+                const fwArchDesc = typeof CoolingArchRegistry !== 'undefined' ? CoolingArchRegistry.get(fw.architecture) : null;
+                if (fwArchDesc && Array.isArray(fwArchDesc.params)) {
+                    for (const p of fwArchDesc.params) {
+                        if (!p.archSpecific) continue;
+                        const id = (p.idPrefix || (p.key + '_')) + targetId;
+                        const el = document.getElementById(id);
+                        if (!el) continue;
+                        const v = el.value.trim();
+                        if (p.nullable && v === '') {
+                            fw[p.key] = null;
+                        } else {
+                            const n = parseFloat(v);
+                            fw[p.key] = Number.isFinite(n) ? n : (p.default !== undefined ? p.default : null);
+                        }
+                    }
+                }
+
                 window.AppStore.notify();
             }
             this.render(document.getElementById('stepContent'));

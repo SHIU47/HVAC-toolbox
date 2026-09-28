@@ -992,6 +992,68 @@ function freshCtx() {
   });
 })();
 
+// ═══════════════════════════════════════════════════════════════
+// D-3 Architecture-specific parameter panel from arch.params
+// ═══════════════════════════════════════════════════════════════
+(function () {
+  const fs = require('fs');
+  const path = require('path');
+  const vm = require('vm');
+  const JS_DIR = path.resolve(__dirname, '../../public/Data center Cal/js');
+  const ctx = freshCtx();
+  const Registry = ctx.CoolingArchRegistry;
+  // Load schematics and view_cooling
+  const extraFiles = [
+    'views/schematics/schematic_single_loop.js',
+    'views/schematics/schematic_series_trim.js',
+    'views/schematics/schematic_air_plant.js',
+    'views/view_cooling.js'
+  ];
+  for (const f of extraFiles) {
+    const code = fs.readFileSync(path.join(JS_DIR, f), 'utf8');
+    vm.runInContext(code, ctx);
+  }
+  const ViewCooling = ctx.ViewCooling;
+
+  test('D-3 adiabatic_tower defines archSpecific params and paramPanel properties', () => {
+    const atArch = Registry.get('adiabatic_tower');
+    assert(atArch, 'adiabatic_tower arch must exist');
+    assert(Array.isArray(atArch.params), 'adiabatic_tower must have params array');
+    const custom = atArch.params.filter(p => p.archSpecific);
+    assert.strictEqual(custom.length, 2, 'must have 2 archSpecific params');
+    assert.strictEqual(custom[0].key, 'adiabaticSaturationEfficiencyPct');
+    assert.strictEqual(custom[0].idPrefix, 'atSatEffIn_');
+    assert.strictEqual(custom[1].key, 'adiabaticDrySwitchpointC');
+    assert.strictEqual(custom[1].idPrefix, 'atSwitchpointIn_');
+    assert(typeof atArch.paramPanelTitle === 'string');
+    assert(typeof atArch.paramPanelNote === 'function');
+  });
+
+  test('D-3 renderArchParamPanel returns empty string for archs without archSpecific params', () => {
+    const dcArch = Registry.get('dry_cooler_trim');
+    const out = ViewCooling.renderArchParamPanel(dcArch, { fwsSupplyC: 42 }, 'du_1', 'cdu');
+    assert.strictEqual(out, '', 'dry_cooler_trim must return empty string');
+  });
+
+  test('D-3 renderArchParamPanel generates correct inputs and notes for adiabatic_tower', () => {
+    const atArch = Registry.get('adiabatic_tower');
+    // Case A: default / no manual override
+    const sysA = { fwsSupplyC: 42, adiabaticSaturationEfficiencyPct: 85 };
+    const outA = ViewCooling.renderArchParamPanel(atArch, sysA, 'du_1', 'cdu');
+    assert(outA.includes('id="atSatEffIn_du_1"'), 'must include sat eff input');
+    assert(outA.includes('id="atSwitchpointIn_du_1"'), 'must include switchpoint input');
+    assert(outA.includes('value="85"'), 'sat eff input must have value 85');
+    assert(outA.includes('placeholder="估算值 32.8°C"'), 'placeholder must show estimated switchpoint');
+    assert(outA.includes('⚠ 目前使用粗估公式'), 'must show formula estimation note when no override');
+
+    // Case B: with manual override
+    const sysB = { fwsSupplyC: 42, adiabaticSaturationEfficiencyPct: 80, adiabaticDrySwitchpointC: 30.5 };
+    const outB = ViewCooling.renderArchParamPanel(atArch, sysB, 'du_1', 'cdu');
+    assert(outB.includes('value="30.5"'), 'must include manual override value in input');
+    assert(outB.includes('目前使用手動輸入值 <strong>30.5°C</strong>'), 'must show manual override note');
+  });
+})();
+
 console.log(`\n${passCount} passed, ${failCount} failed, ${skipCount} skipped`);
 process.exit(failCount > 0 ? 1 : 0);
 
