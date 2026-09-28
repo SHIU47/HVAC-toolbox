@@ -892,6 +892,55 @@ function freshCtx() {
   });
 })();
 
+// ── D-1: CoolingArchRegistry UI labels & options ──────────────────────────────
+(function () {
+  const ctx = freshCtx();
+  const Registry = ctx.CoolingArchRegistry;
+
+  test('D-1 getDashboardLabel returns correct labels for standard IDs and aliases', () => {
+    assert.strictEqual(Registry.getDashboardLabel('dry_cooler_trim'), '乾冷器 + 修整冰機 (Dry Cooler + Trim Chiller)');
+    assert.strictEqual(Registry.getDashboardLabel('dry_cooler_hx'), '乾冷器 + 板換 + 修整冰機 (Dry Cooler + PHE + Trim Chiller)');
+    assert.strictEqual(Registry.getDashboardLabel('dry_cooler_pure'), '純乾冷器自然排熱 (Dry Cooler)');
+    assert.strictEqual(Registry.getDashboardLabel('adiabatic_tower'), '絕熱密閉冷卻水塔 (Adiabatic Tower)');
+    assert.strictEqual(Registry.getDashboardLabel('cooling_tower_hx'), '密閉式冷卻水塔 (Closed-Circuit Cooling Tower)');
+    assert.strictEqual(Registry.getDashboardLabel('water_chiller'), '水冷冰機製冷 (Water-Cooled Chiller)');
+    assert.strictEqual(Registry.getDashboardLabel('air_cooled_chiller'), '氣冷式冰水主機 (Air-Cooled Chiller)');
+    assert.strictEqual(Registry.getDashboardLabel('water_cooled_chiller'), '水冷式冰水主機 (Water-Cooled Chiller)');
+    assert.strictEqual(Registry.getDashboardLabel('water_cooled_chiller_tower'), '水冷式冰水主機 (Water-Cooled Chiller)');
+    assert.strictEqual(Registry.getDashboardLabel('rdhx'), '背板熱交換器 (RDHx Neutral Loop)');
+    assert.strictEqual(Registry.getDashboardLabel('chilled_water_plant'), '廠區集中冷站 (Chilled Water Plant)');
+    assert.strictEqual(Registry.getDashboardLabel('campus_chilled_water'), '廠區集中冷站 (Chilled Water Plant)');
+  });
+
+  test('D-1 cardLabel matches expectations across all architectures', () => {
+    assert.strictEqual(Registry.get('dry_cooler_trim').cardLabel, '乾冷器 + Trim 冰機 (NVIDIA DSX)');
+    assert.strictEqual(Registry.get('dry_cooler_pure').cardLabel, '純乾冷器 (零冰機)');
+    assert.strictEqual(Registry.get('adiabatic_tower').cardLabel, '絕熱冷卻塔 (零冰機)');
+    assert.strictEqual(Registry.get('cooling_tower_hx').cardLabel, '密閉式冷卻水塔 (零冰機)');
+    assert.strictEqual(Registry.get('water_chiller').cardLabel, '全額水冷式冰機');
+    assert.strictEqual(Registry.get('air_cooled_chiller').cardLabel, '氣冷式冰機');
+    assert.strictEqual(Registry.get('water_cooled_chiller').cardLabel, '水冷式冰機');
+    assert.strictEqual(Registry.get('chilled_water_plant').cardLabel, '廠區集中冰水');
+    assert.strictEqual(Registry.get('rdhx').cardLabel, 'RDHX 背板');
+  });
+
+  test('D-1 list(loop) returns ordered options with optionLabel', () => {
+    const liquidList = Registry.list('liquid');
+    assert.strictEqual(liquidList.length, 5);
+    assert.deepStrictEqual(liquidList.map(a => a.id), [
+      'dry_cooler_trim', 'dry_cooler_pure', 'adiabatic_tower', 'cooling_tower_hx', 'water_chiller'
+    ]);
+    liquidList.forEach(a => assert(typeof a.optionLabel === 'string' && a.optionLabel.length > 0));
+
+    const airList = Registry.list('air');
+    assert.strictEqual(airList.length, 4);
+    assert.deepStrictEqual(airList.map(a => a.id), [
+      'air_cooled_chiller', 'water_cooled_chiller', 'chilled_water_plant', 'rdhx'
+    ]);
+    airList.forEach(a => assert(typeof a.optionLabel === 'string' && a.optionLabel.length > 0));
+  });
+})();
+
 console.log(`\n${passCount} passed, ${failCount} failed, ${skipCount} skipped`);
 process.exit(failCount > 0 ? 1 : 0);
 

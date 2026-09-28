@@ -726,22 +726,8 @@
             const cduArch = allCduSystems[0]?.architecture || 'dry_cooler_trim';
             const fwArch = allFwSystems[0]?.architecture || 'air_cooled_chiller';
 
-            const cduArchNames = {
-                dry_cooler_trim: '乾冷器 + 修整冰機 (Dry Cooler + Trim Chiller)',
-                dry_cooler_hx: '乾冷器 + 板換 + 修整冰機 (Dry Cooler + PHE + Trim Chiller)',
-                dry_cooler_pure: '純乾冷器自然排熱 (Dry Cooler)',
-                adiabatic_tower: '絕熱密閉冷卻水塔 (Adiabatic Tower)',
-                cooling_tower_hx: '密閉式冷卻水塔 (Closed-Circuit Cooling Tower)',
-                water_chiller: '水冷冰機製冷 (Water-Cooled Chiller)'
-            };
-            const fwArchNames = {
-                air_cooled_chiller: '氣冷式冰水主機 (Air-Cooled Chiller)',
-                water_cooled_chiller: '水冷式冰水主機 (Water-Cooled Chiller)',
-                water_cooled_chiller_tower: '水冷式冰水主機 (Water-Cooled Chiller)',
-                rdhx: '背板熱交換器 (RDHx Neutral Loop)',
-                chilled_water_plant: '廠區集中冷站 (Chilled Water Plant)',
-                campus_chilled_water: '廠區集中冷站 (Chilled Water Plant)'
-            };
+            const cduArchLabel = (window.CoolingArchRegistry ? window.CoolingArchRegistry.getDashboardLabel(cduArch) : '') || '排熱塔';
+            const fwArchLabel = (window.CoolingArchRegistry ? window.CoolingArchRegistry.getDashboardLabel(fwArch) : '') || '冰機';
 
             const isCduFree = curHour.cduMode === 'free';
             const isCduTrim = curHour.cduMode === 'partial';
@@ -838,7 +824,7 @@
                     note: '變頻定壓差水流量調度'
                 },
                 {
-                    name: `室外排熱設備 (${cduArchNames[cduArch] || '排熱塔'})`,
+                    name: `室外排熱設備 (${cduArchLabel})`,
                     tag: '室外排熱',
                     qty: rejStats.qty > 0 ? `${rejStats.qty} 台 (EC 風機群)` : '0 台',
                     kwh: Math.round((bk.heatRejection || 0) / 1000),
@@ -856,7 +842,7 @@
                     note: isFwFree ? '氣側節能自然冷卻中' : '連續溫濕度精密控溫'
                 },
                 {
-                    name: `冰水主機壓縮機群 (${fwArchNames[fwArch] || '冰機'})`,
+                    name: `冰水主機壓縮機群 (${fwArchLabel})`,
                     tag: '機械製冷',
                     qty: chillerStats.qty > 0 ? `${chillerStats.qty} 台 (含 N+1 備用)` : '0 台 (無冰機)',
                     kwh: Math.round((bk.chiller || 0) / 1000),
@@ -1017,7 +1003,7 @@
                             <div class="flex items-center justify-between border-b border-border-subtle pb-2.5">
                                 <div class="flex items-center gap-2">
                                     <span class="w-2.5 h-2.5 rounded-full ${isCduFree ? 'bg-emerald-500' : 'bg-amber-500'} animate-pulse"></span>
-                                    <span class="font-bold text-sm text-primary">🌬️ 室外排熱 (${cduArchNames[cduArch] || '排熱塔'})</span>
+                                    <span class="font-bold text-sm text-primary">🌬️ 室外排熱 (${cduArchLabel})</span>
                                 </div>
                                 <span class="px-2 py-0.5 rounded text-[10px] font-bold ${isCduFree ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-amber-50 text-amber-700 border border-amber-200'}">
                                     ${isCduFree ? '🟢 零冰機乾態/濕球排熱' : '🟡 噴霧預冷蒸發輔助'}
@@ -1087,7 +1073,7 @@
                             <div class="flex items-center justify-between border-b border-border-subtle pb-2.5">
                                 <div class="flex items-center gap-2">
                                     <span class="w-2.5 h-2.5 rounded-full ${isChillerOn ? 'bg-blue-500' : 'bg-slate-400'} ${isChillerOn ? 'animate-pulse' : ''}"></span>
-                                    <span class="font-bold text-sm text-primary">❄️ 冰水主機壓縮機群 (${fwArchNames[fwArch] || '冰機'})</span>
+                                    <span class="font-bold text-sm text-primary">❄️ 冰水主機壓縮機群 (${fwArchLabel})</span>
                                 </div>
                                 <span class="px-2 py-0.5 rounded text-[10px] font-bold ${isChillerOn ? 'bg-blue-50 text-blue-700 border border-blue-200' : 'bg-slate-100 text-slate-600 border border-slate-200'}">
                                     ${isChillerOn ? '🔵 壓縮機運轉製冷中' : '🟢 冰機關機待機 (0 kW)'}

@@ -245,8 +245,10 @@
             const fwSys = t.obj.plantDesign.fanwallSystem;
             const cduArch = cduSys.architecture || 'dry_cooler_trim';
             const fwArch = fwSys.architecture || 'air_cooled_chiller';
-            const cduArchLabel = (cduArch === 'dry_cooler_trim' || cduArch === 'dry_cooler_hx') ? '乾冷器 + Trim 冰機 (NVIDIA DSX)' : (cduArch === 'dry_cooler_pure' ? '純乾冷器 (零冰機)' : (cduArch === 'adiabatic_tower' ? '絕熱冷卻塔 (零冰機)' : (cduArch === 'cooling_tower_hx' ? '密閉式冷卻水塔 (零冰機)' : '全額水冷式冰機')));
-            const fwArchLabel = fwArch === 'rdhx' ? 'RDHX 背板' : (fwArch === 'air_cooled_chiller' ? '氣冷式冰機' : (fwArch === 'water_cooled_chiller' ? '水冷式冰機' : '廠區集中冰水'));
+            const cduArchDesc = window.CoolingArchRegistry ? window.CoolingArchRegistry.get(cduArch) : null;
+            const fwArchDesc = window.CoolingArchRegistry ? window.CoolingArchRegistry.get(fwArch) : null;
+            const cduArchLabel = cduArchDesc ? cduArchDesc.cardLabel : cduArch;
+            const fwArchLabel = fwArchDesc ? fwArchDesc.cardLabel : fwArch;
 
             const safeName = window.UIKit ? window.UIKit.escapeHTML(t.name) : t.name;
             return `
@@ -1189,11 +1191,10 @@
                             <div class="max-w-2xl">
                                 <label class="block text-xs font-bold text-slate-700 mb-1">CDU 排熱架構模式 (Architecture)</label>
                                 <select onchange="ViewCooling.updateCduArch('${targetId}', this.value)" class="w-full text-xs font-black border-2 border-purple-300 rounded-xl p-2.5 bg-white text-purple-950 shadow-2xs">
-                                    <option value="dry_cooler_trim" ${cduSys.architecture==='dry_cooler_trim'||cduSys.architecture==='dry_cooler_hx'?'selected':''}>🟡 乾冷器 + 串聯修整冰機 (NVIDIA DSX 混合三模式 / 推薦標準)</option>
-                                    <option value="dry_cooler_pure" ${cduSys.architecture==='dry_cooler_pure'?'selected':''}>🟢 純乾冷器節能直冷 (Dry Cooler Pure FC / 100% 自然風冷・零冰機・零耗水)</option>
-                                    <option value="adiabatic_tower" ${cduSys.architecture==='adiabatic_tower'?'selected':''}>🔵 絕熱冷卻塔 (Adiabatic Tower / 100% 絕熱預冷自然散熱・零冰機)</option>
-                                    <option value="cooling_tower_hx" ${cduSys.architecture==='cooling_tower_hx'?'selected':''}>🔷 密閉式冷卻水塔 (Closed-Circuit Cooling Tower / 100% 蒸發自然冷卻・零冰機)</option>
-                                    <option value="water_chiller" ${cduSys.architecture==='water_chiller'?'selected':''}>⚙️ 全額水冷式冰水主機 (Full Mechanical Water Chiller / 全機械壓縮製冷)</option>
+                                    ${(window.CoolingArchRegistry ? window.CoolingArchRegistry.list('liquid') : []).map(arch => {
+                                        const isSelected = (cduSys.architecture === arch.id) || (arch.aliases && arch.aliases.includes(cduSys.architecture));
+                                        return `<option value="${arch.id}" ${isSelected ? 'selected' : ''}>${arch.optionLabel}</option>`;
+                                    }).join('\n                                    ')}
                                 </select>
                             </div>
 
@@ -1336,10 +1337,10 @@
                             <div class="max-w-2xl">
                                 <label class="block text-xs font-bold text-slate-700 mb-1">氣冷 / 背板排熱架構模式 (Architecture)</label>
                                 <select onchange="ViewCooling.updateFwArch('${targetId}', this.value)" class="w-full text-xs font-black border-2 border-indigo-300 rounded-xl p-2.5 bg-white text-indigo-950 shadow-2xs">
-                                    <option value="air_cooled_chiller" ${fwSys.architecture==='air_cooled_chiller'?'selected':''}>💨 氣冷式冰水主機 (Air-Cooled Chiller / 零耗水)</option>
-                                    <option value="water_cooled_chiller" ${fwSys.architecture==='water_cooled_chiller'?'selected':''}>💧 水冷式冰水主機 + 濕式冷卻塔 (Water-Cooled Chiller)</option>
-                                    <option value="chilled_water_plant" ${fwSys.architecture==='chilled_water_plant'?'selected':''}>🏢 廠區集中冰水管網 (Central Chilled Water Plant)</option>
-                                    <option value="rdhx" ${fwSys.architecture==='rdhx'?'selected':''}>🚪 背板式熱交換器 (Rear Door Heat Exchanger, RDHX)</option>
+                                    ${(window.CoolingArchRegistry ? window.CoolingArchRegistry.list('air') : []).map(arch => {
+                                        const isSelected = (fwSys.architecture === arch.id) || (arch.aliases && arch.aliases.includes(fwSys.architecture));
+                                        return `<option value="${arch.id}" ${isSelected ? 'selected' : ''}>${arch.optionLabel}</option>`;
+                                    }).join('\n                                    ')}
                                 </select>
                             </div>
 

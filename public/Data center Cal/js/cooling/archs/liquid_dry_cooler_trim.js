@@ -15,7 +15,10 @@
         loop: 'liquid',
         optionLabel: '🟡 乾冷器 + 串聯修整冰機 (NVIDIA DSX 混合三模式 / 推薦標準)',
         cardLabel: '乾冷器 + Trim 冰機 (NVIDIA DSX)',
-        dashboardLabel: '乾冷器 + 串聯修整冰機 (NVIDIA DSX)',
+        dashboardLabel: '乾冷器 + 修整冰機 (Dry Cooler + Trim Chiller)',
+        aliasDashboardLabels: {
+            dry_cooler_hx: '乾冷器 + 板換 + 修整冰機 (Dry Cooler + PHE + Trim Chiller)'
+        },
         flags: { hasMechanical: true, consumesWater: false },
         terminal: 'cdu',
         schematic: 'series_trim',

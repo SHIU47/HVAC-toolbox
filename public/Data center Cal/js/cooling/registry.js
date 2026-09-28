@@ -69,6 +69,16 @@
             return _aliases.get(id) || id;
         },
 
+        getDashboardLabel(id) {
+            if (!id) return '';
+            const arch = this.get(id);
+            if (!arch) return '';
+            if (arch.aliasDashboardLabels && arch.aliasDashboardLabels[id]) {
+                return arch.aliasDashboardLabels[id];
+            }
+            return arch.dashboardLabel || '';
+        },
+
         list(loop) {
             const all = Array.from(_archs.values());
             if (!loop) return all;
