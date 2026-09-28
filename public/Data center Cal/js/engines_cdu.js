@@ -32,25 +32,7 @@ const CDUEngine = {
     return { power_kw, plr, plr_raw, deficit_kw, speed, cap_total, power_rated };
   },
 
-  /**
-   * CDU ΔT and flow from thermal-hydraulic balance.
-   * At design: ΔT = delta_t_design, flow = Q / (Cp × ΔT)
-   * With VFD: flow ∝ speed, ΔT = (plr / speed) × ΔT_design
-   *
-   * @param {number} it_liquid_kw    - IT liquid load
-   * @param {number} cap_total       - Total CDU capacity
-   * @param {number} plr             - Part-load ratio
-   * @param {number} speed           - VFD speed (0–1)
-   * @param {number} delta_t_design  - Design CDU ΔT (°C)
-   */
-  calcThermalHydraulics(it_liquid_kw, cap_total, plr, speed, delta_t_design) {
-    const delta_t_actual   = (speed > 0) ? (plr / speed) * delta_t_design : delta_t_design;
-    const flow_m3h_primary = (cap_total > 0)
-      ? (cap_total * 3.6 / (this.CP_WATER * delta_t_design)) * speed
-      : 0;
-    const flow_lpm = flow_m3h_primary * 1000 / 60;
-    return { delta_t_actual, flow_m3h_primary, flow_lpm };
-  },
+
 
   /**
    * [V7-P6] 設計工況降額容量 — CDU 型錄標稱容量對應一顆固定的一次側（FWS）設計供水溫

@@ -5,15 +5,24 @@
  * capacity checks, and validation messages for CDU and Fanwall systems.
  */
 (function (root) {
+    function getCatalog(category) {
+        if (typeof root.CatalogManager !== 'undefined' && typeof root.CatalogManager.getCatalog === 'function') {
+            return root.CatalogManager.getCatalog(category) || [];
+        }
+        return [];
+    }
+
+    function getTowerRejectionFactor() {
+        if (typeof root.A === 'function' && root.ASSUMPTIONS && root.ASSUMPTIONS.tower_heat_rejection_factor) {
+            return root.A('tower_heat_rejection_factor');
+        }
+        return 1.2;
+    }
+
     const SizingEngine = {
         generateCduSizing(arch, reqKw, hydKw, helpers = {}) {
             const minCduUnits = Math.max(1, Math.ceil(reqKw / 100));
-            const cduCat = (typeof root.CatalogManager !== 'undefined') ? root.CatalogManager.getCatalog('cdu') : [
-                { model: 'Vertiv XDU 80kW', capKw: 80 },
-                { model: 'CoolIT CDU 100kW (標準)', capKw: 100 },
-                { model: 'Vertiv XDU 150kW', capKw: 150 },
-                { model: 'Airedale CoolTrap CDU 200kW', capKw: 200 }
-            ];
+            const cduCat = getCatalog('cdu');
             const cduUnit = {
                 key: 'cdu_unit',
                 label: 'CDU 液冷分配主機 (Cooling Distribution Unit)',
@@ -26,12 +35,7 @@
                 requiredUnitsN1: minCduUnits + 1
             };
 
-            const pumpCat = (typeof root.CatalogManager !== 'undefined') ? root.CatalogManager.getCatalog('pump') : [
-                { model: 'Grundfos CR64 VFD (5.5kW)', capKw: 5.5 },
-                { model: 'Grundfos CR120 VFD (11.0kW)', capKw: 11.0 },
-                { model: 'Armstrong 4300 VFD (15.0kW)', capKw: 15.0 },
-                { model: 'Wilo IL-E Mega (22.0kW)', capKw: 22.0 }
-            ];
+            const pumpCat = getCatalog('pump');
             const pump = {
                 key: 'cdu_pump',
                 label: 'CDU Primary Pump 一次側設施循環水泵',
@@ -44,11 +48,7 @@
                 requiredUnitsN1: 3
             };
 
-            const trimChillerCat = (typeof root.CatalogManager !== 'undefined') ? root.CatalogManager.getCatalog('chiller_water') : [
-                { model: 'Carrier 30XW-500kW Water Chiller (COP 5.8)', capKw: 500, cop: 5.8 },
-                { model: 'Trane RTHD 800kW Water Chiller (COP 6.2)', capKw: 800, cop: 6.2 },
-                { model: 'York YVWH 1000kW VFD Chiller (COP 6.5)', capKw: 1000, cop: 6.5 }
-            ];
+            const trimChillerCat = getCatalog('chiller_water');
             const designCond = (typeof helpers.designConditions === 'function')
                 ? helpers.designConditions()
                 : (root.AppStore?.designConditions ? root.AppStore.designConditions() : { designDb: 34.0, designWb: 28.0, maxDb: 38.0 });
@@ -75,11 +75,7 @@
 
             if (arch === 'dry_cooler_trim' || arch === 'dry_cooler_hx') {
                 const minDryUnits = Math.max(1, Math.ceil(reqKw / 1200));
-                const dcCat = (typeof root.CatalogManager !== 'undefined') ? root.CatalogManager.getCatalog('dry_cooler') : [
-                    { model: 'Güntner 1200kW V-Bank Dry Cooler', capKw: 1200 },
-                    { model: 'BAC Trillium 2000kW Closed-Loop', capKw: 2000 },
-                    { model: 'Güntner 6000kW Raised-Bed (DSX Standard)', capKw: 6000 }
-                ];
+                const dcCat = getCatalog('dry_cooler');
                 return [
                     cduUnit,
                     {
@@ -98,11 +94,7 @@
                 ];
             } else if (arch === 'dry_cooler_pure') {
                 const minDryUnits = Math.max(1, Math.ceil(reqKw / 1200));
-                const dcCat = (typeof root.CatalogManager !== 'undefined') ? root.CatalogManager.getCatalog('dry_cooler') : [
-                    { model: 'Güntner 1200kW V-Bank Dry Cooler', capKw: 1200 },
-                    { model: 'BAC Trillium 2000kW Closed-Loop', capKw: 2000 },
-                    { model: 'Güntner 6000kW Raised-Bed (DSX Standard)', capKw: 6000 }
-                ];
+                const dcCat = getCatalog('dry_cooler');
                 return [
                     cduUnit,
                     {
@@ -120,11 +112,7 @@
                 ];
             } else if (arch === 'adiabatic_tower') {
                 const minAdiaUnits = Math.max(1, Math.ceil(reqKw / 1000));
-                const ctCat = (typeof root.CatalogManager !== 'undefined') ? root.CatalogManager.getCatalog('cooling_tower') : [
-                    { model: 'BAC Series 3000 600kW', capKw: 600 },
-                    { model: 'BAC Series 3000 1000kW (標準)', capKw: 1000 },
-                    { model: 'BAC VFL-1200 2000kW', capKw: 2000 }
-                ];
+                const ctCat = getCatalog('cooling_tower');
                 return [
                     cduUnit,
                     {
@@ -142,11 +130,7 @@
                 ];
             } else if (arch === 'cooling_tower_hx') {
                 const minCtUnits = Math.max(1, Math.ceil(reqKw / 1000));
-                const ctCat = (typeof root.CatalogManager !== 'undefined') ? root.CatalogManager.getCatalog('cooling_tower') : [
-                    { model: 'BAC Closed-Circuit FXV 600kW', capKw: 600 },
-                    { model: 'BAC Closed-Circuit FXV 1000kW (標準)', capKw: 1000 },
-                    { model: 'BAC Closed-Circuit FXV 2000kW', capKw: 2000 }
-                ];
+                const ctCat = getCatalog('cooling_tower');
                 return [
                     cduUnit,
                     {
@@ -164,15 +148,9 @@
                 ];
             } else if (arch === 'water_chiller') {
                 const minChillerUnits = Math.max(1, Math.ceil(reqKw / 500));
-                const chillerCat = (typeof root.CatalogManager !== 'undefined') ? root.CatalogManager.getCatalog('chiller_water') : [
-                    { model: 'Carrier 23XRV Variable-Speed Screw 350kW', capKw: 350 },
-                    { model: 'Trane RTHD Water-Cooled Screw 500kW (標準)', capKw: 500 },
-                    { model: 'York YZ Magnetic Bearing Centrifugal 800kW', capKw: 800 }
-                ];
-                const ctCat = (typeof root.CatalogManager !== 'undefined') ? root.CatalogManager.getCatalog('cooling_tower') : [
-                    { model: 'BAC Series 3000 600kW', capKw: 600 },
-                    { model: 'BAC Series 3000 1200kW (標準)', capKw: 1200 }
-                ];
+                const chillerCat = getCatalog('chiller_water');
+                const ctCat = getCatalog('cooling_tower');
+                const towerFactor = getTowerRejectionFactor();
                 return [
                     cduUnit,
                     {
@@ -194,7 +172,7 @@
                         selectedModel: 'BAC Series 3000 600kW',
                         unitCapKw: 600,
                         selectedQty: minChillerUnits + 1,
-                        requiredKw: reqKw * 1.2,
+                        requiredKw: reqKw * towerFactor,
                         requiredUnitsN1: minChillerUnits + 1
                     },
                     pump
@@ -205,12 +183,7 @@
 
         generateFwSizing(arch, reqKw, pumpPowerKw) {
             const minCrahUnits = Math.max(1, Math.ceil(reqKw / 60));
-            const crahCat = (typeof root.CatalogManager !== 'undefined') ? root.CatalogManager.getCatalog('crah') : [
-                { model: 'Stulz CyberAir 4 CFD 600 A (60kW)', capKw: 60 },
-                { model: 'Stulz CyberAir 4 CFD 1000 A (100kW)', capKw: 100 },
-                { model: 'Vertiv Liebert PCW 100kW EC Fan', capKw: 100 },
-                { model: 'FanWall FW-150-EC (Network/AI Optim 150kW)', capKw: 150 }
-            ];
+            const crahCat = getCatalog('crah');
             const crahUnit = {
                 key: 'crah_unit',
                 label: 'CRAH / Fanwall 機房空調',
@@ -224,11 +197,7 @@
             };
 
             const pumpKw = pumpPowerKw || 5.0;
-            const pumpCat = (typeof root.CatalogManager !== 'undefined') ? root.CatalogManager.getCatalog('pump') : [
-                { model: 'Grundfos TPE 3.0kW Inverter Pump', capKw: 3.0 },
-                { model: 'Grundfos TPE 5.5kW Inverter Pump (標準)', capKw: 5.5 },
-                { model: 'Armstrong Design Envelope 11.0kW', capKw: 11.0 }
-            ];
+            const pumpCat = getCatalog('pump');
             const pumpUnit = {
                 key: 'fw_pump',
                 label: 'Secondary CHW Pump 二次側冰水循環水泵',
@@ -241,24 +210,11 @@
                 requiredUnitsN1: 2
             };
 
-            const chillerAirCat = (typeof root.CatalogManager !== 'undefined') ? root.CatalogManager.getCatalog('chiller_air') : [
-                { model: 'Carrier 30XA 150kW Screw Air-Cooled', capKw: 150 },
-                { model: 'Carrier 30XA 300kW Screw Air-Cooled (標準)', capKw: 300 },
-                { model: 'York YVAA 500kW VFD Screw Air-Cooled', capKw: 500 }
-            ];
-            const chillerWaterCat = (typeof root.CatalogManager !== 'undefined') ? root.CatalogManager.getCatalog('chiller_water') : [
-                { model: 'Carrier 23XRV Variable-Speed Screw 350kW', capKw: 350 },
-                { model: 'Trane RTHD Water-Cooled Screw 500kW (標準)', capKw: 500 },
-                { model: 'York YZ Magnetic Bearing Centrifugal 800kW', capKw: 800 }
-            ];
+            const chillerAirCat = getCatalog('chiller_air');
+            const chillerWaterCat = getCatalog('chiller_water');
 
             if (arch === 'rdhx') {
-                const rdhxCat = (typeof root.CatalogManager !== 'undefined') ? root.CatalogManager.getCatalog('rdhx') : [
-                    { model: 'Stulz CyberDoor RDHX 35kW', capKw: 35 },
-                    { model: 'Motivair ChilledDoor 45kW Active RDHX', capKw: 45 },
-                    { model: 'Vertiv Geist RDHX 60kW (標準)', capKw: 60 },
-                    { model: 'High-Density RDHX 80kW MegaDoor', capKw: 80 }
-                ];
+                const rdhxCat = getCatalog('rdhx');
                 const minRdhxUnits = Math.max(1, Math.ceil(reqKw / 60));
                 const rdhxUnit = {
                     key: 'rdhx_unit',
@@ -305,12 +261,10 @@
                     pumpUnit
                 ];
             } else if (arch === 'water_cooled_chiller' || arch === 'water_cooled_chiller_tower') {
+                const towerFactor = getTowerRejectionFactor();
                 const minChillerUnits = Math.max(1, Math.ceil(reqKw / 400));
-                const minCtUnits = Math.max(1, Math.ceil(reqKw * 1.2 / 600));
-                const ctCat = (typeof root.CatalogManager !== 'undefined') ? root.CatalogManager.getCatalog('cooling_tower') : [
-                    { model: 'BAC Series 3000 600kW', capKw: 600 },
-                    { model: 'BAC Series 3000 1200kW (標準)', capKw: 1200 }
-                ];
+                const minCtUnits = Math.max(1, Math.ceil(reqKw * towerFactor / 600));
+                const ctCat = getCatalog('cooling_tower');
                 return [
                     crahUnit,
                     {
@@ -332,16 +286,13 @@
                         selectedModel: 'BAC Series 3000 600kW',
                         unitCapKw: 600,
                         selectedQty: minCtUnits + 1,
-                        requiredKw: reqKw * 1.2,
+                        requiredKw: reqKw * towerFactor,
                         requiredUnitsN1: minCtUnits + 1
                     },
                     pumpUnit
                 ];
             } else if (arch === 'chilled_water_plant' || arch === 'campus_chilled_water') {
-                const hxCat = (typeof root.CatalogManager !== 'undefined') ? root.CatalogManager.getCatalog('heat_exchanger') : [
-                    { model: 'Alfa Laval M10 Plate HX 500kW', capKw: 500 },
-                    { model: 'Alfa Laval M15 Plate HX 1000kW (標準)', capKw: 1000 }
-                ];
+                const hxCat = getCatalog('heat_exchanger');
                 return [
                     crahUnit,
                     {
@@ -365,7 +316,7 @@
         evaluateCduSizing(cduSys, reqCduKw, designCond, helpers = {}) {
             cduSys.sizing.forEach(s => {
                 s.requiredKw = reqCduKw;
-                if (s.key === 'cooling_tower' || s.key === 'heat_exchanger') s.requiredKw = reqCduKw * 1.2;
+                if (s.key === 'cooling_tower' || s.key === 'heat_exchanger') s.requiredKw = reqCduKw * getTowerRejectionFactor();
                 if (s.key === 'cdu_pump') s.requiredKw = cduSys.hydraulics.pump_power_kw;
 
                 if (s.key === 'trim_chiller') {
@@ -443,7 +394,7 @@
         evaluateFwSizing(fwSys, reqAirKw, designCond) {
             fwSys.sizing.forEach(s => {
                 s.requiredKw = reqAirKw;
-                if (s.key === 'cooling_tower') s.requiredKw = reqAirKw * 1.2;
+                if (s.key === 'cooling_tower') s.requiredKw = reqAirKw * getTowerRejectionFactor();
                 if (s.key === 'fw_pump') s.requiredKw = fwSys.hydraulics.pump_power_kw;
 
                 const curItem = s.catalog.find(c => c.model === s.selectedModel) || s.catalog[0];

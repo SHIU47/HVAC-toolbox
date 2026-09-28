@@ -830,6 +830,68 @@ function freshCtx() {
   });
 })();
 
+// ═══════════════════════════════════════════════════════════════
+// C-6 Dead Code Elimination, Magic Numbers, M9 IDs & Catalog Clean
+// ═══════════════════════════════════════════════════════════════
+(function () {
+  const ctx = freshCtx();
+  const {
+    CRACEngine, EngineeringBasis, CDUEngine, CoolingTowerEngine,
+    FreeCoolingEngine, LOAD_PROFILE_PRESETS, ASSUMPTIONS, AppStore: S
+  } = ctx;
+
+  test('C-6 M7 dead code functions and classes are eliminated', () => {
+    assert.strictEqual(typeof CRACEngine, 'undefined', 'CRACEngine must be deleted');
+    assert.strictEqual(typeof EngineeringBasis, 'undefined', 'EngineeringBasis must be deleted');
+    assert.strictEqual(typeof CDUEngine.calcThermalHydraulics, 'undefined', 'CDUEngine.calcThermalHydraulics must be deleted');
+    assert.strictEqual(typeof CoolingTowerEngine.calcApproachAtWB, 'undefined', 'CoolingTowerEngine.calcApproachAtWB must be deleted');
+    assert.strictEqual(typeof FreeCoolingEngine.calcAirSideEconomizer, 'undefined', 'calcAirSideEconomizer must be deleted');
+    assert.strictEqual(typeof FreeCoolingEngine.calcPartialFCEnergy, 'undefined', 'calcPartialFCEnergy must be deleted');
+    assert.strictEqual(typeof FreeCoolingEngine.calcSeaWaterFC, 'undefined', 'calcSeaWaterFC must be deleted');
+    assert.strictEqual(typeof FreeCoolingEngine.calcArchitectureFC, 'undefined', 'calcArchitectureFC must be deleted');
+    assert.strictEqual(typeof FreeCoolingEngine.calcNvidiaDSXFreeCooling, 'undefined', 'calcNvidiaDSXFreeCooling must be deleted');
+    assert.strictEqual(typeof FreeCoolingEngine.getSeaWaterTemp, 'undefined', 'getSeaWaterTemp must be deleted');
+    assert.strictEqual(typeof ASSUMPTIONS.cooling_diversity_factor, 'undefined', 'cooling_diversity_factor must be deleted');
+    assert.strictEqual(typeof ASSUMPTIONS.future_margin_pct, 'undefined', 'future_margin_pct must be deleted');
+  });
+
+  test('C-6 §7-D3 LOAD_PROFILE_PRESETS is preserved for Phase E', () => {
+    assert(LOAD_PROFILE_PRESETS && typeof LOAD_PROFILE_PRESETS === 'object', 'LOAD_PROFILE_PRESETS must be preserved');
+  });
+
+  test('C-6 M4 magic numbers added to ASSUMPTIONS with labels and refs', () => {
+    assert(ASSUMPTIONS.tower_heat_rejection_factor, 'tower_heat_rejection_factor must exist');
+    assert.strictEqual(ASSUMPTIONS.tower_heat_rejection_factor.val, 1.2);
+    assert(ASSUMPTIONS.tower_heat_rejection_factor.ref, 'must have ref');
+
+    assert(ASSUMPTIONS.district_chw_cop, 'district_chw_cop must exist');
+    assert.strictEqual(ASSUMPTIONS.district_chw_cop.val, 5.0);
+    assert(ASSUMPTIONS.district_chw_cop.ref, 'must have ref');
+
+    assert(ASSUMPTIONS.nvidia_dsx_mode2_offset_c, 'nvidia_dsx_mode2_offset_c must exist');
+    assert.strictEqual(ASSUMPTIONS.nvidia_dsx_mode2_offset_c.val, 5.7);
+    assert(ASSUMPTIONS.nvidia_dsx_mode2_offset_c.ref, 'must have ref');
+  });
+
+  test('C-6 M9 IDs generated in copySU loop are all strictly unique', () => {
+    const hallId = S.state.halls[0].id;
+    const duId = S.state.halls[0].dus[0].id;
+    const suId = S.state.halls[0].dus[0].sus[0].id;
+
+    const ok = S.copySU(hallId, duId, suId, 5);
+    assert.strictEqual(ok, true);
+
+    const sus = S.state.halls[0].dus[0].sus;
+    const suIds = sus.map(s => s.id);
+    const uniqueSuIds = new Set(suIds);
+    assert.strictEqual(suIds.length, uniqueSuIds.size, 'All SU IDs must be unique');
+
+    const eqIds = sus.flatMap(s => s.equipment.map(e => e.id));
+    const uniqueEqIds = new Set(eqIds);
+    assert.strictEqual(eqIds.length, uniqueEqIds.size, 'All EQ IDs must be unique');
+  });
+})();
+
 console.log(`\n${passCount} passed, ${failCount} failed, ${skipCount} skipped`);
 process.exit(failCount > 0 ? 1 : 0);
 

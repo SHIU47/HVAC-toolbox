@@ -27,6 +27,14 @@
         return (b * alpha) / (a - alpha);
     }
 
+    // M9: 統一 ID 產生器，避免 Date.now() 在快速迴圈（如 copySU）中重複
+    function makeId(prefix) {
+        const u = (typeof uuid === 'function')
+            ? uuid().replace(/-/g, '').slice(0, 12)
+            : (Date.now().toString(36) + Math.random().toString(36).slice(2, 7));
+        return prefix ? `${prefix}_${u}` : u;
+    }
+
     const AppStore = {
         state: {
             site: {
@@ -566,7 +574,7 @@
         addCorePod(data = {}) {
             const podNum = this.state.corePods.length + 1;
             const letter = String.fromCharCode(65 + (podNum - 1) % 26);
-            const podId = 'corepod_' + Date.now() + '_' + podNum;
+            const podId = makeId('corepod');
             const newPod = {
                 id: podId,
                 name: data.name || `CorePOD-${letter} (核心網通/集中儲存)`,
@@ -577,9 +585,9 @@
                 topologyMode: data.topologyMode || 'dedicated',
                 electricalLossFactorPct: 0.0,
                 equipment: data.equipment ? JSON.parse(JSON.stringify(data.equipment)) : [
-                    { id: 'eq_' + Date.now() + '_1', category: 'IB', model: 'Quantum-2 Spine Switch (128p)', qty: 8, itLoadKw: 12.0, liquidPct: 0, airPct: 100 },
-                    { id: 'eq_' + Date.now() + '_2', category: 'CIN', model: 'SN5600 800GbE Spine (64p)', qty: 8, itLoadKw: 10.0, liquidPct: 0, airPct: 100 },
-                    { id: 'eq_' + Date.now() + '_3', category: 'STG', model: 'High-Density NVMe Storage Rack', qty: 10, itLoadKw: 25.0, liquidPct: 0, airPct: 100 }
+                    { id: makeId('eq'), category: 'IB', model: 'Quantum-2 Spine Switch (128p)', qty: 8, itLoadKw: 12.0, liquidPct: 0, airPct: 100 },
+                    { id: makeId('eq'), category: 'CIN', model: 'SN5600 800GbE Spine (64p)', qty: 8, itLoadKw: 10.0, liquidPct: 0, airPct: 100 },
+                    { id: makeId('eq'), category: 'STG', model: 'High-Density NVMe Storage Rack', qty: 10, itLoadKw: 25.0, liquidPct: 0, airPct: 100 }
                 ],
                 plantDesign: data.plantDesign ? JSON.parse(JSON.stringify(data.plantDesign)) : {
                     cduSystem: this.defaultCduSystem('dry_cooler_hx'),
@@ -600,12 +608,10 @@
             const pod = this.state.corePods.find(p => p.id === podId);
             if (!pod) return null;
             const clonedPod = JSON.parse(JSON.stringify(pod));
-            const podNum = this.state.corePods.length + 1;
-            const letter = String.fromCharCode(65 + (podNum - 1) % 26);
-            clonedPod.id = 'corepod_' + Date.now() + '_' + podNum;
+            clonedPod.id = makeId('corepod');
             clonedPod.name = `${pod.name} (複製)`;
-            clonedPod.equipment.forEach((eq, eqIdx) => {
-                eq.id = 'eq_' + Date.now() + '_' + (eqIdx + 1);
+            clonedPod.equipment.forEach((eq) => {
+                eq.id = makeId('eq');
             });
             if (clonedPod.plantDesign) {
                 if (clonedPod.plantDesign.cduSystem) clonedPod.plantDesign.cduSystem.sizing = [];
@@ -645,7 +651,7 @@
         // ═══════════════════════════════════════════════════════════════
         addHall(name) {
             const hallNum = this.state.halls.length + 1;
-            const hallId = 'hall_' + Date.now();
+            const hallId = makeId('hall');
             const newHall = {
                 id: hallId,
                 name: name || `Hall ${hallNum}`,
@@ -685,18 +691,18 @@
             const hall = this.state.halls.find(h => h.id === hallId);
             if (!hall) return null;
             const duIdx = hall.dus.length + 1;
-            const duId = 'du_' + Date.now() + '_' + duIdx;
+            const duId = makeId('du');
             const newDu = {
                 id: duId,
                 name: namePrefix || `DU-${duIdx < 10 ? '0' + duIdx : duIdx}`,
                 sus: [
                     {
-                        id: 'su_' + Date.now() + '_1',
+                        id: makeId('su'),
                         name: 'SU-01 (預設配置)',
                         electricalLossFactorPct: 0.0,
                         equipment: [
-                            { id: 'eq_' + Date.now() + '_1', category: 'GPU', model: 'NVIDIA Vera Rubin VR200 NVL72', qty: 2, itLoadKw: 227.0, liquidPct: 95.0, airPct: 5.0 },
-                            { id: 'eq_' + Date.now() + '_2', category: 'IB', model: 'NDR Leaf Switch (64p)', qty: 2, itLoadKw: 6.0, liquidPct: 0, airPct: 100.0 }
+                            { id: makeId('eq'), category: 'GPU', model: 'NVIDIA Vera Rubin VR200 NVL72', qty: 2, itLoadKw: 227.0, liquidPct: 95.0, airPct: 5.0 },
+                            { id: makeId('eq'), category: 'IB', model: 'NDR Leaf Switch (64p)', qty: 2, itLoadKw: 6.0, liquidPct: 0, airPct: 100.0 }
                         ]
                     }
                 ],
@@ -722,11 +728,11 @@
             if (!du) return null;
             const suIdx = du.sus.length + 1;
             const newSu = {
-                id: 'su_' + Date.now() + '_' + suIdx,
+                id: makeId('su'),
                 name: name || `SU-${suIdx < 10 ? '0' + suIdx : suIdx}`,
                 electricalLossFactorPct: 0.0,
                 equipment: [
-                    { id: 'eq_' + Date.now() + '_1', category: 'GPU', model: 'NVIDIA Vera Rubin VR200 NVL72', qty: 1, itLoadKw: 227.0, liquidPct: 95.0, airPct: 5.0 }
+                    { id: makeId('eq'), category: 'GPU', model: 'NVIDIA Vera Rubin VR200 NVL72', qty: 1, itLoadKw: 227.0, liquidPct: 95.0, airPct: 5.0 }
                 ]
             };
             du.sus.push(newSu);
@@ -740,13 +746,12 @@
             const du = hall.dus.find(d => d.id === duId);
             if (!du) return null;
             const clonedDu = JSON.parse(JSON.stringify(du));
-            const duIdx = hall.dus.length + 1;
-            clonedDu.id = 'du_' + Date.now() + '_' + duIdx;
+            clonedDu.id = makeId('du');
             clonedDu.name = `${du.name} (複製)`;
-            clonedDu.sus.forEach((su, sIdx) => {
-                su.id = 'su_' + Date.now() + '_' + (sIdx + 1);
-                su.equipment.forEach((eq, eqIdx) => {
-                    eq.id = 'eq_' + Date.now() + '_' + (eqIdx + 1);
+            clonedDu.sus.forEach((su) => {
+                su.id = makeId('su');
+                su.equipment.forEach((eq) => {
+                    eq.id = makeId('eq');
                 });
             });
             if (clonedDu.plantDesign) {
@@ -784,11 +789,10 @@
 
             for (let i = 0; i < n; i++) {
                 const clonedSu = JSON.parse(JSON.stringify(su));
-                const suIdx = du.sus.length + 1;
-                clonedSu.id = 'su_' + Date.now() + '_' + (i + 1);
+                clonedSu.id = makeId('su');
                 clonedSu.name = `${su.name} (Copy ${i + 1})`;
-                clonedSu.equipment.forEach((eq, eqIdx) => {
-                    eq.id = 'eq_' + Date.now() + '_' + (i + 1) + '_' + eqIdx;
+                clonedSu.equipment.forEach((eq) => {
+                    eq.id = makeId('eq');
                 });
                 du.sus.push(clonedSu);
             }

@@ -46,34 +46,6 @@ const CRAHEngine = {
   }
 };
 
-const CRACEngine = {
-  /**
-   * CRAC (Direct Expansion) power.
-   * DX COP varies with outdoor drybulb: typical 2.8 at 30°C, drops at high OAT.
-   * COP(DB) ≈ max(1.5, 3.2 − 0.04 × (DB − 30))
-   *
-   * @param {Array}  crac_list   - [{qty_running, power_kw, cooling_capacity_kw}]
-   * @param {number} it_air_kw   - Air-cooled IT load (kW)
-   * @param {number} db_c        - Outdoor drybulb temperature (°C)
-   */
-  calcPower(crac_list, it_air_kw, db_c) {
-    if (!crac_list?.length && it_air_kw <= 0) return { power_kw: 0, cop: 0 };
-
-    const cap_total   = crac_list?.reduce((s, d) => s + (d.qty_running ?? d.qty_total ?? 1) * (d.cooling_capacity_kw ?? 0), 0) ?? 0;
-    const power_rated = crac_list?.reduce((s, d) => s + (d.qty_running ?? d.qty_total ?? 1) * (d.power_kw ?? 0), 0) ?? 0;
-
-    if (cap_total > 0 && power_rated > 0) {
-      // Use rated data when available
-      const plr   = Math.min(1.0, it_air_kw / cap_total);
-      const cop   = cap_total / power_rated;
-      return { power_kw: it_air_kw / cop, cop, plr };
-    }
-
-    // Fallback: dynamic COP model
-    const cop = Math.max(1.5, 3.2 - 0.04 * (db_c - 30.0));
-    return { power_kw: it_air_kw > 0 ? it_air_kw / cop : 0, cop, plr: 1.0 };
-  }
-};
 
 if (typeof window !== 'undefined') window.CRAHEngine = CRAHEngine;
 if (typeof global !== 'undefined') global.CRAHEngine = CRAHEngine;

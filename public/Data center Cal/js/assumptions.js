@@ -21,8 +21,8 @@ const ASSUMPTIONS = {
   pump_eta_default:       { val: 0.75, unit: '-',   label: '泵效率預設', ref: 'HI 標準中型端吸泵' },
   motor_eta_default:      { val: 0.92, unit: '-',   label: '馬達效率預設', ref: 'IE3' },
   sizing_margin_target:   { val: 15,   unit: '%',   label: '選型建議目標裕度', ref: '公司內規（可調）' },
-  cooling_diversity_factor: { val: 0.9, unit: '-', label: '冷卻負載同時使用係數（多迴路/多機列不會同時達峰值）', ref: 'ASHRAE 系統設計常用 0.85–0.95' },
-  future_margin_pct:       { val: 10,  unit: '%', label: '未來擴充設計裕度（放大至 Design Load 再進行設備選型）', ref: '公司內規（可調，AI DC 常見 10–20%）' },
+  tower_heat_rejection_factor: { val: 1.2, unit: '-', label: '冷卻塔排熱裕度係數（含壓縮機輸入功或換熱裕度）', ref: 'ASHRAE 典型冰機排熱 = 冷凍噸 × 1.2' },
+  district_chw_cop:       { val: 5.0,  unit: '-',   label: '區域冷水／外來冰水等效 COP', ref: 'ASHRAE 90.1 / 園區集中冷站合約典型 4.5–5.5' },
   ct_evap_m3h_per_kw:      { val: 0.00124, unit: 'm³/(h·kW)', label: '濕式冷卻塔蒸發耗水係數（每 kW 排熱）', ref: '蒸發量 = Q × 潛熱比 / h_fg；h_fg≈2430 kJ/kg、潛熱比≈0.84 → 0.00124 m³/h/kW' },
   min_cewt_c:              { val: 16.0, unit: '°C', label: '冰機冷凝器最低進水溫下限（condenser water relief 下限，避免冬季 COP 失真偏高）', ref: 'AHRI 550/590；典型離心/螺旋式冰機油壓與潤滑限制常見下限 15–18°C' },
   cdu_approach_c:          { val: 3.0, unit: '°C', label: 'CDU 二次側供水（FWS）相對一次側供水（TCS）的最小溫差（approach）', ref: 'ASHRAE TC9.9 液冷白皮書 CDU approach 典型 2–4°C' },
@@ -50,6 +50,7 @@ const ASSUMPTIONS = {
   nvidia_dsx_mt_supply_c:         { val: 22.0,  unit: '°C',     label: 'NVIDIA DSX MTFW 中溫一次側供水基準', ref: 'NVIDIA DSX BOD Rev5 Section 6.9.2 (71.6°F)' },
   nvidia_dsx_mode1_db_max_c:      { val: 34.8,  unit: '°C',     label: 'NVIDIA DSX Full Free Cooling 乾球上限', ref: 'NVIDIA DSX Facilities Guide v2.0 p.42' },
   nvidia_dsx_mode2_db_max_c:      { val: 40.5,  unit: '°C',     label: 'NVIDIA DSX Trim Cooling 乾球上限', ref: 'NVIDIA DSX Facilities Guide v2.0 p.42' },
+  nvidia_dsx_mode2_offset_c:      { val: 5.7,   unit: '°C',     label: 'Mode 2 Trim 區間寬度', ref: '40.5 - 34.8 = 5.7°C' },
 
   // ── 冰機揚程與外推保護常數 (P0-4) ──────────────────────────────────────
   chiller_evap_approach_k:        { val: 2.0,   unit: 'K',      label: '冰機蒸發溫度 = 冰水出水溫 − 此值', ref: '殼管/板式蒸發器典型 1.5–3 K' },
@@ -72,6 +73,14 @@ function A(key, state) {
 
 // Node（projects/verify_engine.js 等）需要 module.exports 才能個別引用；
 // 瀏覽器端以 <script> 全域載入，ASSUMPTIONS / A 直接可用，此段不影響瀏覽器行為。
+if (typeof window !== 'undefined') {
+  window.ASSUMPTIONS = ASSUMPTIONS;
+  window.A = A;
+}
+if (typeof global !== 'undefined') {
+  global.ASSUMPTIONS = ASSUMPTIONS;
+  global.A = A;
+}
 if (typeof module !== 'undefined' && module.exports) {
   module.exports = { ASSUMPTIONS, A };
 }
