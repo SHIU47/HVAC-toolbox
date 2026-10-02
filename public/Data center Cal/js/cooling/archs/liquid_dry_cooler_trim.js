@@ -124,7 +124,49 @@
             }
         ],
 
+        stages: [
+            { type: 'dry_cooler', role: 'economizer', hasPhe: true, equipKey: 'dry_cooler' },
+            { type: 'chiller', role: 'mechanical', chillerType: 'water_cooled', equipKey: 'trim_chiller', fallbackCop: 6.2 }
+        ],
+
+        operatingPoint(sys, w, equip) {
+            const db_c = (typeof w === 'number') ? w : (w?.db ?? 25.0);
+            const dcApp   = sys?.dryCoolerApproachC ?? 5.0;          // 乾冷器 approach
+            const pheApp  = sys?.pheApproachC ?? 2.0;                // Primary HX approach
+            const tSup    = sys?.fwsSupplyC ?? 40.0;
+            const tRet    = sys?.fwsReturnC ?? 55.0;
+            const tDc     = db_c + dcApp;                              // 乾冷器出水
+            const eco     = (typeof root.FreeCoolingEngine?.calcSeriesEconomizer === 'function')
+                ? root.FreeCoolingEngine.calcSeriesEconomizer(tDc + pheApp, tSup, tRet)
+                : { fc_fraction: (tDc + pheApp <= tSup ? 1.0 : 0.0), chiller_fraction: (tDc + pheApp <= tSup ? 0.0 : 1.0), mode: (tDc + pheApp <= tSup ? 'FULL_FC' : 'MECH'), t_precooled_c: Math.min(tRet, Math.max(tSup, tDc + pheApp)) };
+            const tPre    = eco.t_precooled_c;                         // FWS 經 Primary HX 預冷後溫度
+            const tChws   = sys?.trimChwSupplyC ?? Math.min(30, tSup - 7);   // 與 view_cooling.js:724 同一公式
+            const minCewt = (typeof root.A === 'function') ? root.A('min_cewt_c') : 16.0;
+            // 乾冷器側水在 Primary HX 吸收預冷熱後進冷凝器（平衡流量假設，與拓樸圖一致）
+            const tCewt   = Math.max(minCewt, tDc + (tRet - tPre));
+            const mode = (eco.mode === (root.FreeCoolingEngine?.MODE?.FULL_FC || 'FULL_FC'))
+                ? 'free'
+                : ((eco.mode === (root.FreeCoolingEngine?.MODE?.PARTIAL_FC || 'PARTIAL_FC')) ? 'partial' : 'mechanical');
+            return {
+                ...eco,
+                mode,
+                tDc,
+                tPre,
+                tChws,
+                tCewt,
+                tRet,
+                tSup,
+                temps: { fwsRet: tRet, fwsPre: tPre, fwsSup: tSup, dcOut: tDc, condIn: tCewt, condOut: tCewt + 5.0, chwSup: tChws, chwRet: tSup }
+            };
+        },
+
         simulateHour(ctx) {
+            return (typeof root.runStageChain === 'function')
+                ? root.runStageChain(this.stages, ctx, this)
+                : this._simulateHourFallback(ctx);
+        },
+
+        _simulateHourFallback(ctx) {
             const Q_kw = ctx.Q_kw || 0;
             if (Q_kw <= 0) {
                 return {

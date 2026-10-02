@@ -1297,6 +1297,104 @@ function freshCtx() {
   });
 })();
 
+// ── P2-4: 階段鏈實作與可擴充性驗收 ──────────────────────────────────────────
+(function () {
+  const ctx = freshCtx();
+  const { CoolingStages, CoolingArchRegistry, runStageChain, AnnualRunner, BUILTIN_WEATHER } = ctx;
+
+  test('P2-4 runStageChain function is defined', () => {
+    assert.strictEqual(typeof runStageChain, 'function');
+  });
+
+  test('P2-4 stages implement availableTemp and rejectionCost interfaces', () => {
+    const stageIds = ['dry_cooler', 'evap_tower', 'closed_tower', 'adiabatic', 'chiller', 'fc_coil'];
+    for (const sid of stageIds) {
+      assert(CoolingStages.has(sid), `Stage ${sid} must be registered`);
+      const stage = CoolingStages.get(sid);
+      assert.strictEqual(typeof stage.availableTemp, 'function', `${sid} must implement availableTemp`);
+      assert.strictEqual(typeof stage.rejectionCost, 'function', `${sid} must implement rejectionCost`);
+    }
+  });
+
+  test('P2-4 AppStore.trimOperatingPoint forwards to liquid_dry_cooler_trim.operatingPoint', () => {
+    const dummyCduSys = { fwsSupplyC: 40.0, fwsReturnC: 55.0, dryCoolerApproachC: 5.0, pheApproachC: 2.0 };
+    const resStore = ctx.AppStore.trimOperatingPoint(dummyCduSys, 32.0);
+    const arch = CoolingArchRegistry.get('dry_cooler_trim');
+    const resArch = arch.operatingPoint(dummyCduSys, { db: 32.0 });
+    assert.strictEqual(resStore.chiller_fraction, resArch.chiller_fraction);
+    assert.strictEqual(resStore.tPre, resArch.tPre);
+    assert.strictEqual(resStore.tCewt, resArch.tCewt);
+    assert.strictEqual(resStore.tChws, resArch.tChws);
+  });
+
+  test('P2-4 scalability: adiabatic_trim runs Alabama 8760h with 0 deficit and positive chiller MWh', () => {
+    // 1. Get Alabama weather
+    const alabamaKey = Object.keys(ctx.BUILTIN_WEATHER_DATA || {}).find(k => k.includes('Alabama'));
+    const alabama = ctx.BUILTIN_WEATHER_DATA[alabamaKey];
+    assert(alabama && Array.isArray(alabama.hourlyData), 'Alabama weather must exist in BUILTIN_WEATHER_DATA');
+
+    // 2. Register temporary architecture adiabatic_trim by composing adiabatic_tower with trim_chiller
+    const adiabaticDesc = CoolingArchRegistry.get('adiabatic_tower');
+    const trimDesc = CoolingArchRegistry.get('dry_cooler_trim');
+    const trimChillerEquip = trimDesc.equipment.find(e => e.key === 'trim_chiller');
+
+    CoolingArchRegistry.register({
+      id: 'adiabatic_trim',
+      name: 'Adiabatic Trim Test',
+      loop: 'liquid',
+      equipment: [
+        ...adiabaticDesc.equipment,
+        trimChillerEquip
+      ],
+      stages: [
+        { type: 'adiabatic', role: 'economizer', equipKey: 'adiabatic_tower' },
+        { type: 'chiller', role: 'mechanical', chillerType: 'water_cooled', equipKey: 'trim_chiller', fallbackCop: 6.2 }
+      ],
+      simulateHour(simCtx) {
+        return runStageChain(this.stages, simCtx, this);
+      }
+    });
+
+    // 3. Run AnnualRunner for pure adiabatic tower on Alabama at 35C FWS (where pure has summer deficit)
+    const S = ctx.AppStore;
+    const du = S.state.halls[0].dus[0];
+    du.plantDesign.cduSystem.fwsSupplyC = 35.0;
+    du.plantDesign.cduSystem.fwsReturnC = 47.0;
+    const summ = S.calcDuSummary(du);
+
+    du.plantDesign.cduSystem.architecture = 'adiabatic_tower';
+    S.bridgeDuToPlantModel(du, summ);
+    let pureDeficitHours = 0;
+    AnnualRunner.simulateUnit(du.plantDesign, summ, alabama.hourlyData, {
+      calcHourlyEnergy: (pd, ls, w, pre) => S.calcHourlyEnergy(pd, ls, w, pre),
+      onHour: (i, hr) => { if ((hr.capacityDeficitKw || 0) > 0) pureDeficitHours++; }
+    });
+
+    // 4. Run AnnualRunner for adiabatic_trim on Alabama
+    du.plantDesign.cduSystem.architecture = 'adiabatic_trim';
+    S.bridgeDuToPlantModel(du, summ);
+    let trimDeficitHours = 0;
+    let chillerHours = 0;
+    let chillerKwh = 0;
+    const trimSim = AnnualRunner.simulateUnit(du.plantDesign, summ, alabama.hourlyData, {
+      calcHourlyEnergy: (pd, ls, w, pre) => S.calcHourlyEnergy(pd, ls, w, pre),
+      onHour: (i, hr) => {
+        if ((hr.capacityDeficitKw || 0) > 0) trimDeficitHours++;
+        if ((hr.cduKwh?.trimLoadKw || 0) > 0 || (hr.cduKwh?.chiller || 0) > 0) {
+          chillerHours++;
+          chillerKwh += (hr.cduKwh?.chiller || 0);
+        }
+      }
+    });
+
+    assert(pureDeficitHours > 0, 'pure adiabatic tower must have deficit hours in Alabama summer at 35C FWS');
+    assert.strictEqual(trimDeficitHours, 0, 'adiabatic_trim must have 0 capacity deficit hours');
+    assert(chillerHours > 0, 'adiabatic_trim chiller run hours must be > 0 in Alabama');
+    assert(chillerKwh > 0, 'adiabatic_trim chiller total kWh must be > 0 in Alabama');
+    assert(chillerHours <= pureDeficitHours, `chiller hours (${chillerHours}) must be <= pure adiabatic deficit hours (${pureDeficitHours})`);
+  });
+})();
+
 console.log(`\n${passCount} passed, ${failCount} failed, ${skipCount} skipped`);
 process.exit(failCount > 0 ? 1 : 0);
 

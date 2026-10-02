@@ -11,6 +11,14 @@
     }
 
     CoolingStages.register('chiller', {
+        availableTemp(ctx) {
+            return null; // Mechanical chiller is not an ambient-driven economizer
+        },
+
+        rejectionCost(ctx, Q_reject_kw, isFullFc) {
+            return { fanKw: 0, waterM3: 0 };
+        },
+
         simulate(ctx) {
             const Q_kw = ctx.Q_kw || 0;
             if (Q_kw <= 0) {

@@ -15,6 +15,7 @@ const FILES = ['assumptions.js','engines_core.js','engines_cdu.js','engines_crah
   'cooling/stages/stage_adiabatic.js',
   'cooling/stages/stage_chiller.js',
   'cooling/stages/stage_district_chw.js',
+  'cooling/stage_chain.js',
   'cooling/archs/liquid_dry_cooler_trim.js',
   'cooling/archs/liquid_dry_cooler_pure.js',
   'cooling/archs/liquid_adiabatic_tower.js',

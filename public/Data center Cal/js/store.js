@@ -839,6 +839,10 @@
         },
 
         trimOperatingPoint(cduSys, db_c) {
+            const arch = (typeof CoolingArchRegistry !== 'undefined') ? CoolingArchRegistry.get('dry_cooler_trim') : null;
+            if (arch && typeof arch.operatingPoint === 'function') {
+                return arch.operatingPoint(cduSys, typeof db_c === 'number' ? { db: db_c } : db_c);
+            }
             const dcApp   = cduSys.dryCoolerApproachC ?? 5.0;          // 乾冷器 approach
             const pheApp  = cduSys.pheApproachC ?? 2.0;                // Primary HX approach
             const tSup    = cduSys.fwsSupplyC ?? 40.0;

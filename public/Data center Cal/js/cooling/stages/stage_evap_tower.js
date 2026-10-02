@@ -11,6 +11,47 @@
     }
 
     CoolingStages.register('evap_tower', {
+        /**
+         * Calculates available leaving water temperature from evaporative cooling tower.
+         * @param {Object} ctx
+         * @returns {number} Available temperature (°C)
+         */
+        availableTemp(ctx) {
+            const approach = ctx.approach_c ?? ctx.params?.approach_c ?? (ctx.sys?.ctApproachC ?? 4.0);
+            const w = ctx.w || { db: 25, wb: 20 };
+            return w.wb + approach;
+        },
+
+        /**
+         * Calculates fan power and evaporative water consumption.
+         * @param {Object} ctx
+         * @param {number} Q_reject_kw
+         * @param {boolean} isFullFc
+         * @returns {{ fanKw: number, waterM3: number, diag: Object }}
+         */
+        rejectionCost(ctx, Q_reject_kw, isFullFc) {
+            const ctDevices = ctx.equip?.cooling_tower || ctx.devices || [];
+            const loadRatio = ctx.loadRatio ?? 1.0;
+            const fanMinSpeed = ctx.fanMinSpeed ?? 0.20;
+            const evapFactor = ctx.evapFactor ?? ((typeof root.A === 'function') ? root.A('ct_evap_m3h_per_kw') : 0.00124);
+            const cycles = ctx.cycles ?? (ctx.sys?.cyclesOfConcentration || 5);
+            const w = ctx.w || { db: 25, wb: 20 };
+            const t_supply_c = ctx.t_supply_c ?? ctx.sys?.fwsSupplyC ?? 42.0;
+
+            const isLowFan = isFullFc && (w.wb <= (t_supply_c - 8.0));
+            const ctFanKw = (ctDevices.length > 0 && typeof root.CoolingTowerEngine !== 'undefined')
+                ? root.CoolingTowerEngine.calcFanPower(ctDevices, loadRatio, isLowFan, fanMinSpeed)
+                : null;
+
+            const fanKw = ctFanKw ?? (((ctx.heatLoadKw ?? Q_reject_kw) / 500) * (isLowFan ? 8.0 : (isFullFc ? 12.0 : 14.0)));
+
+            const evap = Q_reject_kw * evapFactor;
+            const bd = evap / Math.max(1, cycles - 1);
+            const waterM3 = evap + bd;
+
+            return { fanKw, waterM3, diag: { evap, bd } };
+        },
+
         simulate(ctx) {
             const Q_kw = ctx.Q_kw || 0;
             if (Q_kw <= 0) {
@@ -32,51 +73,33 @@
             const w = ctx.w || { db: 25, wb: 20 };
             const t_supply_c = ctx.t_supply_c ?? sys.fwsSupplyC ?? 42.0;
             const t_return_c = ctx.t_return_c ?? sys.fwsReturnC ?? 54.0;
-            const ctApproach = ctx.approach_c ?? (sys.ctApproachC ?? 6.0);
-            const loadRatio = ctx.loadRatio ?? 1.0;
-            const fanMinSpeed = ctx.fanMinSpeed ?? 0.20;
-            const ctDevices = ctx.equip?.cooling_tower || ctx.devices || [];
-            const evapFactor = ctx.evapFactor ?? ((typeof root.A === 'function') ? root.A('ct_evap_m3h_per_kw') : 0.00124);
-            const cycles = ctx.cycles ?? (sys.cyclesOfConcentration || 5);
 
-            // Rejection only mode (e.g. Rejecting chiller condenser heat)
+            // Rejection only mode delegated to rejectionCost
             if (ctx.isCondenserRejection) {
-                const fanLoadKw = ctx.heatLoadKw ?? ctx.originalQ_kw ?? Q_kw;
-                const fanKw = (ctDevices.length > 0 && typeof root.CoolingTowerEngine !== 'undefined')
-                    ? root.CoolingTowerEngine.calcFanPower(ctDevices, loadRatio, false, fanMinSpeed)
-                    : (fanLoadKw / 500) * 14.0;
-
-                const evap = Q_kw * evapFactor;
-                const bd = evap / Math.max(1, cycles - 1);
-                const waterM3 = evap + bd;
-
+                const cost = this.rejectionCost(ctx, Q_kw, false);
                 return {
                     Q_removed_kw: Q_kw,
                     t_out_c: t_supply_c,
-                    fanKw,
+                    fanKw: cost.fanKw,
                     pumpKw: 0,
                     compressorKw: 0,
-                    waterM3,
+                    waterM3: cost.waterM3,
                     rejectToSinkKw: 0,
                     mode: 'mechanical',
                     deficitKw: 0,
-                    diag: { evap, bd }
+                    diag: cost.diag
                 };
             }
 
-            // Direct wet-bulb evaporative cooling mode
-            const isLowFan = w.wb <= (t_supply_c - 8.0);
-            const ctFanKw = (ctDevices.length > 0 && typeof root.CoolingTowerEngine !== 'undefined')
-                ? root.CoolingTowerEngine.calcFanPower(ctDevices, loadRatio, isLowFan, fanMinSpeed)
-                : null;
-            const fanKw = ctFanKw ?? ((Q_kw / 500) * (isLowFan ? 8.0 : 12.0));
-
-            const evap = Q_kw * evapFactor;
-            const bd = evap / Math.max(1, cycles - 1);
-            const waterM3 = evap + bd;
-
+            const ctApproach = ctx.approach_c ?? (sys.ctApproachC ?? 6.0);
             const ctActualSupplyC = w.wb + ctApproach;
             const ctExceeded = ctActualSupplyC > t_supply_c;
+            const isFullFc = !ctExceeded;
+
+            const cost = this.rejectionCost(ctx, Q_kw, isFullFc);
+            const fanKw = cost.fanKw;
+            const waterM3 = cost.waterM3;
+
             let deficitKw = 0;
             let t_out_c = t_supply_c;
             if (ctExceeded) {
@@ -96,7 +119,7 @@
                 rejectToSinkKw: 0,
                 mode: ctExceeded ? 'partial' : 'free',
                 deficitKw,
-                diag: { ctActualSupplyC, ctExceeded, evap, bd }
+                diag: { ctActualSupplyC, ctExceeded, ...cost.diag }
             };
         }
     });

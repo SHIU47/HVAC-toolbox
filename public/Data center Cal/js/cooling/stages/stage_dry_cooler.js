@@ -1,7 +1,7 @@
 'use strict';
 /**
  * stage_dry_cooler.js - Dry Cooler Heat Rejection / Pre-cooling Stage
- * Handles sensible air heat exchange for dry coolers in standalone or trim configurations.
+ * Handles sensible air heat exchange for dry coolers in standalone or series economizer configurations.
  */
 (function (root) {
     const CoolingStages = root.CoolingStages;
@@ -10,6 +10,53 @@
     }
 
     CoolingStages.register('dry_cooler', {
+        /**
+         * Calculates available leaving water temperature from dry cooler (excluding plate HX).
+         * @param {Object} ctx
+         * @returns {number} Available temperature (°C)
+         */
+        availableTemp(ctx) {
+            const approach = ctx.approach_c ?? ctx.params?.approach_c ?? (ctx.sys?.dryCoolerApproachC || 5.0);
+            const w = ctx.w || { db: 25, wb: 20 };
+            return w.db + approach;
+        },
+
+        /**
+         * Calculates heat rejection fan power.
+         * @param {Object} ctx
+         * @param {number} Q_reject_kw
+         * @param {boolean} isFullFc
+         * @returns {{ fanKw: number, waterM3: number }}
+         */
+        rejectionCost(ctx, Q_reject_kw, isFullFc) {
+            const dcDevices = ctx.equip?.dry_cooler || ctx.devices || [];
+            const loadRatio = ctx.loadRatio ?? 1.0;
+            const fanMinSpeed = ctx.fanMinSpeed ?? 0.20;
+            const w = ctx.w || { db: 25, wb: 20 };
+            const approach = ctx.approach_c ?? ctx.params?.approach_c ?? (ctx.sys?.dryCoolerApproachC || 5.0);
+            const pheApproach = ctx.hx_approach_c ?? ctx.params?.hx_approach_c ?? 0.0;
+            const t_supply_c = ctx.t_supply_c ?? ctx.sys?.fwsSupplyC ?? 42.0;
+            const freeThresh = t_supply_c - approach - pheApproach;
+
+            let fanKw = 0;
+            if (dcDevices.length > 0 && typeof root.CoolingTowerEngine !== 'undefined') {
+                const speedRatio = (ctx.isPureEconomizer || isFullFc) ? loadRatio : 1.0;
+                fanKw = root.CoolingTowerEngine.calcFanPower(dcDevices, speedRatio, isFullFc, fanMinSpeed);
+            } else if (isFullFc) {
+                const minRatio = ctx.isPureEconomizer ? 0.2 : 0.15;
+                const fanRatio = Math.max(minRatio, Math.min(1.0, (w.db + 273.15) / (freeThresh + 273.15)));
+                fanKw = (Q_reject_kw / 500) * 8.0 * fanRatio;
+            } else {
+                if (ctx.isPureEconomizer) {
+                    const fanRatio = Math.max(0.2, Math.min(1.0, (w.db + 273.15) / (freeThresh + 273.15)));
+                    fanKw = (Q_reject_kw / 500) * 8.0 * fanRatio;
+                } else {
+                    fanKw = (Q_reject_kw / 500) * 15.0;
+                }
+            }
+            return { fanKw, waterM3: 0 };
+        },
+
         simulate(ctx) {
             const Q_kw = ctx.Q_kw || 0;
             if (Q_kw <= 0) {
@@ -34,60 +81,10 @@
             const t_supply_c = ctx.t_supply_c ?? sys.fwsSupplyC ?? 42.0;
             const t_return_c = ctx.t_return_c ?? sys.fwsReturnC ?? 54.0;
             const freeThresh = t_supply_c - dcApproach - pheApproach;
-            const loadRatio = ctx.loadRatio ?? 1.0;
-            const fanMinSpeed = ctx.fanMinSpeed ?? 0.20;
-            const dcDevices = ctx.equip?.dry_cooler || ctx.devices || [];
 
-            if (ctx.isTrimMode) {
-                // NVIDIA DSX Trim operating point
-                const op = ctx.op || (typeof root.AppStore?.trimOperatingPoint === 'function'
-                    ? root.AppStore.trimOperatingPoint(sys, w.db)
-                    : (typeof root.FreeCoolingEngine?.trimOperatingPoint === 'function'
-                        ? root.FreeCoolingEngine.trimOperatingPoint(sys, w.db)
-                        : null));
-
-                const dcIsFullFc = op ? (op.mode === (root.FreeCoolingEngine?.MODE?.FULL_FC || 'FULL_FC')) : (w.db <= freeThresh);
-                const chillerFraction = op ? op.chiller_fraction : (dcIsFullFc ? 0 : 0.35);
-                const trimLoadKw = Q_kw * chillerFraction;
-                const Q_removed_kw = Q_kw - trimLoadKw;
-
-                let fanKw = 0;
-                if (dcDevices.length > 0 && typeof root.CoolingTowerEngine !== 'undefined') {
-                    fanKw = root.CoolingTowerEngine.calcFanPower(dcDevices, dcIsFullFc ? loadRatio : 1.0, dcIsFullFc, fanMinSpeed);
-                } else if (dcIsFullFc) {
-                    const fanRatio = Math.max(0.15, Math.min(1.0, (w.db + 273.15) / (freeThresh + 273.15)));
-                    fanKw = (Q_kw / 500) * 8.0 * fanRatio;
-                } else {
-                    fanKw = (Q_kw / 500) * 15.0;
-                }
-
-                const tPre = op ? op.tPre : (dcIsFullFc ? t_supply_c : (t_supply_c + (t_return_c - t_supply_c) * chillerFraction));
-                const mode = dcIsFullFc ? 'free' : ((op?.mode === (root.FreeCoolingEngine?.MODE?.PARTIAL_FC || 'PARTIAL_FC')) ? 'partial' : 'mechanical');
-
-                return {
-                    Q_removed_kw,
-                    t_out_c: tPre,
-                    fanKw,
-                    pumpKw: 0,
-                    compressorKw: 0,
-                    waterM3: 0,
-                    rejectToSinkKw: 0,
-                    trimLoadKw,
-                    mode,
-                    deficitKw: 0,
-                    diag: { op, dcIsFullFc, freeThresh }
-                };
-            }
-
-            // Standalone dry cooler (pure free cooling)
             const isFc = w.db <= freeThresh;
-            let fanKw = 0;
-            if (dcDevices.length > 0 && typeof root.CoolingTowerEngine !== 'undefined') {
-                fanKw = root.CoolingTowerEngine.calcFanPower(dcDevices, loadRatio, isFc, fanMinSpeed);
-            } else {
-                const fanRatio = Math.max(0.2, Math.min(1.0, (w.db + 273.15) / (freeThresh + 273.15)));
-                fanKw = (Q_kw / 500) * 8.0 * fanRatio;
-            }
+            const cost = this.rejectionCost({ ...ctx, isPureEconomizer: true }, Q_kw, isFc);
+            const fanKw = cost.fanKw;
 
             let deficitKw = 0;
             let t_out_c = t_supply_c;

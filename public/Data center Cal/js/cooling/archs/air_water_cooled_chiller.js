@@ -105,7 +105,18 @@
             }
         ],
 
+        stages: [
+            { type: 'evap_tower', role: 'economizer', hasPhe: true, equipKey: 'cooling_tower' },
+            { type: 'chiller', role: 'mechanical', chillerType: 'water_cooled', condenserSink: 'evap_tower', equipKey: 'water_cooled_chiller' }
+        ],
+
         simulateHour(ctx) {
+            return (typeof root.runStageChain === 'function')
+                ? root.runStageChain(this.stages, ctx, this)
+                : this._simulateHourFallback(ctx);
+        },
+
+        _simulateHourFallback(ctx) {
             const Q_kw = ctx.Q_kw || 0;
             if (Q_kw <= 0) {
                 return {

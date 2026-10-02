@@ -71,7 +71,17 @@
             }
         ],
 
+        stages: [
+            { type: 'dry_cooler', role: 'economizer', equipKey: 'dry_cooler' }
+        ],
+
         simulateHour(ctx) {
+            return (typeof root.runStageChain === 'function')
+                ? root.runStageChain(this.stages, ctx, this)
+                : this._simulateHourFallback(ctx);
+        },
+
+        _simulateHourFallback(ctx) {
             const Q_kw = ctx.Q_kw || 0;
             if (Q_kw <= 0) {
                 return {
