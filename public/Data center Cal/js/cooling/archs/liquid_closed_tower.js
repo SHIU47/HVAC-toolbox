@@ -23,6 +23,11 @@
         params: [
             { key: 'ctApproachC', default: 6.0, min: 2, max: 12, step: 0.5, unit: '°C' }
         ],
+        equipment: [
+            { key: 'cdu_unit', catalog: 'cdu', role: 'terminal' },
+            { key: 'cooling_tower', catalog: 'cooling_tower', role: 'heat_rejection', resolver: 'tower' },
+            { key: 'cdu_pump', catalog: 'pump', role: 'pump' }
+        ],
 
         simulateHour(ctx) {
             const Q_kw = ctx.Q_kw || 0;

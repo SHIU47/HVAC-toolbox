@@ -21,6 +21,12 @@
         terminal: 'cdu',
         schematic: 'single_loop',
         params: [],
+        equipment: [
+            { key: 'cdu_unit', catalog: 'cdu', role: 'terminal' },
+            { key: 'water_cooled_chiller', catalog: 'chiller_water', role: 'chiller', chillerType: 'water_cooled' },
+            { key: 'cooling_tower', catalog: 'cooling_tower', role: 'heat_rejection', resolver: 'tower' },
+            { key: 'cdu_pump', catalog: 'pump', role: 'pump' }
+        ],
 
         simulateHour(ctx) {
             const Q_kw = ctx.Q_kw || 0;

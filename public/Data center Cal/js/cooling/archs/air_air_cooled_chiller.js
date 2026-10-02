@@ -24,6 +24,11 @@
             { key: 'chwSupplyC', default: 12.0, min: 7, max: 25, step: 0.5, unit: '°C' },
             { key: 'chwReturnC', default: 18.0, min: 12, max: 35, step: 0.5, unit: '°C' }
         ],
+        equipment: [
+            { key: 'crah_unit', catalog: 'crah', role: 'terminal', resolver: 'crah' },
+            { key: 'air_cooled_chiller', catalog: 'chiller_air', role: 'chiller', chillerType: 'air_cooled' },
+            { key: 'fw_pump', catalog: 'pump', role: 'pump' }
+        ],
 
         simulateHour(ctx) {
             const Q_kw = ctx.Q_kw || 0;

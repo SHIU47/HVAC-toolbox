@@ -27,6 +27,12 @@
             { key: 'dryCoolerApproachC', default: 5.0, min: 0, max: 15, step: 0.5, unit: '°C' },
             { key: 'pheApproachC', default: 2.0, min: 0, max: 10, step: 0.5, unit: '°C' }
         ],
+        equipment: [
+            { key: 'cdu_unit', catalog: 'cdu', role: 'terminal' },
+            { key: 'dry_cooler', catalog: 'dry_cooler', role: 'heat_rejection', resolver: 'tower' },
+            { key: 'cdu_pump', catalog: 'pump', role: 'pump' },
+            { key: 'trim_chiller', catalog: 'chiller_water', role: 'chiller', chillerType: 'water_cooled' }
+        ],
 
         simulateHour(ctx) {
             const Q_kw = ctx.Q_kw || 0;

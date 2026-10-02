@@ -1075,6 +1075,40 @@
             }];
         },
 
+        // P2-1: 依架構描述檔的 equipment 清單解析設備實例
+        resolveEquipment(arch, sys) {
+            const archDesc = (typeof arch === 'string')
+                ? ((typeof CoolingArchRegistry !== 'undefined') ? CoolingArchRegistry.get(arch) : null)
+                : arch;
+            const equipList = archDesc?.equipment || [];
+            const result = {};
+
+            for (const eq of equipList) {
+                const item = (sys?.sizing || []).find(s => s.key === eq.key);
+                let devices = [];
+                const resolver = eq.resolver || eq.role;
+                if (resolver === 'tower' || resolver === 'heat_rejection') {
+                    devices = this.resolveTowerFromSizing(item);
+                } else if (resolver === 'chiller') {
+                    devices = this.resolveChillerFromSizing(item, eq.chillerType);
+                } else if (resolver === 'cdu') {
+                    devices = this.resolveCduFromSizing(item);
+                } else if (resolver === 'crah') {
+                    devices = this.resolveCrahFromSizing(item);
+                } else if (resolver === 'pump') {
+                    devices = this.resolvePumpFromSizing(item);
+                } else if (eq.role === 'terminal') {
+                    if (eq.key === 'cdu_unit') {
+                        devices = this.resolveCduFromSizing(item);
+                    } else if (eq.key === 'crah_unit' || eq.key === 'rdhx_unit') {
+                        devices = this.resolveCrahFromSizing(item);
+                    }
+                }
+                result[eq.key] = devices;
+            }
+            return result;
+        },
+
         // ═══════════════════════════════════════════════════════════════
         // V22 / C-2: 共用逐時能耗計算函式 — 透過 CoolingArchRegistry 分派
         // ═══════════════════════════════════════════════════════════════
@@ -1093,6 +1127,10 @@
             const evapFactor = (typeof A === 'function') ? A('ct_evap_m3h_per_kw') : 0.00124;
             const cycles = cduSys.cyclesOfConcentration || 5;
 
+            // P2-1: 解析設備清單
+            const cduEquip = this.resolveEquipment(cduArchDesc, cduSys);
+            const fwEquip  = this.resolveEquipment(fwArchDesc, fwSys);
+
             // --- CDU terminal and primary pump ---
             const designLiqKw = cduSys.designBasis?.liq_load_kw || summ.liquidHeatKw;
             const cduLoadRatio = designLiqKw > 0 ? Math.min(1.0, summ.liquidHeatKw / designLiqKw) : 1.0;
@@ -1105,8 +1143,7 @@
                 ? FreeCoolingEngine.getCtFanMinSpeed(cduOperatingMode)
                 : 0.20;
 
-            const cduUnitItem = (cduSys.sizing || []).find(s => s.key === 'cdu_unit');
-            const cduUnits = this.resolveCduFromSizing(cduUnitItem);
+            const cduUnits = cduEquip.cdu_unit || [];
             let cduUnitKw = 0;
             let cduDeficitKw = 0;
             if (cduUnits.length > 0 && typeof CDUEngine !== 'undefined' && summ.liquidHeatKw > 0) {
@@ -1117,8 +1154,7 @@
                 cduUnitKw = (summ.liquidHeatKw / 400) * 2.0;
             }
 
-            const cduPumpItem = (cduSys.sizing || []).find(s => s.key === 'cdu_pump');
-            const cduPumps = this.resolvePumpFromSizing(cduPumpItem);
+            const cduPumps = cduEquip.cdu_pump || [];
             const cduPrimaryPumpKw = (cduPumps.length > 0 && typeof PlantPumpEngine !== 'undefined' && summ.liquidHeatKw > 0)
                 ? PlantPumpEngine.calcPower(cduPumps, cduPumpSpeed)
                 : (summ.liquidHeatKw / 500) * (cduSys.hydraulics?.pump_power_kw || 11.0);
@@ -1134,9 +1170,7 @@
             const designAirKw = fwSys.designBasis?.air_load_kw || airHeatTotal;
             const fwLoadRatio = designAirKw > 0 ? Math.min(1.0, airHeatTotal / designAirKw) : 1.0;
 
-            const fwUnitKey = fwArch === 'rdhx' ? 'rdhx_unit' : 'crah_unit';
-            const fwUnitItem = (fwSys.sizing || []).find(s => s.key === fwUnitKey);
-            const fwUnits = this.resolveCrahFromSizing(fwUnitItem);
+            const fwUnits = (fwArchDesc.terminal === 'rdhx' ? fwEquip.rdhx_unit : fwEquip.crah_unit) || [];
             let crahFanKw = 0;
             let crahDeficitKw = 0;
             if (fwUnits.length > 0 && typeof CRAHEngine !== 'undefined' && airHeatTotal > 0) {
@@ -1146,11 +1180,10 @@
                     crahDeficitKw = crahRes.deficit_kw;
                 }
             } else {
-                crahFanKw = ((fwArch === 'rdhx') ? (airHeatTotal / 60) * 1.2 : (airHeatTotal / 60) * 4.8);
+                crahFanKw = ((fwArchDesc.terminal === 'rdhx') ? (airHeatTotal / 60) * 1.2 : (airHeatTotal / 60) * 4.8);
             }
 
-            const fwPumpItem = (fwSys.sizing || []).find(s => s.key === 'fw_pump');
-            const fwPumps = this.resolvePumpFromSizing(fwPumpItem);
+            const fwPumps = fwEquip.fw_pump || [];
             const fwOperatingMode = (typeof FreeCoolingEngine !== 'undefined') ? FreeCoolingEngine.getOperatingMode(w.wb) : null;
             const fwPumpMinSpeed = (typeof FreeCoolingEngine !== 'undefined')
                 ? FreeCoolingEngine.getPumpMinSpeed(fwOperatingMode)
@@ -1163,31 +1196,8 @@
                 ? PlantPumpEngine.calcPower(fwPumps, fwPumpSpeed)
                 : 0;
 
-            // --- Resolve Equipment Lists from Sizing ---
-            const dcItem = (cduSys.sizing || []).find(s => s.key === 'dry_cooler');
-            const dcDevices = this.resolveTowerFromSizing(dcItem);
-
             const trimItem = (cduSys.sizing || []).find(s => s.key === 'trim_chiller');
-            const trimChillers = this.resolveChillerFromSizing(trimItem, 'water_cooled');
             const trimCop = trimItem?.catalog?.find(c => c.model === trimItem.selectedModel)?.cop || 6.2;
-
-            const atItem = (cduSys.sizing || []).find(s => s.key === 'adiabatic_tower');
-            const atDevices = this.resolveTowerFromSizing(atItem);
-
-            const ctItem = (cduSys.sizing || []).find(s => s.key === 'cooling_tower');
-            const ctDevices = this.resolveTowerFromSizing(ctItem);
-
-            const cduChillerItem = (cduSys.sizing || []).find(s => s.key === 'water_cooled_chiller');
-            const cduChillers = this.resolveChillerFromSizing(cduChillerItem, 'water_cooled');
-
-            const fwAirChillerItem = (fwSys.sizing || []).find(s => s.key === 'air_cooled_chiller');
-            const fwAirChillers = this.resolveChillerFromSizing(fwAirChillerItem, 'air_cooled');
-
-            const fwWaterChillerItem = (fwSys.sizing || []).find(s => s.key === 'water_cooled_chiller');
-            const fwWaterChillers = this.resolveChillerFromSizing(fwWaterChillerItem, 'water_cooled');
-
-            const fwTowerItem = (fwSys.sizing || []).find(s => s.key === 'cooling_tower');
-            const fwTowerDevices = this.resolveTowerFromSizing(fwTowerItem);
 
             // --- Dispatch CDU Simulation ---
             const cduSim = (summ.liquidHeatKw > 0) ? cduArchDesc.simulateHour({
@@ -1196,13 +1206,7 @@
                 t_return_c: cduSys.fwsReturnC,
                 w,
                 sys: cduSys,
-                equip: {
-                    dry_cooler: dcDevices,
-                    trim_chiller: trimChillers,
-                    adiabatic_tower: atDevices,
-                    cooling_tower: ctDevices,
-                    water_cooled_chiller: cduChillers
-                },
+                equip: cduEquip,
                 loadRatio: cduLoadRatio,
                 fanMinSpeed: cduFanMinSpeed,
                 evapFactor,
@@ -1229,11 +1233,7 @@
                 t_return_c: chwReturnC,
                 w,
                 sys: fwSys,
-                equip: {
-                    air_cooled_chiller: fwAirChillers,
-                    water_cooled_chiller: fwWaterChillers,
-                    cooling_tower: fwTowerDevices
-                },
+                equip: fwEquip,
                 loadRatio: fwLoadRatio,
                 fanMinSpeed: fwFanMinSpeed,
                 evapFactor,

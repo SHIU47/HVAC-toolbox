@@ -1140,6 +1140,52 @@ function freshCtx() {
   });
 })();
 
+// ═══════════════════════════════════════════════════════════════
+// P2-1 Architecture Equipment Descriptors & resolveEquipment
+// ═══════════════════════════════════════════════════════════════
+(function () {
+  const ctx = freshCtx();
+  const { AppStore: S, CoolingArchRegistry } = ctx;
+
+  const archIds = [
+    'dry_cooler_trim', 'dry_cooler_pure', 'adiabatic_tower', 'cooling_tower_hx', 'water_chiller',
+    'air_cooled_chiller', 'water_cooled_chiller', 'chilled_water_plant', 'rdhx'
+  ];
+
+  test('P2-1 all 9 architectures define valid equipment list', () => {
+    for (const id of archIds) {
+      const arch = CoolingArchRegistry.get(id);
+      assert(arch, `${id} must exist in registry`);
+      assert(Array.isArray(arch.equipment) && arch.equipment.length > 0, `${id} must have non-empty equipment array`);
+      for (const eq of arch.equipment) {
+        assert(typeof eq.key === 'string' && eq.key.length > 0, `${id} equip key must be string`);
+        assert(typeof eq.role === 'string' && eq.role.length > 0, `${id} equip role must be string`);
+      }
+    }
+  });
+
+  test('P2-1 AppStore.resolveEquipment resolves devices from sizing items', () => {
+    assert(typeof S.resolveEquipment === 'function', 'resolveEquipment must be a function on AppStore');
+    const du = S.state.halls[0].dus[0];
+    const cduSys = du.plantDesign.cduSystem;
+    const fwSys = du.plantDesign.fanwallSystem;
+
+    const cduEquip = S.resolveEquipment('dry_cooler_trim', cduSys);
+    assert(cduEquip.cdu_unit !== undefined, 'cdu_unit must be resolved');
+    assert(cduEquip.dry_cooler !== undefined, 'dry_cooler must be resolved');
+    assert(cduEquip.cdu_pump !== undefined, 'cdu_pump must be resolved');
+    assert(cduEquip.trim_chiller !== undefined, 'trim_chiller must be resolved');
+
+    const fwEquip = S.resolveEquipment('air_cooled_chiller', fwSys);
+    assert(fwEquip.crah_unit !== undefined, 'crah_unit must be resolved');
+    assert(fwEquip.air_cooled_chiller !== undefined, 'air_cooled_chiller must be resolved');
+    assert(fwEquip.fw_pump !== undefined, 'fw_pump must be resolved');
+
+    const rdhxEquip = S.resolveEquipment('rdhx', fwSys);
+    assert(rdhxEquip.rdhx_unit !== undefined, 'rdhx_unit must be resolved');
+  });
+})();
+
 console.log(`\n${passCount} passed, ${failCount} failed, ${skipCount} skipped`);
 process.exit(failCount > 0 ? 1 : 0);
 

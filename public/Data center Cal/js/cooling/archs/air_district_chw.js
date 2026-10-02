@@ -21,6 +21,11 @@
         terminal: 'crah',
         schematic: 'air_plant',
         params: [],
+        equipment: [
+            { key: 'crah_unit', catalog: 'crah', role: 'terminal', resolver: 'crah' },
+            { key: 'plant_decoupler_hx', catalog: 'heat_exchanger', role: 'decoupler' },
+            { key: 'fw_pump', catalog: 'pump', role: 'pump' }
+        ],
 
         simulateHour(ctx) {
             const Q_kw = ctx.Q_kw || 0;

@@ -62,6 +62,11 @@
                     : `⚠ 目前使用粗估公式 <strong>供水溫 − 9.2°C = ${effectiveSwitchpoint.toFixed(1)}°C</strong>（此9.2°C是從單一份BAC參考案例反推，不同案子的設計乾濕球溫度會讓這個offset在4~9°C之間變動，準確度有限）。正式設計前建議向廠商索取針對本案實際供水溫與設計氣候條件的選型報告，並把報告上的真實 Dry Switchpoint 填入上方欄位覆蓋此估算值。`
             };
         },
+        equipment: [
+            { key: 'cdu_unit', catalog: 'cdu', role: 'terminal' },
+            { key: 'adiabatic_tower', catalog: 'cooling_tower', role: 'heat_rejection', resolver: 'tower' },
+            { key: 'cdu_pump', catalog: 'pump', role: 'pump' }
+        ],
 
         simulateHour(ctx) {
             const Q_kw = ctx.Q_kw || 0;
