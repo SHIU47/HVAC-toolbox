@@ -25,9 +25,60 @@
             { key: 'chwReturnC', default: 18.0, min: 12, max: 35, step: 0.5, unit: '°C' }
         ],
         equipment: [
-            { key: 'crah_unit', catalog: 'crah', role: 'terminal', resolver: 'crah' },
-            { key: 'air_cooled_chiller', catalog: 'chiller_air', role: 'chiller', chillerType: 'air_cooled' },
-            { key: 'fw_pump', catalog: 'pump', role: 'pump' }
+            {
+                key: 'crah_unit',
+                label: 'CRAH / Fanwall 機房空調',
+                category: 'CRAH',
+                catalog: 'crah',
+                role: 'terminal',
+                resolver: 'crah',
+                defaultModel: 'Stulz CyberAir 4 CFD 600 A (60kW)',
+                defaultUnitCapKw: 60,
+                requiredKw: (ctx) => ctx.reqKw,
+                calcQty: (reqKw, cap) => {
+                    const minUnits = Math.max(1, Math.ceil(reqKw / 60));
+                    return { qty: minUnits + 1, n1: minUnits + 1 };
+                }
+            },
+            {
+                key: 'air_cooled_chiller',
+                label: 'Air-Cooled Chiller 氣冷式冰水主機',
+                category: 'Chiller',
+                catalog: 'chiller_air',
+                role: 'chiller',
+                chillerType: 'air_cooled',
+                defaultModel: 'Carrier 30XA 300kW Screw Air-Cooled (標準)',
+                defaultUnitCapKw: 300,
+                requiredKw: (ctx) => ctx.reqKw,
+                calcQty: (reqKw, cap) => {
+                    const minUnits = Math.max(1, Math.ceil(reqKw / 300));
+                    return { qty: minUnits + 1, n1: minUnits + 1 };
+                },
+                derate: (curItem, ctx) => {
+                    if (typeof root.ChillerEngine === 'undefined') return 1.0;
+                    const spec = {
+                        cooling_capacity_kw: curItem.capKw,
+                        chiller_type: 'air_cooled',
+                        cop_curve: curItem.cop_curve || { type: 'fixed' }
+                    };
+                    return root.ChillerEngine.deratedCapacityKW(spec, ctx.sys?.chwSupplyC || 12.0, undefined, ctx.designCond.designDb)?.derate_factor ?? 1.0;
+                }
+            },
+            {
+                key: 'fw_pump',
+                label: 'Secondary CHW Pump 二次側冰水循環水泵',
+                category: 'Pump',
+                catalog: 'pump',
+                role: 'pump',
+                requiredKw: (ctx) => ctx.pumpPowerKw || 5.0,
+                selectModel: (cat, ctx) => {
+                    const pumpKw = ctx.pumpPowerKw || 5.0;
+                    const model = pumpKw <= 3.5 ? 'Grundfos TPE 3.0kW Inverter Pump' : (pumpKw <= 6.0 ? 'Grundfos TPE 5.5kW Inverter Pump (標準)' : 'Armstrong Design Envelope 11.0kW');
+                    const capKw = pumpKw <= 3.5 ? 3.0 : (pumpKw <= 6.0 ? 5.5 : 11.0);
+                    return { model, capKw };
+                },
+                calcQty: () => ({ qty: 2, n1: 2 })
+            }
         ],
 
         simulateHour(ctx) {

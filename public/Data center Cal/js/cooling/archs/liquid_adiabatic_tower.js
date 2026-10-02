@@ -63,9 +63,55 @@
             };
         },
         equipment: [
-            { key: 'cdu_unit', catalog: 'cdu', role: 'terminal' },
-            { key: 'adiabatic_tower', catalog: 'cooling_tower', role: 'heat_rejection', resolver: 'tower' },
-            { key: 'cdu_pump', catalog: 'pump', role: 'pump' }
+            {
+                key: 'cdu_unit',
+                label: 'CDU 液冷分配主機 (Cooling Distribution Unit)',
+                category: 'CDU',
+                catalog: 'cdu',
+                role: 'terminal',
+                defaultModel: 'CoolIT CDU 100kW (標準)',
+                defaultUnitCapKw: 100,
+                requiredKw: (ctx) => ctx.reqKw,
+                calcQty: (reqKw, cap) => {
+                    const minUnits = Math.max(1, Math.ceil(reqKw / (cap || 100)));
+                    return { qty: minUnits + 1, n1: minUnits + 1 };
+                },
+                derate: (curItem, ctx) => {
+                    if (typeof root.CDUEngine === 'undefined') return 1.0;
+                    return root.CDUEngine.deratedCapacityKW(curItem.capKw, ctx.sys?.fwsSupplyC)?.derate_factor ?? 1.0;
+                }
+            },
+            {
+                key: 'adiabatic_tower',
+                label: 'Adiabatic Tower 絕熱噴淋冷卻塔',
+                category: 'AdiabaticTower',
+                catalog: 'cooling_tower',
+                role: 'heat_rejection',
+                resolver: 'tower',
+                defaultModelIndex: 1,
+                defaultUnitCapKw: 1000,
+                requiredKw: (ctx) => ctx.reqKw,
+                calcQty: (reqKw, cap) => {
+                    const minUnits = Math.max(1, Math.ceil(reqKw / (cap || 1000)));
+                    return { qty: minUnits + 1, n1: minUnits + 1 };
+                },
+                derate: (curItem, ctx) => {
+                    if (typeof root.CoolingTowerEngine === 'undefined') return 1.0;
+                    const spec = { heat_rejection_kw: curItem.capKw || curItem.heat_rejection_kw };
+                    return root.CoolingTowerEngine.deratedCapacityKW(spec, ctx.designCond.designWb)?.derate_factor ?? 1.0;
+                }
+            },
+            {
+                key: 'cdu_pump',
+                label: 'CDU Primary Pump 一次側設施循環水泵',
+                category: 'Pump',
+                catalog: 'pump',
+                role: 'pump',
+                defaultModel: 'Grundfos TPE 5.5kW Inverter Pump (標準)',
+                defaultUnitCapKw: 5.5,
+                requiredKw: (ctx) => ctx.hydKw || 5.5,
+                calcQty: () => ({ qty: 3, n1: 3 })
+            }
         ],
 
         simulateHour(ctx) {

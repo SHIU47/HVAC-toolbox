@@ -25,9 +25,50 @@
             { key: 'pheApproachC', default: 0.0, min: 0, max: 10, step: 0.5, unit: '°C' }
         ],
         equipment: [
-            { key: 'cdu_unit', catalog: 'cdu', role: 'terminal' },
-            { key: 'dry_cooler', catalog: 'dry_cooler', role: 'heat_rejection', resolver: 'tower' },
-            { key: 'cdu_pump', catalog: 'pump', role: 'pump' }
+            {
+                key: 'cdu_unit',
+                label: 'CDU 液冷分配主機 (Cooling Distribution Unit)',
+                category: 'CDU',
+                catalog: 'cdu',
+                role: 'terminal',
+                defaultModel: 'CoolIT CDU 100kW (標準)',
+                defaultUnitCapKw: 100,
+                requiredKw: (ctx) => ctx.reqKw,
+                calcQty: (reqKw, cap) => {
+                    const minUnits = Math.max(1, Math.ceil(reqKw / (cap || 100)));
+                    return { qty: minUnits + 1, n1: minUnits + 1 };
+                },
+                derate: (curItem, ctx) => {
+                    if (typeof root.CDUEngine === 'undefined') return 1.0;
+                    return root.CDUEngine.deratedCapacityKW(curItem.capKw, ctx.sys?.fwsSupplyC)?.derate_factor ?? 1.0;
+                }
+            },
+            {
+                key: 'dry_cooler',
+                label: 'Dry Cooler 乾式冷卻器 (純直冷・零冰機)',
+                category: 'DryCooler',
+                catalog: 'dry_cooler',
+                role: 'heat_rejection',
+                resolver: 'tower',
+                defaultModelIndex: 0,
+                defaultUnitCapKw: 1200,
+                requiredKw: (ctx) => ctx.reqKw,
+                calcQty: (reqKw, cap) => {
+                    const minUnits = Math.max(1, Math.ceil(reqKw / (cap || 1200)));
+                    return { qty: minUnits + 1, n1: minUnits + 1 };
+                }
+            },
+            {
+                key: 'cdu_pump',
+                label: 'CDU Primary Pump 一次側設施循環水泵',
+                category: 'Pump',
+                catalog: 'pump',
+                role: 'pump',
+                defaultModel: 'Grundfos TPE 5.5kW Inverter Pump (標準)',
+                defaultUnitCapKw: 5.5,
+                requiredKw: (ctx) => ctx.hydKw || 5.5,
+                calcQty: () => ({ qty: 3, n1: 3 })
+            }
         ],
 
         simulateHour(ctx) {

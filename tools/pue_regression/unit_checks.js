@@ -1251,6 +1251,52 @@ function freshCtx() {
   });
 })();
 
+// ── P2-3: SizingEngine iterates arch.equipment without arch === '...' checks ──
+(function () {
+  const ctx = freshCtx();
+  const SE = ctx.SizingEngine;
+  const fs = require('fs');
+  const path = require('path');
+
+  test('P2-3 sizing_engine.js contains 0 occurrences of arch ===', () => {
+    const code = fs.readFileSync(path.resolve(__dirname, '../../public/Data center Cal/js/sizing/sizing_engine.js'), 'utf8');
+    const matches = code.match(/arch\s*===/g);
+    assert.strictEqual(matches, null, 'sizing_engine.js must not contain any arch === checks');
+  });
+
+  test('P2-3 SizingEngine generates valid sizing items from arch.equipment for all archs', () => {
+    const cduArchs = ['dry_cooler_trim', 'dry_cooler_pure', 'adiabatic_tower', 'cooling_tower_hx', 'water_chiller'];
+    for (const a of cduArchs) {
+      const items = SE.generateCduSizing(a, 850, 11);
+      assert(Array.isArray(items) && items.length >= 2, `${a} must generate at least 2 sizing items`);
+      for (const item of items) {
+        assert(item.key, 'sizing item must have key');
+        assert(item.label, 'sizing item must have label');
+        assert(item.category, 'sizing item must have category');
+        assert(item.selectedModel, 'sizing item must have selectedModel');
+        assert(item.unitCapKw > 0, 'sizing item must have positive unitCapKw');
+        assert(item.selectedQty >= 2, 'sizing item must have at least 2 qty');
+        assert(item.requiredKw > 0, 'sizing item must have positive requiredKw');
+      }
+    }
+
+    const fwArchs = ['air_cooled_chiller', 'water_cooled_chiller', 'chilled_water_plant', 'rdhx'];
+    for (const a of fwArchs) {
+      const items = SE.generateFwSizing(a, 200, 5);
+      assert(Array.isArray(items) && items.length >= 2, `${a} must generate at least 2 sizing items`);
+      for (const item of items) {
+        assert(item.key, 'sizing item must have key');
+        assert(item.label, 'sizing item must have label');
+        assert(item.category, 'sizing item must have category');
+        assert(item.selectedModel, 'sizing item must have selectedModel');
+        assert(item.unitCapKw > 0, 'sizing item must have positive unitCapKw');
+        assert(item.selectedQty >= 2, 'sizing item must have at least 2 qty');
+        assert(item.requiredKw > 0, 'sizing item must have positive requiredKw');
+      }
+    }
+  });
+})();
+
 console.log(`\n${passCount} passed, ${failCount} failed, ${skipCount} skipped`);
 process.exit(failCount > 0 ? 1 : 0);
 

@@ -25,10 +25,84 @@
             { key: 'chwReturnC', default: 18.0, min: 12, max: 35, step: 0.5, unit: '°C' }
         ],
         equipment: [
-            { key: 'crah_unit', catalog: 'crah', role: 'terminal', resolver: 'crah' },
-            { key: 'water_cooled_chiller', catalog: 'chiller_water', role: 'chiller', chillerType: 'water_cooled' },
-            { key: 'cooling_tower', catalog: 'cooling_tower', role: 'heat_rejection', resolver: 'tower' },
-            { key: 'fw_pump', catalog: 'pump', role: 'pump' }
+            {
+                key: 'crah_unit',
+                label: 'CRAH / Fanwall 機房空調',
+                category: 'CRAH',
+                catalog: 'crah',
+                role: 'terminal',
+                resolver: 'crah',
+                defaultModel: 'Stulz CyberAir 4 CFD 600 A (60kW)',
+                defaultUnitCapKw: 60,
+                requiredKw: (ctx) => ctx.reqKw,
+                calcQty: (reqKw, cap) => {
+                    const minUnits = Math.max(1, Math.ceil(reqKw / 60));
+                    return { qty: minUnits + 1, n1: minUnits + 1 };
+                }
+            },
+            {
+                key: 'water_cooled_chiller',
+                label: 'Water-Cooled Chiller 水冷式冰水主機',
+                category: 'Chiller',
+                catalog: 'chiller_water',
+                role: 'chiller',
+                chillerType: 'water_cooled',
+                defaultModel: 'Trane RTHD Water-Cooled Screw 500kW (標準)',
+                defaultUnitCapKw: 500,
+                requiredKw: (ctx) => ctx.reqKw,
+                calcQty: (reqKw, cap) => {
+                    const minUnits = Math.max(1, Math.ceil(reqKw / 400));
+                    return { qty: minUnits + 1, n1: minUnits + 1 };
+                },
+                derate: (curItem, ctx) => {
+                    if (typeof root.ChillerEngine === 'undefined') return 1.0;
+                    const minCewt = (typeof root.A === 'function') ? root.A('min_cewt_c') : 16.0;
+                    const towerApp = (typeof root.A === 'function') ? root.A('tower_approach_c') : 4.0;
+                    const T_cewt = Math.max(minCewt, ctx.designCond.designWb + towerApp);
+                    const spec = {
+                        cooling_capacity_kw: curItem.capKw,
+                        chiller_type: 'water_cooled',
+                        cop_curve: curItem.cop_curve || { type: 'fixed' }
+                    };
+                    return root.ChillerEngine.deratedCapacityKW(spec, ctx.sys?.chwSupplyC || 12.0, T_cewt, ctx.designCond.designDb)?.derate_factor ?? 1.0;
+                }
+            },
+            {
+                key: 'cooling_tower',
+                label: 'Cooling Tower 冰機散熱冷卻水塔',
+                category: 'CoolingTower',
+                catalog: 'cooling_tower',
+                role: 'heat_rejection',
+                resolver: 'tower',
+                defaultModel: 'BAC Series 3000 600kW',
+                defaultUnitCapKw: 600,
+                requiredKw: (ctx) => ctx.reqKw * (ctx.getTowerRejectionFactor ? ctx.getTowerRejectionFactor() : 1.2),
+                calcQty: (reqKw, cap, ctx) => {
+                    const towerFactor = ctx.getTowerRejectionFactor ? ctx.getTowerRejectionFactor() : 1.2;
+                    const minCtUnits = Math.max(1, Math.ceil(ctx.reqKw * towerFactor / 600));
+                    return { qty: minCtUnits + 1, n1: minCtUnits + 1 };
+                },
+                derate: (curItem, ctx) => {
+                    if (typeof root.CoolingTowerEngine === 'undefined') return 1.0;
+                    const spec = { heat_rejection_kw: curItem.capKw || curItem.heat_rejection_kw };
+                    return root.CoolingTowerEngine.deratedCapacityKW(spec, ctx.designCond.designWb)?.derate_factor ?? 1.0;
+                }
+            },
+            {
+                key: 'fw_pump',
+                label: 'Secondary CHW Pump 二次側冰水循環水泵',
+                category: 'Pump',
+                catalog: 'pump',
+                role: 'pump',
+                requiredKw: (ctx) => ctx.pumpPowerKw || 5.0,
+                selectModel: (cat, ctx) => {
+                    const pumpKw = ctx.pumpPowerKw || 5.0;
+                    const model = pumpKw <= 3.5 ? 'Grundfos TPE 3.0kW Inverter Pump' : (pumpKw <= 6.0 ? 'Grundfos TPE 5.5kW Inverter Pump (標準)' : 'Armstrong Design Envelope 11.0kW');
+                    const capKw = pumpKw <= 3.5 ? 3.0 : (pumpKw <= 6.0 ? 5.5 : 11.0);
+                    return { model, capKw };
+                },
+                calcQty: () => ({ qty: 2, n1: 2 })
+            }
         ],
 
         simulateHour(ctx) {

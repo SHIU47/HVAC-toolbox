@@ -28,10 +28,100 @@
             { key: 'pheApproachC', default: 2.0, min: 0, max: 10, step: 0.5, unit: '°C' }
         ],
         equipment: [
-            { key: 'cdu_unit', catalog: 'cdu', role: 'terminal' },
-            { key: 'dry_cooler', catalog: 'dry_cooler', role: 'heat_rejection', resolver: 'tower' },
-            { key: 'cdu_pump', catalog: 'pump', role: 'pump' },
-            { key: 'trim_chiller', catalog: 'chiller_water', role: 'chiller', chillerType: 'water_cooled' }
+            {
+                key: 'cdu_unit',
+                label: 'CDU 液冷分配主機 (Cooling Distribution Unit)',
+                category: 'CDU',
+                catalog: 'cdu',
+                role: 'terminal',
+                defaultModel: 'CoolIT CDU 100kW (標準)',
+                defaultUnitCapKw: 100,
+                requiredKw: (ctx) => ctx.reqKw,
+                calcQty: (reqKw, cap) => {
+                    const minUnits = Math.max(1, Math.ceil(reqKw / (cap || 100)));
+                    return { qty: minUnits + 1, n1: minUnits + 1 };
+                },
+                derate: (curItem, ctx) => {
+                    if (typeof root.CDUEngine === 'undefined') return 1.0;
+                    return root.CDUEngine.deratedCapacityKW(curItem.capKw, ctx.sys?.fwsSupplyC)?.derate_factor ?? 1.0;
+                }
+            },
+            {
+                key: 'dry_cooler',
+                label: 'Dry Cooler 乾式冷卻器 (零耗水)',
+                category: 'DryCooler',
+                catalog: 'dry_cooler',
+                role: 'heat_rejection',
+                resolver: 'tower',
+                defaultModelIndex: 0,
+                defaultUnitCapKw: 1200,
+                requiredKw: (ctx) => ctx.reqKw,
+                calcQty: (reqKw, cap) => {
+                    const minUnits = Math.max(1, Math.ceil(reqKw / (cap || 1200)));
+                    return { qty: minUnits + 1, n1: minUnits + 1 };
+                }
+            },
+            {
+                key: 'cdu_pump',
+                label: 'CDU Primary Pump 一次側設施循環水泵',
+                category: 'Pump',
+                catalog: 'pump',
+                role: 'pump',
+                defaultModel: 'Grundfos TPE 5.5kW Inverter Pump (標準)',
+                defaultUnitCapKw: 5.5,
+                requiredKw: (ctx) => ctx.hydKw || 5.5,
+                calcQty: () => ({ qty: 3, n1: 3 })
+            },
+            {
+                key: 'trim_chiller',
+                label: 'In-line Trim Chiller 輔助修整冰機 (NVIDIA Mode 2/3 機械製冷)',
+                category: 'Chiller',
+                catalog: 'chiller_water',
+                role: 'chiller',
+                chillerType: 'water_cooled',
+                defaultModelIndex: 0,
+                defaultUnitCapKw: 500,
+                requiredKw: (ctx) => {
+                    const designCond = (typeof ctx.helpers?.designConditions === 'function')
+                        ? ctx.helpers.designConditions()
+                        : (root.AppStore?.designConditions ? root.AppStore.designConditions() : { designDb: 34.0, designWb: 28.0, maxDb: 38.0 });
+                    const dummyCduSys = { fwsSupplyC: 40.0, fwsReturnC: 55.0, dryCoolerApproachC: 5.0, pheApproachC: 2.0 };
+                    const opDesign = (typeof ctx.helpers?.trimOperatingPoint === 'function')
+                        ? ctx.helpers.trimOperatingPoint(dummyCduSys, designCond.designDb)
+                        : (root.AppStore?.trimOperatingPoint
+                            ? root.AppStore.trimOperatingPoint(dummyCduSys, designCond.designDb)
+                            : { chiller_fraction: 0.35, tChws: 30, tCewt: 39 });
+                    return Math.max(50, Math.round(ctx.reqKw * opDesign.chiller_fraction));
+                },
+                extraProps: (ctx) => {
+                    const designCond = (typeof ctx.helpers?.designConditions === 'function')
+                        ? ctx.helpers.designConditions()
+                        : (root.AppStore?.designConditions ? root.AppStore.designConditions() : { designDb: 34.0, designWb: 28.0, maxDb: 38.0 });
+                    const dummyCduSys = { fwsSupplyC: 40.0, fwsReturnC: 55.0, dryCoolerApproachC: 5.0, pheApproachC: 2.0 };
+                    const opDesign = (typeof ctx.helpers?.trimOperatingPoint === 'function')
+                        ? ctx.helpers.trimOperatingPoint(dummyCduSys, designCond.designDb)
+                        : (root.AppStore?.trimOperatingPoint
+                            ? root.AppStore.trimOperatingPoint(dummyCduSys, designCond.designDb)
+                            : { chiller_fraction: 0.35, tChws: 30, tCewt: 39 });
+                    return { peakRatio: opDesign.chiller_fraction };
+                },
+                calcQty: (reqKw, cap) => {
+                    const minUnits = Math.max(1, Math.ceil(reqKw / (cap || 500)));
+                    return { qty: minUnits + 1, n1: minUnits + 1 };
+                },
+                derate: (curItem, ctx) => {
+                    if (typeof root.ChillerEngine === 'undefined') return 1.0;
+                    const opDesign = ctx.helpers?.trimOperatingPoint
+                        ? ctx.helpers.trimOperatingPoint(ctx.sys, ctx.designCond.designDb)
+                        : (root.AppStore?.trimOperatingPoint ? root.AppStore.trimOperatingPoint(ctx.sys, ctx.designCond.designDb) : {});
+                    const spec = {
+                        cooling_capacity_kw: curItem.capKw,
+                        chiller_type: 'water_cooled',
+                        cop_curve: curItem.cop_curve || { type: 'fixed' }
+                    };
+                    return root.ChillerEngine.deratedCapacityKW(spec, opDesign.tChws, opDesign.tCewt, ctx.designCond.designDb)?.derate_factor ?? 1.0;
+                }
+            }
         ],
 
         simulateHour(ctx) {

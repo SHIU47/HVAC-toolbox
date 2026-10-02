@@ -20,297 +20,88 @@
     }
 
     const SizingEngine = {
-        generateCduSizing(arch, reqKw, hydKw, helpers = {}) {
-            const minCduUnits = Math.max(1, Math.ceil(reqKw / 100));
-            const cduCat = getCatalog('cdu');
-            const cduUnit = {
-                key: 'cdu_unit',
-                label: 'CDU 液冷分配主機 (Cooling Distribution Unit)',
-                category: 'CDU',
-                catalog: cduCat,
-                selectedModel: 'CoolIT CDU 100kW (標準)',
-                unitCapKw: 100,
-                selectedQty: minCduUnits + 1,
-                requiredKw: reqKw,
-                requiredUnitsN1: minCduUnits + 1
-            };
+        _createSizingItem(eq, ctx) {
+            const cat = getCatalog(eq.catalog);
+            const reqKw = (typeof eq.requiredKw === 'function') ? eq.requiredKw(ctx) : ctx.reqKw;
 
-            const pumpCat = getCatalog('pump');
-            const pump = {
-                key: 'cdu_pump',
-                label: 'CDU Primary Pump 一次側設施循環水泵',
-                category: 'Pump',
-                catalog: pumpCat,
-                selectedModel: 'Grundfos TPE 5.5kW Inverter Pump (標準)',
-                unitCapKw: 5.5,
-                selectedQty: 3,
-                requiredKw: hydKw || 5.5,
-                requiredUnitsN1: 3
-            };
+            let selectedModel = '';
+            let unitCapKw = eq.defaultUnitCapKw || 100;
 
-            const trimChillerCat = getCatalog('chiller_water');
-            const designCond = (typeof helpers.designConditions === 'function')
-                ? helpers.designConditions()
-                : (root.AppStore?.designConditions ? root.AppStore.designConditions() : { designDb: 34.0, designWb: 28.0, maxDb: 38.0 });
-            const dummyCduSys = { fwsSupplyC: 40.0, fwsReturnC: 55.0, dryCoolerApproachC: 5.0, pheApproachC: 2.0 };
-            const opDesign = (typeof helpers.trimOperatingPoint === 'function')
-                ? helpers.trimOperatingPoint(dummyCduSys, designCond.designDb)
-                : (root.AppStore?.trimOperatingPoint
-                    ? root.AppStore.trimOperatingPoint(dummyCduSys, designCond.designDb)
-                    : { chiller_fraction: 0.35, tChws: 30, tCewt: 39 });
-            const trimReqKw = Math.max(50, Math.round(reqKw * opDesign.chiller_fraction));
-            const minTrimUnits = Math.max(1, Math.ceil(trimReqKw / (trimChillerCat[0]?.capKw || 500)));
-            const trimChiller = {
-                key: 'trim_chiller',
-                label: 'In-line Trim Chiller 輔助修整冰機 (NVIDIA Mode 2/3 機械製冷)',
-                category: 'Chiller',
-                catalog: trimChillerCat,
-                selectedModel: trimChillerCat[0]?.model || 'Carrier 30XW-500kW Water Chiller (COP 5.8)',
-                unitCapKw: trimChillerCat[0]?.capKw || 500,
-                selectedQty: minTrimUnits + 1,
-                requiredKw: trimReqKw,
-                requiredUnitsN1: minTrimUnits + 1,
-                peakRatio: opDesign.chiller_fraction
-            };
-
-            if (arch === 'dry_cooler_trim' || arch === 'dry_cooler_hx') {
-                const minDryUnits = Math.max(1, Math.ceil(reqKw / 1200));
-                const dcCat = getCatalog('dry_cooler');
-                return [
-                    cduUnit,
-                    {
-                        key: 'dry_cooler',
-                        label: 'Dry Cooler 乾式冷卻器 (零耗水)',
-                        category: 'DryCooler',
-                        catalog: dcCat,
-                        selectedModel: dcCat[0]?.model || 'Güntner 1200kW V-Bank Dry Cooler',
-                        unitCapKw: dcCat[0]?.capKw || 1200,
-                        selectedQty: minDryUnits + 1,
-                        requiredKw: reqKw,
-                        requiredUnitsN1: minDryUnits + 1
-                    },
-                    pump,
-                    trimChiller
-                ];
-            } else if (arch === 'dry_cooler_pure') {
-                const minDryUnits = Math.max(1, Math.ceil(reqKw / 1200));
-                const dcCat = getCatalog('dry_cooler');
-                return [
-                    cduUnit,
-                    {
-                        key: 'dry_cooler',
-                        label: 'Dry Cooler 乾式冷卻器 (純直冷・零冰機)',
-                        category: 'DryCooler',
-                        catalog: dcCat,
-                        selectedModel: dcCat[0]?.model || 'Güntner 1200kW V-Bank Dry Cooler',
-                        unitCapKw: dcCat[0]?.capKw || 1200,
-                        selectedQty: minDryUnits + 1,
-                        requiredKw: reqKw,
-                        requiredUnitsN1: minDryUnits + 1
-                    },
-                    pump
-                ];
-            } else if (arch === 'adiabatic_tower') {
-                const minAdiaUnits = Math.max(1, Math.ceil(reqKw / 1000));
-                const ctCat = getCatalog('cooling_tower');
-                return [
-                    cduUnit,
-                    {
-                        key: 'adiabatic_tower',
-                        label: 'Adiabatic Tower 絕熱噴淋冷卻塔',
-                        category: 'AdiabaticTower',
-                        catalog: ctCat,
-                        selectedModel: ctCat[1]?.model || 'BAC Series 3000 1000kW (標準)',
-                        unitCapKw: ctCat[1]?.capKw || 1000,
-                        selectedQty: minAdiaUnits + 1,
-                        requiredKw: reqKw,
-                        requiredUnitsN1: minAdiaUnits + 1
-                    },
-                    pump
-                ];
-            } else if (arch === 'cooling_tower_hx') {
-                const minCtUnits = Math.max(1, Math.ceil(reqKw / 1000));
-                const ctCat = getCatalog('cooling_tower');
-                return [
-                    cduUnit,
-                    {
-                        key: 'cooling_tower',
-                        label: 'Closed-Circuit Cooling Tower 密閉式冷卻水塔',
-                        category: 'CoolingTower',
-                        catalog: ctCat,
-                        selectedModel: ctCat[1]?.model || 'BAC Closed-Circuit FXV 1000kW (標準)',
-                        unitCapKw: ctCat[1]?.capKw || 1000,
-                        selectedQty: minCtUnits + 1,
-                        requiredKw: reqKw,
-                        requiredUnitsN1: minCtUnits + 1
-                    },
-                    pump
-                ];
-            } else if (arch === 'water_chiller') {
-                const minChillerUnits = Math.max(1, Math.ceil(reqKw / 500));
-                const chillerCat = getCatalog('chiller_water');
-                const ctCat = getCatalog('cooling_tower');
-                const towerFactor = getTowerRejectionFactor();
-                return [
-                    cduUnit,
-                    {
-                        key: 'water_cooled_chiller',
-                        label: 'Water-Cooled Chiller 水冷式冰水主機',
-                        category: 'Chiller',
-                        catalog: chillerCat,
-                        selectedModel: 'Trane RTHD Water-Cooled Screw 500kW (標準)',
-                        unitCapKw: 500,
-                        selectedQty: minChillerUnits + 1,
-                        requiredKw: reqKw,
-                        requiredUnitsN1: minChillerUnits + 1
-                    },
-                    {
-                        key: 'cooling_tower',
-                        label: 'Cooling Tower 冰機散熱冷卻水塔',
-                        category: 'CoolingTower',
-                        catalog: ctCat,
-                        selectedModel: 'BAC Series 3000 600kW',
-                        unitCapKw: 600,
-                        selectedQty: minChillerUnits + 1,
-                        requiredKw: reqKw * towerFactor,
-                        requiredUnitsN1: minChillerUnits + 1
-                    },
-                    pump
-                ];
+            if (typeof eq.selectModel === 'function') {
+                const sel = eq.selectModel(cat, ctx);
+                selectedModel = sel.model;
+                unitCapKw = sel.capKw;
+            } else if (eq.defaultModel) {
+                selectedModel = eq.defaultModel;
+                unitCapKw = eq.defaultUnitCapKw || cat.find(c => c.model === selectedModel)?.capKw || 100;
+            } else {
+                const idx = eq.defaultModelIndex || 0;
+                selectedModel = cat[idx]?.model || '';
+                unitCapKw = cat[idx]?.capKw || eq.defaultUnitCapKw || 100;
             }
-            return [cduUnit, pump];
+
+            let qty = 2;
+            let n1 = 2;
+            if (typeof eq.calcQty === 'function') {
+                const q = eq.calcQty(reqKw, unitCapKw, ctx);
+                qty = q.qty;
+                n1 = q.n1;
+            } else {
+                const minUnits = Math.max(1, Math.ceil(reqKw / unitCapKw));
+                qty = minUnits + 1;
+                n1 = minUnits + 1;
+            }
+
+            const item = {
+                key: eq.key,
+                label: eq.label,
+                category: eq.category,
+                catalog: cat,
+                selectedModel,
+                unitCapKw,
+                selectedQty: qty,
+                requiredKw: reqKw,
+                requiredUnitsN1: n1
+            };
+
+            if (typeof eq.extraProps === 'function') {
+                Object.assign(item, eq.extraProps(ctx, cat, reqKw));
+            }
+
+            return item;
+        },
+
+        generateCduSizing(arch, reqKw, hydKw, helpers = {}) {
+            const archDesc = (arch && arch.equipment)
+                ? arch
+                : ((typeof root.CoolingArchRegistry !== 'undefined') ? root.CoolingArchRegistry.get(arch) : null);
+            if (!archDesc || !Array.isArray(archDesc.equipment)) {
+                return [];
+            }
+            const ctx = {
+                reqKw,
+                hydKw,
+                helpers,
+                getTowerRejectionFactor,
+                isCdu: true
+            };
+            return archDesc.equipment.map(eq => this._createSizingItem(eq, ctx));
         },
 
         generateFwSizing(arch, reqKw, pumpPowerKw) {
-            const minCrahUnits = Math.max(1, Math.ceil(reqKw / 60));
-            const crahCat = getCatalog('crah');
-            const crahUnit = {
-                key: 'crah_unit',
-                label: 'CRAH / Fanwall 機房空調',
-                category: 'CRAH',
-                catalog: crahCat,
-                selectedModel: 'Stulz CyberAir 4 CFD 600 A (60kW)',
-                unitCapKw: 60,
-                selectedQty: minCrahUnits + 1,
-                requiredKw: reqKw,
-                requiredUnitsN1: minCrahUnits + 1
-            };
-
-            const pumpKw = pumpPowerKw || 5.0;
-            const pumpCat = getCatalog('pump');
-            const pumpUnit = {
-                key: 'fw_pump',
-                label: 'Secondary CHW Pump 二次側冰水循環水泵',
-                category: 'Pump',
-                catalog: pumpCat,
-                selectedModel: pumpKw <= 3.5 ? 'Grundfos TPE 3.0kW Inverter Pump' : (pumpKw <= 6.0 ? 'Grundfos TPE 5.5kW Inverter Pump (標準)' : 'Armstrong Design Envelope 11.0kW'),
-                unitCapKw: pumpKw <= 3.5 ? 3.0 : (pumpKw <= 6.0 ? 5.5 : 11.0),
-                selectedQty: 2, // 1用1備 (N+1)
-                requiredKw: pumpKw,
-                requiredUnitsN1: 2
-            };
-
-            const chillerAirCat = getCatalog('chiller_air');
-            const chillerWaterCat = getCatalog('chiller_water');
-
-            if (arch === 'rdhx') {
-                const rdhxCat = getCatalog('rdhx');
-                const minRdhxUnits = Math.max(1, Math.ceil(reqKw / 60));
-                const rdhxUnit = {
-                    key: 'rdhx_unit',
-                    label: 'RDHX 背板式熱交換器 (Rear Door HX)',
-                    category: 'RDHX',
-                    catalog: rdhxCat,
-                    selectedModel: 'Vertiv Geist RDHX 60kW (標準)',
-                    unitCapKw: 60,
-                    selectedQty: minRdhxUnits + 1,
-                    requiredKw: reqKw,
-                    requiredUnitsN1: minRdhxUnits + 1
-                };
-                const minChillerUnits = Math.max(1, Math.ceil(reqKw / 300));
-                return [
-                    rdhxUnit,
-                    {
-                        key: 'air_cooled_chiller',
-                        label: 'Air-Cooled Chiller 氣冷式冰水主機',
-                        category: 'Chiller',
-                        catalog: chillerAirCat,
-                        selectedModel: 'Carrier 30XA 300kW Screw Air-Cooled (標準)',
-                        unitCapKw: 300,
-                        selectedQty: minChillerUnits + 1,
-                        requiredKw: reqKw,
-                        requiredUnitsN1: minChillerUnits + 1
-                    },
-                    pumpUnit
-                ];
-            } else if (arch === 'air_cooled_chiller') {
-                const minChillerUnits = Math.max(1, Math.ceil(reqKw / 300));
-                return [
-                    crahUnit,
-                    {
-                        key: 'air_cooled_chiller',
-                        label: 'Air-Cooled Chiller 氣冷式冰水主機',
-                        category: 'Chiller',
-                        catalog: chillerAirCat,
-                        selectedModel: 'Carrier 30XA 300kW Screw Air-Cooled (標準)',
-                        unitCapKw: 300,
-                        selectedQty: minChillerUnits + 1,
-                        requiredKw: reqKw,
-                        requiredUnitsN1: minChillerUnits + 1
-                    },
-                    pumpUnit
-                ];
-            } else if (arch === 'water_cooled_chiller' || arch === 'water_cooled_chiller_tower') {
-                const towerFactor = getTowerRejectionFactor();
-                const minChillerUnits = Math.max(1, Math.ceil(reqKw / 400));
-                const minCtUnits = Math.max(1, Math.ceil(reqKw * towerFactor / 600));
-                const ctCat = getCatalog('cooling_tower');
-                return [
-                    crahUnit,
-                    {
-                        key: 'water_cooled_chiller',
-                        label: 'Water-Cooled Chiller 水冷式冰水主機',
-                        category: 'Chiller',
-                        catalog: chillerWaterCat,
-                        selectedModel: 'Trane RTHD Water-Cooled Screw 500kW (標準)',
-                        unitCapKw: 500,
-                        selectedQty: minChillerUnits + 1,
-                        requiredKw: reqKw,
-                        requiredUnitsN1: minChillerUnits + 1
-                    },
-                    {
-                        key: 'cooling_tower',
-                        label: 'Cooling Tower 冰機散熱冷卻水塔',
-                        category: 'CoolingTower',
-                        catalog: ctCat,
-                        selectedModel: 'BAC Series 3000 600kW',
-                        unitCapKw: 600,
-                        selectedQty: minCtUnits + 1,
-                        requiredKw: reqKw * towerFactor,
-                        requiredUnitsN1: minCtUnits + 1
-                    },
-                    pumpUnit
-                ];
-            } else if (arch === 'chilled_water_plant' || arch === 'campus_chilled_water') {
-                const hxCat = getCatalog('heat_exchanger');
-                return [
-                    crahUnit,
-                    {
-                        key: 'plant_decoupler_hx',
-                        label: 'Central Plant Decoupler / 廠務冰水介面',
-                        category: 'Decoupler',
-                        catalog: hxCat,
-                        selectedModel: 'Alfa Laval M10 Plate HX 500kW',
-                        unitCapKw: 500,
-                        selectedQty: 2,
-                        requiredKw: reqKw,
-                        requiredUnitsN1: 2
-                    },
-                    pumpUnit
-                ];
+            const archDesc = (arch && arch.equipment)
+                ? arch
+                : ((typeof root.CoolingArchRegistry !== 'undefined') ? root.CoolingArchRegistry.get(arch) : null);
+            if (!archDesc || !Array.isArray(archDesc.equipment)) {
+                return [];
             }
-
-            return [crahUnit, pumpUnit];
+            const ctx = {
+                reqKw,
+                pumpPowerKw,
+                getTowerRejectionFactor,
+                isFw: true
+            };
+            return archDesc.equipment.map(eq => this._createSizingItem(eq, ctx));
         },
 
         evaluateCduSizing(cduSys, reqCduKw, designCond, helpers = {}) {
