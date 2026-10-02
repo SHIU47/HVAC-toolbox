@@ -150,8 +150,9 @@
                     ? 'free'
                     : ((eco.mode === (root.FreeCoolingEngine?.MODE?.PARTIAL_FC || 'PARTIAL_FC')) ? 'partial' : 'mechanical'));
             const fullThresh = Number((tSup - dcApp - pheApp).toFixed(1));
-            const mode2Offset = (typeof root.A === 'function') ? root.A('nvidia_dsx_mode2_offset_c') : 5.7;
-            const mechThresh = Number((fullThresh + mode2Offset).toFixed(1));
+            const mechThresh = Number((tRet - dcApp - pheApp).toFixed(1));
+            const trimChwDtC = sys?.trimChwDtC ?? ((typeof root.A === 'function') ? root.A('trim_chw_dt_default_c') : 5.0);
+            const chwRet = tChws + trimChwDtC;
             return {
                 ...eco,
                 mode,
@@ -161,12 +162,12 @@
                 tCewt,
                 tRet,
                 tSup,
-                temps: { fwsRet: tRet, fwsPre: tPre, fwsSup: tSup, dcOut: tDc, condIn: tCewt, condOut: tCewt + 5.0, chwSup: tChws, chwRet: tSup },
+                temps: { fwsRet: tRet, fwsPre: tPre, fwsSup: tSup, dcOut: tDc, condIn: tCewt, condOut: tCewt + 5.0, chwSup: tChws, chwRet },
                 thresholds: { basis: 'db', full: fullThresh, mech: mechThresh }
             };
         },
 
-        topology(sys, op, design) {
+        topology(sys, op, design, extra) {
             if (!op) op = this.operatingPoint(sys, design);
             const dcApp = sys?.dryCoolerApproachC ?? 5.0;
             const tSup = op?.temps?.fwsSup ?? sys?.fwsSupplyC ?? 40.0;
@@ -174,15 +175,20 @@
             const tChws = op?.temps?.chwSup ?? 30.0;
             const chwRet = op?.temps?.chwRet ?? (tChws + 5.0);
             const fullThresh = op?.thresholds?.full ?? 33.0;
-            const mechThresh = op?.thresholds?.mech ?? 38.7;
+            const mechThresh = op?.thresholds?.mech ?? 48.0;
+
+            const modeHours = design?.cduModeHours || op?.cduModeHours || extra?.cduModeHours;
+            const h1 = modeHours?.free !== undefined ? `${modeHours.free} h` : '';
+            const h2 = modeHours?.partial !== undefined ? `${modeHours.partial} h` : '';
+            const h3 = modeHours?.mechanical !== undefined ? `${modeHours.mechanical} h` : '';
 
             return {
                 title: 'AI 算力中心廠務排熱拓樸 (Facility Heat Rejection System)',
                 referenceLabel: 'NVIDIA Reference Schematic',
                 banners: [
-                    { id: 'mode1', label: `Mode 1 全直冷 (≤${fullThresh}°C)`, detail: '100% 走 Economizer', tone: 'emerald' },
-                    { id: 'mode2', label: `Mode 2 串聯修整 (≤${mechThresh}°C)`, detail: `預冷至 ${tPre}°C → Trim 冰機`, tone: 'amber' },
-                    { id: 'mode3', label: `Mode 3 全機械製冷 (>${mechThresh}°C)`, detail: '全額走 Trim 冰機製冷', tone: 'red' }
+                    { id: 'mode1', label: `Mode 1 全自然冷卻 (DB ≤ ${fullThresh}°C)${h1 ? ` — 全年 ${h1}` : ''}`, detail: '100% 走 Economizer', tone: 'emerald' },
+                    { id: 'mode2', label: `Mode 2 串聯預冷 + Trim 修整 (${fullThresh} < DB < ${mechThresh}°C)${h2 ? ` — 全年 ${h2}` : ''}`, detail: `預冷至 ${tPre}°C → Trim 冰機`, tone: 'amber' },
+                    { id: 'mode3', label: `Mode 3 乾冷器無法預冷，Trim 冰機承擔 100%，乾冷器僅排冷凝熱 (DB ≥ ${mechThresh}°C)${h3 ? ` — 全年 ${h3}` : ''}`, detail: '全額走 Trim 冰機製冷', tone: 'red' }
                 ],
                 nodes: [
                     {

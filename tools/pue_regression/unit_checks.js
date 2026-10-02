@@ -1604,6 +1604,52 @@ function freshCtx() {
   });
 })();
 
+// ═══════════════════════════════════════════════════════════════
+// P4-1 Trim Topology & Mode Banners (T-1) & cduModeHours
+// ═══════════════════════════════════════════════════════════════
+(function () {
+  const ctx = freshCtx();
+  const { AppStore: S, CoolingArchRegistry, ASSUMPTIONS, AnnualRunner } = ctx;
+
+  test('P4-1 trim_chw_dt_default_c exists in ASSUMPTIONS with val 5.0', () => {
+    assert(ASSUMPTIONS.trim_chw_dt_default_c, 'trim_chw_dt_default_c must exist in ASSUMPTIONS');
+    assert.strictEqual(ASSUMPTIONS.trim_chw_dt_default_c.val, 5.0);
+  });
+
+  test('P4-1 liquid_dry_cooler_trim thresholds use physical FWS supply and return boundaries', () => {
+    const arch = CoolingArchRegistry.get('dry_cooler_trim');
+    const sys = { fwsSupplyC: 40.0, fwsReturnC: 55.0, dryCoolerApproachC: 5.0, pheApproachC: 2.0, trimChwDtC: 5.0 };
+    const op = arch.operatingPoint(sys, { db: 35, wb: 25 }, {});
+    assert.strictEqual(op.thresholds.basis, 'db');
+    assert.strictEqual(op.thresholds.full, 33.0, 'full threshold must be 40 - 5 - 2 = 33.0');
+    assert.strictEqual(op.thresholds.mech, 48.0, 'mech threshold must be 55 - 5 - 2 = 48.0');
+    assert.strictEqual(op.temps.chwRet, op.temps.chwSup + 5.0, 'chwRet must be chwSup + trimChwDtC');
+  });
+
+  test('P4-1 AnnualRunner records cduModeHours on unit results and formats in byDu', () => {
+    S.calculate();
+    const du0 = S.state.results.byDu?.[0];
+    assert(du0, 'byDu[0] must exist');
+    assert(du0.cduModeHours, 'du0 must have cduModeHours');
+    assert(typeof du0.cduModeHours.free === 'number');
+    assert(typeof du0.cduModeHours.partial === 'number');
+    assert(typeof du0.cduModeHours.mechanical === 'number');
+    const totalHours = du0.cduModeHours.free + du0.cduModeHours.partial + du0.cduModeHours.mechanical;
+    assert.strictEqual(totalHours, 8760, 'total cduModeHours must sum to 8760');
+  });
+
+  test('P4-1 liquid_dry_cooler_trim topology formats 3-stage banners with cduModeHours', () => {
+    const arch = CoolingArchRegistry.get('dry_cooler_trim');
+    const sys = { fwsSupplyC: 40.0, fwsReturnC: 55.0, dryCoolerApproachC: 5.0, pheApproachC: 2.0 };
+    const op = arch.operatingPoint(sys, { db: 35, wb: 25 }, {});
+    const topo = arch.topology(sys, op, { designDb: 35, designWb: 28, maxDb: 38, cduModeHours: { free: 8000, partial: 700, mechanical: 60 } });
+    assert.strictEqual(topo.banners.length, 3, 'must have 3 mode banners');
+    assert(topo.banners[0].label.includes('Mode 1') && topo.banners[0].label.includes('8000 h'), 'banner 1 must include Mode 1 and hours');
+    assert(topo.banners[1].label.includes('Mode 2') && topo.banners[1].label.includes('700 h'), 'banner 2 must include Mode 2 and hours');
+    assert(topo.banners[2].label.includes('Mode 3') && topo.banners[2].label.includes('60 h'), 'banner 3 must include Mode 3 and hours');
+  });
+})();
+
 console.log(`\n${passCount} passed, ${failCount} failed, ${skipCount} skipped`);
 process.exit(failCount > 0 ? 1 : 0);
 

@@ -65,6 +65,7 @@
             let deficitHours = 0;
             let maxDeficitKw = 0;
             let heatRemovedKwh = 0;
+            const cduModeHours = { free: 0, partial: 0, mechanical: 0 };
 
             // P2-2: 8760 迴圈外預先解析設備與與小時無關之負載參數量 (優化效能)
             const cduSys = plantDesign.cduSystem || {};
@@ -201,6 +202,9 @@
                 heatRemovedKwh += hr.heatRemovedKw;
 
                 if (hr.isFreeHour) fcHours++;
+                if (hr.cduMode && cduModeHours[hr.cduMode] !== undefined) {
+                    cduModeHours[hr.cduMode]++;
+                }
                 if (hr.capacityDeficitKw > 0) {
                     deficitHours++;
                     if (hr.capacityDeficitKw > maxDeficitKw) maxDeficitKw = hr.capacityDeficitKw;
@@ -234,7 +238,8 @@
                 maxDeficitKw,
                 totalFacKwh,
                 pue: parseFloat(pue),
-                wue: parseFloat(wue)
+                wue: parseFloat(wue),
+                cduModeHours
             };
         },
 
@@ -254,6 +259,7 @@
                 cduReturnTemp: cduSys.fwsReturnC,
                 fwArchitecture: fwArch,
                 fwSupplyTemp: fwSys.chwSupplyC,
+                cduModeHours: sim.cduModeHours || { free: 0, partial: 0, mechanical: 0 },
                 totalItKw: loadSumm.totalItKw,
                 liquidHeatKw: loadSumm.liquidHeatKw,
                 airHeatKw: loadSumm.airHeatKw,

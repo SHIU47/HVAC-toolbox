@@ -489,7 +489,10 @@ ${inputsHtml}
 
             // SVG 拓樸圖 — 工業級 P&ID 一二次側物理分離雙閉環拓樸
             const cduSchematic = (cduArchDesc && cduArchDesc.schematic) ? cduArchDesc.schematic : 'series_trim';
-            const cduTopoDiagram = window.CoolingSchematics ? window.CoolingSchematics.render(cduSchematic, { t, cduSys, arch }) : '';
+            const unitRes = (window.AppStore?.results?.byDu || []).find(r => r.id === targetId)
+                || (window.AppStore?.results?.byCorePod || []).find(r => r.id === targetId);
+            const cduModeHours = unitRes?.cduModeHours;
+            const cduTopoDiagram = window.CoolingSchematics ? window.CoolingSchematics.render(cduSchematic, { t, cduSys, arch, cduModeHours }) : '';
 
             const safeName = window.UIKit ? window.UIKit.escapeHTML(t.name) : t.name;
             return `

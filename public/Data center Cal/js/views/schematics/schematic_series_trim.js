@@ -26,10 +26,24 @@
             const arch = ctx.arch || cduSys.architecture || 'dry_cooler_trim';
             const archDesc = (typeof root.CoolingArchRegistry !== 'undefined') ? root.CoolingArchRegistry.get(arch) : null;
 
-            const designCond = (typeof AppStore !== 'undefined' && AppStore.designConditions) ? AppStore.designConditions() : { designDb: 35.0, designWb: 28.0 };
-            const equip = (typeof AppStore !== 'undefined' && AppStore.resolveEquipment && archDesc) ? AppStore.resolveEquipment(archDesc, cduSys) : {};
-            const op = archDesc?.operatingPoint ? archDesc.operatingPoint(cduSys, { db: designCond.designDb, wb: designCond.designWb }, equip) : null;
-            const model = archDesc?.topology ? archDesc.topology(cduSys, op, designCond) : null;
+            const cduModeHours = ctx.cduModeHours
+                || (t?.id && typeof AppStore !== 'undefined'
+                    ? ((AppStore.results?.byDu || []).find(r => r.id === t.id)?.cduModeHours
+                       || (AppStore.results?.byCorePod || []).find(r => r.id === t.id)?.cduModeHours)
+                    : null);
+
+            const designCond = (typeof AppStore !== 'undefined' && AppStore.designConditions)
+                ? AppStore.designConditions()
+                : { designDb: 35.0, designWb: 28.0, maxDb: 38.0 };
+            const equip = (typeof AppStore !== 'undefined' && AppStore.resolveEquipment && archDesc)
+                ? AppStore.resolveEquipment(archDesc, cduSys)
+                : {};
+            const op = archDesc?.operatingPoint
+                ? archDesc.operatingPoint(cduSys, { db: designCond.designDb, wb: designCond.designWb }, equip)
+                : null;
+            const model = archDesc?.topology
+                ? archDesc.topology(cduSys, op, { ...designCond, cduModeHours })
+                : null;
 
             const nIt = model?.nodes?.find(n => n.id === 'it') || {};
             const nPrimary = model?.nodes?.find(n => n.id === 'hx_primary') || {};
@@ -42,11 +56,12 @@
 
             const cduApproachC = cduSys.cduApproachC ?? 3.0;
             const dcApproach = cduSys.dryCoolerApproachC ?? 5.0;
+            const trimChwDtC = cduSys.trimChwDtC ?? ((typeof root.A === 'function') ? root.A('trim_chw_dt_default_c') : 5.0);
             const fwsSupplyC = op?.temps?.fwsSup ?? cduSys.fwsSupplyC ?? 40.0;
             const fwsReturnC = op?.temps?.fwsRet ?? cduSys.fwsReturnC ?? 55.0;
             const precoolTemp = op?.temps?.fwsPre ?? fwsSupplyC;
             const chwSupplyTemp = op?.temps?.chwSup ?? 30.0;
-            const chwReturnTemp = op?.temps?.chwRet ?? (chwSupplyTemp + 5.0);
+            const chwReturnTemp = op?.temps?.chwRet ?? (chwSupplyTemp + trimChwDtC);
             const dcWaterSupplyExact = op?.temps?.dcOut ? op.temps.dcOut.toFixed(1) : '35.0';
             const condWaterEnterExact = op?.temps?.condIn ? op.temps.condIn.toFixed(1) : '45.0';
             const condWaterLeaveExact = op?.temps?.condOut ? op.temps.condOut.toFixed(1) : '49.8';
@@ -62,10 +77,62 @@
             const secSupplyC = cduSys.secSupplyC || 45;
             const secReturnC = cduSys.secReturnC || 57;
 
+            // 設計工況 (0.4% DB) 狀態判斷
+            const isDesignMode1 = (designCond.designDb ?? 35.0) <= (op?.thresholds?.full ?? 33.0);
+
+            // 尖峰工況 (年最高 DB) 物理計算
+            const maxDb = designCond.maxDb ?? ((designCond.designDb ?? 35.0) + 3.0);
+            const opPeak = archDesc?.operatingPoint ? archDesc.operatingPoint(cduSys, { db: maxDb, wb: designCond.designWb }, equip) : null;
+            const fwsPre_peak = opPeak?.tPre ? opPeak.tPre.toFixed(1) : fwsSupplyC.toFixed(1);
+            const trimKw_peak = Math.round(liqLoadKw * (opPeak?.chiller_fraction ?? 0));
+            const condIn_peak = opPeak?.tCewt ? opPeak.tCewt.toFixed(1) : condWaterEnterExact;
+
+            let pComp = 0;
+            let cop_peak = 6.2;
+            const trimItem = (cduSys.sizing || []).find(s => s.key === 'trim_chiller');
+            const catalogCop = trimItem?.catalog?.find(c => c.model === trimItem.selectedModel)?.cop || 6.2;
+            if (trimKw_peak > 0) {
+                const trimChillers = equip.trim_chiller || [];
+                const chRes = (trimChillers.length > 0 && typeof root.ChillerEngine !== 'undefined')
+                    ? root.ChillerEngine.calcPower(trimKw_peak, trimChillers, opPeak?.tChws ?? 30, opPeak?.tCewt ?? 39, maxDb)
+                    : null;
+                pComp = chRes?.power_kw ? chRes.power_kw : (trimKw_peak / catalogCop);
+                cop_peak = pComp > 0 ? (trimKw_peak / pComp) : catalogCop;
+            } else {
+                cop_peak = catalogCop;
+            }
+            const condOut_peak = trimKw_peak > 0
+                ? (opPeak.tCewt + ((trimKw_peak + pComp) / Math.max(1, liqLoadKw)) * (fwsReturnC - fwsSupplyC)).toFixed(1)
+                : condIn_peak;
+
+            // 樣式變數 (設計工況 Mode 1 停機 vs Active)
+            const secHxStroke = isDesignMode1 ? '#475569' : '#818cf8';
+            const secHxHeaderFill = isDesignMode1 ? '#1e293b' : '#312e81';
+            const secHxIconStroke = isDesignMode1 ? '#64748b' : '#a5b4fc';
+            const secHxLine1 = isDesignMode1 ? '待機停用 (Standby)' : (nSecondary.lines?.[0] || '接力修整 (Trim Cooling)');
+            const secHxLine2 = isDesignMode1 ? '設計點全自然冷卻，無需修整' : (nSecondary.lines?.[1] || `精確修整至 ${fwsSupplyC}°C`);
+            const secHxLine3 = isDesignMode1 ? '零冰機運轉・零壓縮機耗電' : (nSecondary.lines?.[2] || `由 Trim Chiller ${chwSupplyTemp}°C 冰水冷卻`);
+
+            const chillerStroke = isDesignMode1 ? '#475569' : '#818cf8';
+            const chillerHeaderFill = isDesignMode1 ? '#1e293b' : '#312e81';
+            const chillerIconStroke = isDesignMode1 ? '#64748b' : '#a5b4fc';
+            const chillerLine1 = isDesignMode1 ? '待機 (Standby)' : (nChiller.lines?.[0] || 'Trim');
+            const chillerLine2 = isDesignMode1 ? '設計工況無修整需求 (停機)' : (nChiller.lines?.[1] || '冷凝熱串聯排放至 Dry Coolers');
+            const chillerLine3 = isDesignMode1 ? '年尖峰或高溫時自動啟動' : (nChiller.lines?.[2] || '高效離心/螺桿式機械壓縮製冷');
+
+            const chwPipeColor = isDesignMode1 ? '#475569' : '#0284c7';
+            const chwPipeDash = isDesignMode1 ? '4,4' : 'none';
+            const chwSupBadge = isDesignMode1 ? '待機 (Standby)' : getPipe('chiller', 'hx_secondary', `${chwSupplyTemp}°C`);
+            const chwRetBadge = isDesignMode1 ? '待機 (Standby)' : getPipe('hx_secondary', 'chiller', `${chwReturnTemp}°C`);
+
             // =========================================================================
             // 雙迴路混合架構 (dry_cooler_trim 專屬: NVIDIA DSX 官方標準 Trim/Hybrid Cooling)
             // =========================================================================
             const facilitySchematicSvg = `
+                <!-- 年最高 DB 尖峰工況小表格 -->
+                <rect x="740" y="8" width="510" height="26" rx="6" fill="#0f172a" stroke="#f59e0b" stroke-width="1.2" />
+                <text x="995" y="25" fill="#fef3c7" font-size="9.5" font-weight="bold" text-anchor="middle">年最高 DB ${maxDb.toFixed(1)}°C 工況：預冷至 ${fwsPre_peak}°C ｜ Trim 負擔 ${trimKw_peak} kW ｜ 冷凝器 ${condIn_peak}→${condOut_peak}°C ｜ 冰機 COP ${cop_peak.toFixed(1)}</text>
+
                 <!-- ======================================================= -->
                 <!-- 1. PRIMARY FWS LOOP (廠務側串聯換熱鏈) -->
                 <!-- ======================================================= -->
@@ -107,41 +174,41 @@
                 <!-- ======================================================= -->
                 <!-- 3. SECONDARY HEAT EXCHANGER (Secondary 板換 / Trim 修整) -->
                 <!-- ======================================================= -->
-                <rect x="430" y="185" width="200" height="100" rx="10" fill="#0f172a" stroke="#818cf8" stroke-width="2" />
-                <rect x="430" y="185" width="200" height="26" rx="10" fill="#312e81" />
+                <rect x="430" y="185" width="200" height="100" rx="10" fill="#0f172a" stroke="${secHxStroke}" stroke-width="2" />
+                <rect x="430" y="185" width="200" height="26" rx="10" fill="${secHxHeaderFill}" />
                 <text x="530" y="203" fill="#e0e7ff" font-size="11" font-weight="bold" text-anchor="middle">${nSecondary.title || 'Liquid-to-Liquid HX (Secondary)'}</text>
 
-                <rect x="442" y="218" width="22" height="55" rx="4" fill="#1e293b" stroke="#a5b4fc" stroke-width="1" />
-                <path d="M 447 225 L 455 235 L 447 245 M 453 225 L 461 235 L 453 245 M 447 245 L 455 255 L 447 265" stroke="#a5b4fc" stroke-width="1.3" fill="none" stroke-linecap="round" />
-                <text x="540" y="232" fill="#818cf8" font-size="11" font-weight="bold" text-anchor="middle">${nSecondary.lines?.[0] || '接力修整 (Trim Cooling)'}</text>
-                <text x="540" y="250" fill="#c7d2fe" font-size="9.5" text-anchor="middle">${nSecondary.lines?.[1] || `精確修整至 ${fwsSupplyC}°C`}</text>
-                <text x="540" y="268" fill="#cbd5e1" font-size="9" text-anchor="middle">${nSecondary.lines?.[2] || `由 Trim Chiller ${chwSupplyTemp}°C 冰水冷卻`}</text>
+                <rect x="442" y="218" width="22" height="55" rx="4" fill="#1e293b" stroke="${secHxIconStroke}" stroke-width="1" />
+                <path d="M 447 225 L 455 235 L 447 245 M 453 225 L 461 235 L 453 245 M 447 245 L 455 255 L 447 265" stroke="${secHxIconStroke}" stroke-width="1.3" fill="none" stroke-linecap="round" />
+                <text x="540" y="232" fill="${secHxStroke}" font-size="11" font-weight="bold" text-anchor="middle">${secHxLine1}</text>
+                <text x="540" y="250" fill="${isDesignMode1 ? '#cbd5e1' : '#c7d2fe'}" font-size="9.5" text-anchor="middle">${secHxLine2}</text>
+                <text x="540" y="268" fill="#cbd5e1" font-size="9" text-anchor="middle">${secHxLine3}</text>
 
                 <!-- ======================================================= -->
                 <!-- 4. TRIM CHILLER EVAPORATOR LOOP (冰水主機蒸發器迴路) -->
                 <!-- ======================================================= -->
                 <!-- Chiller 產出冰水 (X=730, Y=205) → Secondary HX 右上入口 (X=630, Y=205) -->
-                <line x1="730" y1="205" x2="630" y2="205" stroke="#0284c7" stroke-width="4" stroke-linecap="round" />
-                <rect x="655" y="180" width="60" height="20" rx="4" fill="#0c4a6e" stroke="#0284c7" stroke-width="1.2" />
-                <text x="685" y="194" fill="#e0f2fe" font-size="9.5" font-weight="bold" text-anchor="middle">${getPipe('chiller', 'hx_secondary', `${chwSupplyTemp}°C`)}</text>
+                <line x1="730" y1="205" x2="630" y2="205" stroke="${chwPipeColor}" stroke-width="4" stroke-dasharray="${chwPipeDash}" stroke-linecap="round" />
+                <rect x="655" y="180" width="60" height="20" rx="4" fill="#0c4a6e" stroke="${chwPipeColor}" stroke-width="1.2" />
+                <text x="685" y="194" fill="#e0f2fe" font-size="9" font-weight="bold" text-anchor="middle">${chwSupBadge}</text>
 
                 <!-- Secondary HX 吸熱回水 (X=630, Y=265) → 冰機蒸發器入口 (X=730, Y=265) -->
-                <line x1="630" y1="265" x2="730" y2="265" stroke="#ea580c" stroke-width="4" stroke-linecap="round" />
-                <rect x="655" y="272" width="60" height="20" rx="4" fill="#881337" stroke="#f43f5e" stroke-width="1.2" />
-                <text x="685" y="286" fill="#ffe4e6" font-size="9" font-weight="bold" text-anchor="middle">${getPipe('hx_secondary', 'chiller', `${chwReturnTemp}°C`)}</text>
+                <line x1="630" y1="265" x2="730" y2="265" stroke="${isDesignMode1 ? '#475569' : '#ea580c'}" stroke-width="4" stroke-dasharray="${chwPipeDash}" stroke-linecap="round" />
+                <rect x="655" y="272" width="60" height="20" rx="4" fill="#881337" stroke="${isDesignMode1 ? '#475569' : '#f43f5e'}" stroke-width="1.2" />
+                <text x="685" y="286" fill="#ffe4e6" font-size="9" font-weight="bold" text-anchor="middle">${chwRetBadge}</text>
 
                 <!-- ======================================================= -->
                 <!-- 5. WATER COOLED CHILLERS (水冷式冰水主機) -->
                 <!-- ======================================================= -->
-                <rect x="730" y="185" width="200" height="100" rx="10" fill="#1e1b4b" stroke="#818cf8" stroke-width="2" />
-                <rect x="730" y="185" width="200" height="26" rx="10" fill="#312e81" />
+                <rect x="730" y="185" width="200" height="100" rx="10" fill="#1e1b4b" stroke="${chillerStroke}" stroke-width="2" />
+                <rect x="730" y="185" width="200" height="26" rx="10" fill="${chillerHeaderFill}" />
                 <text x="830" y="203" fill="#f8fafc" font-size="11.5" font-weight="bold" text-anchor="middle">${nChiller.title || 'Water Cooled Chillers'}</text>
 
-                <circle cx="755" cy="235" r="13" fill="#312e81" stroke="#a5b4fc" stroke-width="1.5" />
-                <text x="755" y="239" fill="#ffffff" font-size="8.5" font-weight="bold" text-anchor="middle">${nChiller.lines?.[0] || 'Trim'}</text>
+                <circle cx="755" cy="235" r="13" fill="#312e81" stroke="${chillerIconStroke}" stroke-width="1.5" />
+                <text x="755" y="239" fill="#ffffff" font-size="8.5" font-weight="bold" text-anchor="middle">${chillerLine1}</text>
 
-                <text x="845" y="235" fill="#e0e7ff" font-size="10.5" font-weight="bold" text-anchor="middle">${nChiller.lines?.[1] || '冷凝熱串聯排放至 Dry Coolers'}</text>
-                <text x="845" y="258" fill="#94a3b8" font-size="9.5" text-anchor="middle">${nChiller.lines?.[2] || '高效離心/螺桿式機械壓縮製冷'}</text>
+                <text x="845" y="235" fill="${isDesignMode1 ? '#cbd5e1' : '#e0e7ff'}" font-size="10" font-weight="bold" text-anchor="middle">${chillerLine2}</text>
+                <text x="845" y="258" fill="#94a3b8" font-size="9.5" text-anchor="middle">${chillerLine3}</text>
 
                 <!-- ======================================================= -->
                 <!-- 6. DRY COOLER & CONDENSER SERIES LOOP (乾冷器與冷凝器串聯排熱鏈) -->
@@ -183,7 +250,7 @@
                 <polygon points="1110,230 1120,230 1115,240" fill="#ef4444" />
                 <polygon points="1160,230 1170,230 1165,240" fill="#ef4444" />
                 <polygon points="1210,230 1220,230 1215,240" fill="#ef4444" />
-                `;
+            `;
 
             return `
                 <div class="p-4 bg-slate-950 rounded-2xl text-white font-mono border border-slate-800 shadow-xl overflow-hidden">
@@ -205,8 +272,7 @@
                         </div>
                     </div>
 
-                    <!-- 運轉模式狀態橫幅 -->
-                    
+                    <!-- 運轉模式狀態橫幅 (三段) -->
                     <div class="grid grid-cols-1 md:grid-cols-3 gap-2 my-2.5 text-xs">
                         ${(model?.banners || []).map(b => {
                             const toneMap = {
@@ -225,12 +291,10 @@
                         }).join('')}
                     </div>
 
-                    <!-- SVG 拓樸畫布 (viewBox 0 0 1160 340，標準工程正交佈局、零重疊、大字體) -->
+                    <!-- SVG 拓樸畫布 (viewBox 0 0 1260 330) -->
                     <div class="w-full overflow-x-auto pt-1">
                         <svg viewBox="0 0 1260 330" class="w-full min-w-[1050px] h-auto select-none font-sans">
-                            <!-- ======================================================= -->
                             <!-- 1. COMPUTE DATA HALL (AI GPU 機櫃與冷板) -->
-                            <!-- ======================================================= -->
                             <rect x="20" y="35" width="130" height="250" rx="10" fill="#0f172a" stroke="#475569" stroke-width="2" />
                             <rect x="20" y="35" width="130" height="28" rx="10" fill="#1e293b" />
                             <text x="85" y="54" fill="#f8fafc" font-size="11" font-weight="bold" text-anchor="middle">${nIt.title || 'Compute Data Hall'}</text>
@@ -243,9 +307,7 @@
                             <text x="85" y="185" fill="#a5b4fc" font-size="10" text-anchor="middle">二次側流量: ${flowSecLpm.toLocaleString()} LPM</text>
                             <text x="85" y="208" fill="#94a3b8" font-size="9" text-anchor="middle">ΔT = ${dtSec}°C (晶片溫升)</text>
 
-                            <!-- ======================================================= -->
                             <!-- 2. SECONDARY TCS PIPING (機櫃 ⇄ CDU 二次側水路) -->
-                            <!-- ======================================================= -->
                             <!-- Hot Secondary Return -->
                             <line x1="150" y1="95" x2="190" y2="95" stroke="#f43f5e" stroke-width="4" stroke-linecap="round" />
                             <rect x="150" y="68" width="40" height="18" rx="3" fill="#881337" />
@@ -256,15 +318,12 @@
                             <rect x="150" y="218" width="40" height="18" rx="3" fill="#0c4a6e" />
                             <text x="170" y="231" fill="#e0f2fe" font-size="8" font-weight="bold" text-anchor="middle">≤${secSupplyC}°C</text>
 
-                            <!-- ======================================================= -->
                             <!-- 3. CDU - LC (100% 液冷分配單元) -->
-                            <!-- ======================================================= -->
                             <rect x="190" y="35" width="130" height="250" rx="10" fill="#1e1b4b" stroke="#8b5cf6" stroke-width="2" />
                             <rect x="190" y="35" width="130" height="28" rx="10" fill="#3b0764" />
                             <text x="255" y="54" fill="#faf5ff" font-size="11.5" font-weight="bold" text-anchor="middle">CDU - LC (100%)</text>
 
                             <rect x="200" y="72" width="110" height="95" rx="8" fill="#0f172a" stroke="#6d28d9" stroke-width="1.5" />
-                            <!-- CDU 板換內部板片 -->
                             <path d="M 230 82 L 238 157 M 244 82 L 252 157 M 258 82 L 266 157 M 272 82 L 280 157" stroke="#a78bfa" stroke-width="2" stroke-linecap="round" />
                             
                             <rect x="215" y="110" width="80" height="20" rx="4" fill="#2e1065" stroke="#c084fc" stroke-width="1" />
@@ -274,9 +333,7 @@
                             <text x="255" y="215" fill="#a78bfa" font-size="9.5" text-anchor="middle">一二次側 100% 隔離</text>
                             <text x="255" y="235" fill="#34d399" font-size="10" font-weight="bold" text-anchor="middle">設施流量: ${flowPrimLpm.toLocaleString()} LPM</text>
 
-                            <!-- ======================================================= -->
                             <!-- 4. FACILITY HEAT REJECTION SCHEMATIC (一次側廠務拓樸) -->
-                            <!-- ======================================================= -->
                             ${facilitySchematicSvg}
                         </svg>
                     </div>
