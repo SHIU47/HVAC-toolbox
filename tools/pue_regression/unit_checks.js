@@ -460,6 +460,17 @@ function freshCtx() {
     assert.strictEqual(cdu.fwsSupplyC, 42.0);
     assert.strictEqual(cdu.fwsReturnC, 54.0);
   });
+
+  test('P1-1 deserializeProject clears site.design cache', () => {
+    const W = ctx.BUILTIN_WEATHER_DATA;
+    S.updateSite({ selectedCity: '高雄 (Kaohsiung)', hourly: W['高雄 (Kaohsiung)'].hourlyData, isRealEpw: true });
+    assert.strictEqual(S.designConditions().designDb, 34);
+    const serializedTaichung = S.serializeProject();
+    const parsed = JSON.parse(serializedTaichung);
+    parsed.site.selectedCity = '台中 (Taichung)';
+    S.deserializeProject(parsed);
+    assert.strictEqual(S.designConditions().designDb, 33.8);
+  });
 })();
 
 // ═══════════════════════════════════════════════════════════════

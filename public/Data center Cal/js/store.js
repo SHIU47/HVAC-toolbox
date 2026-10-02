@@ -342,6 +342,7 @@
                     } else if (cityName) {
                         console.warn('[deserializeProject] 找不到「' + cityName + '」的內建氣象資料 (可能是使用者自行上傳的EPW，匯出檔未保存原始逐時資料)，本次計算將使用溫和的合成氣候近似值，結果不代表真實案場氣候，請重新於 Step1 上傳/選擇氣象資料。');
                     }
+                    this.state.site.design = null;
                 }
                 this.calculate();
                 return true;
