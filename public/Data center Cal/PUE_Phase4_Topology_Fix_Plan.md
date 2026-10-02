@@ -227,7 +227,7 @@ Q_mech   = Q × eco.chiller_fraction
 **P1-3** Dashboard 噴霧水量：`hourlyProfile[]` 新增 `waterM3`（該小時全廠耗水，m³），`view_dashboard.js:746` 改為顯示 `curHour.waterM3`（m³/h），刪除 `0.91 × 0.0011` 假公式。
 - 允許變動：該欄數字。
 
-**P1-4** R-e：刪除 `getEffectiveFcThresholds`（先 grep 確認零呼叫）與 `assumptions.js` 的 `nvidia_dsx_mode2_offset_c`（P4-1 會改用正確門檻；若 grep 到其他使用者，回報後保留）。
+**P1-4** R-e：經 grep 審查，`getEffectiveFcThresholds` 仍有使用者 `view_weather.js:32,407,471,546`（氣象直方圖與全時自由冷卻標記），`nvidia_dsx_mode2_offset_c` 仍有使用者 `schematic_series_trim.js:34` 及測試 `unit_checks.js:882`。依指示「若 grep 到其他使用者，回報後保留」，兩者皆予以保留並於程式碼中加入審查註解，待後續階段（P4-1）更新。
 
 ### Phase P2 — 架構重構（0 差異）
 **P2-1** R-b 設備描述：9 個描述檔加 `equipment` 清單（§4.1①）。新增 `AppStore.resolveEquipment(arch, sys)`：依 `equipment[].role/resolver` 呼叫既有的 `resolveCduFromSizing / resolvePumpFromSizing / resolveChillerFromSizing / resolveCrahFromSizing / resolveTowerFromSizing`，回傳 `{ [key]: devices[] }`。`calcHourlyEnergy` 刪除 `store.js:1136-1189` 的寫死 key 查找與 `fwUnitKey` 判斷，改用它。

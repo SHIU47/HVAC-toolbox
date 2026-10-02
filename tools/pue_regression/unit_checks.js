@@ -1122,6 +1122,24 @@ function freshCtx() {
   });
 })();
 
+// ═══════════════════════════════════════════════════════════════
+// P1-4 getEffectiveFcThresholds and nvidia_dsx_mode2_offset_c audit
+// ═══════════════════════════════════════════════════════════════
+(function () {
+  const ctx = freshCtx();
+  const { AppStore: S, ASSUMPTIONS } = ctx;
+
+  test('P1-4 getEffectiveFcThresholds is retained and callable by view_weather.js', () => {
+    assert(typeof S.getEffectiveFcThresholds === 'function', 'getEffectiveFcThresholds must exist for view_weather.js');
+    const thresh = S.getEffectiveFcThresholds();
+    assert(typeof thresh.mode1DbMax === 'number' && typeof thresh.mode2DbMax === 'number');
+  });
+
+  test('P1-4 nvidia_dsx_mode2_offset_c is retained for schematic_series_trim until P4-1', () => {
+    assert(ASSUMPTIONS.nvidia_dsx_mode2_offset_c, 'nvidia_dsx_mode2_offset_c must be retained until P4-1');
+  });
+})();
+
 console.log(`\n${passCount} passed, ${failCount} failed, ${skipCount} skipped`);
 process.exit(failCount > 0 ? 1 : 0);
 
