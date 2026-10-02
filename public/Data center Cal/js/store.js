@@ -1187,16 +1187,16 @@
             const designAirKw = pre ? pre.designAirKw : (fwSys.designBasis?.air_load_kw || airHeatTotal);
             const fwLoadRatio = pre ? pre.fwLoadRatio : (designAirKw > 0 ? Math.min(1.0, airHeatTotal / designAirKw) : 1.0);
 
+            const isFwRdhx = !!fwArchDesc?.flags?.isRdhx;
+            const fwUnits = (isFwRdhx ? fwEquip.rdhx_unit : fwEquip.crah_unit) || [];
             const crahFanKw = pre ? pre.crahFanKw : (() => {
-                const fwUnits = (fwArchDesc.terminal === 'rdhx' ? fwEquip.rdhx_unit : fwEquip.crah_unit) || [];
                 if (fwUnits.length > 0 && typeof CRAHEngine !== 'undefined' && airHeatTotal > 0) {
                     return CRAHEngine.calcPower(fwUnits, airHeatTotal).power_kw;
                 }
-                return (fwArchDesc.terminal === 'rdhx') ? (airHeatTotal / 60) * 1.2 : (airHeatTotal / 60) * 4.8;
+                return isFwRdhx ? (airHeatTotal / 60) * 1.2 : (airHeatTotal / 60) * 4.8;
             })();
 
             const crahDeficitKw = pre ? pre.crahDeficitKw : (() => {
-                const fwUnits = (fwArchDesc.terminal === 'rdhx' ? fwEquip.rdhx_unit : fwEquip.crah_unit) || [];
                 if (fwUnits.length > 0 && typeof CRAHEngine !== 'undefined' && airHeatTotal > 0) {
                     return CRAHEngine.calcPower(fwUnits, airHeatTotal).deficit_kw || 0;
                 }
@@ -1336,7 +1336,8 @@
                 const minFc = Math.min(...allCduSystems.map(c => {
                     const arch = c.architecture || 'dry_cooler_hx';
                     const dcApp = c.dryCoolerApproachC || 5.0;
-                    const pheApp = (arch === 'dry_cooler_trim' || arch === 'dry_cooler_hx') ? (c.pheApproachC ?? 2.0) : 0.0;
+                    const archDesc = (typeof window !== 'undefined' && window.CoolingArchRegistry) ? window.CoolingArchRegistry.get(arch) : ((typeof CoolingArchRegistry !== 'undefined') ? CoolingArchRegistry.get(arch) : null);
+                    const pheApp = archDesc?.flags?.isTrim ? (c.pheApproachC ?? 2.0) : 0.0;
                     return (c.fwsSupplyC || 40.0) - dcApp - pheApp;
                 }));
                 plantFcThresh = minFc;

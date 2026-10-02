@@ -17,7 +17,7 @@
         cardLabel: 'RDHX 背板',
         pillLabel: 'RDHX 背板',
         dashboardLabel: '背板熱交換器 (RDHx Neutral Loop)',
-        flags: { hasMechanical: true, consumesWater: false },
+        flags: { hasMechanical: true, consumesWater: false, isRdhx: true },
         terminal: 'rdhx',
         schematic: 'air_plant',
         params: [

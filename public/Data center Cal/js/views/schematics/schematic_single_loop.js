@@ -24,16 +24,17 @@
             const t = ctx.t;
             const cduSys = ctx.cduSys || t.obj.plantDesign.cduSystem;
             const arch = ctx.arch || cduSys.architecture || 'dry_cooler_pure';
+            const archDesc = (typeof root.CoolingArchRegistry !== 'undefined') ? root.CoolingArchRegistry.get(arch) : null;
 
             const dcApproach = cduSys.dryCoolerApproachC ?? 5.0;
-            const pheApproach = (arch === 'dry_cooler_trim' || arch === 'dry_cooler_hx') ? (cduSys.pheApproachC ?? 2.0) : 0.0;
+            const pheApproach = archDesc?.flags?.isTrim ? (cduSys.pheApproachC ?? 2.0) : 0.0;
             const cduApproachC = cduSys.cduApproachC ?? 3.0;
             const fwsSupplyC = cduSys.fwsSupplyC ?? Number((cduSys.secSupplyC - cduApproachC).toFixed(1));
             const cduFcThresh = (fwsSupplyC - dcApproach - pheApproach).toFixed(1);
             const mode1DbMax = parseFloat(cduFcThresh);
 
-            const isZeroChiller = (arch === 'dry_cooler_pure' || arch === 'adiabatic_tower' || arch === 'cooling_tower_hx');
-            const isFullMech = arch === 'water_chiller';
+            const isFullMech = !!archDesc?.flags?.hasMechanical;
+            const isZeroChiller = !isFullMech;
             let rejTitle = '乾冷器 (Dry Cooler)';
             let rejSub = '零耗水・自然風冷 (WUE=0)';
             let rejFill = '#042f2e';
@@ -42,7 +43,7 @@
             let rejLine1 = '零耗水自然風冷';
             let rejLine2 = `Approach: ${dcApproach}°C ｜ 門檻: ≤${cduFcThresh}°C DB`;
 
-            if (arch === 'adiabatic_tower') {
+            if (archDesc?.flags?.isAdiabatic) {
                 rejTitle = '絕熱冷卻塔 (Adiabatic Tower)';
                 rejSub = '高溫噴霧預冷 (100% 自然冷卻・零冰機)';
                 rejFill = '#082f49';
@@ -50,7 +51,7 @@
                 rejIconSvg = '<circle cx="710" cy="62" r="12" fill="#0369a1" stroke="#38bdf8" stroke-width="1" /><path d="M 704 58 L 704 54 M 710 58 L 710 52 M 716 58 L 716 54" stroke="#7dd3fc" stroke-width="1.3" stroke-linecap="round" stroke-dasharray="1.5,1.5" />';
                 rejLine1 = '高溫噴霧預冷 + 乾式自然散熱 (零冰機)';
                 rejLine2 = `飽和效率: ${cduSys.adiabaticSaturationEfficiencyPct||85}% ｜ 全年 100% 自然冷卻`;
-            } else if (arch === 'cooling_tower_hx') {
+            } else if (archDesc?.flags?.isClosedTower) {
                 rejTitle = '密閉式冷卻水塔 (Closed Cooling Tower)';
                 rejSub = '全時蒸發自然冷卻 (100% 水側直冷・零冰機)';
                 rejFill = '#164e63';
@@ -58,7 +59,7 @@
                 rejIconSvg = '<circle cx="710" cy="62" r="12" fill="#0e7490" stroke="#06b6d4" stroke-width="1" /><circle cx="705" cy="63" r="1.6" fill="#a5f3fc" /><circle cx="710" cy="59" r="1.6" fill="#a5f3fc" /><circle cx="715" cy="64" r="1.6" fill="#a5f3fc" />';
                 rejLine1 = '閉式盤管蒸發冷卻 (水質隔離・零冰機)';
                 rejLine2 = '以濕球溫度驅動全時自然冷卻，全年無需冰機';
-            } else if (arch === 'water_chiller') {
+            } else if (isFullMech) {
                 rejTitle = '水冷式冰水主機 (Chiller)';
                 rejSub = '全額機械壓縮冷卻 (COP 5.5)';
                 rejFill = '#1e293b';
@@ -66,7 +67,7 @@
                 rejIconSvg = '<circle cx="710" cy="62" r="11" fill="#334155" stroke="#94a3b8" stroke-width="1" /><text x="710" y="65" fill="#f8fafc" font-size="8" font-weight="900" text-anchor="middle">DX</text>';
                 rejLine1 = '全額機械壓縮製冷 (無經濟盤管)';
                 rejLine2 = '搭配濕式冷卻水塔散熱，全年 100% 壓縮機運轉';
-            } else if (arch === 'dry_cooler_pure') {
+            } else {
                 rejTitle = '乾冷器 (Dry Cooler)';
                 rejSub = '純自然冷卻 (零冰機・WUE=0)';
                 rejLine1 = '100% 自然風冷，全年零冰機';
@@ -159,20 +160,7 @@
             `; };
 
             let facilitySchematicSvg;
-            if (arch === 'dry_cooler_pure') {
-                facilitySchematicSvg = buildSingleLoopSchematic({
-                    boxTitle: 'PHE-1 自然冷卻板換 (Economizer)',
-                    boxHeaderFill: '#064e3b', boxStroke: '#10b981', pheStroke: '#34d399',
-                    label1: '自然熱交換 (Free Cooling)',
-                    label2: `全額直冷至 ${cduSys.fwsSupplyC}°C`,
-                    label3: '100% 乾冷器自然冷卻',
-                    label4: '無冰機・零壓縮機耗電',
-                    pumpLabel: 'Condenser Pump', pumpFill: '#0369a1', pumpStroke: '#38bdf8',
-                    loopColor: '#0d9488',
-                    outdoorLine3: `設計乾球溫度門檻: ≤${mode1DbMax}°C`,
-                    outdoorLine4: '高於門檻時依氣溫安全降載或調高供水水溫'
-                });
-            } else if (arch === 'adiabatic_tower') {
+            if (archDesc?.flags?.isAdiabatic) {
                 const atSwitchpointDisp = (cduSys.adiabaticDrySwitchpointC !== undefined && cduSys.adiabaticDrySwitchpointC !== null && cduSys.adiabaticDrySwitchpointC !== '')
                     ? cduSys.adiabaticDrySwitchpointC
                     : Math.max(26.0, cduSys.fwsSupplyC - ((typeof A === 'function') ? A('adiabatic_switchpoint_offset_c') : 9.2)).toFixed(1);
@@ -188,7 +176,7 @@
                     outdoorLine3: `噴霧飽和效率: ${cduSys.adiabaticSaturationEfficiencyPct||85}% ｜ 乾式切換點(估算): ≤${atSwitchpointDisp}°C`,
                     outdoorLine4: `氣溫 ≤${atSwitchpointDisp}°C 乾式 0 耗水，超過後啟動蒸發預冷`
                 });
-            } else if (arch === 'cooling_tower_hx') {
+            } else if (archDesc?.flags?.isClosedTower) {
                 facilitySchematicSvg = buildSingleLoopSchematic({
                     boxTitle: 'Closed Coil 密閉蒸發冷卻盤管',
                     boxHeaderFill: '#164e63', boxStroke: '#06b6d4', pheStroke: '#67e8f9',
@@ -213,6 +201,19 @@
                     loopColor: '#4f46e5',
                     outdoorLine3: '全天候 8,760h 機械壓縮連續運轉',
                     outdoorLine4: '搭配冷卻水塔進行主機冷凝熱排放'
+                });
+            } else {
+                facilitySchematicSvg = buildSingleLoopSchematic({
+                    boxTitle: 'PHE-1 自然冷卻板換 (Economizer)',
+                    boxHeaderFill: '#064e3b', boxStroke: '#10b981', pheStroke: '#34d399',
+                    label1: '自然熱交換 (Free Cooling)',
+                    label2: `全額直冷至 ${cduSys.fwsSupplyC}°C`,
+                    label3: '100% 乾冷器自然冷卻',
+                    label4: '無冰機・零壓縮機耗電',
+                    pumpLabel: 'Condenser Pump', pumpFill: '#0369a1', pumpStroke: '#38bdf8',
+                    loopColor: '#0d9488',
+                    outdoorLine3: `設計乾球溫度門檻: ≤${mode1DbMax}°C`,
+                    outdoorLine4: '高於門檻時依氣溫安全降載或調高供水水溫'
                 });
             }
 

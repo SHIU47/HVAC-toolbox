@@ -337,8 +337,9 @@ ${inputsHtml}
             const secReturnC = cduSys.secReturnC ?? 57.0;
             const cduApproachC = cduSys.cduApproachC ?? 3.0;
 
+            const cduArchDesc = window.CoolingArchRegistry ? window.CoolingArchRegistry.get(arch) : null;
             const dcApproach = cduSys.dryCoolerApproachC ?? 5.0;
-            const pheApproach = (arch === 'dry_cooler_trim' || arch === 'dry_cooler_hx') ? (cduSys.pheApproachC ?? 2.0) : 0.0;
+            const pheApproach = cduArchDesc?.flags?.isTrim ? (cduSys.pheApproachC ?? 2.0) : 0.0;
             const fwsSupplyC = cduSys.fwsSupplyC ?? Number((secSupplyC - cduApproachC).toFixed(1));
             const cduFcThresh = (fwsSupplyC - dcApproach - pheApproach).toFixed(1);
             const mode1DbMax = parseFloat(cduFcThresh);
@@ -418,8 +419,8 @@ ${inputsHtml}
             // 系統 2: Fanwall / RDHX 氣冷系統 P&ID 拓樸圖生成
             // =========================================================================
             const fwArch = fwSys.architecture || 'air_cooled_chiller';
-            const isRdhx = fwArch === 'rdhx';
             const fwArchDesc = window.CoolingArchRegistry ? window.CoolingArchRegistry.get(fwArch) : null;
+            const isRdhx = !!fwArchDesc?.flags?.isRdhx;
             const fwSchematic = (fwArchDesc && fwArchDesc.schematic) ? fwArchDesc.schematic : 'air_plant';
             const fwTopoDiagram = window.CoolingSchematics ? window.CoolingSchematics.render(fwSchematic, { t, fwSys, fwArch }) : '';
 
@@ -487,7 +488,6 @@ ${inputsHtml}
             });
 
             // SVG 拓樸圖 — 工業級 P&ID 一二次側物理分離雙閉環拓樸
-            const cduArchDesc = window.CoolingArchRegistry ? window.CoolingArchRegistry.get(arch) : null;
             const cduSchematic = (cduArchDesc && cduArchDesc.schematic) ? cduArchDesc.schematic : 'series_trim';
             const cduTopoDiagram = window.CoolingSchematics ? window.CoolingSchematics.render(cduSchematic, { t, cduSys, arch }) : '';
 

@@ -106,7 +106,8 @@
                 cduUnitKw = (loadSumm.liquidHeatKw / 400) * 2.0;
             }
 
-            const fwUnits = (fwArchDesc?.terminal === 'rdhx' ? fwEquip.rdhx_unit : fwEquip.crah_unit) || [];
+            const isFwRdhx = !!fwArchDesc?.flags?.isRdhx;
+            const fwUnits = (isFwRdhx ? fwEquip.rdhx_unit : fwEquip.crah_unit) || [];
             let crahFanKw = 0;
             let crahDeficitKw = 0;
             if (fwUnits.length > 0 && typeof root.CRAHEngine !== 'undefined' && airHeatTotal > 0) {
@@ -116,7 +117,7 @@
                     crahDeficitKw = crahRes.deficit_kw;
                 }
             } else {
-                crahFanKw = ((fwArchDesc?.terminal === 'rdhx') ? (airHeatTotal / 60) * 1.2 : (airHeatTotal / 60) * 4.8);
+                crahFanKw = (isFwRdhx ? (airHeatTotal / 60) * 1.2 : (airHeatTotal / 60) * 4.8);
             }
 
             const cduPumps = cduEquip.cdu_pump || [];

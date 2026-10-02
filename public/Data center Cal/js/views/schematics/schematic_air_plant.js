@@ -29,7 +29,10 @@
             const chwReturnC = fwSys.chwReturnC || 18.0;
             const dtChw = Math.max(1.0, chwReturnC - chwSupplyC);
             const flowChwLpm = Math.round((airLoadKw * 60) / (4.184 * dtChw));
-            const isRdhx = fwArch === 'rdhx';
+            const fwArchDesc = (typeof root.CoolingArchRegistry !== 'undefined') ? root.CoolingArchRegistry.get(fwArch) : null;
+            const isRdhx = !!fwArchDesc?.flags?.isRdhx;
+            const isDistrict = !!fwArchDesc?.flags?.isDistrict;
+            const isWaterCooled = !!fwArchDesc?.flags?.consumesWater;
 
             const fwUnitItem = (fwSys.sizing || []).find(s => s.key === (isRdhx ? 'rdhx_unit' : 'crah_unit'));
             const fwUnitQty = fwUnitItem ? fwUnitItem.selectedQty : 4;
@@ -40,7 +43,7 @@
             let fwRejStroke = '#6366f1';
             let fwPlantSvg = '';
 
-            if (fwArch === 'air_cooled_chiller') {
+            if (!isDistrict && !isWaterCooled && !isRdhx) {
                 fwRejTitle = '氣冷式冰水主機 (Air-Cooled Chiller)';
                 fwPlantSvg = `
                     <!-- 蒸發器換熱核心 -->
@@ -68,7 +71,7 @@
                     <text x="840" y="185" fill="#cbd5e1" font-size="10.5">全封閉冷媒迴路 ｜ 零水耗 (WUE = 0)</text>
                     <text x="840" y="210" fill="#94a3b8" font-size="9.5">低溫時支援冷媒自然循環節能模式 (Economizer)</text>
                 `;
-            } else if (fwArch === 'water_cooled_chiller') {
+            } else if (isWaterCooled) {
                 fwRejTitle = '水冷式冰水主機 + 濕式冷卻塔';
                 fwPlantSvg = `
                     <!-- 水冷式冰機主機 -->
@@ -101,7 +104,7 @@
                     <text x="840" y="185" fill="#cbd5e1" font-size="10.5">自動補水與排污控制</text>
                     <text x="840" y="210" fill="#94a3b8" font-size="9.5">提供 30~32°C 冷卻水至冰機冷凝器</text>
                 `;
-            } else if (fwArch === 'chilled_water_plant') {
+            } else if (isDistrict) {
                 fwRejTitle = '廠區集中冰水管網 (Central Plant)';
                 fwPlantSvg = `
                     <!-- 廠區板換解耦器 -->

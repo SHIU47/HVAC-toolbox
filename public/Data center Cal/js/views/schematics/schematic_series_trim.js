@@ -24,9 +24,10 @@
             const t = ctx.t;
             const cduSys = ctx.cduSys || t.obj.plantDesign.cduSystem;
             const arch = ctx.arch || cduSys.architecture || 'dry_cooler_trim';
+            const archDesc = (typeof root.CoolingArchRegistry !== 'undefined') ? root.CoolingArchRegistry.get(arch) : null;
 
             const dcApproach = cduSys.dryCoolerApproachC ?? 5.0;
-            const pheApproach = (arch === 'dry_cooler_trim' || arch === 'dry_cooler_hx') ? (cduSys.pheApproachC ?? 2.0) : 0.0;
+            const pheApproach = archDesc?.flags?.isTrim ? (cduSys.pheApproachC ?? 2.0) : 0.0;
             const cduApproachC = cduSys.cduApproachC ?? 3.0;
             const fwsSupplyC = cduSys.fwsSupplyC ?? Number((cduSys.secSupplyC - cduApproachC).toFixed(1));
             const cduFcThresh = (fwsSupplyC - dcApproach - pheApproach).toFixed(1);

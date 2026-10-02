@@ -17,7 +17,7 @@
         cardLabel: '絕熱冷卻塔 (零冰機)',
         pillLabel: '絕熱塔',
         dashboardLabel: '絕熱密閉冷卻水塔 (Adiabatic Tower)',
-        flags: { hasMechanical: false, consumesWater: true },
+        flags: { hasMechanical: false, consumesWater: true, isAdiabatic: true },
         terminal: 'cdu',
         schematic: 'single_loop',
         params: [

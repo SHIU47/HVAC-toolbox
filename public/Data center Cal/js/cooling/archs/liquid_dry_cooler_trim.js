@@ -20,7 +20,7 @@
         aliasDashboardLabels: {
             dry_cooler_hx: '乾冷器 + 板換 + 修整冰機 (Dry Cooler + PHE + Trim Chiller)'
         },
-        flags: { hasMechanical: true, consumesWater: false },
+        flags: { hasMechanical: true, consumesWater: false, isTrim: true },
         terminal: 'cdu',
         schematic: 'series_trim',
         params: [

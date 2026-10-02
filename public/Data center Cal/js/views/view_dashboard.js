@@ -751,25 +751,27 @@
                 ? (curHour.mechLoadKw / chillerKw)
                 : 0;
 
-            // Sizing 設備規格加總計算輔助函式 (P1-8)
+            // Sizing 設備規格加總計算輔助函式 (P1-8, P2-5)
             const resolveItemPower = (item) => {
                 if (!item) return 0;
                 const catEntry = (item.catalog || []).find(c => c.model === item.selectedModel);
+                const role = item.role;
                 if (item.key === 'cdu_unit') {
                     return catEntry?.powerKw ?? 4.2;
                 }
-                if (item.key === 'cdu_pump' || item.key === 'fw_pump') {
+                if (role === 'pump' || item.key === 'cdu_pump' || item.key === 'fw_pump') {
                     return catEntry?.capKw ?? catEntry?.powerKw ?? item.unitCapKw ?? 5.5;
                 }
-                if (item.key === 'dry_cooler' || item.key === 'cooling_tower' || item.key === 'adiabatic_tower') {
+                if (role === 'heat_rejection' || item.key?.includes('tower') || item.key?.includes('cooler')) {
                     return catEntry?.fanKwDx ?? ((item.unitCapKw || 1000) / 500 * 10);
                 }
-                if (item.key === 'crah_unit' || item.key === 'rdhx_unit') {
+                if ((role === 'terminal' && item.key !== 'cdu_unit') || item.key === 'crah_unit' || item.key?.includes('rdhx')) {
                     return catEntry?.fanPowerKw ?? ((item.unitCapKw || 60) * 0.08);
                 }
-                if (item.key === 'trim_chiller' || item.key === 'air_cooled_chiller' || item.key === 'water_cooled_chiller') {
+                if (role === 'chiller' || item.key?.includes('chiller')) {
                     const cap = catEntry?.capKw ?? item.unitCapKw ?? 500;
-                    const cop = catEntry?.cop ?? (item.key === 'air_cooled_chiller' ? 3.6 : 6.0);
+                    const isAir = (item.key && item.key.indexOf('air') >= 0);
+                    const cop = catEntry?.cop ?? (isAir ? 3.6 : 6.0);
                     return cop > 0 ? (cap / cop) : cap;
                 }
                 return catEntry?.powerKw ?? catEntry?.capKw ?? item.unitCapKw ?? 0;

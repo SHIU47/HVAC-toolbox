@@ -1395,6 +1395,68 @@ function freshCtx() {
   });
 })();
 
+// ═══════════════════════════════════════════════════════════════
+// P2-5 Residual architecture string elimination & role-driven sizing
+// ═══════════════════════════════════════════════════════════════
+(function () {
+  const ctx = freshCtx();
+  const fs = require('fs');
+  const path = require('path');
+  const jsDir = path.resolve(__dirname, '../../public/Data center Cal/js');
+
+  test('P2-5 zero occurrences of arch/fwArch/cduArch string comparisons in js/', () => {
+    function walk(dir) {
+      let files = [];
+      for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+        const full = path.join(dir, entry.name);
+        if (entry.isDirectory()) {
+          files = files.concat(walk(full));
+        } else if (entry.name.endsWith('.js')) {
+          files.push(full);
+        }
+      }
+      return files;
+    }
+
+    const jsFiles = walk(jsDir);
+    const pattern = /(arch|fwArch|cduArch)\s*===\s*'(dry_cooler|adiabatic|cooling_tower|water_chiller|rdhx|air_cooled|water_cooled|chilled)/;
+    const matches = [];
+
+    for (const f of jsFiles) {
+      const content = fs.readFileSync(f, 'utf8');
+      const lines = content.split('\n');
+      lines.forEach((line, idx) => {
+        if (pattern.test(line)) {
+          matches.push(`${path.relative(jsDir, f)}:${idx + 1}: ${line.trim()}`);
+        }
+      });
+    }
+
+    assert.strictEqual(matches.length, 0, `Residual arch string comparisons found:\n${matches.join('\n')}`);
+  });
+
+  test('P2-5 SizingEngine items carry role property from equipment descriptor', () => {
+    const { SizingEngine, CoolingArchRegistry } = ctx;
+    const archs = CoolingArchRegistry.list();
+    for (const arch of archs) {
+      const items = arch.loop === 'liquid'
+        ? SizingEngine.generateCduSizing(arch.id, 500, 20)
+        : SizingEngine.generateFwSizing(arch.id, 500, 20);
+      assert(items.length > 0, `Arch ${arch.id} must generate sizing items`);
+      for (const item of items) {
+        assert(item.role, `Sizing item ${item.key} in ${arch.id} must have role defined`);
+      }
+    }
+  });
+
+  test('P2-5 getEffectiveFcThresholds respects isTrim flag', () => {
+    const S = ctx.AppStore;
+    const thresh = S.getEffectiveFcThresholds();
+    assert(typeof thresh.mode1DbMax === 'number', 'mode1DbMax must be number');
+    assert(typeof thresh.mode2DbMax === 'number', 'mode2DbMax must be number');
+  });
+})();
+
 console.log(`\n${passCount} passed, ${failCount} failed, ${skipCount} skipped`);
 process.exit(failCount > 0 ? 1 : 0);
 

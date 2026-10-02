@@ -17,7 +17,7 @@
         cardLabel: '廠區集中冰水',
         pillLabel: '廠區冰水',
         dashboardLabel: '廠區集中冷站 (Chilled Water Plant)',
-        flags: { hasMechanical: true, consumesWater: false },
+        flags: { hasMechanical: true, consumesWater: false, isDistrict: true },
         terminal: 'crah',
         schematic: 'air_plant',
         params: [],

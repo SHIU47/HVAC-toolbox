@@ -54,6 +54,7 @@
 
             const item = {
                 key: eq.key,
+                role: eq.role,
                 label: eq.label,
                 category: eq.category,
                 catalog: cat,

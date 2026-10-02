@@ -17,7 +17,7 @@
         cardLabel: '密閉式冷卻水塔 (零冰機)',
         pillLabel: '閉式塔',
         dashboardLabel: '密閉式冷卻水塔 (Closed-Circuit Cooling Tower)',
-        flags: { hasMechanical: false, consumesWater: true },
+        flags: { hasMechanical: false, consumesWater: true, isClosedTower: true },
         terminal: 'cdu',
         schematic: 'single_loop',
         params: [
