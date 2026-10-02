@@ -1094,6 +1094,34 @@ function freshCtx() {
   });
 })();
 
+// ═══════════════════════════════════════════════════════════════
+// P1-3 hourlyProfile.waterM3 and dashboard display
+// ═══════════════════════════════════════════════════════════════
+(function () {
+  const ctx = freshCtx();
+  const { AppStore: S } = ctx;
+  S.calculate();
+  const hp = S.state.results.hourlyProfile;
+
+  test('P1-3 hourlyProfile contains waterM3 field for all hours', () => {
+    assert(Array.isArray(hp) && hp.length === 8760, 'hourlyProfile must have 8760 entries');
+    assert(typeof hp[0].waterM3 === 'number', 'waterM3 must be a number');
+    assert(hp.every(h => typeof h.waterM3 === 'number' && !isNaN(h.waterM3)), 'every hour must have valid waterM3');
+  });
+
+  test('P1-3 adiabatic_tower produces waterM3 > 0 during spray hours in hourlyProfile', () => {
+    S.state.site.hourly = ctx.BUILTIN_WEATHER_DATA['高雄 (Kaohsiung)'].hourlyData;
+    S.state.halls[0].dus[0].plantDesign.cduSystem.architecture = 'adiabatic_tower';
+    S.calculate();
+    const hpAdiabatic = S.state.results.hourlyProfile;
+    const sprayHours = hpAdiabatic.filter(h => h.waterM3 > 0);
+    assert(sprayHours.length > 0, 'adiabatic tower must have spray hours with waterM3 > 0');
+    const sumHourlyWater = hpAdiabatic.reduce((sum, h) => sum + h.waterM3, 0);
+    const overallWater = S.state.results.overall.annualWaterM3;
+    assert(Math.abs(sumHourlyWater - overallWater) < 2.0, `sum of hourly water (${sumHourlyWater}) should match annualWaterM3 (${overallWater})`);
+  });
+})();
+
 console.log(`\n${passCount} passed, ${failCount} failed, ${skipCount} skipped`);
 process.exit(failCount > 0 ? 1 : 0);
 

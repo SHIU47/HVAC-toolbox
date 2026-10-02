@@ -743,7 +743,7 @@
             // 散熱風扇推算
             const rejFanSpeed = isCduFree ? Math.max(30, Math.min(100, Math.round((curHour.db / 35) * 90))) : 100;
             // 噴霧水量推算
-            const sprayM3h = (cduArch === 'adiabatic_tower' && curHour.db > 24) ? ((curHour.itKw * 0.91 * 0.0011).toFixed(2)) : '0.00';
+            const sprayM3h = (curHour.waterM3 !== undefined && curHour.waterM3 !== null) ? Number(curHour.waterM3).toFixed(2) : '0.00';
 
             // 冰機分階推算 (P1-8: 真實逐時物理 COP)
             const chillerKw = curHour.chillerKw || 0;

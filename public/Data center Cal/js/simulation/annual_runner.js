@@ -245,7 +245,8 @@
                     mechLoadKw: Math.round(hourlyFacilityStats[i].mechLoadKw || 0),
                     cduPumpKw: Math.round(hourlyFacilityStats[i].cduPumpKw || 0),
                     coolingKw: Math.round(coolKw),
-                    totalKw: Math.round(tot)
+                    totalKw: Math.round(tot),
+                    waterM3: parseFloat(((hourlyFacilityStats[i].waterM3 || 0)).toFixed(4))
                 });
             }
 
@@ -305,6 +306,7 @@
                 cduPumpKw: 0,
                 chillerKw: 0,
                 mechLoadKw: 0,
+                waterM3: 0,
                 cduMode: 'free',
                 fwMode: 'free'
             }));
@@ -325,6 +327,7 @@
                 hourlyFacilityStats[i].cduPumpKw += hr.cduPumpKw;
                 hourlyFacilityStats[i].chillerKw += hr.chillerKw;
                 hourlyFacilityStats[i].mechLoadKw = (hourlyFacilityStats[i].mechLoadKw || 0) + (hr.mechLoadKw || 0);
+                hourlyFacilityStats[i].waterM3 = (hourlyFacilityStats[i].waterM3 || 0) + (hr.waterM3 || 0);
 
                 if (hr.cduMode === 'mechanical' || (hr.cduMode === 'partial' && hourlyFacilityStats[i].cduMode !== 'mechanical')) {
                     hourlyFacilityStats[i].cduMode = hr.cduMode;
