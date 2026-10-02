@@ -15,6 +15,7 @@
         loop: 'air',
         optionLabel: '💨 氣冷式冰水主機 (Air-Cooled Chiller / 零耗水)',
         cardLabel: '氣冷式冰機',
+        pillLabel: '氣冷冰機',
         dashboardLabel: '氣冷式冰水主機 (Air-Cooled Chiller)',
         flags: { hasMechanical: true, consumesWater: false },
         terminal: 'crah',

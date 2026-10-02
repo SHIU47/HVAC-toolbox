@@ -15,6 +15,7 @@
         loop: 'liquid',
         optionLabel: '⚙️ 全額水冷式冰水主機 (Full Mechanical Water Chiller / 全機械壓縮製冷)',
         cardLabel: '全額水冷式冰機',
+        pillLabel: '水冷冰機',
         dashboardLabel: '水冷冰機製冷 (Water-Cooled Chiller)',
         flags: { hasMechanical: true, consumesWater: true },
         terminal: 'cdu',

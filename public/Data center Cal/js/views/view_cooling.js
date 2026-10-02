@@ -94,8 +94,8 @@
             targets.forEach(t => {
                 const cduArch = t.obj.plantDesign.cduSystem.architecture || 'dry_cooler_hx';
                 const fwArch = t.obj.plantDesign.fanwallSystem.architecture || 'air_cooled_chiller';
-                const cduArchText = cduArch === 'dry_cooler_hx' ? '乾冷器' : (cduArch === 'adiabatic_tower' ? '絕熱塔' : (cduArch === 'cooling_tower_hx' ? '濕水塔' : '水冰機'));
-                const fwArchText = fwArch === 'rdhx' ? 'RDHX 背板' : (fwArch === 'air_cooled_chiller' ? '氣冷冰機' : (fwArch === 'water_cooled_chiller' ? '水冷冰機' : '廠區冰水'));
+                const cduArchText = (window.CoolingArchRegistry && window.CoolingArchRegistry.get(cduArch)?.pillLabel) || cduArch;
+                const fwArchText = (window.CoolingArchRegistry && window.CoolingArchRegistry.get(fwArch)?.pillLabel) || fwArch;
 
                 let cardBorder = t.status === 'pass' ? 'border-emerald-300 bg-emerald-50/40 hover:bg-emerald-50' : (t.status === 'fail' ? 'border-red-300 bg-red-50/60 hover:bg-red-50' : 'border-slate-300 bg-slate-50 hover:bg-slate-100');
                 const safeName = window.UIKit ? window.UIKit.escapeHTML(t.name) : t.name;

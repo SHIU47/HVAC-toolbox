@@ -15,6 +15,7 @@
         loop: 'liquid',
         optionLabel: '🔵 絕熱冷卻塔 (Adiabatic Tower / 100% 絕熱預冷自然散熱・零冰機)',
         cardLabel: '絕熱冷卻塔 (零冰機)',
+        pillLabel: '絕熱塔',
         dashboardLabel: '絕熱密閉冷卻水塔 (Adiabatic Tower)',
         flags: { hasMechanical: false, consumesWater: true },
         terminal: 'cdu',

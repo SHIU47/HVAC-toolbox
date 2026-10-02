@@ -15,6 +15,7 @@
         loop: 'air',
         optionLabel: '🚪 背板式熱交換器 (Rear Door Heat Exchanger, RDHX)',
         cardLabel: 'RDHX 背板',
+        pillLabel: 'RDHX 背板',
         dashboardLabel: '背板熱交換器 (RDHx Neutral Loop)',
         flags: { hasMechanical: true, consumesWater: false },
         terminal: 'rdhx',

@@ -15,6 +15,7 @@
         loop: 'liquid',
         optionLabel: '🔷 密閉式冷卻水塔 (Closed-Circuit Cooling Tower / 100% 蒸發自然冷卻・零冰機)',
         cardLabel: '密閉式冷卻水塔 (零冰機)',
+        pillLabel: '閉式塔',
         dashboardLabel: '密閉式冷卻水塔 (Closed-Circuit Cooling Tower)',
         flags: { hasMechanical: false, consumesWater: true },
         terminal: 'cdu',

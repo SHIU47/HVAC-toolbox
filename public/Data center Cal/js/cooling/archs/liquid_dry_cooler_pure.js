@@ -15,6 +15,7 @@
         loop: 'liquid',
         optionLabel: '🟢 純乾冷器節能直冷 (Dry Cooler Pure FC / 100% 自然風冷・零冰機・零耗水)',
         cardLabel: '純乾冷器 (零冰機)',
+        pillLabel: '純乾冷器',
         dashboardLabel: '純乾冷器自然排熱 (Dry Cooler)',
         flags: { hasMechanical: false, consumesWater: false },
         terminal: 'cdu',

@@ -15,6 +15,7 @@
         loop: 'air',
         optionLabel: '🏢 廠區集中冰水管網 (Central Chilled Water Plant)',
         cardLabel: '廠區集中冰水',
+        pillLabel: '廠區冰水',
         dashboardLabel: '廠區集中冷站 (Chilled Water Plant)',
         flags: { hasMechanical: true, consumesWater: false },
         terminal: 'crah',

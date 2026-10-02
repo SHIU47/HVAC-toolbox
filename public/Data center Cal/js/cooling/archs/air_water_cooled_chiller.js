@@ -15,6 +15,7 @@
         loop: 'air',
         optionLabel: '💧 水冷式冰水主機 + 濕式冷卻塔 (Water-Cooled Chiller)',
         cardLabel: '水冷式冰機',
+        pillLabel: '水冷冰機',
         dashboardLabel: '水冷式冰水主機 (Water-Cooled Chiller)',
         flags: { hasMechanical: true, consumesWater: true },
         terminal: 'crah',

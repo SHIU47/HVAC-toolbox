@@ -1065,6 +1065,35 @@ function freshCtx() {
   });
 })();
 
+// ═══════════════════════════════════════════════════════════════
+// P1-2 CoolingArchRegistry pillLabel
+// ═══════════════════════════════════════════════════════════════
+(function () {
+  const ctx = freshCtx();
+  const Registry = ctx.CoolingArchRegistry;
+  const expectedPillLabels = {
+    dry_cooler_trim: '乾冷器+Trim',
+    dry_cooler_pure: '純乾冷器',
+    adiabatic_tower: '絕熱塔',
+    cooling_tower_hx: '閉式塔',
+    water_chiller: '水冷冰機',
+    air_cooled_chiller: '氣冷冰機',
+    water_cooled_chiller: '水冷冰機',
+    chilled_water_plant: '廠區冰水',
+    rdhx: 'RDHX 背板'
+  };
+
+  test('P1-2 all 9 architectures define expected pillLabel', () => {
+    for (const [id, label] of Object.entries(expectedPillLabels)) {
+      const arch = Registry.get(id);
+      assert(arch, `${id} must exist in registry`);
+      assert.strictEqual(arch.pillLabel, label, `${id} pillLabel must be '${label}'`);
+    }
+    // Also test alias resolution
+    assert.strictEqual(Registry.get('dry_cooler_hx').pillLabel, '乾冷器+Trim');
+  });
+})();
+
 console.log(`\n${passCount} passed, ${failCount} failed, ${skipCount} skipped`);
 process.exit(failCount > 0 ? 1 : 0);
 
