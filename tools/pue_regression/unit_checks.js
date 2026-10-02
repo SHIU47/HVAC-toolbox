@@ -1186,7 +1186,73 @@ function freshCtx() {
   });
 })();
 
+// ── P2-2: Performance optimization via hoisted loop invariants ────────────────
+(function () {
+  const ctx = freshCtx();
+  const S = ctx.AppStore;
+  const AnnualRunner = ctx.AnnualRunner;
+
+  test('P2-2 calcHourlyEnergy yields identical results with and without pre', () => {
+    const du = S.state.halls[0].dus[0];
+    const summ = S.calcDuSummary(du);
+    summ.lossKw = 10;
+    S.bridgeDuToPlantModel(du, summ);
+
+    const testWeathers = [
+      { db: 35, wb: 28 }, // Summer
+      { db: 22, wb: 18 }, // Shoulder
+      { db: 10, wb: 8 }   // Winter
+    ];
+
+    for (const w of testWeathers) {
+      const resWithoutPre = S.calcHourlyEnergy(du.plantDesign, summ, w, null);
+      // Run simulateUnit which constructs pre
+      let capturedPre = null;
+      AnnualRunner.simulateUnit(du.plantDesign, summ, [w], {
+        calcHourlyEnergy: (p, s, weather, pre) => {
+          capturedPre = pre;
+          return resWithoutPre;
+        }
+      });
+      assert(capturedPre !== null, 'pre must be constructed and passed by simulateUnit');
+      assert(capturedPre.cduEquip, 'pre must have cduEquip');
+      assert(capturedPre.pumpTable, 'pre must have pumpTable');
+
+      const resWithPre = S.calcHourlyEnergy(du.plantDesign, summ, w, capturedPre);
+
+      assert.strictEqual(resWithPre.cduPumpKw, resWithoutPre.cduPumpKw, `cduPumpKw must match for db=${w.db}`);
+      assert.strictEqual(resWithPre.crahFanKw, resWithoutPre.crahFanKw, `crahFanKw must match for db=${w.db}`);
+      assert.strictEqual(resWithPre.heatRejKw, resWithoutPre.heatRejKw, `heatRejKw must match for db=${w.db}`);
+      assert.strictEqual(resWithPre.chillerKw, resWithoutPre.chillerKw, `chillerKw must match for db=${w.db}`);
+      assert.strictEqual(resWithPre.waterM3, resWithoutPre.waterM3, `waterM3 must match for db=${w.db}`);
+      assert.strictEqual(resWithPre.mode, resWithoutPre.mode, `mode must match for db=${w.db}`);
+      assert.strictEqual(resWithPre.capacityDeficitKw, resWithoutPre.capacityDeficitKw, `deficitKw must match for db=${w.db}`);
+    }
+  });
+
+  test('P2-2 10 DU + 1 Pod calculate runtime is well under 500 ms', () => {
+    const hallId = S.state.halls[0].id;
+    for (let i = 0; i < 9; i++) {
+      S.addDU(hallId);
+    }
+    assert.strictEqual(S.state.halls[0].dus.length, 10, 'must have 10 DUs');
+    assert.strictEqual(S.state.corePods.length, 1, 'must have 1 CorePod');
+
+    // Warmup
+    S.calculate();
+
+    const t0 = Date.now();
+    const runs = 5;
+    for (let i = 0; i < runs; i++) {
+      S.calculate();
+    }
+    const elapsedMs = (Date.now() - t0) / runs;
+    assert(elapsedMs < 500, `Average calculate() (${elapsedMs.toFixed(1)} ms) must be < 500 ms`);
+  });
+})();
+
 console.log(`\n${passCount} passed, ${failCount} failed, ${skipCount} skipped`);
 process.exit(failCount > 0 ? 1 : 0);
+
 
 

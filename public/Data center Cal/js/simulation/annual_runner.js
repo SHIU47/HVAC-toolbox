@@ -15,7 +15,18 @@
         }
     }
 
+    const HOUR_TO_MONTH_LUT = new Uint8Array(8760);
+    for (let i = 0; i < 8760; i++) {
+        for (let m = 11; m >= 0; m--) {
+            if (i >= MONTH_START[m]) {
+                HOUR_TO_MONTH_LUT[i] = m;
+                break;
+            }
+        }
+    }
+
     function hourToMonth(hourIdx) {
+        if (hourIdx >= 0 && hourIdx < 8760) return HOUR_TO_MONTH_LUT[hourIdx];
         for (let m = 11; m >= 0; m--) {
             if (hourIdx >= MONTH_START[m]) return m;
         }
@@ -55,9 +66,129 @@
             let maxDeficitKw = 0;
             let heatRemovedKwh = 0;
 
+            // P2-2: 8760 迴圈外預先解析設備與與小時無關之負載參數量 (優化效能)
+            const cduSys = plantDesign.cduSystem || {};
+            const fwSys  = plantDesign.fanwallSystem || {};
+            const cduArch = cduSys.architecture || 'dry_cooler_hx';
+            const fwArch  = fwSys.architecture || 'air_cooled_chiller';
+            const cduArchDesc = (typeof root.CoolingArchRegistry !== 'undefined') ? root.CoolingArchRegistry.get(cduArch) : null;
+            const fwArchDesc  = (typeof root.CoolingArchRegistry !== 'undefined') ? root.CoolingArchRegistry.get(fwArch) : null;
+
+            const cduEquip = (root.AppStore?.resolveEquipment)
+                ? root.AppStore.resolveEquipment(cduArchDesc, cduSys)
+                : {};
+            const fwEquip  = (root.AppStore?.resolveEquipment)
+                ? root.AppStore.resolveEquipment(fwArchDesc, fwSys)
+                : {};
+
+            const designLiqKw = cduSys.designBasis?.liq_load_kw || loadSumm.liquidHeatKw;
+            const cduLoadRatio = designLiqKw > 0 ? Math.min(1.0, loadSumm.liquidHeatKw / designLiqKw) : 1.0;
+
+            const airHeatTotal = (loadSumm.airHeatKw || 0) + lossKw;
+            const designAirKw = fwSys.designBasis?.air_load_kw || airHeatTotal;
+            const fwLoadRatio = designAirKw > 0 ? Math.min(1.0, airHeatTotal / designAirKw) : 1.0;
+
+            const chwSupplyC = fwSys.chwSupplyC || 12.0;
+            const chwReturnC = fwSys.chwReturnC || 18.0;
+            const fwBaseCop = chwSupplyC >= 20 ? 5.8 : (chwSupplyC >= 12 ? 4.2 : 3.0);
+
+            const trimItem = (cduSys.sizing || []).find(s => s.key === 'trim_chiller');
+            const trimCop = trimItem?.catalog?.find(c => c.model === trimItem.selectedModel)?.cop || 6.2;
+
+            const cduUnits = cduEquip.cdu_unit || [];
+            let cduUnitKw = 0;
+            let cduDeficitKw = 0;
+            if (cduUnits.length > 0 && typeof root.CDUEngine !== 'undefined' && loadSumm.liquidHeatKw > 0) {
+                const cduRes = root.CDUEngine.calcPower(cduUnits, loadSumm.liquidHeatKw);
+                cduUnitKw = cduRes.power_kw;
+                cduDeficitKw = cduRes.deficit_kw || 0;
+            } else if (loadSumm.liquidHeatKw > 0) {
+                cduUnitKw = (loadSumm.liquidHeatKw / 400) * 2.0;
+            }
+
+            const fwUnits = (fwArchDesc?.terminal === 'rdhx' ? fwEquip.rdhx_unit : fwEquip.crah_unit) || [];
+            let crahFanKw = 0;
+            let crahDeficitKw = 0;
+            if (fwUnits.length > 0 && typeof root.CRAHEngine !== 'undefined' && airHeatTotal > 0) {
+                const crahRes = root.CRAHEngine.calcPower(fwUnits, airHeatTotal);
+                crahFanKw = crahRes.power_kw;
+                if (crahRes.deficit_kw > 0) {
+                    crahDeficitKw = crahRes.deficit_kw;
+                }
+            } else {
+                crahFanKw = ((fwArchDesc?.terminal === 'rdhx') ? (airHeatTotal / 60) * 1.2 : (airHeatTotal / 60) * 4.8);
+            }
+
+            const cduPumps = cduEquip.cdu_pump || [];
+            const fwPumps = fwEquip.fw_pump || [];
+
+            // Precompute pump operating mode table for 3 seasonal conditions:
+            // 0: SUMMER (wb >= 24), 1: SHOULDER (16 <= wb < 24), 2: WINTER (wb < 16)
+            const modes = [
+                root.FreeCoolingEngine?.PLANT_MODE?.SUMMER || 'summer',
+                root.FreeCoolingEngine?.PLANT_MODE?.SHOULDER || 'shoulder',
+                root.FreeCoolingEngine?.PLANT_MODE?.WINTER || 'winter'
+            ];
+            const pumpTable = modes.map(mode => {
+                const cduPumpMin = (typeof root.FreeCoolingEngine !== 'undefined') ? root.FreeCoolingEngine.getPumpMinSpeed(mode) : 0.45;
+                const cduPumpSpd = Math.max(cduPumpMin, cduLoadRatio);
+                const cduFanMin  = (typeof root.FreeCoolingEngine !== 'undefined') ? root.FreeCoolingEngine.getCtFanMinSpeed(mode) : 0.20;
+                const cduPriKw   = (cduPumps.length > 0 && typeof root.PlantPumpEngine !== 'undefined' && loadSumm.liquidHeatKw > 0)
+                    ? root.PlantPumpEngine.calcPower(cduPumps, cduPumpSpd)
+                    : (loadSumm.liquidHeatKw > 0 ? (loadSumm.liquidHeatKw / 500) * (cduSys.hydraulics?.pump_power_kw || 11.0) : 0);
+
+                const fwPumpMin = (typeof root.FreeCoolingEngine !== 'undefined') ? root.FreeCoolingEngine.getPumpMinSpeed(mode) : 0.45;
+                const fwPumpSpd = Math.max(fwPumpMin, fwLoadRatio);
+                const fwFanMin  = (typeof root.FreeCoolingEngine !== 'undefined') ? root.FreeCoolingEngine.getCtFanMinSpeed(mode) : 0.20;
+                const fwPmpKw   = (fwPumps.length > 0 && typeof root.PlantPumpEngine !== 'undefined' && airHeatTotal > 0)
+                    ? root.PlantPumpEngine.calcPower(fwPumps, fwPumpSpd)
+                    : 0;
+
+                return {
+                    cduPumpSpeed: cduPumpSpd,
+                    cduFanMinSpeed: cduFanMin,
+                    cduPrimaryPumpKw: cduPriKw,
+                    cduPumpKw: cduUnitKw + cduPriKw,
+                    fwPumpSpeed: fwPumpSpd,
+                    fwFanMinSpeed: fwFanMin,
+                    fwPumpKw: fwPmpKw
+                };
+            });
+
+            const pre = {
+                cduArchDesc,
+                fwArchDesc,
+                cduEquip,
+                fwEquip,
+                designLiqKw,
+                cduLoadRatio,
+                airHeatTotal,
+                designAirKw,
+                fwLoadRatio,
+                chwSupplyC,
+                chwReturnC,
+                fwBaseCop,
+                trimCop,
+                cduUnits,
+                cduUnitKw,
+                cduDeficitKw,
+                fwUnits,
+                crahFanKw,
+                crahDeficitKw,
+                cduPumps,
+                fwPumps,
+                pumpTable
+            };
+
+            const weatherCache = new Map();
             for (let i = 0; i < 8760; i++) {
                 const w = hourlyWeather[i] || { db: 25, wb: 20 };
-                const hr = calcHourlyEnergy(plantDesign, loadSumm, w);
+                const cacheKey = (w.db !== undefined && w.wb !== undefined) ? `${w.db}_${w.wb}` : null;
+                let hr = cacheKey !== null ? weatherCache.get(cacheKey) : undefined;
+                if (hr === undefined) {
+                    hr = calcHourlyEnergy(plantDesign, loadSumm, w, pre);
+                    if (cacheKey !== null) weatherCache.set(cacheKey, hr);
+                }
 
                 kwh.it += itKw;
                 kwh.cduPump += hr.cduPumpKw;

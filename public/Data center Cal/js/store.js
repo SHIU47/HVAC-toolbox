@@ -1112,14 +1112,14 @@
         // ═══════════════════════════════════════════════════════════════
         // V22 / C-2: 共用逐時能耗計算函式 — 透過 CoolingArchRegistry 分派
         // ═══════════════════════════════════════════════════════════════
-        calcHourlyEnergy(plantDesign, summ, w) {
+        calcHourlyEnergy(plantDesign, summ, w, pre = null) {
             const cduSys = plantDesign.cduSystem;
             const fwSys  = plantDesign.fanwallSystem;
             const cduArch = cduSys.architecture || 'dry_cooler_hx';
             const fwArch  = fwSys.architecture || 'air_cooled_chiller';
 
-            const cduArchDesc = (typeof CoolingArchRegistry !== 'undefined') ? CoolingArchRegistry.get(cduArch) : null;
-            const fwArchDesc  = (typeof CoolingArchRegistry !== 'undefined') ? CoolingArchRegistry.get(fwArch) : null;
+            const cduArchDesc = pre ? pre.cduArchDesc : ((typeof CoolingArchRegistry !== 'undefined') ? CoolingArchRegistry.get(cduArch) : null);
+            const fwArchDesc  = pre ? pre.fwArchDesc  : ((typeof CoolingArchRegistry !== 'undefined') ? CoolingArchRegistry.get(fwArch) : null);
 
             if (!cduArchDesc) throw new Error(`Unknown CDU cooling architecture: "${cduArch}"`);
             if (!fwArchDesc)  throw new Error(`Unknown Fanwall cooling architecture: "${fwArch}"`);
@@ -1127,77 +1127,102 @@
             const evapFactor = (typeof A === 'function') ? A('ct_evap_m3h_per_kw') : 0.00124;
             const cycles = cduSys.cyclesOfConcentration || 5;
 
-            // P2-1: 解析設備清單
-            const cduEquip = this.resolveEquipment(cduArchDesc, cduSys);
-            const fwEquip  = this.resolveEquipment(fwArchDesc, fwSys);
+            // P2-1 / P2-2: 解析設備清單 (支援外部預計算傳入)
+            const cduEquip = pre ? pre.cduEquip : this.resolveEquipment(cduArchDesc, cduSys);
+            const fwEquip  = pre ? pre.fwEquip  : this.resolveEquipment(fwArchDesc, fwSys);
 
             // --- CDU terminal and primary pump ---
-            const designLiqKw = cduSys.designBasis?.liq_load_kw || summ.liquidHeatKw;
-            const cduLoadRatio = designLiqKw > 0 ? Math.min(1.0, summ.liquidHeatKw / designLiqKw) : 1.0;
-            const cduOperatingMode = (typeof FreeCoolingEngine !== 'undefined') ? FreeCoolingEngine.getOperatingMode(w.wb) : null;
-            const cduPumpMinSpeed = (typeof FreeCoolingEngine !== 'undefined')
-                ? FreeCoolingEngine.getPumpMinSpeed(cduOperatingMode)
-                : 0.45;
-            const cduPumpSpeed = Math.max(cduPumpMinSpeed, cduLoadRatio);
-            const cduFanMinSpeed = (typeof FreeCoolingEngine !== 'undefined')
-                ? FreeCoolingEngine.getCtFanMinSpeed(cduOperatingMode)
-                : 0.20;
+            const designLiqKw = pre ? pre.designLiqKw : (cduSys.designBasis?.liq_load_kw || summ.liquidHeatKw);
+            const cduLoadRatio = pre ? pre.cduLoadRatio : (designLiqKw > 0 ? Math.min(1.0, summ.liquidHeatKw / designLiqKw) : 1.0);
+            const pt = pre?.pumpTable ? pre.pumpTable[w.wb >= 24 ? 0 : (w.wb >= 16 ? 1 : 2)] : null;
+            const cduPumpSpeed = pt ? pt.cduPumpSpeed : (() => {
+                const cduOperatingMode = (typeof FreeCoolingEngine !== 'undefined') ? FreeCoolingEngine.getOperatingMode(w.wb) : null;
+                const cduPumpMinSpeed = (typeof FreeCoolingEngine !== 'undefined')
+                    ? FreeCoolingEngine.getPumpMinSpeed(cduOperatingMode)
+                    : 0.45;
+                return Math.max(cduPumpMinSpeed, cduLoadRatio);
+            })();
+            const cduFanMinSpeed = pt ? pt.cduFanMinSpeed : (() => {
+                const cduOperatingMode = (typeof FreeCoolingEngine !== 'undefined') ? FreeCoolingEngine.getOperatingMode(w.wb) : null;
+                return (typeof FreeCoolingEngine !== 'undefined')
+                    ? FreeCoolingEngine.getCtFanMinSpeed(cduOperatingMode)
+                    : 0.20;
+            })();
 
-            const cduUnits = cduEquip.cdu_unit || [];
-            let cduUnitKw = 0;
-            let cduDeficitKw = 0;
-            if (cduUnits.length > 0 && typeof CDUEngine !== 'undefined' && summ.liquidHeatKw > 0) {
-                const cduRes = CDUEngine.calcPower(cduUnits, summ.liquidHeatKw);
-                cduUnitKw = cduRes.power_kw;
-                cduDeficitKw = cduRes.deficit_kw || 0;
-            } else if (summ.liquidHeatKw > 0) {
-                cduUnitKw = (summ.liquidHeatKw / 400) * 2.0;
-            }
+            const cduUnitKw = pre ? pre.cduUnitKw : (() => {
+                const cduUnits = cduEquip.cdu_unit || [];
+                if (cduUnits.length > 0 && typeof CDUEngine !== 'undefined' && summ.liquidHeatKw > 0) {
+                    return CDUEngine.calcPower(cduUnits, summ.liquidHeatKw).power_kw;
+                } else if (summ.liquidHeatKw > 0) {
+                    return (summ.liquidHeatKw / 400) * 2.0;
+                }
+                return 0;
+            })();
 
-            const cduPumps = cduEquip.cdu_pump || [];
-            const cduPrimaryPumpKw = (cduPumps.length > 0 && typeof PlantPumpEngine !== 'undefined' && summ.liquidHeatKw > 0)
+            const cduDeficitKw = pre ? pre.cduDeficitKw : (() => {
+                const cduUnits = cduEquip.cdu_unit || [];
+                if (cduUnits.length > 0 && typeof CDUEngine !== 'undefined' && summ.liquidHeatKw > 0) {
+                    return CDUEngine.calcPower(cduUnits, summ.liquidHeatKw).deficit_kw || 0;
+                }
+                return 0;
+            })();
+
+            const cduPumps = pre ? pre.cduPumps : (cduEquip.cdu_pump || []);
+            const cduPrimaryPumpKw = pt ? pt.cduPrimaryPumpKw : ((cduPumps.length > 0 && typeof PlantPumpEngine !== 'undefined' && summ.liquidHeatKw > 0)
                 ? PlantPumpEngine.calcPower(cduPumps, cduPumpSpeed)
-                : (summ.liquidHeatKw / 500) * (cduSys.hydraulics?.pump_power_kw || 11.0);
+                : (summ.liquidHeatKw / 500) * (cduSys.hydraulics?.pump_power_kw || 11.0));
 
-            const cduPumpKw = cduUnitKw + cduPrimaryPumpKw;
+            const cduPumpKw = pt ? pt.cduPumpKw : (cduUnitKw + cduPrimaryPumpKw);
 
             // --- Fanwall / CRAH terminal and secondary pump ---
-            const chwSupplyC = fwSys.chwSupplyC || 12.0;
-            const chwReturnC = fwSys.chwReturnC || 18.0;
-            const fwBaseCop = chwSupplyC >= 20 ? 5.8 : (chwSupplyC >= 12 ? 4.2 : 3.0);
-            const airHeatTotal = summ.airHeatKw + summ.lossKw;
+            const chwSupplyC = pre ? pre.chwSupplyC : (fwSys.chwSupplyC || 12.0);
+            const chwReturnC = pre ? pre.chwReturnC : (fwSys.chwReturnC || 18.0);
+            const fwBaseCop = pre ? pre.fwBaseCop : (chwSupplyC >= 20 ? 5.8 : (chwSupplyC >= 12 ? 4.2 : 3.0));
+            const airHeatTotal = pre ? pre.airHeatTotal : (summ.airHeatKw + summ.lossKw);
 
-            const designAirKw = fwSys.designBasis?.air_load_kw || airHeatTotal;
-            const fwLoadRatio = designAirKw > 0 ? Math.min(1.0, airHeatTotal / designAirKw) : 1.0;
+            const designAirKw = pre ? pre.designAirKw : (fwSys.designBasis?.air_load_kw || airHeatTotal);
+            const fwLoadRatio = pre ? pre.fwLoadRatio : (designAirKw > 0 ? Math.min(1.0, airHeatTotal / designAirKw) : 1.0);
 
-            const fwUnits = (fwArchDesc.terminal === 'rdhx' ? fwEquip.rdhx_unit : fwEquip.crah_unit) || [];
-            let crahFanKw = 0;
-            let crahDeficitKw = 0;
-            if (fwUnits.length > 0 && typeof CRAHEngine !== 'undefined' && airHeatTotal > 0) {
-                const crahRes = CRAHEngine.calcPower(fwUnits, airHeatTotal);
-                crahFanKw = crahRes.power_kw;
-                if (crahRes.deficit_kw > 0) {
-                    crahDeficitKw = crahRes.deficit_kw;
+            const crahFanKw = pre ? pre.crahFanKw : (() => {
+                const fwUnits = (fwArchDesc.terminal === 'rdhx' ? fwEquip.rdhx_unit : fwEquip.crah_unit) || [];
+                if (fwUnits.length > 0 && typeof CRAHEngine !== 'undefined' && airHeatTotal > 0) {
+                    return CRAHEngine.calcPower(fwUnits, airHeatTotal).power_kw;
                 }
-            } else {
-                crahFanKw = ((fwArchDesc.terminal === 'rdhx') ? (airHeatTotal / 60) * 1.2 : (airHeatTotal / 60) * 4.8);
-            }
+                return (fwArchDesc.terminal === 'rdhx') ? (airHeatTotal / 60) * 1.2 : (airHeatTotal / 60) * 4.8;
+            })();
 
-            const fwPumps = fwEquip.fw_pump || [];
-            const fwOperatingMode = (typeof FreeCoolingEngine !== 'undefined') ? FreeCoolingEngine.getOperatingMode(w.wb) : null;
-            const fwPumpMinSpeed = (typeof FreeCoolingEngine !== 'undefined')
-                ? FreeCoolingEngine.getPumpMinSpeed(fwOperatingMode)
-                : 0.45;
-            const fwPumpSpeed = Math.max(fwPumpMinSpeed, fwLoadRatio);
-            const fwFanMinSpeed = (typeof FreeCoolingEngine !== 'undefined')
-                ? FreeCoolingEngine.getCtFanMinSpeed(fwOperatingMode)
-                : 0.20;
-            const fwPumpKw = (fwPumps.length > 0 && typeof PlantPumpEngine !== 'undefined' && airHeatTotal > 0)
+            const crahDeficitKw = pre ? pre.crahDeficitKw : (() => {
+                const fwUnits = (fwArchDesc.terminal === 'rdhx' ? fwEquip.rdhx_unit : fwEquip.crah_unit) || [];
+                if (fwUnits.length > 0 && typeof CRAHEngine !== 'undefined' && airHeatTotal > 0) {
+                    return CRAHEngine.calcPower(fwUnits, airHeatTotal).deficit_kw || 0;
+                }
+                return 0;
+            })();
+
+            const fwPumps = pre ? pre.fwPumps : (fwEquip.fw_pump || []);
+            const fwPumpSpeed = pt ? pt.fwPumpSpeed : (() => {
+                const fwOperatingMode = (typeof FreeCoolingEngine !== 'undefined') ? FreeCoolingEngine.getOperatingMode(w.wb) : null;
+                const fwPumpMinSpeed = (typeof FreeCoolingEngine !== 'undefined')
+                    ? FreeCoolingEngine.getPumpMinSpeed(fwOperatingMode)
+                    : 0.45;
+                return Math.max(fwPumpMinSpeed, fwLoadRatio);
+            })();
+
+            const fwFanMinSpeed = pt ? pt.fwFanMinSpeed : (() => {
+                const fwOperatingMode = (typeof FreeCoolingEngine !== 'undefined') ? FreeCoolingEngine.getOperatingMode(w.wb) : null;
+                return (typeof FreeCoolingEngine !== 'undefined')
+                    ? FreeCoolingEngine.getCtFanMinSpeed(fwOperatingMode)
+                    : 0.20;
+            })();
+
+            const fwPumpKw = pt ? pt.fwPumpKw : ((fwPumps.length > 0 && typeof PlantPumpEngine !== 'undefined' && airHeatTotal > 0)
                 ? PlantPumpEngine.calcPower(fwPumps, fwPumpSpeed)
-                : 0;
+                : 0);
 
-            const trimItem = (cduSys.sizing || []).find(s => s.key === 'trim_chiller');
-            const trimCop = trimItem?.catalog?.find(c => c.model === trimItem.selectedModel)?.cop || 6.2;
+            const trimCop = pre ? pre.trimCop : (() => {
+                const trimItem = (cduSys.sizing || []).find(s => s.key === 'trim_chiller');
+                return trimItem?.catalog?.find(c => c.model === trimItem.selectedModel)?.cop || 6.2;
+            })();
 
             // --- Dispatch CDU Simulation ---
             const cduSim = (summ.liquidHeatKw > 0) ? cduArchDesc.simulateHour({
@@ -1334,7 +1359,7 @@
                     calcDuSummary: (du) => this.calcDuSummary(du),
                     calcCorePodSummary: (pod) => this.calcCorePodSummary(pod),
                     bridgeDuToPlantModel: (unit, summ) => this.bridgeDuToPlantModel(unit, summ),
-                    calcHourlyEnergy: (plant, summ, w) => this.calcHourlyEnergy(plant, summ, w)
+                    calcHourlyEnergy: (plant, summ, w, pre) => this.calcHourlyEnergy(plant, summ, w, pre)
                 });
             }
         },
@@ -1342,7 +1367,7 @@
         simulateUnit(plantDesign, loadSumm, hourlyWeather, helpers = {}) {
             if (typeof AnnualRunner !== 'undefined') {
                 return AnnualRunner.simulateUnit(plantDesign, loadSumm, hourlyWeather, {
-                    calcHourlyEnergy: (plant, summ, w) => this.calcHourlyEnergy(plant, summ, w),
+                    calcHourlyEnergy: (plant, summ, w, pre) => this.calcHourlyEnergy(plant, summ, w, pre),
                     ...helpers
                 });
             }
