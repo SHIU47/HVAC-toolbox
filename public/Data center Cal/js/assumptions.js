@@ -64,6 +64,11 @@ const ASSUMPTIONS = {
   air_chiller_fc_coil_approach_c: { val: 4.0,   unit: '°C',     label: '氣冷冰機 free-cooling 盤管 approach（外氣 DB → 預冷後回水）', ref: '廠商型錄典型 3–5°C' },
   air_chiller_fc_fan_kw_per_kw:   { val: 0.05,  unit: 'kW/kW',  label: '氣冷冰機自然冷卻模式風扇耗電（每 kW 自然冷卻量）', ref: '沿用原程式 5% 概估，待型錄風扇功率資料取代' },
   rdhx_fc_fan_kw_per_kw:          { val: 0.03,  unit: 'kW/kW',  label: 'RDHX 系統自然冷卻模式排熱風扇耗電', ref: '沿用原程式 3% 概估' },
+
+  // ── 冰機降級/兜底 COP 基準常數 (P2-6) ────────────────────────────────────
+  chiller_fallback_cop_chw_ge20:  { val: 5.8,   unit: '-',      label: '高溫冰水 (≥20°C) 兜底 COP', ref: '典型高溫水冷/氣冷冰機滿載能效' },
+  chiller_fallback_cop_chw_ge12:  { val: 4.2,   unit: '-',      label: '標準冰水 (12–20°C) 兜底 COP', ref: 'ASHRAE 90.1 / AHRI 550/590 標準工況典型值' },
+  chiller_fallback_cop_chw_lt12:  { val: 3.0,   unit: '-',      label: '低溫冰水 (<12°C) 兜底 COP', ref: '低溫供水/高揚程典型保守值' },
 };
 
 function A(key, state) {

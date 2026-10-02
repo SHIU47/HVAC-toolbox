@@ -54,19 +54,23 @@
     function runStageChain(stages, ctx, arch) {
         const Q_kw = ctx.Q_kw || 0;
         if (Q_kw <= 0) {
-            return {
-                terminalKw: ctx.terminalKw || 0,
-                pumpKw: ctx.pumpKw || 0,
-                fanKw: 0,
-                compressorKw: 0,
-                waterM3: 0,
-                mode: 'free',
-                deficitKw: 0,
-                heatRemovedKw: 0,
-                mechLoadKw: 0,
-                op: null,
-                diag: {}
-            };
+            const emptyRes = (typeof root.CoolingArchHelpers !== 'undefined')
+                ? root.CoolingArchHelpers.emptyHourResult()
+                : {
+                    pumpKw: 0,
+                    fanKw: 0,
+                    compressorKw: 0,
+                    waterM3: 0,
+                    mode: 'free',
+                    deficitKw: 0,
+                    heatRemovedKw: 0,
+                    mechLoadKw: 0,
+                    diag: {}
+                };
+            emptyRes.terminalKw = ctx.terminalKw || 0;
+            emptyRes.pumpKw = ctx.pumpKw || 0;
+            emptyRes.op = null;
+            return emptyRes;
         }
 
         const sys = ctx.sys || {};
@@ -139,7 +143,10 @@
                         mode: T_avail <= t_supply_c ? 'FULL_FC' : 'MECH',
                         t_precooled_c: Math.min(t_return_c, Math.max(t_supply_c, T_avail))
                     };
-                isFullFc = (eco.mode === (root.FreeCoolingEngine?.MODE?.FULL_FC || 'FULL_FC'));
+                const mode = (typeof root.CoolingArchHelpers !== 'undefined')
+                    ? root.CoolingArchHelpers.modeFromEco(eco)
+                    : ((eco.mode === (root.FreeCoolingEngine?.MODE?.FULL_FC || 'FULL_FC')) ? 'free' : (eco.chiller_fraction >= 1.0 ? 'mechanical' : 'partial'));
+                isFullFc = (mode === 'free');
                 chillerFraction = isFullFc ? 0 : eco.chiller_fraction;
             }
 
@@ -178,7 +185,9 @@
                 let t_cewt_c;
                 let fallbackCop;
 
-                const fwBaseCop = t_supply_c >= 20 ? 5.8 : (t_supply_c >= 12 ? 4.2 : 3.0);
+                const fwBaseCop = (typeof root.CoolingArchHelpers !== 'undefined')
+                    ? root.CoolingArchHelpers.chillerFallbackCop(t_supply_c)
+                    : (t_supply_c >= 20 ? 5.8 : (t_supply_c >= 12 ? 4.2 : 3.0));
 
                 if (mechanical.chillerType === 'water_cooled') {
                     if (op) {

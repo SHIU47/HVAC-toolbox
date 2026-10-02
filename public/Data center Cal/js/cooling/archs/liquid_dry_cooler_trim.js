@@ -144,9 +144,11 @@
             const minCewt = (typeof root.A === 'function') ? root.A('min_cewt_c') : 16.0;
             // 乾冷器側水在 Primary HX 吸收預冷熱後進冷凝器（平衡流量假設，與拓樸圖一致）
             const tCewt   = Math.max(minCewt, tDc + (tRet - tPre));
-            const mode = (eco.mode === (root.FreeCoolingEngine?.MODE?.FULL_FC || 'FULL_FC'))
-                ? 'free'
-                : ((eco.mode === (root.FreeCoolingEngine?.MODE?.PARTIAL_FC || 'PARTIAL_FC')) ? 'partial' : 'mechanical');
+            const mode = (typeof root.CoolingArchHelpers !== 'undefined')
+                ? root.CoolingArchHelpers.modeFromEco(eco)
+                : ((eco.mode === (root.FreeCoolingEngine?.MODE?.FULL_FC || 'FULL_FC'))
+                    ? 'free'
+                    : ((eco.mode === (root.FreeCoolingEngine?.MODE?.PARTIAL_FC || 'PARTIAL_FC')) ? 'partial' : 'mechanical'));
             return {
                 ...eco,
                 mode,
@@ -169,18 +171,20 @@
         _simulateHourFallback(ctx) {
             const Q_kw = ctx.Q_kw || 0;
             if (Q_kw <= 0) {
-                return {
-                    terminalKw: 0,
-                    pumpKw: 0,
-                    fanKw: 0,
-                    compressorKw: 0,
-                    waterM3: 0,
-                    mode: 'free',
-                    deficitKw: 0,
-                    heatRemovedKw: 0,
-                    mechLoadKw: 0,
-                    diag: {}
-                };
+                return (typeof root.CoolingArchHelpers !== 'undefined')
+                    ? root.CoolingArchHelpers.emptyHourResult()
+                    : {
+                        terminalKw: 0,
+                        pumpKw: 0,
+                        fanKw: 0,
+                        compressorKw: 0,
+                        waterM3: 0,
+                        mode: 'free',
+                        deficitKw: 0,
+                        heatRemovedKw: 0,
+                        mechLoadKw: 0,
+                        diag: {}
+                    };
             }
 
             const sys = ctx.sys || {};

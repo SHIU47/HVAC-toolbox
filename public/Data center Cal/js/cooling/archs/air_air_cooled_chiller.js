@@ -95,25 +95,29 @@
         _simulateHourFallback(ctx) {
             const Q_kw = ctx.Q_kw || 0;
             if (Q_kw <= 0) {
-                return {
-                    terminalKw: 0,
-                    pumpKw: 0,
-                    fanKw: 0,
-                    compressorKw: 0,
-                    waterM3: 0,
-                    mode: 'free',
-                    deficitKw: 0,
-                    heatRemovedKw: 0,
-                    mechLoadKw: 0,
-                    diag: {}
-                };
+                return (typeof root.CoolingArchHelpers !== 'undefined')
+                    ? root.CoolingArchHelpers.emptyHourResult()
+                    : {
+                        terminalKw: 0,
+                        pumpKw: 0,
+                        fanKw: 0,
+                        compressorKw: 0,
+                        waterM3: 0,
+                        mode: 'free',
+                        deficitKw: 0,
+                        heatRemovedKw: 0,
+                        mechLoadKw: 0,
+                        diag: {}
+                    };
             }
 
             const sys = ctx.sys || {};
             const w = ctx.w || { db: 25, wb: 20 };
             const chwSupplyC = ctx.t_supply_c ?? sys.chwSupplyC ?? 12.0;
             const chwReturnC = ctx.t_return_c ?? sys.chwReturnC ?? 18.0;
-            const fwBaseCop = chwSupplyC >= 20 ? 5.8 : (chwSupplyC >= 12 ? 4.2 : 3.0);
+            const fwBaseCop = (typeof root.CoolingArchHelpers !== 'undefined')
+                ? root.CoolingArchHelpers.chillerFallbackCop(chwSupplyC)
+                : (chwSupplyC >= 20 ? 5.8 : (chwSupplyC >= 12 ? 4.2 : 3.0));
 
             const fcApproach = (typeof root.A === 'function') ? root.A('air_chiller_fc_coil_approach_c') : 4.0;
             const airFcKwPerKw = (typeof root.A === 'function') ? root.A('air_chiller_fc_fan_kw_per_kw') : 0.05;
@@ -143,9 +147,11 @@
                 deficitKw = chRes.deficitKw || 0;
             }
 
-            const mode = (eco.mode === (root.FreeCoolingEngine?.MODE?.FULL_FC || 'FULL_FC'))
-                ? 'free'
-                : ((eco.mode === (root.FreeCoolingEngine?.MODE?.PARTIAL_FC || 'PARTIAL_FC')) ? 'partial' : 'mechanical');
+            const mode = (typeof root.CoolingArchHelpers !== 'undefined')
+                ? root.CoolingArchHelpers.modeFromEco(eco)
+                : ((eco.mode === (root.FreeCoolingEngine?.MODE?.FULL_FC || 'FULL_FC'))
+                    ? 'free'
+                    : ((eco.mode === (root.FreeCoolingEngine?.MODE?.PARTIAL_FC || 'PARTIAL_FC')) ? 'partial' : 'mechanical'));
 
             return {
                 terminalKw: ctx.terminalKw || 0,

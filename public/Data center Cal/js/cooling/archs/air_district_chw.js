@@ -68,18 +68,20 @@
         simulateHour(ctx) {
             const Q_kw = ctx.Q_kw || 0;
             if (Q_kw <= 0) {
-                return {
-                    terminalKw: 0,
-                    pumpKw: 0,
-                    fanKw: 0,
-                    compressorKw: 0,
-                    waterM3: 0,
-                    mode: 'mechanical',
-                    deficitKw: 0,
-                    heatRemovedKw: 0,
-                    mechLoadKw: 0,
-                    diag: {}
-                };
+                return (typeof root.CoolingArchHelpers !== 'undefined')
+                    ? root.CoolingArchHelpers.emptyHourResult('mechanical')
+                    : {
+                        terminalKw: 0,
+                        pumpKw: 0,
+                        fanKw: 0,
+                        compressorKw: 0,
+                        waterM3: 0,
+                        mode: 'mechanical',
+                        deficitKw: 0,
+                        heatRemovedKw: 0,
+                        mechLoadKw: 0,
+                        diag: {}
+                    };
             }
 
             const distStage = CoolingStages.get('district_chw');

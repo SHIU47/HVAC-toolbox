@@ -119,25 +119,29 @@
         _simulateHourFallback(ctx) {
             const Q_kw = ctx.Q_kw || 0;
             if (Q_kw <= 0) {
-                return {
-                    terminalKw: 0,
-                    pumpKw: 0,
-                    fanKw: 0,
-                    compressorKw: 0,
-                    waterM3: 0,
-                    mode: 'free',
-                    deficitKw: 0,
-                    heatRemovedKw: 0,
-                    mechLoadKw: 0,
-                    diag: {}
-                };
+                return (typeof root.CoolingArchHelpers !== 'undefined')
+                    ? root.CoolingArchHelpers.emptyHourResult()
+                    : {
+                        terminalKw: 0,
+                        pumpKw: 0,
+                        fanKw: 0,
+                        compressorKw: 0,
+                        waterM3: 0,
+                        mode: 'free',
+                        deficitKw: 0,
+                        heatRemovedKw: 0,
+                        mechLoadKw: 0,
+                        diag: {}
+                    };
             }
 
             const sys = ctx.sys || {};
             const w = ctx.w || { db: 25, wb: 20 };
             const chwSupplyC = ctx.t_supply_c ?? sys.chwSupplyC ?? 12.0;
             const chwReturnC = ctx.t_return_c ?? sys.chwReturnC ?? 18.0;
-            const fwBaseCop = chwSupplyC >= 20 ? 5.8 : (chwSupplyC >= 12 ? 4.2 : 3.0);
+            const fwBaseCop = (typeof root.CoolingArchHelpers !== 'undefined')
+                ? root.CoolingArchHelpers.chillerFallbackCop(chwSupplyC)
+                : (chwSupplyC >= 20 ? 5.8 : (chwSupplyC >= 12 ? 4.2 : 3.0));
 
             const hxApproach = (typeof root.A === 'function') ? root.A('hx_approach_c') : 1.5;
             const towerApproach = (typeof root.A === 'function') ? root.A('tower_approach_c') : 4.0;
@@ -148,7 +152,10 @@
                 ? root.FreeCoolingEngine.calcSeriesEconomizer(tAvail, chwSupplyC, chwReturnC)
                 : { fc_fraction: (tAvail <= chwSupplyC ? 1.0 : 0.0), chiller_fraction: (tAvail <= chwSupplyC ? 0.0 : 1.0), mode: (tAvail <= chwSupplyC ? 'FULL_FC' : 'MECH') };
 
-            const fwIsFullFc = (eco.mode === (root.FreeCoolingEngine?.MODE?.FULL_FC || 'FULL_FC'));
+            const mode = (typeof root.CoolingArchHelpers !== 'undefined')
+                ? root.CoolingArchHelpers.modeFromEco(eco)
+                : ((eco.mode === (root.FreeCoolingEngine?.MODE?.FULL_FC || 'FULL_FC')) ? 'free' : ((eco.mode === (root.FreeCoolingEngine?.MODE?.PARTIAL_FC || 'PARTIAL_FC')) ? 'partial' : 'mechanical'));
+            const fwIsFullFc = (mode === 'free');
             const fwChillerFraction = eco.chiller_fraction;
             const fwChillerLoadKw = fwIsFullFc ? 0 : (Q_kw * fwChillerFraction);
 
@@ -193,8 +200,6 @@
             const evap = fwHeatRejKw * evapFactor;
             const bd = evap / Math.max(1, cycles - 1);
             const waterM3 = evap + bd;
-
-            const mode = fwIsFullFc ? 'free' : ((eco.mode === (root.FreeCoolingEngine?.MODE?.PARTIAL_FC || 'PARTIAL_FC')) ? 'partial' : 'mechanical');
 
             return {
                 terminalKw: ctx.terminalKw || 0,

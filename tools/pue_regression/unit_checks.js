@@ -1457,6 +1457,63 @@ function freshCtx() {
   });
 })();
 
+// ═══════════════════════════════════════════════════════════════
+// P2-6 CoolingArchHelpers & ASSUMPTIONS fallback COP
+// ═══════════════════════════════════════════════════════════════
+(function () {
+  const ctx = freshCtx();
+  const { CoolingArchHelpers, ASSUMPTIONS, A } = ctx;
+
+  test('P2-6 CoolingArchHelpers is defined with required helper methods', () => {
+    assert(CoolingArchHelpers, 'CoolingArchHelpers must be defined');
+    assert(typeof CoolingArchHelpers.emptyHourResult === 'function', 'emptyHourResult must be function');
+    assert(typeof CoolingArchHelpers.modeFromEco === 'function', 'modeFromEco must be function');
+    assert(typeof CoolingArchHelpers.isFullFc === 'function', 'isFullFc must be function');
+    assert(typeof CoolingArchHelpers.chillerFallbackCop === 'function', 'chillerFallbackCop must be function');
+  });
+
+  test('P2-6 emptyHourResult returns standardized zeroed result contract', () => {
+    const res1 = CoolingArchHelpers.emptyHourResult();
+    assert.strictEqual(res1.pumpKw, 0);
+    assert.strictEqual(res1.fanKw, 0);
+    assert.strictEqual(res1.compressorKw, 0);
+    assert.strictEqual(res1.waterM3, 0);
+    assert.strictEqual(res1.deficitKw, 0);
+    assert.strictEqual(res1.heatRemovedKw, 0);
+    assert.strictEqual(res1.mechLoadKw, 0);
+    assert.strictEqual(res1.mode, 'free');
+
+    const res2 = CoolingArchHelpers.emptyHourResult('mechanical');
+    assert.strictEqual(res2.mode, 'mechanical');
+  });
+
+  test('P2-6 modeFromEco correctly determines free, partial, and mechanical modes', () => {
+    assert.strictEqual(CoolingArchHelpers.modeFromEco({ mode: 'FULL_FC', chiller_fraction: 0 }), 'free');
+    assert.strictEqual(CoolingArchHelpers.modeFromEco({ mode: 'full_fc', chiller_fraction: 0 }), 'free');
+    assert.strictEqual(CoolingArchHelpers.modeFromEco({ fc_fraction: 1.0, chiller_fraction: 0 }), 'free');
+    assert.strictEqual(CoolingArchHelpers.modeFromEco({ mode: 'PARTIAL_FC', chiller_fraction: 0.3 }), 'partial');
+    assert.strictEqual(CoolingArchHelpers.modeFromEco({ mode: 'MECH', chiller_fraction: 1.0 }), 'mechanical');
+    assert.strictEqual(CoolingArchHelpers.modeFromEco(null), 'free');
+  });
+
+  test('P2-6 chillerFallbackCop reads 3-tier values from ASSUMPTIONS', () => {
+    assert(ASSUMPTIONS.chiller_fallback_cop_chw_ge20, 'ASSUMPTIONS must define chiller_fallback_cop_chw_ge20');
+    assert(ASSUMPTIONS.chiller_fallback_cop_chw_ge12, 'ASSUMPTIONS must define chiller_fallback_cop_chw_ge12');
+    assert(ASSUMPTIONS.chiller_fallback_cop_chw_lt12, 'ASSUMPTIONS must define chiller_fallback_cop_chw_lt12');
+
+    assert.strictEqual(A('chiller_fallback_cop_chw_ge20'), 5.8);
+    assert.strictEqual(A('chiller_fallback_cop_chw_ge12'), 4.2);
+    assert.strictEqual(A('chiller_fallback_cop_chw_lt12'), 3.0);
+
+    assert.strictEqual(CoolingArchHelpers.chillerFallbackCop(22.0), 5.8);
+    assert.strictEqual(CoolingArchHelpers.chillerFallbackCop(20.0), 5.8);
+    assert.strictEqual(CoolingArchHelpers.chillerFallbackCop(15.0), 4.2);
+    assert.strictEqual(CoolingArchHelpers.chillerFallbackCop(12.0), 4.2);
+    assert.strictEqual(CoolingArchHelpers.chillerFallbackCop(10.0), 3.0);
+    assert.strictEqual(CoolingArchHelpers.chillerFallbackCop(7.0), 3.0);
+  });
+})();
+
 console.log(`\n${passCount} passed, ${failCount} failed, ${skipCount} skipped`);
 process.exit(failCount > 0 ? 1 : 0);
 
