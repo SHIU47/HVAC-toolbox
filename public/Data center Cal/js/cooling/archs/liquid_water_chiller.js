@@ -100,6 +100,94 @@
             }
         ],
 
+        operatingPoint(sys, w, equip) {
+            const wb_c = (typeof w === 'number') ? w : (w?.wb ?? 20.0);
+            const tSup = sys?.fwsSupplyC ?? 40.0;
+            const tRet = sys?.fwsReturnC ?? 55.0;
+            const towerApp = (typeof root.A === 'function') ? root.A('tower_approach_c') : 4.0;
+            const minCewt = (typeof root.A === 'function') ? root.A('min_cewt_c') : 16.0;
+            const tCewt = Math.max(minCewt, wb_c + towerApp);
+            return {
+                mode: 'mechanical',
+                fc_fraction: 0.0,
+                chiller_fraction: 1.0,
+                tSup,
+                tRet,
+                tCewt,
+                temps: { fwsRet: tRet, fwsSup: tSup, chwSup: tSup, chwRet: tRet, condIn: tCewt, condOut: tCewt + 5.0 },
+                thresholds: { basis: 'none', full: null, mech: null }
+            };
+        },
+
+        topology(sys, op, design) {
+            if (!op) op = this.operatingPoint(sys, design);
+            return {
+                title: '設施排熱拓樸 (Facility Heat Rejection System)',
+                referenceLabel: null,
+                banners: [
+                    { id: 'mode1', label: '全額機械壓縮冷卻 (COP 5.5)', detail: '無經濟盤管自然冷卻', tone: 'slate' }
+                ],
+                nodes: [
+                    {
+                        id: 'it',
+                        kind: 'it',
+                        title: 'Compute Data Hall',
+                        lines: [
+                            'Cold Plate 晶片液冷',
+                            `晶片水溫: ${sys?.secSupplyC ?? 45} ⇄ ${sys?.secReturnC ?? 57}°C`
+                        ]
+                    },
+                    {
+                        id: 'cdu',
+                        kind: 'cdu',
+                        title: 'CDU Distribution'
+                    },
+                    {
+                        id: 'hx',
+                        kind: 'hx',
+                        title: 'PHE-1 冰水製冷板換 (Chilled Water PHE)',
+                        lines: [
+                            '機械壓縮製冷 (Mechanical Cooling)',
+                            `連續穩定供應 ${op?.temps?.fwsSup ?? 40}°C 冰水`,
+                            '全額冷卻負載由壓縮機承擔',
+                            '無經濟盤管自然冷卻'
+                        ]
+                    },
+                    {
+                        id: 'pump_sec',
+                        kind: 'pump',
+                        title: 'Secondary Pump',
+                        lines: ['二次側設施主供水泵']
+                    },
+                    {
+                        id: 'pump_outdoor',
+                        kind: 'pump',
+                        title: 'Chilled Water Pump',
+                        lines: ['冰水循環泵']
+                    },
+                    {
+                        id: 'heat_rejection',
+                        kind: 'chiller',
+                        title: '水冷式冰水主機 (Chiller)',
+                        lines: [
+                            '全額機械壓縮製冷 (無經濟盤管)',
+                            '搭配濕式冷卻水塔散熱，全年 100% 壓縮機運轉',
+                            '全額機械壓縮冷卻 (COP 5.5)',
+                            '全年 100% 壓縮機運轉'
+                        ]
+                    }
+                ],
+                pipes: [
+                    { from: 'cdu', to: 'hx', label: `${op?.temps?.fwsRet ?? 55}°C`, tone: 'hot' },
+                    { from: 'hx', to: 'cdu', label: `${op?.temps?.fwsSup ?? 40}°C`, tone: 'cold' },
+                    { from: 'hx', to: 'heat_rejection', label: `${op?.temps?.fwsRet ?? 55}°C`, tone: 'hot' },
+                    { from: 'heat_rejection', to: 'hx', label: `${op?.temps?.fwsSup ?? 40}°C`, tone: 'cold' }
+                ],
+                footer: [],
+                warnings: []
+            };
+        },
+
         simulateHour(ctx) {
             const Q_kw = ctx.Q_kw || 0;
             if (Q_kw <= 0) {
@@ -120,6 +208,7 @@
             }
 
             const sys = ctx.sys || {};
+            const op = this.operatingPoint(sys, ctx.w, ctx.equip);
             const chStage = CoolingStages.get('chiller');
             const chRes = chStage.simulate({
                 ...ctx,
@@ -146,10 +235,11 @@
                 fanKw: towerRes.fanKw,
                 compressorKw: chRes.compressorKw,
                 waterM3: towerRes.waterM3,
-                mode: 'mechanical',
+                mode: op.mode,
                 deficitKw: chRes.deficitKw,
                 heatRemovedKw: Q_kw,
                 mechLoadKw: Q_kw,
+                op,
                 diag: { chRes, towerRes }
             };
         }

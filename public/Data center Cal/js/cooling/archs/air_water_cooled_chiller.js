@@ -110,6 +110,107 @@
             { type: 'chiller', role: 'mechanical', chillerType: 'water_cooled', condenserSink: 'evap_tower', equipKey: 'water_cooled_chiller' }
         ],
 
+        operatingPoint(sys, w, equip) {
+            const wb_c = (typeof w === 'number') ? w : (w?.wb ?? 20.0);
+            const chwSupplyC = sys?.chwSupplyC ?? 12.0;
+            const chwReturnC = sys?.chwReturnC ?? 18.0;
+            const hxApproach = (typeof root.A === 'function') ? root.A('hx_approach_c') : 1.5;
+            const towerApproach = (typeof root.A === 'function') ? root.A('tower_approach_c') : 4.0;
+            const minCewt = (typeof root.A === 'function') ? root.A('min_cewt_c') : 16.0;
+            const tAvail = wb_c + towerApproach + hxApproach;
+            const tCewt = Math.max(minCewt, wb_c + towerApproach);
+            const eco = (typeof root.FreeCoolingEngine?.calcSeriesEconomizer === 'function')
+                ? root.FreeCoolingEngine.calcSeriesEconomizer(tAvail, chwSupplyC, chwReturnC)
+                : { fc_fraction: (tAvail <= chwSupplyC ? 1.0 : 0.0), chiller_fraction: (tAvail <= chwSupplyC ? 0.0 : 1.0), mode: (tAvail <= chwSupplyC ? 'FULL_FC' : 'MECH') };
+            const mode = (typeof root.CoolingArchHelpers !== 'undefined')
+                ? root.CoolingArchHelpers.modeFromEco(eco)
+                : ((eco.mode === (root.FreeCoolingEngine?.MODE?.FULL_FC || 'FULL_FC')) ? 'free' : ((eco.mode === (root.FreeCoolingEngine?.MODE?.PARTIAL_FC || 'PARTIAL_FC')) ? 'partial' : 'mechanical'));
+            const fullThresh = Number((chwSupplyC - towerApproach - hxApproach).toFixed(1));
+            const mechThresh = Number((chwReturnC - towerApproach - hxApproach).toFixed(1));
+            return {
+                ...eco,
+                mode,
+                tAvail,
+                tCewt,
+                chwSupplyC,
+                chwReturnC,
+                temps: { chwSup: chwSupplyC, chwRet: chwReturnC, condIn: tCewt, condOut: tCewt + 5.0, tAvail },
+                thresholds: { basis: 'wb', full: fullThresh, mech: mechThresh }
+            };
+        },
+
+        topology(sys, op, design) {
+            if (!op) op = this.operatingPoint(sys, design);
+            const chwSup = op?.temps?.chwSup ?? sys?.chwSupplyC ?? 12.0;
+            const chwRet = op?.temps?.chwRet ?? sys?.chwReturnC ?? 18.0;
+            const condIn = op?.temps?.condIn ?? 24.0;
+            const condOut = op?.temps?.condOut ?? 29.0;
+            const fullThresh = op?.thresholds?.full ?? 6.5;
+            const mechThresh = op?.thresholds?.mech ?? 12.5;
+            return {
+                title: '水冷式冰水主機 + 濕式冷卻塔',
+                referenceLabel: null,
+                banners: [
+                    { id: 'mode1', label: `全板換自然冷卻 (WB ≤${fullThresh}°C)`, detail: '100% 水側省能器 (WSE)', tone: 'emerald' },
+                    { id: 'mode2', label: `部分板換預冷 (${fullThresh} < WB < ${mechThresh}°C)`, detail: 'WSE 預冷 + 冰機修整', tone: 'amber' },
+                    { id: 'mode3', label: `全機械製冷 (WB ≥${mechThresh}°C)`, detail: '全額冰機壓縮製冷', tone: 'blue' }
+                ],
+                nodes: [
+                    {
+                        id: 'crah',
+                        kind: 'crah',
+                        title: 'Compute Data Hall (CRAH)',
+                        lines: [
+                            'CRAH 氣冷機組',
+                            `供回水: ${chwSup} ⇄ ${chwRet}°C`
+                        ]
+                    },
+                    {
+                        id: 'evaporator',
+                        kind: 'chiller',
+                        title: '水冷式冰機 (Centrifugal/Screw)',
+                        lines: [
+                            '高效率水冷壓縮製冷',
+                            `供水 ${chwSup}°C ⇄ 回水 ${chwRet}°C`,
+                            '設計 COP: 5.8 ~ 6.5',
+                            '冷凝熱經冷卻水路排放至水塔'
+                        ]
+                    },
+                    {
+                        id: 'heat_rejection',
+                        kind: 'tower',
+                        title: '濕式冷卻水塔 (Cooling Tower)',
+                        lines: [
+                            '高效開放式冷卻水塔',
+                            `進水 ${condOut}°C ⇄ 出水 ${condIn}°C`,
+                            '以濕球溫度 (WB) 蒸發散熱',
+                            '連續排污與自動補水控制'
+                        ]
+                    },
+                    {
+                        id: 'pump',
+                        kind: 'pump',
+                        title: 'Secondary CHW Pump',
+                        lines: ['二次側冰水循環泵']
+                    },
+                    {
+                        id: 'pump_cw',
+                        kind: 'pump',
+                        title: 'CW Pump',
+                        lines: ['冷卻水循環泵']
+                    }
+                ],
+                pipes: [
+                    { from: 'crah', to: 'evaporator', label: `${chwRet}°C`, tone: 'hot' },
+                    { from: 'evaporator', to: 'crah', label: `${chwSup}°C`, tone: 'cold' },
+                    { from: 'evaporator', to: 'heat_rejection', label: `${condOut}°C`, tone: 'hot' },
+                    { from: 'heat_rejection', to: 'evaporator', label: `${condIn}°C`, tone: 'cold' }
+                ],
+                footer: [],
+                warnings: []
+            };
+        },
+
         simulateHour(ctx) {
             return (typeof root.runStageChain === 'function')
                 ? root.runStageChain(this.stages, ctx, this)
@@ -136,27 +237,14 @@
             }
 
             const sys = ctx.sys || {};
-            const w = ctx.w || { db: 25, wb: 20 };
-            const chwSupplyC = ctx.t_supply_c ?? sys.chwSupplyC ?? 12.0;
-            const chwReturnC = ctx.t_return_c ?? sys.chwReturnC ?? 18.0;
+            const op = this.operatingPoint(sys, ctx.w, ctx.equip);
+            const chwSupplyC = op.temps.chwSup;
             const fwBaseCop = (typeof root.CoolingArchHelpers !== 'undefined')
                 ? root.CoolingArchHelpers.chillerFallbackCop(chwSupplyC)
                 : (chwSupplyC >= 20 ? 5.8 : (chwSupplyC >= 12 ? 4.2 : 3.0));
 
-            const hxApproach = (typeof root.A === 'function') ? root.A('hx_approach_c') : 1.5;
-            const towerApproach = (typeof root.A === 'function') ? root.A('tower_approach_c') : 4.0;
-            const minCewt = (typeof root.A === 'function') ? root.A('min_cewt_c') : 16.0;
-            const tAvail = w.wb + towerApproach + hxApproach;
-
-            const eco = (typeof root.FreeCoolingEngine?.calcSeriesEconomizer === 'function')
-                ? root.FreeCoolingEngine.calcSeriesEconomizer(tAvail, chwSupplyC, chwReturnC)
-                : { fc_fraction: (tAvail <= chwSupplyC ? 1.0 : 0.0), chiller_fraction: (tAvail <= chwSupplyC ? 0.0 : 1.0), mode: (tAvail <= chwSupplyC ? 'FULL_FC' : 'MECH') };
-
-            const mode = (typeof root.CoolingArchHelpers !== 'undefined')
-                ? root.CoolingArchHelpers.modeFromEco(eco)
-                : ((eco.mode === (root.FreeCoolingEngine?.MODE?.FULL_FC || 'FULL_FC')) ? 'free' : ((eco.mode === (root.FreeCoolingEngine?.MODE?.PARTIAL_FC || 'PARTIAL_FC')) ? 'partial' : 'mechanical'));
-            const fwIsFullFc = (mode === 'free');
-            const fwChillerFraction = eco.chiller_fraction;
+            const fwIsFullFc = (op.mode === 'free');
+            const fwChillerFraction = op.chiller_fraction;
             const fwChillerLoadKw = fwIsFullFc ? 0 : (Q_kw * fwChillerFraction);
 
             const fwTowerDevices = ctx.equip?.cooling_tower || [];

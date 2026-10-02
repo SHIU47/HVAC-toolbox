@@ -114,6 +114,113 @@
             }
         ],
 
+        operatingPoint(sys, w, equip) {
+            const db_c = (typeof w === 'number') ? w : (w?.db ?? 25.0);
+            const wb_c = (typeof w === 'number') ? w * 0.8 : (w?.wb ?? 20.0);
+            const tSup = sys?.fwsSupplyC ?? 40.0;
+            const tRet = sys?.fwsReturnC ?? 55.0;
+            const dcApp = sys?.dryCoolerApproachC ?? 5.0;
+            const pheApp = 0.0;
+            const satEff = (sys?.adiabaticSaturationEfficiencyPct ?? 85) / 100;
+            const switchpointOffset = (typeof root.A === 'function') ? root.A('adiabatic_switchpoint_offset_c') : 9.2;
+            const drySwitchpoint = (sys?.adiabaticDrySwitchpointC !== undefined && sys?.adiabaticDrySwitchpointC !== null && sys?.adiabaticDrySwitchpointC !== '')
+                ? Number(sys.adiabaticDrySwitchpointC)
+                : Math.max(26.0, tSup - switchpointOffset);
+            const isDry = db_c <= drySwitchpoint;
+            const effectiveDb = isDry ? db_c : (db_c - (db_c - wb_c) * satEff);
+            const tTowerOut = effectiveDb + dcApp;
+            const tAvail = tTowerOut + pheApp;
+            const isFc = tAvail <= tSup;
+            const mode = isFc ? 'free' : 'mechanical';
+            const unservedRatio = isFc ? 0.0 : Math.min(1.0, (tAvail - tSup) / Math.max(1.0, tRet - tSup));
+            const fullThresh = Number((tSup - dcApp - pheApp).toFixed(1));
+            return {
+                mode,
+                fc_fraction: isFc ? 1.0 : (1.0 - unservedRatio),
+                chiller_fraction: isFc ? 0.0 : unservedRatio,
+                unservedRatio,
+                isDry,
+                drySwitchpoint,
+                effectiveDb,
+                tTowerOut,
+                tSup,
+                tRet,
+                temps: { fwsRet: tRet, fwsSup: tSup, towerOut: tTowerOut },
+                thresholds: { basis: 'db_eff', full: fullThresh, switchpoint: Number(drySwitchpoint.toFixed(1)), mech: null }
+            };
+        },
+
+        topology(sys, op, design) {
+            if (!op) op = this.operatingPoint(sys, design);
+            const fullThresh = op?.thresholds?.full ?? 35.0;
+            const switchpoint = op?.thresholds?.switchpoint ?? 30.8;
+            return {
+                title: '設施排熱拓樸 (Facility Heat Rejection System)',
+                referenceLabel: null,
+                banners: [
+                    { id: 'mode1', label: `絕熱預冷自然冷卻 (有效乾球 ≤${fullThresh}°C)`, detail: '高溫噴霧預冷 (100% 自然冷卻・零冰機)', tone: 'emerald' }
+                ],
+                nodes: [
+                    {
+                        id: 'it',
+                        kind: 'it',
+                        title: 'Compute Data Hall',
+                        lines: [
+                            'Cold Plate 晶片液冷',
+                            `晶片水溫: ${sys?.secSupplyC ?? 45} ⇄ ${sys?.secReturnC ?? 57}°C`
+                        ]
+                    },
+                    {
+                        id: 'cdu',
+                        kind: 'cdu',
+                        title: 'CDU Distribution'
+                    },
+                    {
+                        id: 'hx',
+                        kind: 'hx',
+                        title: 'PHE-1 絕熱預冷板換 (Adiabatic PHE)',
+                        lines: [
+                            '絕熱預冷自然散熱 (Adiabatic)',
+                            `噴霧輔助冷卻至 ${op?.temps?.fwsSup ?? 40}°C`,
+                            '蒸發預冷大幅降低進風溫',
+                            '高溫氣候仍維持 100% 自然排熱'
+                        ]
+                    },
+                    {
+                        id: 'pump_sec',
+                        kind: 'pump',
+                        title: 'Secondary Pump',
+                        lines: ['二次側設施主供水泵']
+                    },
+                    {
+                        id: 'pump_outdoor',
+                        kind: 'pump',
+                        title: 'Spray Pump',
+                        lines: ['噴淋水泵']
+                    },
+                    {
+                        id: 'heat_rejection',
+                        kind: 'adiabatic',
+                        title: '絕熱冷卻塔 (Adiabatic Tower)',
+                        lines: [
+                            '高溫噴霧預冷 + 乾式自然散熱 (零冰機)',
+                            `飽和效率: ${sys?.adiabaticSaturationEfficiencyPct ?? 85}% ｜ 全年 100% 自然冷卻`,
+                            `噴霧飽和效率: ${sys?.adiabaticSaturationEfficiencyPct ?? 85}% ｜ 乾式切換點(估算): ≤${switchpoint}°C`,
+                            `氣溫 ≤${switchpoint}°C 乾式 0 耗水，超過後啟動蒸發預冷`
+                        ]
+                    }
+                ],
+                pipes: [
+                    { from: 'cdu', to: 'hx', label: `${op?.temps?.fwsRet ?? 55}°C`, tone: 'hot' },
+                    { from: 'hx', to: 'cdu', label: `${op?.temps?.fwsSup ?? 40}°C`, tone: 'cold' },
+                    { from: 'hx', to: 'heat_rejection', label: `${op?.temps?.fwsRet ?? 55}°C`, tone: 'hot' },
+                    { from: 'heat_rejection', to: 'hx', label: `${(op?.temps?.towerOut ?? 35).toFixed(1)}°C`, tone: 'cold' }
+                ],
+                footer: [],
+                warnings: []
+            };
+        },
+
         simulateHour(ctx) {
             const Q_kw = ctx.Q_kw || 0;
             if (Q_kw <= 0) {
@@ -134,6 +241,7 @@
             }
 
             const sys = ctx.sys || {};
+            const op = this.operatingPoint(sys, ctx.w, ctx.equip);
             const atStage = CoolingStages.get('adiabatic');
             const atRes = atStage.simulate({
                 ...ctx,
@@ -148,10 +256,11 @@
                 fanKw: atRes.fanKw,
                 compressorKw: 0,
                 waterM3: atRes.waterM3,
-                mode: atRes.mode,
+                mode: op.mode,
                 deficitKw: atRes.deficitKw,
                 heatRemovedKw: atRes.Q_removed_kw,
                 mechLoadKw: 0,
+                op,
                 diag: { atRes }
             };
         }

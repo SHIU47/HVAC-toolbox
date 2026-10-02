@@ -1514,6 +1514,96 @@ function freshCtx() {
   });
 })();
 
+// ═══════════════════════════════════════════════════════════════
+// P3-1 Architecture OperatingPoint & Topology Data Models
+// ═══════════════════════════════════════════════════════════════
+(function () {
+  const ctx = freshCtx();
+  const { CoolingArchRegistry } = ctx;
+
+  const archIds = [
+    'dry_cooler_trim',
+    'dry_cooler_pure',
+    'adiabatic_tower',
+    'cooling_tower_hx',
+    'water_chiller',
+    'air_cooled_chiller',
+    'water_cooled_chiller',
+    'chilled_water_plant',
+    'rdhx'
+  ];
+
+  test('P3-1 all 9 architectures implement operatingPoint and topology methods', () => {
+    for (const id of archIds) {
+      const arch = CoolingArchRegistry.get(id);
+      assert(arch, `Architecture ${id} must be registered`);
+      assert.strictEqual(typeof arch.operatingPoint, 'function', `${id} must implement operatingPoint(sys, w, equip)`);
+      assert.strictEqual(typeof arch.topology, 'function', `${id} must implement topology(sys, op, design)`);
+    }
+  });
+
+  test('P3-1 operatingPoint returns conforming OperatingPoint contract across all 9 archs', () => {
+    for (const id of archIds) {
+      const arch = CoolingArchRegistry.get(id);
+      const isLiquid = arch.loop === 'liquid';
+      const sys = isLiquid
+        ? { fwsSupplyC: 40, fwsReturnC: 55, secSupplyC: 45, secReturnC: 57, dryCoolerApproachC: 5.0, pheApproachC: 2.0, ctApproachC: 6.0 }
+        : { chwSupplyC: 12, chwReturnC: 18, secSupplyC: 45, secReturnC: 57 };
+      const op = arch.operatingPoint(sys, { db: 30, wb: 25 }, {});
+      assert(op, `${id} operatingPoint must return an object`);
+      assert(['free', 'partial', 'mechanical'].includes(op.mode), `${id} op.mode must be free/partial/mechanical, got: ${op.mode}`);
+      assert(typeof op.fc_fraction === 'number' && op.fc_fraction >= 0 && op.fc_fraction <= 1, `${id} op.fc_fraction must be in [0, 1]`);
+      assert(typeof op.chiller_fraction === 'number' && op.chiller_fraction >= 0 && op.chiller_fraction <= 1, `${id} op.chiller_fraction must be in [0, 1]`);
+      assert(op.temps && typeof op.temps === 'object', `${id} op.temps must be an object`);
+      assert(Object.values(op.temps).every(v => typeof v === 'number' && !isNaN(v)), `${id} op.temps values must be numbers`);
+      assert(op.thresholds && typeof op.thresholds === 'object', `${id} op.thresholds must be an object`);
+      assert(['db', 'wb', 'db_eff', 'none'].includes(op.thresholds.basis), `${id} thresholds.basis invalid: ${op.thresholds.basis}`);
+    }
+  });
+
+  test('P3-1 topology returns conforming TopologyModel contract across all 9 archs', () => {
+    for (const id of archIds) {
+      const arch = CoolingArchRegistry.get(id);
+      const isLiquid = arch.loop === 'liquid';
+      const sys = isLiquid
+        ? { fwsSupplyC: 40, fwsReturnC: 55, secSupplyC: 45, secReturnC: 57, dryCoolerApproachC: 5.0, pheApproachC: 2.0, ctApproachC: 6.0 }
+        : { chwSupplyC: 12, chwReturnC: 18, secSupplyC: 45, secReturnC: 57 };
+      const op = arch.operatingPoint(sys, { db: 30, wb: 25 }, {});
+      const topo = arch.topology(sys, op, { designDb: 35, designWb: 28 });
+      assert(topo, `${id} topology must return an object`);
+      assert(typeof topo.title === 'string' && topo.title.length > 0, `${id} topo.title must be a non-empty string`);
+      assert(Array.isArray(topo.banners) && topo.banners.length >= 1, `${id} topo.banners must have at least 1 banner`);
+      assert(topo.banners.every(b => b.id && b.label), `${id} all banners must have id and label`);
+      assert(Array.isArray(topo.nodes) && topo.nodes.length >= 1, `${id} topo.nodes must have nodes`);
+      assert(topo.nodes.every(n => n.id && n.kind && n.title), `${id} all nodes must have id, kind, title`);
+      assert(Array.isArray(topo.pipes) && topo.pipes.length >= 1, `${id} topo.pipes must have pipes`);
+      assert(topo.pipes.every(p => p.from && p.to && p.label), `${id} all pipes must have from, to, label`);
+    }
+  });
+
+  test('P3-1 simulateHour returns op OperatingPoint on result contract for non-zero load', () => {
+    for (const id of archIds) {
+      const arch = CoolingArchRegistry.get(id);
+      const isLiquid = arch.loop === 'liquid';
+      const sys = isLiquid
+        ? { fwsSupplyC: 40, fwsReturnC: 55, secSupplyC: 45, secReturnC: 57, dryCoolerApproachC: 5.0, pheApproachC: 2.0, ctApproachC: 6.0 }
+        : { chwSupplyC: 12, chwReturnC: 18, secSupplyC: 45, secReturnC: 57 };
+      const sim = arch.simulateHour({
+        Q_kw: 100,
+        sys,
+        w: { db: 28, wb: 22 },
+        t_supply_c: isLiquid ? 40 : 12,
+        t_return_c: isLiquid ? 55 : 18,
+        equip: {}
+      });
+      assert(sim, `${id} simulateHour must return result`);
+      assert(sim.op, `${id} simulateHour result must contain op OperatingPoint`);
+      assert(['free', 'partial', 'mechanical'].includes(sim.op.mode), `${id} sim.op.mode invalid: ${sim.op.mode}`);
+      assert.strictEqual(sim.mode, sim.op.mode, `${id} sim.mode must match sim.op.mode`);
+    }
+  });
+})();
+
 console.log(`\n${passCount} passed, ${failCount} failed, ${skipCount} skipped`);
 process.exit(failCount > 0 ? 1 : 0);
 

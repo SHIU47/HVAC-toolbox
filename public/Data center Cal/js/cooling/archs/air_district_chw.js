@@ -65,6 +65,81 @@
             }
         ],
 
+        operatingPoint(sys, w, equip) {
+            const chwSupplyC = sys?.chwSupplyC ?? 12.0;
+            const chwReturnC = sys?.chwReturnC ?? 18.0;
+            return {
+                mode: 'mechanical',
+                fc_fraction: 0.0,
+                chiller_fraction: 1.0,
+                chwSupplyC,
+                chwReturnC,
+                temps: { chwSup: chwSupplyC, chwRet: chwReturnC, districtSup: chwSupplyC - 2.0, districtRet: chwReturnC },
+                thresholds: { basis: 'none', full: null, mech: null }
+            };
+        },
+
+        topology(sys, op, design) {
+            if (!op) op = this.operatingPoint(sys, design);
+            const chwSup = op?.temps?.chwSup ?? sys?.chwSupplyC ?? 12.0;
+            const chwRet = op?.temps?.chwRet ?? sys?.chwReturnC ?? 18.0;
+            const distSup = op?.temps?.districtSup ?? (chwSup - 2.0);
+            return {
+                title: '市政區域冰水排熱拓樸',
+                referenceLabel: null,
+                banners: [
+                    { id: 'mode1', label: '區域市政冷源供應 (District Cooling)', detail: '全時連續供應穩定冰水', tone: 'teal' }
+                ],
+                nodes: [
+                    {
+                        id: 'crah',
+                        kind: 'crah',
+                        title: 'Compute Data Hall (CRAH)',
+                        lines: [
+                            'CRAH 氣冷機組',
+                            `供回水: ${chwSup} ⇄ ${chwRet}°C`
+                        ]
+                    },
+                    {
+                        id: 'evaporator',
+                        kind: 'hx',
+                        title: '板式熱交換器 (District PHE)',
+                        lines: [
+                            '一二次側物理水質隔離',
+                            `供水 ${chwSup}°C ⇄ 回水 ${chwRet}°C`,
+                            '廠內無需建置冷卻水塔與冰機',
+                            '合約保證供水水溫與流量'
+                        ]
+                    },
+                    {
+                        id: 'heat_rejection',
+                        kind: 'district',
+                        title: '市政/園區中央冷源站 (District Plant)',
+                        lines: [
+                            '大型中央冷能集中製造與配送',
+                            `市政供水 ${distSup}°C ⇄ 回水 ${chwRet}°C`,
+                            '超大型離心機組與深層水源熱泵',
+                            '園區級能源調度與蓄冷槽削峰'
+                        ]
+                    },
+                    {
+                        id: 'pump',
+                        kind: 'pump',
+                        title: 'Secondary CHW Pump',
+                        lines: ['二次側冰水循環泵']
+                    }
+                ],
+                pipes: [
+                    { from: 'crah', to: 'evaporator', label: `${chwRet}°C`, tone: 'hot' },
+                    { from: 'evaporator', to: 'crah', label: `${chwSup}°C`, tone: 'cold' },
+                    { from: 'evaporator', to: 'heat_rejection', label: `${chwRet}°C`, tone: 'hot' },
+                    { from: 'heat_rejection', to: 'evaporator', label: `${distSup}°C`, tone: 'cold' }
+                ],
+                footer: [],
+                warnings: []
+            };
+        },
+
         simulateHour(ctx) {
             const Q_kw = ctx.Q_kw || 0;
             if (Q_kw <= 0) {
@@ -84,6 +159,7 @@
                     };
             }
 
+            const op = this.operatingPoint(ctx.sys, ctx.w, ctx.equip);
             const distStage = CoolingStages.get('district_chw');
             const distRes = distStage.simulate(ctx);
 
@@ -93,10 +169,11 @@
                 fanKw: 0,
                 compressorKw: distRes.compressorKw,
                 waterM3: 0,
-                mode: 'mechanical',
+                mode: op.mode,
                 deficitKw: 0,
                 heatRemovedKw: Q_kw,
                 mechLoadKw: Q_kw,
+                op,
                 diag: { distRes }
             };
         }

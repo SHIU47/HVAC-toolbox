@@ -190,15 +190,15 @@
                     : (t_supply_c >= 20 ? 5.8 : (t_supply_c >= 12 ? 4.2 : 3.0));
 
                 if (mechanical.chillerType === 'water_cooled') {
-                    if (op) {
-                        t_chws_c = op.tChws ?? Math.min(30, t_supply_c - 7);
-                        t_cewt_c = op.tCewt ?? (w.db + 5.0);
+                    if (arch?.flags?.isTrim) {
+                        t_chws_c = op?.tChws ?? Math.min(30, t_supply_c - 7);
+                        t_cewt_c = op?.tCewt ?? (w.db + 5.0);
                         fallbackCop = mechanical.fallbackCop ?? ctx.trimCop ?? ctx.fallbackCop ?? 6.2;
                     } else {
                         const towerApproach = (typeof root.A === 'function') ? root.A('tower_approach_c') : 4.0;
                         const minCewt = (typeof root.A === 'function') ? root.A('min_cewt_c') : 16.0;
-                        t_chws_c = t_supply_c;
-                        t_cewt_c = Math.max(minCewt, w.wb + towerApproach);
+                        t_chws_c = op?.temps?.chwSup ?? t_supply_c;
+                        t_cewt_c = op?.temps?.condIn ?? Math.max(minCewt, w.wb + towerApproach);
                         fallbackCop = mechanical.fallbackCop ?? (sys.chwSupplyC !== undefined ? fwBaseCop : 5.5);
                     }
                 } else {

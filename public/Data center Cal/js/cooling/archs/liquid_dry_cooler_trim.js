@@ -149,6 +149,9 @@
                 : ((eco.mode === (root.FreeCoolingEngine?.MODE?.FULL_FC || 'FULL_FC'))
                     ? 'free'
                     : ((eco.mode === (root.FreeCoolingEngine?.MODE?.PARTIAL_FC || 'PARTIAL_FC')) ? 'partial' : 'mechanical'));
+            const fullThresh = Number((tSup - dcApp - pheApp).toFixed(1));
+            const mode2Offset = (typeof root.A === 'function') ? root.A('nvidia_dsx_mode2_offset_c') : 5.7;
+            const mechThresh = Number((fullThresh + mode2Offset).toFixed(1));
             return {
                 ...eco,
                 mode,
@@ -158,7 +161,104 @@
                 tCewt,
                 tRet,
                 tSup,
-                temps: { fwsRet: tRet, fwsPre: tPre, fwsSup: tSup, dcOut: tDc, condIn: tCewt, condOut: tCewt + 5.0, chwSup: tChws, chwRet: tSup }
+                temps: { fwsRet: tRet, fwsPre: tPre, fwsSup: tSup, dcOut: tDc, condIn: tCewt, condOut: tCewt + 5.0, chwSup: tChws, chwRet: tSup },
+                thresholds: { basis: 'db', full: fullThresh, mech: mechThresh }
+            };
+        },
+
+        topology(sys, op, design) {
+            if (!op) op = this.operatingPoint(sys, design);
+            const dcApp = sys?.dryCoolerApproachC ?? 5.0;
+            const tSup = op?.temps?.fwsSup ?? sys?.fwsSupplyC ?? 40.0;
+            const tPre = op?.temps?.fwsPre ?? tSup;
+            const tChws = op?.temps?.chwSup ?? 30.0;
+            const chwRet = op?.temps?.chwRet ?? (tChws + 5.0);
+            const fullThresh = op?.thresholds?.full ?? 33.0;
+            const mechThresh = op?.thresholds?.mech ?? 38.7;
+
+            return {
+                title: 'AI 算力中心廠務排熱拓樸 (Facility Heat Rejection System)',
+                referenceLabel: 'NVIDIA Reference Schematic',
+                banners: [
+                    { id: 'mode1', label: `Mode 1 全直冷 (≤${fullThresh}°C)`, detail: '100% 走 Economizer', tone: 'emerald' },
+                    { id: 'mode2', label: `Mode 2 串聯修整 (≤${mechThresh}°C)`, detail: `預冷至 ${tPre}°C → Trim 冰機`, tone: 'amber' },
+                    { id: 'mode3', label: `Mode 3 全機械製冷 (>${mechThresh}°C)`, detail: '全額走 Trim 冰機製冷', tone: 'red' }
+                ],
+                nodes: [
+                    {
+                        id: 'it',
+                        kind: 'it',
+                        title: 'Compute Data Hall',
+                        lines: [
+                            'Cold Plate 晶片液冷',
+                            `晶片水溫: ${sys?.secSupplyC ?? 45} ⇄ ${sys?.secReturnC ?? 57}°C`
+                        ]
+                    },
+                    {
+                        id: 'cdu',
+                        kind: 'cdu',
+                        title: 'CDU Distribution'
+                    },
+                    {
+                        id: 'hx_primary',
+                        kind: 'hx',
+                        title: 'Liquid-to-Liquid HX (Primary)',
+                        lines: [
+                            '自然預冷 (Free Pre-Cool)',
+                            `回水預冷至 ${tPre}°C`,
+                            '以乾冷器出水為冷源'
+                        ]
+                    },
+                    {
+                        id: 'hx_secondary',
+                        kind: 'hx',
+                        title: 'Liquid-to-Liquid HX (Secondary)',
+                        lines: [
+                            '接力修整 (Trim Cooling)',
+                            `精確修整至 ${tSup}°C`,
+                            `由 Trim Chiller ${tChws}°C 冰水冷卻`
+                        ]
+                    },
+                    {
+                        id: 'chiller',
+                        kind: 'chiller',
+                        title: 'Water Cooled Chillers',
+                        lines: [
+                            'Trim',
+                            '冷凝熱串聯排放至 Dry Coolers',
+                            '高效離心/螺桿式機械壓縮製冷'
+                        ]
+                    },
+                    {
+                        id: 'dry_cooler',
+                        kind: 'dry_cooler',
+                        title: 'Dry Coolers',
+                        lines: [
+                            '零耗水自然風冷',
+                            `Approach: ${dcApp}°C ｜ 門檻: ≤${fullThresh}°C`,
+                            'Mode 1: 滿載自然風冷',
+                            'Mode 2: 串聯預冷與主機冷凝排熱'
+                        ]
+                    },
+                    {
+                        id: 'pump_fws',
+                        kind: 'pump',
+                        title: 'FWS Pump',
+                        lines: ['二次側設施供水泵']
+                    }
+                ],
+                pipes: [
+                    { from: 'cdu', to: 'hx_primary', label: `${op?.temps?.fwsRet ?? 55}°C`, tone: 'hot' },
+                    { from: 'hx_primary', to: 'hx_secondary', label: `${tPre}°C`, tone: 'warm' },
+                    { from: 'hx_secondary', to: 'cdu', label: `${tSup}°C`, tone: 'cold' },
+                    { from: 'chiller', to: 'hx_secondary', label: `${tChws}°C`, tone: 'cold' },
+                    { from: 'hx_secondary', to: 'chiller', label: `${chwRet}°C`, tone: 'hot' },
+                    { from: 'dry_cooler', to: 'hx_primary', label: `${op?.temps?.dcOut ?? 35}°C`, tone: 'cold' },
+                    { from: 'hx_primary', to: 'chiller', label: `${op?.temps?.condIn ?? 45}°C`, tone: 'warm' },
+                    { from: 'chiller', to: 'dry_cooler', label: `${op?.temps?.condOut ?? 49.8}°C`, tone: 'hot' }
+                ],
+                footer: [],
+                warnings: []
             };
         },
 

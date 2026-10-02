@@ -81,6 +81,95 @@
             }
         ],
 
+        operatingPoint(sys, w, equip) {
+            const db_c = (typeof w === 'number') ? w : (w?.db ?? 25.0);
+            const chwSupplyC = sys?.chwSupplyC ?? 12.0;
+            const chwReturnC = sys?.chwReturnC ?? 18.0;
+            const fcApproach = (typeof root.A === 'function') ? root.A('air_chiller_fc_coil_approach_c') : 4.0;
+            const tAvail = db_c + fcApproach;
+            const eco = (typeof root.FreeCoolingEngine?.calcSeriesEconomizer === 'function')
+                ? root.FreeCoolingEngine.calcSeriesEconomizer(tAvail, chwSupplyC, chwReturnC)
+                : { fc_fraction: (tAvail <= chwSupplyC ? 1.0 : 0.0), chiller_fraction: (tAvail <= chwSupplyC ? 0.0 : 1.0), mode: (tAvail <= chwSupplyC ? 'FULL_FC' : 'MECH') };
+            const mode = (typeof root.CoolingArchHelpers !== 'undefined')
+                ? root.CoolingArchHelpers.modeFromEco(eco)
+                : ((eco.mode === (root.FreeCoolingEngine?.MODE?.FULL_FC || 'FULL_FC'))
+                    ? 'free'
+                    : ((eco.mode === (root.FreeCoolingEngine?.MODE?.PARTIAL_FC || 'PARTIAL_FC')) ? 'partial' : 'mechanical'));
+            const fullThresh = Number((chwSupplyC - fcApproach).toFixed(1));
+            const mechThresh = Number((chwReturnC - fcApproach).toFixed(1));
+            return {
+                ...eco,
+                mode,
+                tAvail,
+                chwSupplyC,
+                chwReturnC,
+                temps: { chwSup: chwSupplyC, chwRet: chwReturnC, coilAvail: tAvail },
+                thresholds: { basis: 'db', full: fullThresh, mech: mechThresh }
+            };
+        },
+
+        topology(sys, op, design) {
+            if (!op) op = this.operatingPoint(sys, design);
+            const chwSup = op?.temps?.chwSup ?? sys?.chwSupplyC ?? 12.0;
+            const chwRet = op?.temps?.chwRet ?? sys?.chwReturnC ?? 18.0;
+            const fullThresh = op?.thresholds?.full ?? 8.0;
+            const mechThresh = op?.thresholds?.mech ?? 14.0;
+            return {
+                title: 'RDHX 背板水冷散熱拓樸',
+                referenceLabel: null,
+                banners: [
+                    { id: 'mode1', label: `全自然冷卻 (DB ≤${fullThresh}°C)`, detail: '乾冷器直冷高溫背板', tone: 'emerald' },
+                    { id: 'mode2', label: `部分自然冷卻 (${fullThresh} < DB < ${mechThresh}°C)`, detail: '串聯預冷節能模式', tone: 'amber' },
+                    { id: 'mode3', label: `全機械製冷 (DB ≥${mechThresh}°C)`, detail: '氣冷冰水主機供冷', tone: 'indigo' }
+                ],
+                nodes: [
+                    {
+                        id: 'rdhx',
+                        kind: 'rdhx',
+                        title: 'Compute Data Hall (RDHX)',
+                        lines: [
+                            'RDHX 伺服器水冷背板',
+                            `供回水: ${chwSup} ⇄ ${chwRet}°C`
+                        ]
+                    },
+                    {
+                        id: 'evaporator',
+                        kind: 'hx',
+                        title: 'RDHX 高溫水冷循環',
+                        lines: [
+                            '微通道水-空氣熱交換器',
+                            `中高溫供水 ${chwSup}°C ⇄ 回水 ${chwRet}°C`,
+                            '機櫃排風零增溫 (Neutral Room)',
+                            '極低風阻・EC 變頻風扇輔助'
+                        ]
+                    },
+                    {
+                        id: 'heat_rejection',
+                        kind: 'dry_cooler',
+                        title: '室外乾冷器/氣冷冰水主機',
+                        lines: [
+                            '高溫進水直冷 (WUE = 0)',
+                            `室外風冷散熱 ⇄ 供水 ${chwSup}°C`,
+                            '大幅延長全年自然冷卻小時',
+                            '無結露風險 (高於機房露點溫度)'
+                        ]
+                    },
+                    {
+                        id: 'pump',
+                        kind: 'pump',
+                        title: 'Secondary CHW Pump',
+                        lines: ['二次側冰水循環泵']
+                    }
+                ],
+                pipes: [
+                    { from: 'rdhx', to: 'evaporator', label: `${chwRet}°C`, tone: 'hot' },
+                    { from: 'evaporator', to: 'rdhx', label: `${chwSup}°C`, tone: 'cold' }
+                ],
+                footer: [],
+                warnings: []
+            };
+        },
+
         simulateHour(ctx) {
             const Q_kw = ctx.Q_kw || 0;
             if (Q_kw <= 0) {
@@ -101,22 +190,16 @@
             }
 
             const sys = ctx.sys || {};
-            const w = ctx.w || { db: 25, wb: 20 };
-            const chwSupplyC = ctx.t_supply_c ?? sys.chwSupplyC ?? 12.0;
-            const chwReturnC = ctx.t_return_c ?? sys.chwReturnC ?? 18.0;
+            const op = this.operatingPoint(sys, ctx.w, ctx.equip);
+            const chwSupplyC = op.temps.chwSup;
             const fwBaseCop = (typeof root.CoolingArchHelpers !== 'undefined')
                 ? root.CoolingArchHelpers.chillerFallbackCop(chwSupplyC)
                 : (chwSupplyC >= 20 ? 5.8 : (chwSupplyC >= 12 ? 4.2 : 3.0));
 
-            const fcApproach = (typeof root.A === 'function') ? root.A('air_chiller_fc_coil_approach_c') : 4.0;
             const rdhxFanKwPerKw = (typeof root.A === 'function') ? root.A('rdhx_fc_fan_kw_per_kw') : 0.03;
 
-            const eco = (typeof root.FreeCoolingEngine?.calcSeriesEconomizer === 'function')
-                ? root.FreeCoolingEngine.calcSeriesEconomizer(w.db + fcApproach, chwSupplyC, chwReturnC)
-                : { fc_fraction: (w.db + fcApproach <= chwSupplyC ? 1.0 : 0.0), chiller_fraction: (w.db + fcApproach <= chwSupplyC ? 0.0 : 1.0), mode: (w.db + fcApproach <= chwSupplyC ? 'FULL_FC' : 'MECH') };
-
-            const Q_fc = Q_kw * eco.fc_fraction;
-            const Q_mech = Q_kw * eco.chiller_fraction;
+            const Q_fc = Q_kw * op.fc_fraction;
+            const Q_mech = Q_kw * op.chiller_fraction;
 
             let fanKw = Q_fc * rdhxFanKwPerKw;
             let compressorKw = 0;
@@ -138,23 +221,18 @@
                 fanKw += (Q_mech / 500) * 8.0;
             }
 
-            const mode = (typeof root.CoolingArchHelpers !== 'undefined')
-                ? root.CoolingArchHelpers.modeFromEco(eco)
-                : ((eco.mode === (root.FreeCoolingEngine?.MODE?.FULL_FC || 'FULL_FC'))
-                    ? 'free'
-                    : ((eco.mode === (root.FreeCoolingEngine?.MODE?.PARTIAL_FC || 'PARTIAL_FC')) ? 'partial' : 'mechanical'));
-
             return {
                 terminalKw: ctx.terminalKw || 0,
                 pumpKw: ctx.pumpKw || 0,
                 fanKw,
                 compressorKw,
                 waterM3: 0,
-                mode,
+                mode: op.mode,
                 deficitKw,
                 heatRemovedKw: Math.max(0, Q_kw - deficitKw),
                 mechLoadKw: Q_mech,
-                diag: { eco, Q_fc, Q_mech, chRes }
+                op,
+                diag: { eco: op, Q_fc, Q_mech, chRes }
             };
         }
     });

@@ -79,6 +79,99 @@
             { type: 'closed_tower', role: 'economizer', equipKey: 'cooling_tower' }
         ],
 
+        operatingPoint(sys, w, equip) {
+            const wb_c = (typeof w === 'number') ? w : (w?.wb ?? 20.0);
+            const ctApp = sys?.ctApproachC ?? 6.0;
+            const tSup = sys?.fwsSupplyC ?? 40.0;
+            const tRet = sys?.fwsReturnC ?? 55.0;
+            const tAvail = wb_c + ctApp;
+            const isFc = tAvail <= tSup;
+            const mode = isFc ? 'free' : 'mechanical';
+            const unservedRatio = isFc ? 0.0 : Math.min(1.0, (tAvail - tSup) / Math.max(1.0, tRet - tSup));
+            const fullThresh = Number((tSup - ctApp).toFixed(1));
+            return {
+                mode,
+                fc_fraction: isFc ? 1.0 : (1.0 - unservedRatio),
+                chiller_fraction: isFc ? 0.0 : unservedRatio,
+                unservedRatio,
+                tAvail,
+                tSup,
+                tRet,
+                temps: { fwsRet: tRet, fwsSup: tSup, ctOut: tAvail },
+                thresholds: { basis: 'wb', full: fullThresh, mech: null }
+            };
+        },
+
+        topology(sys, op, design) {
+            if (!op) op = this.operatingPoint(sys, design);
+            const fullThresh = op?.thresholds?.full ?? 34.0;
+            return {
+                title: '設施排熱拓樸 (Facility Heat Rejection System)',
+                referenceLabel: null,
+                banners: [
+                    { id: 'mode1', label: `全時蒸發自然冷卻 (WB ≤${fullThresh}°C)`, detail: '100% 水側直冷・零冰機', tone: 'emerald' }
+                ],
+                nodes: [
+                    {
+                        id: 'it',
+                        kind: 'it',
+                        title: 'Compute Data Hall',
+                        lines: [
+                            'Cold Plate 晶片液冷',
+                            `晶片水溫: ${sys?.secSupplyC ?? 45} ⇄ ${sys?.secReturnC ?? 57}°C`
+                        ]
+                    },
+                    {
+                        id: 'cdu',
+                        kind: 'cdu',
+                        title: 'CDU Distribution'
+                    },
+                    {
+                        id: 'hx',
+                        kind: 'closed_tower',
+                        title: 'Closed Coil 密閉蒸發冷卻盤管',
+                        lines: [
+                            '密閉水側自然冷卻 (Closed Loop)',
+                            `濕球蒸發直冷至 ${op?.temps?.fwsSup ?? 40}°C`,
+                            '盤管隔離維持廠務一級水質',
+                            '全年濕球驅動零冰機排熱'
+                        ]
+                    },
+                    {
+                        id: 'pump_sec',
+                        kind: 'pump',
+                        title: 'Secondary Pump',
+                        lines: ['二次側設施主供水泵']
+                    },
+                    {
+                        id: 'pump_outdoor',
+                        kind: 'pump',
+                        title: 'Circulation Pump',
+                        lines: ['循環水泵']
+                    },
+                    {
+                        id: 'heat_rejection',
+                        kind: 'tower',
+                        title: '密閉式冷卻水塔 (Closed Cooling Tower)',
+                        lines: [
+                            '閉式盤管蒸發冷卻 (水質隔離・零冰機)',
+                            '以濕球溫度驅動全時自然冷卻，全年無需冰機',
+                            '以室外濕球溫度 (Wet-Bulb) 為散熱基準',
+                            '水側自然冷卻高效率運轉'
+                        ]
+                    }
+                ],
+                pipes: [
+                    { from: 'cdu', to: 'hx', label: `${op?.temps?.fwsRet ?? 55}°C`, tone: 'hot' },
+                    { from: 'hx', to: 'cdu', label: `${op?.temps?.fwsSup ?? 40}°C`, tone: 'cold' },
+                    { from: 'hx', to: 'heat_rejection', label: `${op?.temps?.fwsRet ?? 55}°C`, tone: 'hot' },
+                    { from: 'heat_rejection', to: 'hx', label: `${(op?.temps?.ctOut ?? 26).toFixed(1)}°C`, tone: 'cold' }
+                ],
+                footer: [],
+                warnings: []
+            };
+        },
+
         simulateHour(ctx) {
             return (typeof root.runStageChain === 'function')
                 ? root.runStageChain(this.stages, ctx, this)
@@ -105,6 +198,7 @@
             }
 
             const sys = ctx.sys || {};
+            const op = this.operatingPoint(sys, ctx.w, ctx.equip);
             const ctStage = CoolingStages.get('closed_tower');
             const ctRes = ctStage.simulate({
                 ...ctx,
@@ -118,10 +212,11 @@
                 fanKw: ctRes.fanKw,
                 compressorKw: 0,
                 waterM3: ctRes.waterM3,
-                mode: ctRes.mode,
+                mode: op.mode,
                 deficitKw: ctRes.deficitKw,
                 heatRemovedKw: ctRes.Q_removed_kw,
                 mechLoadKw: 0,
+                op,
                 diag: { ctRes }
             };
         }
