@@ -33,9 +33,9 @@ const ASSUMPTIONS = {
   ct_standard_rating_wb_c: { val: 25.6, unit: '°C', label: '冷卻水塔型錄額定容量對應的 CTI 標準額定濕球溫（78°F）', ref: 'CTI ATC-105 標準額定條件' },
   design_wb_fallback_c:    { val: 28.0, unit: '°C', label: '無氣象逐時資料可查時的設計濕球溫度後備值（設備選型降額用）', ref: '台灣主要城市夏季 p99 濕球溫度概估區間 27–29°C' },
 
-  // ── 絕熱冷卻塔常數 (P1-4) ─────────────────────────────────────────────
+  // ── 絕熱冷卻塔常數 (P1-4 / P4-4) ─────────────────────────────────────────
   adiabatic_coil_air_dt_k:        { val: 10.0, unit: 'K',  label: '絕熱預冷盤管空氣側溫升', ref: '乾冷器／絕熱盤管空氣側溫升典型 8–12 K' },
-  adiabatic_switchpoint_offset_c: { val: 9.2,  unit: '°C', label: '絕熱乾轉濕切換溫差偏移', ref: '外氣乾球高於 (FWS - approach - 此值) 時啟動絕熱噴淋預冷' },
+  adiabatic_switchpoint_offset_c: { val: 9.2,  unit: '°C', label: '絕熱乾轉濕切換溫差偏移（已改為依需求切換，僅供參考）', ref: '外氣乾球高於 (FWS - approach - 此值) 時啟動絕熱噴淋預冷（歷史參考值，現行模型改為依需求切換）' },
 
   // ── NVIDIA DSX 設施設計指引基準常數 ────────────────────────────────────
   nvidia_dsx_t_chip_s45:          { val: 45.0,  unit: '°C',     label: 'NVIDIA Vera Rubin (S45) 晶片進水溫度上限', ref: 'NVIDIA DSX Facilities Guide v2.0 p.62' },

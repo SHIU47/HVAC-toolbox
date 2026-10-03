@@ -1054,8 +1054,8 @@ function freshCtx() {
     assert(outA.includes('id="atSatEffIn_du_1"'), 'must include sat eff input');
     assert(outA.includes('id="atSwitchpointIn_du_1"'), 'must include switchpoint input');
     assert(outA.includes('value="85"'), 'sat eff input must have value 85');
-    assert(outA.includes('placeholder="估算值 32.8°C"'), 'placeholder must show estimated switchpoint');
-    assert(outA.includes('⚠ 目前使用粗估公式'), 'must show formula estimation note when no override');
+    assert(outA.includes('placeholder="估算值 35.0°C"'), 'placeholder must show estimated switchpoint');
+    assert(outA.includes('目前依需求自動切換'), 'must show formula estimation note when no override');
 
     // Case B: with manual override
     const sysB = { fwsSupplyC: 42, adiabaticSaturationEfficiencyPct: 80, adiabaticDrySwitchpointC: 30.5 };
@@ -1867,6 +1867,94 @@ function freshCtx() {
       }
     });
     assert(svg.includes('lengthAdjust="spacingAndGlyphs"'), 'schematic must contain lengthAdjust for fitted text');
+  });
+})();
+
+// ═══════════════════════════════════════════════════════════════
+// P4-4 K-3 Adiabatic Tower Demand-Driven Switchpoint
+// ═══════════════════════════════════════════════════════════════
+(function () {
+  const ctx = freshCtx();
+  const { AppStore: S, CoolingArchRegistry, CoolingStages, ASSUMPTIONS, AnnualRunner } = ctx;
+
+  test('P4-4 ASSUMPTIONS.adiabatic_switchpoint_offset_c is retained with reference label', () => {
+    assert(ASSUMPTIONS.adiabatic_switchpoint_offset_c, 'adiabatic_switchpoint_offset_c must exist');
+    assert.strictEqual(ASSUMPTIONS.adiabatic_switchpoint_offset_c.val, 9.2);
+    assert(ASSUMPTIONS.adiabatic_switchpoint_offset_c.label.includes('依需求切換'), 'label must indicate demand-driven switchpoint');
+  });
+
+  test('P4-4 liquid_adiabatic_tower operatingPoint defaults switchpoint = FWS - dcApp - (hasPhe ? pheApp : 0)', () => {
+    const arch = CoolingArchRegistry.get('adiabatic_tower');
+
+    // Case 1: with PHE (default) -> 40 - 5 - 2 = 33
+    const sysWithPhe = { fwsSupplyC: 40.0, fwsReturnC: 55.0, dryCoolerApproachC: 5.0, hasPhe: true, pheApproachC: 2.0 };
+    const opWith = arch.operatingPoint(sysWithPhe, { db: 30, wb: 22 }, {});
+    assert.strictEqual(opWith.drySwitchpoint, 33.0, 'switchpoint with PHE must be 40 - 5 - 2 = 33.0');
+    assert.strictEqual(opWith.thresholds.switchpoint, 33.0);
+    assert.strictEqual(opWith.thresholds.full, 33.0);
+
+    // Case 2: without PHE -> 40 - 5 = 35
+    const sysWithoutPhe = { fwsSupplyC: 40.0, fwsReturnC: 55.0, dryCoolerApproachC: 5.0, hasPhe: false, pheApproachC: 2.0 };
+    const opWithout = arch.operatingPoint(sysWithoutPhe, { db: 30, wb: 22 }, {});
+    assert.strictEqual(opWithout.drySwitchpoint, 35.0, 'switchpoint without PHE must be 40 - 5 = 35.0');
+    assert.strictEqual(opWithout.thresholds.switchpoint, 35.0);
+
+    // Case 3: manual override -> overrides formula
+    const sysOverride = { fwsSupplyC: 40.0, fwsReturnC: 55.0, dryCoolerApproachC: 5.0, hasPhe: true, pheApproachC: 2.0, adiabaticDrySwitchpointC: 31.5 };
+    const opOverride = arch.operatingPoint(sysOverride, { db: 30, wb: 22 }, {});
+    assert.strictEqual(opOverride.drySwitchpoint, 31.5, 'manual override must be used');
+    assert.strictEqual(opOverride.thresholds.switchpoint, 31.5);
+  });
+
+  test('P4-4 stage_adiabatic respects demand-driven drySwitchpoint in dry vs wet modes', () => {
+    const stage = CoolingStages.get('adiabatic');
+    const sys = { fwsSupplyC: 40.0, fwsReturnC: 55.0, dryCoolerApproachC: 5.0, hasPhe: true, pheApproachC: 2.0, adiabaticSaturationEfficiencyPct: 85 };
+
+    // At DB=32 <= 33 (dry mode): no water consumed, effectiveDb = db
+    const wDry = { db: 32.0, wb: 24.0 };
+    const costDry = stage.rejectionCost({ sys, w: wDry, t_supply_c: 40.0, hasPhe: true, hx_approach_c: 2.0 }, 1000, true);
+    assert.strictEqual(costDry.waterM3, 0, 'dry mode must consume 0 water');
+    assert.strictEqual(costDry.diag.isDry, true);
+    assert.strictEqual(costDry.diag.drySwitchpoint, 33.0);
+    const tAvailDry = stage.availableTemp({ sys, w: wDry, t_supply_c: 40.0, hasPhe: true, hx_approach_c: 2.0 });
+    assert.strictEqual(tAvailDry, 32.0 + 5.0, 'dry mode availableTemp = db + approach');
+
+    // At DB=34 > 33 (wet mode): spray turns on, water consumed, effectiveDb < db
+    const wWet = { db: 34.0, wb: 24.0 };
+    const costWet = stage.rejectionCost({ sys, w: wWet, t_supply_c: 40.0, hasPhe: true, hx_approach_c: 2.0 }, 1000, true);
+    assert(costWet.waterM3 > 0, 'wet mode must consume water');
+    assert.strictEqual(costWet.diag.isDry, false);
+    const tAvailWet = stage.availableTemp({ sys, w: wWet, t_supply_c: 40.0, hasPhe: true, hx_approach_c: 2.0 });
+    const expectedEffDb = 34.0 - (34.0 - 24.0) * 0.85; // 25.5
+    assert(Math.abs(tAvailWet - (expectedEffDb + 5.0)) < 1e-6, `availableTemp should use effectiveDb (${expectedEffDb + 5.0}), got ${tAvailWet}`);
+  });
+
+  test('P4-4 demand-driven switchpoint reduces annual water consumption vs old fixed 9.2 offset', () => {
+    const kaohsiung = ctx.BUILTIN_WEATHER_DATA['高雄 (Kaohsiung)'];
+    S.state.site.hourly = kaohsiung.hourlyData;
+    const du = S.state.halls[0].dus[0];
+    du.plantDesign.cduSystem.architecture = 'adiabatic_tower';
+    du.plantDesign.cduSystem.fwsSupplyC = 40.0;
+    du.plantDesign.cduSystem.fwsReturnC = 55.0;
+    du.plantDesign.cduSystem.dryCoolerApproachC = 5.0;
+    du.plantDesign.cduSystem.hasPhe = true;
+    du.plantDesign.cduSystem.pheApproachC = 2.0;
+
+    // Run A: with new demand-driven switchpoint (40 - 5 - 2 = 33°C)
+    delete du.plantDesign.cduSystem.adiabaticDrySwitchpointC;
+    S.calculate();
+    const waterDemandDriven = S.state.results.overall.annualWaterM3;
+    const pueDemandDriven = S.state.results.overall.annualPue;
+
+    // Run B: simulating old 9.2°C offset (40 - 9.2 = 30.8°C)
+    du.plantDesign.cduSystem.adiabaticDrySwitchpointC = 30.8;
+    S.calculate();
+    const waterOldOffset = S.state.results.overall.annualWaterM3;
+    const pueOldOffset = S.state.results.overall.annualPue;
+
+    // Higher switchpoint (33 > 30.8) means fewer hours spraying -> less water consumed!
+    assert(waterDemandDriven < waterOldOffset, `demand-driven water (${waterDemandDriven} m3) must be < old offset water (${waterOldOffset} m3)`);
+    assert(pueDemandDriven <= pueOldOffset, `demand-driven PUE (${pueDemandDriven}) should be <= old offset PUE (${pueOldOffset})`);
   });
 })();
 

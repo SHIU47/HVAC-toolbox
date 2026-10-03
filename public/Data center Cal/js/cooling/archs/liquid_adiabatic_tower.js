@@ -51,23 +51,27 @@
                 step: 0.5,
                 unit: '°C',
                 placeholder: (sys) => {
-                    const offset = (typeof A === 'function') ? A('adiabatic_switchpoint_offset_c') : (root.A ? root.A('adiabatic_switchpoint_offset_c') : 9.2);
-                    const est = Math.max(26.0, (sys.fwsSupplyC ?? 42.0) - offset);
+                    const dcApp = sys?.dryCoolerApproachC ?? 5.0;
+                    const hasPhe = (sys?.hasPhe !== undefined && sys?.hasPhe !== null) ? !!sys.hasPhe : true;
+                    const pheApp = hasPhe ? (sys?.pheApproachC ?? 2.0) : 0.0;
+                    const est = (sys?.fwsSupplyC ?? 40.0) - dcApp - pheApp;
                     return `估算值 ${est.toFixed(1)}°C`;
                 }
             }
         ],
         paramPanelTitle: '絕熱冷卻塔 (Adiabatic Tower) 專屬參數:',
         paramPanelNote(sys) {
-            const offset = (typeof A === 'function') ? A('adiabatic_switchpoint_offset_c') : (root.A ? root.A('adiabatic_switchpoint_offset_c') : 9.2);
-            const estimatedSwitchpoint = Math.max(26.0, (sys.fwsSupplyC ?? 42.0) - offset);
+            const dcApp = sys?.dryCoolerApproachC ?? 5.0;
+            const hasPhe = (sys?.hasPhe !== undefined && sys?.hasPhe !== null) ? !!sys.hasPhe : true;
+            const pheApp = hasPhe ? (sys?.pheApproachC ?? 2.0) : 0.0;
+            const estimatedSwitchpoint = (sys?.fwsSupplyC ?? 40.0) - dcApp - pheApp;
             const hasOverride = sys.adiabaticDrySwitchpointC !== undefined && sys.adiabaticDrySwitchpointC !== null && sys.adiabaticDrySwitchpointC !== '';
-            const effectiveSwitchpoint = hasOverride ? sys.adiabaticDrySwitchpointC : estimatedSwitchpoint;
+            const effectiveSwitchpoint = hasOverride ? Number(sys.adiabaticDrySwitchpointC) : estimatedSwitchpoint;
             return {
                 hasOverride,
                 text: hasOverride
                     ? `目前使用手動輸入值 <strong>${effectiveSwitchpoint}°C</strong>（來自實際廠商選型報告）。`
-                    : `⚠ 目前使用粗估公式 <strong>供水溫 − 9.2°C = ${effectiveSwitchpoint.toFixed(1)}°C</strong>（此9.2°C是從單一份BAC參考案例反推，不同案子的設計乾濕球溫度會讓這個offset在4~9°C之間變動，準確度有限）。正式設計前建議向廠商索取針對本案實際供水溫與設計氣候條件的選型報告，並把報告上的真實 Dry Switchpoint 填入上方欄位覆蓋此估算值。`
+                    : `目前依需求自動切換：<strong>供水溫 − 盤管 Approach${hasPhe ? ' − PHE Approach' : ''} = ${effectiveSwitchpoint.toFixed(1)}°C</strong>（乾式直冷剛好無法滿足供水溫時才啟動絕熱噴淋預冷）。正式設計前建議向廠商索取針對本案實際供水溫與設計氣候條件的選型報告，並把報告上的真實 Dry Switchpoint 填入上方欄位覆蓋此估算值。`
             };
         },
         equipment: [
@@ -135,10 +139,9 @@
             const hasPhe = (sys?.hasPhe !== undefined && sys?.hasPhe !== null) ? !!sys.hasPhe : true;
             const pheApp = hasPhe ? (sys?.pheApproachC ?? 2.0) : 0.0;
             const satEff = (sys?.adiabaticSaturationEfficiencyPct ?? 85) / 100;
-            const switchpointOffset = (typeof root.A === 'function') ? root.A('adiabatic_switchpoint_offset_c') : 9.2;
             const drySwitchpoint = (sys?.adiabaticDrySwitchpointC !== undefined && sys?.adiabaticDrySwitchpointC !== null && sys?.adiabaticDrySwitchpointC !== '')
                 ? Number(sys.adiabaticDrySwitchpointC)
-                : Math.max(26.0, tSup - switchpointOffset);
+                : (tSup - dcApp - pheApp);
             const isDry = db_c <= drySwitchpoint;
             const effectiveDb = isDry ? db_c : (db_c - (db_c - wb_c) * satEff);
             const tTowerOut = effectiveDb + dcApp;
@@ -297,6 +300,7 @@
                 ...ctx,
                 approach_c: sys.dryCoolerApproachC || 5.0,
                 hx_approach_c: op.pheApp,
+                hasPhe: op.hasPhe,
                 devices: ctx.equip?.adiabatic_tower
             });
 

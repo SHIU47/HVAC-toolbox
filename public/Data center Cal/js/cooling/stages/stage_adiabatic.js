@@ -11,17 +11,25 @@
         throw new Error('CoolingStages must be loaded before stage_adiabatic.js');
     }
 
+    function resolveDrySwitchpoint(ctx, sys, t_supply_c, approach) {
+        if (sys.adiabaticDrySwitchpointC !== undefined && sys.adiabaticDrySwitchpointC !== null && sys.adiabaticDrySwitchpointC !== '') {
+            return Number(sys.adiabaticDrySwitchpointC);
+        }
+        const hasPhe = (ctx.hasPhe !== undefined) ? !!ctx.hasPhe : ((sys.hasPhe !== undefined && sys.hasPhe !== null) ? !!sys.hasPhe : true);
+        const pheApp = hasPhe ? (ctx.hx_approach_c ?? sys.pheApproachC ?? 2.0) : 0.0;
+        return t_supply_c - approach - pheApp;
+    }
+
     CoolingStages.register('adiabatic', {
         availableTemp(ctx) {
             const sys = ctx.sys || {};
             const w = ctx.w || { db: 25, wb: 20 };
             const t_supply_c = ctx.t_supply_c ?? sys.fwsSupplyC ?? 42.0;
             const satEff = (sys.adiabaticSaturationEfficiencyPct || 85) / 100;
-            const switchpointOffset = (typeof root.A === 'function') ? root.A('adiabatic_switchpoint_offset_c') : 9.2;
-            const drySwitchpoint = sys.adiabaticDrySwitchpointC || Math.max(26.0, t_supply_c - switchpointOffset);
+            const approach = ctx.approach_c ?? ctx.params?.approach_c ?? (sys.dryCoolerApproachC || 5.0);
+            const drySwitchpoint = resolveDrySwitchpoint(ctx, sys, t_supply_c, approach);
             const isDry = w.db <= drySwitchpoint;
             const effectiveDb = isDry ? w.db : (w.db - (w.db - w.wb) * satEff);
-            const approach = ctx.approach_c ?? ctx.params?.approach_c ?? (sys.dryCoolerApproachC || 5.0);
             return effectiveDb + approach;
         },
 
@@ -30,8 +38,8 @@
             const w = ctx.w || { db: 25, wb: 20 };
             const t_supply_c = ctx.t_supply_c ?? sys.fwsSupplyC ?? 42.0;
             const satEff = (sys.adiabaticSaturationEfficiencyPct || 85) / 100;
-            const switchpointOffset = (typeof root.A === 'function') ? root.A('adiabatic_switchpoint_offset_c') : 9.2;
-            const drySwitchpoint = sys.adiabaticDrySwitchpointC || Math.max(26.0, t_supply_c - switchpointOffset);
+            const approach = ctx.approach_c ?? ctx.params?.approach_c ?? (sys.dryCoolerApproachC || 5.0);
+            const drySwitchpoint = resolveDrySwitchpoint(ctx, sys, t_supply_c, approach);
             const isDry = w.db <= drySwitchpoint;
             const atDevices = ctx.equip?.adiabatic_tower || ctx.devices || [];
             const loadRatio = ctx.loadRatio ?? 1.0;
@@ -86,10 +94,12 @@
             const sys = ctx.sys || {};
             const t_supply_c = ctx.t_supply_c ?? sys.fwsSupplyC ?? 42.0;
             const t_return_c = ctx.t_return_c ?? sys.fwsReturnC ?? 54.0;
-            const hxApproach = ctx.hx_approach_c ?? (sys.pheApproachC ?? 0.0);
+            const hasPhe = (ctx.hasPhe !== undefined) ? !!ctx.hasPhe : ((sys.hasPhe !== undefined && sys.hasPhe !== null) ? !!sys.hasPhe : true);
+            const hxApproach = ctx.hx_approach_c ?? (hasPhe ? (sys.pheApproachC ?? 2.0) : 0.0);
+            const subCtx = { ...ctx, hasPhe, hx_approach_c: hxApproach };
 
-            const cost = this.rejectionCost(ctx, Q_kw, true);
-            const atActualSupplyC = this.availableTemp(ctx) + hxApproach;
+            const cost = this.rejectionCost(subCtx, Q_kw, true);
+            const atActualSupplyC = this.availableTemp(subCtx) + hxApproach;
             const atExceeded = atActualSupplyC > t_supply_c;
             let deficitKw = 0;
             let t_out_c = t_supply_c;
