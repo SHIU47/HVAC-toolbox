@@ -2142,6 +2142,61 @@ function freshCtx() {
   });
 })();
 
+// ═══════════════════════════════════════════════════════════════
+// P4-7 Trim Chiller Sizing Basis: Peak DB N+1 & 100% Mode 3 Load
+// ═══════════════════════════════════════════════════════════════
+(function () {
+  const ctx = freshCtx();
+  const { CoolingArchRegistry, SizingEngine, AppStore: S } = ctx;
+
+  test('P4-7 Trim chiller sizing basis uses maxDb for requiredKw and 100% load for maxMechanicalKw', () => {
+    const arch = CoolingArchRegistry.get('dry_cooler_trim');
+    const cduSys = {
+      architecture: 'dry_cooler_trim',
+      fwsSupplyC: 40.0,
+      fwsReturnC: 55.0,
+      dryCoolerApproachC: 5.0,
+      pheApproachC: 2.0,
+      hydraulics: { pump_power_kw: 11.0 }
+    };
+    cduSys.sizing = SizingEngine.generateCduSizing('dry_cooler_trim', 1000, 11.0);
+
+    // Design condition: designDb = 34.0 (Mode 1 full FC -> 0 kW trim), maxDb = 42.0 (Mode 2 trim)
+    const designCond = { designDb: 34.0, designWb: 28.0, maxDb: 42.0 };
+    SizingEngine.evaluateCduSizing(cduSys, 1000, designCond, {
+      trimOperatingPoint: S.trimOperatingPoint.bind(S)
+    });
+
+    const trimItem = cduSys.sizing.find(s => s.key === 'trim_chiller');
+    assert(trimItem, 'trim_chiller item must exist');
+
+    // Under maxDb = 42°C, full threshold = 40 - 5 - 2 = 33°C. DB 42 > 33 -> Trim needed!
+    assert(trimItem.requiredKw > 50, `requiredKw (${trimItem.requiredKw}) should be based on peak DB (42°C), not designDb (34°C)`);
+    assert.strictEqual(trimItem.maxMechanicalKw, 1000, 'maxMechanicalKw must equal 100% liquid load (1000 kW)');
+    assert(typeof trimItem.maxMechanicalPassed === 'boolean', 'maxMechanicalPassed must be boolean');
+  });
+
+  test('P4-7 liquid_dry_cooler_trim equipment descriptor requiredKw and extraProps reflect peakDb', () => {
+    const arch = CoolingArchRegistry.get('dry_cooler_trim');
+    const trimEquip = arch.equipment.find(e => e.key === 'trim_chiller');
+    assert(trimEquip, 'trim_chiller equipment descriptor must exist');
+
+    const ctxMock = {
+      reqKw: 1000,
+      sys: { fwsSupplyC: 40.0, fwsReturnC: 55.0, dryCoolerApproachC: 5.0, pheApproachC: 2.0 },
+      helpers: {
+        designConditions: () => ({ designDb: 33.0, designWb: 28.0, maxDb: 40.0 }),
+        trimOperatingPoint: S.trimOperatingPoint.bind(S)
+      }
+    };
+
+    const reqKw = trimEquip.requiredKw(ctxMock);
+    const extra = trimEquip.extraProps(ctxMock);
+    assert(reqKw > 50, 'requiredKw must be based on maxDb 40°C');
+    assert.strictEqual(extra.maxMechanicalKw, 1000, 'maxMechanicalKw must be 1000 kW');
+  });
+})();
+
 console.log(`\n${passCount} passed, ${failCount} failed, ${skipCount} skipped`);
 process.exit(failCount > 0 ? 1 : 0);
 

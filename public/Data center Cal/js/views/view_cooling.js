@@ -417,7 +417,7 @@ ${inputsHtml}
                             <span class="text-slate-500">⚠ 若進入 Mode 3 全機械製冷，最大需求 <strong class="text-slate-700">${item.maxMechanicalKw.toFixed(0)} kW</strong></span>
                             <span class="${item.maxMechanicalPassed ? 'text-emerald-700' : 'text-red-600'} font-bold">${item.maxMechanicalPassed ? '✓ N+1可用容量足夠' : '✗ N+1可用容量不足！'}</span>
                         </div>
-                        <div class="text-[9px] text-slate-400">上方「滿足N+1」只代表通過 ${((item.peakRatio ?? 0.35) * 100).toFixed(0)}% 典型修整負載，實際是否會發生全機械超載請以 Dashboard 的容量缺口小時數為準</div>
+                        <div class="text-[9px] text-slate-400">上方「滿足N+1」以年最高乾球修整負載為基準；若進入 Mode 3 全機械製冷（乾冷器完全無法預冷），需求為 100% 液冷負載，此項僅供參考，實際請以 Dashboard 容量缺口小時為準</div>
                         ` : ''}
                     </div>
                 `;

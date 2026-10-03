@@ -85,25 +85,30 @@
                     const designCond = (typeof ctx.helpers?.designConditions === 'function')
                         ? ctx.helpers.designConditions()
                         : (root.AppStore?.designConditions ? root.AppStore.designConditions() : { designDb: 34.0, designWb: 28.0, maxDb: 38.0 });
-                    const dummyCduSys = { fwsSupplyC: 40.0, fwsReturnC: 55.0, dryCoolerApproachC: 5.0, pheApproachC: 2.0 };
-                    const opDesign = (typeof ctx.helpers?.trimOperatingPoint === 'function')
-                        ? ctx.helpers.trimOperatingPoint(dummyCduSys, designCond.designDb)
+                    const peakDb = designCond.maxDb ?? ((designCond.designDb ?? 34.0) + 3.0);
+                    const dummyCduSys = ctx.sys || { fwsSupplyC: 40.0, fwsReturnC: 55.0, dryCoolerApproachC: 5.0, pheApproachC: 2.0 };
+                    const opPeak = (typeof ctx.helpers?.trimOperatingPoint === 'function')
+                        ? ctx.helpers.trimOperatingPoint(dummyCduSys, peakDb)
                         : (root.AppStore?.trimOperatingPoint
-                            ? root.AppStore.trimOperatingPoint(dummyCduSys, designCond.designDb)
+                            ? root.AppStore.trimOperatingPoint(dummyCduSys, peakDb)
                             : { chiller_fraction: 0.35, tChws: 30, tCewt: 39 });
-                    return Math.max(50, Math.round(ctx.reqKw * opDesign.chiller_fraction));
+                    return Math.max(50, Math.round(ctx.reqKw * (opPeak.chiller_fraction ?? 0.35)));
                 },
                 extraProps: (ctx) => {
                     const designCond = (typeof ctx.helpers?.designConditions === 'function')
                         ? ctx.helpers.designConditions()
                         : (root.AppStore?.designConditions ? root.AppStore.designConditions() : { designDb: 34.0, designWb: 28.0, maxDb: 38.0 });
-                    const dummyCduSys = { fwsSupplyC: 40.0, fwsReturnC: 55.0, dryCoolerApproachC: 5.0, pheApproachC: 2.0 };
-                    const opDesign = (typeof ctx.helpers?.trimOperatingPoint === 'function')
-                        ? ctx.helpers.trimOperatingPoint(dummyCduSys, designCond.designDb)
+                    const peakDb = designCond.maxDb ?? ((designCond.designDb ?? 34.0) + 3.0);
+                    const dummyCduSys = ctx.sys || { fwsSupplyC: 40.0, fwsReturnC: 55.0, dryCoolerApproachC: 5.0, pheApproachC: 2.0 };
+                    const opPeak = (typeof ctx.helpers?.trimOperatingPoint === 'function')
+                        ? ctx.helpers.trimOperatingPoint(dummyCduSys, peakDb)
                         : (root.AppStore?.trimOperatingPoint
-                            ? root.AppStore.trimOperatingPoint(dummyCduSys, designCond.designDb)
+                            ? root.AppStore.trimOperatingPoint(dummyCduSys, peakDb)
                             : { chiller_fraction: 0.35, tChws: 30, tCewt: 39 });
-                    return { peakRatio: opDesign.chiller_fraction };
+                    return {
+                        peakRatio: opPeak.chiller_fraction ?? 0.35,
+                        maxMechanicalKw: Math.round(ctx.reqKw)
+                    };
                 },
                 calcQty: (reqKw, cap) => {
                     const minUnits = Math.max(1, Math.ceil(reqKw / (cap || 500)));
@@ -111,15 +116,16 @@
                 },
                 derate: (curItem, ctx) => {
                     if (typeof root.ChillerEngine === 'undefined') return 1.0;
-                    const opDesign = ctx.helpers?.trimOperatingPoint
-                        ? ctx.helpers.trimOperatingPoint(ctx.sys, ctx.designCond.designDb)
-                        : (root.AppStore?.trimOperatingPoint ? root.AppStore.trimOperatingPoint(ctx.sys, ctx.designCond.designDb) : {});
+                    const peakDb = ctx.designCond?.maxDb ?? ((ctx.designCond?.designDb ?? 34.0) + 3.0);
+                    const opPeak = ctx.helpers?.trimOperatingPoint
+                        ? ctx.helpers.trimOperatingPoint(ctx.sys, peakDb)
+                        : (root.AppStore?.trimOperatingPoint ? root.AppStore.trimOperatingPoint(ctx.sys, peakDb) : {});
                     const spec = {
                         cooling_capacity_kw: curItem.capKw,
                         chiller_type: 'water_cooled',
                         cop_curve: curItem.cop_curve || { type: 'fixed' }
                     };
-                    return root.ChillerEngine.deratedCapacityKW(spec, opDesign.tChws, opDesign.tCewt, ctx.designCond.designDb)?.derate_factor ?? 1.0;
+                    return root.ChillerEngine.deratedCapacityKW(spec, opPeak.tChws, opPeak.tCewt, peakDb)?.derate_factor ?? 1.0;
                 }
             }
         ],

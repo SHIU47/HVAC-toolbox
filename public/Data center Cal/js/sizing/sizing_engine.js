@@ -112,15 +112,13 @@
                 if (s.key === 'cdu_pump') s.requiredKw = cduSys.hydraulics.pump_power_kw;
 
                 if (s.key === 'trim_chiller') {
-                    const opDesign = helpers.trimOperatingPoint
-                        ? helpers.trimOperatingPoint(cduSys, designCond.designDb)
-                        : (root.AppStore?.trimOperatingPoint ? root.AppStore.trimOperatingPoint(cduSys, designCond.designDb) : { chiller_fraction: 0.35 });
-                    const opMax = helpers.trimOperatingPoint
-                        ? helpers.trimOperatingPoint(cduSys, designCond.maxDb)
-                        : (root.AppStore?.trimOperatingPoint ? root.AppStore.trimOperatingPoint(cduSys, designCond.maxDb) : { chiller_fraction: 0.35 });
-                    s.peakRatio = opDesign.chiller_fraction;
-                    s.requiredKw = Math.max(50, Math.round(reqCduKw * opDesign.chiller_fraction));
-                    s.maxMechanicalKw = Math.round(reqCduKw * opMax.chiller_fraction);
+                    const peakDb = designCond.maxDb ?? ((designCond.designDb ?? 34.0) + 3.0);
+                    const opPeak = helpers.trimOperatingPoint
+                        ? helpers.trimOperatingPoint(cduSys, peakDb)
+                        : (root.AppStore?.trimOperatingPoint ? root.AppStore.trimOperatingPoint(cduSys, peakDb) : { chiller_fraction: 0.35 });
+                    s.peakRatio = opPeak.chiller_fraction ?? 0.35;
+                    s.requiredKw = Math.max(50, Math.round(reqCduKw * s.peakRatio));
+                    s.maxMechanicalKw = Math.round(reqCduKw);
                 }
                 if (s.key === 'dry_cooler') {
                     const opDesign = helpers.trimOperatingPoint
@@ -141,15 +139,16 @@
                     const d = root.CDUEngine.deratedCapacityKW(curItem.capKw, cduSys.fwsSupplyC);
                     derateFactor = d.derate_factor;
                 } else if (s.key === 'trim_chiller' && typeof root.ChillerEngine !== 'undefined') {
-                    const opDesign = helpers.trimOperatingPoint
-                        ? helpers.trimOperatingPoint(cduSys, designCond.designDb)
-                        : (root.AppStore?.trimOperatingPoint ? root.AppStore.trimOperatingPoint(cduSys, designCond.designDb) : {});
+                    const peakDb = designCond.maxDb ?? ((designCond.designDb ?? 34.0) + 3.0);
+                    const opPeak = helpers.trimOperatingPoint
+                        ? helpers.trimOperatingPoint(cduSys, peakDb)
+                        : (root.AppStore?.trimOperatingPoint ? root.AppStore.trimOperatingPoint(cduSys, peakDb) : {});
                     const spec = {
                         cooling_capacity_kw: curItem.capKw,
                         chiller_type: 'water_cooled',
                         cop_curve: curItem.cop_curve || { type: 'fixed' }
                     };
-                    const d = root.ChillerEngine.deratedCapacityKW(spec, opDesign.tChws, opDesign.tCewt, designCond.designDb);
+                    const d = root.ChillerEngine.deratedCapacityKW(spec, opPeak.tChws, opPeak.tCewt, peakDb);
                     derateFactor = d.derate_factor;
                 } else if (s.key === 'water_cooled_chiller' && typeof root.ChillerEngine !== 'undefined') {
                     const minCewt = (typeof root.A === 'function') ? root.A('min_cewt_c') : 16.0;
