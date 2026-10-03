@@ -1,6 +1,14 @@
 const fs = require('fs');
 const path = require('path');
-const { STATION_META } = require('./station_meta_lookup.js');
+let STATION_META = {};
+try {
+    STATION_META = require('./station_meta_lookup.js').STATION_META;
+} catch (e) {
+    try {
+        STATION_META = require('../../public/天氣資料/station_meta_lookup.js').STATION_META;
+    } catch (e2) {}
+}
+const { parseEpwDesignConditions } = require('../../public/Data center Cal/js/ashrae_design_conditions.js');
 
 // Stull (2011) Wet Bulb formula
 function calculateWetBulb(t, rh) {
@@ -248,10 +256,17 @@ function parseEPW(content, filename, dirPath) {
     const extWBIndex = Math.min(sortedWB.length - 1, Math.floor(sortedWB.length * 0.996));
     const calcExtWB = parseFloat(sortedWB[extWBIndex].toFixed(1));
 
-    // Official ASHRAE 0.4% design values from .stat / .ddy
+    const line2 = lines.find(l => l.startsWith('DESIGN CONDITIONS')) || lines[1];
+    const designConditions = parseEpwDesignConditions(line2);
+
+    // Official ASHRAE 0.4% design values: prioritize EPW line 2, then .stat / .ddy, then hourly percentiles
     const ashrae = extractAshraeDesign(dirPath);
-    const extDB = (ashrae.extDB !== null && !isNaN(ashrae.extDB)) ? ashrae.extDB : calcExtDB;
-    const extWB = (ashrae.extWB !== null && !isNaN(ashrae.extWB)) ? ashrae.extWB : calcExtWB;
+    const extDB = (designConditions?.cooling?.db004 != null)
+        ? designConditions.cooling.db004
+        : ((ashrae.extDB !== null && !isNaN(ashrae.extDB)) ? ashrae.extDB : calcExtDB);
+    const extWB = (designConditions?.cooling?.evapWb004 != null)
+        ? designConditions.cooling.evapWb004
+        : ((ashrae.extWB !== null && !isNaN(ashrae.extWB)) ? ashrae.extWB : calcExtWB);
 
     const avgRH = Math.round(allRH.reduce((a, b) => a + b, 0) / allRH.length);
 
@@ -304,6 +319,7 @@ function parseEPW(content, filename, dirPath) {
         waterRisk: extWB > 26 ? 4 : (extWB > 23 ? 3 : 2),
         pue: parseFloat(estPue.toFixed(2)),
         datacenters: meta.datacenters || "區域核心數據中心與電信樞紐設施 (Regional Telco & Enterprise DC Hub)",
+        designConditions: designConditions,
         hourly: hourly
     };
 }
@@ -325,14 +341,32 @@ function findEPWFiles(dir) {
     return results;
 }
 
+function parseArgs() {
+    const args = process.argv.slice(2);
+    let inDir = path.resolve(__dirname, '../weather_raw_zips/ZIP檔');
+    let outDir = path.resolve(__dirname);
+    let metaOnly = false;
+
+    for (let i = 0; i < args.length; i++) {
+        if (args[i] === '--in' && args[i + 1]) {
+            inDir = path.resolve(args[++i]);
+        } else if (args[i] === '--out' && args[i + 1]) {
+            outDir = path.resolve(args[++i]);
+        } else if (args[i] === '--meta-only') {
+            metaOnly = true;
+        }
+    }
+    return { inDir, outDir, metaOnly };
+}
+
 function build() {
-    const zipDir = path.resolve(__dirname, 'ZIP檔');
-    console.log(`Scanning EPW files in: ${zipDir}`);
-    const epwFiles = findEPWFiles(zipDir);
+    const { inDir, outDir, metaOnly } = parseArgs();
+    console.log(`Scanning EPW files in: ${inDir}`);
+    const epwFiles = findEPWFiles(inDir);
     console.log(`Found ${epwFiles.length} EPW file(s):`);
 
-    const hourlyDir = path.resolve(__dirname, 'hourly');
-    if (!fs.existsSync(hourlyDir)) fs.mkdirSync(hourlyDir, { recursive: true });
+    const hourlyDir = path.resolve(outDir, 'hourly');
+    if (!metaOnly && !fs.existsSync(hourlyDir)) fs.mkdirSync(hourlyDir, { recursive: true });
 
     const stations = [];
     for (const file of epwFiles) {
@@ -343,8 +377,10 @@ function build() {
             if (data) {
                 console.log(`  ✓ Successfully parsed ${data.city} (${data.country}): ${data.hourly.length} hrs, extDB: ${data.extDB}°C, extWB: ${data.extWB}°C`);
                 // Write hourly data to separate JSON file for fast on-demand fetching
-                const hourlyPath = path.join(hourlyDir, `${data.id}.json`);
-                fs.writeFileSync(hourlyPath, JSON.stringify(data.hourly), 'utf-8');
+                if (!metaOnly) {
+                    const hourlyPath = path.join(hourlyDir, `${data.id}.json`);
+                    fs.writeFileSync(hourlyPath, JSON.stringify(data.hourly), 'utf-8');
+                }
 
                 // Keep weather_data.js lightweight without 8760 hourly array
                 const { hourly, ...metaStation } = data;
@@ -357,7 +393,7 @@ function build() {
         }
     }
 
-    const outputJs = path.resolve(__dirname, 'weather_data.js');
+    const outputJs = path.join(outDir, 'weather_data.js');
     const jsContent = `/**
  * Built-in Weather Database (Lightweight Metadata with On-Demand Hourly Loading).
  * Total stations: ${stations.length}
