@@ -2284,6 +2284,22 @@ function freshCtx() {
   });
 })();
 
+// ── F-4: Trim schematic design DB label ────────────────────────────────────
+(function () {
+  const { buildWindow } = require('./dom_harness.js');
+  test('F-4 Trim schematic displays design DB label instead of threshold', async () => {
+    const win = buildWindow();
+    await win.App.init();
+    win.AppStore.calculate();
+    win.App.renderStep(4);
+    const container = win.document.getElementById('stepContent');
+    const html = container.innerHTML;
+    const design = win.AppStore.designConditions();
+    const expectedLabel = `設計乾球 (0.4%): ${Number(design.designDb).toFixed(1)}°C`;
+    assert(html.includes(expectedLabel), `Step 4 HTML must contain "${expectedLabel}"`);
+  });
+})();
+
 console.log(`\n${passCount} passed, ${failCount} failed, ${skipCount} skipped`);
 process.exit(failCount > 0 ? 1 : 0);
 
