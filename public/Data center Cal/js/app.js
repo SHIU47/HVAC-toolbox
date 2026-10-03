@@ -37,7 +37,8 @@
                         lon: data.stationInfo.lon,
                         elev: data.stationInfo.elev,
                         isRealEpw: true,
-                        hourly: data.hourlyData
+                        hourly: data.hourlyData,
+                        designConditions: data.designConditions || null
                     });
                 } else {
                     window.AppStore.calculate();

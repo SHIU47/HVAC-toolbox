@@ -2484,6 +2484,44 @@ function freshCtx() {
     assert(win.AppStore.state.site.designConditions !== null, 'deserializeProject must restore designConditions');
     assert.strictEqual(win.AppStore.state.site.designConditions.cooling.db004, 33.5);
   });
+
+  test('X-3 BUILTIN_WEATHER_DATA contains designConditions for all 7 cities and wiring works', () => {
+    const { buildWindow } = require('./dom_harness.js');
+    const win = buildWindow();
+    const data = win.BUILTIN_WEATHER_DATA;
+    assert(data, 'BUILTIN_WEATHER_DATA must exist');
+    const cities = Object.keys(data);
+    assert.strictEqual(cities.length, 7, 'Must have 7 builtin cities');
+
+    let withExtremes = 0;
+    for (const c of cities) {
+      assert(data[c].designConditions, `City ${c} must have designConditions`);
+      assert(data[c].designConditions.cooling, `City ${c} must have cooling`);
+      if (data[c].designConditions.extremes !== null) {
+        withExtremes++;
+      }
+    }
+    assert.strictEqual(withExtremes, 6, 'Exactly 6 cities must have extremes');
+    assert.strictEqual(data['新竹 (Hsinchu)'].designConditions.extremes, null, 'Hsinchu extremes must be null');
+    assert.strictEqual(data['新竹 (Hsinchu)'].designConditions.cooling.db004, 33.2);
+
+    // Test selectCity wiring
+    win.ViewWeather.selectCity('高雄 (Kaohsiung)');
+    const khDc = win.AppStore.state.site.designConditions;
+    assert(khDc, 'site.designConditions must be set after selectCity');
+    assert.strictEqual(khDc.cooling.db004, 33.5);
+    assert.strictEqual(khDc.extremes.dbMax[20], 36.7);
+
+    // Test App.init default city wiring
+    win.localStorage.clear();
+    win.CatalogManager.ready = null;
+    win.AppStore.state.site.designConditions = null;
+    win.App.init();
+    const tyDc = win.AppStore.state.site.designConditions;
+    assert(tyDc, 'site.designConditions must be set after App.init');
+    assert.strictEqual(tyDc.cooling.db004, 33.9);
+    assert.strictEqual(tyDc.cooling.evapWb004, 29);
+  });
 })();
 
 console.log(`\n${passCount} passed, ${failCount} failed, ${skipCount} skipped`);

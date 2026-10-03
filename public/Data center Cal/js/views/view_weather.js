@@ -243,7 +243,7 @@
                                     <span>📊</span> 氣候區間頻率分析 (Bin Analysis)
                                 </h3>
                                 <p class="text-xs text-slate-400 mt-0.5">
-                                    統計 8,760 小時落在各溫度/濕度區間之發生時數。乾球溫度直方圖已自動標記門檻區間 (🟢 Mode 1 ≤${mode1DbMax}°C | 🔵 Mode 2 ≤${mode2DbMax}°C | 🟡 Mode 3 >${mode2DbMax}°C)
+                                    統計 8,760 小時落在各溫度/濕度區間之發生時數。直方圖已自動標記門檻區間 (🟢 Mode 1 ${mode1Max != null ? `≤${mode1Max}°C` : '無'} | 🔵 Mode 2 ${mode2Max != null ? `≤${mode2Max}°C` : '無'} | 🟡 Mode 3 ${mode2Max != null ? `>${mode2Max}°C` : '全年'})
                                 </p>
                             </div>
                             <div class="flex items-center gap-2">
@@ -275,7 +275,7 @@
                             <div class="flex items-center justify-between mb-3">
                                 <div>
                                     <h3 class="text-sm font-bold text-slate-800">📅 各月份 Free Cooling 潛力時數堆疊分析</h3>
-                                    <div class="text-[11px] text-slate-400">綠色: 全直冷 (≤${mode1DbMax}°C) | 藍色: 輔助直冷 | 黃色: 全機械製冷</div>
+                                    <div class="text-[11px] text-slate-400">綠色: 全直冷 (${mode1Max != null ? `≤${mode1Max}°C` : '無'}) | 藍色: 輔助直冷 | 黃色: 全機械製冷</div>
                                 </div>
                                 <span class="text-xs text-emerald-600 font-bold">三階模式堆疊</span>
                             </div>
@@ -288,7 +288,7 @@
                             <div class="flex items-center justify-between mb-3">
                                 <div>
                                     <h3 class="text-sm font-bold text-slate-800">📈 12 個月氣候雙軸走勢 (含設定門檻線標記)</h3>
-                                    <div class="text-[11px] text-slate-400">包含 Mode 1 (${mode1DbMax}°C) 與 Mode 2 (${mode2DbMax}°C) 基準參考線</div>
+                                    <div class="text-[11px] text-slate-400">包含 Mode 1 (${mode1Max != null ? `${mode1Max}°C` : '無'}) 與 Mode 2 (${mode2Max != null ? `${mode2Max}°C` : '無'}) 基準參考線</div>
                                 </div>
                                 <span class="text-xs text-blue-600 font-bold">Monthly Trends</span>
                             </div>
@@ -365,7 +365,8 @@
                     isRealEpw: true,
                     hourly: data.hourlyData,
                     stats: data.stats,
-                    monthlyStats: data.monthlyStats
+                    monthlyStats: data.monthlyStats,
+                    designConditions: data.designConditions || null
                 });
             }
             const container = document.getElementById('stepContent');
