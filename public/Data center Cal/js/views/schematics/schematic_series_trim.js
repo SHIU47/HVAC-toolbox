@@ -35,12 +35,11 @@
             const equip = (typeof AppStore !== 'undefined' && AppStore.resolveEquipment && archDesc)
                 ? AppStore.resolveEquipment(archDesc, cduSys)
                 : {};
-            const op = archDesc?.operatingPoint
-                ? archDesc.operatingPoint(cduSys, { db: designCond.designDb, wb: designCond.designWb }, equip)
-                : null;
             const model = archDesc?.topology
-                ? archDesc.topology(cduSys, op, { ...designCond, cduModeHours, deficitHours })
+                ? archDesc.topology(cduSys, null, { ...designCond, cduModeHours, deficitHours }, { equip, cduModeHours, deficitHours })
                 : null;
+            const op = model?.op || null;
+            const peak = model?.peak || null;
 
             const nIt = model?.nodes?.find(n => n.id === 'it') || {};
             const nPrimary = model?.nodes?.find(n => n.id === 'hx_primary') || {};
@@ -71,11 +70,11 @@
             const precoolTemp = op?.temps?.fwsPre ?? fwsSupplyC;
             const chwSupplyTemp = op?.temps?.chwSup ?? 30.0;
             const chwReturnTemp = op?.temps?.chwRet ?? (chwSupplyTemp + trimChwDtC);
-            const dcWaterSupplyExact = op?.temps?.dcOut ? op.temps.dcOut.toFixed(1) : '35.0';
-            const condWaterEnterExact = op?.temps?.condIn ? op.temps.condIn.toFixed(1) : '45.0';
-            const condWaterLeaveExact = op?.temps?.condOut ? op.temps.condOut.toFixed(1) : '49.8';
-            const outdoorDb = op?.thresholds?.full ?? 33.0;
-            const cduFcThresh = (op?.thresholds?.full ?? 33.0).toFixed(1);
+            const dcWaterSupplyExact = (op?.temps?.dcOut !== undefined && op?.temps?.dcOut !== null) ? op.temps.dcOut.toFixed(1) : '—';
+            const condWaterEnterExact = (op?.temps?.condIn !== undefined && op?.temps?.condIn !== null) ? op.temps.condIn.toFixed(1) : '—';
+            const condWaterLeaveExact = (op?.temps?.condOut !== undefined && op?.temps?.condOut !== null) ? op.temps.condOut.toFixed(1) : '—';
+            const outdoorDb = (designCond.designDb !== undefined && designCond.designDb !== null) ? Number(designCond.designDb).toFixed(1) : '—';
+            const cduFcThresh = (op?.thresholds?.full !== undefined && op?.thresholds?.full !== null) ? Number(op.thresholds.full).toFixed(1) : '—';
 
             const liqLoadKw = (cduSys.designBasis?.liq_load_kw || t.summ?.liquidHeatKw || 0);
             const dtSec = Math.max(0.5, (cduSys.secReturnC || 57) - (cduSys.secSupplyC || 45));
@@ -87,32 +86,15 @@
             const secReturnC = cduSys.secReturnC || 57;
 
             // 設計工況 (0.4% DB) 狀態判斷
-            const isDesignMode1 = (designCond.designDb ?? 35.0) <= (op?.thresholds?.full ?? 33.0);
+            const isDesignMode1 = op?.mode ? (op.mode === 'free') : ((designCond.designDb != null && op?.thresholds?.full != null) ? designCond.designDb <= op.thresholds.full : true);
 
-            // 尖峰工況 (年最高 DB) 物理計算
-            const maxDb = designCond.maxDb ?? ((designCond.designDb ?? 35.0) + 3.0);
-            const opPeak = archDesc?.operatingPoint ? archDesc.operatingPoint(cduSys, { db: maxDb, wb: designCond.designWb }, equip) : null;
-            const fwsPre_peak = opPeak?.tPre ? opPeak.tPre.toFixed(1) : fwsSupplyC.toFixed(1);
-            const trimKw_peak = Math.round(liqLoadKw * (opPeak?.chiller_fraction ?? 0));
-            const condIn_peak = opPeak?.tCewt ? opPeak.tCewt.toFixed(1) : condWaterEnterExact;
-
-            let pComp = 0;
-            let cop_peak = 6.2;
-            const trimItem = (cduSys.sizing || []).find(s => s.key === 'trim_chiller');
-            const catalogCop = trimItem?.catalog?.find(c => c.model === trimItem.selectedModel)?.cop || 6.2;
-            if (trimKw_peak > 0) {
-                const trimChillers = equip.trim_chiller || [];
-                const chRes = (trimChillers.length > 0 && typeof root.ChillerEngine !== 'undefined')
-                    ? root.ChillerEngine.calcPower(trimKw_peak, trimChillers, opPeak?.tChws ?? 30, opPeak?.tCewt ?? 39, maxDb)
-                    : null;
-                pComp = chRes?.power_kw ? chRes.power_kw : (trimKw_peak / catalogCop);
-                cop_peak = pComp > 0 ? (trimKw_peak / pComp) : catalogCop;
-            } else {
-                cop_peak = catalogCop;
-            }
-            const condOut_peak = trimKw_peak > 0
-                ? (opPeak.tCewt + ((trimKw_peak + pComp) / Math.max(1, liqLoadKw)) * (fwsReturnC - fwsSupplyC)).toFixed(1)
-                : condIn_peak;
+            // 尖峰工況 (年最高 DB)
+            const maxDb = peak?.db ?? designCond.maxDb ?? ((designCond.designDb ?? 35.0) + 3.0);
+            const fwsPre_peak = (peak?.temps?.fwsPre !== undefined && peak?.temps?.fwsPre !== null) ? peak.temps.fwsPre.toFixed(1) : (fwsSupplyC !== undefined ? fwsSupplyC.toFixed(1) : '—');
+            const trimKw_peak = peak?.chillerKw !== undefined ? Math.round(peak.chillerKw) : 0;
+            const condIn_peak = (peak?.temps?.condIn !== undefined && peak?.temps?.condIn !== null) ? peak.temps.condIn.toFixed(1) : condWaterEnterExact;
+            const condOut_peak = (peak?.temps?.condOut !== undefined && peak?.temps?.condOut !== null) ? peak.temps.condOut.toFixed(1) : condIn_peak;
+            const cop_peak = (peak?.chillerCop !== undefined && peak?.chillerCop !== null) ? peak.chillerCop.toFixed(1) : '—';
 
             // 樣式變數 (設計工況 Mode 1 停機 vs Active)
             const secHxStroke = isDesignMode1 ? '#475569' : '#818cf8';
@@ -125,7 +107,7 @@
             const chillerStroke = isDesignMode1 ? '#475569' : '#818cf8';
             const chillerHeaderFill = isDesignMode1 ? '#1e293b' : '#312e81';
             const chillerIconStroke = isDesignMode1 ? '#64748b' : '#a5b4fc';
-            const chillerLine1 = isDesignMode1 ? '待機 (Standby)' : (nChiller.lines?.[0] || 'Trim');
+            const chillerLine1 = nChiller.lines?.[0] || 'Trim';
             const chillerLine2 = isDesignMode1 ? '設計工況無修整需求 (停機)' : (nChiller.lines?.[1] || '冷凝熱串聯排放至 Dry Coolers');
             const chillerLine3 = isDesignMode1 ? '年尖峰或高溫時自動啟動' : (nChiller.lines?.[2] || '高效離心/螺桿式機械壓縮製冷');
 
@@ -140,7 +122,7 @@
             const facilitySchematicSvg = `
                 <!-- 年最高 DB 尖峰工況小表格 -->
                 <rect x="740" y="8" width="510" height="26" rx="6" fill="#0f172a" stroke="#f59e0b" stroke-width="1.2" />
-                <text x="995" y="25" fill="#fef3c7" font-size="9.5" font-weight="bold" text-anchor="middle" ${fitTextAttr(`年最高 DB ${maxDb.toFixed(1)}°C 工況：預冷至 ${fwsPre_peak}°C ｜ Trim 負擔 ${trimKw_peak} kW ｜ 冷凝器 ${condIn_peak}→${condOut_peak}°C ｜ 冰機 COP ${cop_peak.toFixed(1)}`, 495, 9.5)}>年最高 DB ${maxDb.toFixed(1)}°C 工況：預冷至 ${fwsPre_peak}°C ｜ Trim 負擔 ${trimKw_peak} kW ｜ 冷凝器 ${condIn_peak}→${condOut_peak}°C ｜ 冰機 COP ${cop_peak.toFixed(1)}</text>
+                <text x="995" y="25" fill="#fef3c7" font-size="9.5" font-weight="bold" text-anchor="middle" ${fitTextAttr(`年最高 DB ${maxDb.toFixed(1)}°C 工況：預冷至 ${fwsPre_peak}°C ｜ Trim 負擔 ${trimKw_peak} kW ｜ 冷凝器 ${condIn_peak}→${condOut_peak}°C ｜ 冰機 COP ${cop_peak}`, 495, 9.5)}>年最高 DB ${maxDb.toFixed(1)}°C 工況：預冷至 ${fwsPre_peak}°C ｜ Trim 負擔 ${trimKw_peak} kW ｜ 冷凝器 ${condIn_peak}→${condOut_peak}°C ｜ 冰機 COP ${cop_peak}</text>
 
                 <!-- ======================================================= -->
                 <!-- 1. PRIMARY FWS LOOP (廠務側串聯換熱鏈) -->
@@ -212,6 +194,7 @@
                 <rect x="730" y="185" width="200" height="100" rx="10" fill="#1e1b4b" stroke="${chillerStroke}" stroke-width="2" />
                 <rect x="730" y="185" width="200" height="26" rx="10" fill="${chillerHeaderFill}" />
                 <text x="830" y="203" fill="#f8fafc" font-size="11.5" font-weight="bold" text-anchor="middle" ${fitTextAttr(nChiller.title || 'Water Cooled Chillers', 180, 11.5)}>${nChiller.title || 'Water Cooled Chillers'}</text>
+                ${isDesignMode1 ? '<text x="918" y="202" fill="#94a3b8" font-size="8.5" font-weight="bold" text-anchor="end">待機 (Standby)</text>' : ''}
 
                 <circle cx="755" cy="235" r="13" fill="#312e81" stroke="${chillerIconStroke}" stroke-width="1.5" />
                 <text x="755" y="239" fill="#ffffff" font-size="8.5" font-weight="bold" text-anchor="middle">${chillerLine1}</text>
@@ -241,7 +224,7 @@
                 <!-- 7. DRY COOLERS (室外乾式冷卻器模組) -->
                 <!-- ======================================================= -->
                 <!-- 頂部氣流箭頭 (進風外氣設計乾球溫) -->
-                <text x="1160" y="55" fill="#38bdf8" font-size="10" font-weight="bold" text-anchor="middle">外氣乾球溫: ${outdoorDb}°C</text>
+                <text x="1160" y="55" fill="#38bdf8" font-size="10" font-weight="bold" text-anchor="middle">設計乾球 (0.4%): ${outdoorDb}°C</text>
                 <polygon points="1110,60 1120,60 1115,70" fill="#38bdf8" />
                 <polygon points="1160,60 1170,60 1165,70" fill="#38bdf8" />
                 <polygon points="1210,60 1220,60 1215,70" fill="#38bdf8" />

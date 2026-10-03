@@ -111,8 +111,9 @@
             }
         ],
 
-        operatingPoint(sys, w, equip) {
+        operatingPoint(sys, w, equip, opts) {
             const wb_c = (typeof w === 'number') ? w : (w?.wb ?? 20.0);
+            const db_c = (typeof w === 'object' && w?.db !== undefined) ? w.db : 35.0;
             const tSup = sys?.fwsSupplyC ?? 40.0;
             const tRet = sys?.fwsReturnC ?? 55.0;
             const hasPhe = (sys?.hasPhe !== undefined && sys?.hasPhe !== null) ? !!sys.hasPhe : false;
@@ -123,6 +124,37 @@
             const minCewt = (typeof root.A === 'function') ? root.A('min_cewt_c') : 16.0;
             const tCewt = Math.max(minCewt, wb_c + towerApp);
             const condIn = Number(tCewt.toFixed(1));
+
+            let chillerKw = 0;
+            let chillerCop = 5.5;
+            let pComp = 0;
+            let isFallbackCop = true;
+
+            const chillers = equip?.water_chiller || equip?.chillers || [];
+            const Q_kw = sys?.designBasis?.liq_load_kw || opts?.qKw || 1000;
+            if (opts?.withChiller && Q_kw > 0) {
+                chillerKw = Q_kw;
+                if (chillers.length > 0 && typeof root.ChillerEngine !== 'undefined') {
+                    const staging = root.ChillerEngine.calcLeadLagStaging(Q_kw, chillers);
+                    const chRes = root.ChillerEngine.calcPower(Q_kw, staging.staged, tChws, tCewt, db_c);
+                    pComp = chRes.power_kw;
+                    chillerCop = pComp > 0 ? Number((Q_kw / pComp).toFixed(2)) : 5.5;
+                    isFallbackCop = false;
+                } else {
+                    const chItem = (sys?.sizing || []).find(s => s.key === 'water_chiller');
+                    const chModel = chItem?.catalog?.find(c => c.model === chItem.selectedModel);
+                    if (chModel?.cop) {
+                        chillerCop = chModel.cop;
+                        pComp = Q_kw / chillerCop;
+                        isFallbackCop = false;
+                    } else {
+                        chillerCop = 5.5;
+                        pComp = Q_kw / chillerCop;
+                        isFallbackCop = true;
+                    }
+                }
+            }
+
             const condOut = Number((tCewt + 5.0).toFixed(1));
             return {
                 mode: 'mechanical',
@@ -135,6 +167,10 @@
                 tChws,
                 tChwr,
                 tCewt,
+                chillerKw,
+                chillerCop,
+                pComp,
+                isFallbackCop,
                 temps: {
                     fwsRet: tRet,
                     fwsSup: tSup,
@@ -147,9 +183,11 @@
             };
         },
 
-        topology(sys, op, design) {
-            if (!op) op = this.operatingPoint(sys, design);
+        topology(sys, op, design, extra) {
+            const equip = extra?.equip || design?.equip;
+            if (!op) op = this.operatingPoint(sys, { db: design?.designDb ?? 35.0, wb: design?.designWb ?? 28.0 }, equip, { withChiller: true, design });
             const hasPhe = op?.hasPhe !== undefined ? op.hasPhe : ((sys?.hasPhe !== undefined && sys?.hasPhe !== null) ? !!sys.hasPhe : false);
+            const copLabel = op?.isFallbackCop ? '5.5 (後備值)' : `${op?.chillerCop ?? 5.5} (設計工況模擬)`;
 
             const nodes = [
                 {
@@ -199,7 +237,7 @@
                     kind: 'chiller',
                     title: '水冷式冰水主機 (Chiller)',
                     lines: [
-                        '全額機械壓縮製冷 (COP 5.5)',
+                        `全額機械壓縮製冷 (COP ${copLabel})`,
                         `供應 ${op?.temps?.chwSup ?? 38}°C 低溫冰水`,
                         '搭配開式冷卻水塔排熱',
                         `冷凝水溫: ${op?.temps?.condIn ?? 32} ⇄ ${op?.temps?.condOut ?? 37}°C`
@@ -219,7 +257,7 @@
                     title: '水冷式冰水主機 (Chiller)',
                     lines: [
                         '全額機械壓縮製冷核心',
-                        `供應設計冰水 ${op?.temps?.chwSup ?? 40}°C (COP 5.5)`,
+                        `供應設計冰水 ${op?.temps?.chwSup ?? 40}°C (COP ${copLabel})`,
                         '全年 100% 壓縮機連續運轉',
                         `冷卻水需求: ${op?.temps?.condIn ?? 32} ⇄ ${op?.temps?.condOut ?? 37}°C`
                     ]
@@ -267,12 +305,13 @@
                 title: '設施排熱拓樸 (Facility Heat Rejection)',
                 referenceLabel: null,
                 banners: [
-                    { id: 'mode1', label: '全額機械壓縮冷卻 (COP 5.5)', detail: '無自然冷卻 (全年機械製冷)', tone: 'slate' }
+                    { id: 'mode1', label: `全額機械壓縮冷卻 (COP ${copLabel})`, detail: '無自然冷卻 (全年機械製冷)', tone: 'slate' }
                 ],
                 nodes,
                 pipes,
                 footer: [],
-                warnings
+                warnings,
+                op
             };
         },
 

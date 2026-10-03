@@ -2266,6 +2266,24 @@ function freshCtx() {
   });
 })();
 
+// ── F-3: renderer de-physicalization and zero hardcoded decimals ────────────
+(function () {
+  const fs = require('fs');
+  const path = require('path');
+  test('F-3 schematic renderers contain 0 physical simulation calls or hardcoded decimal fallbacks', () => {
+    const schemDir = path.join(__dirname, '../../public/Data center Cal/js/views/schematics');
+    const files = fs.readdirSync(schemDir).filter(f => f.endsWith('.js'));
+    const pattern = /ChillerEngine|operatingPoint\(|calcSeriesEconomizer|'[0-9]+\.[0-9]'/;
+    for (const f of files) {
+      const content = fs.readFileSync(path.join(schemDir, f), 'utf8');
+      const lines = content.split('\n');
+      lines.forEach((line, idx) => {
+        assert(!pattern.test(line), `F-3 violation in ${f}:${idx + 1}: ${line.trim()}`);
+      });
+    }
+  });
+})();
+
 console.log(`\n${passCount} passed, ${failCount} failed, ${skipCount} skipped`);
 process.exit(failCount > 0 ? 1 : 0);
 

@@ -31,8 +31,8 @@
             const designCondWithHours = { ...designCond, fwModeHours, deficitHours };
 
             const equip = (typeof AppStore !== 'undefined' && AppStore.resolveEquipment && fwArchDesc) ? AppStore.resolveEquipment(fwArchDesc, fwSys) : {};
-            const op = fwArchDesc?.operatingPoint ? fwArchDesc.operatingPoint(fwSys, { db: designCond.designDb, wb: designCond.designWb }, equip) : null;
-            const model = fwArchDesc?.topology ? fwArchDesc.topology(fwSys, op, designCondWithHours) : null;
+            const model = fwArchDesc?.topology ? fwArchDesc.topology(fwSys, null, designCondWithHours, { equip, fwModeHours, deficitHours }) : null;
+            const op = model?.op || null;
 
             const nCrah = model?.nodes?.find(n => n.id === 'crah' || n.id === 'rdhx') || {};
             const nEco = model?.nodes?.find(n => n.id === 'fc_coil' || n.id === 'wse') || null;
@@ -102,7 +102,7 @@
             const pipeCrahToEvap = getPipe(crahId, 'evaporator', `${chwReturnC}°C`);
             const pipeEvapToCrah = getPipe('evaporator', crahId, `${chwSupplyC}°C`);
             const pipeCrahToEco = nEco ? getPipe(crahId, nEco.id, `${chwReturnC}°C`) : '';
-            const pipeEcoToEvap = nEco ? getPipe(nEco.id, 'evaporator', (op?.temps?.coilAvail !== undefined ? `${op.temps.coilAvail}°C` : '預冷')) : '';
+            const pipeEcoToEvap = nEco ? getPipe(nEco.id, 'evaporator', (op?.temps?.chwPre !== undefined ? `${op.temps.chwPre}°C` : (op?.temps?.coilAvail !== undefined ? `${op.temps.coilAvail}°C` : '預冷'))) : '';
 
             const fitTextAttr = (str, maxPx, fontSize = 11) => {
                 if (!str || typeof str !== 'string') return '';

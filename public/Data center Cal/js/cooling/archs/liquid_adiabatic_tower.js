@@ -169,8 +169,9 @@
             };
         },
 
-        topology(sys, op, design) {
-            if (!op) op = this.operatingPoint(sys, design);
+        topology(sys, op, design, extra) {
+            const equip = extra?.equip || design?.equip;
+            if (!op) op = this.operatingPoint(sys, { db: design?.designDb ?? 35.0, wb: design?.designWb ?? 28.0 }, equip, { design });
             const fullThresh = op?.thresholds?.full ?? 35.0;
             const switchpoint = op?.thresholds?.switchpoint ?? 30.8;
             const hasPhe = op?.hasPhe !== undefined ? op.hasPhe : ((sys?.hasPhe !== undefined && sys?.hasPhe !== null) ? !!sys.hasPhe : true);
@@ -270,7 +271,8 @@
                 nodes,
                 pipes,
                 footer: [],
-                warnings: []
+                warnings: [],
+                op
             };
         },
 

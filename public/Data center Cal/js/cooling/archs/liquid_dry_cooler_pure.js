@@ -113,8 +113,9 @@
             };
         },
 
-        topology(sys, op, design) {
-            if (!op) op = this.operatingPoint(sys, design);
+        topology(sys, op, design, extra) {
+            const equip = extra?.equip || design?.equip;
+            if (!op) op = this.operatingPoint(sys, { db: design?.designDb ?? 35.0, wb: design?.designWb ?? 28.0 }, equip, { design });
             const dcApp = sys?.dryCoolerApproachC ?? 5.0;
             const hasPhe = op?.hasPhe !== undefined ? op.hasPhe : ((sys?.hasPhe !== undefined && sys?.hasPhe !== null) ? !!sys.hasPhe : true);
             const fullThresh = op?.thresholds?.full ?? ((op?.temps?.fwsSup ?? 40.0) - dcApp - (hasPhe ? (sys?.pheApproachC ?? 2.0) : 0.0));
@@ -214,7 +215,8 @@
                 nodes,
                 pipes,
                 footer: [],
-                warnings: []
+                warnings: [],
+                op
             };
         },
 

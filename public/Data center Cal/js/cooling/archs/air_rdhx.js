@@ -97,19 +97,22 @@
                     : ((eco.mode === (root.FreeCoolingEngine?.MODE?.PARTIAL_FC || 'PARTIAL_FC')) ? 'partial' : 'mechanical'));
             const fullThresh = Number((chwSupplyC - fcApproach).toFixed(1));
             const mechThresh = Number((chwReturnC - fcApproach).toFixed(1));
+            const chwPre = Number((eco.t_precooled_c ?? Math.min(chwReturnC, Math.max(chwSupplyC, tAvail))).toFixed(1));
             return {
                 ...eco,
                 mode,
                 tAvail,
                 chwSupplyC,
                 chwReturnC,
-                temps: { chwSup: chwSupplyC, chwRet: chwReturnC, coilAvail: tAvail },
+                chwPre,
+                temps: { chwSup: chwSupplyC, chwRet: chwReturnC, chwPre, coilAvail: tAvail, tAvail },
                 thresholds: { basis: 'db', full: fullThresh, mech: mechThresh }
             };
         },
 
         topology(sys, op, design, extra) {
-            if (!op) op = this.operatingPoint(sys, design);
+            const equip = extra?.equip || design?.equip;
+            if (!op) op = this.operatingPoint(sys, { db: design?.designDb ?? 35.0, wb: design?.designWb ?? 28.0 }, equip, { withChiller: true, design });
             const chwSup = op?.temps?.chwSup ?? sys?.chwSupplyC ?? 12.0;
             const chwRet = op?.temps?.chwRet ?? sys?.chwReturnC ?? 18.0;
             const fcApproach = (typeof root.A === 'function') ? root.A('air_chiller_fc_coil_approach_c') : 4.0;
@@ -187,11 +190,12 @@
                 ],
                 pipes: [
                     { from: 'rdhx', to: 'fc_coil', label: `${chwRet}°C`, tone: 'hot' },
-                    { from: 'fc_coil', to: 'evaporator', label: `${op?.temps?.coilAvail ?? chwSup}°C`, tone: 'warm' },
+                    { from: 'fc_coil', to: 'evaporator', label: `${op?.temps?.chwPre ?? chwSup}°C`, tone: 'warm' },
                     { from: 'evaporator', to: 'rdhx', label: `${chwSup}°C`, tone: 'cold' }
                 ],
                 footer: [],
-                warnings
+                warnings,
+                op
             };
         },
 

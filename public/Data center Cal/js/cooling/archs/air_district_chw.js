@@ -79,8 +79,8 @@
             };
         },
 
-        topology(sys, op, design) {
-            if (!op) op = this.operatingPoint(sys, design);
+        topology(sys, op, design, extra) {
+            if (!op) op = this.operatingPoint(sys, { db: design?.designDb ?? 35.0, wb: design?.designWb ?? 28.0 });
             const chwSup = op?.temps?.chwSup ?? sys?.chwSupplyC ?? 12.0;
             const chwRet = op?.temps?.chwRet ?? sys?.chwReturnC ?? 18.0;
             const distSup = op?.temps?.districtSup ?? (chwSup - 2.0);
@@ -139,7 +139,8 @@
                     { from: 'heat_rejection', to: 'evaporator', label: `${distSup}°C`, tone: 'cold' }
                 ],
                 footer: [],
-                warnings: []
+                warnings: [],
+                op
             };
         },
 
