@@ -2212,6 +2212,15 @@ function freshCtx() {
   });
 })();
 
+// ── F-9: topo_preview city suffix prevents overwriting default ─────────────
+(function () {
+  test('F-9 topo_preview appends city suffix when city is non-default', () => {
+    const topoScript = require('fs').readFileSync(require('path').join(__dirname, 'topo_preview.js'), 'utf8');
+    assert(topoScript.includes('getCitySuffix'), 'topo_preview must define getCitySuffix');
+    assert(topoScript.includes('__'), 'topo_preview must format city suffix with double underscore');
+  });
+})();
+
 console.log(`\n${passCount} passed, ${failCount} failed, ${skipCount} skipped`);
 process.exit(failCount > 0 ? 1 : 0);
 

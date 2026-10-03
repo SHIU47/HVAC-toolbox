@@ -144,8 +144,18 @@ function main() {
 
     const filtered = only ? tasks.filter(t => t.name.includes(only)) : tasks;
 
+    function getCitySuffix(targetCity) {
+        if (!targetCity || targetCity === '高雄 (Kaohsiung)') return '';
+        const match = targetCity.match(/\(([a-zA-Z0-9\s_-]+)\)/);
+        let raw = match ? match[1].trim().split(/\s+/)[0] : targetCity;
+        const clean = raw.toLowerCase().replace(/[^a-z0-9]/g, '');
+        return `__${clean || 'city'}`;
+    }
+
+    const citySuffix = getCitySuffix(city);
+
     for (const t of filtered) {
-        const outName = `${t.name}.png`;
+        const outName = `${t.name}${citySuffix}.png`;
         const outPath = path.join(OUT_DIR, outName);
         const targetUrl = `${previewFileUrl}?city=${encodeURIComponent(city)}&cdu=${t.cdu}&fw=${t.fw}&part=${t.part}`;
         const userDataDir = path.join(os.tmpdir(), `chrome_user_data_${Date.now()}_${Math.floor(Math.random() * 10000)}`);
