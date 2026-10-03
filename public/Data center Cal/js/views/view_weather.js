@@ -387,7 +387,8 @@
                         isRealEpw: true,
                         hourly: parsed.hourlyData,
                         stats: parsed.stats,
-                        monthlyStats: parsed.monthlyStats
+                        monthlyStats: parsed.monthlyStats,
+                        designConditions: parsed.designConditions || null
                     });
                     const container = document.getElementById('stepContent');
                     if (container && window.App.currentStep === 1) this.render(container);

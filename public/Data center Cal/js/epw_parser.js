@@ -38,6 +38,16 @@
                 };
             }
 
+            let designConditions = null;
+            if (lines.length > 1 && lines[1].includes('DESIGN CONDITIONS')) {
+                const parseFn = (typeof window !== 'undefined' && window.AshraeDesign && window.AshraeDesign.parseEpwDesignConditions)
+                    ? window.AshraeDesign.parseEpwDesignConditions
+                    : ((typeof AshraeDesign !== 'undefined' && AshraeDesign.parseEpwDesignConditions) ? AshraeDesign.parseEpwDesignConditions : null);
+                if (typeof parseFn === 'function') {
+                    designConditions = parseFn(lines[1]);
+                }
+            }
+
             const startLine = lines.length > 8 ? 8 : 0;
             const hourlyData = [];
 
@@ -101,7 +111,7 @@
                 };
             });
 
-            return { stationInfo, hourlyData, stats, monthlyStats };
+            return { stationInfo, hourlyData, stats, monthlyStats, designConditions };
         }
     };
 

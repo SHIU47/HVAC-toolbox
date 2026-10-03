@@ -2419,6 +2419,73 @@ function freshCtx() {
   });
 })();
 
+// ── X-1: ASHRAE design conditions parsing and serialization ────────────────
+(function () {
+  const fs = require('fs');
+  const path = require('path');
+  const AshraeDesign = require('../../public/Data center Cal/js/ashrae_design_conditions.js');
+
+  test('X-1 parseEpwDesignConditions correctly parses Kaohsiung and Hsinchu EPW headers', () => {
+    assert(typeof AshraeDesign.parseEpwDesignConditions === 'function', 'parseEpwDesignConditions must be a function');
+
+    // 1. Kaohsiung EPW line 2
+    const dir = path.resolve(__dirname, '../../public/Data center Cal/weather/ZIP檔');
+    const khSub = fs.readdirSync(dir).find(s => s.includes('Kaohsiung'));
+    const khEpw = path.join(dir, khSub, fs.readdirSync(path.join(dir, khSub)).find(f => f.endsWith('.epw')));
+    const khLine2 = fs.readFileSync(khEpw, 'utf8').split('\n')[1];
+    const khRes = AshraeDesign.parseEpwDesignConditions(khLine2);
+
+    assert(khRes !== null, 'Kaohsiung line 2 must parse');
+    assert.strictEqual(khRes.source, 'ASHRAE HOF Ch.14 (EPW header)');
+    assert.strictEqual(khRes.cooling.db004, 33.5);
+    assert.strictEqual(khRes.cooling.evapWb004, 28.3);
+    assert.strictEqual(khRes.extremes.dbMax[20], 36.7);
+    assert.strictEqual(khRes.extremes.dbMin[50], 5.2);
+
+    // 2. Hsinchu EPW line 2 (Extremes is all N/A)
+    const hcSub = fs.readdirSync(dir).find(s => s.includes('Hsinchu'));
+    const hcEpw = path.join(dir, hcSub, fs.readdirSync(path.join(dir, hcSub)).find(f => f.endsWith('.epw')));
+    const hcLine2 = fs.readFileSync(hcEpw, 'utf8').split('\n')[1];
+    const hcRes = AshraeDesign.parseEpwDesignConditions(hcLine2);
+
+    assert(hcRes !== null, 'Hsinchu line 2 must parse');
+    assert.strictEqual(hcRes.cooling.db004, 33.2);
+    assert.strictEqual(hcRes.cooling.evapWb004, 28.8);
+    assert.strictEqual(hcRes.extremes, null, 'Hsinchu extremes must be null');
+
+    // 3. Invalid / non-design conditions input returns null
+    assert.strictEqual(AshraeDesign.parseEpwDesignConditions(''), null);
+    assert.strictEqual(AshraeDesign.parseEpwDesignConditions('LOCATION,foo,bar'), null);
+  });
+
+  test('X-1 EpwParser.parse extracts designConditions and serializeProject/deserializeProject preserves it', () => {
+    const { buildWindow } = require('./dom_harness.js');
+    const win = buildWindow();
+    const dir = path.resolve(__dirname, '../../public/Data center Cal/weather/ZIP檔');
+    const khSub = fs.readdirSync(dir).find(s => s.includes('Kaohsiung'));
+    const khEpw = path.join(dir, khSub, fs.readdirSync(path.join(dir, khSub)).find(f => f.endsWith('.epw')));
+    const epwContent = fs.readFileSync(khEpw, 'utf8');
+
+    const parsed = win.EpwParser.parse(epwContent);
+    assert(parsed.designConditions, 'EpwParser.parse must return designConditions');
+    assert.strictEqual(parsed.designConditions.cooling.db004, 33.5);
+
+    win.AppStore.updateSite({
+      selectedCity: 'Kaohsiung_Custom',
+      designConditions: parsed.designConditions
+    });
+    assert.strictEqual(win.AppStore.state.site.designConditions.cooling.db004, 33.5);
+
+    const jsonStr = win.AppStore.serializeProject();
+    assert(jsonStr.includes('"designConditions"'), 'serializeProject must serialize designConditions');
+
+    win.AppStore.state.site.designConditions = null;
+    win.AppStore.deserializeProject(jsonStr);
+    assert(win.AppStore.state.site.designConditions !== null, 'deserializeProject must restore designConditions');
+    assert.strictEqual(win.AppStore.state.site.designConditions.cooling.db004, 33.5);
+  });
+})();
+
 console.log(`\n${passCount} passed, ${failCount} failed, ${skipCount} skipped`);
 process.exit(failCount > 0 ? 1 : 0);
 

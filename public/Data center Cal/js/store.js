@@ -214,7 +214,8 @@
                 site: {
                     selectedCity: s.site.selectedCity,
                     stats: s.site.stats,
-                    userUploaded: s.site.userUploaded || false
+                    userUploaded: s.site.userUploaded || false,
+                    designConditions: s.site.designConditions || null
                 },
                 halls: s.halls,
                 corePods: s.corePods,
@@ -324,6 +325,9 @@
                     if (stateData.site.stats) {
                         this.state.site.stats = stateData.site.stats;
                     }
+                    if (stateData.site.designConditions !== undefined) {
+                        this.state.site.designConditions = stateData.site.designConditions;
+                    }
                     // v45 fix: 專案匯出檔(serializeProject)從來沒有內嵌完整8760小時氣象陣列
                     // (只存 selectedCity/stats)，但這裡之前完全沒有補讀，導致重新開啟專案檔後
                     // this.state.site.hourly 是空的，calculate() 會悄悄退回 generateFallbackWeather()
@@ -344,6 +348,7 @@
                         this.state.site.lat = data.stationInfo?.lat;
                         this.state.site.lon = data.stationInfo?.lon;
                         this.state.site.elev = data.stationInfo?.elev;
+                        this.state.site.designConditions = data.designConditions || this.state.site.designConditions || null;
                     } else if (cityName) {
                         console.warn('[deserializeProject] 找不到「' + cityName + '」的內建氣象資料 (可能是使用者自行上傳的EPW，匯出檔未保存原始逐時資料)，本次計算將使用溫和的合成氣候近似值，結果不代表真實案場氣候，請重新於 Step1 上傳/選擇氣象資料。');
                     }
