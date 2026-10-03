@@ -835,20 +835,65 @@
 
         designConditions() {
             if (this.state.site.design) return this.state.site.design;
-            const hourly = this.state.site.hourly;
-            let designDb, designWb, maxDb;
+            const site = this.state.site;
+            const hourly = site.hourly;
+            let tmy;
             if (hourly && hourly.length >= 8760) {
                 const dbSorted = hourly.map(h => h.db).sort((a, b) => b - a);
                 const wbSorted = hourly.map(h => h.wb).sort((a, b) => b - a);
-                designDb = dbSorted[34]; // 35th largest (0.4% exceedance: 8760 * 0.004 = 35.04)
-                designWb = wbSorted[34];
-                maxDb = dbSorted[0];
+                tmy = {
+                    designDb: dbSorted[34], // 35th largest (0.4% exceedance: 8760 * 0.004 = 35.04)
+                    designWb: wbSorted[34],
+                    maxDb: dbSorted[0]
+                };
             } else {
-                maxDb = this.state.site.stats?.maxDB ?? 38.0;
-                designDb = this.state.site.stats?.maxDB ?? 35.0;
-                designWb = (typeof A === 'function') ? A('design_wb_fallback_c') : 28.0;
+                const maxDb = site.stats?.maxDB ?? 38.0;
+                const designDb = site.stats?.maxDB ?? 35.0;
+                const designWb = (typeof A === 'function') ? A('design_wb_fallback_c') : 28.0;
+                tmy = { designDb, designWb, maxDb };
             }
-            this.state.site.design = { designDb, designWb, maxDb };
+
+            const dc = site.designConditions || null;
+            const designDb = dc?.cooling?.db004 ?? tmy.designDb;
+            const designWb = dc?.cooling?.evapWb004 ?? tmy.designWb;
+            const designBasis = dc?.cooling?.db004 != null ? 'ASHRAE 0.4%' : 'TMY 排序 0.4%';
+            const maxDb = tmy.maxDb;
+            const extremes = dc?.extremes ?? null;
+
+            const peakDb = (() => {
+                const n = (typeof A === 'function') ? A('design_extreme_return_years') : 20;
+                const v = extremes?.dbMax?.[n];
+                if (Number.isFinite(v)) {
+                    return { value: Math.max(v, tmy.maxDb), basis: `ASHRAE n=${n} 年回歸` };
+                }
+                const fallbackMargin = (typeof A === 'function') ? A('design_extreme_fallback_margin_c') : 2.0;
+                return { value: tmy.maxDb + fallbackMargin, basis: 'TMY 最高 + 餘裕（無 ASHRAE 極值）' };
+            })();
+
+            const freezeDb = (() => {
+                const v = extremes?.dbMin?.[50];
+                return Number.isFinite(v) ? { value: v, basis: 'ASHRAE n=50 年回歸' } : null;
+            })();
+
+            let dataQualityWarning = null;
+            const n = (typeof A === 'function') ? A('design_extreme_return_years') : 20;
+            const vMax = extremes?.dbMax?.[n];
+            const gapWarnThreshold = (typeof A === 'function') ? A('design_extreme_tmy_gap_warn_c') : 5.0;
+            if (Number.isFinite(vMax) && (peakDb.value - tmy.maxDb > gapWarnThreshold)) {
+                const gap = (peakDb.value - tmy.maxDb).toFixed(1);
+                dataQualityWarning = `本站 ASHRAE 極值與 TMY 最高溫相差 ${gap}°C，建議核對測站資料`;
+            }
+
+            this.state.site.design = {
+                designDb,
+                designWb,
+                designBasis,
+                maxDb,
+                extremes,
+                peakDb,
+                freezeDb,
+                dataQualityWarning
+            };
             return this.state.site.design;
         },
 

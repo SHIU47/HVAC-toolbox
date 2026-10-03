@@ -463,13 +463,18 @@ function freshCtx() {
 
   test('P1-1 deserializeProject clears site.design cache', () => {
     const W = ctx.BUILTIN_WEATHER_DATA;
-    S.updateSite({ selectedCity: '高雄 (Kaohsiung)', hourly: W['高雄 (Kaohsiung)'].hourlyData, isRealEpw: true });
-    assert.strictEqual(S.designConditions().designDb, 34);
+    S.updateSite({
+      selectedCity: '高雄 (Kaohsiung)',
+      hourly: W['高雄 (Kaohsiung)'].hourlyData,
+      designConditions: W['高雄 (Kaohsiung)'].designConditions,
+      isRealEpw: true
+    });
+    assert.strictEqual(S.designConditions().designDb, 33.5);
     const serializedTaichung = S.serializeProject();
     const parsed = JSON.parse(serializedTaichung);
     parsed.site.selectedCity = '台中 (Taichung)';
     S.deserializeProject(parsed);
-    assert.strictEqual(S.designConditions().designDb, 33.8);
+    assert.strictEqual(S.designConditions().designDb, 33.7);
   });
 })();
 
@@ -2521,6 +2526,48 @@ function freshCtx() {
     assert(tyDc, 'site.designConditions must be set after App.init');
     assert.strictEqual(tyDc.cooling.db004, 33.9);
     assert.strictEqual(tyDc.cooling.evapWb004, 29);
+  });
+
+  test('X-4 AppStore.designConditions() prioritizes ASHRAE 0.4% and computes peakDb, freezeDb, dataQualityWarning', () => {
+    const { buildWindow } = require('./dom_harness.js');
+    const win = buildWindow();
+
+    // 1. Kaohsiung: ASHRAE prioritized, no data quality warning
+    win.ViewWeather.selectCity('高雄 (Kaohsiung)');
+    const khCond = win.AppStore.designConditions();
+    assert.strictEqual(khCond.designDb, 33.5);
+    assert.strictEqual(khCond.designWb, 28.3);
+    assert.strictEqual(khCond.designBasis, 'ASHRAE 0.4%');
+    assert.strictEqual(khCond.peakDb.value, 36.7);
+    assert.strictEqual(khCond.peakDb.basis, 'ASHRAE n=20 年回歸');
+    assert.strictEqual(khCond.freezeDb.value, 5.2);
+    assert.strictEqual(khCond.freezeDb.basis, 'ASHRAE n=50 年回歸');
+    assert.strictEqual(khCond.dataQualityWarning, null);
+
+    // 2. Taoyuan: Gap is 42.0 - 34.3 = 7.7 > 5.0 -> dataQualityWarning triggered
+    win.ViewWeather.selectCity('桃園 (Taoyuan Pilot)');
+    const tyCond = win.AppStore.designConditions();
+    assert.strictEqual(tyCond.designDb, 33.9);
+    assert.strictEqual(tyCond.designWb, 29);
+    assert.strictEqual(tyCond.peakDb.value, 42.0);
+    assert.strictEqual(tyCond.freezeDb.value, -1.8);
+    assert(tyCond.dataQualityWarning && tyCond.dataQualityWarning.includes('7.7°C'), `Expected 7.7°C warning, got: ${tyCond.dataQualityWarning}`);
+
+    // 3. Hsinchu: extremes is null -> fallback to TMY maxDb + 2.0, freezeDb is null
+    win.ViewWeather.selectCity('新竹 (Hsinchu)');
+    const hcCond = win.AppStore.designConditions();
+    assert.strictEqual(hcCond.designDb, 33.2);
+    assert.strictEqual(hcCond.designWb, 28.8);
+    assert.strictEqual(hcCond.peakDb.value, 33.1 + 2.0);
+    assert.strictEqual(hcCond.peakDb.basis, 'TMY 最高 + 餘裕（無 ASHRAE 極值）');
+    assert.strictEqual(hcCond.freezeDb, null);
+
+    // 4. Missing designConditions (fallback mode)
+    win.AppStore.state.site.designConditions = null;
+    win.AppStore.state.site.design = null;
+    const fbCond = win.AppStore.designConditions();
+    assert.strictEqual(fbCond.designBasis, 'TMY 排序 0.4%');
+    assert.strictEqual(fbCond.designDb, 31.6); // TMY sorted for Hsinchu
   });
 })();
 

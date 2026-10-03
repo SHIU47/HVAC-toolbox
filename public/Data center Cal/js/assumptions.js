@@ -32,6 +32,9 @@ const ASSUMPTIONS = {
   ct_rerate_pct_per_c_above_std: { val: 2.5, unit: '%/°C', label: '冷卻水塔容量隨設計濕球溫超過 CTI 標準額定濕球每升高 1°C 的降額率', ref: 'CTI ATC-105 標準額定條件下型錄值，實際設計 WB 偏高時容量下降，概估值' },
   ct_standard_rating_wb_c: { val: 25.6, unit: '°C', label: '冷卻水塔型錄額定容量對應的 CTI 標準額定濕球溫（78°F）', ref: 'CTI ATC-105 標準額定條件' },
   design_wb_fallback_c:    { val: 28.0, unit: '°C', label: '無氣象逐時資料可查時的設計濕球溫度後備值（設備選型降額用）', ref: '台灣主要城市夏季 p99 濕球溫度概估區間 27–29°C' },
+  design_extreme_return_years:      { val: 20,    unit: 'years', label: 'ASHRAE 極端年最高乾球回歸期', ref: 'ASHRAE HOF Ch.14 極端年 n 年回歸期；關鍵設施常用 n=20' },
+  design_extreme_fallback_margin_c: { val: 2.0,   unit: '°C',    label: '無 ASHRAE 極值時之 TMY 最高溫安全餘裕', ref: '保守推估裕度' },
+  design_extreme_tmy_gap_warn_c:    { val: 5.0,   unit: '°C',    label: 'ASHRAE 極值與 TMY 最高溫差距警示門檻', ref: '差距過大提示核對測站品質' },
 
   // ── 絕熱冷卻塔常數 (P1-4 / P4-4) ─────────────────────────────────────────
   adiabatic_coil_air_dt_k:        { val: 10.0, unit: 'K',  label: '絕熱預冷盤管空氣側溫升', ref: '乾冷器／絕熱盤管空氣側溫升典型 8–12 K' },
