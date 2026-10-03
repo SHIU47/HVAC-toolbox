@@ -17,7 +17,7 @@
         cardLabel: '全額水冷式冰機',
         pillLabel: '水冷冰機',
         dashboardLabel: '水冷冰機製冷 (Water-Cooled Chiller)',
-        flags: { hasMechanical: true, consumesWater: true },
+        flags: { hasMechanical: true, consumesWater: true, isWaterChiller: true },
         terminal: 'cdu',
         schematic: 'single_loop',
         params: [

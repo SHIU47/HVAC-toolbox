@@ -230,17 +230,35 @@
             });
         },
 
-        validateCdu(cduSys, pipeCduVelocityMps) {
+        validateCdu(cduSys, pipeCduVelocityMps, designCond, archDesc) {
             const cduVelOk = pipeCduVelocityMps >= 1.0 && pipeCduVelocityMps <= 3.0;
-            const trimChillerForCheck = cduSys.sizing.find(s => s.key === 'trim_chiller');
+            const cduArchDesc = archDesc || ((typeof root.CoolingArchRegistry !== 'undefined') ? root.CoolingArchRegistry.get(cduSys?.architecture) : null);
+            const dCond = designCond || ((typeof root.AppStore !== 'undefined' && root.AppStore.designConditions) ? root.AppStore.designConditions() : { designDb: 35.0, designWb: 28.0 });
+            const designWb = dCond?.designWb ?? 28.0;
+
+            const trimChillerForCheck = cduSys.sizing?.find(s => s.key === 'trim_chiller');
+            const checks = [
+                (cduSys.sizing?.[0]?.passed ? '✓' : '✗') + ' CDU 總有效容量 ' + cduSys.sizing?.[0]?.effectiveCapKw + ' kW (N-1) ' + (cduSys.sizing?.[0]?.passed ? '滿足' : '不足！'),
+                (cduSys.sizing?.[1] ? ((cduSys.sizing[1].passed ? '✓' : '✗') + ' ' + cduSys.sizing[1].label + ' 有效容量 ' + cduSys.sizing[1].effectiveCapKw + ' kW (N-1) ' + (cduSys.sizing[1].passed ? '滿足' : '不足！')) : ''),
+                (cduVelOk ? '✓' : '⚠') + ' 一次側管路流速 (計算值) ' + pipeCduVelocityMps + ' m/s，建議範圍 1.0~3.0 m/s' + (cduVelOk ? '' : '，建議調整管徑'),
+                trimChillerForCheck ? ((trimChillerForCheck.maxMechanicalPassed ? '✓' : '⚠') + ' Trim Chiller 全機械製冷(Mode 3)最大需求 ' + trimChillerForCheck.maxMechanicalKw + ' kW，N+1可用 ' + trimChillerForCheck.effectiveCapKw + ' kW' + (trimChillerForCheck.maxMechanicalPassed ? '（足夠）' : '（不足！極端高溫時可能超載，實際是否發生請以Dashboard的容量缺口小時數為準）')) : ''
+            ];
+
+            // P4-6: R-f D5 warning for water_chiller
+            const isWaterChiller = cduArchDesc?.id === 'water_chiller' || cduSys?.architecture === 'water_chiller' || !!cduArchDesc?.flags?.isWaterChiller;
+            if (isWaterChiller) {
+                const towerApp = (typeof root.A === 'function') ? root.A('tower_approach_c') : 4.0;
+                const hasPhe = cduSys?.hasPhe ?? false;
+                const pheApp = cduSys?.pheApproachC ?? 2.0;
+                const fwsSupplyC = cduSys?.fwsSupplyC ?? 40.0;
+                if ((designWb + towerApp + (hasPhe ? pheApp : 0)) < fwsSupplyC) {
+                    checks.push('⚠ 設計濕球 + 塔 approach 已低於 FWS 供水溫，冷卻水塔可直接供冷；建議改用閉式塔或加裝水側經濟器');
+                }
+            }
+
             return {
-                ok: cduSys.sizing.every(s => s.passed),
-                checks: [
-                    (cduSys.sizing[0].passed ? '✓' : '✗') + ' CDU 總有效容量 ' + cduSys.sizing[0].effectiveCapKw + ' kW (N-1) ' + (cduSys.sizing[0].passed ? '滿足' : '不足！'),
-                    (cduSys.sizing[1] ? ((cduSys.sizing[1].passed ? '✓' : '✗') + ' ' + cduSys.sizing[1].label + ' 有效容量 ' + cduSys.sizing[1].effectiveCapKw + ' kW (N-1) ' + (cduSys.sizing[1].passed ? '滿足' : '不足！')) : ''),
-                    (cduVelOk ? '✓' : '⚠') + ' 一次側管路流速 (計算值) ' + pipeCduVelocityMps + ' m/s，建議範圍 1.0~3.0 m/s' + (cduVelOk ? '' : '，建議調整管徑'),
-                    trimChillerForCheck ? ((trimChillerForCheck.maxMechanicalPassed ? '✓' : '⚠') + ' Trim Chiller 全機械製冷(Mode 3)最大需求 ' + trimChillerForCheck.maxMechanicalKw + ' kW，N+1可用 ' + trimChillerForCheck.effectiveCapKw + ' kW' + (trimChillerForCheck.maxMechanicalPassed ? '（足夠）' : '（不足！極端高溫時可能超載，實際是否發生請以Dashboard的容量缺口小時數為準）')) : ''
-                ]
+                ok: (cduSys.sizing || []).every(s => s.passed),
+                checks: checks.filter(Boolean)
             };
         },
 

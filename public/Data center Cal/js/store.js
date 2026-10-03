@@ -1421,10 +1421,12 @@
             }
 
             if (typeof SizingEngine !== 'undefined') {
-                SizingEngine.evaluateCduSizing(cduSys, reqCduKw, this.designConditions(), {
+                const dCond = this.designConditions();
+                SizingEngine.evaluateCduSizing(cduSys, reqCduKw, dCond, {
                     trimOperatingPoint: this.trimOperatingPoint.bind(this)
                 });
-                cduSys.validation = SizingEngine.validateCdu(cduSys, pipeCdu.velocity_mps);
+                const cduArchDesc = (typeof CoolingArchRegistry !== 'undefined') ? CoolingArchRegistry.get(arch) : null;
+                cduSys.validation = SizingEngine.validateCdu(cduSys, pipeCdu.velocity_mps, dCond, cduArchDesc);
             }
 
             // 2. Fanwall 氣冷系統

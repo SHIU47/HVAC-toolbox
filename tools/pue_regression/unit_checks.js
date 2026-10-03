@@ -2067,6 +2067,81 @@ function freshCtx() {
   });
 })();
 
+// ═══════════════════════════════════════════════════════════════
+// P4-6 Water Chiller Free Cooling Potential Sizing Warning in validateCdu
+// ═══════════════════════════════════════════════════════════════
+(function () {
+  const ctx = freshCtx();
+  const { CoolingArchRegistry, SizingEngine, AppStore: S } = ctx;
+
+  test('P4-6 SizingEngine.validateCdu warns when designWb + towerApp (+ pheApp) < fwsSupplyC for water_chiller', () => {
+    const arch = CoolingArchRegistry.get('water_chiller');
+    
+    // Case 1: Without PHE: designWb (28) + towerApp (4) = 32°C < fwsSupplyC (40°C) -> warning
+    const cduSys1 = {
+      architecture: 'water_chiller',
+      fwsSupplyC: 40.0,
+      hasPhe: false,
+      sizing: [
+        { passed: true, effectiveCapKw: 1000, label: 'CDU' },
+        { passed: true, effectiveCapKw: 1000, label: 'Chiller' }
+      ]
+    };
+    const val1 = SizingEngine.validateCdu(cduSys1, 1.8, { designWb: 28.0 }, arch);
+    assert(val1.checks.some(c => c.includes('設計濕球 + 塔 approach 已低於 FWS 供水溫，冷卻水塔可直接供冷；建議改用閉式塔或加裝水側經濟器')), 'Must warn when free cooling potential exists without PHE');
+
+    // Case 2: With PHE: designWb (28) + towerApp (4) + pheApp (2) = 34°C < fwsSupplyC (40°C) -> warning
+    const cduSys2 = {
+      architecture: 'water_chiller',
+      fwsSupplyC: 40.0,
+      hasPhe: true,
+      pheApproachC: 2.0,
+      sizing: [
+        { passed: true, effectiveCapKw: 1000, label: 'CDU' },
+        { passed: true, effectiveCapKw: 1000, label: 'Chiller' }
+      ]
+    };
+    const val2 = SizingEngine.validateCdu(cduSys2, 1.8, { designWb: 28.0 }, arch);
+    assert(val2.checks.some(c => c.includes('設計濕球 + 塔 approach 已低於 FWS 供水溫，冷卻水塔可直接供冷；建議改用閉式塔或加裝水側經濟器')), 'Must warn when free cooling potential exists with PHE');
+
+    // Case 3: High wet bulb or low FWS: designWb (32) + towerApp (4) + pheApp (2) = 38°C >= fwsSupplyC (35°C) -> no warning
+    const cduSys3 = {
+      architecture: 'water_chiller',
+      fwsSupplyC: 35.0,
+      hasPhe: true,
+      pheApproachC: 2.0,
+      sizing: [
+        { passed: true, effectiveCapKw: 1000, label: 'CDU' },
+        { passed: true, effectiveCapKw: 1000, label: 'Chiller' }
+      ]
+    };
+    const val3 = SizingEngine.validateCdu(cduSys3, 1.8, { designWb: 32.0 }, arch);
+    assert(!val3.checks.some(c => c.includes('冷卻水塔可直接供冷')), 'Must NOT warn when free cooling cannot reach FWS supply');
+
+    // Case 4: Other architecture (e.g. dry_cooler_trim) -> no warning
+    const cduSysTrim = {
+      architecture: 'dry_cooler_trim',
+      fwsSupplyC: 40.0,
+      sizing: [{ passed: true, effectiveCapKw: 1000, label: 'CDU' }]
+    };
+    const valTrim = SizingEngine.validateCdu(cduSysTrim, 1.8, { designWb: 28.0 });
+    assert(!valTrim.checks.some(c => c.includes('冷卻水塔可直接供冷')), 'Other architectures must not generate water_chiller warning');
+  });
+
+  test('P4-6 AppStore.calculate populates validation warning on water_chiller cduSystem', () => {
+    const kaohsiung = ctx.BUILTIN_WEATHER_DATA['高雄 (Kaohsiung)'];
+    S.state.site.hourly = kaohsiung.hourlyData;
+    const du = S.state.halls[0].dus[0];
+    du.plantDesign.cduSystem.architecture = 'water_chiller';
+    du.plantDesign.cduSystem.fwsSupplyC = 40.0;
+    S.calculate();
+
+    const val = du.plantDesign.cduSystem.validation;
+    assert(val, 'validation must exist on cduSystem');
+    assert(val.checks.some(c => c.includes('冷卻水塔可直接供冷')), 'Store calculate must include free cooling warning on water_chiller');
+  });
+})();
+
 console.log(`\n${passCount} passed, ${failCount} failed, ${skipCount} skipped`);
 process.exit(failCount > 0 ? 1 : 0);
 
