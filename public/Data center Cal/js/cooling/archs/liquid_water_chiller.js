@@ -20,7 +20,18 @@
         flags: { hasMechanical: true, consumesWater: true },
         terminal: 'cdu',
         schematic: 'single_loop',
-        params: [],
+        params: [
+            {
+                key: 'hasPhe',
+                panel: 'custom',
+                type: 'boolean',
+                label: '配置板式熱交換器 (PHE)',
+                idPrefix: 'cduHasPheIn_',
+                default: false
+            },
+            { key: 'pheApproachC', default: 2.0, min: 0, max: 10, step: 0.5, unit: '°C' }
+        ],
+        paramPanelTitle: '水冷式冰水主機 (Water Chiller) 專屬參數:',
         equipment: [
             {
                 key: 'cdu_unit',
@@ -104,85 +115,155 @@
             const wb_c = (typeof w === 'number') ? w : (w?.wb ?? 20.0);
             const tSup = sys?.fwsSupplyC ?? 40.0;
             const tRet = sys?.fwsReturnC ?? 55.0;
+            const hasPhe = (sys?.hasPhe !== undefined && sys?.hasPhe !== null) ? !!sys.hasPhe : false;
+            const pheApp = hasPhe ? (sys?.pheApproachC ?? 2.0) : 0.0;
+            const tChws = tSup - pheApp;
+            const tChwr = tRet - pheApp;
             const towerApp = (typeof root.A === 'function') ? root.A('tower_approach_c') : 4.0;
             const minCewt = (typeof root.A === 'function') ? root.A('min_cewt_c') : 16.0;
             const tCewt = Math.max(minCewt, wb_c + towerApp);
+            const condIn = Number(tCewt.toFixed(1));
+            const condOut = Number((tCewt + 5.0).toFixed(1));
             return {
                 mode: 'mechanical',
                 fc_fraction: 0.0,
                 chiller_fraction: 1.0,
+                hasPhe,
+                pheApp,
                 tSup,
                 tRet,
+                tChws,
+                tChwr,
                 tCewt,
-                temps: { fwsRet: tRet, fwsSup: tSup, chwSup: tSup, chwRet: tRet, condIn: tCewt, condOut: tCewt + 5.0 },
+                temps: {
+                    fwsRet: tRet,
+                    fwsSup: tSup,
+                    chwSup: tChws,
+                    chwRet: tChwr,
+                    condIn,
+                    condOut
+                },
                 thresholds: { basis: 'none', full: null, mech: null }
             };
         },
 
         topology(sys, op, design) {
             if (!op) op = this.operatingPoint(sys, design);
+            const hasPhe = op?.hasPhe !== undefined ? op.hasPhe : ((sys?.hasPhe !== undefined && sys?.hasPhe !== null) ? !!sys.hasPhe : false);
+
+            const nodes = [
+                {
+                    id: 'it',
+                    kind: 'it',
+                    title: 'Compute Data Hall',
+                    lines: [
+                        'Cold Plate 晶片液冷',
+                        `晶片水溫: ${sys?.secSupplyC ?? 45} ⇄ ${sys?.secReturnC ?? 57}°C`
+                    ]
+                },
+                {
+                    id: 'cdu',
+                    kind: 'cdu',
+                    title: 'CDU Distribution'
+                }
+            ];
+
+            const pipes = [];
+
+            if (hasPhe) {
+                nodes.push({
+                    id: 'hx',
+                    kind: 'hx',
+                    title: 'PHE-1 冰水製冷板換 (Chilled Water PHE)',
+                    lines: [
+                        '機械壓縮製冷隔離板換',
+                        `冷卻至設計供水 ${op?.temps?.fwsSup ?? 40}°C`,
+                        '板換水質完全隔離保護 CDU',
+                        `冰機出水: ${op?.temps?.chwSup ?? 38}°C (Approach ${op?.pheApp ?? 2}°C)`
+                    ]
+                });
+                nodes.push({
+                    id: 'pump_sec',
+                    kind: 'pump',
+                    title: 'Secondary Pump',
+                    lines: ['CDU 設施循環泵']
+                });
+                nodes.push({
+                    id: 'pump_outdoor',
+                    kind: 'pump',
+                    title: 'Chilled Water Pump',
+                    lines: ['一次側冰水泵']
+                });
+                nodes.push({
+                    id: 'heat_rejection',
+                    kind: 'chiller',
+                    title: '水冷式冰水主機 (Chiller)',
+                    lines: [
+                        '全額機械壓縮製冷 (COP 5.5)',
+                        `供應 ${op?.temps?.chwSup ?? 38}°C 低溫冰水`,
+                        '搭配開式冷卻水塔排熱',
+                        `冷凝水溫: ${op?.temps?.condIn ?? 32} ⇄ ${op?.temps?.condOut ?? 37}°C`
+                    ]
+                });
+
+                pipes.push(
+                    { from: 'cdu', to: 'hx', label: `${op?.temps?.fwsRet ?? 55}°C`, tone: 'hot' },
+                    { from: 'hx', to: 'cdu', label: `${op?.temps?.fwsSup ?? 40}°C`, tone: 'cold' },
+                    { from: 'hx', to: 'heat_rejection', label: `${op?.temps?.fwsRet ?? 55}°C`, tone: 'hot' },
+                    { from: 'heat_rejection', to: 'hx', label: `${op?.temps?.chwSup ?? 38}°C`, tone: 'cold' }
+                );
+            } else {
+                nodes.push({
+                    id: 'chiller',
+                    kind: 'chiller',
+                    title: '水冷式冰水主機 (Chiller)',
+                    lines: [
+                        '全額機械壓縮製冷核心',
+                        `供應設計冰水 ${op?.temps?.chwSup ?? 40}°C (COP 5.5)`,
+                        '全年 100% 壓縮機連續運轉',
+                        `冷卻水需求: ${op?.temps?.condIn ?? 32} ⇄ ${op?.temps?.condOut ?? 37}°C`
+                    ]
+                });
+                nodes.push({
+                    id: 'pump_sec',
+                    kind: 'pump',
+                    title: 'Primary CHW Pump',
+                    lines: ['一次側冰水循環泵']
+                });
+                nodes.push({
+                    id: 'pump_outdoor',
+                    kind: 'pump',
+                    title: 'CW Pump',
+                    lines: ['冷卻水泵 (CW Pump)']
+                });
+                nodes.push({
+                    id: 'heat_rejection',
+                    kind: 'tower',
+                    title: '開式冷卻水塔 (Cooling Tower)',
+                    lines: [
+                        '冷凝熱蒸發散熱 (Open Tower)',
+                        `設計進水: ${op?.temps?.condIn ?? 32}°C (WB + 4°C)`,
+                        '承擔 100% 冰機冷凝熱與壓縮功',
+                        '連續補水維持蒸發散熱'
+                    ]
+                });
+
+                pipes.push(
+                    { from: 'cdu', to: 'chiller', label: `${op?.temps?.fwsRet ?? 55}°C`, tone: 'hot' },
+                    { from: 'chiller', to: 'cdu', label: `${op?.temps?.fwsSup ?? 40}°C`, tone: 'cold' },
+                    { from: 'chiller', to: 'heat_rejection', label: `${op?.temps?.condOut ?? 37}°C`, tone: 'hot' },
+                    { from: 'heat_rejection', to: 'chiller', label: `${op?.temps?.condIn ?? 32}°C`, tone: 'cold' }
+                );
+            }
+
             return {
                 title: '設施排熱拓樸 (Facility Heat Rejection System)',
                 referenceLabel: null,
                 banners: [
-                    { id: 'mode1', label: '全額機械壓縮冷卻 (COP 5.5)', detail: '無經濟盤管自然冷卻', tone: 'slate' }
+                    { id: 'mode1', label: '全額機械壓縮冷卻 (COP 5.5)', detail: '無自然冷卻 (全年機械製冷)', tone: 'slate' }
                 ],
-                nodes: [
-                    {
-                        id: 'it',
-                        kind: 'it',
-                        title: 'Compute Data Hall',
-                        lines: [
-                            'Cold Plate 晶片液冷',
-                            `晶片水溫: ${sys?.secSupplyC ?? 45} ⇄ ${sys?.secReturnC ?? 57}°C`
-                        ]
-                    },
-                    {
-                        id: 'cdu',
-                        kind: 'cdu',
-                        title: 'CDU Distribution'
-                    },
-                    {
-                        id: 'hx',
-                        kind: 'hx',
-                        title: 'PHE-1 冰水製冷板換 (Chilled Water PHE)',
-                        lines: [
-                            '機械壓縮製冷 (Mechanical Cooling)',
-                            `連續穩定供應 ${op?.temps?.fwsSup ?? 40}°C 冰水`,
-                            '全額冷卻負載由壓縮機承擔',
-                            '無經濟盤管自然冷卻'
-                        ]
-                    },
-                    {
-                        id: 'pump_sec',
-                        kind: 'pump',
-                        title: 'Secondary Pump',
-                        lines: ['二次側設施主供水泵']
-                    },
-                    {
-                        id: 'pump_outdoor',
-                        kind: 'pump',
-                        title: 'Chilled Water Pump',
-                        lines: ['冰水循環泵']
-                    },
-                    {
-                        id: 'heat_rejection',
-                        kind: 'chiller',
-                        title: '水冷式冰水主機 (Chiller)',
-                        lines: [
-                            '全額機械壓縮製冷 (無經濟盤管)',
-                            '搭配濕式冷卻水塔散熱，全年 100% 壓縮機運轉',
-                            '全額機械壓縮冷卻 (COP 5.5)',
-                            '全年 100% 壓縮機運轉'
-                        ]
-                    }
-                ],
-                pipes: [
-                    { from: 'cdu', to: 'hx', label: `${op?.temps?.fwsRet ?? 55}°C`, tone: 'hot' },
-                    { from: 'hx', to: 'cdu', label: `${op?.temps?.fwsSup ?? 40}°C`, tone: 'cold' },
-                    { from: 'hx', to: 'heat_rejection', label: `${op?.temps?.fwsRet ?? 55}°C`, tone: 'hot' },
-                    { from: 'heat_rejection', to: 'hx', label: `${op?.temps?.fwsSup ?? 40}°C`, tone: 'cold' }
-                ],
+                nodes,
+                pipes,
                 footer: [],
                 warnings: []
             };
@@ -213,7 +294,7 @@
             const chRes = chStage.simulate({
                 ...ctx,
                 chillerType: 'water_cooled',
-                t_chws_c: sys.fwsSupplyC,
+                t_chws_c: op.tChws,
                 fallbackCop: 5.5,
                 devices: ctx.equip?.water_cooled_chiller
             });

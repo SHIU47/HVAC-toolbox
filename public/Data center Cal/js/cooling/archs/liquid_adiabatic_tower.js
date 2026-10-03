@@ -22,7 +22,15 @@
         schematic: 'single_loop',
         params: [
             { key: 'dryCoolerApproachC', default: 5.0, min: 0, max: 15, step: 0.5, unit: '°C' },
-            { key: 'pheApproachC', default: 0.0, min: 0, max: 10, step: 0.5, unit: '°C' },
+            {
+                key: 'hasPhe',
+                panel: 'custom',
+                type: 'boolean',
+                label: '配置板式熱交換器 (PHE)',
+                idPrefix: 'cduHasPheIn_',
+                default: true
+            },
+            { key: 'pheApproachC', default: 2.0, min: 0, max: 10, step: 0.5, unit: '°C' },
             {
                 key: 'adiabaticSaturationEfficiencyPct',
                 archSpecific: true,
@@ -114,13 +122,18 @@
             }
         ],
 
+        stages: [
+            { type: 'adiabatic', role: 'economizer', equipKey: 'adiabatic_tower', hasPhe: true }
+        ],
+
         operatingPoint(sys, w, equip) {
             const db_c = (typeof w === 'number') ? w : (w?.db ?? 25.0);
             const wb_c = (typeof w === 'number') ? w * 0.8 : (w?.wb ?? 20.0);
             const tSup = sys?.fwsSupplyC ?? 40.0;
             const tRet = sys?.fwsReturnC ?? 55.0;
             const dcApp = sys?.dryCoolerApproachC ?? 5.0;
-            const pheApp = 0.0;
+            const hasPhe = (sys?.hasPhe !== undefined && sys?.hasPhe !== null) ? !!sys.hasPhe : true;
+            const pheApp = hasPhe ? (sys?.pheApproachC ?? 2.0) : 0.0;
             const satEff = (sys?.adiabaticSaturationEfficiencyPct ?? 85) / 100;
             const switchpointOffset = (typeof root.A === 'function') ? root.A('adiabatic_switchpoint_offset_c') : 9.2;
             const drySwitchpoint = (sys?.adiabaticDrySwitchpointC !== undefined && sys?.adiabaticDrySwitchpointC !== null && sys?.adiabaticDrySwitchpointC !== '')
@@ -139,10 +152,13 @@
                 fc_fraction: isFc ? 1.0 : (1.0 - unservedRatio),
                 chiller_fraction: isFc ? 0.0 : unservedRatio,
                 unservedRatio,
+                hasPhe,
+                pheApp,
                 isDry,
                 drySwitchpoint,
                 effectiveDb,
                 tTowerOut,
+                tAvail,
                 tSup,
                 tRet,
                 temps: { fwsRet: tRet, fwsSup: tSup, towerOut: tTowerOut },
@@ -154,68 +170,102 @@
             if (!op) op = this.operatingPoint(sys, design);
             const fullThresh = op?.thresholds?.full ?? 35.0;
             const switchpoint = op?.thresholds?.switchpoint ?? 30.8;
+            const hasPhe = op?.hasPhe !== undefined ? op.hasPhe : ((sys?.hasPhe !== undefined && sys?.hasPhe !== null) ? !!sys.hasPhe : true);
+
+            const nodes = [
+                {
+                    id: 'it',
+                    kind: 'it',
+                    title: 'Compute Data Hall',
+                    lines: [
+                        'Cold Plate 晶片液冷',
+                        `晶片水溫: ${sys?.secSupplyC ?? 45} ⇄ ${sys?.secReturnC ?? 57}°C`
+                    ]
+                },
+                {
+                    id: 'cdu',
+                    kind: 'cdu',
+                    title: 'CDU Distribution'
+                }
+            ];
+
+            const pipes = [];
+
+            if (hasPhe) {
+                nodes.push({
+                    id: 'hx',
+                    kind: 'hx',
+                    title: 'PHE-1 絕熱預冷板換 (Adiabatic PHE)',
+                    lines: [
+                        '絕熱預冷自然散熱 (Adiabatic)',
+                        `噴霧輔助冷卻至 ${op?.temps?.fwsSup ?? 40}°C`,
+                        '蒸發預冷大幅降低進風溫',
+                        '水質完全隔離保護 CDU'
+                    ]
+                });
+                nodes.push({
+                    id: 'pump_sec',
+                    kind: 'pump',
+                    title: 'Secondary Pump',
+                    lines: ['CDU 設施循環泵']
+                });
+                nodes.push({
+                    id: 'pump_outdoor',
+                    kind: 'pump',
+                    title: 'Coil Pump',
+                    lines: ['盤管循環泵']
+                });
+                nodes.push({
+                    id: 'heat_rejection',
+                    kind: 'adiabatic',
+                    title: '絕熱冷卻塔 (Adiabatic Tower)',
+                    lines: [
+                        '高溫噴霧預冷 + 乾式自然散熱 (零冰機)',
+                        `噴霧飽和效率: ${sys?.adiabaticSaturationEfficiencyPct ?? 85}% ｜ 乾式切換點: ≤${switchpoint}°C`,
+                        `氣溫 ≤${switchpoint}°C 乾式 0 耗水，超過後啟動蒸發預冷`,
+                        '噴淋水泵 (附屬噴霧系統，依氣候啟閉)'
+                    ]
+                });
+
+                pipes.push(
+                    { from: 'cdu', to: 'hx', label: `${op?.temps?.fwsRet ?? 55}°C`, tone: 'hot' },
+                    { from: 'hx', to: 'cdu', label: `${op?.temps?.fwsSup ?? 40}°C`, tone: 'cold' },
+                    { from: 'hx', to: 'heat_rejection', label: `${op?.temps?.fwsRet ?? 55}°C`, tone: 'hot' },
+                    { from: 'heat_rejection', to: 'hx', label: `${(op?.temps?.towerOut ?? 35).toFixed(1)}°C`, tone: 'cold' }
+                );
+            } else {
+                nodes.push({
+                    id: 'pump_sec',
+                    kind: 'pump',
+                    title: 'Coil Pump',
+                    lines: ['盤管循環泵']
+                });
+                nodes.push({
+                    id: 'heat_rejection',
+                    kind: 'adiabatic',
+                    title: '絕熱冷卻塔 (Adiabatic Tower - 直冷式)',
+                    lines: [
+                        '高溫噴霧預冷 + 乾式自然散熱 (零冰機)',
+                        `噴霧飽和效率: ${sys?.adiabaticSaturationEfficiencyPct ?? 85}% ｜ 乾式切換點: ≤${switchpoint}°C`,
+                        '一次側直接連接絕熱塔內部盤管',
+                        '噴淋水泵 (附屬噴霧系統，依氣候啟閉)'
+                    ]
+                });
+
+                pipes.push(
+                    { from: 'cdu', to: 'heat_rejection', label: `${op?.temps?.fwsRet ?? 55}°C`, tone: 'hot' },
+                    { from: 'heat_rejection', to: 'cdu', label: `${op?.temps?.fwsSup ?? 40}°C`, tone: 'cold' }
+                );
+            }
+
             return {
                 title: '設施排熱拓樸 (Facility Heat Rejection System)',
                 referenceLabel: null,
                 banners: [
                     { id: 'mode1', label: `絕熱預冷自然冷卻 (有效乾球 ≤${fullThresh}°C)`, detail: '高溫噴霧預冷 (100% 自然冷卻・零冰機)', tone: 'emerald' }
                 ],
-                nodes: [
-                    {
-                        id: 'it',
-                        kind: 'it',
-                        title: 'Compute Data Hall',
-                        lines: [
-                            'Cold Plate 晶片液冷',
-                            `晶片水溫: ${sys?.secSupplyC ?? 45} ⇄ ${sys?.secReturnC ?? 57}°C`
-                        ]
-                    },
-                    {
-                        id: 'cdu',
-                        kind: 'cdu',
-                        title: 'CDU Distribution'
-                    },
-                    {
-                        id: 'hx',
-                        kind: 'hx',
-                        title: 'PHE-1 絕熱預冷板換 (Adiabatic PHE)',
-                        lines: [
-                            '絕熱預冷自然散熱 (Adiabatic)',
-                            `噴霧輔助冷卻至 ${op?.temps?.fwsSup ?? 40}°C`,
-                            '蒸發預冷大幅降低進風溫',
-                            '高溫氣候仍維持 100% 自然排熱'
-                        ]
-                    },
-                    {
-                        id: 'pump_sec',
-                        kind: 'pump',
-                        title: 'Secondary Pump',
-                        lines: ['二次側設施主供水泵']
-                    },
-                    {
-                        id: 'pump_outdoor',
-                        kind: 'pump',
-                        title: 'Spray Pump',
-                        lines: ['噴淋水泵']
-                    },
-                    {
-                        id: 'heat_rejection',
-                        kind: 'adiabatic',
-                        title: '絕熱冷卻塔 (Adiabatic Tower)',
-                        lines: [
-                            '高溫噴霧預冷 + 乾式自然散熱 (零冰機)',
-                            `飽和效率: ${sys?.adiabaticSaturationEfficiencyPct ?? 85}% ｜ 全年 100% 自然冷卻`,
-                            `噴霧飽和效率: ${sys?.adiabaticSaturationEfficiencyPct ?? 85}% ｜ 乾式切換點(估算): ≤${switchpoint}°C`,
-                            `氣溫 ≤${switchpoint}°C 乾式 0 耗水，超過後啟動蒸發預冷`
-                        ]
-                    }
-                ],
-                pipes: [
-                    { from: 'cdu', to: 'hx', label: `${op?.temps?.fwsRet ?? 55}°C`, tone: 'hot' },
-                    { from: 'hx', to: 'cdu', label: `${op?.temps?.fwsSup ?? 40}°C`, tone: 'cold' },
-                    { from: 'hx', to: 'heat_rejection', label: `${op?.temps?.fwsRet ?? 55}°C`, tone: 'hot' },
-                    { from: 'heat_rejection', to: 'hx', label: `${(op?.temps?.towerOut ?? 35).toFixed(1)}°C`, tone: 'cold' }
-                ],
+                nodes,
+                pipes,
                 footer: [],
                 warnings: []
             };
@@ -246,7 +296,7 @@
             const atRes = atStage.simulate({
                 ...ctx,
                 approach_c: sys.dryCoolerApproachC || 5.0,
-                hx_approach_c: 0.0,
+                hx_approach_c: op.pheApp,
                 devices: ctx.equip?.adiabatic_tower
             });
 

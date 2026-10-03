@@ -1650,6 +1650,124 @@ function freshCtx() {
   });
 })();
 
+// ═══════════════════════════════════════════════════════════════
+// P4-2 PHE Consistency & Topology Rules (T-2)
+// ═══════════════════════════════════════════════════════════════
+(function () {
+  const ctx = freshCtx();
+  const { AppStore: S, CoolingArchRegistry, CoolingSchematics } = ctx;
+
+  test('P4-2 dry_cooler_pure and adiabatic_tower define hasPhe=true and pheApproachC=2.0 by default', () => {
+    const dcArch = CoolingArchRegistry.get('dry_cooler_pure');
+    const atArch = CoolingArchRegistry.get('adiabatic_tower');
+
+    const dcHasPhe = dcArch.params.find(p => p.key === 'hasPhe');
+    assert(dcHasPhe, 'dry_cooler_pure must have hasPhe param');
+    assert.strictEqual(dcHasPhe.default, true, 'dry_cooler_pure hasPhe default must be true');
+
+    const dcPheApp = dcArch.params.find(p => p.key === 'pheApproachC');
+    assert(dcPheApp, 'dry_cooler_pure must have pheApproachC param');
+    assert.strictEqual(dcPheApp.default, 2.0, 'dry_cooler_pure pheApproachC default must be 2.0');
+
+    const atHasPhe = atArch.params.find(p => p.key === 'hasPhe');
+    assert(atHasPhe, 'adiabatic_tower must have hasPhe param');
+    assert.strictEqual(atHasPhe.default, true, 'adiabatic_tower hasPhe default must be true');
+
+    const atPheApp = atArch.params.find(p => p.key === 'pheApproachC');
+    assert(atPheApp, 'adiabatic_tower must have pheApproachC param');
+    assert.strictEqual(atPheApp.default, 2.0, 'adiabatic_tower pheApproachC default must be 2.0');
+  });
+
+  test('P4-2 dry_cooler_pure threshold and topology change with hasPhe toggle', () => {
+    const arch = CoolingArchRegistry.get('dry_cooler_pure');
+    const sysWithPhe = { fwsSupplyC: 40.0, fwsReturnC: 55.0, dryCoolerApproachC: 5.0, hasPhe: true, pheApproachC: 2.0 };
+    const opWith = arch.operatingPoint(sysWithPhe, { db: 30 }, {});
+    assert.strictEqual(opWith.thresholds.full, 33.0, 'threshold must subtract pheApproach: 40 - 5 - 2 = 33');
+    const topoWith = arch.topology(sysWithPhe, opWith, {});
+    assert(topoWith.nodes.some(n => n.id === 'hx'), 'topology must include PHE node when hasPhe=true');
+    assert(topoWith.nodes.some(n => n.title?.includes('Glycol Pump') || n.lines?.some(l => l.includes('乙二醇'))), 'outdoor pump must be Glycol Pump');
+
+    const sysWithoutPhe = { fwsSupplyC: 40.0, fwsReturnC: 55.0, dryCoolerApproachC: 5.0, hasPhe: false, pheApproachC: 2.0 };
+    const opWithout = arch.operatingPoint(sysWithoutPhe, { db: 30 }, {});
+    assert.strictEqual(opWithout.thresholds.full, 35.0, 'threshold without PHE: 40 - 5 = 35');
+    const topoWithout = arch.topology(sysWithoutPhe, opWithout, {});
+    assert(!topoWithout.nodes.some(n => n.id === 'hx'), 'topology must NOT include PHE node when hasPhe=false');
+    assert(!topoWithout.nodes.some(n => n.id === 'pump_outdoor'), 'topology must NOT include outdoor pump when hasPhe=false');
+  });
+
+  test('P4-2 adiabatic_tower topology names Coil Pump and separates spray pump from process loop', () => {
+    const arch = CoolingArchRegistry.get('adiabatic_tower');
+    const sys = { fwsSupplyC: 40.0, fwsReturnC: 55.0, dryCoolerApproachC: 5.0, hasPhe: true, pheApproachC: 2.0 };
+    const op = arch.operatingPoint(sys, { db: 30, wb: 22 }, {});
+    const topo = arch.topology(sys, op, {});
+    const outdoorPump = topo.nodes.find(n => n.id === 'pump_outdoor');
+    assert(outdoorPump, 'must have outdoor pump when hasPhe=true');
+    assert(outdoorPump.title?.includes('Coil Pump') || outdoorPump.lines?.some(l => l.includes('盤管循環泵')), 'pump must be named Coil Pump');
+    const towerNode = topo.nodes.find(n => n.kind === 'adiabatic');
+    assert(towerNode, 'must have adiabatic tower node');
+    assert(towerNode.lines?.some(l => l.includes('噴淋水泵') || l.includes('噴霧')), 'spray pump must be on tower body, not process loop');
+  });
+
+  test('P4-2 cooling_tower_hx hasPhe defaults to false and topology connects directly without separate Closed Coil box', () => {
+    const arch = CoolingArchRegistry.get('cooling_tower_hx');
+    const hasPheParam = arch.params.find(p => p.key === 'hasPhe');
+    assert(hasPheParam, 'cooling_tower_hx must define hasPhe');
+    assert.strictEqual(hasPheParam.default, false, 'cooling_tower_hx hasPhe default must be false');
+
+    const sys = { fwsSupplyC: 40.0, fwsReturnC: 55.0, ctApproachC: 6.0 };
+    const op = arch.operatingPoint(sys, { wb: 22 }, {});
+    assert.strictEqual(op.thresholds.full, 34.0, 'threshold must be 40 - 6 = 34');
+    const topo = arch.topology(sys, op, {});
+    assert(!topo.nodes.some(n => n.id === 'hx'), 'must NOT have separate Closed Coil / PHE box');
+    assert(!topo.nodes.some(n => n.id === 'pump_outdoor'), 'must NOT have second outdoor pump');
+    assert(topo.nodes.some(n => n.id === 'heat_rejection' && n.kind === 'tower'), 'must connect to closed cooling tower directly');
+  });
+
+  test('P4-2 water_chiller hasPhe defaults to false, t_chws respects hasPhe, and topology includes condenser circuit with cooling tower', () => {
+    const arch = CoolingArchRegistry.get('water_chiller');
+    const hasPheParam = arch.params.find(p => p.key === 'hasPhe');
+    assert(hasPheParam, 'water_chiller must define hasPhe');
+    assert.strictEqual(hasPheParam.default, false, 'water_chiller hasPhe default must be false');
+
+    // Default without PHE
+    const sys = { fwsSupplyC: 40.0, fwsReturnC: 55.0, hasPhe: false, pheApproachC: 2.0 };
+    const op = arch.operatingPoint(sys, { wb: 28 }, {});
+    assert.strictEqual(op.tChws, 40.0, 'tChws must equal fwsSupplyC when hasPhe=false');
+    assert.strictEqual(op.temps.condIn, 32.0, 'condIn must be max(16, 28 + 4) = 32.0');
+    assert.strictEqual(op.temps.condOut, 37.0, 'condOut must be 32 + 5 = 37.0');
+
+    const topo = arch.topology(sys, op, {});
+    assert(topo.nodes.some(n => n.id === 'chiller'), 'must have chiller node');
+    assert(topo.nodes.some(n => n.id === 'heat_rejection' && n.kind === 'tower'), 'must have open cooling tower node');
+    assert(topo.nodes.some(n => n.id === 'pump_outdoor' && (n.title?.includes('CW') || n.lines?.some(l => l.includes('冷卻水泵')))), 'must have CW pump');
+
+    // With PHE
+    const sysWith = { fwsSupplyC: 40.0, fwsReturnC: 55.0, hasPhe: true, pheApproachC: 2.0 };
+    const opWith = arch.operatingPoint(sysWith, { wb: 28 }, {});
+    assert.strictEqual(opWith.tChws, 38.0, 'tChws must be 40 - 2 = 38.0 when hasPhe=true');
+  });
+
+  test('P4-2 migrateProject backfills hasPhe according to architecture defaults', () => {
+    const rawData = {
+      halls: [{
+        dus: [
+          { plantDesign: { cduSystem: { architecture: 'dry_cooler_pure' } } },
+          { plantDesign: { cduSystem: { architecture: 'adiabatic_tower' } } },
+          { plantDesign: { cduSystem: { architecture: 'cooling_tower_hx' } } },
+          { plantDesign: { cduSystem: { architecture: 'water_chiller' } } }
+        ]
+      }],
+      corePods: []
+    };
+    const migrated = S.migrateProject(rawData);
+    const dus = migrated.halls[0].dus;
+    assert.strictEqual(dus[0].plantDesign.cduSystem.hasPhe, true, 'dry_cooler_pure must backfill hasPhe=true');
+    assert.strictEqual(dus[1].plantDesign.cduSystem.hasPhe, true, 'adiabatic_tower must backfill hasPhe=true');
+    assert.strictEqual(dus[2].plantDesign.cduSystem.hasPhe, false, 'cooling_tower_hx must backfill hasPhe=false');
+    assert.strictEqual(dus[3].plantDesign.cduSystem.hasPhe, false, 'water_chiller must backfill hasPhe=false');
+  });
+})();
+
 console.log(`\n${passCount} passed, ${failCount} failed, ${skipCount} skipped`);
 process.exit(failCount > 0 ? 1 : 0);
 

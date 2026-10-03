@@ -22,8 +22,17 @@
         schematic: 'single_loop',
         params: [
             { key: 'dryCoolerApproachC', default: 5.0, min: 0, max: 15, step: 0.5, unit: '°C' },
-            { key: 'pheApproachC', default: 0.0, min: 0, max: 10, step: 0.5, unit: '°C' }
+            {
+                key: 'hasPhe',
+                panel: 'custom',
+                type: 'boolean',
+                label: '配置板式熱交換器 (PHE)',
+                idPrefix: 'cduHasPheIn_',
+                default: true
+            },
+            { key: 'pheApproachC', default: 2.0, min: 0, max: 10, step: 0.5, unit: '°C' }
         ],
+        paramPanelTitle: '純乾冷器 (Dry Cooler Pure) 專屬參數:',
         equipment: [
             {
                 key: 'cdu_unit',
@@ -72,13 +81,14 @@
         ],
 
         stages: [
-            { type: 'dry_cooler', role: 'economizer', equipKey: 'dry_cooler' }
+            { type: 'dry_cooler', role: 'economizer', equipKey: 'dry_cooler', hasPhe: true }
         ],
 
         operatingPoint(sys, w, equip) {
             const db_c = (typeof w === 'number') ? w : (w?.db ?? 25.0);
             const dcApp = sys?.dryCoolerApproachC ?? 5.0;
-            const pheApp = sys?.pheApproachC ?? 0.0;
+            const hasPhe = (sys?.hasPhe !== undefined && sys?.hasPhe !== null) ? !!sys.hasPhe : true;
+            const pheApp = hasPhe ? (sys?.pheApproachC ?? 2.0) : 0.0;
             const tSup = sys?.fwsSupplyC ?? 40.0;
             const tRet = sys?.fwsReturnC ?? 55.0;
             const tDc = db_c + dcApp;
@@ -92,6 +102,8 @@
                 fc_fraction: isFc ? 1.0 : (1.0 - unservedRatio),
                 chiller_fraction: isFc ? 0.0 : unservedRatio,
                 unservedRatio,
+                hasPhe,
+                pheApp,
                 tDc,
                 T_avail,
                 tSup,
@@ -104,69 +116,103 @@
         topology(sys, op, design) {
             if (!op) op = this.operatingPoint(sys, design);
             const dcApp = sys?.dryCoolerApproachC ?? 5.0;
-            const fullThresh = op?.thresholds?.full ?? ((op?.temps?.fwsSup ?? 40.0) - dcApp);
+            const hasPhe = op?.hasPhe !== undefined ? op.hasPhe : ((sys?.hasPhe !== undefined && sys?.hasPhe !== null) ? !!sys.hasPhe : true);
+            const fullThresh = op?.thresholds?.full ?? ((op?.temps?.fwsSup ?? 40.0) - dcApp - (hasPhe ? (sys?.pheApproachC ?? 2.0) : 0.0));
+
+            const nodes = [
+                {
+                    id: 'it',
+                    kind: 'it',
+                    title: 'Compute Data Hall',
+                    lines: [
+                        'Cold Plate 晶片液冷',
+                        `晶片水溫: ${sys?.secSupplyC ?? 45} ⇄ ${sys?.secReturnC ?? 57}°C`
+                    ]
+                },
+                {
+                    id: 'cdu',
+                    kind: 'cdu',
+                    title: 'CDU Distribution'
+                }
+            ];
+
+            const pipes = [];
+
+            if (hasPhe) {
+                nodes.push({
+                    id: 'hx',
+                    kind: 'hx',
+                    title: 'PHE-1 乾冷器板換 (Dry Cooler PHE)',
+                    lines: [
+                        '自然風冷換熱核心 (PHE)',
+                        `冷卻至設計供水 ${op?.temps?.fwsSup ?? 40}°C`,
+                        '零耗水全時自然散熱',
+                        '水質完全隔離保護 CDU'
+                    ]
+                });
+                nodes.push({
+                    id: 'pump_sec',
+                    kind: 'pump',
+                    title: 'Secondary Pump',
+                    lines: ['CDU 設施循環泵']
+                });
+                nodes.push({
+                    id: 'pump_outdoor',
+                    kind: 'pump',
+                    title: 'Glycol Pump',
+                    lines: ['乙二醇循環泵']
+                });
+                nodes.push({
+                    id: 'heat_rejection',
+                    kind: 'dry_cooler',
+                    title: '乾冷器 (Dry Cooler)',
+                    lines: [
+                        '零耗水自然風冷',
+                        `Approach: ${dcApp}°C ｜ 門檻: ≤${fullThresh}°C DB`,
+                        '100% 自然風冷，全年零冰機',
+                        `Approach: ${dcApp}°C ｜ 無機械備援 (需高於門檻時降載)`
+                    ]
+                });
+
+                pipes.push(
+                    { from: 'cdu', to: 'hx', label: `${op?.temps?.fwsRet ?? 55}°C`, tone: 'hot' },
+                    { from: 'hx', to: 'cdu', label: `${op?.temps?.fwsSup ?? 40}°C`, tone: 'cold' },
+                    { from: 'hx', to: 'heat_rejection', label: `${op?.temps?.fwsRet ?? 55}°C`, tone: 'hot' },
+                    { from: 'heat_rejection', to: 'hx', label: `${op?.temps?.dcOut ?? 35}°C`, tone: 'cold' }
+                );
+            } else {
+                nodes.push({
+                    id: 'pump_sec',
+                    kind: 'pump',
+                    title: 'Dry Cooler Pump',
+                    lines: ['乾冷器循環泵']
+                });
+                nodes.push({
+                    id: 'heat_rejection',
+                    kind: 'dry_cooler',
+                    title: '乾冷器 (Dry Cooler - 直冷式)',
+                    lines: [
+                        '零耗水自然風冷 (無板換直冷)',
+                        `Approach: ${dcApp}°C ｜ 門檻: ≤${fullThresh}°C DB`,
+                        '一次側直接連接乾冷器',
+                        '100% 自然風冷，全年零冰機'
+                    ]
+                });
+
+                pipes.push(
+                    { from: 'cdu', to: 'heat_rejection', label: `${op?.temps?.fwsRet ?? 55}°C`, tone: 'hot' },
+                    { from: 'heat_rejection', to: 'cdu', label: `${op?.temps?.fwsSup ?? 40}°C`, tone: 'cold' }
+                );
+            }
+
             return {
                 title: '設施排熱拓樸 (Facility Heat Rejection System)',
                 referenceLabel: null,
                 banners: [
                     { id: 'mode1', label: `自然冷卻門檻 DB ≤ ${fullThresh}°C`, detail: '100% 乾式自然風冷・零冰機・零水耗', tone: 'emerald' }
                 ],
-                nodes: [
-                    {
-                        id: 'it',
-                        kind: 'it',
-                        title: 'Compute Data Hall',
-                        lines: [
-                            'Cold Plate 晶片液冷',
-                            `晶片水溫: ${sys?.secSupplyC ?? 45} ⇄ ${sys?.secReturnC ?? 57}°C`
-                        ]
-                    },
-                    {
-                        id: 'cdu',
-                        kind: 'cdu',
-                        title: 'CDU Distribution'
-                    },
-                    {
-                        id: 'hx',
-                        kind: 'hx',
-                        title: 'PHE-1 乾冷器板換 (Dry Cooler PHE)',
-                        lines: [
-                            '自然風冷換熱核心 (PHE)',
-                            `冷卻至設計供水 ${op?.temps?.fwsSup ?? 40}°C`,
-                            '零耗水全時自然散熱',
-                            '水質完全隔離保護 CDU'
-                        ]
-                    },
-                    {
-                        id: 'pump_sec',
-                        kind: 'pump',
-                        title: 'Secondary Pump',
-                        lines: ['二次側設施主供水泵']
-                    },
-                    {
-                        id: 'pump_outdoor',
-                        kind: 'pump',
-                        title: 'Dry Cooler Pump',
-                        lines: ['乾冷器循環水泵']
-                    },
-                    {
-                        id: 'heat_rejection',
-                        kind: 'dry_cooler',
-                        title: '乾冷器 (Dry Cooler)',
-                        lines: [
-                            '零耗水自然風冷',
-                            `Approach: ${dcApp}°C ｜ 門檻: ≤${fullThresh}°C DB`,
-                            '100% 自然風冷，全年零冰機',
-                            `Approach: ${dcApp}°C ｜ 無機械備援 (需高於門檻時降載)`
-                        ]
-                    }
-                ],
-                pipes: [
-                    { from: 'cdu', to: 'hx', label: `${op?.temps?.fwsRet ?? 55}°C`, tone: 'hot' },
-                    { from: 'hx', to: 'cdu', label: `${op?.temps?.fwsSup ?? 40}°C`, tone: 'cold' },
-                    { from: 'hx', to: 'heat_rejection', label: `${op?.temps?.fwsRet ?? 55}°C`, tone: 'hot' },
-                    { from: 'heat_rejection', to: 'hx', label: `${op?.temps?.dcOut ?? 35}°C`, tone: 'cold' }
-                ],
+                nodes,
+                pipes,
                 footer: [],
                 warnings: []
             };
@@ -204,7 +250,7 @@
                 ...ctx,
                 isTrimMode: false,
                 approach_c: sys.dryCoolerApproachC || 5.0,
-                hx_approach_c: 0.0,
+                hx_approach_c: op.pheApp,
                 devices: ctx.equip?.dry_cooler
             });
 

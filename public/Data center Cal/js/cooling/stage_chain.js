@@ -105,7 +105,8 @@
             const approach = economizer.type === 'fc_coil'
                 ? (ecoParams.approach_c ?? ((typeof root.A === 'function') ? root.A('air_chiller_fc_coil_approach_c') : 4.0))
                 : (ecoParams.approach_c ?? (economizer.type === 'evap_tower' || economizer.type === 'closed_tower' ? (sys.ctApproachC ?? ((typeof root.A === 'function') ? root.A('tower_approach_c') : 4.0)) : (sys.dryCoolerApproachC || 5.0)));
-            const pheApproach = economizer.hasPhe
+            const hasPhe = sys.hasPhe !== undefined ? !!sys.hasPhe : (economizer.hasPhe ?? false);
+            const pheApproach = hasPhe
                 ? (ecoParams.hx_approach_c ?? sys.pheApproachC ?? ((typeof root.A === 'function') ? root.A('hx_approach_c') : 2.0))
                 : 0.0;
 
@@ -238,7 +239,8 @@
             const ecoStage = CoolingStages.get(economizer.type);
             const ecoParams = economizer.params || {};
             const approach = ecoParams.approach_c ?? (economizer.type === 'closed_tower' || economizer.type === 'evap_tower' ? (sys.ctApproachC ?? 6.0) : (sys.dryCoolerApproachC || 5.0));
-            const pheApproach = economizer.hasPhe ? (ecoParams.hx_approach_c ?? sys.pheApproachC ?? 0.0) : 0.0;
+            const hasPhe = sys.hasPhe !== undefined ? !!sys.hasPhe : (economizer.hasPhe ?? false);
+            const pheApproach = hasPhe ? (ecoParams.hx_approach_c ?? sys.pheApproachC ?? 2.0) : 0.0;
 
             const stageCtx = {
                 ...ctx,

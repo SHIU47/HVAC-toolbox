@@ -290,6 +290,13 @@
 
             const inputsHtml = customParams.map(p => {
                 const id = (p.idPrefix || (p.key + '_')) + targetId;
+                if (p.type === 'boolean') {
+                    const checked = sys[p.key] !== undefined ? !!sys[p.key] : (p.default !== undefined ? !!p.default : false);
+                    return `                                            <div class="flex items-center gap-2 col-span-2 py-1">
+                                                <input type="checkbox" id="${id}" ${checked ? 'checked' : ''} onchange="${updateFn}" class="w-4 h-4 rounded text-sky-600 focus:ring-sky-500 border-slate-300">
+                                                <label for="${id}" class="text-xs font-bold text-slate-700 select-none cursor-pointer">${p.label || p.key}</label>
+                                            </div>`;
+                }
                 let val;
                 if (p.nullable) {
                     const hasVal = sys[p.key] !== undefined && sys[p.key] !== null && sys[p.key] !== '';
@@ -339,7 +346,9 @@ ${inputsHtml}
 
             const cduArchDesc = window.CoolingArchRegistry ? window.CoolingArchRegistry.get(arch) : null;
             const dcApproach = cduSys.dryCoolerApproachC ?? 5.0;
-            const pheApproach = cduArchDesc?.flags?.isTrim ? (cduSys.pheApproachC ?? 2.0) : 0.0;
+            const defHasPhe = cduArchDesc?.params?.find(p => p.key === 'hasPhe')?.default ?? (cduArchDesc?.flags?.isTrim ? true : false);
+            const hasPhe = cduSys.hasPhe !== undefined ? !!cduSys.hasPhe : defHasPhe;
+            const pheApproach = hasPhe ? (cduSys.pheApproachC ?? 2.0) : 0.0;
             const fwsSupplyC = cduSys.fwsSupplyC ?? Number((secSupplyC - cduApproachC).toFixed(1));
             const cduFcThresh = (fwsSupplyC - dcApproach - pheApproach).toFixed(1);
             const mode1DbMax = parseFloat(cduFcThresh);
@@ -629,10 +638,18 @@ ${inputsHtml}
                                                 <label class="block text-[9px] text-slate-500">排熱端 Approach (°C)</label>
                                                 <input type="number" id="cduApproachIn_${targetId}" value="${dcApproach}" step="0.5" onchange="ViewCooling.updateCduParams('${targetId}')" class="w-full text-xs font-bold border rounded p-1 bg-white text-slate-800">
                                             </div>
+                                            ${hasPhe ? `
                                             <div>
                                                 <label class="block text-[9px] text-slate-500">板換 (PHE) Approach (°C)</label>
                                                 <input type="number" id="cduPheAppIn_${targetId}" value="${cduSys.pheApproachC ?? 2.0}" step="0.5" onchange="ViewCooling.updateCduParams('${targetId}')" class="w-full text-xs font-bold border rounded p-1 bg-white text-slate-800">
-                                            </div>
+                                            </div>` : `
+                                            <div>
+                                                <label class="block text-[9px] text-slate-400">板換 (PHE) 隔離</label>
+                                                <div class="w-full text-xs font-medium border border-slate-200 rounded p-1 bg-slate-100 text-slate-400 flex items-center justify-between">
+                                                    <span>無板換 (直冷)</span>
+                                                    <span class="text-[8px] text-slate-400 font-normal">0.0°C</span>
+                                                </div>
+                                            </div>`}
                                         </div>
                                     </div>
 
@@ -870,7 +887,8 @@ ${inputsHtml}
             const ret = Number((secRet - cduApp).toFixed(1));
 
             const outdoorApp = num('cduApproachIn_' + targetId, 5.0);
-            const pheApp = num('cduPheAppIn_' + targetId, 2.0);
+            const pheEl = document.getElementById('cduPheAppIn_' + targetId);
+            const pheApp = pheEl ? num('cduPheAppIn_' + targetId, 2.0) : 2.0;
 
             const target = this.getTargetObj(targetId);
             if (target) {
@@ -881,24 +899,30 @@ ${inputsHtml}
                 cdu.fwsSupplyC = sup;
                 cdu.fwsReturnC = ret;
                 cdu.dryCoolerApproachC = outdoorApp;
-                cdu.pheApproachC = pheApp;
+                if (pheEl) {
+                    cdu.pheApproachC = pheApp;
+                }
 
                 // 架構專屬參數更新 (D-3: 優先自 archDesc.params 動態讀取)
                 const cduArchDesc = typeof CoolingArchRegistry !== 'undefined' ? CoolingArchRegistry.get(cdu.architecture) : null;
                 let handledCustom = false;
                 if (cduArchDesc && Array.isArray(cduArchDesc.params)) {
                     for (const p of cduArchDesc.params) {
-                        if (!p.archSpecific) continue;
+                        if (!p.archSpecific && p.panel !== 'custom') continue;
                         const id = (p.idPrefix || (p.key + '_')) + targetId;
                         const el = document.getElementById(id);
                         if (!el) continue;
                         handledCustom = true;
-                        const v = el.value.trim();
-                        if (p.nullable && v === '') {
-                            cdu[p.key] = null;
+                        if (p.type === 'boolean') {
+                            cdu[p.key] = el.checked;
                         } else {
-                            const n = parseFloat(v);
-                            cdu[p.key] = Number.isFinite(n) ? n : (p.default !== undefined ? p.default : null);
+                            const v = el.value.trim();
+                            if (p.nullable && v === '') {
+                                cdu[p.key] = null;
+                            } else {
+                                const n = parseFloat(v);
+                                cdu[p.key] = Number.isFinite(n) ? n : (p.default !== undefined ? p.default : null);
+                            }
                         }
                     }
                 }

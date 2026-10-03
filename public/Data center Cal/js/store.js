@@ -269,6 +269,11 @@
                 if (cdu.fwsSupplyC === undefined) cdu.fwsSupplyC = Number((cdu.secSupplyC - cdu.cduApproachC).toFixed(1));
                 if (cdu.fwsReturnC === undefined) cdu.fwsReturnC = Number((cdu.secReturnC - cdu.cduApproachC).toFixed(1));
                 if (cdu.dryCoolerApproachC === undefined) cdu.dryCoolerApproachC = 5.0;
+                if (cdu.hasPhe === undefined) {
+                    const archDesc = (typeof CoolingArchRegistry !== 'undefined') ? CoolingArchRegistry.get(cdu.architecture) : null;
+                    const def = archDesc?.params?.find(p => p.key === 'hasPhe')?.default;
+                    cdu.hasPhe = (def !== undefined) ? def : (archDesc?.flags?.isTrim ? true : false);
+                }
                 if (cdu.pheApproachC === undefined) cdu.pheApproachC = 2.0;
             };
 
@@ -550,6 +555,9 @@
             const secSupplyC = 45.0;
             const secReturnC = 57.0;
             const cduApproachC = 3.0;
+            const archDesc = (typeof CoolingArchRegistry !== 'undefined') ? CoolingArchRegistry.get(arch) : null;
+            const def = archDesc?.params?.find(p => p.key === 'hasPhe')?.default;
+            const hasPheDefault = (def !== undefined) ? def : (archDesc?.flags?.isTrim ? true : false);
             return {
                 architecture: arch,
                 secSupplyC,
@@ -558,6 +566,7 @@
                 fwsSupplyC: Number((secSupplyC - cduApproachC).toFixed(1)), // 42.0
                 fwsReturnC: Number((secReturnC - cduApproachC).toFixed(1)), // 54.0
                 dryCoolerApproachC: 5.0,
+                hasPhe: hasPheDefault,
                 pheApproachC: 2.0,
                 adiabaticSaturationEfficiencyPct: 85.0,
                 blowdownLossPct: 15.0,

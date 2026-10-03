@@ -32,12 +32,16 @@
             const model = archDesc?.topology ? archDesc.topology(cduSys, op, designCond) : null;
 
             const nIt = model?.nodes?.find(n => n.id === 'it') || {};
-            const nHx = model?.nodes?.find(n => n.id === 'hx') || {};
+            const nHx = model?.nodes?.find(n => n.id === 'hx') || null;
+            const nChiller = model?.nodes?.find(n => n.id === 'chiller') || null;
             const nPumpSec = model?.nodes?.find(n => n.id === 'pump_sec') || {};
-            const nPumpOut = model?.nodes?.find(n => n.id === 'pump_outdoor') || {};
-            const nRej = model?.nodes?.find(n => n.id === 'heat_rejection') || {};
+            const nPumpOut = model?.nodes?.find(n => n.id === 'pump_outdoor') || null;
+            const nRej = model?.nodes?.find(n => n.id === 'heat_rejection' || n.id === 'tower') || {};
 
-            const getPipe = (from, to, fallback = '') => model?.pipes?.find(p => p.from === from && p.to === to)?.label || fallback;
+            const getPipe = (from, to, fallback = '') => {
+                const p = model?.pipes?.find(item => item.from === from && item.to === to);
+                return p ? p.label : fallback;
+            };
 
             const cduApproachC = cduSys.cduApproachC ?? 3.0;
             const fwsSupplyC = op?.temps?.fwsSup ?? cduSys.fwsSupplyC ?? 40.0;
@@ -82,68 +86,126 @@
             const rowSupplyY = 110;
             const rowReturnY = 200;
 
-            const pipeCduToHx = getPipe('cdu', 'hx', `${fwsReturnC}°C`);
-            const pipeHxToCdu = getPipe('hx', 'cdu', `${fwsSupplyC}°C`);
+            const nMid = nHx || nChiller;
+            let facilitySchematicSvg = '';
 
-            const facilitySchematicSvg = `
-                <!-- 1. 廠務熱回水總管 (From CDU ⇄ PHE) -->
-                <line x1="320" y1="${rowSupplyY}" x2="510" y2="${rowSupplyY}" stroke="#ea580c" stroke-width="4.5" stroke-linecap="round" />
-                
-                <rect x="365" y="65" width="135" height="24" rx="5" fill="#881337" stroke="#f43f5e" stroke-width="1.5" />
-                <text x="432" y="81" fill="#ffe4e6" font-size="10.5" font-weight="bold" text-anchor="middle">熱回水: ${pipeCduToHx} (FWS Return)</text>
+            if (nMid) {
+                // Two-box configuration: CDU ⇄ Intermediate Unit (PHE or Chiller) ⇄ Outdoor Rejection Unit
+                const isChiller = !nHx && !!nChiller;
+                const midTheme = isChiller
+                    ? { fill: '#0f172a', stroke: '#818cf8', headerFill: '#312e81', textStroke: '#a5b4fc', iconStroke: '#818cf8' }
+                    : { fill: '#0f172a', stroke: theme.pheStroke, headerFill: theme.headerFill, textStroke: '#a7f3d0', iconStroke: theme.pheStroke };
 
-                <!-- 2. 板式熱交換器 (PHE 單迴路換熱核心) -->
-                <rect x="510" y="${boxTop}" width="200" height="${boxH}" rx="10" fill="#0f172a" stroke="${theme.pheStroke}" stroke-width="2" />
-                <rect x="510" y="${boxTop}" width="200" height="30" rx="10" fill="${theme.headerFill}" />
-                <text x="610" y="${boxTop + 20}" fill="#f1f5f9" font-size="12" font-weight="bold" text-anchor="middle">${nHx.title || '板式熱交換器 (PHE)'}</text>
-                
-                <!-- 換熱板片細節圖標 -->
-                <rect x="525" y="${boxTop + 48}" width="26" height="100" rx="4" fill="#1e293b" stroke="${theme.pheStroke}" stroke-width="1.2" />
-                <path d="M 531 ${boxTop + 58} L 542 ${boxTop + 73} L 531 ${boxTop + 88} M 538 ${boxTop + 58} L 549 ${boxTop + 73} L 538 ${boxTop + 88} M 531 ${boxTop + 88} L 542 ${boxTop + 103} L 531 ${boxTop + 118} M 538 ${boxTop + 88} L 549 ${boxTop + 103} L 538 ${boxTop + 118} M 531 ${boxTop + 118} L 542 ${boxTop + 133} L 531 ${boxTop + 143}" stroke="${theme.pheStroke}" stroke-width="1.5" fill="none" stroke-linecap="round" />
-                
-                <text x="630" y="${boxTop + 65}" fill="#f8fafc" font-size="12" font-weight="bold" text-anchor="middle">${nHx.lines?.[0] || '自然熱交換 (Free Cooling)'}</text>
-                <text x="630" y="${boxTop + 92}" fill="#a7f3d0" font-size="11" font-weight="bold" text-anchor="middle">${nHx.lines?.[1] || `冷卻至設計供水 ${fwsSupplyC}°C`}</text>
-                <text x="630" y="${boxTop + 118}" fill="#cbd5e1" font-size="10" text-anchor="middle">${nHx.lines?.[2] || '水質完全隔離保護 CDU'}</text>
-                <text x="630" y="${boxTop + 142}" fill="#94a3b8" font-size="9.5" text-anchor="middle">${nHx.lines?.[3] || ''}</text>
+                const midTargetId = isChiller ? 'chiller' : 'hx';
+                const pipeCduToMid = getPipe('cdu', midTargetId, `${fwsReturnC}°C`);
+                const pipeMidToCdu = getPipe(midTargetId, 'cdu', `${fwsSupplyC}°C`);
+                const pipeMidToRej = getPipe(midTargetId, 'heat_rejection', isChiller ? `${op?.temps?.condOut ?? 37}°C` : `${fwsReturnC}°C`);
+                const pipeRejToMid = getPipe('heat_rejection', midTargetId, isChiller ? `${op?.temps?.condIn ?? 32}°C` : `${op?.temps?.dcOut ?? op?.temps?.towerOut ?? op?.temps?.ctOut ?? 35}°C`);
 
-                <!-- 3. 室外側循環管路與水泵 -->
-                <!-- 供水管至水泵 -->
-                <line x1="710" y1="${rowSupplyY}" x2="745" y2="${rowSupplyY}" stroke="${theme.loopColor}" stroke-width="4" stroke-linecap="round" />
-                
-                <!-- 循環水泵 -->
-                <circle cx="760" cy="${rowSupplyY}" r="15" fill="${theme.pumpFill}" stroke="${theme.pumpStroke}" stroke-width="2" />
-                <polygon points="755,${rowSupplyY - 6} 767,${rowSupplyY} 755,${rowSupplyY + 6}" fill="#ffffff" />
-                <text x="760" y="${rowSupplyY + 28}" fill="${theme.pumpStroke}" font-size="10" font-weight="bold" text-anchor="middle">${nPumpOut.title || 'Circulation Pump'}</text>
+                const midIconSvg = isChiller ? `
+                    <rect x="525" y="${boxTop + 48}" width="26" height="100" rx="4" fill="#1e1b4b" stroke="#818cf8" stroke-width="1.2" />
+                    <circle cx="538" cy="${boxTop + 78}" r="9" fill="#312e81" stroke="#a5b4fc" stroke-width="1.5" />
+                    <polygon points="534,${boxTop + 82} 542,${boxTop + 78} 534,${boxTop + 74}" fill="#ffffff" />
+                    <path d="M 538 ${boxTop + 95} L 538 ${boxTop + 135}" stroke="#818cf8" stroke-width="2" stroke-linecap="round" />
+                ` : `
+                    <rect x="525" y="${boxTop + 48}" width="26" height="100" rx="4" fill="#1e293b" stroke="${theme.pheStroke}" stroke-width="1.2" />
+                    <path d="M 531 ${boxTop + 58} L 542 ${boxTop + 73} L 531 ${boxTop + 88} M 538 ${boxTop + 58} L 549 ${boxTop + 73} L 538 ${boxTop + 88} M 531 ${boxTop + 88} L 542 ${boxTop + 103} L 531 ${boxTop + 118} M 538 ${boxTop + 88} L 549 ${boxTop + 103} L 538 ${boxTop + 118} M 531 ${boxTop + 118} L 542 ${boxTop + 133} L 531 ${boxTop + 143}" stroke="${theme.pheStroke}" stroke-width="1.5" fill="none" stroke-linecap="round" />
+                `;
 
-                <!-- 水泵出水至室外設備 -->
-                <line x1="775" y1="${rowSupplyY}" x2="820" y2="${rowSupplyY}" stroke="${theme.loopColor}" stroke-width="4" stroke-linecap="round" />
+                facilitySchematicSvg = `
+                    <!-- 1. 廠務熱回水總管 (From CDU ⇄ Mid Box) -->
+                    <line x1="320" y1="${rowSupplyY}" x2="510" y2="${rowSupplyY}" stroke="#ea580c" stroke-width="4.5" stroke-linecap="round" />
+                    
+                    <rect x="365" y="65" width="135" height="24" rx="5" fill="#881337" stroke="#f43f5e" stroke-width="1.5" />
+                    <text x="432" y="81" fill="#ffe4e6" font-size="10.5" font-weight="bold" text-anchor="middle">熱回水: ${pipeCduToMid} (FWS Return)</text>
 
-                <!-- 室外設備回水管至 PHE -->
-                <line x1="820" y1="${rowReturnY}" x2="710" y2="${rowReturnY}" stroke="${theme.loopColor}" stroke-width="4" stroke-linecap="round" />
+                    <!-- 2. 中間換熱/製冷設備模組 (PHE 或 水冷冰機) -->
+                    <rect x="510" y="${boxTop}" width="200" height="${boxH}" rx="10" fill="${midTheme.fill}" stroke="${midTheme.stroke}" stroke-width="2" />
+                    <rect x="510" y="${boxTop}" width="200" height="30" rx="10" fill="${midTheme.headerFill}" />
+                    <text x="610" y="${boxTop + 20}" fill="#f1f5f9" font-size="12" font-weight="bold" text-anchor="middle">${nMid.title || '換熱設備'}</text>
+                    
+                    ${midIconSvg}
+                    
+                    <text x="630" y="${boxTop + 65}" fill="#f8fafc" font-size="12" font-weight="bold" text-anchor="middle">${nMid.lines?.[0] || ''}</text>
+                    <text x="630" y="${boxTop + 92}" fill="${midTheme.textStroke}" font-size="11" font-weight="bold" text-anchor="middle">${nMid.lines?.[1] || ''}</text>
+                    <text x="630" y="${boxTop + 118}" fill="#cbd5e1" font-size="10" text-anchor="middle">${nMid.lines?.[2] || ''}</text>
+                    <text x="630" y="${boxTop + 142}" fill="#94a3b8" font-size="9.5" text-anchor="middle">${nMid.lines?.[3] || ''}</text>
 
-                <!-- 4. 室外排熱設備模組 -->
-                <rect x="820" y="${boxTop}" width="315" height="${boxH}" rx="10" fill="${theme.fill}" stroke="${theme.stroke}" stroke-width="2" />
-                <rect x="820" y="${boxTop}" width="315" height="30" rx="10" fill="#0f172a" />
-                <text x="977" y="${boxTop + 20}" fill="#f8fafc" font-size="13" font-weight="bold" text-anchor="middle">${nRej.title || '室外排熱設備'}</text>
-                
-                <text x="840" y="${boxTop + 62}" fill="#f1f5f9" font-size="12" font-weight="bold">${nRej.lines?.[0] || ''}</text>
-                <text x="840" y="${boxTop + 88}" fill="#a7f3d0" font-size="11">${nRej.lines?.[1] || ''}</text>
-                <text x="840" y="${boxTop + 115}" fill="#cbd5e1" font-size="10.5">${nRej.lines?.[2] || ''}</text>
-                <text x="840" y="${boxTop + 140}" fill="#94a3b8" font-size="9.5">${nRej.lines?.[3] || ''}</text>
+                    <!-- 3. 室外側循環管路與水泵 -->
+                    <line x1="710" y1="${rowSupplyY}" x2="745" y2="${rowSupplyY}" stroke="${theme.loopColor}" stroke-width="4" stroke-linecap="round" />
+                    
+                    <!-- 循環水泵 -->
+                    <circle cx="760" cy="${rowSupplyY}" r="15" fill="${theme.pumpFill}" stroke="${theme.pumpStroke}" stroke-width="2" />
+                    <polygon points="755,${rowSupplyY - 6} 767,${rowSupplyY} 755,${rowSupplyY + 6}" fill="#ffffff" />
+                    <text x="760" y="${rowSupplyY + 28}" fill="${theme.pumpStroke}" font-size="10" font-weight="bold" text-anchor="middle">${nPumpOut?.title || 'Circulation Pump'}</text>
 
-                <!-- 5. 廠務冷供水總管 (PHE ⇄ Secondary Pump ⇄ CDU) -->
-                <line x1="510" y1="${rowReturnY}" x2="445" y2="${rowReturnY}" stroke="#059669" stroke-width="4.5" stroke-linecap="round" />
+                    <!-- 水泵出水至室外設備 -->
+                    <line x1="775" y1="${rowSupplyY}" x2="820" y2="${rowSupplyY}" stroke="${theme.loopColor}" stroke-width="4" stroke-linecap="round" />
 
-                <!-- Secondary Pump (二次側設施主供水泵) -->
-                <circle cx="430" cy="${rowReturnY}" r="15" fill="#065f46" stroke="#34d399" stroke-width="2" />
-                <polygon points="436,${rowReturnY - 6} 424,${rowReturnY} 436,${rowReturnY + 6}" fill="#ffffff" />
-                <text x="430" y="${rowReturnY + 28}" fill="#34d399" font-size="10" font-weight="bold" text-anchor="middle">${nPumpSec.title || 'Secondary Pump'}</text>
+                    <!-- 室外設備回水管至中間設備 -->
+                    <line x1="820" y1="${rowReturnY}" x2="710" y2="${rowReturnY}" stroke="${theme.loopColor}" stroke-width="4" stroke-linecap="round" />
 
-                <line x1="415" y1="${rowReturnY}" x2="320" y2="${rowReturnY}" stroke="#059669" stroke-width="4.5" stroke-linecap="round" />
+                    <!-- 4. 室外排熱設備模組 -->
+                    <rect x="820" y="${boxTop}" width="315" height="${boxH}" rx="10" fill="${theme.fill}" stroke="${theme.stroke}" stroke-width="2" />
+                    <rect x="820" y="${boxTop}" width="315" height="30" rx="10" fill="#0f172a" />
+                    <text x="977" y="${boxTop + 20}" fill="#f8fafc" font-size="13" font-weight="bold" text-anchor="middle">${nRej.title || '室外排熱設備'}</text>
+                    
+                    <text x="840" y="${boxTop + 62}" fill="#f1f5f9" font-size="12" font-weight="bold">${nRej.lines?.[0] || ''}</text>
+                    <text x="840" y="${boxTop + 88}" fill="#a7f3d0" font-size="11">${nRej.lines?.[1] || ''}</text>
+                    <text x="840" y="${boxTop + 115}" fill="#cbd5e1" font-size="10.5">${nRej.lines?.[2] || ''}</text>
+                    <text x="840" y="${boxTop + 140}" fill="#94a3b8" font-size="9.5">${nRej.lines?.[3] || ''}</text>
 
-                <rect x="365" y="${rowReturnY + 38}" width="135" height="24" rx="5" fill="#064e3b" stroke="#10b981" stroke-width="1.5" />
-                <text x="432" y="${rowReturnY + 54}" fill="#d1fae5" font-size="10.5" font-weight="bold" text-anchor="middle">冷供水: ${pipeHxToCdu} (FWS Supply)</text>
-            `;
+                    <!-- 5. 廠務冷供水總管 (Mid Box ⇄ Secondary Pump ⇄ CDU) -->
+                    <line x1="510" y1="${rowReturnY}" x2="445" y2="${rowReturnY}" stroke="#059669" stroke-width="4.5" stroke-linecap="round" />
+
+                    <!-- Secondary Pump (二次側設施主供水泵 / 一次側冰水泵) -->
+                    <circle cx="430" cy="${rowReturnY}" r="15" fill="#065f46" stroke="#34d399" stroke-width="2" />
+                    <polygon points="436,${rowReturnY - 6} 424,${rowReturnY} 436,${rowReturnY + 6}" fill="#ffffff" />
+                    <text x="430" y="${rowReturnY + 28}" fill="#34d399" font-size="10" font-weight="bold" text-anchor="middle">${nPumpSec.title || 'Secondary Pump'}</text>
+
+                    <line x1="415" y1="${rowReturnY}" x2="320" y2="${rowReturnY}" stroke="#059669" stroke-width="4.5" stroke-linecap="round" />
+
+                    <rect x="365" y="${rowReturnY + 38}" width="135" height="24" rx="5" fill="#064e3b" stroke="#10b981" stroke-width="1.5" />
+                    <text x="432" y="${rowReturnY + 54}" fill="#d1fae5" font-size="10.5" font-weight="bold" text-anchor="middle">冷供水: ${pipeMidToCdu} (FWS Supply)</text>
+                `;
+            } else {
+                // Direct single loop configuration (no PHE, no intermediate box): CDU ⇄ Pump ⇄ Outdoor Unit
+                const pipeCduToRej = getPipe('cdu', 'heat_rejection', `${fwsReturnC}°C`);
+                const pipeRejToCdu = getPipe('heat_rejection', 'cdu', `${fwsSupplyC}°C`);
+                const rejBoxX = 750;
+                const rejBoxW = 385;
+
+                facilitySchematicSvg = `
+                    <!-- 1. 廠務熱回水總管 (CDU 直通室外排熱設備) -->
+                    <line x1="320" y1="${rowSupplyY}" x2="${rejBoxX}" y2="${rowSupplyY}" stroke="#ea580c" stroke-width="4.5" stroke-linecap="round" />
+                    
+                    <rect x="480" y="65" width="165" height="24" rx="5" fill="#881337" stroke="#f43f5e" stroke-width="1.5" />
+                    <text x="562" y="81" fill="#ffe4e6" font-size="10.5" font-weight="bold" text-anchor="middle">熱回水: ${pipeCduToRej} (FWS Return)</text>
+
+                    <!-- 2. 室外排熱設備模組 (直冷式密閉水塔 / 乾冷器) -->
+                    <rect x="${rejBoxX}" y="${boxTop}" width="${rejBoxW}" height="${boxH}" rx="10" fill="${theme.fill}" stroke="${theme.stroke}" stroke-width="2" />
+                    <rect x="${rejBoxX}" y="${boxTop}" width="${rejBoxW}" height="30" rx="10" fill="#0f172a" />
+                    <text x="${rejBoxX + rejBoxW / 2}" y="${boxTop + 20}" fill="#f8fafc" font-size="13" font-weight="bold" text-anchor="middle">${nRej.title || '室外排熱設備'}</text>
+                    
+                    <text x="${rejBoxX + 20}" y="${boxTop + 62}" fill="#f1f5f9" font-size="12" font-weight="bold">${nRej.lines?.[0] || ''}</text>
+                    <text x="${rejBoxX + 20}" y="${boxTop + 88}" fill="#a7f3d0" font-size="11">${nRej.lines?.[1] || ''}</text>
+                    <text x="${rejBoxX + 20}" y="${boxTop + 115}" fill="#cbd5e1" font-size="10.5">${nRej.lines?.[2] || ''}</text>
+                    <text x="${rejBoxX + 20}" y="${boxTop + 140}" fill="#94a3b8" font-size="9.5">${nRej.lines?.[3] || ''}</text>
+
+                    <!-- 3. 廠務冷供水總管 (室外設備 ⇄ 循環水泵 ⇄ CDU) -->
+                    <line x1="${rejBoxX}" y1="${rowReturnY}" x2="445" y2="${rowReturnY}" stroke="#059669" stroke-width="4.5" stroke-linecap="round" />
+
+                    <!-- Primary Circulation Pump (一次側主循環泵) -->
+                    <circle cx="430" cy="${rowReturnY}" r="15" fill="#065f46" stroke="#34d399" stroke-width="2" />
+                    <polygon points="436,${rowReturnY - 6} 424,${rowReturnY} 436,${rowReturnY + 6}" fill="#ffffff" />
+                    <text x="430" y="${rowReturnY + 28}" fill="#34d399" font-size="10" font-weight="bold" text-anchor="middle">${nPumpSec.title || 'Circulation Pump'}</text>
+
+                    <line x1="415" y1="${rowReturnY}" x2="320" y2="${rowReturnY}" stroke="#059669" stroke-width="4.5" stroke-linecap="round" />
+
+                    <rect x="480" y="${rowReturnY + 38}" width="165" height="24" rx="5" fill="#064e3b" stroke="#10b981" stroke-width="1.5" />
+                    <text x="562" y="${rowReturnY + 54}" fill="#d1fae5" font-size="10.5" font-weight="bold" text-anchor="middle">冷供水: ${pipeRejToCdu} (FWS Supply)</text>
+                `;
+            }
 
             return `
                 <div class="p-4 bg-slate-950 rounded-2xl text-white font-mono border border-slate-800 shadow-xl overflow-hidden">
