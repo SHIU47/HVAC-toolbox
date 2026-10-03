@@ -22,8 +22,35 @@
         schematic: 'air_plant',
         params: [
             { key: 'chwSupplyC', default: 12.0, min: 7, max: 25, step: 0.5, unit: '°C' },
-            { key: 'chwReturnC', default: 18.0, min: 12, max: 35, step: 0.5, unit: '°C' }
+            { key: 'chwReturnC', default: 18.0, min: 12, max: 35, step: 0.5, unit: '°C' },
+            {
+                key: 'roomDbC',
+                archSpecific: true,
+                nullable: true,
+                label: '機房冷通道乾球溫度 (°C，留空=15°C基準)',
+                idPrefix: 'rdhxRoomDbIn_',
+                default: null,
+                min: 10,
+                max: 40,
+                step: 0.5,
+                unit: '°C',
+                placeholder: '預設 24°C'
+            },
+            {
+                key: 'roomRhPct',
+                archSpecific: true,
+                nullable: true,
+                label: '機房相對濕度 (%，留空=15°C基準)',
+                idPrefix: 'rdhxRoomRhIn_',
+                default: null,
+                min: 10,
+                max: 95,
+                step: 1,
+                unit: '%',
+                placeholder: '預設 50%'
+            }
         ],
+        paramPanelTitle: 'RDHX 背板 (Neutral Loop) 專屬參數:',
         equipment: [
             {
                 key: 'rdhx_unit',
@@ -118,7 +145,19 @@
             const fcApproach = (typeof root.A === 'function') ? root.A('air_chiller_fc_coil_approach_c') : 4.0;
             const fullThresh = op?.thresholds?.full ?? Number((chwSup - fcApproach).toFixed(1));
             const mechThresh = op?.thresholds?.mech ?? Number((chwRet - fcApproach).toFixed(1));
-            const minChws = (typeof root.A === 'function') ? root.A('rdhx_min_chws_c') : 17.0;
+            const roomDb = sys?.roomDbC;
+            const roomRh = sys?.roomRhPct;
+            const marginK = (typeof root.A === 'function') ? root.A('rdhx_dewpoint_margin_k') : 2.0;
+            let dp, source;
+            if (roomDb !== null && roomDb !== undefined && roomRh !== null && roomRh !== undefined && Number.isFinite(Number(roomDb)) && Number.isFinite(Number(roomRh))) {
+                const calcDp = (typeof root.calcDewPointC === 'function') ? root.calcDewPointC : (typeof calcDewPointC === 'function' ? calcDewPointC : null);
+                dp = calcDp ? calcDp(Number(roomDb), Number(roomRh)) : 15.0;
+                source = `機房 ${Number(roomDb)}°C / ${Number(roomRh)}%`;
+            } else {
+                dp = (typeof root.A === 'function') ? root.A('rdhx_default_room_dp_c') : 15.0;
+                source = 'ASHRAE TC9.9 預設';
+            }
+            const minChws = dp + marginK;
 
             const modeHours = design?.fwModeHours || op?.fwModeHours || extra?.fwModeHours;
             const h_free = modeHours?.free !== undefined ? `${modeHours.free} h` : '';
@@ -127,7 +166,7 @@
 
             const warnings = [];
             if (chwSup < minChws) {
-                warnings.push('RDHX 供水低於露點保護溫度，有結露風險');
+                warnings.push(`RDHX 供水 ${chwSup.toFixed(1)}°C 低於結露保護溫度 ${minChws.toFixed(1)}°C（機房露點 ${dp.toFixed(1)}°C，${source}），有結露風險`);
             }
 
             return {
@@ -178,7 +217,7 @@
                             'V-Bank 氣冷冷凝盤管 + 變頻風扇',
                             '以室外乾球溫度 (DB) 直接風冷散熱',
                             '全封閉冷媒迴路 ｜ 零水耗 (WUE = 0)',
-                            (chwSup < minChws ? '⚠ 供水低於露點保護溫度，有結露風險' : '無結露風險 (高於機房露點溫度)')
+                            (chwSup < minChws ? `⚠ 供水低於結露保護溫度 ${minChws.toFixed(1)}°C，有結露風險` : '無結露風險 (高於結露保護溫度)')
                         ]
                     },
                     {

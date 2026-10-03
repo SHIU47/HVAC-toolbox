@@ -2029,16 +2029,16 @@ function freshCtx() {
     // Case A: chwSupplyC = 12.0 < 17.0 -> warning in validateFw and topology
     const sysLow = { architecture: 'rdhx', chwSupplyC: 12.0, chwReturnC: 18.0, sizing: [] };
     const valLow = SizingEngine.validateFw(sysLow, { air_load_kw: 100 }, arch);
-    assert(valLow.checks.some(c => c.includes('RDHX 供水低於露點保護溫度，有結露風險')), 'validateFw must warn on dew point risk');
+    assert(valLow.checks.some(c => c.includes('低於結露保護溫度') && c.includes('有結露風險')), 'validateFw must warn on dew point risk');
     const topoLow = arch.topology(sysLow, arch.operatingPoint(sysLow, { db: 35, wb: 28 }, {}), { designDb: 35.0 });
-    assert(topoLow.warnings.some(w => w.includes('RDHX 供水低於露點保護溫度，有結露風險')), 'topology must include dew point warning');
+    assert(topoLow.warnings.some(w => w.includes('低於結露保護溫度') && w.includes('有結露風險')), 'topology must include dew point warning');
 
     // Case B: chwSupplyC = 18.0 >= 17.0 -> no dew point warning
     const sysSafe = { architecture: 'rdhx', chwSupplyC: 18.0, chwReturnC: 24.0, sizing: [] };
     const valSafe = SizingEngine.validateFw(sysSafe, { air_load_kw: 100 }, arch);
-    assert(!valSafe.checks.some(c => c.includes('RDHX 供水低於露點保護溫度，有結露風險')), 'validateFw must pass dew point check');
+    assert(!valSafe.checks.some(c => c.includes('低於結露保護溫度')), 'validateFw must pass dew point check');
     const topoSafe = arch.topology(sysSafe, arch.operatingPoint(sysSafe, { db: 35, wb: 28 }, {}), { designDb: 35.0 });
-    assert(!topoSafe.warnings.some(w => w.includes('RDHX 供水低於露點保護溫度，有結露風險')), 'topology must not have dew point warning');
+    assert(!topoSafe.warnings.some(w => w.includes('低於結露保護溫度')), 'topology must not have dew point warning');
   });
 
   test('P4-5 air_district_chw topology displays A(district_chw_cop)', () => {
@@ -2661,6 +2661,56 @@ function freshCtx() {
     const valHigh = pureDu.plantDesign.cduSystem.validation;
     const warnCheckHigh = valHigh.checks.find(c => c.includes('ASHRAE 尖峰乾球'));
     assert(!warnCheckHigh, 'No warning should be emitted when FWS supply is high enough');
+  });
+
+  test('Y-4 Dynamic room dew point protection for RDHX (wiring and validation)', async () => {
+    const { buildWindow } = require('./dom_harness.js');
+    const win = buildWindow();
+    win.CatalogManager.ready = null;
+    await win.App.init();
+
+    // 1. Shared calcDewPointC function
+    assert(typeof win.calcDewPointC === 'function', 'calcDewPointC must be exported in engines_core');
+    const dp = win.calcDewPointC(24, 50);
+    assert.strictEqual(dp.toFixed(1), '12.9', 'Dew point at 24°C / 50% RH must be 12.9°C');
+
+    // 2. Set first DU to rdhx
+    const du = win.AppStore.state.designUnits[0];
+    du.plantDesign.fanwallSystem.architecture = 'rdhx';
+    du.plantDesign.fanwallSystem.chwSupplyC = 12.0;
+    du.plantDesign.fanwallSystem.chwReturnC = 18.0;
+    du.plantDesign.fanwallSystem.roomDbC = 24.0;
+    du.plantDesign.fanwallSystem.roomRhPct = 50.0;
+    win.AppStore.calculate();
+
+    // CHW 12°C < 14.9°C (12.9 + 2.0) -> warning emitted
+    const valLow = du.plantDesign.fanwallSystem.validation;
+    const warnLow = valLow.checks.find(c => c.includes('低於結露保護溫度 14.9°C') && c.includes('機房露點 12.9°C'));
+    assert(warnLow, `Expected 14.9°C limit warning, got: ${JSON.stringify(valLow.checks)}`);
+
+    // CHW 16°C >= 14.9°C -> no warning
+    du.plantDesign.fanwallSystem.chwSupplyC = 16.0;
+    win.AppStore.calculate();
+    const valSafe = du.plantDesign.fanwallSystem.validation;
+    const warnSafe = valSafe.checks.find(c => c.includes('低於結露保護溫度'));
+    assert(!warnSafe, 'CHW 16°C must not trigger dew point warning when limit is 14.9°C');
+
+    // 3. Step 4 DOM wiring test
+    du.plantDesign.fanwallSystem.chwSupplyC = 12.0;
+    win.ViewCooling.render(win.document.getElementById('stepContent'));
+    const inputDb = win.document.getElementById('rdhxRoomDbIn_' + du.id);
+    const inputRh = win.document.getElementById('rdhxRoomRhIn_' + du.id);
+    assert(inputDb, 'Room DB input must exist in DOM');
+    assert(inputRh, 'Room RH input must exist in DOM');
+    assert.strictEqual(inputDb.value, '24', 'Room DB input value must be 24');
+    assert.strictEqual(inputRh.value, '50', 'Room RH input value must be 50');
+
+    // Change input and call updateFwParams
+    inputDb.value = '20';
+    inputRh.value = '60';
+    win.ViewCooling.updateFwParams(du.id);
+    assert.strictEqual(du.plantDesign.fanwallSystem.roomDbC, 20);
+    assert.strictEqual(du.plantDesign.fanwallSystem.roomRhPct, 60);
   });
 })();
 

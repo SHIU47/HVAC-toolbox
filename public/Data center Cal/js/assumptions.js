@@ -68,6 +68,8 @@ const ASSUMPTIONS = {
   air_chiller_fc_coil_approach_c: { val: 4.0,   unit: '°C',     label: '氣冷冰機 free-cooling 盤管 approach（外氣 DB → 預冷後回水）', ref: '廠商型錄典型 3–5°C' },
   air_chiller_fc_fan_kw_per_kw:   { val: 0.05,  unit: 'kW/kW',  label: '氣冷冰機自然冷卻模式風扇耗電（每 kW 自然冷卻量）', ref: '沿用原程式 5% 概估，待型錄風扇功率資料取代' },
   rdhx_fc_fan_kw_per_kw:          { val: 0.03,  unit: 'kW/kW',  label: 'RDHX 系統自然冷卻模式排熱風扇耗電', ref: '沿用原程式 3% 概估' },
+  rdhx_default_room_dp_c:         { val: 15.0,  unit: '°C',     label: 'RDHX 機房預設露點上限', ref: 'ASHRAE TC9.9 A1 建議露點上限' },
+  rdhx_dewpoint_margin_k:         { val: 2.0,   unit: 'K',      label: 'RDHX 結露保護安全溫差餘裕', ref: '露點 + 2K 安全裕度' },
   rdhx_min_chws_c:                { val: 17.0,  unit: '°C',     label: 'RDHX 供水露點保護溫度下限', ref: 'ASHRAE TC9.9 A1 建議露點上限 15°C + 2K 安全餘裕' },
 
   // ── 冰機降級/兜底 COP 基準常數 (P2-6) ────────────────────────────────────

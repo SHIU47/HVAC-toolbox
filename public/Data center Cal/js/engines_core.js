@@ -97,12 +97,21 @@ const LOAD_PROFILE_PRESETS = {
   enterprise: { name: '企業辦公負載 (Enterprise / Office IT)', states: [{ load_pct: 75, weight_pct: 30, note: '上班時段尖峰' }, { load_pct: 20, weight_pct: 70, note: '非上班時段低載' }] },
   custom:     { name: '自訂負載 (Custom Load Profile)', states: [{ load_pct: 100, weight_pct: 50, note: '自訂狀態 1' }, { load_pct: 50, weight_pct: 50, note: '自訂狀態 2' }] }
 };
+// ─── Psychrometric: Magnus-Tetens approximation ───────────
+function calcDewPointC(db_c, rh_pct) {
+  const rh = Math.min(100, Math.max(0.1, rh_pct));
+  const a = 17.27, b = 237.7;
+  const alpha = (a * db_c) / (b + db_c) + Math.log(rh / 100);
+  return (b * alpha) / (a - alpha);
+}
+
 if (typeof global !== 'undefined') {
   global.clamp = clamp;
   global.uuid = uuid;
   global.biQuad = biQuad;
   global.quadPoly = quadPoly;
   global.sumRunning = sumRunning;
+  global.calcDewPointC = calcDewPointC;
   global.AHRI_PRESETS = AHRI_PRESETS;
   global.LOAD_PROFILE_PRESETS = LOAD_PROFILE_PRESETS;
 }
@@ -112,9 +121,10 @@ if (typeof window !== 'undefined') {
   window.biQuad = biQuad;
   window.quadPoly = quadPoly;
   window.sumRunning = sumRunning;
+  window.calcDewPointC = calcDewPointC;
   window.AHRI_PRESETS = AHRI_PRESETS;
   window.LOAD_PROFILE_PRESETS = LOAD_PROFILE_PRESETS;
 }
 if (typeof module !== 'undefined' && module.exports) {
-  module.exports = { clamp, uuid, biQuad, quadPoly, sumRunning, AHRI_PRESETS, LOAD_PROFILE_PRESETS };
+  module.exports = { clamp, uuid, biQuad, quadPoly, sumRunning, calcDewPointC, AHRI_PRESETS, LOAD_PROFILE_PRESETS };
 }

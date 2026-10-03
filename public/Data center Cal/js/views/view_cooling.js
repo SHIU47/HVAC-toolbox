@@ -753,6 +753,7 @@ ${inputsHtml}
                                     <div class="p-2.5 bg-indigo-50 rounded-lg border border-indigo-100 text-[11px] text-indigo-900">
                                         💡 冰水主機溫差: <strong class="font-bold">${Math.max(1, fwSys.chwReturnC - fwSys.chwSupplyC)}°C</strong>，供水溫越高對冰機 COP 越有利。
                                     </div>
+                                    ${this.renderArchParamPanel(fwArchDesc, fwSys, targetId, 'fw')}
                                 </div>
 
                                 <!-- Required vs Selected 選型表 -->
@@ -982,16 +983,20 @@ ${inputsHtml}
                 const fwArchDesc = typeof CoolingArchRegistry !== 'undefined' ? CoolingArchRegistry.get(fw.architecture) : null;
                 if (fwArchDesc && Array.isArray(fwArchDesc.params)) {
                     for (const p of fwArchDesc.params) {
-                        if (!p.archSpecific) continue;
+                        if (!p.archSpecific && p.panel !== 'custom') continue;
                         const id = (p.idPrefix || (p.key + '_')) + targetId;
                         const el = document.getElementById(id);
                         if (!el) continue;
-                        const v = el.value.trim();
-                        if (p.nullable && v === '') {
-                            fw[p.key] = null;
+                        if (p.type === 'boolean') {
+                            fw[p.key] = el.checked;
                         } else {
-                            const n = parseFloat(v);
-                            fw[p.key] = Number.isFinite(n) ? n : (p.default !== undefined ? p.default : null);
+                            const v = el.value.trim();
+                            if (p.nullable && v === '') {
+                                fw[p.key] = null;
+                            } else {
+                                const n = parseFloat(v);
+                                fw[p.key] = Number.isFinite(n) ? n : (p.default !== undefined ? p.default : null);
+                            }
                         }
                     }
                 }

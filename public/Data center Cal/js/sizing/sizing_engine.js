@@ -289,7 +289,6 @@
         validateFw(fwSys, pipeFwVelocityMps, archDesc) {
             const fwVelOk = pipeFwVelocityMps >= 1.0 && pipeFwVelocityMps <= 3.0;
             const fwArchDesc = archDesc || ((typeof root.CoolingArchRegistry !== 'undefined') ? root.CoolingArchRegistry.get(fwSys?.architecture) : null);
-            const minChws = (typeof root.A === 'function') ? root.A('rdhx_min_chws_c') : 17.0;
             const sizing = fwSys?.sizing || [];
             const checks = [
                 (sizing[0] ? ((sizing[0].passed ? '✓' : '✗') + ' ' + sizing[0].label + ' 有效容量 ' + sizing[0].effectiveCapKw + ' kW (N-1) ' + (sizing[0].passed ? '滿足' : '不足！')) : ''),
@@ -297,8 +296,24 @@
                 (sizing[2] ? ((sizing[2].passed ? '✓' : '✗') + ' ' + sizing[2].label + ' 有效容量 ' + sizing[2].effectiveCapKw + ' kW (N-1) ' + (sizing[2].passed ? '滿足' : '不足！')) : ''),
                 (fwVelOk ? '✓' : '⚠') + ' 二次側管路流速 (計算值) ' + pipeFwVelocityMps + ' m/s，建議範圍 1.0~3.0 m/s' + (fwVelOk ? '' : '，建議調整管徑')
             ];
-            if (fwArchDesc?.flags?.isRdhx && (fwSys?.chwSupplyC ?? 12.0) < minChws) {
-                checks.push('⚠ RDHX 供水低於露點保護溫度，有結露風險');
+            if (fwArchDesc?.flags?.isRdhx) {
+                const roomDb = fwSys?.roomDbC;
+                const roomRh = fwSys?.roomRhPct;
+                const marginK = (typeof root.A === 'function') ? root.A('rdhx_dewpoint_margin_k') : 2.0;
+                let dp, source;
+                if (roomDb !== null && roomDb !== undefined && roomRh !== null && roomRh !== undefined && Number.isFinite(Number(roomDb)) && Number.isFinite(Number(roomRh))) {
+                    const calcDp = (typeof root.calcDewPointC === 'function') ? root.calcDewPointC : (typeof calcDewPointC === 'function' ? calcDewPointC : null);
+                    dp = calcDp ? calcDp(Number(roomDb), Number(roomRh)) : 15.0;
+                    source = `機房 ${Number(roomDb)}°C / ${Number(roomRh)}%`;
+                } else {
+                    dp = (typeof root.A === 'function') ? root.A('rdhx_default_room_dp_c') : 15.0;
+                    source = 'ASHRAE TC9.9 預設';
+                }
+                const limit = dp + marginK;
+                const chwSup = fwSys?.chwSupplyC ?? 12.0;
+                if (chwSup < limit) {
+                    checks.push(`⚠ RDHX 供水 ${chwSup.toFixed(1)}°C 低於結露保護溫度 ${limit.toFixed(1)}°C（機房露點 ${dp.toFixed(1)}°C，${source}），有結露風險`);
+                }
             }
             return {
                 ok: sizing.every(s => s.passed),
