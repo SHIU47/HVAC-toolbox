@@ -339,6 +339,13 @@ ${inputsHtml}
             const fwSys = t.obj.plantDesign.fanwallSystem;
             const arch = cduSys.architecture || 'dry_cooler_hx';
 
+            const state = window.AppStore?.state || {};
+            const unitRes = (state.results?.byDu || []).find(r => r.duId === t.id)
+                || (state.results?.byCorePod || []).find(r => r.podId === t.id);
+            const cduModeHours = unitRes?.cduModeHours;
+            const fwModeHours = unitRes?.fwModeHours;
+            const deficitHours = unitRes?.deficitHours;
+
             // P1-10: 唯讀存取，預設值已在 store.js / defaultCduSystem 補齊，不在此改寫 state
             const secSupplyC = cduSys.secSupplyC ?? 45.0;
             const secReturnC = cduSys.secReturnC ?? 57.0;
@@ -431,7 +438,7 @@ ${inputsHtml}
             const fwArchDesc = window.CoolingArchRegistry ? window.CoolingArchRegistry.get(fwArch) : null;
             const isRdhx = !!fwArchDesc?.flags?.isRdhx;
             const fwSchematic = (fwArchDesc && fwArchDesc.schematic) ? fwArchDesc.schematic : 'air_plant';
-            const fwTopoDiagram = window.CoolingSchematics ? window.CoolingSchematics.render(fwSchematic, { t, fwSys, fwArch }) : '';
+            const fwTopoDiagram = window.CoolingSchematics ? window.CoolingSchematics.render(fwSchematic, { t, fwSys, fwArch, fwModeHours, deficitHours }) : '';
 
             // Fanwall / RDHX 設備選型表格
             let fwSizingHtml = '';
@@ -498,10 +505,7 @@ ${inputsHtml}
 
             // SVG 拓樸圖 — 工業級 P&ID 一二次側物理分離雙閉環拓樸
             const cduSchematic = (cduArchDesc && cduArchDesc.schematic) ? cduArchDesc.schematic : 'series_trim';
-            const unitRes = (window.AppStore?.results?.byDu || []).find(r => r.id === targetId)
-                || (window.AppStore?.results?.byCorePod || []).find(r => r.id === targetId);
-            const cduModeHours = unitRes?.cduModeHours;
-            const cduTopoDiagram = window.CoolingSchematics ? window.CoolingSchematics.render(cduSchematic, { t, cduSys, arch, cduModeHours }) : '';
+            const cduTopoDiagram = window.CoolingSchematics ? window.CoolingSchematics.render(cduSchematic, { t, cduSys, arch, cduModeHours, deficitHours }) : '';
 
             const safeName = window.UIKit ? window.UIKit.escapeHTML(t.name) : t.name;
             return `

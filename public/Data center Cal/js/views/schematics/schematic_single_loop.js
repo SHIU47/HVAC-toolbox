@@ -29,7 +29,9 @@
             const designCond = (typeof AppStore !== 'undefined' && AppStore.designConditions) ? AppStore.designConditions() : { designDb: 35.0, designWb: 28.0 };
             const equip = (typeof AppStore !== 'undefined' && AppStore.resolveEquipment && archDesc) ? AppStore.resolveEquipment(archDesc, cduSys) : {};
             const op = archDesc?.operatingPoint ? archDesc.operatingPoint(cduSys, { db: designCond.designDb, wb: designCond.designWb }, equip) : null;
-            const model = archDesc?.topology ? archDesc.topology(cduSys, op, designCond) : null;
+            const cduModeHours = ctx.cduModeHours || null;
+            const deficitHours = ctx.deficitHours || 0;
+            const model = archDesc?.topology ? archDesc.topology(cduSys, op, { ...designCond, cduModeHours, deficitHours }) : null;
 
             const nIt = model?.nodes?.find(n => n.id === 'it') || {};
             const nHx = model?.nodes?.find(n => n.id === 'hx') || null;

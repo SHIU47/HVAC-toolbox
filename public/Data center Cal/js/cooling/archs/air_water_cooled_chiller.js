@@ -176,7 +176,7 @@
                 }
             }
 
-            const modeHours = design?.fwModeHours || op?.fwModeHours || extra?.fwModeHours || design?.cduModeHours;
+            const modeHours = design?.fwModeHours || op?.fwModeHours || extra?.fwModeHours;
             const h_free = modeHours?.free !== undefined ? `${modeHours.free} h` : '';
             const h_partial = modeHours?.partial !== undefined ? `${modeHours.partial} h` : '';
             const h_mech = modeHours?.mechanical !== undefined ? `${modeHours.mechanical} h` : '';

@@ -2221,6 +2221,30 @@ function freshCtx() {
   });
 })();
 
+// ── F-1: mode hours wiring in Step 4 schematic ─────────────────────────────
+(function () {
+  const { buildWindow } = require('./dom_harness.js');
+  test('F-1 Step 4 DOM wiring displays annual mode hours in schematics', async () => {
+    const win = buildWindow();
+    await win.App.init();
+    win.AppStore.calculate();
+    win.App.renderStep(4);
+    const container = win.document.getElementById('stepContent');
+    const html = container.innerHTML;
+    const du0 = win.AppStore.state.results.byDu[0];
+    assert(du0 && du0.cduModeHours, 'byDu[0].cduModeHours must exist');
+    const { free, partial, mechanical } = du0.cduModeHours;
+    assert.strictEqual(free + partial + mechanical, 8760, 'cduModeHours must sum to 8760');
+    assert(html.includes('全年'), 'Step 4 innerHTML must contain 全年');
+    assert(html.includes(`${free} h`), `Step 4 innerHTML must contain cduModeHours.free (${free} h)`);
+
+    // Verify fwModeHours presence in DOM
+    assert(du0.fwModeHours, 'byDu[0].fwModeHours must exist');
+    const fwFree = du0.fwModeHours.free;
+    assert(html.includes(`${fwFree} h`), `Step 4 innerHTML must contain fwModeHours.free (${fwFree} h)`);
+  });
+})();
+
 console.log(`\n${passCount} passed, ${failCount} failed, ${skipCount} skipped`);
 process.exit(failCount > 0 ? 1 : 0);
 

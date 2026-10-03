@@ -26,11 +26,8 @@
             const arch = ctx.arch || cduSys.architecture || 'dry_cooler_trim';
             const archDesc = (typeof root.CoolingArchRegistry !== 'undefined') ? root.CoolingArchRegistry.get(arch) : null;
 
-            const cduModeHours = ctx.cduModeHours
-                || (t?.id && typeof AppStore !== 'undefined'
-                    ? ((AppStore.results?.byDu || []).find(r => r.id === t.id)?.cduModeHours
-                       || (AppStore.results?.byCorePod || []).find(r => r.id === t.id)?.cduModeHours)
-                    : null);
+            const cduModeHours = ctx.cduModeHours || null;
+            const deficitHours = ctx.deficitHours || 0;
 
             const designCond = (typeof AppStore !== 'undefined' && AppStore.designConditions)
                 ? AppStore.designConditions()
@@ -42,7 +39,7 @@
                 ? archDesc.operatingPoint(cduSys, { db: designCond.designDb, wb: designCond.designWb }, equip)
                 : null;
             const model = archDesc?.topology
-                ? archDesc.topology(cduSys, op, { ...designCond, cduModeHours })
+                ? archDesc.topology(cduSys, op, { ...designCond, cduModeHours, deficitHours })
                 : null;
 
             const nIt = model?.nodes?.find(n => n.id === 'it') || {};

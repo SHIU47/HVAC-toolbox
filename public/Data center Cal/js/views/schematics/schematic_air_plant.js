@@ -26,9 +26,9 @@
             const fwArchDesc = (typeof root.CoolingArchRegistry !== 'undefined') ? root.CoolingArchRegistry.get(fwArch) : null;
 
             const designCond = (typeof AppStore !== 'undefined' && AppStore.designConditions) ? AppStore.designConditions() : { designDb: 35.0, designWb: 28.0 };
-            const unitResult = t.summ?.unitResults?.[t.id] || t.summ?.unitResults?.[t.obj?.id] || t.unitResult;
-            const fwModeHours = unitResult?.fwModeHours || t.fwModeHours;
-            const designCondWithHours = { ...designCond, fwModeHours };
+            const fwModeHours = ctx.fwModeHours || null;
+            const deficitHours = ctx.deficitHours || 0;
+            const designCondWithHours = { ...designCond, fwModeHours, deficitHours };
 
             const equip = (typeof AppStore !== 'undefined' && AppStore.resolveEquipment && fwArchDesc) ? AppStore.resolveEquipment(fwArchDesc, fwSys) : {};
             const op = fwArchDesc?.operatingPoint ? fwArchDesc.operatingPoint(fwSys, { db: designCond.designDb, wb: designCond.designWb }, equip) : null;

@@ -117,7 +117,7 @@
             const mechThresh = op?.thresholds?.mech ?? Number((chwRet - fcApproach).toFixed(1));
             const minChws = (typeof root.A === 'function') ? root.A('rdhx_min_chws_c') : 17.0;
 
-            const modeHours = design?.fwModeHours || op?.fwModeHours || extra?.fwModeHours || design?.cduModeHours;
+            const modeHours = design?.fwModeHours || op?.fwModeHours || extra?.fwModeHours;
             const h_free = modeHours?.free !== undefined ? `${modeHours.free} h` : '';
             const h_partial = modeHours?.partial !== undefined ? `${modeHours.partial} h` : '';
             const h_mech = modeHours?.mechanical !== undefined ? `${modeHours.mechanical} h` : '';
