@@ -53,6 +53,7 @@ const ASSUMPTIONS = {
   // [P1-4 審查] 保留供測試與相容性參考；P4-1 起 liquid_dry_cooler_trim 已改用動態物理門檻 (FWS回 - dcApproach - pheApproach)
   nvidia_dsx_mode2_offset_c:      { val: 5.7,   unit: '°C',     label: 'Mode 2 Trim 區間寬度 (保留供相容)', ref: '40.5 - 34.8 = 5.7°C' },
   trim_chw_dt_default_c:          { val: 5.0,   unit: '°C',     label: 'Trim 冰機蒸發器設計溫差 (ΔT)', ref: 'AHRI 550/590 標準工況 5°C (44-54°F)' },
+  cdw_dt_design_c:                { val: 5.0,   unit: '°C',     label: '水冷冰機冷凝冷卻水設計溫差 (ΔT)', ref: 'AHRI 550/590 標準工況冷卻水 30→35°C' },
 
   // ── 冰機揚程與外推保護常數 (P0-4) ──────────────────────────────────────
   chiller_evap_approach_k:        { val: 2.0,   unit: 'K',      label: '冰機蒸發溫度 = 冰水出水溫 − 此值', ref: '殼管/板式蒸發器典型 1.5–3 K' },

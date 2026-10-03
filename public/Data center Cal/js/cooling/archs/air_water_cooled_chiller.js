@@ -110,23 +110,49 @@
             { type: 'chiller', role: 'mechanical', chillerType: 'water_cooled', condenserSink: 'evap_tower', equipKey: 'water_cooled_chiller' }
         ],
 
-        operatingPoint(sys, w, equip) {
+        operatingPoint(sys, w, equip, opts) {
             const wb_c = (typeof w === 'number') ? w : (w?.wb ?? 20.0);
+            const db_c = (typeof w === 'object' && w?.db !== undefined) ? w.db : 35.0;
             const chwSupplyC = sys?.chwSupplyC ?? 12.0;
             const chwReturnC = sys?.chwReturnC ?? 18.0;
             const hxApproach = (typeof root.A === 'function') ? root.A('hx_approach_c') : 1.5;
             const towerApproach = (typeof root.A === 'function') ? root.A('tower_approach_c') : 4.0;
             const minCewt = (typeof root.A === 'function') ? root.A('min_cewt_c') : 16.0;
-            const tAvail = wb_c + towerApproach + hxApproach;
-            const tCewt = Math.max(minCewt, wb_c + towerApproach);
+            const tAvail = Number((wb_c + towerApproach + hxApproach).toFixed(1));
+            const tCewt = Number(Math.max(minCewt, wb_c + towerApproach).toFixed(1));
             const eco = (typeof root.FreeCoolingEngine?.calcSeriesEconomizer === 'function')
                 ? root.FreeCoolingEngine.calcSeriesEconomizer(tAvail, chwSupplyC, chwReturnC)
-                : { fc_fraction: (tAvail <= chwSupplyC ? 1.0 : 0.0), chiller_fraction: (tAvail <= chwSupplyC ? 0.0 : 1.0), mode: (tAvail <= chwSupplyC ? 'FULL_FC' : 'MECH') };
+                : { fc_fraction: (tAvail <= chwSupplyC ? 1.0 : 0.0), chiller_fraction: (tAvail <= chwSupplyC ? 0.0 : 1.0), mode: (tAvail <= chwSupplyC ? 'FULL_FC' : 'MECH'), t_precooled_c: Math.min(chwReturnC, Math.max(chwSupplyC, tAvail)) };
+            const chwPre = Number((eco.t_precooled_c ?? Math.min(chwReturnC, Math.max(chwSupplyC, tAvail))).toFixed(1));
             const mode = (typeof root.CoolingArchHelpers !== 'undefined')
                 ? root.CoolingArchHelpers.modeFromEco(eco)
                 : ((eco.mode === (root.FreeCoolingEngine?.MODE?.FULL_FC || 'FULL_FC')) ? 'free' : ((eco.mode === (root.FreeCoolingEngine?.MODE?.PARTIAL_FC || 'PARTIAL_FC')) ? 'partial' : 'mechanical'));
             const fullThresh = Number((chwSupplyC - towerApproach - hxApproach).toFixed(1));
             const mechThresh = Number((chwReturnC - towerApproach - hxApproach).toFixed(1));
+
+            const Q_air = sys?.designBasis?.air_load_kw || opts?.qKw || 200;
+            const Q_mech = Q_air * (eco.chiller_fraction || 0);
+            let pComp = 0;
+            let chillerCop = 5.8;
+            let isFallbackCop = true;
+
+            const chillers = equip?.water_cooled_chiller || equip?.chillers || [];
+            if (chillers.length > 0 && typeof root.ChillerEngine !== 'undefined') {
+                const staging = root.ChillerEngine.calcLeadLagStaging(Math.max(1, Q_mech), chillers);
+                const chRes = root.ChillerEngine.calcPower(Math.max(1, Q_mech), staging.staged, chwSupplyC, tCewt, db_c);
+                pComp = Q_mech > 0 ? chRes.power_kw : 0;
+                chillerCop = chRes.cop_actual || 5.8;
+                isFallbackCop = false;
+            } else {
+                chillerCop = (typeof root.CoolingArchHelpers !== 'undefined') ? root.CoolingArchHelpers.chillerFallbackCop(chwSupplyC) : 5.8;
+                pComp = Q_mech / chillerCop;
+                isFallbackCop = true;
+            }
+
+            const cdwDt = (typeof root.A === 'function') ? root.A('cdw_dt_design_c') : 5.0;
+            const m_cp_cw = (Math.max(1, Q_air) * (1 + 1 / chillerCop)) / cdwDt;
+            const condOut = Number((Q_mech > 0 ? (tCewt + (Q_mech + pComp) / m_cp_cw) : tCewt).toFixed(1));
+
             return {
                 ...eco,
                 mode,
@@ -134,52 +160,40 @@
                 tCewt,
                 chwSupplyC,
                 chwReturnC,
-                temps: { chwSup: chwSupplyC, chwRet: chwReturnC, condIn: tCewt, condOut: tCewt + 5.0, tAvail },
+                chwPre,
+                chillerCop,
+                pComp,
+                isFallbackCop,
+                temps: { chwSup: chwSupplyC, chwRet: chwReturnC, chwPre, condIn: tCewt, condOut, tAvail },
                 thresholds: { basis: 'wb', full: fullThresh, mech: mechThresh }
             };
         },
 
         topology(sys, op, design, extra) {
-            if (!op) op = this.operatingPoint(sys, design);
+            const equip = extra?.equip || design?.equip;
+            if (!op) op = this.operatingPoint(sys, { db: design?.designDb ?? 35.0, wb: design?.designWb ?? 28.0 }, equip, { withChiller: true, design });
             const chwSup = op?.temps?.chwSup ?? sys?.chwSupplyC ?? 12.0;
             const chwRet = op?.temps?.chwRet ?? sys?.chwReturnC ?? 18.0;
+            const chwPre = op?.temps?.chwPre ?? chwSup;
             const designWb = design?.designWb ?? 28.0;
             const towerApp = (typeof root.A === 'function') ? root.A('tower_approach_c') : 4.0;
             const hxApp = (typeof root.A === 'function') ? root.A('hx_approach_c') : 1.5;
             const minCewt = (typeof root.A === 'function') ? root.A('min_cewt_c') : 16.0;
-            const tCw = Number(Math.max(minCewt, designWb + towerApp).toFixed(1));
-            const tCwOut = Number((tCw + 5.0).toFixed(1));
+            const tCw = op?.temps?.condIn ?? Number(Math.max(minCewt, designWb + towerApp).toFixed(1));
+            const tCwOut = op?.temps?.condOut ?? Number((tCw + 5.0).toFixed(1));
             const fullThresh = op?.thresholds?.full ?? Number((chwSup - towerApp - hxApp).toFixed(1));
             const mechThresh = op?.thresholds?.mech ?? Number((chwRet - towerApp - hxApp).toFixed(1));
+            const tAvail = op?.tAvail ?? (designWb + towerApp + hxApp);
 
-            // 設計 COP：以設計工況計算模擬值
-            const chItem = (sys?.sizing || []).find(s => s.key === 'water_cooled_chiller');
-            const chModel = chItem?.catalog?.find(c => c.model === chItem.selectedModel);
-            let copDesign = chModel?.cop;
-            if (!copDesign) {
-                if (typeof root.ChillerEngine !== 'undefined') {
-                    const mockChillers = [{
-                        cooling_capacity_kw: 500,
-                        cop_design: 6.0,
-                        cop_curve: { type: 'fixed' },
-                        t_chws_design: 7.0,
-                        qty_running: 1,
-                        qty_total: 2,
-                        chiller_type: 'water_cooled'
-                    }];
-                    const resCop = root.ChillerEngine.calcPower(400, mockChillers, chwSup, tCw, 30.0);
-                    copDesign = resCop.cop_actual || 6.0;
-                } else if (typeof root.CoolingArchHelpers !== 'undefined') {
-                    copDesign = root.CoolingArchHelpers.chillerFallbackCop(chwSup);
-                } else {
-                    copDesign = 5.8;
-                }
-            }
+            const copDesign = op?.chillerCop ?? 5.8;
+            const copLabel = op?.isFallbackCop ? `${copDesign.toFixed(1)} (後備值)` : `${copDesign.toFixed(2)} (設計工況模擬)`;
 
             const modeHours = design?.fwModeHours || op?.fwModeHours || extra?.fwModeHours;
             const h_free = modeHours?.free !== undefined ? `${modeHours.free} h` : '';
             const h_partial = modeHours?.partial !== undefined ? `${modeHours.partial} h` : '';
             const h_mech = modeHours?.mechanical !== undefined ? `${modeHours.mechanical} h` : '';
+
+            const isBypass = (op?.fc_fraction === 0) || (tAvail >= chwRet);
 
             return {
                 title: '水冷式冰水主機 + 濕式冷卻塔',
@@ -247,14 +261,15 @@
                 ],
                 pipes: [
                     { from: 'crah', to: 'wse', label: `${chwRet}°C`, tone: 'hot' },
-                    { from: 'wse', to: 'evaporator', label: `${chwSup}°C`, tone: 'warm' },
+                    { from: 'wse', to: 'evaporator', label: `${chwPre}°C`, tone: 'warm' },
                     { from: 'evaporator', to: 'crah', label: `${chwSup}°C`, tone: 'cold' },
                     { from: 'heat_rejection', to: 'wse', label: `${tCw}°C`, tone: 'cold' },
                     { from: 'heat_rejection', to: 'evaporator', label: `${tCw}°C`, tone: 'cold' },
                     { from: 'evaporator', to: 'heat_rejection', label: `${tCwOut}°C`, tone: 'hot' }
                 ],
                 footer: [],
-                warnings: []
+                warnings: [],
+                op
             };
         },
 

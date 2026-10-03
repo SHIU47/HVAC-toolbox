@@ -135,8 +135,9 @@
             { type: 'chiller', role: 'mechanical', chillerType: 'water_cooled', equipKey: 'trim_chiller', fallbackCop: 6.2 }
         ],
 
-        operatingPoint(sys, w, equip) {
+        operatingPoint(sys, w, equip, opts) {
             const db_c = (typeof w === 'number') ? w : (w?.db ?? 25.0);
+            const wb_c = (typeof w === 'object' && w?.wb !== undefined) ? w.wb : 20.0;
             const dcApp   = sys?.dryCoolerApproachC ?? 5.0;          // 乾冷器 approach
             const pheApp  = sys?.pheApproachC ?? 2.0;                // Primary HX approach
             const tSup    = sys?.fwsSupplyC ?? 40.0;
@@ -159,6 +160,42 @@
             const mechThresh = Number((tRet - dcApp - pheApp).toFixed(1));
             const trimChwDtC = sys?.trimChwDtC ?? ((typeof root.A === 'function') ? root.A('trim_chw_dt_default_c') : 5.0);
             const chwRet = tChws + trimChwDtC;
+
+            const Q_liq = sys?.designBasis?.liq_load_kw || opts?.qKw || 1000;
+            const Q_trim = Math.round(Q_liq * (eco.chiller_fraction || 0));
+            let chillerKw = 0;
+            let chillerCop = 6.2;
+            let pComp = 0;
+
+            if (opts?.withChiller && Q_trim > 0) {
+                chillerKw = Q_trim;
+                const stageChiller = root.CoolingStages?.get('chiller');
+                const chillers = equip?.trim_chiller || equip?.chillers || [];
+                if (stageChiller) {
+                    const simRes = stageChiller.simulate({
+                        Q_kw: Q_trim,
+                        devices: chillers,
+                        t_chws_c: tChws,
+                        t_cewt_c: tCewt,
+                        w: { db: db_c, wb: wb_c },
+                        chillerType: 'water_cooled',
+                        fallbackCop: 6.2
+                    });
+                    pComp = simRes.compressorKw || 0;
+                    chillerCop = pComp > 0 ? Number((Q_trim / pComp).toFixed(2)) : 6.2;
+                } else {
+                    pComp = Q_trim / 6.2;
+                    chillerCop = 6.2;
+                }
+            } else if (Q_trim === 0) {
+                const trimItem = (sys?.sizing || []).find(s => s.key === 'trim_chiller');
+                chillerCop = trimItem?.catalog?.find(c => c.model === trimItem.selectedModel)?.cop || 6.2;
+            }
+
+            const dtFws = Math.max(0.5, tRet - tSup);
+            const m_cp = Math.max(1, Q_liq) / dtFws;
+            const condOut = Number((Q_trim > 0 ? (tCewt + (Q_trim + pComp) / m_cp) : tCewt).toFixed(1));
+
             return {
                 ...eco,
                 mode,
@@ -168,13 +205,25 @@
                 tCewt,
                 tRet,
                 tSup,
-                temps: { fwsRet: tRet, fwsPre: tPre, fwsSup: tSup, dcOut: tDc, condIn: tCewt, condOut: tCewt + 5.0, chwSup: tChws, chwRet },
+                chillerKw,
+                chillerCop,
+                pComp,
+                temps: { fwsRet: tRet, fwsPre: tPre, fwsSup: tSup, dcOut: tDc, condIn: tCewt, condOut, chwSup: tChws, chwRet },
                 thresholds: { basis: 'db', full: fullThresh, mech: mechThresh }
             };
         },
 
+        peakPoint(sys, design, equip) {
+            const peakDb = design?.peakDb?.value ?? design?.maxDb ?? ((design?.designDb ?? 35.0) + 3.0);
+            const designWb = design?.designWb ?? 28.0;
+            const res = this.operatingPoint(sys, { db: peakDb, wb: designWb }, equip, { withChiller: true, design });
+            return { ...res, db: peakDb };
+        },
+
         topology(sys, op, design, extra) {
-            if (!op) op = this.operatingPoint(sys, design);
+            const equip = extra?.equip || design?.equip;
+            if (!op) op = this.operatingPoint(sys, { db: design?.designDb ?? 35.0, wb: design?.designWb ?? 28.0 }, equip, { withChiller: true, design });
+            const peak = this.peakPoint(sys, design, equip);
             const dcApp = sys?.dryCoolerApproachC ?? 5.0;
             const tSup = op?.temps?.fwsSup ?? sys?.fwsSupplyC ?? 40.0;
             const tPre = op?.temps?.fwsPre ?? tSup;
@@ -270,7 +319,9 @@
                     { from: 'chiller', to: 'dry_cooler', label: `${op?.temps?.condOut ?? 49.8}°C`, tone: 'hot' }
                 ],
                 footer: [],
-                warnings: []
+                warnings: [],
+                op,
+                peak
             };
         },
 

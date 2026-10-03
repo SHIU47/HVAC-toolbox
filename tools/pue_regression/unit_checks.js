@@ -2245,6 +2245,27 @@ function freshCtx() {
   });
 })();
 
+// ── F-2: dynamic condenser water outlet temperature formulas ───────────────
+(function () {
+  const { buildWindow } = require('./dom_harness.js');
+  test('F-2 Kaohsiung design point Trim schematic has identical condIn and condOut temperatures', async () => {
+    const win = buildWindow();
+    await win.App.init();
+    win.AppStore.calculate();
+    win.App.renderStep(4);
+    const container = win.document.getElementById('stepContent');
+    const du0 = win.AppStore.state.halls[0].dus[0];
+    const sys = du0.plantDesign.cduSystem;
+    const arch = win.CoolingArchRegistry.get(sys.architecture);
+    const design = win.AppStore.designConditions();
+    const op = arch.operatingPoint(sys, { db: design.designDb, wb: design.designWb }, {}, { withChiller: true });
+    assert.strictEqual(op.mode, 'free', 'Kaohsiung design point must be free cooling (Mode 1)');
+    assert.strictEqual(op.temps.condIn, op.temps.condOut, 'condIn and condOut must be identical when trim chiller is idle');
+    const html = container.innerHTML;
+    assert(html.includes(`${op.temps.condIn.toFixed(1)}°C`), `Step 4 HTML must contain ${op.temps.condIn.toFixed(1)}°C`);
+  });
+})();
+
 console.log(`\n${passCount} passed, ${failCount} failed, ${skipCount} skipped`);
 process.exit(failCount > 0 ? 1 : 0);
 
