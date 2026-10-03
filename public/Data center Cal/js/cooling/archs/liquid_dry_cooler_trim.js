@@ -241,9 +241,30 @@
                 title: 'NVIDIA DSX 參考拓樸',
                 referenceLabel: 'NVIDIA Reference Schematic',
                 banners: [
-                    { id: 'mode1', label: `Mode 1 全自然冷卻 (DB ≤ ${fullThresh}°C)${h1 ? ` — 全年 ${h1}` : ''}`, detail: '100% 走 Economizer', tone: 'emerald' },
-                    { id: 'mode2', label: `Mode 2 串聯預冷 + Trim 修整 (${fullThresh} < DB < ${mechThresh}°C)${h2 ? ` — 全年 ${h2}` : ''}`, detail: `預冷至 ${tPre}°C → Trim 冰機`, tone: 'amber' },
-                    { id: 'mode3', label: `Mode 3 乾冷器無法預冷，Trim 冰機承擔 100%，乾冷器僅排冷凝熱 (DB ≥ ${mechThresh}°C)${h3 ? ` — 全年 ${h3}` : ''}`, detail: '全額走 Trim 冰機製冷', tone: 'red' }
+                    {
+                        id: 'mode1',
+                        title: 'Mode 1 全自然冷卻',
+                        label: `Mode 1 全自然冷卻 (DB ≤ ${fullThresh}°C)${h1 ? ` — 全年 ${h1}` : ''}`,
+                        sub: `DB ≤ ${fullThresh}°C ｜ 全年 ${h1 || '0 h'} ｜ 100% 走 Economizer`,
+                        detail: `DB ≤ ${fullThresh}°C ｜ 全年 ${h1 || '0 h'} ｜ 100% 走 Economizer`,
+                        tone: 'emerald'
+                    },
+                    {
+                        id: 'mode2',
+                        title: 'Mode 2 串聯預冷 + Trim 修整',
+                        label: `Mode 2 串聯預冷 + Trim 修整 (${fullThresh} < DB < ${mechThresh}°C)${h2 ? ` — 全年 ${h2}` : ''}`,
+                        sub: `${fullThresh} < DB < ${mechThresh}°C ｜ 全年 ${h2 || '0 h'} ｜ 預冷至 ${tPre}°C → Trim 冰機`,
+                        detail: `${fullThresh} < DB < ${mechThresh}°C ｜ 全年 ${h2 || '0 h'} ｜ 預冷至 ${tPre}°C → Trim 冰機`,
+                        tone: 'amber'
+                    },
+                    {
+                        id: 'mode3',
+                        title: 'Mode 3 乾冷器僅排冷凝熱',
+                        label: `Mode 3 乾冷器僅排冷凝熱 (DB ≥ ${mechThresh}°C)${h3 ? ` — 全年 ${h3}` : ''}`,
+                        sub: `DB ≥ ${mechThresh}°C ｜ 全年 ${h3 || '0 h'} ｜ 乾冷器僅排冷凝熱`,
+                        detail: `DB ≥ ${mechThresh}°C ｜ 全年 ${h3 || '0 h'} ｜ 乾冷器僅排冷凝熱`,
+                        tone: 'red'
+                    }
                 ],
                 nodes: [
                     {

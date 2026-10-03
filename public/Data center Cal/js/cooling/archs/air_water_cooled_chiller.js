@@ -241,7 +241,7 @@
                         title: '濕式冷卻水塔 (Cooling Tower)',
                         lines: [
                             '高效開放式冷卻水塔',
-                            `出水 ${tCw}°C (設計 WB ${designWb}°C + ${towerApp}°C) ⇄ 進水 ${tCwOut}°C`,
+                            `出水 ${tCw}°C (設計 WB ${Number(designWb).toFixed(1)}°C + ${towerApp}°C) ⇄ 進水 ${tCwOut}°C`,
                             '冷卻塔出水同時供給 WSE 板換與冰機冷凝器',
                             '連續排污與自動補水控制'
                         ]

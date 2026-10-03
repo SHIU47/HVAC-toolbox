@@ -2323,6 +2323,25 @@ function freshCtx() {
   });
 })();
 
+// ── F-6: Trim Mode 2/3 banner format, Mode 3 detail, and standby overlap ───
+(function () {
+  const { buildWindow } = require('./dom_harness.js');
+  test('F-6 Trim banners use 2-line format, Mode 3 specifies condenser rejection only, and chiller icon does not overlap', async () => {
+    const win = buildWindow();
+    await win.App.init();
+    const trimArch = win.CoolingArchRegistry.get('dry_cooler_trim');
+    const model = trimArch.topology({ fwsSupplyC: 40, fwsReturnC: 55 }, null, { designDb: 35, designWb: 28 });
+    assert(!model.banners[2].detail.includes('全額走 Trim 冰機製冷'), 'Mode 3 banner detail must not say 全額走 Trim 冰機製冷');
+    assert(model.banners[2].detail.includes('乾冷器僅排冷凝熱'), 'Mode 3 banner detail must say 乾冷器僅排冷凝熱');
+
+    win.AppStore.calculate();
+    win.App.renderStep(4);
+    const html = win.document.getElementById('stepContent').innerHTML;
+    assert(!html.includes('全額走 Trim 冰機製冷'), 'Step 4 HTML must not contain 全額走 Trim 冰機製冷');
+    assert(!html.includes('>待機 (Standby)</text>'), 'Chiller circle must not contain 待機 (Standby)');
+  });
+})();
+
 console.log(`\n${passCount} passed, ${failCount} failed, ${skipCount} skipped`);
 process.exit(failCount > 0 ? 1 : 0);
 

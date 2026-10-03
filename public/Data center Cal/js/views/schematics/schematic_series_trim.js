@@ -273,11 +273,15 @@
                                 red: 'bg-red-950/40 border-red-800/60 text-red-300 bg-red-400'
                             };
                             const toneCls = (toneMap[b.tone] || toneMap.emerald).split(' ');
+                            const line1 = b.title || b.label;
+                            const line2 = b.sub || b.detail || '';
                             return `
-                                <div class="p-2.5 rounded-lg ${toneCls[0]} border ${toneCls[1]} flex items-center gap-2">
-                                    <span class="w-2.5 h-2.5 rounded-full ${toneCls[3]}"></span>
-                                    <span class="${toneCls[2]} font-bold">${b.label}</span>
-                                    <span class="text-slate-300 ml-auto">${b.detail || ''}</span>
+                                <div class="p-2.5 rounded-lg ${toneCls[0]} border ${toneCls[1]} flex flex-col gap-1">
+                                    <div class="flex items-center gap-2">
+                                        <span class="w-2.5 h-2.5 rounded-full ${toneCls[3]} shrink-0"></span>
+                                        <span class="${toneCls[2]} font-bold text-xs">${line1}</span>
+                                    </div>
+                                    ${line2 ? `<div class="text-[11px] text-slate-300 pl-4.5 whitespace-nowrap overflow-hidden text-ellipsis">${line2}</div>` : ''}
                                 </div>
                             `;
                         }).join('')}
