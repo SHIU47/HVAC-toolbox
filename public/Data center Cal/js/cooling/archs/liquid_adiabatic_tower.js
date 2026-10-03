@@ -262,11 +262,17 @@
                 );
             }
 
+            const deficitHours = design?.deficitHours ?? extra?.deficitHours ?? 0;
             return {
                 title: '設施排熱拓樸 (Facility Heat Rejection)',
                 referenceLabel: null,
                 banners: [
-                    { id: 'mode1', label: `絕熱預冷自然冷卻 (有效乾球 ≤${fullThresh}°C)`, detail: '高溫噴霧預冷 (100% 自然冷卻・零冰機)', tone: 'emerald' }
+                    {
+                        id: 'mode1',
+                        label: `絕熱預冷自然冷卻 (有效乾球 ≤${fullThresh}°C)`,
+                        detail: deficitHours > 0 ? `全年 ${deficitHours} h 超出冷卻能力（供水溫上升）` : '高溫噴霧預冷 (自然冷卻・零冰機)',
+                        tone: deficitHours > 0 ? 'amber' : 'emerald'
+                    }
                 ],
                 nodes,
                 pipes,

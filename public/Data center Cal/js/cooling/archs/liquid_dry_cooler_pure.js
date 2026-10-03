@@ -170,7 +170,7 @@
                     lines: [
                         '零耗水自然風冷',
                         `Approach: ${dcApp}°C ｜ 門檻: ≤${fullThresh}°C DB`,
-                        '100% 自然風冷，全年零冰機',
+                        '自然風冷，全年零冰機',
                         `Approach: ${dcApp}°C ｜ 無機械備援 (需高於門檻時降載)`
                     ]
                 });
@@ -196,7 +196,7 @@
                         '零耗水自然風冷 (無板換直冷)',
                         `Approach: ${dcApp}°C ｜ 門檻: ≤${fullThresh}°C DB`,
                         '一次側直接連接乾冷器',
-                        '100% 自然風冷，全年零冰機'
+                        '自然風冷，全年零冰機'
                     ]
                 });
 
@@ -206,11 +206,17 @@
                 );
             }
 
+            const deficitHours = design?.deficitHours ?? extra?.deficitHours ?? 0;
             return {
                 title: '設施排熱拓樸 (Facility Heat Rejection)',
                 referenceLabel: null,
                 banners: [
-                    { id: 'mode1', label: `自然冷卻門檻 DB ≤ ${fullThresh}°C`, detail: '100% 乾式自然風冷・零冰機・零水耗', tone: 'emerald' }
+                    {
+                        id: 'mode1',
+                        label: `自然冷卻門檻 DB ≤ ${fullThresh}°C`,
+                        detail: deficitHours > 0 ? `全年 ${deficitHours} h 超出冷卻能力（供水溫上升）` : '乾式自然風冷・全年零冰機・零水耗',
+                        tone: deficitHours > 0 ? 'amber' : 'emerald'
+                    }
                 ],
                 nodes,
                 pipes,

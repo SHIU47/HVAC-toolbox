@@ -2342,6 +2342,55 @@ function freshCtx() {
   });
 })();
 
+// ── F-7: Deficit hours display on zero-chiller topologies and remove 100% ────
+(function () {
+  const { buildWindow } = require('./dom_harness.js');
+  test('F-7 Zero-chiller topologies display deficit hours warning and remove 100% wording', async () => {
+    const win = buildWindow();
+    await win.App.init();
+
+    const pure = win.CoolingArchRegistry.get('dry_cooler_pure');
+    const adiabatic = win.CoolingArchRegistry.get('adiabatic_tower');
+    const closed = win.CoolingArchRegistry.get('cooling_tower_hx');
+
+    // 1. Direct topology check when deficitHours > 0 vs === 0
+    const topoPureDeficit = pure.topology({ fwsSupplyC: 40, fwsReturnC: 55 }, null, { designDb: 35, deficitHours: 2 });
+    assert(topoPureDeficit.banners[0].detail.includes('全年 2 h 超出冷卻能力（供水溫上升）'), 'dry_cooler_pure banner must display deficit hours warning');
+    assert.strictEqual(topoPureDeficit.banners[0].tone, 'amber');
+    assert(!JSON.stringify(topoPureDeficit.nodes).includes('100%'), 'dry_cooler_pure nodes must not contain 100%');
+
+    const topoPureNormal = pure.topology({ fwsSupplyC: 40, fwsReturnC: 55 }, null, { designDb: 35, deficitHours: 0 });
+    assert(topoPureNormal.banners[0].detail.includes('乾式自然風冷・全年零冰機・零水耗'), 'dry_cooler_pure normal banner must have expected text');
+    assert(!topoPureNormal.banners[0].detail.includes('100%'), 'dry_cooler_pure normal banner must not contain 100%');
+    assert.strictEqual(topoPureNormal.banners[0].tone, 'emerald');
+
+    const topoAdiaDeficit = adiabatic.topology({ fwsSupplyC: 40, fwsReturnC: 55 }, null, { designDb: 35, deficitHours: 5 });
+    assert(topoAdiaDeficit.banners[0].detail.includes('全年 5 h 超出冷卻能力（供水溫上升）'), 'adiabatic_tower banner must display deficit hours warning');
+    assert.strictEqual(topoAdiaDeficit.banners[0].tone, 'amber');
+
+    const topoAdiaNormal = adiabatic.topology({ fwsSupplyC: 40, fwsReturnC: 55 }, null, { designDb: 35, deficitHours: 0 });
+    assert(topoAdiaNormal.banners[0].detail.includes('高溫噴霧預冷 (自然冷卻・零冰機)'), 'adiabatic_tower normal banner must have expected text');
+    assert(!topoAdiaNormal.banners[0].detail.includes('100%'), 'adiabatic_tower normal banner must not contain 100%');
+
+    const topoClosedDeficit = closed.topology({ fwsSupplyC: 40, fwsReturnC: 55 }, null, { designDb: 35, deficitHours: 3 });
+    assert(topoClosedDeficit.banners[0].detail.includes('全年 3 h 超出冷卻能力（供水溫上升）'), 'cooling_tower_hx banner must display deficit hours warning');
+    assert.strictEqual(topoClosedDeficit.banners[0].tone, 'amber');
+
+    const topoClosedNormal = closed.topology({ fwsSupplyC: 40, fwsReturnC: 55 }, null, { designDb: 35, deficitHours: 0 });
+    assert(topoClosedNormal.banners[0].detail.includes('水側直冷・全年零冰機'), 'cooling_tower_hx normal banner must have expected text');
+    assert(!topoClosedNormal.banners[0].detail.includes('100%'), 'cooling_tower_hx normal banner must not contain 100%');
+
+    // 2. Full DOM harness with Kaohsiung (which has 2 h deficit on dry_cooler_pure)
+    const du = win.AppStore.state.designUnits[0];
+    du.plantDesign.cduSystem.architecture = 'dry_cooler_pure';
+    win.AppStore.calculate();
+    win.App.renderStep(4);
+    const html = win.document.getElementById('stepContent').innerHTML;
+    assert(html.includes('全年 2 h 超出冷卻能力（供水溫上升）'), 'Step 4 HTML must display Kaohsiung 2 h deficit warning for pure dry cooler');
+    assert(!html.includes('100% 乾式自然風冷'), 'Step 4 HTML must not contain 100% 乾式自然風冷');
+  });
+})();
+
 console.log(`\n${passCount} passed, ${failCount} failed, ${skipCount} skipped`);
 process.exit(failCount > 0 ? 1 : 0);
 
