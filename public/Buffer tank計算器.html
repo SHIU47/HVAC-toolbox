@@ -1,0 +1,1042 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>冰水緩衝水槽計算器</title>
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  <style>
+    :root {
+      --bg: #F3F5F8; --card: #FFFFFF; --line: #E4E8EE; --line-strong: #CFD6DF;
+      --ink: #0F172A; --ink-2: #334155; --muted: #64748B; --faint: #94A3B8;
+      --accent: #2563EB; --accent-soft: #EEF4FF;
+      --water: #0EA5E9; --pipe: #94A3B8;
+      --pass: #15803D; --pass-soft: #ECFDF3; --warn: #B45309; --warn-soft: #FFF7E6; --fail: #DC2626; --fail-soft: #FEF2F2;
+      --radius: 12px;
+      --font: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang TC", "Microsoft JhengHei", "Noto Sans TC", sans-serif;
+      --mono: "JetBrains Mono", "SFMono-Regular", Consolas, monospace;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    [hidden] { display: none !important; }
+    button, input, select { font: inherit; color: inherit; }
+    body { background: var(--bg); color: var(--ink); font-family: var(--font); font-size: 14px; line-height: 1.5; -webkit-font-smoothing: antialiased; }
+    .num, .kpi-v, code, .iw input, td { font-variant-numeric: tabular-nums; }
+
+    /* 頂部列 */
+    .topbar { position: sticky; top: 0; z-index: 50; background: rgba(255,255,255,0.92); backdrop-filter: blur(8px); border-bottom: 1px solid var(--line);
+      display: flex; align-items: center; gap: 20px; padding: 10px 24px; flex-wrap: wrap; }
+    .brand { display: flex; align-items: center; gap: 10px; }
+    .logo { width: 34px; height: 34px; border-radius: 9px; background: var(--water); color: #fff; display: grid; place-items: center; }
+    .app-title { font-size: 15px; font-weight: 700; }
+    .app-sub { font-size: 12px; color: var(--muted); }
+    .project { display: flex; gap: 8px; flex: 1; min-width: 260px; }
+    .project input { border: 1px solid transparent; background: #F1F4F8; border-radius: 8px; padding: 7px 10px; font-size: 13px; outline: none; min-width: 0; }
+    .project input:focus { border-color: var(--accent); background: #fff; }
+    .project .pn { flex: 1.2; font-weight: 600; }
+    .project .ps { flex: 1; color: var(--ink-2); }
+    .actions { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+    .autosave { font-size: 12px; color: var(--faint); margin-right: 4px; }
+    .btn { border: 1px solid var(--line-strong); background: #fff; color: var(--ink-2); border-radius: 8px; padding: 7px 12px; font-size: 13px; font-weight: 600; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; }
+    .btn:hover { background: #F8FAFC; border-color: #B8C2CE; }
+    .btn.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+    .btn.primary:hover { background: #1D4ED8; }
+    .btn.quiet { border-color: transparent; background: transparent; color: var(--muted); }
+    .btn.quiet:hover { background: #EEF1F5; color: var(--ink); }
+
+    /* 版面 */
+    .layout { display: grid; grid-template-columns: minmax(380px, 460px) 1fr; gap: 20px; padding: 20px 24px 60px; max-width: 1480px; margin: 0 auto; align-items: start; }
+    @media (max-width: 1080px) { .layout { grid-template-columns: 1fr; } }
+    .card { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); }
+    .inputs, .results { display: flex; flex-direction: column; gap: 14px; }
+    @media (min-width: 1081px) { .results { position: sticky; top: 74px; max-height: calc(100vh - 90px); overflow-y: auto; padding-right: 4px; scrollbar-width: thin; } }
+
+    /* 輸入區塊 */
+    .sec { padding: 16px 18px 18px; }
+    .sec-h { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; }
+    .sec-h .no { width: 24px; height: 24px; border-radius: 50%; background: var(--accent-soft); color: var(--accent); font-size: 12px; font-weight: 700; display: grid; place-items: center; flex: none; }
+    .sec-h h2 { font-size: 15px; font-weight: 700; }
+    .sec-h p { font-size: 12px; color: var(--muted); }
+    .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px 14px; }
+    .grid.g3 { grid-template-columns: repeat(3, 1fr); }
+    .field.full { grid-column: 1 / -1; }
+    .grid > *, .layout > *, .two > * { min-width: 0; }
+    .field label { display: block; font-size: 13px; font-weight: 600; color: var(--ink-2); margin-bottom: 5px; }
+    .req { color: var(--fail); font-style: normal; }
+    .iw { display: flex; align-items: center; height: 40px; border: 1px solid var(--line-strong); border-radius: 8px; background: #fff; transition: border-color .15s, box-shadow .15s; }
+    .iw:focus-within { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15); }
+    .iw input { flex: 1; min-width: 0; width: 100%; height: 100%; border: none; background: transparent; padding: 0 10px 0 12px; font-size: 15px; font-weight: 600; outline: none; }
+    .iw .u { flex: none; padding-right: 10px; font-size: 12px; color: var(--muted); white-space: nowrap; }
+    .iw:has(input.is-invalid) { border-color: var(--fail); background: var(--fail-soft); }
+    .hint { font-size: 12px; color: var(--muted); margin-top: 4px; line-height: 1.45; }
+    .err { display: none; font-size: 12px; color: var(--fail); font-weight: 600; margin-top: 4px; }
+    .err.show { display: block; }
+    .note { margin-top: 12px; font-size: 12.5px; color: var(--ink-2); background: #F6F8FB; border-radius: 8px; padding: 9px 11px; line-height: 1.55; }
+    .note b { font-family: var(--mono); color: var(--ink); }
+    .chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+    .chip { border: 1px solid var(--line-strong); background: #fff; border-radius: 999px; padding: 2px 10px; font-size: 12px; font-weight: 600; color: var(--ink-2); cursor: pointer; }
+    .chip:hover { border-color: var(--accent); color: var(--accent); }
+    .chip.on { background: var(--accent); border-color: var(--accent); color: #fff; }
+    .presets { margin-left: auto; display: flex; gap: 4px; align-items: center; font-size: 12px; color: var(--muted); }
+
+    .seg { display: flex; background: #EEF1F5; border-radius: 9px; padding: 3px; margin-bottom: 8px; }
+    .seg button { flex: 1; border: none; background: transparent; padding: 7px 10px; border-radius: 7px; font-size: 13px; font-weight: 600; color: var(--muted); cursor: pointer; }
+    .seg button.on { background: #fff; color: var(--ink); box-shadow: 0 1px 2px rgba(15, 23, 42, 0.12); }
+    .mode-desc { font-size: 12px; color: var(--muted); margin-bottom: 14px; line-height: 1.5; }
+
+    details.adv > summary { list-style: none; cursor: pointer; padding: 14px 18px; display: flex; align-items: center; justify-content: space-between; font-weight: 700; font-size: 14px; }
+    details.adv > summary::-webkit-details-marker { display: none; }
+    details.adv > summary .sum { font-weight: 400; font-size: 12px; color: var(--muted); margin-left: auto; }
+    details.adv > summary::after { content: '▸'; color: var(--faint); margin-left: 10px; }
+    details.adv[open] > summary::after { content: '▾'; }
+    details.adv .adv-body { padding: 0 18px 18px; display: flex; flex-direction: column; gap: 14px; }
+    .radios { display: flex; flex-wrap: wrap; gap: 8px 16px; font-size: 13px; }
+    .radios label { display: flex; align-items: center; gap: 6px; cursor: pointer; font-weight: 500; }
+
+    /* 結論 */
+    .verdict { padding: 18px 20px; border-left-width: 5px; }
+    .verdict.pass { border-left-color: var(--pass); } .verdict.warn { border-left-color: var(--warn); } .verdict.fail { border-left-color: var(--fail); } .verdict.info { border-left-color: var(--water); }
+    .v-head { display: flex; align-items: center; gap: 12px; }
+    .v-icon { width: 34px; height: 34px; border-radius: 50%; display: grid; place-items: center; font-weight: 800; font-size: 16px; color: #fff; flex: none; }
+    .verdict.pass .v-icon { background: var(--pass); } .verdict.warn .v-icon { background: var(--warn); } .verdict.fail .v-icon { background: var(--fail); } .verdict.info .v-icon { background: var(--water); }
+    .v-title { font-size: 18px; font-weight: 800; }
+    .v-sub { font-size: 13px; color: var(--muted); }
+    .v-list { margin: 12px 0 0 46px; font-size: 13px; color: var(--ink-2); display: flex; flex-direction: column; gap: 4px; }
+    .v-list a { color: var(--ink); font-weight: 700; cursor: pointer; text-decoration: underline; text-decoration-color: var(--line-strong); }
+
+    /* 關鍵數字 */
+    .kpis { display: grid; grid-template-columns: repeat(3, 1fr); }
+    .kpi { padding: 16px 20px; }
+    .kpi + .kpi { border-left: 1px solid var(--line); }
+    .kpi-l { font-size: 12.5px; color: var(--muted); font-weight: 600; }
+    .kpi-v { font-size: 30px; font-weight: 800; letter-spacing: -0.5px; line-height: 1.2; margin-top: 2px; }
+    .kpi-v small { font-size: 14px; font-weight: 600; color: var(--muted); margin-left: 4px; letter-spacing: 0; }
+    .kpi-s { font-size: 12px; color: var(--muted); margin-top: 2px; }
+    @media (max-width: 640px) { .kpis { grid-template-columns: 1fr; } .kpi + .kpi { border-left: none; border-top: 1px solid var(--line); } }
+
+    .panel { padding: 16px 20px; }
+    .panel-h { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; margin-bottom: 12px; }
+    .panel-h h3 { font-size: 14px; font-weight: 700; }
+    .panel-h span { font-size: 12px; color: var(--muted); }
+
+    /* 可撐時間圖 */
+    .tbar { position: relative; height: 34px; background: #EEF1F5; border-radius: 8px; margin: 26px 0 26px; }
+    .tbar-seg { position: absolute; top: 0; height: 100%; display: grid; place-items: center; overflow: hidden; transition: width .3s ease, left .3s ease; }
+    .tbar-seg span { font-size: 11.5px; font-weight: 700; color: #fff; white-space: nowrap; }
+    .tbar-seg.pipe { left: 0; background: var(--pipe); border-radius: 8px 0 0 8px; }
+    .tbar-seg.tank { background: var(--water); }
+    .tbar-seg.round-r { border-radius: 0 8px 8px 0; }
+    .tbar-seg.round-all { border-radius: 8px; }
+    .tbar-mk { position: absolute; top: -8px; bottom: -8px; width: 2px; background: var(--ink); }
+    .tbar-mk label { position: absolute; top: -18px; left: 50%; transform: translateX(-50%); font-size: 11.5px; font-weight: 700; white-space: nowrap; }
+    .tbar-mk.down { background: transparent; border-left: 2px dashed var(--warn); }
+    .tbar-mk.down label { top: auto; bottom: -19px; color: var(--warn); }
+    .tanks { display: flex; flex-wrap: wrap; gap: 6px; align-items: flex-end; }
+    .tank-stage { flex: 1 1 100%; position: relative; display: flex; align-items: flex-end; gap: 6px; padding-right: 34px; border-bottom: 2px solid var(--ink-2); }
+    .floor { position: absolute; left: 0; right: 0; border-top: 1px dashed var(--line-strong); pointer-events: none; }
+    .floor span { position: absolute; right: 0; top: -1px; font-size: 10.5px; color: var(--faint); font-weight: 600; }
+    .tank { position: relative; flex: none; border-radius: 5px 5px 2px 2px; background: linear-gradient(180deg, #7DD3FC, var(--water)); display: grid; place-items: center; color: #fff; font-size: 11px; font-weight: 700; }
+    .tank-cap { flex: 1 1 100%; font-size: 12px; color: var(--muted); margin-top: 8px; }
+    .tank-cap b { color: var(--ink); }
+    .tank-more { font-size: 12px; color: var(--muted); font-weight: 600; padding: 0 4px 4px; }
+    .tank-x { font-size: 13px; font-weight: 700; color: var(--ink-2); padding: 0 0 4px 6px; }
+    .legend { display: flex; flex-wrap: wrap; gap: 6px 14px; font-size: 12px; color: var(--muted); margin-top: 12px; }
+    .legend i { display: inline-block; width: 10px; height: 10px; border-radius: 3px; margin-right: 5px; vertical-align: -1px; }
+    .legend b { color: var(--ink); font-weight: 700; }
+    .empty { font-size: 13px; color: var(--muted); padding: 6px 0; }
+
+    /* 檢核清單 */
+    .checks { list-style: none; display: flex; flex-direction: column; }
+    .chk { display: flex; gap: 12px; padding: 10px 0; border-top: 1px solid var(--line); transition: background .3s; }
+    .chk:first-child { border-top: none; }
+    .chk.flash { background: var(--accent-soft); }
+    .chk .dot { width: 22px; height: 22px; border-radius: 50%; display: grid; place-items: center; font-size: 12px; font-weight: 800; color: #fff; flex: none; margin-top: 1px; }
+    .chk.pass .dot { background: var(--pass); } .chk.warn .dot { background: var(--warn); } .chk.fail .dot { background: var(--fail); } .chk.info .dot { background: var(--faint); }
+    .chk-t { font-weight: 700; font-size: 13.5px; }
+    .chk-v { font-size: 13px; color: var(--ink-2); }
+    .chk-d { font-size: 12px; color: var(--muted); }
+
+    /* 規格比較表 */
+    .tbl-wrap { overflow-x: auto; margin: 0 -20px; padding: 0 20px; }
+    table.opts { width: 100%; border-collapse: collapse; font-size: 13px; }
+    table.opts th { text-align: right; font-size: 12px; color: var(--muted); font-weight: 600; padding: 6px 8px; border-bottom: 1px solid var(--line); white-space: nowrap; }
+    table.opts td { text-align: right; padding: 8px; border-bottom: 1px solid var(--line); white-space: nowrap; }
+    table.opts th:first-child, table.opts td:first-child, table.opts th:last-child, table.opts td:last-child { text-align: left; }
+    table.opts tbody tr { cursor: pointer; }
+    table.opts tbody tr:hover { background: #F8FAFC; }
+    table.opts tr.cur { background: var(--accent-soft); }
+    table.opts tr.cur td:first-child { box-shadow: inset 3px 0 0 var(--accent); font-weight: 700; }
+    .tag { display: inline-block; font-size: 11.5px; font-weight: 700; padding: 1px 8px; border-radius: 999px; }
+    .tag.best { background: var(--pass-soft); color: var(--pass); }
+    .tag.warn { background: var(--warn-soft); color: var(--warn); }
+    .tag.plain { color: var(--muted); padding-left: 0; font-weight: 600; }
+
+    details.more > summary { list-style: none; cursor: pointer; padding: 14px 20px; font-weight: 700; display: flex; justify-content: space-between; }
+    details.more > summary::-webkit-details-marker { display: none; }
+    details.more > summary::after { content: '展開 ▸'; font-weight: 500; font-size: 12px; color: var(--muted); }
+    details.more[open] > summary::after { content: '收合 ▾'; }
+    .steps { list-style: none; padding: 0 20px 16px; display: flex; flex-direction: column; gap: 10px; }
+    .steps li { display: flex; gap: 10px; }
+    .steps .n { width: 20px; height: 20px; border-radius: 50%; background: #EEF1F5; font-size: 11px; font-weight: 700; display: grid; place-items: center; flex: none; margin-top: 2px; }
+    .steps .st-t { font-size: 12.5px; color: var(--muted); }
+    .steps code { font-family: var(--mono); font-size: 13px; color: var(--ink); word-break: break-word; }
+    .notes { padding: 0 20px 18px; font-size: 12.5px; color: var(--ink-2); display: flex; flex-direction: column; gap: 6px; line-height: 1.6; }
+
+    .is-stale .kpis, .is-stale .viz, .is-stale .checks-card, .is-stale .opts-card { opacity: 0.4; filter: grayscale(70%); pointer-events: none; }
+
+    .to-results { display: none; }
+    @media (max-width: 1080px) {
+      .to-results { display: block; position: fixed; right: 16px; bottom: 16px; z-index: 60; border: none; background: var(--ink); color: #fff; border-radius: 999px; padding: 10px 18px; font-weight: 700; box-shadow: 0 6px 20px rgba(15,23,42,.25); }
+      .topbar { position: static; }
+    }
+    @media (max-width: 520px) { .grid { grid-template-columns: 1fr; } .topbar { padding: 10px 16px; } .layout { padding: 16px 16px 60px; } }
+
+    .toast { position: fixed; bottom: 24px; left: 50%; transform: translate(-50%, 10px); background: var(--ink); color: #fff; padding: 10px 18px; border-radius: 10px; font-size: 13px; font-weight: 600; opacity: 0; pointer-events: none; transition: opacity .2s, transform .2s; z-index: 1000; max-width: 90vw; }
+    .toast.show { opacity: 1; transform: translate(-50%, 0); }
+
+    @media print {
+      body { background: #fff; font-size: 12px; }
+      .actions, .to-results, .presets, .chips, .seg, .toast { display: none !important; }
+      .topbar { position: static; border-bottom: 2px solid var(--ink); }
+      .project input { background: none; padding: 0; }
+      .layout { display: block; padding: 12px 0; }
+      .results { position: static; max-height: none; overflow: visible; margin-top: 14px; }
+      .inputs { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+      .card { break-inside: avoid; box-shadow: none; }
+      .sec { padding: 10px 12px; }
+      .is-stale .kpis, .is-stale .viz, .is-stale .checks-card, .is-stale .opts-card { opacity: 1; filter: none; }
+    }
+  </style>
+</head>
+<body>
+  <div class="toast" id="toastMsg"></div>
+
+  <header class="topbar">
+    <div class="brand">
+      <div class="logo"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><ellipse cx="12" cy="5" rx="7" ry="2.5"/><path d="M5 5v14c0 1.4 3.1 2.5 7 2.5s7-1.1 7-2.5V5"/><path d="M5 12c0 1.4 3.1 2.5 7 2.5s7-1.1 7-2.5"/></svg></div>
+      <div><div class="app-title">冰水緩衝水槽計算器</div><div class="app-sub">停電／冰機重啟期間，靠水槽冷水撐住負載</div></div>
+    </div>
+    <div class="project">
+      <input id="projectName" class="pn" placeholder="案名，例如 AIDC Phase 1 CHW" value="" oninput="calculate()">
+      <input id="dataSource" class="ps" placeholder="依據／備註，例如 冰機快速重啟 5 min" value="" oninput="calculate()">
+    </div>
+    <div class="actions">
+      <span class="autosave" id="autosaveHint"></span>
+      <button type="button" class="btn quiet" onclick="resetToDefaults()">重設</button>
+      <button type="button" class="btn" onclick="copySummary()">複製摘要</button>
+      <button type="button" class="btn" onclick="printReport()">列印 / PDF</button>
+      <button type="button" class="btn primary" onclick="exportToExcel()">匯出 Excel</button>
+    </div>
+  </header>
+
+  <div class="layout">
+    <section class="inputs">
+
+      <div class="card sec">
+        <div class="sec-h"><span class="no">1</span><div><h2>系統與負載</h2><p>水槽要幫誰撐、撐多少熱</p></div>
+          <div class="presets">範例
+            <button type="button" class="chip" onclick="applyPreset('small')">小型</button>
+            <button type="button" class="chip" onclick="applyPreset('medium')">中型</button>
+            <button type="button" class="chip" onclick="applyPreset('large')">大型</button>
+            <button type="button" class="chip" onclick="applyPreset('xlarge')">超大型</button>
+          </div>
+        </div>
+        <input type="hidden" id="tankMode" value="shared">
+        <div class="seg"><button type="button" id="segShared" class="on" onclick="setTankMode('shared')">共用集管（全廠一組水槽）</button><button type="button" id="segIsolated" onclick="setTankMode('isolated')">逐台獨立（每台冰機自帶）</button></div>
+        <div class="mode-desc" id="modeDesc"></div>
+        <div class="grid">
+          <div class="field">
+            <label for="load"><span id="lblLoad">系統總冷負載</span> <i class="req">*</i></label>
+            <div class="iw"><input type="number" id="load" step="any" min="0" value="4000" oninput="calculate()"><span class="u">kW</span></div>
+            <div class="hint" id="hintLoad">緩衝期間仍要被帶走的熱量</div>
+            <div class="err" id="err-load"></div>
+          </div>
+          <div class="field">
+            <label for="chillerN"><span id="lblN">冰機運轉台數</span> <i class="req">*</i></label>
+            <div class="iw"><input type="number" id="chillerN" step="1" min="1" value="4" oninput="calculate()"><span class="u">台</span></div>
+            <div class="hint" id="hintN">用於防短循環水量檢核</div>
+            <div class="err" id="err-chillerN"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card sec">
+        <div class="sec-h"><span class="no">2</span><div><h2>緩衝條件</h2><p>要撐多久、冷水能升溫多少</p></div></div>
+        <div class="grid">
+          <div class="field">
+            <label for="durationMin">緩衝時間 <i class="req">*</i></label>
+            <div class="iw"><input type="number" id="durationMin" step="any" min="0" value="6" oninput="calculate()"><span class="u">分鐘</span></div>
+            <div class="chips"><button type="button" class="chip" onclick="setVal('durationMin',3)">3</button><button type="button" class="chip" onclick="setVal('durationMin',5)">5</button><button type="button" class="chip" onclick="setVal('durationMin',10)">10</button><button type="button" class="chip" onclick="setVal('durationMin',15)">15</button><button type="button" class="chip" onclick="setVal('durationMin',30)">30</button></div>
+            <div class="hint">發電機接手＋冰機重啟到滿載的時間</div>
+            <div class="err" id="err-durationMin"></div>
+          </div>
+          <div class="field">
+            <label for="deltaT">可利用溫差 ΔT <i class="req">*</i></label>
+            <div class="iw"><input type="number" id="deltaT" step="any" min="0" value="5" oninput="calculate()"><span class="u">°C</span></div>
+            <div class="hint">分層式取「回水 − 供水」；混合式取「允許的供水溫升」</div>
+            <div class="err" id="err-deltaT"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card sec">
+        <div class="sec-h"><span class="no">3</span><div><h2>既有管路水量</h2><p>管路裡的冷水也能先撐一下</p></div></div>
+        <div class="grid">
+          <div class="field">
+            <label for="pipeVolume"><span id="lblPipe">系統管路總水量</span></label>
+            <div class="iw"><input type="number" id="pipeVolume" step="any" min="0" value="20" oninput="calculate()"><span class="u">m³</span></div>
+            <div class="hint">不確定可填 0（最保守）</div>
+            <div class="err" id="err-pipeVolume"></div>
+          </div>
+          <div class="field">
+            <label for="pipeUsePct">可利用比例</label>
+            <div class="iw"><input type="number" id="pipeUsePct" step="any" min="0" max="100" value="50" oninput="calculate()"><span class="u">%</span></div>
+            <div class="hint">回水側已是溫水，通常只計供水側 ≈ 50%</div>
+            <div class="err" id="err-pipeUsePct"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card sec">
+        <div class="sec-h"><span class="no">4</span><div><h2>水槽選型</h2><p>單槽規格與保守程度</p></div></div>
+        <div class="grid">
+          <div class="field full">
+            <label for="moduleSize">單槽有效容積 <i class="req">*</i></label>
+            <div class="iw"><input type="number" id="moduleSize" step="any" min="0" value="15" oninput="calculate()"><span class="u">m³／槽</span></div>
+            <div class="chips" id="sizeChips"></div>
+            <div class="hint">≤100 m³ 多為工廠預製槽；150 m³ 以上通常是現場組立的立式鋼槽。也可直接點右側「規格比較」的任一列套用</div>
+            <div class="err" id="err-moduleSize"></div>
+          </div>
+          <div class="field full">
+            <label for="hdRatio">高徑比 H/D</label>
+            <div class="iw"><input type="number" id="hdRatio" step="any" min="0.3" max="6" value="2" oninput="calculate()"><span class="u">高 ÷ 直徑</span></div>
+            <div class="chips"><button type="button" class="chip" onclick="setVal('hdRatio',1)">1（矮胖）</button><button type="button" class="chip" onclick="setVal('hdRatio',2)">2</button><button type="button" class="chip" onclick="setVal('hdRatio',3)">3（細高）</button></div>
+            <div class="note" id="sizeReadout"></div>
+            <div class="err" id="err-hdRatio"></div>
+          </div>
+          <div class="field">
+            <label for="tankEffPct">水槽有效利用率</label>
+            <div class="iw"><input type="number" id="tankEffPct" step="any" min="0" max="100" value="90" oninput="calculate()"><span class="u">%</span></div>
+            <div class="hint">扣除混水層與死水區，分層式約 85–90%</div>
+            <div class="err" id="err-tankEffPct"></div>
+          </div>
+          <div class="field">
+            <label for="marginPct">安全餘裕</label>
+            <div class="iw"><input type="number" id="marginPct" step="any" min="0" value="10" oninput="calculate()"><span class="u">%</span></div>
+            <div class="hint">常用 10–20%</div>
+            <div class="err" id="err-marginPct"></div>
+          </div>
+        </div>
+      </div>
+
+      <details class="card adv" id="advBox">
+        <summary>進階設定 <span class="sum" id="advSummary"></span></summary>
+        <div class="adv-body">
+          <div class="field">
+            <label>載熱流體</label>
+            <div class="radios">
+              <label><input type="radio" name="fluid" value="water" checked onchange="calculate()"> 水</label>
+              <label><input type="radio" name="fluid" value="eg30" onchange="calculate()"> 乙二醇 30%</label>
+              <label><input type="radio" name="fluid" value="pg30" onchange="calculate()"> 丙二醇 30%</label>
+              <label><input type="radio" name="fluid" value="custom" onchange="calculate()"> 自訂</label>
+            </div>
+          </div>
+          <div class="grid" id="customFluidBox" hidden>
+            <div class="field">
+              <label for="fluidCp">比熱 cp</label>
+              <div class="iw"><input type="number" id="fluidCp" step="any" value="4.186" oninput="calculate()"><span class="u">kJ/kg·K</span></div>
+              <div class="err" id="err-fluidCp"></div>
+            </div>
+            <div class="field">
+              <label for="fluidRho">密度 ρ</label>
+              <div class="iw"><input type="number" id="fluidRho" step="any" value="1000" oninput="calculate()"><span class="u">kg/m³</span></div>
+              <div class="err" id="err-fluidRho"></div>
+            </div>
+          </div>
+          <div class="field">
+            <label for="minVolIndex">防短循環最小系統水量</label>
+            <div class="iw"><input type="number" id="minVolIndex" step="any" min="0" value="6.5" oninput="calculate()"><span class="u">L / kW（每台冰機）</span></div>
+            <div class="hint">舒適空調常用 3.2–6.5 L/kW（3–6 gal/RT）；機房／製程 6.5–10.8 L/kW。以冰機原廠要求為準，填 0 可略過此檢核。</div>
+            <div class="err" id="err-minVolIndex"></div>
+          </div>
+        </div>
+      </details>
+    </section>
+
+    <aside class="results" id="results">
+      <div class="card verdict" id="verdict">
+        <div class="v-head">
+          <div class="v-icon" id="verdictIcon">✓</div>
+          <div><div class="v-title" id="verdictTitle"></div><div class="v-sub" id="verdictSub"></div></div>
+        </div>
+        <div class="v-list" id="verdictList"></div>
+      </div>
+
+      <div class="card kpis">
+        <div class="kpi"><div class="kpi-l">建議配置</div><div class="kpi-v" id="kpiPlan">—</div><div class="kpi-s" id="kpiPlanSub"></div></div>
+        <div class="kpi"><div class="kpi-l" id="kpiVolLabel">水槽總容積</div><div class="kpi-v" id="kpiVol">—</div><div class="kpi-s" id="kpiVolSub"></div></div>
+        <div class="kpi"><div class="kpi-l">實際可撐時間</div><div class="kpi-v" id="kpiTime">—</div><div class="kpi-s" id="kpiTimeSub"></div></div>
+      </div>
+
+      <div class="card panel viz">
+        <div class="panel-h"><h3>可撐多久</h3><span id="tbarCaption"></span></div>
+        <div class="tbar" id="tbar"></div>
+        <div class="tanks" id="tankRow"></div>
+        <div class="legend" id="tbarLegend"></div>
+      </div>
+
+      <div class="card panel checks-card">
+        <div class="panel-h"><h3>檢核項目</h3><span id="checkSummary"></span></div>
+        <ul class="checks" id="checkList"></ul>
+      </div>
+
+      <div class="card panel opts-card">
+        <div class="panel-h"><h3>單槽規格比較</h3><span>點一列即套用</span></div>
+        <div class="tbl-wrap"><table class="opts">
+          <thead><tr id="optsHead"></tr></thead>
+          <tbody id="optsBody"></tbody>
+        </table></div>
+      </div>
+
+      <details class="card more">
+        <summary>計算過程</summary>
+        <ol class="steps" id="calcSteps"></ol>
+      </details>
+
+      <details class="card more">
+        <summary>計算假設與說明</summary>
+        <div class="notes">
+          <div>1. 能量平衡：緩衝期間負載熱量全部由冷水吸收，V = P × t ÷ (ρ · cp · ΔT)。水在 5–20°C 時 ρ ≈ 1000 kg/m³、cp ≈ 4.186 kJ/kg·K（即 1 kW ≈ 860 kcal/h）。</div>
+          <div>2. 停機時回水管內已是溫水，只有供水側的冷水能再吸熱，所以管路水量要乘上可利用比例（預設 50%）。</div>
+          <div>3. 有效利用率：分層（置換）式水槽在冷溫水交界會有混水層，底部與頂部也有死水，實際能送出的冷水約為容積的 85–90%。完全混合式水槽建議把 ΔT 改成「允許的供水溫升」。</div>
+          <div>4. 緩衝負載應包含 IT 熱負載，以及停電期間由 UPS 供電的泵、CRAH/CDU 風扇所產生的熱。</div>
+          <div>5. 「逐台獨立」模式下，所有數值先算單台，全廠總量 = 單台 × 台數。「共用集管」模式則直接以全廠總負載計算。</div>
+          <div>6. 防短循環水量為經驗值，只作檢核，不影響水槽選型；請以冰機原廠的最小系統水量要求為準。</div>
+        </div>
+      </details>
+    </aside>
+  </div>
+
+  <button type="button" class="to-results" onclick="document.getElementById('results').scrollIntoView({ behavior: 'smooth' })">看結果 ↓</button>
+
+<script>
+'use strict';
+
+/* ===================== 計算引擎 ===================== */
+const BufferTankEngine = (() => {
+  const FLUIDS = {
+    water: { name: '水', cp: 4.186, rho: 1000 },
+    eg30: { name: '乙二醇 30%', cp: 3.66, rho: 1045 },
+    pg30: { name: '丙二醇 30%', cp: 3.87, rho: 1030 }
+  };
+  // 小型預製槽 5–100 m³；大型現場組立立式鋼槽 150–2,000 m³
+  const STD_SIZES = [5, 10, 15, 20, 25, 30, 40, 50, 60, 80, 100, 150, 200, 300, 400, 500, 800, 1000, 1500, 2000];
+  const FLOOR_HEIGHT = 3.5; // m，換算「幾層樓高」用
+  const MAX_PREFERRED_COUNT = 8;
+
+  function resolveFluid(raw) {
+    if (raw.fluid === 'custom') return { name: '自訂', cp: raw.cp, rho: raw.rho };
+    return FLUIDS[raw.fluid] || FLUIDS.water;
+  }
+
+  function validate(raw) {
+    const e = {};
+    const need = (id, v, cond, msg) => { if (!Number.isFinite(v)) e[id] = '必填'; else if (!cond(v)) e[id] = msg; };
+    need('load', raw.load, v => v > 0, '必須大於 0');
+    need('chillerN', raw.chillerN, v => v >= 1 && Number.isInteger(v), '請填 1 以上的整數');
+    need('durationMin', raw.durationMin, v => v > 0, '必須大於 0');
+    need('deltaT', raw.deltaT, v => v > 0, '必須大於 0');
+    need('pipeVolume', raw.pipeVolume, v => v >= 0, '不可為負值');
+    need('pipeUsePct', raw.pipeUsePct, v => v >= 0 && v <= 100, '請填 0–100');
+    need('moduleSize', raw.moduleSize, v => v > 0, '必須大於 0');
+    need('tankEffPct', raw.tankEffPct, v => v >= 10 && v <= 100, '請填 10–100');
+    need('marginPct', raw.marginPct, v => v >= 0 && v <= 200, '請填 0–200');
+    need('minVolIndex', raw.minVolIndex, v => v >= 0, '不可為負值');
+    need('hdRatio', raw.hdRatio, v => v >= 0.3 && v <= 6, '請填 0.3–6');
+    if (raw.fluid === 'custom') {
+      need('fluidCp', raw.cp, v => v > 0, '必須大於 0');
+      need('fluidRho', raw.rho, v => v > 0, '必須大於 0');
+    }
+    return e;
+  }
+
+  // 立式圓筒槽外形：V = π/4 · D² · H，H = (H/D) · D
+  function tankDims(V, hd) {
+    const D = Math.cbrt(4 * V / (Math.PI * hd));
+    const H = hd * D;
+    return { D, H, floors: H / FLOOR_HEIGHT };
+  }
+
+  // 依目標容積算出某單槽規格的配置
+  function sizeOption(s, ctx) {
+    const count = ctx.targetVol > 1e-9 ? Math.ceil(ctx.targetVol / s - 1e-9) : 0;
+    const installed = count * s;
+    return {
+      size: s, count, installed, dims: tankDims(s, ctx.hd),
+      minutes: (ctx.effPipe + installed * ctx.eff) * ctx.minPerM3,
+      overPct: ctx.tankReq > 0 ? (installed / ctx.tankReq - 1) * 100 : 0
+    };
+  }
+
+  function calculate(raw) {
+    const errors = validate(raw);
+    if (Object.keys(errors).length) return { valid: false, errors };
+
+    const fluid = resolveFluid(raw);
+    const rc = fluid.rho * fluid.cp;                 // kJ/m³·K
+    const P = raw.load, t = raw.durationMin, dT = raw.deltaT;
+    const eff = raw.tankEffPct / 100;
+    const isolated = raw.mode === 'isolated';
+    const N = raw.chillerN;
+
+    const energyKJ = P * t * 60;
+    const grossVol = energyKJ / (rc * dT);           // 需要的「有效冷水」m³
+    const effPipe = raw.pipeVolume * raw.pipeUsePct / 100;
+    const netVol = Math.max(0, grossVol - effPipe);  // 水槽要提供的有效冷水
+    const tankReq = netVol / eff;                    // 換算成水槽實際容積
+    const targetVol = tankReq * (1 + raw.marginPct / 100);
+    const minPerM3 = rc * dT / (P * 60);             // 每 m³ 有效冷水可撐幾分鐘
+
+    const ctx = { targetVol, tankReq, effPipe, eff, minPerM3, hd: raw.hdRatio };
+    const chosen = sizeOption(raw.moduleSize, ctx);
+    const pipeMinutes = effPipe * minPerM3;
+    const tankMinutes = chosen.installed * eff * minPerM3;
+    const oneDownMinutes = chosen.count >= 1 ? pipeMinutes + (chosen.count - 1) * raw.moduleSize * eff * minPerM3 : null;
+
+    // 規格比較：標準規格＋目前規格，數量 1–20 槽；1 槽就夠的規格只留最小那個
+    const sizes = [...new Set([...STD_SIZES, raw.moduleSize])].sort((a, b) => a - b);
+    let singleShown = false;
+    const options = targetVol > 1e-9 ? sizes.map(s => sizeOption(s, ctx)).filter(o => {
+      if (o.size === raw.moduleSize) { if (o.count === 1) singleShown = true; return true; }
+      if (o.count < 1 || o.count > 20) return false;
+      if (o.count === 1) { if (singleShown) return false; singleShown = true; }
+      return true;
+    }) : [];
+    // 建議規格：8 槽以內，總容積越小越好，但每多 1 槽（超過 2 槽）視為多 4% 容積的代價（閥件、配管、基礎）
+    const score = o => o.installed * (1 + 0.04 * Math.max(0, o.count - 2));
+    let best = null;
+    const pool = options.filter(o => o.count >= 1 && o.count <= MAX_PREFERRED_COUNT);
+    (pool.length ? pool : options).forEach(o => {
+      if (!best || score(o) < score(best) - 1e-9 || (Math.abs(score(o) - score(best)) < 1e-9 && o.count < best.count)) best = o;
+    });
+
+    const chillerKW = isolated ? P : P / N;
+    const minSysVol = chillerKW * raw.minVolIndex / 1000;
+    const sysVol = raw.pipeVolume + chosen.installed;
+    const mult = isolated ? N : 1;
+
+    return {
+      valid: true, raw, fluid, rc, isolated, N, mult,
+      energyKJ, grossVol, effPipe, netVol, tankReq, targetVol, minPerM3,
+      count: chosen.count, installed: chosen.installed, overPct: chosen.overPct, dims: chosen.dims,
+      pipeMinutes, tankMinutes, achievedMinutes: pipeMinutes + tankMinutes, oneDownMinutes,
+      noTankNeeded: netVol <= 1e-9,
+      chillerKW, minSysVol, sysVol,
+      plantCount: chosen.count * mult, plantInstalled: chosen.installed * mult, plantTarget: targetVol * mult,
+      options, best
+    };
+  }
+
+  return { FLUIDS, STD_SIZES, MAX_PREFERRED_COUNT, FLOOR_HEIGHT, tankDims, validate, calculate };
+})();
+
+/* ===================== 介面 ===================== */
+const AUTOSAVE_KEY = 'buffer_tank_v2_inputs';
+const NUM_FIELDS = ['load', 'chillerN', 'durationMin', 'deltaT', 'pipeVolume', 'pipeUsePct', 'moduleSize', 'hdRatio', 'tankEffPct', 'marginPct', 'minVolIndex', 'fluidCp', 'fluidRho'];
+const TEXT_FIELDS = ['projectName', 'dataSource', 'tankMode'];
+const DEFAULTS = { load: 4000, chillerN: 4, durationMin: 6, deltaT: 5, pipeVolume: 20, pipeUsePct: 50, moduleSize: 15, hdRatio: 2, tankEffPct: 90, marginPct: 10, minVolIndex: 6.5, fluidCp: 4.186, fluidRho: 1000, tankMode: 'shared', fluid: 'water', projectName: '', dataSource: '' };
+const PRESETS = {
+  small:  { load: 800,  chillerN: 2, durationMin: 5, deltaT: 5, pipeVolume: 8,  moduleSize: 10, marginPct: 10 },
+  medium: { load: 2500, chillerN: 3, durationMin: 6, deltaT: 5, pipeVolume: 15, moduleSize: 15, marginPct: 10 },
+  large:  { load: 6000, chillerN: 6, durationMin: 6, deltaT: 5, pipeVolume: 30, moduleSize: 25, marginPct: 15 },
+  xlarge: { load: 20000, chillerN: 8, durationMin: 15, deltaT: 6, pipeVolume: 150, moduleSize: 500, marginPct: 15 }
+};
+const PRESET_NAMES = { small: '小型機房', medium: '中型 AIDC', large: '大型 AIDC', xlarge: '超大型園區（現場組立大槽）' };
+const SIZE_CHIPS = [10, 20, 50, 100, 200, 500, 1000];
+const MODE_TEXT = {
+  shared: { desc: '全廠冰機共用一組水槽，負載填全廠總冷負載，算出的是全廠水槽總量。', load: '系統總冷負載', loadHint: '緩衝期間仍要被帶走的全廠熱量', n: '冰機運轉台數', nHint: '用於防短循環水量檢核', pipe: '系統管路總水量' },
+  isolated: { desc: '每台冰機各自配水槽，負載填單台冷負載，先算單台再乘以台數。', load: '單台冰機冷負載', loadHint: '單台冰機在緩衝期間要帶走的熱量', n: '冰機台數', nHint: '全廠總量 = 單台 × 台數', pipe: '單台迴路管路水量' }
+};
+
+let lastResult = null;
+const $ = id => document.getElementById(id);
+const setText = (id, v) => { const el = $(id); if (el) el.textContent = v; };
+const f0 = n => Number(n).toLocaleString('en-US', { maximumFractionDigits: 0 });
+const f1 = n => Number(n).toLocaleString('en-US', { minimumFractionDigits: 1, maximumFractionDigits: 1 });
+const fx = (n, d = 2) => Number(n).toLocaleString('en-US', { maximumFractionDigits: d });
+const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+
+function getFluidChoice() { const r = document.querySelector('input[name="fluid"]:checked'); return r ? r.value : 'water'; }
+
+function readRaw() {
+  const num = id => { const v = $(id).value.trim(); return v === '' ? NaN : Number(v); };
+  return {
+    mode: $('tankMode').value === 'isolated' ? 'isolated' : 'shared',
+    load: num('load'), chillerN: num('chillerN'), durationMin: num('durationMin'), deltaT: num('deltaT'),
+    pipeVolume: num('pipeVolume'), pipeUsePct: num('pipeUsePct'), moduleSize: num('moduleSize'), hdRatio: num('hdRatio'),
+    tankEffPct: num('tankEffPct'), marginPct: num('marginPct'), minVolIndex: num('minVolIndex'),
+    fluid: getFluidChoice(), cp: num('fluidCp'), rho: num('fluidRho')
+  };
+}
+
+function setVal(id, v) { $(id).value = v; calculate(); }
+
+function setTankMode(mode) { $('tankMode').value = mode; calculate(); }
+
+function applyPreset(name) {
+  const p = PRESETS[name]; if (!p) return;
+  Object.keys(p).forEach(k => { $(k).value = p[k]; });
+  calculate();
+  toast('已套用範例：' + PRESET_NAMES[name]);
+}
+
+function resetToDefaults() {
+  if (!confirm('要把所有輸入恢復成預設值嗎？')) return;
+  applyValues(DEFAULTS);
+  calculate();
+}
+
+function applyValues(v) {
+  NUM_FIELDS.concat(TEXT_FIELDS).forEach(id => { if (v[id] !== undefined && $(id)) $(id).value = v[id]; });
+  const r = document.querySelector(`input[name="fluid"][value="${v.fluid || 'water'}"]`);
+  if (r) r.checked = true;
+}
+
+function syncModeUI(mode) {
+  const t = MODE_TEXT[mode];
+  $('segShared').classList.toggle('on', mode === 'shared');
+  $('segIsolated').classList.toggle('on', mode === 'isolated');
+  setText('modeDesc', t.desc); setText('lblLoad', t.load); setText('hintLoad', t.loadHint);
+  setText('lblN', t.n); setText('hintN', t.nHint); setText('lblPipe', t.pipe);
+}
+
+function renderSizeChips(size) {
+  $('sizeChips').innerHTML = SIZE_CHIPS.map(s => `<button type="button" class="chip${s === size ? ' on' : ''}" onclick="setVal('moduleSize',${s})">${s} m³</button>`).join('');
+}
+
+function showErrors(errors) {
+  NUM_FIELDS.forEach(id => {
+    const msg = errors[id];
+    $(id).classList.toggle('is-invalid', !!msg);
+    const el = $('err-' + id);
+    if (el) { el.textContent = msg || ''; el.classList.toggle('show', !!msg); }
+  });
+}
+
+const FIELD_NAMES = { load: '冷負載', chillerN: '冰機台數', durationMin: '緩衝時間', deltaT: '可利用溫差', pipeVolume: '管路水量', pipeUsePct: '管路可利用比例', moduleSize: '單槽容積', hdRatio: '高徑比', tankEffPct: '有效利用率', marginPct: '安全餘裕', minVolIndex: '最小系統水量', fluidCp: '比熱', fluidRho: '密度' };
+
+function calculate() {
+  const raw = readRaw();
+  syncModeUI(raw.mode);
+  $('customFluidBox').hidden = raw.fluid !== 'custom';
+  renderSizeChips(raw.moduleSize);
+  const result = BufferTankEngine.calculate(raw);
+  showErrors(result.valid ? {} : result.errors);
+  if (result.errors && (result.errors.fluidCp || result.errors.fluidRho || result.errors.minVolIndex)) $('advBox').open = true;
+  render(result);
+  saveInputs();
+  return result;
+}
+
+/* ---------- 檢核 ---------- */
+function buildChecks(r) {
+  const c = [];
+  const raw = r.raw;
+  const t = raw.durationMin;
+  c.push({ id: 'chk-duration', s: t >= 3 && t <= 15 ? 'pass' : 'warn', t: '緩衝時間',
+    v: `${fx(t, 1)} 分鐘`, d: t < 3 ? '低於常見 3 分鐘，請確認冰機能否在此時間內重啟並滿載' : t > 15 ? '超過常見 15 分鐘，水槽會很大，可考慮快速重啟冰機或分段供冷' : '在常見 3–15 分鐘範圍內' });
+  const dT = raw.deltaT;
+  c.push({ id: 'chk-dt', s: dT >= 3 && dT <= 10 ? 'pass' : 'warn', t: '可利用溫差',
+    v: `ΔT ${fx(dT, 1)} °C`, d: dT < 3 ? '溫差太小，水槽會非常大，請確認系統設計溫差' : dT > 10 ? '溫差偏大，請確認末端在此供水溫度下仍能散熱' : '在常見 3–10 °C 範圍內' });
+
+  if (r.noTankNeeded) {
+    c.push({ id: 'chk-time', s: 'pass', t: '管路水量已足夠', v: `管路可撐 ${f1(r.pipeMinutes)} 分鐘（目標 ${fx(t, 1)} 分鐘）`, d: '不需另設緩衝水槽；但管路水量通常是估算值，建議再確認' });
+  } else {
+    c.push({ id: 'chk-time', s: r.achievedMinutes + 1e-9 >= t ? 'pass' : 'fail', t: '可撐時間',
+      v: `全部水槽可撐 ${f1(r.achievedMinutes)} 分鐘（目標 ${fx(t, 1)} 分鐘）`, d: `管路 ${f1(r.pipeMinutes)} 分鐘＋水槽 ${f1(r.tankMinutes)} 分鐘` });
+    const od = r.oneDownMinutes;
+    c.push({ id: 'chk-onedown', s: od + 1e-9 >= t ? 'pass' : 'warn', t: '任一槽維修時',
+      v: `剩 ${f1(od)} 分鐘（目標 ${fx(t, 1)} 分鐘）`,
+      d: od + 1e-9 >= t ? '單槽隔離維修時仍可滿足緩衝需求' : r.count === 1 ? '只有 1 槽，維修時完全沒有緩衝；若要可維護性，建議改成 2 槽以上或加 1 槽備用' : '維修期間緩衝不足；若要求可同時維護，建議再加 1 槽' });
+    c.push({ id: 'chk-count', s: r.count <= BufferTankEngine.MAX_PREFERRED_COUNT ? 'pass' : 'warn', t: '水槽數量',
+      v: `${r.count} 槽 × ${fx(raw.moduleSize)} m³${r.isolated ? `（每台），全廠 ${r.plantCount} 槽` : ''}`,
+      d: r.count <= BufferTankEngine.MAX_PREFERRED_COUNT ? `比需求多 ${f0(r.overPct)}%（含安全餘裕 ${fx(raw.marginPct)}% 與進位）` : '數量偏多，閥件與配管複雜，建議放大單槽容積' });
+  }
+
+  if (raw.minVolIndex > 0) {
+    const ok = r.sysVol + 1e-9 >= r.minSysVol;
+    c.push({ id: 'chk-minvol', s: ok ? 'pass' : 'warn', t: '防短循環水量',
+      v: `系統水量 ${f1(r.sysVol)} m³ ／ 最少需 ${f1(r.minSysVol)} m³`,
+      d: `以每台冰機 ${f0(r.chillerKW)} kW × ${fx(raw.minVolIndex)} L/kW 估算` + (ok ? '' : '；水量不足，低載時冰機可能頻繁啟停') });
+  }
+  if (!r.noTankNeeded) {
+    const d = r.dims;
+    const hd = raw.hdRatio;
+    c.push({ id: 'chk-shape', s: hd < 1 ? 'warn' : 'pass', t: '水槽外形',
+      v: `單槽 Ø${f1(d.D)} m × 高 ${f1(d.H)} m（約 ${fx(d.floors, 1)} 層樓）`,
+      d: (hd < 1 ? '高徑比小於 1，冷溫水不易分層，有效利用率可能達不到設定值；' : '') +
+        (raw.moduleSize > 100 ? '大於 100 m³ 通常為現場組立鋼槽，需另做基礎、耐震與保溫設計' : '可採工廠預製槽') });
+  }
+  if (raw.marginPct > 30) c.push({ id: 'chk-margin', s: 'warn', t: '安全餘裕偏高', v: `${fx(raw.marginPct)}%`, d: '餘裕超過 30%，請確認是否已在負載或時間中重複保守' });
+  if (raw.pipeUsePct > 60 && raw.pipeVolume > 0) c.push({ id: 'chk-pipe', s: 'warn', t: '管路可利用比例偏高', v: `${fx(raw.pipeUsePct)}%`, d: '停機時回水側已是溫水，超過 50–60% 可能高估管路緩衝' });
+  return c;
+}
+
+/* ---------- 計算過程 ---------- */
+function buildSteps(r) {
+  const raw = r.raw, fl = r.fluid;
+  const s = [
+    ['緩衝期間要吸收的熱量', `E = P × t × 60 = ${f0(raw.load)} kW × ${fx(raw.durationMin)} min × 60 = ${f0(r.energyKJ)} kJ`],
+    ['需要的有效冷水量', `V = E ÷ (ρ·cp·ΔT) = ${f0(r.energyKJ)} ÷ (${f0(fl.rho)} × ${fx(fl.cp, 3)} × ${fx(raw.deltaT)}) = ${f1(r.grossVol)} m³`],
+    ['管路可抵扣', `${fx(raw.pipeVolume)} m³ × ${fx(raw.pipeUsePct)}% = ${f1(r.effPipe)} m³`],
+    ['水槽要提供的冷水', `max(${f1(r.grossVol)} − ${f1(r.effPipe)}, 0) = ${f1(r.netVol)} m³`],
+    ['換算水槽容積（有效利用率）', `${f1(r.netVol)} ÷ ${fx(raw.tankEffPct)}% = ${f1(r.tankReq)} m³`],
+    ['加安全餘裕', `${f1(r.tankReq)} × (1 + ${fx(raw.marginPct)}%) = ${f1(r.targetVol)} m³`],
+    ['水槽數量', `⌈${f1(r.targetVol)} ÷ ${fx(raw.moduleSize)}⌉ = ${r.count} 槽 → ${fx(r.installed, 1)} m³`],
+    ['單槽外形（立式圓筒）', `D = ∛(4V ÷ (π × H/D)) = ∛(4 × ${fx(raw.moduleSize)} ÷ (π × ${fx(raw.hdRatio)})) = ${fx(r.dims.D, 2)} m，H = ${fx(raw.hdRatio)} × D = ${fx(r.dims.H, 2)} m`],
+    ['實際可撐時間', `(${f1(r.effPipe)} + ${fx(r.installed, 1)} × ${fx(raw.tankEffPct)}%) × ${f0(fl.rho)} × ${fx(fl.cp, 3)} × ${fx(raw.deltaT)} ÷ ${f0(raw.load)} ÷ 60 = ${f1(r.achievedMinutes)} 分鐘`]
+  ];
+  if (r.isolated) s.push(['全廠合計', `${r.count} 槽 × ${r.N} 台 = ${r.plantCount} 槽，${fx(r.plantInstalled, 1)} m³`]);
+  return s;
+}
+
+/* ---------- 繪圖 ---------- */
+function renderTimeBar(r) {
+  const t = r.raw.durationMin;
+  const maxM = Math.max(r.achievedMinutes, t) * 1.12 || 1;
+  const pct = m => Math.min(100, m / maxM * 100);
+  const pW = pct(r.pipeMinutes), tW = pct(r.tankMinutes);
+  let h = '';
+  if (pW > 0) h += `<div class="tbar-seg pipe${tW <= 0 ? ' round-all' : ''}" style="width:${pW}%">${pW > 12 ? `<span>管路 ${f1(r.pipeMinutes)}′</span>` : ''}</div>`;
+  if (tW > 0) h += `<div class="tbar-seg tank ${pW > 0 ? 'round-r' : 'round-all'}" style="left:${pW}%;width:${tW}%">${tW > 14 ? `<span>水槽 ${f1(r.tankMinutes)}′</span>` : ''}</div>`;
+  h += `<div class="tbar-mk" style="left:${pct(t)}%"><label>目標 ${fx(t, 1)} 分</label></div>`;
+  if (r.oneDownMinutes !== null && r.count >= 1) h += `<div class="tbar-mk down" style="left:${pct(r.oneDownMinutes)}%"><label>1 槽維修 ${f1(r.oneDownMinutes)} 分</label></div>`;
+  $('tbar').innerHTML = h;
+  setText('tbarCaption', r.noTankNeeded ? '管路水量已足夠' : `共 ${f1(r.achievedMinutes)} 分鐘`);
+
+  if (r.noTankNeeded) { $('tankRow').innerHTML = '<div class="empty">不需另設水槽</div>'; }
+  else {
+    // 依實際尺寸等比例繪製，旁邊畫樓層線（每層 3.5 m）
+    const d = r.dims, FH = BufferTankEngine.FLOOR_HEIGHT;
+    const floors = Math.max(1, Math.ceil(d.H / FH));
+    const sc = Math.min(16, 130 / (floors * FH));          // px / m
+    const w = Math.max(10, d.D * sc), h = d.H * sc;
+    const show = Math.min(r.count, Math.max(1, Math.floor(560 / (w + 6))), 16);
+    let fl = '';
+    for (let k = 1; k <= floors; k++) fl += `<div class="floor" style="bottom:${k * FH * sc}px"><span>${k}F</span></div>`;
+    let tk = '';
+    for (let i = 0; i < show; i++) tk += `<div class="tank" style="width:${w}px;height:${h}px">${w >= 34 ? fx(r.raw.moduleSize) : ''}</div>`;
+    if (r.count > show) tk += `<span class="tank-more">… 共 ${r.count} 槽</span>`;
+    if (r.isolated) tk += `<span class="tank-x">× ${r.N} 台</span>`;
+    $('tankRow').innerHTML = `<div class="tank-stage" style="height:${floors * FH * sc + 2}px">${fl}${tk}</div>` +
+      `<div class="tank-cap">單槽約 <b>Ø${f1(d.D)} m × 高 ${f1(d.H)} m</b>（約 ${fx(d.floors, 1)} 層樓，每層以 ${FH} m 計）</div>`;
+  }
+  $('tbarLegend').innerHTML = `<span><i style="background:var(--pipe)"></i>管路可利用 <b>${f1(r.effPipe)}</b> m³</span>` +
+    (r.noTankNeeded ? '' : `<span><i style="background:var(--water)"></i>水槽有效 <b>${f1(r.installed * r.raw.tankEffPct / 100)}</b> m³（容積 ${fx(r.installed, 1)} m³）</span>`) +
+    `<span>每 m³ 冷水可撐 <b>${fx(r.minPerM3, 3)}</b> 分鐘</span>`;
+}
+
+function renderOptions(r) {
+  const iso = r.isolated;
+  $('optsHead').innerHTML = `<th>單槽容積</th><th>數量</th><th>單槽外形 Ø × 高</th><th>總容積</th><th>可撐時間</th><th>超出需求</th>${iso ? '<th>全廠槽數</th>' : ''}<th>評估</th>`;
+  if (!r.options.length) { $('optsBody').innerHTML = `<tr><td colspan="${iso ? 8 : 7}" class="empty">不需另設水槽</td></tr>`; return; }
+  $('optsBody').innerHTML = r.options.map(o => {
+    const cur = Math.abs(o.size - r.raw.moduleSize) < 1e-9;
+    const isBest = r.best && o.size === r.best.size;
+    let tag = '<span class="tag plain">可行</span>';
+    if (isBest) tag = '<span class="tag best">建議</span>';
+    else if (o.count === 1) tag = '<span class="tag warn">單槽無法維修</span>';
+    else if (o.count > BufferTankEngine.MAX_PREFERRED_COUNT) tag = '<span class="tag warn">數量多</span>';
+    else if (o.overPct > 50) tag = '<span class="tag warn">偏大</span>';
+    return `<tr class="${cur ? 'cur' : ''}" onclick="setVal('moduleSize',${o.size})"><td>${fx(o.size)} m³${cur ? '（目前）' : ''}</td><td>${o.count}</td><td>${f1(o.dims.D)} × ${f1(o.dims.H)} m</td><td>${fx(o.installed, 1)} m³</td><td>${f1(o.minutes)} 分</td><td>+${f0(o.overPct)}%</td>${iso ? `<td>${o.count * r.N}</td>` : ''}<td>${tag}</td></tr>`;
+  }).join('');
+}
+
+function render(result) {
+  lastResult = result;
+  const resEl = $('results');
+  const V = $('verdict');
+  if (!result.valid) {
+    resEl.classList.add('is-stale');
+    V.className = 'card verdict fail'; setText('verdictIcon', '✕');
+    setText('verdictTitle', '請先修正輸入');
+    setText('verdictSub', '下方結果為上一次有效的計算，僅供參考');
+    $('verdictList').innerHTML = Object.keys(result.errors).map(k => `<div><a onclick="focusField('${k}')">${FIELD_NAMES[k] || k}</a>：${result.errors[k]}</div>`).join('');
+    return;
+  }
+  resEl.classList.remove('is-stale');
+  const r = result, raw = r.raw;
+  const checks = buildChecks(r);
+  const fails = checks.filter(c => c.s === 'fail'), warns = checks.filter(c => c.s === 'warn');
+
+  // 結論
+  let cls, icon, title;
+  if (fails.length) { cls = 'fail'; icon = '✕'; title = '容量不足'; }
+  else if (r.noTankNeeded) { cls = 'info'; icon = 'i'; title = '不需另設緩衝水槽'; }
+  else if (warns.length) { cls = 'warn'; icon = '!'; title = `設計可行，有 ${warns.length} 項需確認`; }
+  else { cls = 'pass'; icon = '✓'; title = '設計可行'; }
+  V.className = 'card verdict ' + cls; setText('verdictIcon', icon); setText('verdictTitle', title);
+  setText('verdictSub', r.noTankNeeded ? `管路冷水即可撐 ${f1(r.pipeMinutes)} 分鐘` :
+    `${r.isolated ? '每台冰機' : '全廠'}配 ${r.count} 槽 × ${fx(raw.moduleSize)} m³，可撐 ${f1(r.achievedMinutes)} 分鐘（目標 ${fx(raw.durationMin, 1)} 分鐘）`);
+  $('verdictList').innerHTML = fails.concat(warns).map(c => `<div><a onclick="focusCheck('${c.id}')">${c.t}</a>：${esc(c.v)}</div>`).join('');
+
+  // KPI
+  if (r.noTankNeeded) {
+    $('kpiPlan').innerHTML = '不需設'; setText('kpiPlanSub', '管路水量已足夠');
+  } else {
+    $('kpiPlan').innerHTML = `${r.count}<small>槽 × ${fx(raw.moduleSize)} m³</small>`;
+    setText('kpiPlanSub', r.isolated ? `每台冰機；全廠 ${r.plantCount} 槽` : `建議規格：${r.best ? `${r.best.count} × ${fx(r.best.size)} m³` : '—'}`);
+  }
+  setText('kpiVolLabel', r.isolated ? '全廠水槽總容積' : '水槽總容積');
+  $('kpiVol').innerHTML = `${fx(r.plantInstalled, 1)}<small>m³</small>`;
+  setText('kpiVolSub', `需求 ${f1(r.plantTarget)} m³（含 ${fx(raw.marginPct)}% 餘裕）`);
+  $('kpiTime').innerHTML = `${f1(r.achievedMinutes)}<small>分鐘</small>`;
+  setText('kpiTimeSub', `目標 ${fx(raw.durationMin, 1)} 分鐘` + (r.oneDownMinutes !== null && !r.noTankNeeded ? `；1 槽維修時 ${f1(r.oneDownMinutes)} 分` : ''));
+
+  renderTimeBar(r);
+
+  const ic = { pass: '✓', warn: '!', fail: '✕', info: 'i' };
+  $('checkList').innerHTML = checks.map(c => `<li class="chk ${c.s}" id="${c.id}"><span class="dot">${ic[c.s]}</span><div><div class="chk-t">${c.t}</div><div class="chk-v">${esc(c.v)}</div><div class="chk-d">${esc(c.d)}</div></div></li>`).join('');
+  setText('checkSummary', `${checks.length - warns.length - fails.length} 通過 · ${warns.length} 需確認${fails.length ? ` · ${fails.length} 不合格` : ''}`);
+
+  renderOptions(r);
+  const d = r.dims;
+  $('sizeReadout').innerHTML = `${fx(raw.moduleSize)} m³ 單槽約 <b>Ø${f1(d.D)} m × 高 ${f1(d.H)} m</b>，約 ${fx(d.floors, 1)} 層樓高。分層式水槽越高越好分層，常見 H/D 2–3。`;
+  $('calcSteps').innerHTML = buildSteps(r).map((s, i) => `<li><span class="n">${i + 1}</span><div><div class="st-t">${s[0]}</div><code>${s[1]}</code></div></li>`).join('');
+
+  const fl = r.fluid;
+  setText('advSummary', `${fl.name} · 最小水量 ${fx(raw.minVolIndex)} L/kW`);
+}
+
+function focusCheck(id) {
+  const el = $(id); if (!el) return;
+  el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  el.classList.add('flash'); setTimeout(() => el.classList.remove('flash'), 1200);
+}
+function focusField(id) {
+  const el = $(id); if (!el) return;
+  if (el.closest('details')) el.closest('details').open = true;
+  el.scrollIntoView({ behavior: 'smooth', block: 'center' }); el.focus();
+}
+
+function toast(msg) {
+  const el = $('toastMsg'); el.textContent = msg; el.classList.add('show');
+  clearTimeout(toast._t); toast._t = setTimeout(() => el.classList.remove('show'), 2200);
+}
+
+/* ---------- 自動保存 ---------- */
+function saveInputs() {
+  try {
+    const v = { fluid: getFluidChoice() };
+    NUM_FIELDS.concat(TEXT_FIELDS).forEach(id => { v[id] = $(id).value; });
+    localStorage.setItem(AUTOSAVE_KEY, JSON.stringify(v));
+    setText('autosaveHint', '已自動保存');
+  } catch (e) { setText('autosaveHint', ''); }
+}
+function loadInputs() {
+  try {
+    const s = localStorage.getItem(AUTOSAVE_KEY);
+    if (s) { applyValues(JSON.parse(s)); return true; }
+  } catch (e) { /* 無法讀取時用預設值 */ }
+  return false;
+}
+
+/* ---------- 摘要 / 列印 / Excel ---------- */
+function summaryText() {
+  const r = lastResult;
+  if (!r || !r.valid) return null;
+  const raw = r.raw;
+  const L = [];
+  L.push(`【冰水緩衝水槽】${$('projectName').value || '未命名案件'}`);
+  if ($('dataSource').value) L.push(`依據：${$('dataSource').value}`);
+  L.push(`架構：${r.isolated ? `逐台獨立（${r.N} 台）` : `共用集管（${r.N} 台冰機）`}`);
+  L.push(`負載 ${f0(raw.load)} kW${r.isolated ? '／台' : ''}，緩衝 ${fx(raw.durationMin)} 分鐘，ΔT ${fx(raw.deltaT)} °C，流體 ${r.fluid.name}`);
+  L.push(`管路 ${fx(raw.pipeVolume)} m³ × ${fx(raw.pipeUsePct)}% 可利用，水槽有效利用率 ${fx(raw.tankEffPct)}%，安全餘裕 ${fx(raw.marginPct)}%`);
+  if (r.noTankNeeded) L.push(`結果：管路冷水可撐 ${f1(r.pipeMinutes)} 分鐘，不需另設水槽`);
+  else {
+    L.push(`結果：${r.isolated ? '每台' : '全廠'} ${r.count} 槽 × ${fx(raw.moduleSize)} m³ = ${fx(r.installed, 1)} m³${r.isolated ? `；全廠 ${r.plantCount} 槽 ${fx(r.plantInstalled, 1)} m³` : ''}`);
+    L.push(`可撐 ${f1(r.achievedMinutes)} 分鐘（目標 ${fx(raw.durationMin)}）；1 槽維修時 ${f1(r.oneDownMinutes)} 分鐘`);
+  }
+  const issues = buildChecks(r).filter(c => c.s !== 'pass');
+  if (issues.length) L.push('需確認：' + issues.map(c => `${c.t}（${c.v}）`).join('；'));
+  return L.join('\n');
+}
+
+function copySummary() {
+  const t = summaryText();
+  if (!t) { toast('請先修正輸入'); return; }
+  const done = () => toast('摘要已複製');
+  if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(t).then(done, () => fallbackCopy(t, done));
+  else fallbackCopy(t, done);
+}
+function fallbackCopy(t, done) {
+  const ta = document.createElement('textarea'); ta.value = t; document.body.appendChild(ta); ta.select();
+  try { document.execCommand('copy'); done(); } catch (e) { toast('無法複製，請手動選取'); }
+  ta.remove();
+}
+
+function printReport() {
+  document.querySelectorAll('details').forEach(d => { d.dataset.wasOpen = d.open ? '1' : ''; d.open = true; });
+  window.print();
+}
+window.addEventListener('afterprint', () => { document.querySelectorAll('details').forEach(d => { if (d.dataset.wasOpen !== undefined) d.open = d.dataset.wasOpen === '1'; }); });
+
+function safeFileName(s) { return (s || '').replace(/[\\/:*?"<>|]+/g, '_').trim().slice(0, 60); }
+
+function exportToExcel() {
+  if (typeof XLSX === 'undefined') { toast('Excel 元件尚未載入，請確認網路後再試'); return; }
+  const r = lastResult;
+  if (!r || !r.valid) { toast('請先修正輸入再匯出'); return; }
+  const raw = r.raw, fl = r.fluid;
+
+  // 以 key 定義每一列，公式中的 {key} 會換成對應儲存格
+  const rows = [];
+  const add = (key, label, val, unit, note) => rows.push({ key, label, val, unit, note });
+  rows.push({ title: '冰水緩衝水槽容量計算書' });
+  rows.push({ label: '案名', val: $('projectName').value || '', text: true });
+  rows.push({ label: '依據／備註', val: $('dataSource').value || '', text: true });
+  rows.push({ label: '匯出日期', val: new Date().toLocaleDateString('zh-TW'), text: true });
+  rows.push({});
+  rows.push({ header: ['一、輸入', '數值', '單位', '說明'] });
+  add('mode', '水槽架構', raw.mode, '', 'shared = 共用集管；isolated = 逐台獨立');
+  add('P', r.isolated ? '單台冰機冷負載' : '系統總冷負載', raw.load, 'kW', '');
+  add('N', '冰機台數', raw.chillerN, '台', '');
+  add('t', '緩衝時間', raw.durationMin, 'min', '');
+  add('dT', '可利用溫差 ΔT', raw.deltaT, '°C', '');
+  add('rho', '流體密度 ρ', fl.rho, 'kg/m³', fl.name);
+  add('cp', '流體比熱 cp', fl.cp, 'kJ/kg·K', fl.name);
+  add('pipe', '管路水量', raw.pipeVolume, 'm³', '');
+  add('pipeUse', '管路可利用比例', raw.pipeUsePct, '%', '只計供水側冷水');
+  add('eff', '水槽有效利用率', raw.tankEffPct, '%', '');
+  add('margin', '安全餘裕', raw.marginPct, '%', '');
+  add('size', '單槽有效容積', raw.moduleSize, 'm³', '');
+  add('hd', '高徑比 H/D', raw.hdRatio, '-', '立式圓筒槽');
+  add('minIdx', '防短循環最小水量', raw.minVolIndex, 'L/kW', '每台冰機');
+  rows.push({});
+  rows.push({ header: ['二、計算', '結果', '單位', '公式'] });
+  add('E', '緩衝熱量 E', { f: '{P}*{t}*60' }, 'kJ');
+  add('V', '需要的有效冷水量', { f: '{E}/({rho}*{cp}*{dT})' }, 'm³');
+  add('effPipe', '管路可抵扣', { f: '{pipe}*{pipeUse}/100' }, 'm³');
+  add('net', '水槽要提供的冷水', { f: 'MAX({V}-{effPipe},0)' }, 'm³');
+  add('req', '水槽容積（÷ 有效利用率）', { f: '{net}/({eff}/100)' }, 'm³');
+  add('target', '加安全餘裕後', { f: '{req}*(1+{margin}/100)' }, 'm³');
+  add('count', '水槽數量', { f: 'IF({target}>0,ROUNDUP(ROUND({target}/{size},6),0),0)' }, '槽');
+  add('inst', '水槽總容積', { f: '{count}*{size}' }, 'm³');
+  add('D', '單槽直徑', { f: '(4*{size}/(PI()*{hd}))^(1/3)' }, 'm');
+  add('H', '單槽高度', { f: '{hd}*{D}' }, 'm');
+  add('minutes', '實際可撐時間', { f: '({effPipe}+{inst}*{eff}/100)*{rho}*{cp}*{dT}/{P}/60' }, 'min');
+  add('oneDown', '任一槽維修時可撐', { f: 'IF({count}>0,({effPipe}+({count}-1)*{size}*{eff}/100)*{rho}*{cp}*{dT}/{P}/60,"")' }, 'min');
+  add('chKW', '每台冰機容量', { f: 'IF({mode}="isolated",{P},{P}/{N})' }, 'kW');
+  add('minSys', '防短循環最少系統水量', { f: '{chKW}*{minIdx}/1000' }, 'm³');
+  add('sysVol', '系統水量（管路＋水槽）', { f: '{pipe}+{inst}' }, 'm³');
+  add('plantCount', '全廠水槽數', { f: 'IF({mode}="isolated",{count}*{N},{count})' }, '槽');
+  add('plantVol', '全廠水槽總容積', { f: '{plantCount}*{size}' }, 'm³');
+  rows.push({});
+  rows.push({ header: ['三、單槽規格比較', '數量（槽）', '總容積（m³）', '可撐時間（min）'] });
+  const optRows = (r.options.length ? r.options : []).map(o => ({ opt: o }));
+  rows.push(...optRows);
+
+  // 指定列號
+  const addr = {};
+  rows.forEach((row, i) => { if (row.key) addr[row.key] = 'B' + (i + 1); });
+  const sub = f => f.replace(/\{(\w+)\}/g, (_, k) => addr[k]);
+  const jsVal = { E: r.energyKJ, V: r.grossVol, effPipe: r.effPipe, net: r.netVol, req: r.tankReq, target: r.targetVol, count: r.count, inst: r.installed, D: r.dims.D, H: r.dims.H, minutes: r.achievedMinutes, oneDown: r.oneDownMinutes === null ? '' : r.oneDownMinutes, chKW: r.chillerKW, minSys: r.minSysVol, sysVol: r.sysVol, plantCount: r.plantCount, plantVol: r.plantInstalled };
+
+  const aoa = rows.map(row => {
+    if (row.title) return [row.title];
+    if (row.header) return row.header;
+    if (row.opt) {
+      const o = row.opt, s = o.size;
+      return [`${s} m³／槽`,
+        { t: 'n', v: o.count, f: sub(`IF({target}>0,ROUNDUP(ROUND({target}/${s},6),0),0)`) },
+        { t: 'n', v: o.installed, f: '' },
+        { t: 'n', v: o.minutes, f: '' }];
+    }
+    if (row.label === undefined) return [];
+    if (row.text) return [row.label, row.val];
+    const v = row.val;
+    if (v && typeof v === 'object' && v.f) {
+      const jv = jsVal[row.key];
+      const cell = typeof jv === 'number' ? { t: 'n', v: jv, f: sub(v.f) } : { t: 's', v: '', f: sub(v.f) };
+      return [row.label, cell, row.unit, '= ' + sub(v.f)];
+    }
+    return [row.label, typeof v === 'number' ? v : String(v), row.unit, row.note || ''];
+  });
+  // 比較表的總容積與可撐時間公式（需要列號）
+  aoa.forEach((line, i) => {
+    const row = rows[i];
+    if (!row.opt) return;
+    const n = i + 1, s = row.opt.size;
+    line[2].f = `B${n}*${s}`;
+    line[3].f = sub(`({effPipe}+C${n}*{eff}/100)*{rho}*{cp}*{dT}/{P}/60`);
+  });
+
+  const ws = XLSX.utils.aoa_to_sheet(aoa);
+  ws['!cols'] = [{ wch: 30 }, { wch: 16 }, { wch: 14 }, { wch: 56 }];
+  Object.keys(ws).forEach(k => { if (/^[BCD]\d+$/.test(k) && ws[k].t === 'n' && ws[k].f) ws[k].z = '#,##0.00'; });
+  ['count', 'plantCount'].forEach(k => { if (ws[addr[k]]) ws[addr[k]].z = '0'; });
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Buffer Tank');
+  const base = safeFileName($('projectName').value) || 'Buffer_Tank';
+  XLSX.writeFile(wb, `${base}_${new Date().toISOString().slice(0, 10)}.xlsx`);
+  toast('Excel 已匯出（公式會隨輸入連動）');
+}
+
+/* ---------- 回歸測試 ---------- */
+function runRegressionTests() {
+  const E = BufferTankEngine;
+  const base = { mode: 'shared', load: 4000, chillerN: 4, durationMin: 6, deltaT: 5, pipeVolume: 20, pipeUsePct: 50, moduleSize: 15, hdRatio: 2, tankEffPct: 90, marginPct: 10, minVolIndex: 6.5, fluid: 'water', cp: NaN, rho: NaN };
+  const run = o => E.calculate(Object.assign({}, base, o));
+  const near = (a, b, tol = 0.05) => Math.abs(a - b) <= tol;
+  const results = [];
+  const T = (name, fn) => { let pass = false, info = ''; try { const v = fn(); pass = v === true; if (!pass) info = String(v); } catch (e) { info = e.message; } results.push({ name, pass, info }); };
+
+  const r0 = run({});
+  T('需要冷水量 68.8 m³（= 4000×860×0.1/5/1000）', () => near(r0.grossVol, 68.80, 0.01) || r0.grossVol);
+  T('管路抵扣 50% = 10 m³', () => near(r0.effPipe, 10));
+  T('水槽容積 58.8/0.9 = 65.3', () => near(r0.tankReq, 65.33) || r0.tankReq);
+  T('目標 71.9 m³', () => near(r0.targetVol, 71.87) || r0.targetVol);
+  T('15 m³ × 5 槽', () => r0.count === 5 && r0.installed === 75 || r0.count);
+  T('可撐時間 ≥ 目標', () => r0.achievedMinutes >= 6);
+  T('可撐時間公式', () => near(r0.achievedMinutes, (10 + 75 * 0.9) * 4186 * 5 / 4000 / 60, 1e-6));
+  T('1 槽維修 = 4 槽', () => near(r0.oneDownMinutes, (10 + 60 * 0.9) * 4186 * 5 / 4000 / 60, 1e-6));
+  T('建議規格 3 × 25 m³（同容積取槽數少）', () => r0.best && r0.best.size === 25 && r0.best.count === 3 || JSON.stringify(r0.best));
+  T('建議規格不超過 8 槽', () => r0.best.count <= 8);
+  T('共用模式：每台冰機 1000 kW', () => r0.chillerKW === 1000);
+  T('防短循環最少 6.5 m³', () => near(r0.minSysVol, 6.5));
+  T('剛好整除不多進一槽', () => { const r = run({ pipeVolume: 0, tankEffPct: 100, marginPct: 0, durationMin: 6, load: 4186 * 5 / 360 * 60, moduleSize: 15 }); return r.count === 4 || r.count + ' / ' + r.targetVol; });
+  T('管路足夠時不需水槽', () => { const r = run({ pipeVolume: 200 }); return r.noTankNeeded && r.count === 0 && r.options.length === 0; });
+  const ri = run({ mode: 'isolated', load: 1000 });
+  T('逐台：全廠槽數 = 單台 × N', () => ri.plantCount === ri.count * 4);
+  T('逐台：全廠容積 = 單台 × N', () => near(ri.plantInstalled, ri.installed * 4));
+  T('逐台：冰機容量 = 單台負載', () => ri.chillerKW === 1000);
+  T('乙二醇需較大水量', () => run({ fluid: 'eg30' }).grossVol > r0.grossVol);
+  T('自訂流體', () => near(run({ fluid: 'custom', cp: 4.186, rho: 1000 }).grossVol, r0.grossVol, 1e-9));
+  T('ΔT = 0 判定錯誤', () => !run({ deltaT: 0 }).valid && !!run({ deltaT: 0 }).errors.deltaT);
+  T('空白負載判定錯誤', () => run({ load: NaN }).errors.load === '必填');
+  T('台數須為整數', () => !!run({ chillerN: 2.5 }).errors.chillerN);
+  T('可利用比例 > 100 錯誤', () => !!run({ pipeUsePct: 120 }).errors.pipeUsePct);
+  T('自訂流體缺 cp 錯誤', () => !!run({ fluid: 'custom', cp: NaN, rho: 1000 }).errors.fluidCp);
+  T('比較表含目前規格', () => run({ moduleSize: 7 }).options.some(o => o.size === 7));
+  T('外形：體積還原', () => { const d = E.tankDims(500, 2); return near(Math.PI / 4 * d.D * d.D * d.H, 500, 1e-6) && near(d.H / d.D, 2, 1e-9); });
+  T('外形：1000 m³、H/D 2 約 Ø8.6 × 17.2 m', () => { const d = E.tankDims(1000, 2); return near(d.D, 8.60, 0.01) && near(d.H, 17.21, 0.01) || d.D + ' ' + d.H; });
+  T('高徑比超出範圍判定錯誤', () => !!run({ hdRatio: 10 }).errors.hdRatio);
+  T('標準規格涵蓋 2000 m³', () => E.STD_SIZES.includes(2000));
+  const rx = run({ load: 20000, chillerN: 8, durationMin: 15, deltaT: 6, pipeVolume: 150, moduleSize: 500, marginPct: 15 });
+  T('超大型：建議 3 × 300 m³（不選 11 × 80 小槽）', () => rx.best && rx.best.size === 300 && rx.best.count === 3 || JSON.stringify({ s: rx.best.size, c: rx.best.count }));
+  T('比較表 1 槽規格只列一個', () => rx.options.filter(o => o.count === 1 && o.size !== 500).length <= 1);
+  T('單槽時 1 槽維修只剩管路', () => { const r = run({ moduleSize: 100 }); return r.count === 1 && near(r.oneDownMinutes, r.pipeMinutes, 1e-9); });
+
+  const failed = results.filter(x => !x.pass);
+  console.log(`[Regression] ${results.length - failed.length}/${results.length} passed`, failed);
+  return { total: results.length, failed: failed.length, results };
+}
+
+/* ---------- 啟動 ---------- */
+(function init() {
+  const restored = loadInputs();
+  calculate();
+  if (restored) setText('autosaveHint', '已還原上次輸入');
+})();
+</script>
+</body>
+</html>
