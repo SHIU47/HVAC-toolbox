@@ -97,25 +97,37 @@
             const pipeCrahToEvap = getPipe(crahId, 'evaporator', `${chwReturnC}°C`);
             const pipeEvapToCrah = getPipe('evaporator', crahId, `${chwSupplyC}°C`);
 
+            const fitTextAttr = (str, maxPx, fontSize = 11) => {
+                if (!str || typeof str !== 'string') return '';
+                let est = 0;
+                for (let i = 0; i < str.length; i++) {
+                    est += str.charCodeAt(i) > 255 ? fontSize : fontSize * 0.58;
+                }
+                if (est > maxPx) {
+                    return `textLength="${maxPx}" lengthAdjust="spacingAndGlyphs"`;
+                }
+                return '';
+            };
+
             const fwPlantSvg = `
                 <!-- 蒸發器換熱核心 (Evaporator / PHE) -->
                 <rect x="510" y="70" width="200" height="175" rx="10" fill="#0f172a" stroke="${theme.evapStroke}" stroke-width="2" />
                 <rect x="510" y="70" width="200" height="30" rx="10" fill="${theme.evapHeaderFill}" />
-                <text x="610" y="90" fill="#e0e7ff" font-size="12" font-weight="bold" text-anchor="middle">${nEvap.title || '冰水蒸發器 (CHW Evaporator)'}</text>
+                <text x="610" y="90" fill="#e0e7ff" font-size="12" font-weight="bold" text-anchor="middle" ${fitTextAttr(nEvap.title || '冰水蒸發器 (CHW Evaporator)', 180, 12)}>${nEvap.title || '冰水蒸發器 (CHW Evaporator)'}</text>
                 
                 <rect x="525" y="118" width="26" height="100" rx="4" fill="#1e293b" stroke="${theme.evapStroke}" stroke-width="1.2" />
                 <path d="M 531 128 L 542 143 L 531 158 M 538 128 L 549 143 L 538 158 M 531 158 L 542 173 L 531 188 M 538 158 L 549 173 L 538 188" stroke="${theme.evapIconStroke}" stroke-width="1.5" fill="none" stroke-linecap="round" />
-                <text x="630" y="135" fill="#f8fafc" font-size="12" font-weight="bold" text-anchor="middle">${nEvap.lines?.[0] || '機械壓縮製冷'}</text>
-                <text x="630" y="162" fill="${theme.evapIconStroke}" font-size="11" font-weight="bold" text-anchor="middle">${nEvap.lines?.[1] || `供水 ${chwSupplyC}°C ⇄ 回水 ${chwReturnC}°C`}</text>
-                <text x="630" y="188" fill="#cbd5e1" font-size="10" text-anchor="middle">${nEvap.lines?.[2] || '全時連續供冷・穩定控溫'}</text>
-                <text x="630" y="212" fill="#94a3b8" font-size="9.5" text-anchor="middle">${nEvap.lines?.[3] || ''}</text>
+                <text x="630" y="135" fill="#f8fafc" font-size="12" font-weight="bold" text-anchor="middle" ${fitTextAttr(nEvap.lines?.[0] || '機械壓縮製冷', 140, 12)}>${nEvap.lines?.[0] || '機械壓縮製冷'}</text>
+                <text x="630" y="162" fill="${theme.evapIconStroke}" font-size="11" font-weight="bold" text-anchor="middle" ${fitTextAttr(nEvap.lines?.[1] || `供水 ${chwSupplyC}°C ⇄ 回水 ${chwReturnC}°C`, 140, 11)}>${nEvap.lines?.[1] || `供水 ${chwSupplyC}°C ⇄ 回水 ${chwReturnC}°C`}</text>
+                <text x="630" y="188" fill="#cbd5e1" font-size="10" text-anchor="middle" ${fitTextAttr(nEvap.lines?.[2] || '全時連續供冷・穩定控溫', 140, 10)}>${nEvap.lines?.[2] || '全時連續供冷・穩定控溫'}</text>
+                <text x="630" y="212" fill="#94a3b8" font-size="9.5" text-anchor="middle" ${fitTextAttr(nEvap.lines?.[3] || '', 140, 9.5)}>${nEvap.lines?.[3] || ''}</text>
 
                 <!-- 室外排熱設備連結管路 -->
                 ${nPumpCw ? `
                 <line x1="710" y1="110" x2="745" y2="110" stroke="${theme.loopColor}" stroke-width="4" stroke-linecap="round" />
                 <circle cx="760" cy="110" r="15" fill="#0369a1" stroke="#38bdf8" stroke-width="2" />
                 <polygon points="755,104 767,110 755,116" fill="#ffffff" />
-                <text x="760" y="138" fill="#38bdf8" font-size="10" font-weight="bold" text-anchor="middle">${nPumpCw.title || 'CW Pump'}</text>
+                <text x="760" y="138" fill="#38bdf8" font-size="10" font-weight="bold" text-anchor="middle" ${fitTextAttr(nPumpCw.title || 'CW Pump', 98, 10)}>${nPumpCw.title || 'CW Pump'}</text>
                 <line x1="775" y1="110" x2="820" y2="110" stroke="${theme.loopColor}" stroke-width="4" stroke-linecap="round" />
                 ` : `
                 <line x1="710" y1="110" x2="820" y2="110" stroke="${theme.loopColor}" stroke-width="4" stroke-linecap="round" />
@@ -125,12 +137,12 @@
                 <!-- 室外排熱設備模組 -->
                 <rect x="820" y="70" width="315" height="175" rx="10" fill="${theme.rejFill}" stroke="${theme.rejStroke}" stroke-width="2" />
                 <rect x="820" y="70" width="315" height="30" rx="10" fill="${theme.rejHeaderFill}" />
-                <text x="977" y="90" fill="#f8fafc" font-size="13" font-weight="bold" text-anchor="middle">${nRej.title || '室外排熱機組'}</text>
+                <text x="977" y="90" fill="#f8fafc" font-size="13" font-weight="bold" text-anchor="middle" ${fitTextAttr(nRej.title || '室外排熱機組', 290, 13)}>${nRej.title || '室外排熱機組'}</text>
                 
-                <text x="840" y="132" fill="#f1f5f9" font-size="12" font-weight="bold">${nRej.lines?.[0] || ''}</text>
-                <text x="840" y="158" fill="${theme.evapIconStroke}" font-size="11">${nRej.lines?.[1] || ''}</text>
-                <text x="840" y="185" fill="#cbd5e1" font-size="10.5">${nRej.lines?.[2] || ''}</text>
-                <text x="840" y="210" fill="#94a3b8" font-size="9.5">${nRej.lines?.[3] || ''}</text>
+                <text x="840" y="132" fill="#f1f5f9" font-size="12" font-weight="bold" ${fitTextAttr(nRej.lines?.[0] || '', 275, 12)}>${nRej.lines?.[0] || ''}</text>
+                <text x="840" y="158" fill="${theme.evapIconStroke}" font-size="11" ${fitTextAttr(nRej.lines?.[1] || '', 275, 11)}>${nRej.lines?.[1] || ''}</text>
+                <text x="840" y="185" fill="#cbd5e1" font-size="10.5" ${fitTextAttr(nRej.lines?.[2] || '', 275, 10.5)}>${nRej.lines?.[2] || ''}</text>
+                <text x="840" y="210" fill="#94a3b8" font-size="9.5" ${fitTextAttr(nRej.lines?.[3] || '', 275, 9.5)}>${nRej.lines?.[3] || ''}</text>
             `;
 
             return `
@@ -198,7 +210,7 @@
 
                             <rect x="210" y="25" width="145" height="250" rx="10" fill="#1e1b4b" stroke="#6366f1" stroke-width="2" />
                             <rect x="210" y="25" width="145" height="30" rx="10" fill="#312e81" />
-                            <text x="282" y="46" fill="#faf5ff" font-size="12" font-weight="bold" text-anchor="middle">${isRdhx ? 'RDHX 背板換熱器' : 'Fanwall / CRAH'}</text>
+                            <text x="282" y="46" fill="#faf5ff" font-size="12" font-weight="bold" text-anchor="middle" ${fitTextAttr(isRdhx ? 'RDHX 背板換熱器' : 'Fanwall / CRAH', 135, 12)}>${isRdhx ? 'RDHX 背板換熱器' : 'Fanwall / CRAH'}</text>
 
                             <rect x="222" y="70" width="121" height="100" rx="8" fill="#0f172a" stroke="#4f46e5" stroke-width="1.5" />
                             <!-- 空調盤管與風扇圖標 -->
@@ -209,14 +221,14 @@
                             <text x="295" y="139" fill="#a5b4fc" font-size="9" font-weight="bold" text-anchor="middle">FAN</text>
 
                             <text x="282" y="195" fill="#e0e7ff" font-size="11" font-weight="bold" text-anchor="middle">${fwUnitQty} 台 (N+1)</text>
-                            <text x="282" y="215" fill="#a5b4fc" font-size="9.5" text-anchor="middle">${isRdhx ? '背板無風扇/微風扇' : 'EC 變頻風機牆矩陣'}</text>
-                            <text x="282" y="235" fill="#34d399" font-size="10" font-weight="bold" text-anchor="middle">冰水流量: ${flowChwLpm.toLocaleString()} LPM</text>
+                            <text x="282" y="215" fill="#a5b4fc" font-size="9.5" text-anchor="middle" ${fitTextAttr(isRdhx ? '背板無風扇/微風扇' : 'EC 變頻風機牆矩陣', 130, 9.5)}>${isRdhx ? '背板無風扇/微風扇' : 'EC 變頻風機牆矩陣'}</text>
+                            <text x="282" y="235" fill="#34d399" font-size="10" font-weight="bold" text-anchor="middle" ${fitTextAttr(`冰水流量: ${flowChwLpm.toLocaleString()} LPM`, 130, 10)}>冰水流量: ${flowChwLpm.toLocaleString()} LPM</text>
 
                             <!-- 3. 冰水管路 (CHW Piping & Secondary Pump) -->
                             <!-- CHW Return -->
                             <line x1="355" y1="110" x2="510" y2="110" stroke="#ea580c" stroke-width="4.5" stroke-linecap="round" />
                             <rect x="365" y="65" width="135" height="24" rx="5" fill="#881337" stroke="#f43f5e" stroke-width="1.5" />
-                            <text x="432" y="81" fill="#ffe4e6" font-size="10" font-weight="bold" text-anchor="middle">回水: ${pipeCrahToEvap} (CHW Return)</text>
+                            <text x="432" y="81" fill="#ffe4e6" font-size="10" font-weight="bold" text-anchor="middle" ${fitTextAttr(`回水: ${pipeCrahToEvap} (CHW Return)`, 126, 10)}>回水: ${pipeCrahToEvap} (CHW Return)</text>
 
                             <!-- CHW Supply -->
                             <line x1="510" y1="200" x2="445" y2="200" stroke="#0284c7" stroke-width="4.5" stroke-linecap="round" />
@@ -224,11 +236,11 @@
                             <!-- CHW Secondary Pump -->
                             <circle cx="430" cy="200" r="15" fill="#0369a1" stroke="#38bdf8" stroke-width="2" />
                             <polygon points="436,194 424,200 436,206" fill="#ffffff" />
-                            <text x="430" y="228" fill="#38bdf8" font-size="10" font-weight="bold" text-anchor="middle">${nPump.title || 'CHW Pump'}</text>
+                            <text x="430" y="228" fill="#38bdf8" font-size="10" font-weight="bold" text-anchor="middle" ${fitTextAttr(nPump.title || 'CHW Pump', 98, 10)}>${nPump.title || 'CHW Pump'}</text>
 
                             <line x1="415" y1="200" x2="355" y2="200" stroke="#0284c7" stroke-width="4.5" stroke-linecap="round" />
                             <rect x="365" y="238" width="135" height="24" rx="5" fill="#0c4a6e" stroke="#0284c7" stroke-width="1.5" />
-                            <text x="432" y="254" fill="#e0f2fe" font-size="10" font-weight="bold" text-anchor="middle">供水: ${pipeEvapToCrah} (CHW Supply)</text>
+                            <text x="432" y="254" fill="#e0f2fe" font-size="10" font-weight="bold" text-anchor="middle" ${fitTextAttr(`供水: ${pipeEvapToCrah} (CHW Supply)`, 126, 10)}>供水: ${pipeEvapToCrah} (CHW Supply)</text>
 
                             <!-- 4. 排熱與冰機拓樸 (Plant Schematic) -->
                             ${fwPlantSvg}

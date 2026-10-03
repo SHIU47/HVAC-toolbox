@@ -256,8 +256,15 @@
                 );
             }
 
+            const towerApp = (typeof root.A === 'function') ? root.A('tower_approach_c') : 4.0;
+            const d5CanFreeCool = ((design?.designWb ?? 28) + towerApp + (hasPhe ? (sys?.pheApproachC ?? 2.0) : 0)) < (op?.temps?.fwsSup ?? 40.0);
+            const warnings = [];
+            if (d5CanFreeCool) {
+                warnings.push('設計濕球 + 塔 approach 低於 FWS 供水溫，冷卻水塔具備自然供冷潛力；建議改用閉式塔或加裝水側經濟器 (WSE)。');
+            }
+
             return {
-                title: '設施排熱拓樸 (Facility Heat Rejection System)',
+                title: '設施排熱拓樸 (Facility Heat Rejection)',
                 referenceLabel: null,
                 banners: [
                     { id: 'mode1', label: '全額機械壓縮冷卻 (COP 5.5)', detail: '無自然冷卻 (全年機械製冷)', tone: 'slate' }
@@ -265,7 +272,7 @@
                 nodes,
                 pipes,
                 footer: [],
-                warnings: []
+                warnings
             };
         },
 

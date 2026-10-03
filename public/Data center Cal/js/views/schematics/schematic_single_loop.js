@@ -43,6 +43,18 @@
                 return p ? p.label : fallback;
             };
 
+            const fitTextAttr = (str, maxPx, fontSize = 11) => {
+                if (!str || typeof str !== 'string') return '';
+                let est = 0;
+                for (let i = 0; i < str.length; i++) {
+                    est += str.charCodeAt(i) > 255 ? fontSize : fontSize * 0.58;
+                }
+                if (est > maxPx) {
+                    return `textLength="${maxPx}" lengthAdjust="spacingAndGlyphs"`;
+                }
+                return '';
+            };
+
             const cduApproachC = cduSys.cduApproachC ?? 3.0;
             const fwsSupplyC = op?.temps?.fwsSup ?? cduSys.fwsSupplyC ?? 40.0;
             const fwsReturnC = op?.temps?.fwsRet ?? cduSys.fwsReturnC ?? 55.0;
@@ -117,19 +129,19 @@
                     <line x1="320" y1="${rowSupplyY}" x2="510" y2="${rowSupplyY}" stroke="#ea580c" stroke-width="4.5" stroke-linecap="round" />
                     
                     <rect x="365" y="65" width="135" height="24" rx="5" fill="#881337" stroke="#f43f5e" stroke-width="1.5" />
-                    <text x="432" y="81" fill="#ffe4e6" font-size="10.5" font-weight="bold" text-anchor="middle">熱回水: ${pipeCduToMid} (FWS Return)</text>
+                    <text x="432" y="81" fill="#ffe4e6" font-size="10.5" font-weight="bold" text-anchor="middle" ${fitTextAttr(`熱回水: ${pipeCduToMid} (FWS Return)`, 126, 10.5)}>熱回水: ${pipeCduToMid} (FWS Return)</text>
 
                     <!-- 2. 中間換熱/製冷設備模組 (PHE 或 水冷冰機) -->
                     <rect x="510" y="${boxTop}" width="200" height="${boxH}" rx="10" fill="${midTheme.fill}" stroke="${midTheme.stroke}" stroke-width="2" />
                     <rect x="510" y="${boxTop}" width="200" height="30" rx="10" fill="${midTheme.headerFill}" />
-                    <text x="610" y="${boxTop + 20}" fill="#f1f5f9" font-size="12" font-weight="bold" text-anchor="middle">${nMid.title || '換熱設備'}</text>
+                    <text x="610" y="${boxTop + 20}" fill="#f1f5f9" font-size="12" font-weight="bold" text-anchor="middle" ${fitTextAttr(nMid.title || '換熱設備', 180, 12)}>${nMid.title || '換熱設備'}</text>
                     
                     ${midIconSvg}
                     
-                    <text x="630" y="${boxTop + 65}" fill="#f8fafc" font-size="12" font-weight="bold" text-anchor="middle">${nMid.lines?.[0] || ''}</text>
-                    <text x="630" y="${boxTop + 92}" fill="${midTheme.textStroke}" font-size="11" font-weight="bold" text-anchor="middle">${nMid.lines?.[1] || ''}</text>
-                    <text x="630" y="${boxTop + 118}" fill="#cbd5e1" font-size="10" text-anchor="middle">${nMid.lines?.[2] || ''}</text>
-                    <text x="630" y="${boxTop + 142}" fill="#94a3b8" font-size="9.5" text-anchor="middle">${nMid.lines?.[3] || ''}</text>
+                    <text x="630" y="${boxTop + 65}" fill="#f8fafc" font-size="12" font-weight="bold" text-anchor="middle" ${fitTextAttr(nMid.lines?.[0] || '', 140, 12)}>${nMid.lines?.[0] || ''}</text>
+                    <text x="630" y="${boxTop + 92}" fill="${midTheme.textStroke}" font-size="11" font-weight="bold" text-anchor="middle" ${fitTextAttr(nMid.lines?.[1] || '', 140, 11)}>${nMid.lines?.[1] || ''}</text>
+                    <text x="630" y="${boxTop + 118}" fill="#cbd5e1" font-size="10" text-anchor="middle" ${fitTextAttr(nMid.lines?.[2] || '', 140, 10)}>${nMid.lines?.[2] || ''}</text>
+                    <text x="630" y="${boxTop + 142}" fill="#94a3b8" font-size="9.5" text-anchor="middle" ${fitTextAttr(nMid.lines?.[3] || '', 140, 9.5)}>${nMid.lines?.[3] || ''}</text>
 
                     <!-- 3. 室外側循環管路與水泵 -->
                     <line x1="710" y1="${rowSupplyY}" x2="745" y2="${rowSupplyY}" stroke="${theme.loopColor}" stroke-width="4" stroke-linecap="round" />
@@ -137,7 +149,7 @@
                     <!-- 循環水泵 -->
                     <circle cx="760" cy="${rowSupplyY}" r="15" fill="${theme.pumpFill}" stroke="${theme.pumpStroke}" stroke-width="2" />
                     <polygon points="755,${rowSupplyY - 6} 767,${rowSupplyY} 755,${rowSupplyY + 6}" fill="#ffffff" />
-                    <text x="760" y="${rowSupplyY + 28}" fill="${theme.pumpStroke}" font-size="10" font-weight="bold" text-anchor="middle">${nPumpOut?.title || 'Circulation Pump'}</text>
+                    <text x="760" y="${rowSupplyY + 28}" fill="${theme.pumpStroke}" font-size="10" font-weight="bold" text-anchor="middle" ${fitTextAttr(nPumpOut?.title || 'Circulation Pump', 98, 10)}>${nPumpOut?.title || 'Circulation Pump'}</text>
 
                     <!-- 水泵出水至室外設備 -->
                     <line x1="775" y1="${rowSupplyY}" x2="820" y2="${rowSupplyY}" stroke="${theme.loopColor}" stroke-width="4" stroke-linecap="round" />
@@ -148,12 +160,12 @@
                     <!-- 4. 室外排熱設備模組 -->
                     <rect x="820" y="${boxTop}" width="315" height="${boxH}" rx="10" fill="${theme.fill}" stroke="${theme.stroke}" stroke-width="2" />
                     <rect x="820" y="${boxTop}" width="315" height="30" rx="10" fill="#0f172a" />
-                    <text x="977" y="${boxTop + 20}" fill="#f8fafc" font-size="13" font-weight="bold" text-anchor="middle">${nRej.title || '室外排熱設備'}</text>
+                    <text x="977" y="${boxTop + 20}" fill="#f8fafc" font-size="13" font-weight="bold" text-anchor="middle" ${fitTextAttr(nRej.title || '室外排熱設備', 290, 13)}>${nRej.title || '室外排熱設備'}</text>
                     
-                    <text x="840" y="${boxTop + 62}" fill="#f1f5f9" font-size="12" font-weight="bold">${nRej.lines?.[0] || ''}</text>
-                    <text x="840" y="${boxTop + 88}" fill="#a7f3d0" font-size="11">${nRej.lines?.[1] || ''}</text>
-                    <text x="840" y="${boxTop + 115}" fill="#cbd5e1" font-size="10.5">${nRej.lines?.[2] || ''}</text>
-                    <text x="840" y="${boxTop + 140}" fill="#94a3b8" font-size="9.5">${nRej.lines?.[3] || ''}</text>
+                    <text x="840" y="${boxTop + 62}" fill="#f1f5f9" font-size="12" font-weight="bold" ${fitTextAttr(nRej.lines?.[0] || '', 275, 12)}>${nRej.lines?.[0] || ''}</text>
+                    <text x="840" y="${boxTop + 88}" fill="#a7f3d0" font-size="11" ${fitTextAttr(nRej.lines?.[1] || '', 275, 11)}>${nRej.lines?.[1] || ''}</text>
+                    <text x="840" y="${boxTop + 115}" fill="#cbd5e1" font-size="10.5" ${fitTextAttr(nRej.lines?.[2] || '', 275, 10.5)}>${nRej.lines?.[2] || ''}</text>
+                    <text x="840" y="${boxTop + 140}" fill="#94a3b8" font-size="9.5" ${fitTextAttr(nRej.lines?.[3] || '', 275, 9.5)}>${nRej.lines?.[3] || ''}</text>
 
                     <!-- 5. 廠務冷供水總管 (Mid Box ⇄ Secondary Pump ⇄ CDU) -->
                     <line x1="510" y1="${rowReturnY}" x2="445" y2="${rowReturnY}" stroke="#059669" stroke-width="4.5" stroke-linecap="round" />
@@ -161,12 +173,12 @@
                     <!-- Secondary Pump (二次側設施主供水泵 / 一次側冰水泵) -->
                     <circle cx="430" cy="${rowReturnY}" r="15" fill="#065f46" stroke="#34d399" stroke-width="2" />
                     <polygon points="436,${rowReturnY - 6} 424,${rowReturnY} 436,${rowReturnY + 6}" fill="#ffffff" />
-                    <text x="430" y="${rowReturnY + 28}" fill="#34d399" font-size="10" font-weight="bold" text-anchor="middle">${nPumpSec.title || 'Secondary Pump'}</text>
+                    <text x="430" y="${rowReturnY + 28}" fill="#34d399" font-size="10" font-weight="bold" text-anchor="middle" ${fitTextAttr(nPumpSec.title || 'Secondary Pump', 98, 10)}>${nPumpSec.title || 'Secondary Pump'}</text>
 
                     <line x1="415" y1="${rowReturnY}" x2="320" y2="${rowReturnY}" stroke="#059669" stroke-width="4.5" stroke-linecap="round" />
 
                     <rect x="365" y="${rowReturnY + 38}" width="135" height="24" rx="5" fill="#064e3b" stroke="#10b981" stroke-width="1.5" />
-                    <text x="432" y="${rowReturnY + 54}" fill="#d1fae5" font-size="10.5" font-weight="bold" text-anchor="middle">冷供水: ${pipeMidToCdu} (FWS Supply)</text>
+                    <text x="432" y="${rowReturnY + 54}" fill="#d1fae5" font-size="10.5" font-weight="bold" text-anchor="middle" ${fitTextAttr(`冷供水: ${pipeMidToCdu} (FWS Supply)`, 126, 10.5)}>冷供水: ${pipeMidToCdu} (FWS Supply)</text>
                 `;
             } else {
                 // Direct single loop configuration (no PHE, no intermediate box): CDU ⇄ Pump ⇄ Outdoor Unit
@@ -180,17 +192,17 @@
                     <line x1="320" y1="${rowSupplyY}" x2="${rejBoxX}" y2="${rowSupplyY}" stroke="#ea580c" stroke-width="4.5" stroke-linecap="round" />
                     
                     <rect x="480" y="65" width="165" height="24" rx="5" fill="#881337" stroke="#f43f5e" stroke-width="1.5" />
-                    <text x="562" y="81" fill="#ffe4e6" font-size="10.5" font-weight="bold" text-anchor="middle">熱回水: ${pipeCduToRej} (FWS Return)</text>
+                    <text x="562" y="81" fill="#ffe4e6" font-size="10.5" font-weight="bold" text-anchor="middle" ${fitTextAttr(`熱回水: ${pipeCduToRej} (FWS Return)`, 155, 10.5)}>熱回水: ${pipeCduToRej} (FWS Return)</text>
 
                     <!-- 2. 室外排熱設備模組 (直冷式密閉水塔 / 乾冷器) -->
                     <rect x="${rejBoxX}" y="${boxTop}" width="${rejBoxW}" height="${boxH}" rx="10" fill="${theme.fill}" stroke="${theme.stroke}" stroke-width="2" />
                     <rect x="${rejBoxX}" y="${boxTop}" width="${rejBoxW}" height="30" rx="10" fill="#0f172a" />
-                    <text x="${rejBoxX + rejBoxW / 2}" y="${boxTop + 20}" fill="#f8fafc" font-size="13" font-weight="bold" text-anchor="middle">${nRej.title || '室外排熱設備'}</text>
+                    <text x="${rejBoxX + rejBoxW / 2}" y="${boxTop + 20}" fill="#f8fafc" font-size="13" font-weight="bold" text-anchor="middle" ${fitTextAttr(nRej.title || '室外排熱設備', 355, 13)}>${nRej.title || '室外排熱設備'}</text>
                     
-                    <text x="${rejBoxX + 20}" y="${boxTop + 62}" fill="#f1f5f9" font-size="12" font-weight="bold">${nRej.lines?.[0] || ''}</text>
-                    <text x="${rejBoxX + 20}" y="${boxTop + 88}" fill="#a7f3d0" font-size="11">${nRej.lines?.[1] || ''}</text>
-                    <text x="${rejBoxX + 20}" y="${boxTop + 115}" fill="#cbd5e1" font-size="10.5">${nRej.lines?.[2] || ''}</text>
-                    <text x="${rejBoxX + 20}" y="${boxTop + 140}" fill="#94a3b8" font-size="9.5">${nRej.lines?.[3] || ''}</text>
+                    <text x="${rejBoxX + 20}" y="${boxTop + 62}" fill="#f1f5f9" font-size="12" font-weight="bold" ${fitTextAttr(nRej.lines?.[0] || '', 345, 12)}>${nRej.lines?.[0] || ''}</text>
+                    <text x="${rejBoxX + 20}" y="${boxTop + 88}" fill="#a7f3d0" font-size="11" ${fitTextAttr(nRej.lines?.[1] || '', 345, 11)}>${nRej.lines?.[1] || ''}</text>
+                    <text x="${rejBoxX + 20}" y="${boxTop + 115}" fill="#cbd5e1" font-size="10.5" ${fitTextAttr(nRej.lines?.[2] || '', 345, 10.5)}>${nRej.lines?.[2] || ''}</text>
+                    <text x="${rejBoxX + 20}" y="${boxTop + 140}" fill="#94a3b8" font-size="9.5" ${fitTextAttr(nRej.lines?.[3] || '', 345, 9.5)}>${nRej.lines?.[3] || ''}</text>
 
                     <!-- 3. 廠務冷供水總管 (室外設備 ⇄ 循環水泵 ⇄ CDU) -->
                     <line x1="${rejBoxX}" y1="${rowReturnY}" x2="445" y2="${rowReturnY}" stroke="#059669" stroke-width="4.5" stroke-linecap="round" />
@@ -198,12 +210,12 @@
                     <!-- Primary Circulation Pump (一次側主循環泵) -->
                     <circle cx="430" cy="${rowReturnY}" r="15" fill="#065f46" stroke="#34d399" stroke-width="2" />
                     <polygon points="436,${rowReturnY - 6} 424,${rowReturnY} 436,${rowReturnY + 6}" fill="#ffffff" />
-                    <text x="430" y="${rowReturnY + 28}" fill="#34d399" font-size="10" font-weight="bold" text-anchor="middle">${nPumpSec.title || 'Circulation Pump'}</text>
+                    <text x="430" y="${rowReturnY + 28}" fill="#34d399" font-size="10" font-weight="bold" text-anchor="middle" ${fitTextAttr(nPumpSec.title || 'Circulation Pump', 98, 10)}>${nPumpSec.title || 'Circulation Pump'}</text>
 
                     <line x1="415" y1="${rowReturnY}" x2="320" y2="${rowReturnY}" stroke="#059669" stroke-width="4.5" stroke-linecap="round" />
 
                     <rect x="480" y="${rowReturnY + 38}" width="165" height="24" rx="5" fill="#064e3b" stroke="#10b981" stroke-width="1.5" />
-                    <text x="562" y="${rowReturnY + 54}" fill="#d1fae5" font-size="10.5" font-weight="bold" text-anchor="middle">冷供水: ${pipeRejToCdu} (FWS Supply)</text>
+                    <text x="562" y="${rowReturnY + 54}" fill="#d1fae5" font-size="10.5" font-weight="bold" text-anchor="middle" ${fitTextAttr(`冷供水: ${pipeRejToCdu} (FWS Supply)`, 155, 10.5)}>冷供水: ${pipeRejToCdu} (FWS Supply)</text>
                 `;
             }
 
@@ -217,7 +229,7 @@
                     <div class="flex flex-col sm:flex-row sm:items-center justify-between text-xs pb-3 border-b border-slate-800/80 gap-2">
                         <div class="flex items-center gap-2">
                             ${model?.referenceLabel ? `<span class="inline-flex items-center justify-center px-3 py-1 rounded-md bg-emerald-950 text-emerald-300 font-black text-xs border border-emerald-700">${model.referenceLabel}</span>` : ''}
-                            <span class="font-bold text-slate-100 text-sm">${model?.title || 'AI 算力中心廠務排熱拓樸 (Facility Heat Rejection System)'}</span>
+                            <span class="font-bold text-slate-100 text-sm">${model?.title || '設施排熱拓樸 (Facility Heat Rejection)'}</span>
                         </div>
                         <div class="flex items-center gap-2">
                             <span class="px-3 py-1 rounded-md bg-purple-950/80 text-purple-300 text-xs font-bold border border-purple-800 flex items-center gap-1.5">
@@ -236,7 +248,8 @@
                                 red: { bg: 'bg-red-950/40', border: 'border-red-800/60', text: 'text-red-300', dot: 'bg-red-400' },
                                 indigo: { bg: 'bg-indigo-950/40', border: 'border-indigo-800/60', text: 'text-indigo-300', dot: 'bg-indigo-400' },
                                 teal: { bg: 'bg-teal-950/40', border: 'border-teal-800/60', text: 'text-teal-300', dot: 'bg-teal-400' },
-                                blue: { bg: 'bg-blue-950/40', border: 'border-blue-800/60', text: 'text-blue-300', dot: 'bg-blue-400' }
+                                blue: { bg: 'bg-blue-950/40', border: 'border-blue-800/60', text: 'text-blue-300', dot: 'bg-blue-400' },
+                                slate: { bg: 'bg-slate-900', border: 'border-slate-700', text: 'text-slate-300', dot: 'bg-slate-400' }
                             };
                             const tCls = toneMap[b.tone] || toneMap.emerald;
                             return `
@@ -255,15 +268,15 @@
                             <!-- 1. COMPUTE DATA HALL (AI GPU 機櫃與冷板) -->
                             <rect x="20" y="35" width="130" height="250" rx="10" fill="#0f172a" stroke="#475569" stroke-width="2" />
                             <rect x="20" y="35" width="130" height="28" rx="10" fill="#1e293b" />
-                            <text x="85" y="54" fill="#f8fafc" font-size="11" font-weight="bold" text-anchor="middle">${nIt.title || 'Compute Data Hall'}</text>
+                            <text x="85" y="54" fill="#f8fafc" font-size="11" font-weight="bold" text-anchor="middle" ${fitTextAttr(nIt.title || 'Compute Data Hall', 120, 11)}>${nIt.title || 'Compute Data Hall'}</text>
                             
                             <rect x="28" y="72" width="114" height="60" rx="8" fill="#1e293b" stroke="#334155" stroke-width="1.5" />
-                            <text x="85" y="92" fill="#f1f5f9" font-size="9.5" font-weight="bold" text-anchor="middle">${nIt.lines?.[0] || 'Cold Plate 晶片液冷'}</text>
+                            <text x="85" y="92" fill="#f1f5f9" font-size="9.5" font-weight="bold" text-anchor="middle" ${fitTextAttr(nIt.lines?.[0] || 'Cold Plate 晶片液冷', 110, 9.5)}>${nIt.lines?.[0] || 'Cold Plate 晶片液冷'}</text>
                             <text x="85" y="118" fill="#ec4899" font-size="14" font-weight="900" text-anchor="middle">${liqLoadKw.toFixed(0)} kW</text>
 
-                            <text x="85" y="160" fill="#38bdf8" font-size="10.5" font-weight="bold" text-anchor="middle">${nIt.lines?.[1] || `晶片水溫: ${secSupplyC} ⇄ ${secReturnC}°C`}</text>
-                            <text x="85" y="185" fill="#a5b4fc" font-size="10" text-anchor="middle">二次側流量: ${flowSecLpm.toLocaleString()} LPM</text>
-                            <text x="85" y="208" fill="#94a3b8" font-size="9" text-anchor="middle">ΔT = ${dtSec}°C (晶片溫升)</text>
+                            <text x="85" y="160" fill="#38bdf8" font-size="10.5" font-weight="bold" text-anchor="middle" ${fitTextAttr(nIt.lines?.[1] || `晶片水溫: ${secSupplyC} ⇄ ${secReturnC}°C`, 110, 10.5)}>${nIt.lines?.[1] || `晶片水溫: ${secSupplyC} ⇄ ${secReturnC}°C`}</text>
+                            <text x="85" y="185" fill="#a5b4fc" font-size="10" text-anchor="middle" ${fitTextAttr(`二次側流量: ${flowSecLpm.toLocaleString()} LPM`, 110, 10)}>二次側流量: ${flowSecLpm.toLocaleString()} LPM</text>
+                            <text x="85" y="208" fill="#94a3b8" font-size="9" text-anchor="middle" ${fitTextAttr(`ΔT = ${dtSec}°C (晶片溫升)`, 110, 9)}>ΔT = ${dtSec}°C (晶片溫升)</text>
 
                             <!-- 2. SECONDARY TCS PIPING (機櫃 ⇄ CDU 二次側水路) -->
                             <!-- Secondary Return -->
@@ -289,8 +302,8 @@
                             <text x="255" y="124" fill="#f5d0fe" font-size="9" font-weight="bold" text-anchor="middle">Approach ${cduApproachC}°C</text>
 
                             <text x="255" y="195" fill="#e9d5ff" font-size="11" font-weight="bold" text-anchor="middle">${cduUnitQty} 台 (N+1)</text>
-                            <text x="255" y="215" fill="#a78bfa" font-size="9.5" text-anchor="middle">一二次側 100% 隔離</text>
-                            <text x="255" y="235" fill="#34d399" font-size="10" font-weight="bold" text-anchor="middle">設施流量: ${flowPrimLpm.toLocaleString()} LPM</text>
+                            <text x="255" y="215" fill="#a78bfa" font-size="9.5" text-anchor="middle" ${fitTextAttr('一二次側 100% 隔離', 110, 9.5)}>一二次側 100% 隔離</text>
+                            <text x="255" y="235" fill="#34d399" font-size="10" font-weight="bold" text-anchor="middle" ${fitTextAttr(`設施流量: ${flowPrimLpm.toLocaleString()} LPM`, 110, 10)}>設施流量: ${flowPrimLpm.toLocaleString()} LPM</text>
 
                             <!-- 4. FACILITY HEAT REJECTION SCHEMATIC (一次側廠務拓樸) -->
                             ${facilitySchematicSvg}
@@ -308,10 +321,48 @@
                             <span>一次側水流: <strong class="text-teal-300">${flowPrimLpm.toLocaleString()} LPM</strong> (ΔT=${dtPrim}°C)</span>
                         </div>
                         <div class="flex items-center gap-1.5 text-slate-300">
-                            <span class="w-2 h-2 rounded-full bg-emerald-400"></span>
-                            <span>自然冷卻門檻: <strong class="text-emerald-300">≤${cduFcThresh}°C (Mode 1 滿載風冷)</strong></span>
+                            ${(() => {
+                                const th = op?.thresholds;
+                                const basis = th?.basis;
+                                if (basis === 'db') {
+                                    return `
+                                        <span class="w-2 h-2 rounded-full bg-emerald-400"></span>
+                                        <span>自然冷卻門檻: <strong class="text-emerald-300">DB ≤ ${th.full}°C</strong></span>
+                                    `;
+                                }
+                                if (basis === 'wb') {
+                                    return `
+                                        <span class="w-2 h-2 rounded-full bg-cyan-400"></span>
+                                        <span>自然冷卻門檻: <strong class="text-cyan-300">WB ≤ ${th.full}°C</strong></span>
+                                    `;
+                                }
+                                if (basis === 'db_eff') {
+                                    return `
+                                        <span class="w-2 h-2 rounded-full bg-emerald-400"></span>
+                                        <span>自然冷卻門檻: <strong class="text-emerald-300">乾式 DB ≤ ${th.switchpoint}°C ／ 噴霧後有效乾球 ≤ ${th.full}°C</strong></span>
+                                    `;
+                                }
+                                if (basis === 'none') {
+                                    return `
+                                        <span class="w-2 h-2 rounded-full bg-amber-400"></span>
+                                        <span>冷卻模式: <strong class="text-amber-300">無自然冷卻（全年機械製冷）</strong></span>
+                                        <span class="text-amber-400 font-bold text-[10px] ml-1">⚠️ 建議改用閉式塔或加裝水側經濟器</span>
+                                    `;
+                                }
+                                return `
+                                    <span class="w-2 h-2 rounded-full bg-emerald-400"></span>
+                                    <span>自然冷卻門檻: <strong class="text-emerald-300">≤${cduFcThresh}°C</strong></span>
+                                `;
+                            })()}
                         </div>
                     </div>
+
+                    ${(model?.warnings && model.warnings.length > 0) ? `
+                        <div class="mt-2.5 p-2 rounded-lg bg-amber-950/40 border border-amber-800/60 flex items-center gap-2 text-xs text-amber-300">
+                            <span class="text-base">⚠️</span>
+                            <span>${model.warnings.join(' ｜ ')}</span>
+                        </div>
+                    ` : ''}
                 </div>
             `;
         }

@@ -183,7 +183,7 @@
             const h3 = modeHours?.mechanical !== undefined ? `${modeHours.mechanical} h` : '';
 
             return {
-                title: 'AI 算力中心廠務排熱拓樸 (Facility Heat Rejection System)',
+                title: 'NVIDIA DSX 參考拓樸',
                 referenceLabel: 'NVIDIA Reference Schematic',
                 banners: [
                     { id: 'mode1', label: `Mode 1 全自然冷卻 (DB ≤ ${fullThresh}°C)${h1 ? ` — 全年 ${h1}` : ''}`, detail: '100% 走 Economizer', tone: 'emerald' },

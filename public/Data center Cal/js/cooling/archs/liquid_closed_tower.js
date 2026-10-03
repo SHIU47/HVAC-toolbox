@@ -209,7 +209,7 @@
             }
 
             return {
-                title: '設施排熱拓樸 (Facility Heat Rejection System)',
+                title: '設施排熱拓樸 (Facility Heat Rejection)',
                 referenceLabel: null,
                 banners: [
                     { id: 'mode1', label: `全時蒸發自然冷卻 (WB ≤${fullThresh}°C)`, detail: '100% 水側直冷・零冰機', tone: 'emerald' }

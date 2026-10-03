@@ -54,6 +54,18 @@
 
             const getPipe = (from, to, fallback = '') => model?.pipes?.find(p => p.from === from && p.to === to)?.label || fallback;
 
+            const fitTextAttr = (str, maxPx, fontSize = 11) => {
+                if (!str || typeof str !== 'string') return '';
+                let est = 0;
+                for (let i = 0; i < str.length; i++) {
+                    est += str.charCodeAt(i) > 255 ? fontSize : fontSize * 0.58;
+                }
+                if (est > maxPx) {
+                    return `textLength="${maxPx}" lengthAdjust="spacingAndGlyphs"`;
+                }
+                return '';
+            };
+
             const cduApproachC = cduSys.cduApproachC ?? 3.0;
             const dcApproach = cduSys.dryCoolerApproachC ?? 5.0;
             const trimChwDtC = cduSys.trimChwDtC ?? ((typeof root.A === 'function') ? root.A('trim_chw_dt_default_c') : 5.0);
@@ -131,7 +143,7 @@
             const facilitySchematicSvg = `
                 <!-- 年最高 DB 尖峰工況小表格 -->
                 <rect x="740" y="8" width="510" height="26" rx="6" fill="#0f172a" stroke="#f59e0b" stroke-width="1.2" />
-                <text x="995" y="25" fill="#fef3c7" font-size="9.5" font-weight="bold" text-anchor="middle">年最高 DB ${maxDb.toFixed(1)}°C 工況：預冷至 ${fwsPre_peak}°C ｜ Trim 負擔 ${trimKw_peak} kW ｜ 冷凝器 ${condIn_peak}→${condOut_peak}°C ｜ 冰機 COP ${cop_peak.toFixed(1)}</text>
+                <text x="995" y="25" fill="#fef3c7" font-size="9.5" font-weight="bold" text-anchor="middle" ${fitTextAttr(`年最高 DB ${maxDb.toFixed(1)}°C 工況：預冷至 ${fwsPre_peak}°C ｜ Trim 負擔 ${trimKw_peak} kW ｜ 冷凝器 ${condIn_peak}→${condOut_peak}°C ｜ 冰機 COP ${cop_peak.toFixed(1)}`, 495, 9.5)}>年最高 DB ${maxDb.toFixed(1)}°C 工況：預冷至 ${fwsPre_peak}°C ｜ Trim 負擔 ${trimKw_peak} kW ｜ 冷凝器 ${condIn_peak}→${condOut_peak}°C ｜ 冰機 COP ${cop_peak.toFixed(1)}</text>
 
                 <!-- ======================================================= -->
                 <!-- 1. PRIMARY FWS LOOP (廠務側串聯換熱鏈) -->
@@ -152,7 +164,7 @@
                 <!-- Secondary Pump (二次側設施供水泵) -->
                 <circle cx="370" cy="265" r="14" fill="#0369a1" stroke="#38bdf8" stroke-width="2" />
                 <polygon points="376,259 364,265 376,271" fill="#ffffff" />
-                <text x="370" y="293" fill="#38bdf8" font-size="9" font-weight="bold" text-anchor="middle">${nPump.title || 'FWS Pump'}</text>
+                <text x="370" y="293" fill="#38bdf8" font-size="9" font-weight="bold" text-anchor="middle" ${fitTextAttr(nPump.title || 'FWS Pump', 90, 9)}>${nPump.title || 'FWS Pump'}</text>
 
                 <line x1="355" y1="265" x2="320" y2="265" stroke="#0284c7" stroke-width="4.5" stroke-linecap="round" />
                 <rect x="330" y="222" width="80" height="24" rx="5" fill="#0c4a6e" stroke="#0284c7" stroke-width="1.5" />
@@ -163,26 +175,26 @@
                 <!-- ======================================================= -->
                 <rect x="430" y="35" width="200" height="100" rx="10" fill="#0f172a" stroke="#10b981" stroke-width="2" />
                 <rect x="430" y="35" width="200" height="26" rx="10" fill="#064e3b" />
-                <text x="530" y="53" fill="#d1fae5" font-size="11" font-weight="bold" text-anchor="middle">${nPrimary.title || 'Liquid-to-Liquid HX (Primary)'}</text>
+                <text x="530" y="53" fill="#d1fae5" font-size="11" font-weight="bold" text-anchor="middle" ${fitTextAttr(nPrimary.title || 'Liquid-to-Liquid HX (Primary)', 180, 11)}>${nPrimary.title || 'Liquid-to-Liquid HX (Primary)'}</text>
 
                 <rect x="442" y="68" width="22" height="55" rx="4" fill="#1e293b" stroke="#34d399" stroke-width="1" />
                 <path d="M 447 75 L 455 85 L 447 95 M 453 75 L 461 85 L 453 95 M 447 95 L 455 105 L 447 115" stroke="#34d399" stroke-width="1.3" fill="none" stroke-linecap="round" />
-                <text x="540" y="82" fill="#34d399" font-size="11" font-weight="bold" text-anchor="middle">${nPrimary.lines?.[0] || '自然預冷 (Free Pre-Cool)'}</text>
-                <text x="540" y="100" fill="#a7f3d0" font-size="9.5" text-anchor="middle">${nPrimary.lines?.[1] || `回水預冷至 ${precoolTemp}°C`}</text>
-                <text x="540" y="118" fill="#cbd5e1" font-size="9" text-anchor="middle">${nPrimary.lines?.[2] || '以乾冷器出水為冷源'}</text>
+                <text x="540" y="82" fill="#34d399" font-size="11" font-weight="bold" text-anchor="middle" ${fitTextAttr(nPrimary.lines?.[0] || '自然預冷 (Free Pre-Cool)', 150, 11)}>${nPrimary.lines?.[0] || '自然預冷 (Free Pre-Cool)'}</text>
+                <text x="540" y="100" fill="#a7f3d0" font-size="9.5" text-anchor="middle" ${fitTextAttr(nPrimary.lines?.[1] || `回水預冷至 ${precoolTemp}°C`, 150, 9.5)}>${nPrimary.lines?.[1] || `回水預冷至 ${precoolTemp}°C`}</text>
+                <text x="540" y="118" fill="#cbd5e1" font-size="9" text-anchor="middle" ${fitTextAttr(nPrimary.lines?.[2] || '以乾冷器出水為冷源', 150, 9)}>${nPrimary.lines?.[2] || '以乾冷器出水為冷源'}</text>
 
                 <!-- ======================================================= -->
                 <!-- 3. SECONDARY HEAT EXCHANGER (Secondary 板換 / Trim 修整) -->
                 <!-- ======================================================= -->
                 <rect x="430" y="185" width="200" height="100" rx="10" fill="#0f172a" stroke="${secHxStroke}" stroke-width="2" />
                 <rect x="430" y="185" width="200" height="26" rx="10" fill="${secHxHeaderFill}" />
-                <text x="530" y="203" fill="#e0e7ff" font-size="11" font-weight="bold" text-anchor="middle">${nSecondary.title || 'Liquid-to-Liquid HX (Secondary)'}</text>
+                <text x="530" y="203" fill="#e0e7ff" font-size="11" font-weight="bold" text-anchor="middle" ${fitTextAttr(nSecondary.title || 'Liquid-to-Liquid HX (Secondary)', 180, 11)}>${nSecondary.title || 'Liquid-to-Liquid HX (Secondary)'}</text>
 
                 <rect x="442" y="218" width="22" height="55" rx="4" fill="#1e293b" stroke="${secHxIconStroke}" stroke-width="1" />
                 <path d="M 447 225 L 455 235 L 447 245 M 453 225 L 461 235 L 453 245 M 447 245 L 455 255 L 447 265" stroke="${secHxIconStroke}" stroke-width="1.3" fill="none" stroke-linecap="round" />
-                <text x="540" y="232" fill="${secHxStroke}" font-size="11" font-weight="bold" text-anchor="middle">${secHxLine1}</text>
-                <text x="540" y="250" fill="${isDesignMode1 ? '#cbd5e1' : '#c7d2fe'}" font-size="9.5" text-anchor="middle">${secHxLine2}</text>
-                <text x="540" y="268" fill="#cbd5e1" font-size="9" text-anchor="middle">${secHxLine3}</text>
+                <text x="540" y="232" fill="${secHxStroke}" font-size="11" font-weight="bold" text-anchor="middle" ${fitTextAttr(secHxLine1, 150, 11)}>${secHxLine1}</text>
+                <text x="540" y="250" fill="${isDesignMode1 ? '#cbd5e1' : '#c7d2fe'}" font-size="9.5" text-anchor="middle" ${fitTextAttr(secHxLine2, 150, 9.5)}>${secHxLine2}</text>
+                <text x="540" y="268" fill="#cbd5e1" font-size="9" text-anchor="middle" ${fitTextAttr(secHxLine3, 150, 9)}>${secHxLine3}</text>
 
                 <!-- ======================================================= -->
                 <!-- 4. TRIM CHILLER EVAPORATOR LOOP (冰水主機蒸發器迴路) -->
@@ -202,13 +214,13 @@
                 <!-- ======================================================= -->
                 <rect x="730" y="185" width="200" height="100" rx="10" fill="#1e1b4b" stroke="${chillerStroke}" stroke-width="2" />
                 <rect x="730" y="185" width="200" height="26" rx="10" fill="${chillerHeaderFill}" />
-                <text x="830" y="203" fill="#f8fafc" font-size="11.5" font-weight="bold" text-anchor="middle">${nChiller.title || 'Water Cooled Chillers'}</text>
+                <text x="830" y="203" fill="#f8fafc" font-size="11.5" font-weight="bold" text-anchor="middle" ${fitTextAttr(nChiller.title || 'Water Cooled Chillers', 180, 11.5)}>${nChiller.title || 'Water Cooled Chillers'}</text>
 
                 <circle cx="755" cy="235" r="13" fill="#312e81" stroke="${chillerIconStroke}" stroke-width="1.5" />
                 <text x="755" y="239" fill="#ffffff" font-size="8.5" font-weight="bold" text-anchor="middle">${chillerLine1}</text>
 
-                <text x="845" y="235" fill="${isDesignMode1 ? '#cbd5e1' : '#e0e7ff'}" font-size="10" font-weight="bold" text-anchor="middle">${chillerLine2}</text>
-                <text x="845" y="258" fill="#94a3b8" font-size="9.5" text-anchor="middle">${chillerLine3}</text>
+                <text x="845" y="235" fill="${isDesignMode1 ? '#cbd5e1' : '#e0e7ff'}" font-size="10" font-weight="bold" text-anchor="middle" ${fitTextAttr(chillerLine2, 150, 10)}>${chillerLine2}</text>
+                <text x="845" y="258" fill="#94a3b8" font-size="9.5" text-anchor="middle" ${fitTextAttr(chillerLine3, 150, 9.5)}>${chillerLine3}</text>
 
                 <!-- ======================================================= -->
                 <!-- 6. DRY COOLER & CONDENSER SERIES LOOP (乾冷器與冷凝器串聯排熱鏈) -->
@@ -239,12 +251,12 @@
 
                 <rect x="1060" y="75" width="200" height="150" rx="10" fill="#042f2e" stroke="#14b8a6" stroke-width="2" />
                 <rect x="1060" y="75" width="200" height="28" rx="10" fill="#0f172a" />
-                <text x="1160" y="94" fill="#f8fafc" font-size="12" font-weight="bold" text-anchor="middle">${nDryCooler.title || 'Dry Coolers'}</text>
+                <text x="1160" y="94" fill="#f8fafc" font-size="12" font-weight="bold" text-anchor="middle" ${fitTextAttr(nDryCooler.title || 'Dry Coolers', 180, 12)}>${nDryCooler.title || 'Dry Coolers'}</text>
                 
-                <text x="1075" y="122" fill="#f1f5f9" font-size="11" font-weight="bold">${nDryCooler.lines?.[0] || '零耗水自然風冷'}</text>
-                <text x="1075" y="142" fill="#a7f3d0" font-size="10">${nDryCooler.lines?.[1] || `Approach: ${dcApproach}°C ｜ 門檻: ≤${cduFcThresh}°C`}</text>
-                <text x="1075" y="162" fill="#cbd5e1" font-size="9.5">${nDryCooler.lines?.[2] || 'Mode 1: 滿載自然風冷'}</text>
-                <text x="1075" y="178" fill="#cbd5e1" font-size="9.5">${nDryCooler.lines?.[3] || 'Mode 2: 串聯預冷與主機冷凝排熱'}</text>
+                <text x="1075" y="122" fill="#f1f5f9" font-size="11" font-weight="bold" ${fitTextAttr(nDryCooler.lines?.[0] || '零耗水自然風冷', 170, 11)}>${nDryCooler.lines?.[0] || '零耗水自然風冷'}</text>
+                <text x="1075" y="142" fill="#a7f3d0" font-size="10" ${fitTextAttr(nDryCooler.lines?.[1] || `Approach: ${dcApproach}°C ｜ 門檻: ≤${cduFcThresh}°C`, 170, 10)}>${nDryCooler.lines?.[1] || `Approach: ${dcApproach}°C ｜ 門檻: ≤${cduFcThresh}°C`}</text>
+                <text x="1075" y="162" fill="#cbd5e1" font-size="9.5" ${fitTextAttr(nDryCooler.lines?.[2] || 'Mode 1: 滿載自然風冷', 170, 9.5)}>${nDryCooler.lines?.[2] || 'Mode 1: 滿載自然風冷'}</text>
+                <text x="1075" y="178" fill="#cbd5e1" font-size="9.5" ${fitTextAttr(nDryCooler.lines?.[3] || 'Mode 2: 串聯預冷與主機冷凝排熱', 170, 9.5)}>${nDryCooler.lines?.[3] || 'Mode 2: 串聯預冷與主機冷凝排熱'}</text>
 
                 <!-- 底部排熱箭頭 -->
                 <polygon points="1110,230 1120,230 1115,240" fill="#ef4444" />
@@ -262,7 +274,7 @@
                     <div class="flex flex-col sm:flex-row sm:items-center justify-between text-xs pb-3 border-b border-slate-800/80 gap-2">
                         <div class="flex items-center gap-2">
                             ${model?.referenceLabel ? `<span class="inline-flex items-center justify-center px-3 py-1 rounded-md bg-emerald-950 text-emerald-300 font-black text-xs border border-emerald-700">${model.referenceLabel}</span>` : ''}
-                            <span class="font-bold text-slate-100 text-sm">${model?.title || 'AI 算力中心廠務排熱拓樸 (Facility Heat Rejection System)'}</span>
+                            <span class="font-bold text-slate-100 text-sm">${model?.title || 'NVIDIA DSX 參考拓樸'}</span>
                         </div>
                         <div class="flex items-center gap-2">
                             <span class="px-3 py-1 rounded-md bg-purple-950/80 text-purple-300 text-xs font-bold border border-purple-800 flex items-center gap-1.5">
@@ -297,15 +309,15 @@
                             <!-- 1. COMPUTE DATA HALL (AI GPU 機櫃與冷板) -->
                             <rect x="20" y="35" width="130" height="250" rx="10" fill="#0f172a" stroke="#475569" stroke-width="2" />
                             <rect x="20" y="35" width="130" height="28" rx="10" fill="#1e293b" />
-                            <text x="85" y="54" fill="#f8fafc" font-size="11" font-weight="bold" text-anchor="middle">${nIt.title || 'Compute Data Hall'}</text>
+                            <text x="85" y="54" fill="#f8fafc" font-size="11" font-weight="bold" text-anchor="middle" ${fitTextAttr(nIt.title || 'Compute Data Hall', 120, 11)}>${nIt.title || 'Compute Data Hall'}</text>
                             
                             <rect x="28" y="72" width="114" height="60" rx="8" fill="#1e293b" stroke="#334155" stroke-width="1.5" />
-                            <text x="85" y="92" fill="#f1f5f9" font-size="9.5" font-weight="bold" text-anchor="middle">${nIt.lines?.[0] || 'Cold Plate 晶片液冷'}</text>
+                            <text x="85" y="92" fill="#f1f5f9" font-size="9.5" font-weight="bold" text-anchor="middle" ${fitTextAttr(nIt.lines?.[0] || 'Cold Plate 晶片液冷', 110, 9.5)}>${nIt.lines?.[0] || 'Cold Plate 晶片液冷'}</text>
                             <text x="85" y="118" fill="#ec4899" font-size="14" font-weight="900" text-anchor="middle">${liqLoadKw.toFixed(0)} kW</text>
 
-                            <text x="85" y="160" fill="#38bdf8" font-size="10.5" font-weight="bold" text-anchor="middle">${nIt.lines?.[1] || `晶片水溫: ${secSupplyC} ⇄ ${secReturnC}°C`}</text>
-                            <text x="85" y="185" fill="#a5b4fc" font-size="10" text-anchor="middle">二次側流量: ${flowSecLpm.toLocaleString()} LPM</text>
-                            <text x="85" y="208" fill="#94a3b8" font-size="9" text-anchor="middle">ΔT = ${dtSec}°C (晶片溫升)</text>
+                            <text x="85" y="160" fill="#38bdf8" font-size="10.5" font-weight="bold" text-anchor="middle" ${fitTextAttr(nIt.lines?.[1] || `晶片水溫: ${secSupplyC} ⇄ ${secReturnC}°C`, 110, 10.5)}>${nIt.lines?.[1] || `晶片水溫: ${secSupplyC} ⇄ ${secReturnC}°C`}</text>
+                            <text x="85" y="185" fill="#a5b4fc" font-size="10" text-anchor="middle" ${fitTextAttr(`二次側流量: ${flowSecLpm.toLocaleString()} LPM`, 110, 10)}>二次側流量: ${flowSecLpm.toLocaleString()} LPM</text>
+                            <text x="85" y="208" fill="#94a3b8" font-size="9" text-anchor="middle" ${fitTextAttr(`ΔT = ${dtSec}°C (晶片溫升)`, 110, 9)}>ΔT = ${dtSec}°C (晶片溫升)</text>
 
                             <!-- 2. SECONDARY TCS PIPING (機櫃 ⇄ CDU 二次側水路) -->
                             <!-- Hot Secondary Return -->
@@ -330,8 +342,8 @@
                             <text x="255" y="124" fill="#f5d0fe" font-size="9" font-weight="bold" text-anchor="middle">Approach ${cduApproachC}°C</text>
 
                             <text x="255" y="195" fill="#e9d5ff" font-size="11" font-weight="bold" text-anchor="middle">${cduUnitQty} 台 (N+1)</text>
-                            <text x="255" y="215" fill="#a78bfa" font-size="9.5" text-anchor="middle">一二次側 100% 隔離</text>
-                            <text x="255" y="235" fill="#34d399" font-size="10" font-weight="bold" text-anchor="middle">設施流量: ${flowPrimLpm.toLocaleString()} LPM</text>
+                            <text x="255" y="215" fill="#a78bfa" font-size="9.5" text-anchor="middle" ${fitTextAttr('一二次側 100% 隔離', 110, 9.5)}>一二次側 100% 隔離</text>
+                            <text x="255" y="235" fill="#34d399" font-size="10" font-weight="bold" text-anchor="middle" ${fitTextAttr(`設施流量: ${flowPrimLpm.toLocaleString()} LPM`, 110, 10)}>設施流量: ${flowPrimLpm.toLocaleString()} LPM</text>
 
                             <!-- 4. FACILITY HEAT REJECTION SCHEMATIC (一次側廠務拓樸) -->
                             ${facilitySchematicSvg}
@@ -350,7 +362,7 @@
                         </div>
                         <div class="flex items-center gap-1.5 text-slate-300">
                             <span class="w-2 h-2 rounded-full bg-emerald-400"></span>
-                            <span>自然冷卻門檻: <strong class="text-emerald-300">≤${cduFcThresh}°C (Mode 1 滿載風冷)</strong></span>
+                            <span>自然冷卻門檻: <strong class="text-emerald-300">DB ≤ ${cduFcThresh}°C (Mode 1 滿載風冷)</strong></span>
                         </div>
                     </div>
                 </div>

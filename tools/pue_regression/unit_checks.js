@@ -1768,8 +1768,111 @@ function freshCtx() {
   });
 })();
 
+// ═══════════════════════════════════════════════════════════════
+// P4-3 Schematic Threshold Dynamic Basis, D5 Warning, and Text Fit
+// ═══════════════════════════════════════════════════════════════
+(function () {
+  const fs = require('fs');
+  const path = require('path');
+  const vm = require('vm');
+  const JS_DIR = path.resolve(__dirname, '../../public/Data center Cal/js');
+  const ctx = freshCtx();
+  const Registry = ctx.CoolingArchRegistry;
+
+  // Load schematics into context
+  const schematicFiles = [
+    'views/schematics/schematic_single_loop.js',
+    'views/schematics/schematic_series_trim.js',
+    'views/schematics/schematic_air_plant.js'
+  ];
+  for (const f of schematicFiles) {
+    const code = fs.readFileSync(path.join(JS_DIR, f), 'utf8');
+    vm.runInContext(code, ctx);
+  }
+  const Schematics = ctx.CoolingSchematics;
+
+  // 1. Titles & Reference labels
+  test('P4-3 dry_cooler_trim has NVIDIA DSX title, others have standard facility title with no referenceLabel', () => {
+    const trim = Registry.get('dry_cooler_trim');
+    const pure = Registry.get('dry_cooler_pure');
+    const closed = Registry.get('cooling_tower_hx');
+    const adiabatic = Registry.get('adiabatic_tower');
+    const chiller = Registry.get('water_chiller');
+
+    const opTrim = trim.operatingPoint({ fwsSupplyC: 40, fwsReturnC: 55 }, { db: 30, wb: 25 }, {});
+    const topoTrim = trim.topology({ fwsSupplyC: 40, fwsReturnC: 55 }, opTrim, {});
+    assert.strictEqual(topoTrim.title, 'NVIDIA DSX 參考拓樸');
+    assert.strictEqual(topoTrim.referenceLabel, 'NVIDIA Reference Schematic');
+
+    for (const [id, arch] of [['dry_cooler_pure', pure], ['cooling_tower_hx', closed], ['adiabatic_tower', adiabatic], ['water_chiller', chiller]]) {
+      const op = arch.operatingPoint({ fwsSupplyC: 40, fwsReturnC: 55 }, { db: 30, wb: 25 }, {});
+      const topo = arch.topology({ fwsSupplyC: 40, fwsReturnC: 55 }, op, {});
+      assert.strictEqual(topo.title, '設施排熱拓樸 (Facility Heat Rejection)', `${id} title must be '設施排熱拓樸 (Facility Heat Rejection)'`);
+      assert.strictEqual(topo.referenceLabel, null, `${id} referenceLabel must be null`);
+    }
+  });
+
+  // 2. Dynamic thresholds rendered by schematic_single_loop
+  test('P4-3 schematic_single_loop displays dynamic natural cooling thresholds based on op.thresholds.basis', () => {
+    // A: dry cooler (basis: db) -> "自然冷卻門檻: DB ≤"
+    const svgDc = Schematics.render('single_loop', {
+      cduSys: { architecture: 'dry_cooler_pure', fwsSupplyC: 40, fwsReturnC: 55, dryCoolerApproachC: 5, hasPhe: true, pheApproachC: 2 }
+    });
+    assert(svgDc.includes('自然冷卻門檻: <strong class="text-emerald-300">DB ≤ 33°C</strong>'), 'dry cooler must show DB threshold');
+
+    // B: closed cooling tower (basis: wb) -> "自然冷卻門檻: WB ≤"
+    const svgClosed = Schematics.render('single_loop', {
+      cduSys: { architecture: 'cooling_tower_hx', fwsSupplyC: 40, fwsReturnC: 55, ctApproachC: 6, hasPhe: false }
+    });
+    assert(svgClosed.includes('自然冷卻門檻: <strong class="text-cyan-300">WB ≤ 34°C</strong>'), 'closed tower must show WB threshold');
+
+    // C: adiabatic tower (basis: db_eff) -> "自然冷卻門檻: 乾式 DB ≤ ... ／ 噴霧後有效乾球 ≤ ..."
+    const svgAd = Schematics.render('single_loop', {
+      cduSys: { architecture: 'adiabatic_tower', fwsSupplyC: 40, fwsReturnC: 55, dryCoolerApproachC: 5, hasPhe: true, pheApproachC: 2, adiabaticDrySwitchpointC: 30 }
+    });
+    assert(svgAd.includes('自然冷卻門檻: <strong class="text-emerald-300">乾式 DB ≤ 30°C ／ 噴霧後有效乾球 ≤ 33°C</strong>'), 'adiabatic tower must show dry switchpoint and effective DB');
+
+    // D: water chiller (basis: none) -> "冷卻模式: 無自然冷卻（全年機械製冷）"
+    const svgChiller = Schematics.render('single_loop', {
+      cduSys: { architecture: 'water_chiller', fwsSupplyC: 40, fwsReturnC: 55, ctApproachC: 4, hasPhe: false }
+    });
+    assert(svgChiller.includes('冷卻模式: <strong class="text-amber-300">無自然冷卻（全年機械製冷）</strong>'), 'water chiller must indicate no free cooling');
+  });
+
+  // 3. Water chiller D5 warning when designWb + towerApp + pheApp < fwsSupplyC
+  test('P4-3 water_chiller produces D5 warning and schematic renders warning banner when free cooling potential exists', () => {
+    const arch = Registry.get('water_chiller');
+    // fwsSupplyC = 40, designWb = 28, ctApproachC = 4, hasPhe = false -> 28 + 4 = 32 < 40 -> potential exists!
+    const sys = { architecture: 'water_chiller', fwsSupplyC: 40, fwsReturnC: 55, ctApproachC: 4, hasPhe: false };
+    const op = arch.operatingPoint(sys, { wb: 28 }, {});
+    const topo = arch.topology(sys, op, { designDb: 35, designWb: 28 });
+    assert(topo.warnings && topo.warnings.length > 0, 'must have warning when designWb + towerApp < fwsSupplyC');
+    assert(topo.warnings.some(w => w.includes('冷卻水塔具備自然供冷潛力；建議改用閉式塔或加裝水側經濟器')), 'warning text must recommend closed tower or WSE');
+
+    const svg = Schematics.render('single_loop', { cduSys: sys });
+    assert(svg.includes('⚠️ 建議改用閉式塔或加裝水側經濟器'), 'schematic must render warning in summary or banner');
+    assert(svg.includes('自然供冷潛力'), 'schematic must render warning banner');
+  });
+
+  // 4. SVG textLength overflow protection (fitTextAttr)
+  test('P4-3 fitTextAttr adds textLength and lengthAdjust only when text width exceeds container boundary', () => {
+    const svg = Schematics.render('single_loop', {
+      cduSys: {
+        architecture: 'dry_cooler_pure',
+        fwsSupplyC: 40,
+        fwsReturnC: 55,
+        dryCoolerApproachC: 5,
+        hasPhe: true,
+        pheApproachC: 2
+      }
+    });
+    assert(svg.includes('lengthAdjust="spacingAndGlyphs"'), 'schematic must contain lengthAdjust for fitted text');
+  });
+})();
+
 console.log(`\n${passCount} passed, ${failCount} failed, ${skipCount} skipped`);
 process.exit(failCount > 0 ? 1 : 0);
+
 
 
 
