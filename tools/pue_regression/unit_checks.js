@@ -2197,6 +2197,21 @@ function freshCtx() {
   });
 })();
 
+// ── S-1: dom_harness renders DOM properly for wiring tests ─────────────────
+(function () {
+  const { buildWindow } = require('./dom_harness.js');
+  test('S-1 dom_harness builds window, App initializes and renders Step 4', async () => {
+    const win = buildWindow();
+    assert(win.App, 'win.App must exist');
+    await win.App.init();
+    win.App.renderStep(4);
+    const container = win.document.getElementById('stepContent');
+    assert(container, '#stepContent must exist');
+    assert(container.innerHTML.length > 500, 'Step 4 innerHTML must not be empty');
+    assert(container.querySelector('.bg-slate-950'), 'Schematic container must exist in Step 4');
+  });
+})();
+
 console.log(`\n${passCount} passed, ${failCount} failed, ${skipCount} skipped`);
 process.exit(failCount > 0 ? 1 : 0);
 
