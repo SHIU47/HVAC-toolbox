@@ -117,6 +117,19 @@
             };
 
             const hasEco = !!nEco;
+            const isEcoBypass = hasEco && (op?.fc_fraction === 0 || (op?.tAvail !== undefined && op.tAvail >= chwReturnC));
+            const ecoStroke = isEcoBypass ? '#475569' : '#10b981';
+            const ecoHeaderFill = isEcoBypass ? '#1e293b' : '#064e3b';
+            const ecoTitleFill = isEcoBypass ? '#94a3b8' : '#d1fae5';
+            const ecoIconStroke = isEcoBypass ? '#64748b' : '#34d399';
+            const ecoBasis = op?.thresholds?.basis === 'wb' ? '濕球' : '外氣乾球';
+            const ecoTAvail = (op?.tAvail !== undefined && op?.tAvail !== null) ? Number(op.tAvail).toFixed(1) : '—';
+            const ecoLine1 = isEcoBypass ? '旁通停用 (Bypass)' : (nEco?.lines?.[0] || '');
+            const ecoLine2 = isEcoBypass ? `旁通（${ecoBasis}過高，可用溫度 ${ecoTAvail}°C ≥ 回水 ${chwReturnC}°C）` : (nEco?.lines?.[1] || '');
+            const ecoLine3 = isEcoBypass ? '100% 冰水回水直通蒸發器' : (nEco?.lines?.[2] || '');
+            const ecoLine4 = isEcoBypass ? '零自然預冷 ｜ 全機械壓縮製冷' : (nEco?.lines?.[3] || '');
+            const ecoPipeColor = isEcoBypass ? '#475569' : '#f59e0b';
+            const ecoPipeBadgeText = pipeEcoToEvap || (isEcoBypass ? '旁通' : '預冷');
 
             // 冰水管路與冷源拓樸 (分含 Economizer 與單階兩類佈局)
             const chwPipingAndPlantSvg = hasEco ? `
@@ -136,21 +149,22 @@
 
                 <!-- 4. 排熱與冰機拓樸 (Plant Schematic - 2-Stage Series) -->
                 <!-- Economizer (FC 盤管 / WSE 板換) -->
-                <rect x="435" y="55" width="175" height="135" rx="10" fill="#0f172a" stroke="#10b981" stroke-width="2" />
-                <rect x="435" y="55" width="175" height="26" rx="10" fill="#064e3b" />
-                <text x="522" y="73" fill="#d1fae5" font-size="11" font-weight="bold" text-anchor="middle" ${fitTextAttr(nEco.title || 'Free-Cooling 盤管', 165, 11)}>${nEco.title || 'Free-Cooling 盤管'}</text>
+                <rect x="435" y="55" width="175" height="135" rx="10" fill="#0f172a" stroke="${ecoStroke}" stroke-width="2" />
+                <rect x="435" y="55" width="175" height="26" rx="10" fill="${ecoHeaderFill}" />
+                <text x="522" y="73" fill="${ecoTitleFill}" font-size="11" font-weight="bold" text-anchor="middle" ${fitTextAttr(nEco.title || 'Free-Cooling 盤管', 165, 11)}>${nEco.title || 'Free-Cooling 盤管'}</text>
+                ${isEcoBypass ? '<text x="600" y="72" fill="#94a3b8" font-size="8.5" font-weight="bold" text-anchor="end">旁通 (Bypass)</text>' : ''}
                 
-                <rect x="443" y="88" width="18" height="90" rx="3" fill="#1e293b" stroke="#34d399" stroke-width="1" />
-                <path d="M 447 96 L 457 106 L 447 116 M 453 96 L 463 106 L 453 116 M 447 116 L 457 126 L 447 136 M 453 116 L 463 126 L 453 136 M 447 136 L 457 146 L 447 156" stroke="#34d399" stroke-width="1.3" fill="none" stroke-linecap="round" />
-                <text x="470" y="102" fill="#34d399" font-size="9.5" font-weight="bold" ${fitTextAttr(nEco.lines?.[0] || '', 135, 9.5)}>${nEco.lines?.[0] || ''}</text>
-                <text x="470" y="122" fill="#a7f3d0" font-size="9" ${fitTextAttr(nEco.lines?.[1] || '', 135, 9)}>${nEco.lines?.[1] || ''}</text>
-                <text x="470" y="142" fill="#cbd5e1" font-size="8.5" ${fitTextAttr(nEco.lines?.[2] || '', 135, 8.5)}>${nEco.lines?.[2] || ''}</text>
-                <text x="470" y="162" fill="#94a3b8" font-size="8.5" ${fitTextAttr(nEco.lines?.[3] || '', 135, 8.5)}>${nEco.lines?.[3] || ''}</text>
+                <rect x="443" y="88" width="18" height="90" rx="3" fill="#1e293b" stroke="${ecoIconStroke}" stroke-width="1" />
+                <path d="M 447 96 L 457 106 L 447 116 M 453 96 L 463 106 L 453 116 M 447 116 L 457 126 L 447 136 M 453 116 L 463 126 L 453 136 M 447 136 L 457 146 L 447 156" stroke="${ecoIconStroke}" stroke-width="1.3" fill="none" stroke-linecap="round" />
+                <text x="470" y="102" fill="${ecoIconStroke}" font-size="9.5" font-weight="bold" ${fitTextAttr(ecoLine1, 135, 9.5)}>${ecoLine1}</text>
+                <text x="470" y="122" fill="${isEcoBypass ? '#cbd5e1' : '#a7f3d0'}" font-size="9" ${fitTextAttr(ecoLine2, 135, 9)}>${ecoLine2}</text>
+                <text x="470" y="142" fill="#cbd5e1" font-size="8.5" ${fitTextAttr(ecoLine3, 135, 8.5)}>${ecoLine3}</text>
+                <text x="470" y="162" fill="#94a3b8" font-size="8.5" ${fitTextAttr(ecoLine4, 135, 8.5)}>${ecoLine4}</text>
 
                 <!-- 串聯管路: Economizer -> Evaporator -->
-                <line x1="610" y1="105" x2="665" y2="105" stroke="#f59e0b" stroke-width="4" stroke-dasharray="4,3" stroke-linecap="round" />
-                <rect x="614" y="74" width="48" height="20" rx="4" fill="#1e293b" stroke="#f59e0b" stroke-width="1.2" />
-                <text x="638" y="88" fill="#fef3c7" font-size="8" font-weight="bold" text-anchor="middle" ${fitTextAttr(pipeEcoToEvap || '預冷', 44, 8)}>${pipeEcoToEvap || '預冷'}</text>
+                <line x1="610" y1="105" x2="665" y2="105" stroke="${ecoPipeColor}" stroke-width="4" stroke-dasharray="4,3" stroke-linecap="round" />
+                <rect x="614" y="74" width="48" height="20" rx="4" fill="#1e293b" stroke="${ecoPipeColor}" stroke-width="1.2" />
+                <text x="638" y="88" fill="${isEcoBypass ? '#cbd5e1' : '#fef3c7'}" font-size="8" font-weight="bold" text-anchor="middle" ${fitTextAttr(ecoPipeBadgeText, 44, 8)}>${ecoPipeBadgeText}</text>
 
                 <!-- Evaporator / Chiller (冰水蒸發器) -->
                 <rect x="665" y="55" width="175" height="195" rx="10" fill="#0f172a" stroke="${theme.evapStroke}" stroke-width="2" />

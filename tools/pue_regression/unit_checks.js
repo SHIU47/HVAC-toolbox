@@ -2300,6 +2300,29 @@ function freshCtx() {
   });
 })();
 
+// ── F-5: Fanwall pre-cooling temperature clamp and bypass standby style ─────
+(function () {
+  const { buildWindow } = require('./dom_harness.js');
+  test('F-5 Fanwall pre-cooling temperature is clamped to return and Economizer shows bypass when fc_fraction=0', async () => {
+    const win = buildWindow();
+    await win.App.init();
+    const fanwallArchs = ['air_cooled_chiller', 'rdhx', 'water_cooled_chiller'];
+    for (const archId of fanwallArchs) {
+      const arch = win.CoolingArchRegistry.get(archId);
+      const op = arch.operatingPoint({ chwSupplyC: 12, chwReturnC: 18 }, { db: 40.0, wb: 30.0 });
+      assert(op.temps.chwPre !== undefined, `${archId} must define chwPre`);
+      assert(op.temps.chwPre <= op.temps.chwRet, `${archId} chwPre (${op.temps.chwPre}) must be <= chwRet (${op.temps.chwRet})`);
+      assert.strictEqual(op.temps.chwPre, 18.0, `${archId} chwPre must clamp to 18.0°C when completely unfeasible`);
+    }
+    const html = win.CoolingSchematics.render('air_plant', {
+      fwSys: { chwSupplyC: 12, chwReturnC: 18, architecture: 'air_cooled_chiller' },
+      t: { obj: { plantDesign: { fanwallSystem: { architecture: 'air_cooled_chiller' } } } }
+    });
+    assert(html.includes('旁通停用 (Bypass)'), 'air_plant schematic must display bypass when economizer is disabled');
+    assert(html.includes('旁通（'), 'air_plant schematic must display bypass detail with basis and temperatures');
+  });
+})();
+
 console.log(`\n${passCount} passed, ${failCount} failed, ${skipCount} skipped`);
 process.exit(failCount > 0 ? 1 : 0);
 
