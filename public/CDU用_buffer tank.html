@@ -1,0 +1,1529 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CDU 供水緩衝水槽</title>
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  <style>
+    :root {
+      --bg: #F3F5F8; --card: #FFFFFF; --line: #E4E8EE; --line-strong: #CFD6DF;
+      --ink: #0F172A; --ink-2: #334155; --muted: #64748B; --faint: #94A3B8;
+      --accent: #2563EB; --accent-soft: #EEF4FF;
+      --hot: #F97316; --load: #DC2626; --cool: #2563EB;
+      --pass: #15803D; --pass-soft: #ECFDF3; --warn: #B45309; --warn-soft: #FFF7E6; --fail: #DC2626; --fail-soft: #FEF2F2;
+      --assume: #475569; --assume-soft: #F1F5F9;
+      --radius: 12px;
+      --font: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang TC", "Microsoft JhengHei", "Noto Sans TC", sans-serif;
+      --mono: "JetBrains Mono", "SFMono-Regular", Consolas, monospace;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    [hidden] { display: none !important; }
+    button, input, select { font: inherit; color: inherit; }
+    body { background: var(--bg); color: var(--ink); font-family: var(--font); font-size: 14px; line-height: 1.5; -webkit-font-smoothing: antialiased; }
+    .kpi-v, code, .iw input, td { font-variant-numeric: tabular-nums; }
+
+    .topbar { position: sticky; top: 0; z-index: 50; background: rgba(255,255,255,0.92); backdrop-filter: blur(8px); border-bottom: 1px solid var(--line);
+      display: flex; align-items: center; gap: 20px; padding: 10px 24px; flex-wrap: wrap; }
+    .brand { display: flex; align-items: center; gap: 10px; }
+    .logo { width: 34px; height: 34px; border-radius: 9px; background: var(--hot); color: #fff; display: grid; place-items: center; }
+    .app-title { font-size: 15px; font-weight: 700; }
+    .app-sub { font-size: 12px; color: var(--muted); }
+    .project { display: flex; gap: 8px; flex: 1; min-width: 260px; }
+    .project input { border: 1px solid transparent; background: #F1F4F8; border-radius: 8px; padding: 7px 10px; font-size: 13px; outline: none; min-width: 0; }
+    .project input:focus { border-color: var(--accent); background: #fff; }
+    .project .pn { flex: 1.2; font-weight: 600; }
+    .project .ps { flex: 1; color: var(--ink-2); }
+    .actions { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+    .autosave { font-size: 12px; color: var(--faint); margin-right: 4px; }
+    .btn { border: 1px solid var(--line-strong); background: #fff; color: var(--ink-2); border-radius: 8px; padding: 7px 12px; font-size: 13px; font-weight: 600; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; }
+    .btn:hover { background: #F8FAFC; border-color: #B8C2CE; }
+    .btn.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+    .btn.primary:hover { background: #1D4ED8; }
+    .btn.quiet { border-color: transparent; background: transparent; color: var(--muted); }
+    .btn.quiet:hover { background: #EEF1F5; color: var(--ink); }
+
+    .layout { display: grid; grid-template-columns: minmax(400px, 470px) 1fr; gap: 20px; padding: 20px 24px 60px; max-width: 1500px; margin: 0 auto; align-items: start; }
+    @media (max-width: 1080px) { .layout { grid-template-columns: 1fr; } }
+    .card { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); }
+    .inputs, .results { display: flex; flex-direction: column; gap: 14px; }
+    @media (min-width: 1081px) { .results { position: sticky; top: 74px; max-height: calc(100vh - 90px); overflow-y: auto; padding-right: 4px; scrollbar-width: thin; } }
+
+    .sec { padding: 16px 18px 18px; }
+    .sec-h { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; }
+    .sec-h .no { width: 24px; height: 24px; border-radius: 50%; background: var(--accent-soft); color: var(--accent); font-size: 12px; font-weight: 700; display: grid; place-items: center; flex: none; }
+    .sec-h h2 { font-size: 15px; font-weight: 700; }
+    .sec-h p { font-size: 12px; color: var(--muted); }
+    .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px 14px; }
+    .grid.g3 { grid-template-columns: repeat(3, 1fr); }
+    .field.full { grid-column: 1 / -1; }
+    .grid > *, .layout > *, .two > * { min-width: 0; }
+    .field label { display: block; font-size: 13px; font-weight: 600; color: var(--ink-2); margin-bottom: 5px; }
+    .req { color: var(--fail); font-style: normal; }
+    .iw { display: flex; align-items: center; height: 40px; border: 1px solid var(--line-strong); border-radius: 8px; background: #fff; transition: border-color .15s, box-shadow .15s; }
+    .iw:focus-within { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15); }
+    .iw input, .iw select { flex: 1; min-width: 0; width: 100%; height: 100%; border: none; background: transparent; padding: 0 10px 0 12px; font-size: 15px; font-weight: 600; outline: none; }
+    .iw .u { flex: none; padding-right: 10px; font-size: 12px; color: var(--muted); white-space: nowrap; }
+    .iw:has(.is-invalid) { border-color: var(--fail); background: var(--fail-soft); }
+    .iw.dim { opacity: 0.45; }
+    .hint { font-size: 12px; color: var(--muted); margin-top: 4px; line-height: 1.45; }
+    .err { display: none; font-size: 12px; color: var(--fail); font-weight: 600; margin-top: 4px; }
+    .err.show { display: block; }
+    .note { margin-top: 12px; font-size: 12.5px; color: var(--ink-2); background: #F6F8FB; border-radius: 8px; padding: 9px 11px; line-height: 1.55; }
+    .note b { color: var(--ink); }
+    .note.assume { background: var(--assume-soft); border-left: 3px solid var(--assume); }
+    .chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+    .chip { border: 1px solid var(--line-strong); background: #fff; border-radius: 999px; padding: 2px 10px; font-size: 12px; font-weight: 600; color: var(--ink-2); cursor: pointer; }
+    .chip:hover { border-color: var(--accent); color: var(--accent); }
+    .radios { display: flex; flex-wrap: wrap; gap: 8px 16px; font-size: 13px; }
+    .radios label { display: flex; align-items: center; gap: 6px; cursor: pointer; font-weight: 500; margin: 0; }
+    .radios label.disabled { color: var(--faint); cursor: not-allowed; }
+
+    .step-vis { display: flex; align-items: center; gap: 10px; margin-top: 10px; font-size: 12.5px; color: var(--ink-2); }
+    .step-vis .bar { flex: 1; height: 10px; background: #EEF1F5; border-radius: 5px; position: relative; overflow: hidden; }
+    .step-vis .p0 { position: absolute; left: 0; top: 0; bottom: 0; background: #FCA5A5; }
+    .step-vis .p1 { position: absolute; top: 0; bottom: 0; background: var(--load); }
+    .step-vis .cap { position: absolute; top: -2px; bottom: -2px; width: 2px; background: var(--cool); }
+
+    details.adv > summary { list-style: none; cursor: pointer; padding: 14px 18px; display: flex; align-items: center; justify-content: space-between; font-weight: 700; font-size: 14px; }
+    details.adv > summary::-webkit-details-marker { display: none; }
+    details.adv > summary .sum { font-weight: 400; font-size: 12px; color: var(--muted); margin-left: auto; }
+    details.adv > summary::after { content: '▸'; color: var(--faint); margin-left: 10px; }
+    details.adv[open] > summary::after { content: '▾'; }
+    details.adv .adv-body { padding: 0 18px 18px; display: flex; flex-direction: column; gap: 14px; }
+
+    /* 設計基準與模型狀態 */
+    .basis { padding: 10px 16px; display: flex; flex-wrap: wrap; gap: 4px 14px; align-items: baseline; font-size: 12.5px; color: var(--ink-2); }
+    .basis .lb { font-size: 11px; font-weight: 800; letter-spacing: .8px; color: var(--muted); }
+    .basis b { color: var(--ink); }
+    .model { padding: 12px 16px; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px 14px; }
+    .model div { font-size: 12.5px; color: var(--ink); font-weight: 600; min-width: 0; }
+    .model small { display: block; font-size: 11px; font-weight: 700; letter-spacing: .5px; color: var(--muted); }
+    .model .assume-note { grid-column: 1 / -1; font-weight: 400; font-size: 12px; color: var(--assume); background: var(--assume-soft); border-radius: 6px; padding: 6px 9px; }
+    @media (max-width: 640px) { .model { grid-template-columns: 1fr 1fr; } }
+
+    .verdict { padding: 18px 20px; border-left-width: 5px; }
+    .verdict.pass { border-left-color: var(--pass); } .verdict.warn { border-left-color: var(--warn); } .verdict.fail { border-left-color: var(--fail); } .verdict.info { border-left-color: var(--assume); }
+    .v-head { display: flex; align-items: center; gap: 12px; }
+    .v-icon { width: 34px; height: 34px; border-radius: 50%; display: grid; place-items: center; font-weight: 800; font-size: 16px; color: #fff; flex: none; }
+    .verdict.pass .v-icon { background: var(--pass); } .verdict.warn .v-icon { background: var(--warn); } .verdict.fail .v-icon { background: var(--fail); } .verdict.info .v-icon { background: var(--assume); }
+    .v-title { font-size: 18px; font-weight: 800; }
+    .v-sub { font-size: 13px; color: var(--muted); }
+    .v-layers { display: flex; flex-wrap: wrap; gap: 8px; margin: 12px 0 0 46px; }
+    .layer { font-size: 12.5px; font-weight: 700; padding: 3px 10px; border-radius: 999px; }
+    .layer.pass { background: var(--pass-soft); color: var(--pass); } .layer.warn { background: var(--warn-soft); color: var(--warn); } .layer.fail { background: var(--fail-soft); color: var(--fail); } .layer.info { background: var(--assume-soft); color: var(--assume); }
+    .v-list { margin: 10px 0 0 46px; font-size: 13px; color: var(--ink-2); display: flex; flex-direction: column; gap: 4px; }
+    .v-list a { color: var(--ink); font-weight: 700; cursor: pointer; text-decoration: underline; text-decoration-color: var(--line-strong); }
+
+    .kpis { display: grid; grid-template-columns: repeat(3, 1fr); }
+    .kpi { padding: 16px 20px; min-width: 0; }
+    .kpi + .kpi { border-left: 1px solid var(--line); }
+    .kpi-l { font-size: 12.5px; color: var(--muted); font-weight: 600; }
+    .kpi-v { font-size: 30px; font-weight: 800; letter-spacing: -0.5px; line-height: 1.2; margin-top: 2px; }
+    .kpi-v small { font-size: 14px; font-weight: 600; color: var(--muted); margin-left: 4px; letter-spacing: 0; }
+    .kpi-v.bad { color: var(--fail); } .kpi-v.good { color: var(--pass); }
+    .kpi-s { font-size: 12px; color: var(--muted); margin-top: 2px; }
+    @media (max-width: 640px) { .kpis { grid-template-columns: 1fr; } .kpi + .kpi { border-left: none; border-top: 1px solid var(--line); } .kpi { padding: 12px 16px; } .kpi-v { font-size: 26px; } }
+
+    .panel { padding: 16px 20px; }
+    .panel-h { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; margin-bottom: 10px; }
+    .panel-h h3 { font-size: 14px; font-weight: 700; }
+    .panel-h span { font-size: 12px; color: var(--muted); }
+    .two { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+    @media (max-width: 1280px) { .two { grid-template-columns: 1fr; } }
+    .chart svg { width: 100%; height: auto; min-height: 180px; display: block; overflow: visible; }
+    .legend { display: flex; flex-wrap: wrap; gap: 6px 14px; font-size: 12px; color: var(--muted); margin-top: 8px; }
+    .legend i { display: inline-block; width: 14px; height: 3px; border-radius: 2px; margin-right: 5px; vertical-align: 3px; }
+    .legend i.area { height: 10px; vertical-align: -1px; opacity: .5; }
+    .legend i.dash { background: repeating-linear-gradient(90deg, currentColor 0 4px, transparent 4px 7px) !important; }
+    .chart-note { font-size: 12px; color: var(--ink-2); margin-top: 6px; }
+    .chart-note b { color: var(--ink); }
+
+    .checks { list-style: none; display: flex; flex-direction: column; }
+    .chk { display: flex; gap: 12px; padding: 10px 0; border-top: 1px solid var(--line); transition: background .3s; }
+    .chk:first-child { border-top: none; }
+    .chk.flash { background: var(--accent-soft); }
+    .chk .dot { width: 22px; height: 22px; border-radius: 50%; display: grid; place-items: center; font-size: 12px; font-weight: 800; color: #fff; flex: none; margin-top: 1px; }
+    .chk.pass .dot { background: var(--pass); } .chk.warn .dot { background: var(--warn); } .chk.fail .dot { background: var(--fail); }
+    .chk.info .dot { background: #fff; color: var(--assume); border: 1.5px solid var(--assume); }
+    .chk.na .dot { background: #fff; color: var(--warn); border: 1.5px dashed var(--warn); }
+    .chk.na .lvl { color: var(--warn); }
+    .chk-t { font-weight: 700; font-size: 13.5px; }
+    .chk-t .lvl { font-size: 11px; font-weight: 800; letter-spacing: .5px; margin-left: 6px; }
+    .chk.pass .lvl { color: var(--pass); } .chk.warn .lvl { color: var(--warn); } .chk.fail .lvl { color: var(--fail); } .chk.info .lvl { color: var(--assume); }
+    .chk-v { font-size: 13px; color: var(--ink-2); }
+    .chk-d { font-size: 12px; color: var(--muted); }
+
+    .tbl-wrap { overflow-x: auto; margin: 0 -20px; padding: 0 20px; }
+    table.tb { width: 100%; border-collapse: collapse; font-size: 13px; }
+    table.tb th { text-align: right; font-size: 12px; color: var(--muted); font-weight: 600; padding: 6px 8px; border-bottom: 1px solid var(--line); white-space: nowrap; }
+    table.tb td { text-align: right; padding: 8px; border-bottom: 1px solid var(--line); white-space: nowrap; }
+    table.tb th:first-child, table.tb td:first-child, table.tb th:last-child, table.tb td:last-child { text-align: left; }
+    table.tb tbody tr { cursor: pointer; }
+    table.tb tbody tr:hover { background: #F8FAFC; }
+    table.tb tr.cur { background: var(--accent-soft); }
+    table.tb tr.cur td:first-child { box-shadow: inset 3px 0 0 var(--accent); font-weight: 700; }
+    table.tb tbody tr:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+    .tag.warn { background: var(--warn-soft); color: var(--warn); }
+    .tag.sel { background: var(--accent-soft); color: var(--accent); }
+    .tag + .tag { margin-left: 4px; }
+    .basis { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 6px 14px; }
+    .basis div { font-size: 12.5px; color: var(--ink); font-weight: 600; min-width: 0; }
+    .basis small { display: block; font-size: 10.5px; font-weight: 800; letter-spacing: .6px; color: var(--muted); }
+    @media (max-width: 900px) { .basis { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+    .tag { display: inline-block; font-size: 11px; font-weight: 800; letter-spacing: .3px; padding: 1px 8px; border-radius: 999px; }
+    .tag.ok { background: var(--pass-soft); color: var(--pass); }
+    .tag.bad { background: var(--fail-soft); color: var(--fail); }
+
+    details.more > summary { list-style: none; cursor: pointer; padding: 14px 20px; font-weight: 700; display: flex; justify-content: space-between; }
+    details.more > summary::-webkit-details-marker { display: none; }
+    details.more > summary::after { content: '展開 ▸'; font-weight: 500; font-size: 12px; color: var(--muted); }
+    details.more[open] > summary::after { content: '收合 ▾'; }
+    .steps { list-style: none; padding: 0 20px 16px; display: flex; flex-direction: column; gap: 10px; }
+    .steps li { display: flex; gap: 10px; }
+    .steps .n { width: 20px; height: 20px; border-radius: 50%; background: #EEF1F5; font-size: 11px; font-weight: 700; display: grid; place-items: center; flex: none; margin-top: 2px; }
+    .steps .st-t { font-size: 12.5px; color: var(--muted); }
+    .steps code { font-family: var(--mono); font-size: 13px; color: var(--ink); word-break: break-word; }
+    .notes { padding: 0 20px 18px; font-size: 12.5px; color: var(--ink-2); display: flex; flex-direction: column; gap: 6px; line-height: 1.6; }
+    .notes h4 { font-size: 13px; margin-top: 4px; }
+
+    .is-stale .kpis, .is-stale .viz, .is-stale .checks-card, .is-stale .tbl-card, .is-stale .model { opacity: 0.4; filter: grayscale(70%); pointer-events: none; }
+
+    .to-results { display: none; }
+    @media (max-width: 1080px) {
+      .to-results { display: block; position: fixed; right: 16px; bottom: 16px; z-index: 60; border: none; background: var(--ink); color: #fff; border-radius: 999px; padding: 10px 18px; font-weight: 700; box-shadow: 0 6px 20px rgba(15,23,42,.25); }
+      .topbar { position: static; }
+      .iw { height: 44px; }
+    }
+    @media (max-width: 520px) { .grid { grid-template-columns: 1fr; } .grid.g3 { grid-template-columns: 1fr 1fr; } .topbar { padding: 10px 16px; } .layout { padding: 16px 16px 60px; } }
+
+    .toast { position: fixed; bottom: 24px; left: 50%; transform: translate(-50%, 10px); background: var(--ink); color: #fff; padding: 10px 18px; border-radius: 10px; font-size: 13px; font-weight: 600; opacity: 0; pointer-events: none; transition: opacity .2s, transform .2s; z-index: 1000; max-width: 90vw; }
+    .toast.show { opacity: 1; transform: translate(-50%, 0); }
+
+    @media print {
+      body { background: #fff; font-size: 12px; }
+      .actions, .to-results, .chips, .toast { display: none !important; }
+      .topbar { position: static; border-bottom: 2px solid var(--ink); }
+      .project input { background: none; padding: 0; }
+      .layout { display: block; padding: 12px 0; }
+      .results { position: static; max-height: none; overflow: visible; margin-top: 14px; }
+      .inputs { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+      .card { break-inside: avoid; }
+      .sec { padding: 10px 12px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="toast" id="toastMsg" role="status" aria-live="polite"></div>
+
+  <header class="topbar">
+    <div class="brand">
+      <div class="logo"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 17h4l3-10 4 14 3-7h4"/></svg></div>
+      <div><div class="app-title">CDU 供水緩衝水槽</div><div class="app-sub">GPU 負載瞬間拉升、CDU 冷量來不及跟上時，壓住二次側供水溫度</div></div>
+    </div>
+    <div class="project">
+      <input id="projectName" class="pn" placeholder="案名，例如 GB300 Hall B TCS" value="" oninput="calculate()" aria-label="案名">
+      <input id="dataSource" class="ps" placeholder="依據，例如 原廠 BOD 260402005" value="" oninput="calculate()" aria-label="依據">
+    </div>
+    <div class="actions">
+      <span class="autosave" id="autosaveHint"></span>
+      <button type="button" class="btn quiet" onclick="resetToDefaults()">重設</button>
+      <button type="button" class="btn" onclick="copySummary()">複製摘要</button>
+      <button type="button" class="btn" onclick="printReport()">列印 / PDF</button>
+      <button type="button" class="btn primary" onclick="exportToExcel()">匯出 Excel</button>
+    </div>
+  </header>
+
+  <div class="layout">
+    <section class="inputs">
+
+      <div class="card sec">
+        <div class="sec-h"><span class="no">1</span><div><h2>CDU 與負載跳升</h2><p>GPU 負載從多少、多快跳到多少</p></div></div>
+        <div class="grid">
+          <div class="field">
+            <label for="cduCap">單台 CDU 額定容量 <i class="req">*</i></label>
+            <div class="iw"><input type="number" id="cduCap" step="any" min="0" value="1000" oninput="calculate()"><span class="u">kW</span></div>
+            <div class="hint">負載百分比的基準</div>
+            <div class="err" id="err-cduCap"></div>
+          </div>
+          <div class="field">
+            <label for="cduCount">CDU 台數 <i class="req">*</i></label>
+            <div class="iw"><input type="number" id="cduCount" step="1" min="1" value="4" oninput="calculate()"><span class="u">台</span></div>
+            <div class="hint">每台 CDU 出水端各串一個水槽</div>
+            <div class="err" id="err-cduCount"></div>
+          </div>
+        </div>
+        <div class="grid g3" style="margin-top:12px">
+          <div class="field">
+            <label for="loadFrom">跳升前負載 <i class="req">*</i></label>
+            <div class="iw"><input type="number" id="loadFrom" step="any" min="0" max="100" value="30" oninput="calculate()"><span class="u">%</span></div>
+            <div class="err" id="err-loadFrom"></div>
+          </div>
+          <div class="field">
+            <label for="loadTo">跳升後負載 <i class="req">*</i></label>
+            <div class="iw"><input type="number" id="loadTo" step="any" min="0" max="100" value="100" oninput="calculate()"><span class="u">%</span></div>
+            <div class="err" id="err-loadTo"></div>
+          </div>
+          <div class="field">
+            <label for="riseTime">上升時間 <i class="req">*</i></label>
+            <div class="iw"><input type="number" id="riseTime" step="any" min="0" value="1" oninput="calculate()"><span class="u">秒</span></div>
+            <div class="err" id="err-riseTime"></div>
+          </div>
+        </div>
+        <div class="step-vis"><span id="stepFromTxt"></span><div class="bar"><div class="p0" id="stepP0"></div><div class="p1" id="stepP1"></div><div class="cap" id="stepCap" title="CDU 最大可用冷量"></div></div><span id="stepToTxt"></span></div>
+        <div class="hint">原廠 BOD：負載在 1 秒內由 30% 升到 100%。藍線為 CDU 最大可用冷量。</div>
+      </div>
+
+      <div class="card sec">
+        <div class="sec-h"><span class="no">2</span><div><h2>TCS 二次側水溫</h2><p>供水溫度不能超過的上限，與恢復判定</p></div></div>
+        <div class="grid">
+          <div class="field">
+            <label for="tempSupply">設計供水 <i class="req">*</i></label>
+            <div class="iw"><input type="number" id="tempSupply" step="any" value="40" oninput="calculate()"><span class="u">°C</span></div>
+            <div class="err" id="err-tempSupply"></div>
+          </div>
+          <div class="field">
+            <label for="tempMax">供水上限 <i class="req">*</i></label>
+            <div class="iw"><input type="number" id="tempMax" step="any" value="45" oninput="calculate()"><span class="u">°C</span></div>
+            <div class="err" id="err-tempMax"></div>
+          </div>
+          <div class="field">
+            <label for="deltaTDesign">設計溫差 <i class="req">*</i></label>
+            <div class="iw"><input type="number" id="deltaTDesign" step="any" min="0" value="10" oninput="calculate()"><span class="u">K</span></div>
+            <div class="hint">決定二次側額定流量</div>
+            <div class="err" id="err-deltaTDesign"></div>
+          </div>
+          <div class="field">
+            <label for="recoveryThr">恢復判定門檻 <i class="req">*</i></label>
+            <div class="iw"><input type="number" id="recoveryThr" step="any" min="0" value="0.5" oninput="calculate()"><span class="u">K</span></div>
+            <div class="hint">供水回到「設計供水 + 門檻」視為水槽熱恢復</div>
+            <div class="err" id="err-recoveryThr"></div>
+          </div>
+          <div class="field full">
+            <label for="recoveryMaxSec">最大允許水槽熱恢復時間 <i class="req">*</i></label>
+            <div class="iw"><input type="number" id="recoveryMaxSec" step="any" min="0" value="30" oninput="calculate()"><span class="u">秒</span></div>
+            <div class="hint">設計假設，非規範值；應依 BOD／OEM 暫態要求設定</div>
+            <div class="err" id="err-recoveryMaxSec"></div>
+          </div>
+          <div class="field full">
+            <label>冷卻液</label>
+            <div class="radios">
+              <label><input type="radio" name="fluid" value="pg25" checked onchange="calculate()"> 丙二醇 25%</label>
+              <label><input type="radio" name="fluid" value="water" onchange="calculate()"> 水</label>
+              <label><input type="radio" name="fluid" value="eg30" onchange="calculate()"> 乙二醇 30%</label>
+              <label><input type="radio" name="fluid" value="custom" onchange="calculate()"> 自訂</label>
+            </div>
+          </div>
+        </div>
+        <div class="grid" id="customFluidBox" hidden style="margin-top:12px">
+          <div class="field">
+            <label for="fluidRho">密度 ρ</label>
+            <div class="iw"><input type="number" id="fluidRho" step="any" value="1012" oninput="calculate()"><span class="u">kg/m³</span></div>
+            <div class="err" id="err-fluidRho"></div>
+          </div>
+          <div class="field">
+            <label for="fluidCp">比熱 cp</label>
+            <div class="iw"><input type="number" id="fluidCp" step="any" value="3.98" oninput="calculate()"><span class="u">kJ/kg·K</span></div>
+            <div class="err" id="err-fluidCp"></div>
+          </div>
+        </div>
+        <div class="note" id="tempReadout"></div>
+      </div>
+
+      <div class="card sec">
+        <div class="sec-h"><span class="no">3</span><div><h2>CDU 冷量反應（簡化模型）</h2><p>等效 CDU 冷量追蹤時間</p></div></div>
+        <div class="field" style="margin-bottom:12px">
+          <label>控制模型</label>
+          <div class="radios">
+            <label><input type="radio" name="controlModel" value="linear" checked onchange="calculate()"> 線性等效模型</label>
+            <label><input type="radio" name="controlModel" value="ideal" onchange="calculate()"> 理想瞬時（僅供比較）</label>
+            <label class="disabled" title="尚未開放"><input type="radio" name="controlModel" value="vendor" disabled> 原廠暫態響應（預留）</label>
+          </div>
+        </div>
+        <div class="grid">
+          <div class="field">
+            <label for="deadTime">偵測＋控制延遲 <i class="req">*</i></label>
+            <div class="iw" id="iwDead"><input type="number" id="deadTime" step="any" min="0" value="5" oninput="calculate()"><span class="u">秒</span></div>
+            <div class="hint">負載跳升後，CDU 冷量開始增加前的等效延遲</div>
+            <div class="err" id="err-deadTime"></div>
+          </div>
+          <div class="field">
+            <label for="valveStroke">等效冷量全程時間 <i class="req">*</i></label>
+            <div class="iw" id="iwStroke"><input type="number" id="valveStroke" step="any" min="0" value="20" oninput="calculate()"><span class="u">秒</span></div>
+            <div class="chips"><button type="button" class="chip" onclick="setVal('valveStroke',9)">9</button><button type="button" class="chip" onclick="setVal('valveStroke',20)">20</button><button type="button" class="chip" onclick="setVal('valveStroke',35)">35</button><button type="button" class="chip" onclick="setVal('valveStroke',60)">60</button></div>
+            <div class="hint">CDU 冷量由 0 增加到 100% 額定所需時間（常以水閥致動器全行程時間估）</div>
+            <div class="err" id="err-valveStroke"></div>
+          </div>
+          <div class="field full">
+            <label for="availPct">CDU 最大可用冷量 <i class="req">*</i></label>
+            <div class="iw"><input type="number" id="availPct" step="any" min="0" max="100" value="100" oninput="calculate()"><span class="u">% 額定（≤ 100）</span></div>
+            <div class="hint">目前工況下 CDU 能提供的最大冷量，簡化模型上限 100% 額定（全程時間定義為 0→100% 額定）。需 &gt; 跳升後負載才有餘量把溫度拉回。原廠保證容量高於額定的情況，待原廠暫態響應模式開放後再輸入。</div>
+            <div class="err" id="err-availPct"></div>
+          </div>
+        </div>
+        <div class="note assume">簡化模型：假設 CDU 可用冷量隨控制輸出線性增加（每秒增加 額定 ÷ 全程時間），直到最大可用冷量。正式設計應以 CDU 控制閥 Cv／行程特性、PID／前饋設定、熱交換器 UA、一次側水溫及原廠暫態響應資料為準。</div>
+        <div class="note" id="ctrlReadout"></div>
+      </div>
+
+      <div class="card sec">
+        <div class="sec-h"><span class="no">4</span><div><h2>水槽選型</h2><p>每台 CDU 出水端串聯的混合槽</p></div></div>
+        <div class="grid">
+          <div class="field">
+            <label for="tankSizeChoice">單槽候選容積</label>
+            <div class="iw"><select id="tankSizeChoice" onchange="calculate()" aria-label="單槽候選容積"></select></div>
+            <div class="hint">「自動」取不小於需求的最小候選容積（工具內建級距 ≤ 10 m³，非產業標準規格）</div>
+          </div>
+          <div class="field" id="customSizeBox" hidden>
+            <label for="customSize">實際設備容積 <i class="req">*</i></label>
+            <div class="iw"><input type="number" id="customSize" step="any" min="0" value="12" oninput="calculate()"><span class="u">m³</span></div>
+            <div class="hint">手動指定的實際設備規格（非內建候選）</div>
+            <div class="err" id="err-customSize"></div>
+          </div>
+          <div class="field">
+            <label for="mixEffPct">有效混合容積係數</label>
+            <div class="iw"><input type="number" id="mixEffPct" step="any" min="0" max="100" value="80" oninput="calculate()"><span class="u">%</span></div>
+            <div class="hint">設計假設，反映短路、死角、非完全混合；正式選型依槽型、進出口配置或供應商資料確認</div>
+            <div class="err" id="err-mixEffPct"></div>
+          </div>
+          <div class="field">
+            <label for="marginPct">設計餘裕</label>
+            <div class="iw"><input type="number" id="marginPct" step="any" min="0" value="20" oninput="calculate()"><span class="u">%</span></div>
+            <div class="hint">設計假設，非規範值</div>
+            <div class="err" id="err-marginPct"></div>
+          </div>
+          <div class="field">
+            <label for="otherMixVol">其他可計入混合容積</label>
+            <div class="iw"><input type="number" id="otherMixVol" step="any" min="0" value="0" oninput="calculate()"><span class="u">m³</span></div>
+            <div class="hint">只計真正在二次側主流路上、可視為完全混合的容積</div>
+            <div class="err" id="err-otherMixVol"></div>
+          </div>
+        </div>
+        <div class="note">可計入：在主流路上的 CDU 內建儲液槽等。<b>不可計入</b>：管路（柱塞流，只延遲不抹平）、死管段、隔離中的槽、流向不明的旁通容積；也不可把 CDU 內部容積與外部水槽重複計算。</div>
+        <div class="note" id="sizeReadout"></div>
+      </div>
+
+      <details class="card adv" id="advBox">
+        <summary>進階設定 <span class="sum" id="advSummary"></span></summary>
+        <div class="adv-body">
+          <div class="field">
+            <label for="hdRatio">水槽高徑比 H/D</label>
+            <div class="iw"><input type="number" id="hdRatio" step="any" min="0.3" max="6" value="2" oninput="calculate()"><span class="u">高 ÷ 直徑</span></div>
+            <div class="err" id="err-hdRatio"></div>
+          </div>
+        </div>
+      </details>
+    </section>
+
+    <aside class="results" id="results">
+      <div class="card basis" id="basisBar" aria-label="設計基準"></div>
+
+      <div class="card verdict" id="verdict" role="status" aria-live="polite">
+        <div class="v-head">
+          <div class="v-icon" id="verdictIcon">✓</div>
+          <div><div class="v-title" id="verdictTitle"></div><div class="v-sub" id="verdictSub"></div></div>
+        </div>
+        <div class="v-layers" id="verdictLayers"></div>
+        <div class="v-list" id="verdictList"></div>
+      </div>
+
+      <div class="card model" id="modelBox" aria-label="模型狀態"></div>
+
+      <div class="card kpis" aria-live="polite">
+        <div class="kpi"><div class="kpi-l">每台 CDU 水槽（選定標稱容積）</div><div class="kpi-v" id="kpiTank">—</div><div class="kpi-s" id="kpiTankSub"></div></div>
+        <div class="kpi"><div class="kpi-l">無水槽第一圈溫升估算</div><div class="kpi-v" id="kpiNoTank">—</div><div class="kpi-s" id="kpiNoTankSub"></div></div>
+        <div class="kpi"><div class="kpi-l">加水槽後供水最高</div><div class="kpi-v" id="kpiWithTank">—</div><div class="kpi-s" id="kpiWithTankSub"></div></div>
+      </div>
+
+      <div class="two viz">
+        <div class="card panel chart">
+          <div class="panel-h"><h3>負載跳升 vs 冷量反應</h3><span>kW</span></div>
+          <div id="chartQ"></div>
+          <div class="legend"><span><i style="background:var(--load)"></i>GPU 負載</span><span><i style="background:var(--cool)"></i>CDU 冷量</span><span><i class="area" style="background:var(--hot)"></i>缺口（水槽吸收）</span></div>
+          <div class="chart-note" id="chartQNote"></div>
+        </div>
+        <div class="card panel chart">
+          <div class="panel-h"><h3>供水溫度</h3><span>°C</span></div>
+          <div id="chartT"></div>
+          <div class="legend"><span style="color:#94A3B8"><i class="dash"></i>無水槽第一圈估算</span><span><i style="background:var(--hot)"></i>加水槽後</span><span><i style="background:var(--fail)"></i>上限</span><span style="color:#15803D"><i class="dash"></i>恢復門檻</span></div>
+          <div class="chart-note" id="chartTNote"></div>
+        </div>
+      </div>
+
+      <div class="card panel checks-card">
+        <div class="panel-h"><h3>檢核項目</h3><span id="checkSummary"></span></div>
+        <ul class="checks" id="checkList"></ul>
+      </div>
+
+      <div class="card panel tbl-card">
+        <div class="panel-h"><h3>候選容積比較</h3><span id="optsCaption"></span></div>
+        <div class="tbl-wrap"><table class="tb">
+          <thead><tr><th>候選容積</th><th>有效容積</th><th>外形 Ø × 高</th><th>停留時間</th><th>供水最高</th><th>溫度餘裕</th><th>熱恢復時間</th><th>選型狀態</th></tr></thead>
+          <tbody id="optsBody"></tbody>
+        </table></div>
+      </div>
+
+      <details class="card more">
+        <summary>計算過程</summary>
+        <ol class="steps" id="calcSteps"></ol>
+      </details>
+
+      <details class="card more">
+        <summary>計算假設與模型限制</summary>
+        <div class="notes">
+          <h4>為什麼需要水槽</h4>
+          <div>GPU 負載 1 秒內從 30% 跳到 100%，CDU 冷量要等控制延遲後才開始增加。這段時間多出來的熱（缺口）會讓二次側供水溫度跳高；在 CDU 出水端串聯混合槽，可把溫度尖峰變成緩慢爬升。</div>
+          <h4>單一暫態求解器</h4>
+          <div>負載與 CDU 冷量皆為分段線性，求解器在所有轉折點與交叉點切段後精確積分，得到：缺口曲線、最大缺口、最大儲熱能量 E = max<sub>t</sub> ∫₀ᵗ (Q負載 − Q冷量) dt、峰值溫度與恢復時間。圖表、計算書與 Excel 都使用同一組結果。</div>
+          <h4>熱模型：集中參數儲熱（Lumped Energy Storage）</h4>
+          <div>ρ·cp·V有效·dT/dt = Q負載 − Q冷量，屬一階集中參數儲熱模型。假設：水槽完全混合、槽內溫度均勻；忽略水槽本體、管路、熱交換器金屬、冷板與歧管的熱容量；忽略熱損失、管路傳輸延遲、進出口局部溫差、分層與混合動態。本工具不是 CFD，也不是完整的 TCS 暫態模型。</div>
+          <div>實際 TCS 的總熱慣量可能包含 CDU 熱交換器、管路、歧管、冷板與 IT 設備內的冷卻液；本工具只把「有效液體容積」當作儲熱容量。</div>
+          <h4>容積計算順序</h4>
+          <div>最大儲熱能量 → 理論有效容積 → 扣除已計入的其他混合容積 = 水槽有效需求 → ÷ 有效混合容積係數 = 實體需求 → × (1 + 設計餘裕) = 設計需求 → 選定標稱容積（內建候選或手動指定的實際設備）→ 選定有效容積。有效混合容積係數與設計餘裕都是設計假設，不是規範值。</div>
+          <h4>候選容積</h4>
+          <div>工具內建 0.05–10 m³ 級距，非產業標準規格。設計需求超過 10 m³ 時不自動選型，請擴充候選規格庫或改用「自訂」手動指定實際設備容積。</div>
+          <h4>流量</h4>
+          <div>二次側額定設計流量 = CDU 額定容量 ÷ (ρ·cp·設計溫差)，Basis 為 CDU 額定容量，不是目前 GPU 負載下的實際流量。</div>
+          <h4>無水槽第一圈溫升估算</h4>
+          <div>以「最大瞬時冷量缺口 ÷ 額定流量熱容」估算熱交換器出水第一圈的溫升；未包含整個 TCS 循環體積與管路傳輸延遲，僅作比較用途。</div>
+          <h4>穩態容量與水槽熱恢復時間</h4>
+          <div>穩態容量：CDU 最大可用冷量是否大於跳升後負載。水槽熱恢復時間：從水槽儲熱達到峰值起，到供水降回「設計供水 + 恢復門檻」所需時間（不是 CDU 致動器的反應時間）。兩者分開判定：容量足夠但恢復時間超過最大允許時間時，判定為 WARNING。若最大可用冷量等於跳升後負載，簡化模型下溫度會停在峰值；若小於負載，水槽只能延遲超溫。實際熱交換器在較高回水溫度下冷量會略增，請以原廠資料確認。</div>
+          <h4>工程用途</h4>
+          <div>概念設計／初步容量估算。非原廠暫態性能保證，也不是最終設備驗收依據。</div>
+          <h4>物性</h4>
+          <div>冷卻液物性為 40–45°C 附近的近似值，正式設計請以冷卻液供應商資料為準。</div>
+        </div>
+      </details>
+    </aside>
+  </div>
+
+  <button type="button" class="to-results" onclick="document.getElementById('results').scrollIntoView({ behavior: 'smooth' })">看結果 ↓</button>
+
+<script>
+'use strict';
+
+/* ===================== 計算引擎 ===================== */
+const SurgeTankEngine = (() => {
+  // 約 40–45°C 物性（近似值）
+  const FLUIDS = {
+    pg25: { name: '丙二醇 25%', rho: 1012, cp: 3.98 },
+    water: { name: '水', rho: 991, cp: 4.18 },
+    eg30: { name: '乙二醇 30%', rho: 1030, cp: 3.75 }
+  };
+  // 工具內建候選容積級距（m³），非產業標準規格
+  const CANDIDATE_VOLUMES = [0.05, 0.1, 0.15, 0.2, 0.25, 0.3, 0.4, 0.5, 0.6, 0.8, 1, 1.2, 1.5, 2, 2.5, 3, 4, 5, 6, 8, 10];
+  const EPS = 1e-9;
+
+  function resolveFluid(raw) {
+    if (raw.fluid === 'custom') return { name: '自訂', rho: raw.rho, cp: raw.cp };
+    return FLUIDS[raw.fluid] || FLUIDS.pg25;
+  }
+  function tankDims(V, hd) { const D = Math.cbrt(4 * V / (Math.PI * hd)); return { D, H: hd * D }; }
+  const MAX_CANDIDATE = CANDIDATE_VOLUMES[CANDIDATE_VOLUMES.length - 1];
+  // 只回傳候選庫內的容積；超出上限回傳 null（不自動產生不存在的規格）
+  function pickCandidate(v) { const s = CANDIDATE_VOLUMES.find(x => x + EPS >= v); return s !== undefined ? s : null; }
+  function isCandidate(v) { return CANDIDATE_VOLUMES.some(x => Math.abs(x - v) < EPS); }
+
+  function validateInput(raw) {
+    const e = {};
+    const need = (id, v, cond, msg) => { if (!Number.isFinite(v)) e[id] = '必填'; else if (!cond(v)) e[id] = msg; };
+    need('cduCap', raw.cduCap, v => v > 0, '必須大於 0');
+    need('cduCount', raw.cduCount, v => v >= 1 && Number.isInteger(v), '請填 1 以上的整數');
+    need('loadFrom', raw.loadFrom, v => v >= 0 && v < 100, '請填 0–99');
+    need('loadTo', raw.loadTo, v => v > 0 && v <= 100, '請填 1–100');
+    if (!e.loadFrom && !e.loadTo && raw.loadTo <= raw.loadFrom) e.loadTo = '要大於跳升前負載';
+    need('riseTime', raw.riseTime, v => v >= 0, '不可為負值');
+    need('tempSupply', raw.tempSupply, () => true, '');
+    need('tempMax', raw.tempMax, v => !(v <= raw.tempSupply), '要高於設計供水');
+    need('deltaTDesign', raw.deltaTDesign, v => v > 0, '必須大於 0');
+    need('recoveryThr', raw.recoveryThr, v => v >= 0 && !(v >= raw.tempMax - raw.tempSupply), '要 ≥ 0 且小於允許溫升');
+    if (raw.fluid === 'custom') {
+      need('fluidRho', raw.rho, v => v >= 500 && v <= 2000, '請填 500–2000');
+      need('fluidCp', raw.cp, v => v >= 1 && v <= 5, '請填 1–5');
+    }
+    if (raw.controlModel !== 'ideal') {
+      need('deadTime', raw.deadTime, v => v >= 0, '不可為負值');
+      need('valveStroke', raw.valveStroke, v => v > 0, '必須大於 0；要比較理想瞬時控制請改選控制模型');
+    }
+    need('availPct', raw.availPct, v => v > 0 && v <= 100, '請填 1–100%（簡化模型的全程時間定義為 0→100% 額定）');
+    need('recoveryMaxSec', raw.recoveryMaxSec, v => v > 0, '必須大於 0');
+    if (raw.sizeChoice === 'custom') need('customSize', raw.customSize, v => v > 0, '必須大於 0');
+    if (!e.availPct && !e.loadFrom && raw.availPct <= raw.loadFrom) e.availPct = '要大於跳升前負載，否則初始狀態就無法穩定';
+    need('mixEffPct', raw.mixEffPct, v => v > 0 && v <= 100, '請填 1–100');
+    need('marginPct', raw.marginPct, v => v >= 0 && v <= 200, '請填 0–200');
+    need('otherMixVol', raw.otherMixVol, v => v >= 0, '不可為負值');
+    need('hdRatio', raw.hdRatio, v => v >= 0.3 && v <= 6, '請填 0.3–6');
+    return e;
+  }
+
+  // ---- 負載與冷量（分段線性） ----
+  function buildProfile(raw) {
+    const cap = raw.cduCap;
+    const ideal = raw.controlModel === 'ideal';
+    const Q0 = cap * raw.loadFrom / 100, Q1 = cap * raw.loadTo / 100;
+    return {
+      cap, Q0, Q1, dQ: Q1 - Q0, Qmax: cap * raw.availPct / 100, ideal,
+      tr: raw.riseTime, td: ideal ? 0 : raw.deadTime,
+      rate: ideal ? Infinity : cap / raw.valveStroke          // kW/s
+    };
+  }
+  function loadAt(p, t) { return p.Q0 + p.dQ * (p.tr > 0 ? Math.min(1, Math.max(0, t) / p.tr) : 1); }
+  function coolAt(p, t) {
+    if (p.ideal) return Math.min(p.Qmax, loadAt(p, t));
+    return Math.min(p.Qmax, p.Q0 + p.rate * Math.max(0, t - p.td));
+  }
+  function profile(p, t) { const load = loadAt(p, t), cool = coolAt(p, t); return { load, cool, net: load - cool, def: Math.max(0, load - cool) }; }
+
+  // ---- 單一暫態求解器：在所有轉折點與交叉點切段，精確積分 ----
+  function solveTransient(p) {
+    let knots = [0, p.tr, p.td];
+    if (!p.ideal && p.Qmax > p.Q0) knots.push(p.td + (p.Qmax - p.Q0) / p.rate);   // 冷量到頂
+    if (!p.ideal) knots.push(p.td + p.dQ / p.rate);                                // 冷量 = 跳升後負載
+    if (p.dQ > 0 && p.Qmax > p.Q0 && p.Qmax < p.Q1) knots.push(p.tr * (p.Qmax - p.Q0) / p.dQ); // 負載穿越最大冷量
+    knots = [...new Set(knots.filter(t => Number.isFinite(t) && t >= 0).map(t => +t.toPrecision(15)))].sort((a, b) => a - b);
+    const net = t => profile(p, t).net;
+    // 段內 net 為線性，插入變號點
+    const ts = [knots[0]];
+    for (let i = 1; i < knots.length; i++) {
+      const a = knots[i - 1], b = knots[i];
+      if (b - a < EPS) continue;
+      const na = net(a), nb = net(b);
+      if (na * nb < 0) ts.push(a + na / (na - nb) * (b - a));
+      ts.push(b);
+    }
+    const tLast = ts[ts.length - 1];
+    ts.push(tLast + 1);                                           // 之後 net 為常數
+    const pts = [];
+    let S = 0, P = 0;
+    ts.forEach((t, i) => {
+      const n = net(t);
+      if (i > 0) { const dt = t - pts[i - 1].t, n0 = pts[i - 1].n; S += (n0 + n) / 2 * dt; P += posArea(n0, n, dt); }
+      pts.push({ t, n, S, P });
+    });
+    const netInf = pts[pts.length - 1].n;
+    const sustained = netInf > EPS;
+    let maxDef = 0, maxDefTime = 0, peak = 0, tPeak = 0;
+    pts.forEach(q => { if (q.n > maxDef + EPS) { maxDef = q.n; maxDefTime = q.t; } if (q.S > peak + EPS) { peak = q.S; tPeak = q.t; } });
+    if (sustained) { peak = Infinity; tPeak = Infinity; }
+
+    function segIndex(t) { let i = 0; while (i < pts.length - 2 && pts[i + 1].t <= t) i++; return i; }
+    function S_at(t) {
+      if (t <= 0) return 0;
+      const L = pts[pts.length - 1];
+      if (t >= L.t) return L.S + netInf * (t - L.t);
+      const i = segIndex(t), a = pts[i], b = pts[i + 1];
+      const nt = a.n + (b.n - a.n) * (t - a.t) / (b.t - a.t);
+      return a.S + (a.n + nt) / 2 * (t - a.t);
+    }
+    // 峰值之後 S 首次降到 target 的時間
+    function timeToReach(target) {
+      if (!Number.isFinite(tPeak)) return Infinity;
+      if (peak <= target + EPS) return tPeak;
+      let i = pts.findIndex(q => q.t >= tPeak - EPS);
+      for (; i < pts.length - 1; i++) {
+        const a = pts[i], b = pts[i + 1], d = b.t - a.t;
+        if (b.S <= target + EPS) {
+          const A = (b.n - a.n) / (2 * d), B = a.n, C = a.S - target;
+          let tau;
+          if (Math.abs(A) < 1e-12) tau = -C / B;
+          else { const disc = Math.max(0, B * B - 4 * A * C), r1 = (-B - Math.sqrt(disc)) / (2 * A), r2 = (-B + Math.sqrt(disc)) / (2 * A); tau = [r1, r2].filter(x => x >= -EPS && x <= d + EPS).sort((x, y) => x - y)[0]; }
+          return a.t + Math.min(Math.max(tau, 0), d);
+        }
+      }
+      const L = pts[pts.length - 1];
+      return netInf < -EPS ? L.t + (target - L.S) / netInf : Infinity;
+    }
+    return {
+      points: pts, knots: ts, lastKnot: tLast, netInf, sustained,
+      maxDeficitKw: maxDef, peakDeficitTimeSec: maxDefTime,
+      deficitEnergyKJ: sustained ? Infinity : pts[pts.length - 1].P,   // ∫ max(0, 缺口) dt
+      peakStorageEnergyKJ: peak, peakTimeSec: tPeak,                    // max_t ∫ (負載 − 冷量) dt
+      S_at, timeToReach, net
+    };
+  }
+  function posArea(n0, n1, dt) {
+    if (n0 >= 0 && n1 >= 0) return (n0 + n1) / 2 * dt;
+    if (n0 <= 0 && n1 <= 0) return 0;
+    const tc = n0 / (n0 - n1) * dt;
+    return n0 > 0 ? n0 * tc / 2 : n1 * (dt - tc) / 2;
+  }
+
+  // ---- 水槽需求 ----
+  function solveTank(raw, fluid, tr) {
+    const rc = fluid.rho * fluid.cp;                         // kJ/m³·K
+    const allowRise = raw.tempMax - raw.tempSupply;
+    const eff = raw.mixEffPct / 100, m = raw.marginPct / 100;
+    const E = tr.peakStorageEnergyKJ;
+    const vTheory = Number.isFinite(E) ? E / (rc * allowRise) : Infinity;
+    const credited = Math.min(raw.otherMixVol, vTheory);
+    const vAfterCredit = vTheory - credited;
+    const vAfterFactor = vAfterCredit / eff;
+    const vRequired = vAfterFactor * (1 + m);
+    const needTank = Number.isFinite(vRequired) && vRequired > EPS;
+    const candidateOverflow = Number.isFinite(vRequired) && vRequired > MAX_CANDIDATE + EPS;
+    const autoSize = !needTank ? 0 : pickCandidate(vRequired);          // 超出候選上限時為 null
+    return { rc, allowRise, eff, m, vTheory, credited, vAfterCredit, vAfterFactor, vRequired, needTank, candidateOverflow, autoSize, maxCandidateVolume: MAX_CANDIDATE };
+  }
+
+  // 穩態容量：CDU 最大可用冷量 vs 跳升後負載（與水槽無關）
+  function recoveryCapacity(p, tr) {
+    const marginKw = p.Qmax - p.Q1;
+    return { marginKw, status: tr.sustained ? 'fail' : marginKw > EPS ? 'pass' : 'warn' };
+  }
+
+  function evaluateTank(ctx, size) {
+    const { raw, tr, tank, cap } = ctx;
+    const vTankEff = size * tank.eff;
+    const vEff = raw.otherMixVol + vTankEff;
+    const E = tr.peakStorageEnergyKJ;
+    const peak = !Number.isFinite(E) ? Infinity : vEff > 0 ? raw.tempSupply + E / (tank.rc * vEff) : (E > EPS ? Infinity : raw.tempSupply);
+    // 水槽熱恢復時間：儲熱峰值 → 供水降回「設計供水 + 門檻」
+    let recoverySec = null;
+    if (Number.isFinite(E) && E <= EPS) recoverySec = 0;
+    else if (vEff > 0 && Number.isFinite(E)) {
+      const target = tank.rc * vEff * raw.recoveryThr;      // 槽內剩餘熱量對應「設計供水 + 門檻」
+      const tAbs = tr.timeToReach(target);
+      recoverySec = Number.isFinite(tAbs) ? Math.max(0, tAbs - tr.peakTimeSec) : Infinity;
+    }
+    const thermalPass = peak <= raw.tempMax + EPS;
+    let recoveryTime;                                         // pass / warn / na
+    if (recoverySec === 0) recoveryTime = 'pass';
+    // 時間判定只看實際恢復時間；穩態容量另外判定（負載仍在爬升時冷量可能暫時超過負載而完成恢復）
+    else if (recoverySec === null || !Number.isFinite(recoverySec)) recoveryTime = 'na';
+    else recoveryTime = recoverySec <= raw.recoveryMaxSec + EPS ? 'pass' : 'warn';
+    return {
+      size, vTankEff, vEff, peak, ok: thermalPass, thermalPass, thermalMarginK: raw.tempMax - peak,
+      recoverySec, recoveryTime, recoveryTimePass: recoveryTime === 'pass', recoveryCapacityPass: cap.status === 'pass',
+      belowRequired: tank.needTank && size + EPS < tank.vRequired,
+      residenceSec: size / ctx.flowM3s, dims: size > 0 ? tankDims(size, raw.hdRatio) : null
+    };
+  }
+
+  // 選型：auto（只取候選庫）／manual（候選庫內）／custom（使用者宣告的實際設備）
+  function selectTank(raw, tank) {
+    if (raw.sizeChoice === 'custom') return { mode: 'custom', size: raw.customSize, candidatePass: true, overflow: false };
+    if (raw.sizeChoice === 'auto') {
+      if (tank.candidateOverflow) return { mode: 'auto', size: null, candidatePass: false, overflow: true };
+      return { mode: 'auto', size: tank.autoSize, candidatePass: true, overflow: false };
+    }
+    return { mode: 'manual', size: raw.sizeChoice, candidatePass: isCandidate(raw.sizeChoice), overflow: false };
+  }
+
+  function calculate(raw) {
+    const errors = validateInput(raw);
+    if (Object.keys(errors).length) return { valid: false, errors };
+    const fluid = resolveFluid(raw);
+    const p = buildProfile(raw);
+    const tr = solveTransient(p);
+    const tank = solveTank(raw, fluid, tr);
+    const flowM3s = p.cap / (fluid.rho * fluid.cp * raw.deltaTDesign);   // Basis = CDU 額定容量
+    const mcp = p.cap / raw.deltaTDesign;                    // kW/K
+    const peakNoTank = raw.tempSupply + tr.maxDeficitKw / mcp;   // 無水槽第一圈估算（比較用）
+    const cap = recoveryCapacity(p, tr);
+    const ctx = { raw, tr, tank, flowM3s, cap };
+    const selection = selectTank(raw, tank);
+    const sel = evaluateTank(ctx, selection.size || 0);
+    sel.nominal = selection.size;
+    const base = selection.size || tank.autoSize || (tank.candidateOverflow ? MAX_CANDIDATE : 0);
+    const options = base > 0 ? CANDIDATE_VOLUMES.filter(s => s >= base / 4 - EPS && s <= Math.max(base * 4, 0.2) + EPS).map(s => evaluateTank(ctx, s)) : [];
+    const candidate = selection.overflow ? 'warn' : !selection.candidatePass ? 'fail' : selection.mode === 'custom' ? 'info' : 'pass';
+    const hasTank = (selection.size || 0) > 0;
+    const thermal = tr.sustained ? 'fail' : selection.overflow ? 'na' : hasTank ? (sel.thermalPass ? 'pass' : 'fail') : (peakNoTank <= raw.tempMax + EPS ? 'pass' : 'fail');
+    const engineeringPass = thermal === 'pass' && cap.status === 'pass' && sel.recoveryTime === 'pass' && selection.candidatePass;
+    return {
+      valid: true, raw, fluid, p, tr, tank, sel, selection, options,
+      basis: { cduRatedKw: p.cap, cduCount: raw.cduCount, loadFromPct: raw.loadFrom, loadToPct: raw.loadTo, riseTimeSec: raw.riseTime,
+        supplyTempC: raw.tempSupply, maxSupplyTempC: raw.tempMax, deltaT_K: raw.deltaTDesign },
+      control: { model: p.ideal ? 'ideal' : 'linear-equivalent', deadTimeSec: p.td, responseTimeSec: raw.valveStroke, maxAvailableKw: p.Qmax, rampKwPerSec: p.rate, catchUpSec: p.ideal ? 0 : p.td + p.dQ / p.rate },
+      transient: { maxDeficitKw: tr.maxDeficitKw, peakDeficitTimeSec: tr.peakDeficitTimeSec, peakStorageEnergyKJ: tr.peakStorageEnergyKJ, peakTimeSec: tr.peakTimeSec, sustainedDeficit: tr.sustained },
+      volume: { energyKJ: tr.peakStorageEnergyKJ, theoreticalEffectiveM3: tank.vTheory, creditedM3: tank.credited, effectiveTankRequiredM3: tank.vAfterCredit,
+        physicalTankRequiredM3: tank.vAfterFactor, designRequiredM3: tank.vRequired, selectedNominalM3: selection.size, selectedEffectiveM3: hasTank ? sel.vTankEff : 0,
+        totalEffectiveM3: sel.vEff, candidateOverflow: tank.candidateOverflow, maxCandidateVolume: MAX_CANDIDATE },
+      thermalCheck: { peakSupplyTempC: sel.peak, thermalMarginK: sel.thermalMarginK, pass: thermal === 'pass' },
+      recoveryCheck: { capacityMarginKw: cap.marginKw, capacityPass: cap.status === 'pass', recoveryTimeSec: sel.recoverySec, recoveryTargetSec: raw.recoveryMaxSec, recoveryTimePass: sel.recoveryTime === 'pass' },
+      status: { thermal, recoveryCapacity: cap.status, recoveryTime: sel.recoveryTime, candidate, engineeringPass },
+      flowM3s, flowM3h: flowM3s * 3600, lpmPerKW: flowM3s * 60000 / p.cap, mcp, peakNoTank,
+      noTankNeeded: peakNoTank <= raw.tempMax + EPS && !tr.sustained,
+      recovery: cap.status, recoveryMarginKw: cap.marginKw, plantVol: (selection.size || 0) * raw.cduCount
+    };
+  }
+
+  return { FLUIDS, CANDIDATE_VOLUMES, MAX_CANDIDATE, EPS, profile, buildProfile, solveTransient, solveTank, evaluateTank, selectTank, recoveryCapacity, tankDims, pickCandidate, isCandidate, validateInput, validate: validateInput, calculate };
+})();
+
+/* ===================== Excel 公式求值（匯出前交叉核對） ===================== */
+const XlsxEval = (() => {
+  const RE = /\s*(?:(\d+\.?\d*(?:[eE][+-]?\d+)?)|("[^"]*")|((?:[A-Za-z_][A-Za-z0-9_]*!)?[A-Z]{1,3}\d+(?::[A-Z]{1,3}\d+)?)(?![A-Za-z(])|([A-Z][A-Z0-9]*)\(|(<>|<=|>=|[-+*/^=<>(),]))/y;
+  function tokenize(f) {
+    const out = []; RE.lastIndex = 0; let m;
+    while (RE.lastIndex < f.length) {
+      m = RE.exec(f); if (!m) throw new Error('無法解析公式：' + f);
+      if (m[1] !== undefined) out.push({ k: 'num', v: parseFloat(m[1]) });
+      else if (m[2] !== undefined) out.push({ k: 'str', v: m[2].slice(1, -1) });
+      else if (m[3] !== undefined) out.push({ k: 'ref', v: m[3] });
+      else if (m[4] !== undefined) out.push({ k: 'fn', v: m[4] });
+      else if (m[5] !== undefined) out.push({ k: 'op', v: m[5] });
+      if (/^\s*$/.test(f.slice(RE.lastIndex))) break;
+    }
+    return out;
+  }
+  const colNum = s => s.split('').reduce((a, c) => a * 26 + c.charCodeAt(0) - 64, 0);
+  const colStr = n => { let s = ''; while (n > 0) { const r = (n - 1) % 26; s = String.fromCharCode(65 + r) + s; n = Math.floor((n - 1) / 26); } return s; };
+  function evaluator(wb) {
+    const cache = new Map();
+    function cellVal(sheet, addr) {
+      const key = sheet + '!' + addr;
+      if (cache.has(key)) return cache.get(key);
+      cache.set(key, 0);
+      const c = wb.Sheets[sheet] && wb.Sheets[sheet][addr];
+      const v = !c ? 0 : c.f ? evalFormula(c.f, sheet) : c.v;
+      cache.set(key, v); return v;
+    }
+    function refVal(ref, sheet) {
+      let sh = sheet, r = ref;
+      if (ref.includes('!')) { [sh, r] = ref.split('!'); }
+      if (r.includes(':')) {
+        const [a, b] = r.split(':'), ma = a.match(/([A-Z]+)(\d+)/), mb = b.match(/([A-Z]+)(\d+)/), out = [];
+        for (let row = +ma[2]; row <= +mb[2]; row++) for (let c = colNum(ma[1]); c <= colNum(mb[1]); c++) out.push(cellVal(sh, colStr(c) + row));
+        return out;
+      }
+      return cellVal(sh, r);
+    }
+    function evalFormula(f, sheet) {
+      const tk = tokenize(f); let i = 0;
+      const peek = () => tk[i], next = () => tk[i++];
+      const isOp = (...ops) => peek() && peek().k === 'op' && ops.includes(peek().v);
+      function cmp() { let a = add(); while (isOp('=', '<>', '<', '>', '<=', '>=')) { const o = next().v, b = add();
+        a = o === '=' ? a === b : o === '<>' ? a !== b : o === '<' ? a < b : o === '>' ? a > b : o === '<=' ? a <= b : a >= b; } return a; }
+      function add() { let a = mul(); while (isOp('+', '-')) { const o = next().v, b = mul(); a = o === '+' ? a + b : a - b; } return a; }
+      function mul() { let a = pow(); while (isOp('*', '/')) { const o = next().v, b = pow(); a = o === '*' ? a * b : a / b; } return a; }
+      function pow() { let a = un(); while (isOp('^')) { next(); a = Math.pow(a, un()); } return a; }
+      function un() { if (isOp('-')) { next(); return -un(); } if (isOp('+')) { next(); return un(); } return prim(); }
+      function prim() {
+        const t = next();
+        if (!t) throw new Error('公式不完整：' + f);
+        if (t.k === 'num' || t.k === 'str') return t.v;
+        if (t.k === 'ref') return refVal(t.v, sheet);
+        if (t.k === 'op' && t.v === '(') { const v = cmp(); next(); return v; }
+        if (t.k === 'fn') {
+          const args = [];
+          if (!isOp(')')) { args.push(cmp()); while (isOp(',')) { next(); args.push(cmp()); } }
+          next();
+          const nums = args.flat().filter(x => typeof x === 'number');
+          switch (t.v) {
+            case 'MAX': return nums.length ? Math.max(...nums) : 0;
+            case 'MIN': return nums.length ? Math.min(...nums) : 0;
+            case 'IF': return args[0] ? args[1] : (args.length > 2 ? args[2] : false);
+            case 'PI': return Math.PI;
+            case 'INDEX': { const arr = [].concat(args[0]); return arr[Math.round(args[1]) - 1]; }
+            case 'MATCH': { const arr = [].concat(args[1]); const k = arr.findIndex(x => x === args[0]); if (k < 0) throw new Error('MATCH 找不到：' + args[0]); return k + 1; }
+            default: throw new Error('不支援的函數：' + t.v);
+          }
+        }
+        throw new Error('無法解析：' + f);
+      }
+      return cmp();
+    }
+    return { cellVal, evalFormula };
+  }
+  function crossCheck(wb) {
+    const ev = evaluator(wb), out = [];
+    wb.SheetNames.forEach(sn => Object.keys(wb.Sheets[sn]).forEach(addr => {
+      const c = wb.Sheets[sn][addr];
+      if (addr[0] === '!' || !c || !c.f) return;
+      let v; try { v = ev.cellVal(sn, addr); } catch (e) { out.push(`${sn}!${addr} ${e.message}`); return; }
+      const ok = typeof c.v === 'number' ? Math.abs(v - c.v) <= 1e-6 * Math.max(1, Math.abs(c.v)) : v === c.v;
+      if (!ok) out.push(`${sn}!${addr}: Excel=${v} / 瀏覽器=${c.v} (${c.f})`);
+    }));
+    return out;
+  }
+  return { evaluator, crossCheck };
+})();
+
+/* ===================== 介面 ===================== */
+const AUTOSAVE_KEY = 'cdu_surge_tank_v5_inputs';
+const NUM_FIELDS = ['cduCap', 'cduCount', 'loadFrom', 'loadTo', 'riseTime', 'tempSupply', 'tempMax', 'deltaTDesign', 'recoveryThr', 'recoveryMaxSec', 'fluidRho', 'fluidCp', 'deadTime', 'valveStroke', 'availPct', 'mixEffPct', 'marginPct', 'otherMixVol', 'customSize', 'hdRatio'];
+const TEXT_FIELDS = ['projectName', 'dataSource', 'tankSizeChoice'];
+const DEFAULTS = { cduCap: 1000, cduCount: 4, loadFrom: 30, loadTo: 100, riseTime: 1, tempSupply: 40, tempMax: 45, deltaTDesign: 10, recoveryThr: 0.5, recoveryMaxSec: 30, fluid: 'pg25', fluidRho: 1012, fluidCp: 3.98,
+  controlModel: 'linear', deadTime: 5, valveStroke: 20, availPct: 100, tankSizeChoice: 'auto', customSize: 12, mixEffPct: 80, marginPct: 20, otherMixVol: 0, hdRatio: 2, projectName: '', dataSource: '' };
+const FIELD_NAMES = { cduCap: 'CDU 容量', cduCount: 'CDU 台數', loadFrom: '跳升前負載', loadTo: '跳升後負載', riseTime: '上升時間', tempSupply: '設計供水', tempMax: '供水上限', deltaTDesign: '設計溫差', recoveryThr: '恢復判定門檻', recoveryMaxSec: '最大允許水槽熱恢復時間', fluidRho: '密度', fluidCp: '比熱', deadTime: '控制延遲', valveStroke: '等效冷量全程時間', availPct: '最大可用冷量', mixEffPct: '有效混合容積係數', marginPct: '設計餘裕', otherMixVol: '其他可計入混合容積', customSize: '實際設備容積', hdRatio: '高徑比' };
+const LV = { pass: 'PASS', warn: 'WARNING', fail: 'FAIL', info: 'INFO', na: 'N/A' };
+
+let lastResult = null;
+const $ = id => document.getElementById(id);
+const setText = (id, v) => { const el = $(id); if (el) el.textContent = v; };
+const f0 = n => Number(n).toLocaleString('en-US', { maximumFractionDigits: 0 });
+const f1 = n => Number(n).toLocaleString('en-US', { minimumFractionDigits: 1, maximumFractionDigits: 1 });
+const fx = (n, d = 2) => Number(n).toLocaleString('en-US', { maximumFractionDigits: d });
+const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const tempTxt = T => Number.isFinite(T) ? `${f1(T)} °C` : '持續上升';
+const secTxt = s => s === null ? '—' : !Number.isFinite(s) ? '無法恢復' : s >= 120 ? `${f1(s / 60)} 分` : `${f1(s)} 秒`;
+
+function radioVal(name, dflt) { const r = document.querySelector(`input[name="${name}"]:checked`); return r ? r.value : dflt; }
+function readRaw() {
+  const num = id => { const v = $(id).value.trim(); return v === '' ? NaN : Number(v); };
+  const sc = $('tankSizeChoice').value;
+  const o = { fluid: radioVal('fluid', 'pg25'), controlModel: radioVal('controlModel', 'linear'), rho: num('fluidRho'), cp: num('fluidCp'), sizeChoice: sc === 'auto' || sc === 'custom' ? sc : Number(sc) };
+  NUM_FIELDS.forEach(id => { if (!(id in o)) o[id] = num(id); });
+  return o;
+}
+function setVal(id, v) { $(id).value = v; calculate(); }
+function resetToDefaults() { if (!confirm('要把所有輸入恢復成預設值嗎？')) return; applyValues(DEFAULTS); calculate(); }
+function applyValues(v) {
+  NUM_FIELDS.concat(TEXT_FIELDS).forEach(id => { if (v[id] !== undefined && $(id)) $(id).value = v[id]; });
+  ['fluid', 'controlModel'].forEach(n => { const r = document.querySelector(`input[name="${n}"][value="${v[n] || DEFAULTS[n]}"]`); if (r && !r.disabled) r.checked = true; });
+}
+function showErrors(errors) {
+  NUM_FIELDS.forEach(id => {
+    const msg = errors[id];
+    $(id).classList.toggle('is-invalid', !!msg);
+    $(id).setAttribute('aria-invalid', msg ? 'true' : 'false');
+    const el = $('err-' + id); if (el) { el.textContent = msg || ''; el.classList.toggle('show', !!msg); el.setAttribute('role', msg ? 'alert' : ''); }
+  });
+}
+
+function calculate() {
+  const raw = readRaw();
+  $('customFluidBox').hidden = raw.fluid !== 'custom';
+  const ideal = raw.controlModel === 'ideal';
+  $('iwDead').classList.toggle('dim', ideal); $('iwStroke').classList.toggle('dim', ideal);
+  $('customSizeBox').hidden = raw.sizeChoice !== 'custom';
+  const result = SurgeTankEngine.calculate(raw);
+  showErrors(result.valid ? {} : result.errors);
+  if (!result.valid && result.errors.hdRatio) $('advBox').open = true;
+  render(result);
+  saveInputs();
+  return result;
+}
+
+/* ---------- 檢核 ---------- */
+function buildChecks(r) {
+  const c = [], raw = r.raw, s = r.sel, tr = r.tr, st = r.status, sel = r.selection;
+  const hasTank = (sel.size || 0) > 0;
+  // 1. 暫態溫升
+  if (tr.sustained) c.push({ id: 'chk-thermal', s: 'fail', t: '暫態溫升', v: '冷量持續不足，溫度不會停止上升', d: '最大可用冷量小於跳升後負載，水槽只能延遲超溫' });
+  else if (sel.overflow) c.push({ id: 'chk-thermal', s: 'warn', t: '暫態溫升', v: '未選定水槽，無法判定', d: '設計需求超出內建候選容積上限，請先指定實際設備容積' });
+  else if (hasTank) c.push({ id: 'chk-thermal', s: s.thermalPass ? 'pass' : 'fail', t: '暫態溫升',
+    v: `峰值供水 ${tempTxt(s.peak)}（上限 ${fx(raw.tempMax, 1)} °C，餘 ${f1(s.thermalMarginK)} K）`,
+    d: s.thermalPass ? '在目前假設與簡化控制模型下，峰值供水未超過上限' : '超過上限：請加大水槽、縮短控制延遲或改用更快的冷量反應' });
+  else c.push({ id: 'chk-thermal', s: st.thermal, t: '暫態溫升（不設水槽）', v: `第一圈估算 ${tempTxt(r.peakNoTank)}`, d: st.thermal === 'pass' ? '不設水槽也在上限內' : '需設置水槽' });
+  // 2. 穩態容量
+  if (st.recoveryCapacity === 'fail') c.push({ id: 'chk-capacity', s: 'fail', t: '穩態容量',
+    v: `可用冷量 ${f0(r.p.Qmax)} kW < 跳升後負載 ${f0(r.p.Q1)} kW`, d: '持續性冷量不足，水槽無法解決；請提高 CDU 容量或降低負載' });
+  else if (st.recoveryCapacity === 'warn') c.push({ id: 'chk-capacity', s: tr.peakStorageEnergyKJ <= 1e-9 ? 'pass' : 'warn', t: '穩態容量',
+    v: `CDU 無恢復餘量（可用 ${fx(raw.availPct)}% = 跳升後 ${fx(raw.loadTo)}%）`,
+    d: tr.peakStorageEnergyKJ <= 1e-9 ? '沒有累積熱量，不需額外冷量恢復' : '簡化模型下溫度停在峰值、無法拉回設計值。實際熱交換器在較高回水溫度下冷量會略增，請以原廠資料確認可用冷量' });
+  else c.push({ id: 'chk-capacity', s: 'pass', t: '穩態容量', v: `恢復餘量 ${f0(r.recoveryMarginKw)} kW`, d: `最大可用 ${f0(r.p.Qmax)} kW − 跳升後負載 ${f0(r.p.Q1)} kW` });
+  // 3. 水槽熱恢復時間
+  const tgt = `${fx(raw.tempSupply + raw.recoveryThr, 1)} °C`;
+  if (st.recoveryTime === 'pass') c.push({ id: 'chk-rectime', s: 'pass', t: '水槽熱恢復時間',
+    v: s.recoverySec === 0 ? '沒有累積熱量，不需恢復' : `峰值後 ${secTxt(s.recoverySec)} 回到 ${tgt}（允許 ${fx(raw.recoveryMaxSec, 1)} 秒）`, d: '從水槽儲熱峰值起算，不是 CDU 致動器反應時間' });
+  else if (st.recoveryTime === 'warn') c.push({ id: 'chk-rectime', s: 'warn', t: '水槽熱恢復時間',
+    v: `峰值後 ${secTxt(s.recoverySec)} 才回到 ${tgt}，超過允許 ${fx(raw.recoveryMaxSec, 1)} 秒`, d: '有能力恢復，但恢復時間超出設計要求；可提高 CDU 可用冷量、加快冷量反應，或確認 BOD 的恢復時間要求' });
+  else c.push({ id: 'chk-rectime', s: 'na', t: '水槽熱恢復時間', v: !hasTank ? '未選定水槽，無法計算' : '冷量沒有超過負載，溫度停在峰值、無法恢復', d: !hasTank ? '請先選定或自訂水槽容積' : '需 CDU 最大可用冷量 > 跳升後負載' });
+  // 4. 候選規格
+  if (sel.overflow) c.push({ id: 'chk-candidate', s: 'warn', t: '候選規格不足',
+    v: `設計需求 ${fx(r.tank.vRequired, 2)} m³，已超出內建候選容積上限 ${fx(r.tank.maxCandidateVolume)} m³`, d: '請擴充候選規格庫，或在「單槽候選容積」選「自訂」手動指定實際設備容積' });
+  else if (!sel.candidatePass) c.push({ id: 'chk-candidate', s: 'fail', t: '選定容積不在候選庫', v: `${fx(sel.size, 3)} m³`, d: '請改選候選容積或使用「自訂」' });
+  else if (sel.mode === 'custom') c.push({ id: 'chk-candidate', s: 'info', t: '自訂設備容積', v: `${fx(sel.size, 3)} m³（非內建候選）`, d: '請確認為實際設備的有效容積規格' });
+  if (hasTank && s.belowRequired) c.push({ id: 'chk-size', s: s.thermalPass ? 'warn' : 'fail', t: '選定容積小於設計需求',
+    v: `${fx(sel.size, 3)} m³ < 設計需求 ${fx(r.tank.vRequired, 3)} m³`, d: s.thermalPass ? '未扣設計餘裕時仍在上限內，但已吃掉餘裕' : '請改用較大容積或設回「自動」' });
+  // 5. 無水槽第一圈估算
+  c.push({ id: 'chk-notank', s: 'info', t: '無水槽第一圈溫升估算', v: `${tempTxt(r.peakNoTank)}（最大瞬時缺口 ${f0(tr.maxDeficitKw)} kW）`,
+    d: '缺口 ÷ 額定流量熱容；未含 TCS 循環體積與管路傳輸延遲，僅作比較用途' });
+  if (!r.p.ideal) {
+    const tc = r.control.catchUpSec;
+    c.push({ id: 'chk-ctrl', s: tc > 40 ? 'warn' : 'pass', t: '冷量追上負載所需時間', v: `延遲 ${fx(r.p.td, 1)} s ＋ 追蹤 ${fx(r.p.dQ / r.p.rate, 1)} s ＝ ${fx(tc, 1)} s`,
+      d: tc > 40 ? '反應偏慢，水槽會偏大；可考慮快速致動器或負載前饋控制' : `冷量每秒增加 ${f0(r.p.rate)} kW（線性等效）` });
+  } else c.push({ id: 'chk-ctrl', s: 'info', t: '理想瞬時控制', v: '冷量即時等於負載', d: '僅供比較，不可作為設計依據' });
+  if (r.tank.allowRise < 2) c.push({ id: 'chk-rise', s: 'warn', t: '允許溫升很小', v: `${fx(r.tank.allowRise, 1)} K`, d: '設計供水離上限太近，水槽會非常大' });
+  if (raw.otherMixVol > 0) c.push({ id: 'chk-other', s: 'warn', t: '其他已計入有效混合容積', v: `${fx(r.tank.credited, 3)} m³（輸入 ${fx(raw.otherMixVol, 3)} m³）`, d: '必須是 CDU 二次側主流路中的實際有效混合容積；不可把 CDU 內部儲液空間、外部水槽、死管段或旁通容積重複計入' });
+  if (hasTank) c.push({ id: 'chk-mix', s: 'info', t: '水槽須為混合型', v: `停留時間 ${f1(s.residenceSec)} 秒（僅供參考）`,
+    d: '混合效果取決於進口流速、出口位置、擴散管／噴嘴、槽體幾何與擋板，不能只看停留時間；不可做成分層槽' });
+  return c;
+}
+
+/* ---------- 計算過程 ---------- */
+function buildSteps(r) {
+  const raw = r.raw, fl = r.fluid, tr = r.tr, t = r.tank, s = r.sel, p = r.p;
+  const E = tr.peakStorageEnergyKJ;
+  return [
+    ['負載跳升', `Q0 = ${f0(p.Q0)} kW → Q1 = ${f0(p.Q1)} kW（ΔQ ${f0(p.dQ)} kW，上升 ${fx(p.tr, 2)} s）`],
+    ['CDU 冷量（' + (p.ideal ? '理想瞬時' : '線性等效') + '）', p.ideal ? `Q冷量 = min(Q負載, ${f0(p.Qmax)} kW)` : `延遲 ${fx(p.td, 2)} s 後每秒增加 ${f0(p.cap)} ÷ ${fx(raw.valveStroke, 2)} = ${fx(p.rate, 2)} kW/s，最大 ${f0(p.Qmax)} kW`],
+    ['暫態求解（分段精確積分）', `切段點 ${tr.knots.length - 1} 個；最大缺口 ${f0(tr.maxDeficitKw)} kW @ ${fx(tr.peakDeficitTimeSec, 2)} s`],
+    ['最大儲熱能量', Number.isFinite(E) ? `E = max ∫(Q負載 − Q冷量)dt = ${f0(E)} kJ @ ${fx(tr.peakTimeSec, 2)} s（正缺口積分 ${f0(tr.deficitEnergyKJ)} kJ）` : '冷量持續不足，能量無上限'],
+    ['二次側額定設計流量（Basis = CDU 額定容量）', `${f0(p.cap)} kW ÷ (${f0(fl.rho)} × ${fx(fl.cp, 3)} × ${fx(raw.deltaTDesign, 1)}) = ${fx(r.flowM3s * 1000, 2)} L/s（${f1(r.flowM3h)} m³/h，${fx(r.lpmPerKW, 2)} LPM/kW）`],
+    ['無水槽第一圈溫升估算（比較用）', `${fx(raw.tempSupply, 1)} + ${f0(tr.maxDeficitKw)} kW ÷ (${f0(p.cap)} ÷ ${fx(raw.deltaTDesign, 1)}) kW/K = ${tempTxt(r.peakNoTank)}`],
+    ['① 理論有效容積', `E ÷ (ρ·cp·允許溫升) = ${f0(E)} kJ ÷ (${f0(t.rc)} kJ/m³K × ${fx(t.allowRise, 1)} K) = ${fx(t.vTheory, 3)} m³`],
+    ['② 扣除已計入混合容積 → 水槽有效需求', `${fx(t.vTheory, 3)} − ${fx(t.credited, 3)} = ${fx(t.vAfterCredit, 3)} m³`],
+    ['③ ÷ 有效混合容積係數 → 實體需求', `${fx(t.vAfterCredit, 3)} ÷ ${fx(raw.mixEffPct)}% = ${fx(t.vAfterFactor, 3)} m³`],
+    ['④ × 設計餘裕 → 設計需求', `${fx(t.vAfterFactor, 3)} × (1 + ${fx(raw.marginPct)}%) = ${fx(t.vRequired, 3)} m³`],
+    ['⑤ 選定標稱容積', r.selection.overflow ? `設計需求超出內建候選上限 ${fx(t.maxCandidateVolume)} m³，未自動選型` :
+      `${fx(r.selection.size || 0, 3)} m³（${{ auto: '自動取不小於需求的最小候選容積', manual: '手動選候選容積', custom: '自訂實際設備容積' }[r.selection.mode]}）；全廠 ${raw.cduCount} × ${fx(r.selection.size || 0, 3)} = ${fx(r.plantVol, 3)} m³`],
+    ['⑥ 選定有效容積', `${fx(r.selection.size || 0, 3)} × ${fx(raw.mixEffPct)}% = ${fx(s.vTankEff, 3)} m³；加已計入 ${fx(raw.otherMixVol, 3)} m³ = ${fx(s.vEff, 3)} m³`],
+    ['加水槽後供水最高', `${fx(raw.tempSupply, 1)} + ${f0(E)} ÷ (${f0(t.rc)} × ${fx(s.vEff, 3)}) = ${tempTxt(s.peak)}`],
+    ['水槽熱恢復時間', (r.selection.size || 0) > 0 ? `儲熱峰值後，槽內熱量降到 ρ·cp·V有效·${fx(raw.recoveryThr, 2)} K 所需時間 = ${secTxt(s.recoverySec)}（允許 ${fx(raw.recoveryMaxSec, 1)} 秒）` : '—']
+  ];
+}
+
+/* ---------- 繪圖（全部取自同一個求解器） ---------- */
+function niceStep(range, n) { const raw = range / n; const p = Math.pow(10, Math.floor(Math.log10(raw))); const m = raw / p; return (m <= 1 ? 1 : m <= 2 ? 2 : m <= 5 ? 5 : 10) * p; }
+function axes(W, H, P, xMax, yMin, yMax, yLab, yStep) {
+  const X = t => P.l + t / xMax * (W - P.l - P.r);
+  const Y = v => P.t + (1 - (v - yMin) / (yMax - yMin)) * (H - P.t - P.b);
+  let g = '';
+  for (let v = yMin; v <= yMax + 1e-9; v += yStep) g += `<line x1="${P.l}" x2="${W - P.r}" y1="${Y(v)}" y2="${Y(v)}" stroke="#E4E8EE"/><text x="${P.l - 6}" y="${Y(v) + 4}" font-size="11" text-anchor="end" fill="#64748B">${yLab(v)}</text>`;
+  const tStep = niceStep(xMax, 5);
+  for (let t = 0; t <= xMax + 1e-9; t += tStep) g += `<text x="${X(t)}" y="${H - 8}" font-size="11" text-anchor="middle" fill="#64748B">${fx(t, 1)}s</text>`;
+  return { X, Y, g };
+}
+function chartWindow(r) {
+  const tr = r.tr, s = r.sel;
+  const base = Math.max(tr.lastKnot, Number.isFinite(tr.peakTimeSec) ? tr.peakTimeSec : 0) * 1.25 + 3;
+  let xMax = base, recAbs = null;
+  if (s.size > 0 && s.recoverySec !== null && Number.isFinite(s.recoverySec) && s.recoverySec > 0) { recAbs = tr.peakTimeSec + s.recoverySec; xMax = Math.min(Math.max(base, recAbs * 1.1), base * 6); }
+  return { xMax, recAbs };
+}
+function sampleTimes(r, xMax) {
+  const N = 320, ts = new Set();
+  for (let i = 0; i <= N; i++) ts.add(xMax * i / N);
+  r.tr.knots.forEach(t => { if (t <= xMax) ts.add(t); });
+  return [...ts].sort((a, b) => a - b);
+}
+function renderCharts(r) {
+  const W = 420, H = 210, P = { l: 46, r: 10, t: 16, b: 24 };
+  const tr = r.tr, p = r.p, s = r.sel, raw = r.raw;
+  const { xMax, recAbs } = chartWindow(r);
+  const ts = sampleTimes(r, xMax);
+  const thrT = raw.tempSupply + raw.recoveryThr;
+  const showTank = s.size > 0 && s.vEff > 0;
+  const pts = ts.map(t => {
+    const pr = SurgeTankEngine.profile(p, t);
+    let Ttank = showTank ? raw.tempSupply + tr.S_at(t) / (r.tank.rc * s.vEff) : NaN;
+    if (recAbs !== null && t > recAbs) Ttank = thrT;                       // 恢復後控制回穩
+    return { t, ...pr, Ttank, Tno: raw.tempSupply + pr.def / r.mcp };
+  });
+  // 圖 1：kW
+  const yTop = Math.max(p.cap, p.Qmax, p.Q1) * 1.05, yStepQ = niceStep(yTop, 4);
+  const a = axes(W, H, P, xMax, 0, Math.ceil(yTop / yStepQ) * yStepQ, v => f0(v), yStepQ);
+  const path = key => pts.map((q, i) => `${i ? 'L' : 'M'}${a.X(q.t).toFixed(1)},${a.Y(q[key]).toFixed(1)}`).join('');
+  const area = pts.map((q, i) => `${i ? 'L' : 'M'}${a.X(q.t).toFixed(1)},${a.Y(q.load).toFixed(1)}`).join('') + pts.slice().reverse().map(q => `L${a.X(q.t).toFixed(1)},${a.Y(Math.min(q.load, q.cool)).toFixed(1)}`).join('') + 'Z';
+  let g = a.g + `<path d="${area}" fill="#F97316" opacity="0.3"/>`;
+  if (p.Qmax !== p.cap) g += `<line x1="${P.l}" x2="${W - P.r}" y1="${a.Y(p.Qmax)}" y2="${a.Y(p.Qmax)}" stroke="#2563EB" stroke-dasharray="2 3" opacity=".6"/>`;
+  g += `<path d="${path('cool')}" fill="none" stroke="#2563EB" stroke-width="2.5"/><path d="${path('load')}" fill="none" stroke="#DC2626" stroke-width="2.5"/>`;
+  if (tr.maxDeficitKw > 0) {
+    const x = a.X(tr.peakDeficitTimeSec), pr = SurgeTankEngine.profile(p, tr.peakDeficitTimeSec);
+    g += `<line x1="${x}" x2="${x}" y1="${a.Y(pr.load)}" y2="${a.Y(pr.cool)}" stroke="#0F172A" stroke-width="1.5"/><text x="${x + 4}" y="${(a.Y(pr.load) + a.Y(pr.cool)) / 2}" font-size="11" font-weight="700" fill="#0F172A">${f0(tr.maxDeficitKw)} kW</text>`;
+  }
+  $('chartQ').innerHTML = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="負載與冷量隨時間變化">${g}</svg>`;
+  $('chartQNote').innerHTML = `最大缺口 <b>${f0(tr.maxDeficitKw)} kW</b> @ ${fx(tr.peakDeficitTimeSec, 1)} s；最大儲熱能量 <b>${Number.isFinite(tr.peakStorageEnergyKJ) ? f0(tr.peakStorageEnergyKJ) + ' kJ' : '無上限'}</b>` +
+    (Number.isFinite(tr.peakTimeSec) ? ` @ ${fx(tr.peakTimeSec, 1)} s` : '');
+  // 圖 2：°C
+  const T0 = raw.tempSupply, Tm = raw.tempMax;
+  const peakShow = showTank && Number.isFinite(s.peak) ? s.peak : Tm;
+  const hi = Math.max(Tm + 1, Math.min(r.peakNoTank, Tm + 8) + 0.5, Math.min(peakShow, Tm + 8) + 0.5);
+  const yStepT = niceStep(hi - T0 + 1, 5);
+  const yMinT = Math.floor((T0 - 0.5) / yStepT) * yStepT, yMaxT = Math.ceil(hi / yStepT) * yStepT;
+  const b = axes(W, H, P, xMax, yMinT, yMaxT, v => fx(v, 1) + '°', yStepT);
+  const clip = v => Math.max(yMinT, Math.min(v, yMaxT));
+  const pathT = key => pts.filter(q => Number.isFinite(q[key])).map((q, i) => `${i ? 'L' : 'M'}${b.X(q.t).toFixed(1)},${b.Y(clip(q[key])).toFixed(1)}`).join('');
+  let h = b.g;
+  h += `<line x1="${P.l}" x2="${W - P.r}" y1="${b.Y(T0)}" y2="${b.Y(T0)}" stroke="#94A3B8" stroke-width="1"/><text x="${P.l + 4}" y="${b.Y(T0) + 13}" font-size="10.5" fill="#64748B">設計 ${fx(T0, 1)}°</text>`;
+  h += `<line x1="${P.l}" x2="${W - P.r}" y1="${b.Y(thrT)}" y2="${b.Y(thrT)}" stroke="#15803D" stroke-dasharray="4 3" stroke-width="1"/>`;
+  h += `<line x1="${P.l}" x2="${W - P.r}" y1="${b.Y(Tm)}" y2="${b.Y(Tm)}" stroke="#DC2626" stroke-dasharray="5 4" stroke-width="1.5"/><text x="${W - P.r}" y="${b.Y(Tm) - 5}" font-size="11" text-anchor="end" fill="#DC2626" font-weight="700">上限 ${fx(Tm, 1)}°C</text>`;
+  h += `<path d="${pathT('Tno')}" fill="none" stroke="#94A3B8" stroke-width="2" stroke-dasharray="5 4"/>`;
+  if (showTank) {
+    h += `<path d="${pathT('Ttank')}" fill="none" stroke="#F97316" stroke-width="3"/>`;
+    if (Number.isFinite(s.peak) && tr.peakTimeSec <= xMax) h += `<circle cx="${b.X(tr.peakTimeSec)}" cy="${b.Y(clip(s.peak))}" r="4.5" fill="${s.thermalPass ? '#F97316' : '#DC2626'}" stroke="#fff" stroke-width="1.5"/><text x="${b.X(tr.peakTimeSec)}" y="${b.Y(clip(s.peak)) + 18}" font-size="11" text-anchor="middle" font-weight="700" fill="${s.thermalPass ? '#C2410C' : '#DC2626'}">${f1(s.peak)}°C</text>`;
+    if (recAbs !== null && recAbs <= xMax) h += `<line x1="${b.X(recAbs)}" x2="${b.X(recAbs)}" y1="${P.t}" y2="${H - P.b}" stroke="#15803D" stroke-dasharray="3 3"/><text x="${b.X(recAbs) - 4}" y="${P.t + 10}" font-size="10.5" text-anchor="end" fill="#15803D">熱恢復</text>`;
+  }
+  $('chartT').innerHTML = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="供水溫度隨時間變化">${h}</svg>`;
+  $('chartTNote').innerHTML = (showTank ? `峰值 <b>${tempTxt(s.peak)}</b>（無水槽第一圈估算 ${tempTxt(r.peakNoTank)}）；水槽熱恢復到 ${fx(thrT, 1)} °C：<b>${secTxt(s.recoverySec)}</b>（允許 ${fx(raw.recoveryMaxSec, 1)} 秒）` :
+    `無水槽第一圈估算 ${tempTxt(r.peakNoTank)}；${r.selection.overflow ? '未選定水槽（候選規格不足）' : '未設水槽'}`) +
+    (recAbs !== null && recAbs > xMax ? '（熱恢復點超出圖面）' : '');
+}
+
+/* ---------- 呈現 ---------- */
+function renderBasis(r) {
+  const raw = r.raw, t = r.tank;
+  $('basisBar').innerHTML =
+    `<div><small>LOAD BASIS</small>${fx(raw.loadFrom)} → ${fx(raw.loadTo)}% / ${fx(raw.riseTime, 2)} s</div>` +
+    `<div><small>CDU BASIS</small>${f0(r.p.cap)} kW 額定 × ${raw.cduCount} / 可用 ${fx(raw.availPct)}%</div>` +
+    `<div><small>THERMAL LIMIT</small>${fx(raw.tempSupply, 1)} → ${fx(raw.tempMax, 1)} °C · ${r.fluid.name}</div>` +
+    `<div><small>CONTROL MODEL</small>${r.p.ideal ? '理想瞬時（比較用）' : `線性等效 / 延遲 ${fx(raw.deadTime, 1)} s / 全程 ${fx(raw.valveStroke, 1)} s`}</div>` +
+    `<div><small>TANK MODEL</small>集中參數儲熱 / 有效 ${fx(raw.mixEffPct)}% / 餘裕 ${fx(raw.marginPct)}%</div>`;
+}
+function renderModel(r) {
+  const raw = r.raw;
+  const assumed = [];
+  if (!r.p.ideal && raw.deadTime === DEFAULTS.deadTime && raw.valveStroke === DEFAULTS.valveStroke) assumed.push(`線性冷量反應（延遲 ${raw.deadTime} s、全程 ${raw.valveStroke} s 為預設值）`);
+  if (raw.fluid !== 'custom') assumed.push(`${r.fluid.name} 近似物性`);
+  if (raw.mixEffPct === DEFAULTS.mixEffPct) assumed.push(`有效混合容積係數 ${raw.mixEffPct}%`);
+  if (raw.marginPct === DEFAULTS.marginPct) assumed.push(`設計餘裕 ${raw.marginPct}%`);
+  if (raw.availPct === DEFAULTS.availPct) assumed.push(`CDU 最大可用冷量 ${raw.availPct}%`);
+  if (raw.recoveryMaxSec === DEFAULTS.recoveryMaxSec) assumed.push(`最大允許水槽熱恢復時間 ${raw.recoveryMaxSec} 秒`);
+  $('modelBox').innerHTML = `<div><small>THERMAL MODEL</small>集中參數儲熱（Lumped Energy Storage）</div><div><small>CONTROL MODEL</small>${r.p.ideal ? '理想瞬時（僅供比較）' : '線性等效 CDU 冷量反應'}</div>` +
+    `<div><small>ENGINEERING STATUS</small>概念設計／初步容量估算</div><div><small>ACCEPTANCE</small>非原廠暫態性能保證或最終設備驗收依據</div>` +
+    `<div class="assume-note">⚠ 未建模熱容量：實際 TCS 的總熱慣量可能包含 CDU 熱交換器、管路、歧管、冷板與 IT 設備內的冷卻液；本工具只將有效液體容積作為儲熱容量。</div>` +
+    (assumed.length ? `<div class="assume-note">⚠ 工程假設：目前使用 ${assumed.join('、')}。正式選型前請以 CDU／水槽原廠資料取代。</div>` : '');
+}
+
+function optionStatus(r, o) {
+  const tags = [];
+  if (Math.abs(o.size - (r.selection.size || -1)) < 1e-9) tags.push(r.selection.mode === 'auto' ? '<span class="tag sel">AUTO SELECTED</span>' : '<span class="tag sel">SELECTED</span>');
+  if (o.belowRequired) tags.push('<span class="tag warn">BELOW REQUIRED</span>');
+  tags.push(o.thermalPass ? '<span class="tag ok">THERMAL PASS</span>' : '<span class="tag bad">THERMAL FAIL</span>');
+  if (o.recoveryTime === 'warn') tags.push('<span class="tag warn">RECOVERY WARNING</span>');
+  else if (o.recoveryTime === 'na' && o.thermalPass) tags.push('<span class="tag warn">NO RECOVERY</span>');
+  return tags.join('');
+}
+
+function render(result) {
+  lastResult = result;
+  const resEl = $('results'), V = $('verdict');
+  if (!result.valid) {
+    resEl.classList.add('is-stale');
+    V.className = 'card verdict fail'; setText('verdictIcon', '✕'); setText('verdictTitle', '請先修正輸入');
+    setText('verdictSub', '下方結果為上一次有效的計算，僅供參考'); $('verdictLayers').innerHTML = '';
+    $('verdictList').innerHTML = Object.keys(result.errors).map(k => `<div><a onclick="focusField('${k}')">${FIELD_NAMES[k] || k}</a>：${result.errors[k]}</div>`).join('');
+    return;
+  }
+  resEl.classList.remove('is-stale');
+  const r = result, raw = r.raw, s = r.sel, st = r.status, sel = r.selection;
+  const hasTank = (sel.size || 0) > 0;
+  const checks = buildChecks(r);
+  const fails = checks.filter(c => c.s === 'fail'), warns = checks.filter(c => c.s === 'warn');
+  let cls, icon, title;
+  if (fails.length) { cls = 'fail'; icon = '✕'; title = '工程檢核：不通過'; }
+  else if (!hasTank && !sel.overflow && r.noTankNeeded && st.recoveryTime === 'pass') { cls = 'info'; icon = 'i'; title = '冷量反應夠快，不需緩衝水槽'; }
+  else if (warns.length || checks.some(c => c.s === 'na')) { cls = 'warn'; icon = '!'; title = sel.overflow ? '工程檢核：有條件通過（候選規格不足）' : '工程檢核：有條件通過'; }
+  else { cls = 'pass'; icon = '✓'; title = '工程檢核：通過'; }
+  V.className = 'card verdict ' + cls; setText('verdictIcon', icon); setText('verdictTitle', title);
+  setText('verdictSub', (r.tr.sustained ? 'CDU 最大可用冷量小於跳升後負載，溫度會持續上升' :
+    sel.overflow ? `設計需求 ${fx(r.tank.vRequired, 2)} m³ 超出內建候選容積上限 ${fx(r.tank.maxCandidateVolume)} m³，未自動選型` :
+    hasTank ? `在目前假設與簡化控制模型下，每台 CDU 串 ${fx(sel.size, 3)} m³ 水槽，峰值供水 ${tempTxt(s.peak)} ${s.thermalPass ? '未超過' : '超過'}上限 ${fx(raw.tempMax, 1)} °C` :
+    `不設水槽時第一圈估算 ${tempTxt(r.peakNoTank)}`) + '。非規範認證或設備選型核准。');
+  const layer = (name, k) => `<span class="layer ${k === 'na' ? 'warn' : k}">${name} ${LV[k]}</span>`;
+  $('verdictLayers').innerHTML = layer('暫態溫升', st.thermal) + layer('穩態容量', st.recoveryCapacity === 'warn' && r.tr.peakStorageEnergyKJ <= 1e-9 ? 'pass' : st.recoveryCapacity) +
+    layer('水槽熱恢復時間', st.recoveryTime) + layer('候選規格', st.candidate);
+  $('verdictList').innerHTML = fails.concat(warns, checks.filter(c => c.s === 'na')).map(c => `<div><a onclick="focusCheck('${c.id}')">${c.t}</a>：${esc(c.v)}</div>`).join('');
+
+  renderBasis(r); renderModel(r);
+  const t = r.tank;
+  $('kpiTank').innerHTML = r.tr.sustained ? '—' : sel.overflow ? '—' : hasTank ? `${fx(sel.size, 3)}<small>m³</small>` : '不需設';
+  setText('kpiTankSub', r.tr.sustained ? '冷量持續不足，水槽無法解決' : sel.overflow ? `設計需求 ${fx(t.vRequired, 2)} m³ 超出候選上限 ${fx(t.maxCandidateVolume)} m³` :
+    hasTank ? `理論 ${fx(t.vTheory, 3)} → 設計需求 ${fx(t.vRequired, 3)} → 標稱 ${fx(sel.size, 3)}（有效 ${fx(s.vTankEff, 3)}）m³；全廠 ${fx(r.plantVol, 3)} m³` : '');
+  $('kpiNoTank').innerHTML = `${Number.isFinite(r.peakNoTank) ? f1(r.peakNoTank) : '—'}<small>°C</small>`;
+  $('kpiNoTank').className = 'kpi-v ' + (r.noTankNeeded ? 'good' : 'bad');
+  setText('kpiNoTankSub', `最大瞬時缺口 ${f0(r.tr.maxDeficitKw)} kW；僅作比較`);
+  $('kpiWithTank').innerHTML = hasTank ? (Number.isFinite(s.peak) ? `${f1(s.peak)}<small>°C</small>` : '持續上升') : '—';
+  $('kpiWithTank').className = 'kpi-v ' + (hasTank ? (s.thermalPass ? 'good' : 'bad') : '');
+  setText('kpiWithTankSub', hasTank ? `上限 ${fx(raw.tempMax, 1)} °C；水槽熱恢復 ${secTxt(s.recoverySec)}` : `上限 ${fx(raw.tempMax, 1)} °C`);
+
+  setText('stepFromTxt', `${fx(raw.loadFrom)}%`); setText('stepToTxt', `${fx(raw.loadTo)}%`);
+  $('stepP0').style.width = raw.loadFrom + '%';
+  $('stepP1').style.left = raw.loadFrom + '%'; $('stepP1').style.width = (raw.loadTo - raw.loadFrom) + '%';
+  $('stepCap').style.left = `calc(${Math.min(raw.availPct, 100)}% - 1px)`;
+  $('tempReadout').innerHTML = `允許溫升 <b>${fx(t.allowRise, 1)} K</b>；二次側額定設計流量 <b>${f1(r.flowM3h)} m³/h</b>（${fx(r.lpmPerKW, 2)} LPM/kW，Basis = CDU 額定容量）。${r.fluid.name}：ρ ${f0(r.fluid.rho)}、cp ${fx(r.fluid.cp, 3)}`;
+  $('ctrlReadout').innerHTML = r.p.ideal ? '理想瞬時：CDU 冷量即時等於負載（僅供比較）。' :
+    `負載多了 <b>${f0(r.p.dQ)} kW</b>；冷量每秒增加 ${f0(r.p.rate)} kW，延遲後再 ${fx(r.p.dQ / r.p.rate, 1)} 秒，共 <b>${fx(r.control.catchUpSec, 1)} 秒</b>追上。最大儲熱能量 <b>${Number.isFinite(r.tr.peakStorageEnergyKJ) ? f0(r.tr.peakStorageEnergyKJ) + ' kJ' : '無上限'}</b>`;
+  $('sizeReadout').innerHTML = sel.overflow
+    ? `設計需求 <b>${fx(t.vRequired, 2)} m³</b>，已超出目前內建候選容積上限 ${fx(t.maxCandidateVolume)} m³。請擴充候選規格庫，或在「單槽候選容積」選「自訂」手動指定實際設備規格。`
+    : hasTank ? `設計需求 <b>${fx(t.vRequired, 3)} m³</b> → 選定標稱 <b>${fx(sel.size, 3)} m³</b>（${f0(sel.size * 1000)} L，有效 ${fx(s.vTankEff, 3)} m³），約 Ø${fx(s.dims.D, 2)} m × 高 ${fx(s.dims.H, 2)} m` +
+      (raw.otherMixVol > 0 ? `；其他已計入有效混合容積 <b>${fx(t.credited, 3)} m³</b>` : '') : '不需水槽';
+  $('sizeReadout').className = 'note' + (sel.overflow ? ' assume' : '');
+  setText('advSummary', `H/D ${fx(raw.hdRatio)}`);
+
+  renderCharts(r);
+  const ic = { pass: '✓', warn: '!', fail: '✕', info: 'i', na: '–' };
+  $('checkList').innerHTML = checks.map(c => `<li class="chk ${c.s}" id="${c.id}"><span class="dot">${ic[c.s]}</span><div><div class="chk-t">${esc(c.t)}<span class="lvl">${LV[c.s]}</span></div><div class="chk-v">${esc(c.v)}</div><div class="chk-d">${esc(c.d)}</div></div></li>`).join('');
+  setText('checkSummary', `${checks.filter(c => c.s === 'pass').length} 通過 · ${warns.length} 需確認${fails.length ? ` · ${fails.length} 不通過` : ''}`);
+  setText('optsCaption', `設計需求 ${fx(t.vRequired, 3)} m³ · 點一列或按 Enter 套用`);
+  $('optsBody').innerHTML = r.options.length ? r.options.map(o => {
+    const cur = Math.abs(o.size - (sel.size || -1)) < 1e-9;
+    return `<tr class="${cur ? 'cur' : ''}" tabindex="0" role="button" aria-selected="${cur}" aria-label="套用 ${fx(o.size, 2)} m³ 候選容積" onclick="pickSize(${o.size})" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();pickSize(${o.size})}">` +
+      `<td>${fx(o.size, 2)} m³</td><td>${fx(o.vTankEff, 3)} m³</td><td>${fx(o.dims.D, 2)} × ${fx(o.dims.H, 2)} m</td><td>${f1(o.residenceSec)} s</td><td>${tempTxt(o.peak)}</td><td>${Number.isFinite(o.thermalMarginK) ? f1(o.thermalMarginK) + ' K' : '—'}</td><td>${secTxt(o.recoverySec)}</td><td>${optionStatus(r, o)}</td></tr>`;
+  }).join('') : '<tr><td colspan="8">不需水槽</td></tr>';
+  $('calcSteps').innerHTML = buildSteps(r).map((x, i) => `<li><span class="n">${i + 1}</span><div><div class="st-t">${x[0]}</div><code>${x[1]}</code></div></li>`).join('');
+}
+
+function pickSize(v) { $('tankSizeChoice').value = String(v); calculate(); }
+function focusCheck(id) { const el = $(id); if (!el) return; el.scrollIntoView({ behavior: 'smooth', block: 'center' }); el.classList.add('flash'); setTimeout(() => el.classList.remove('flash'), 1200); }
+function focusField(id) { const el = $(id); if (!el) return; if (el.closest('details')) el.closest('details').open = true; el.scrollIntoView({ behavior: 'smooth', block: 'center' }); el.focus(); }
+function toast(msg) { const el = $('toastMsg'); el.textContent = msg; el.classList.add('show'); clearTimeout(toast._t); toast._t = setTimeout(() => el.classList.remove('show'), 2600); }
+
+/* ---------- 自動保存 ---------- */
+function saveInputs() {
+  try {
+    const v = { fluid: radioVal('fluid', 'pg25'), controlModel: radioVal('controlModel', 'linear') };
+    NUM_FIELDS.concat(TEXT_FIELDS).forEach(id => { v[id] = $(id).value; });
+    localStorage.setItem(AUTOSAVE_KEY, JSON.stringify(v));
+    setText('autosaveHint', '已自動保存');
+  } catch (e) { setText('autosaveHint', ''); }
+}
+function loadInputs() {
+  try { const s = localStorage.getItem(AUTOSAVE_KEY); if (s) { applyValues(JSON.parse(s)); return true; } } catch (e) { /* 用預設值 */ }
+  return false;
+}
+
+/* ---------- 摘要 / 列印 ---------- */
+function summaryText() {
+  const r = lastResult; if (!r || !r.valid) return null;
+  const raw = r.raw, s = r.sel, sel = r.selection, st = r.status, L = [];
+  L.push(`【CDU 供水緩衝水槽】${$('projectName').value || '未命名案件'}`);
+  if ($('dataSource').value) L.push(`依據：${$('dataSource').value}`);
+  L.push(`CDU ${f0(r.p.cap)} kW 額定 × ${raw.cduCount} 台；負載 ${fx(raw.loadFrom)}% → ${fx(raw.loadTo)}%（${fx(raw.riseTime, 2)} s）；最大可用冷量 ${fx(raw.availPct)}%`);
+  L.push(`TCS 供水 ${fx(raw.tempSupply, 1)} °C、上限 ${fx(raw.tempMax, 1)} °C、設計溫差 ${fx(raw.deltaTDesign, 1)} K，${r.fluid.name}，額定設計流量 ${f1(r.flowM3h)} m³/h`);
+  L.push(r.p.ideal ? '控制：理想瞬時（僅供比較）' : `控制（線性等效）：延遲 ${fx(r.p.td, 1)} s＋追蹤 ${fx(r.p.dQ / r.p.rate, 1)} s（全程 ${fx(raw.valveStroke, 1)} s）`);
+  L.push(`最大缺口 ${f0(r.tr.maxDeficitKw)} kW；最大儲熱能量 ${Number.isFinite(r.tr.peakStorageEnergyKJ) ? f0(r.tr.peakStorageEnergyKJ) + ' kJ' : '無上限'}；無水槽第一圈估算 ${tempTxt(r.peakNoTank)}`);
+  if (sel.overflow) L.push(`水槽：設計需求 ${fx(r.tank.vRequired, 2)} m³，超出內建候選容積上限 ${fx(r.tank.maxCandidateVolume)} m³，未自動選型`);
+  else if ((sel.size || 0) > 0) L.push(`水槽：理論 ${fx(r.tank.vTheory, 3)} → 設計需求 ${fx(r.tank.vRequired, 3)} → 選定標稱 ${fx(sel.size, 3)} m³／台（有效 ${fx(s.vTankEff, 3)} m³，全廠 ${fx(r.plantVol, 3)} m³）；峰值 ${tempTxt(s.peak)}；水槽熱恢復 ${secTxt(s.recoverySec)}`);
+  L.push(`判定：暫態溫升 ${LV[st.thermal]}／穩態容量 ${LV[st.recoveryCapacity]}／水槽熱恢復時間 ${LV[st.recoveryTime]}（允許 ${fx(raw.recoveryMaxSec, 1)} s）／候選規格 ${LV[st.candidate]}`);
+  const issues = buildChecks(r).filter(c => c.s === 'fail' || c.s === 'warn');
+  if (issues.length) L.push('需處理：' + issues.map(c => `${c.t}（${c.v}）`).join('；'));
+  L.push('模型：集中參數儲熱、' + (r.p.ideal ? '理想瞬時控制' : '線性等效控制') + `；有效混合容積係數 ${fx(raw.mixEffPct)}%、設計餘裕 ${fx(raw.marginPct)}%。概念設計／初步容量估算，非原廠暫態性能保證。`);
+  return L.join('\n');
+}
+function copySummary() {
+  const t = summaryText(); if (!t) { toast('請先修正輸入'); return; }
+  const done = () => toast('摘要已複製');
+  if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(t).then(done, () => fallbackCopy(t, done)); else fallbackCopy(t, done);
+}
+function fallbackCopy(t, done) {
+  const ta = document.createElement('textarea'); ta.value = t; document.body.appendChild(ta); ta.select();
+  try { document.execCommand('copy'); done(); } catch (e) { toast('無法複製，請手動選取'); }
+  ta.remove();
+}
+function printReport() { document.querySelectorAll('details').forEach(d => { d.dataset.wasOpen = d.open ? '1' : ''; d.open = true; }); window.print(); }
+window.addEventListener('afterprint', () => { document.querySelectorAll('details').forEach(d => { if (d.dataset.wasOpen !== undefined) d.open = d.dataset.wasOpen === '1'; }); });
+function safeFileName(s) { return (s || '').replace(/[\\/:*?"<>|]+/g, '_').trim().slice(0, 60); }
+
+/* ---------- Excel：Summary / Calculation / Transient / Assumptions ---------- */
+// Transient 時間點：所有切段點（含交叉點）＋ 等距點；水槽熱恢復時刻為最後一列
+function transientTimes(r) {
+  const { xMax, recAbs } = chartWindow(r);
+  const tEnd = recAbs !== null ? recAbs : xMax;
+  const tset = new Set([tEnd]);
+  for (let i = 0; i < 40; i++) tset.add(tEnd * i / 40);
+  r.tr.knots.forEach(t => { if (t < tEnd) tset.add(t); });
+  return { times: [...tset].sort((a, b) => a - b), tEnd, recAbs };
+}
+// 一段線性缺口的正值面積（含變號）；與 Transient 工作表 F 欄公式相同
+function posAreaSeg(n0, n1, dt) {
+  if (n0 * n1 >= 0) return (Math.max(0, n0) + Math.max(0, n1)) / 2 * dt;
+  return n0 > 0 ? n0 * n0 / (n0 - n1) * dt / 2 : n1 * n1 / (n1 - n0) * dt / 2;
+}
+const statusText = k => ({ pass: 'PASS', warn: 'WARNING', fail: 'FAIL', na: 'N/A', info: 'INFO' }[k]);
+
+function buildWorkbook(r) {
+  const raw = r.raw, fl = r.fluid, s = r.sel, tr = r.tr, p = r.p, sel = r.selection, st = r.status;
+  const { times, recAbs } = transientTimes(r);
+  const nT = times.length, tFirst = 2, tLastRow = nT + 1;
+  const A = `Transient!A${tFirst}:A${tLastRow}`, Dr = `Transient!D${tFirst}:D${tLastRow}`, Er = `Transient!E${tFirst}:E${tLastRow}`;
+  const size = sel.size || 0;
+  const recFinite = size > 0 && recAbs !== null;
+  // 各列的 F（正缺口累積）預先算好，供 Calculation 參照
+  let Fv = 0; const Fvals = times.map((t, i) => { if (i > 0) Fv += posAreaSeg(p ? SurgeTankEngine.profile(p, times[i - 1]).net : 0, SurgeTankEngine.profile(p, t).net, t - times[i - 1]); return Fv; });
+
+  // ---- Calculation ----
+  const rows = [];
+  const line = (cells, key) => rows.push({ key, cells });
+  const inp = (key, label, v, unit, note) => line([label, v, unit, note || ''], key);
+  const calc = (key, label, f, v, unit, note) => line([label, { f, v }, unit, note || ''], key);
+  line(['CDU 供水緩衝水槽 — 計算書', '', '', '']);
+  line(['一、輸入', '數值', '單位', '說明']);
+  inp('cap', 'CDU 額定容量', raw.cduCap, 'kW', '負載百分比與流量的 Basis'); inp('N', 'CDU 台數', raw.cduCount, '台');
+  inp('p0', '跳升前負載', raw.loadFrom, '%'); inp('p1', '跳升後負載', raw.loadTo, '%'); inp('tr', '上升時間', raw.riseTime, 's');
+  inp('T0', '設計供水', raw.tempSupply, '°C'); inp('Tm', '供水上限', raw.tempMax, '°C'); inp('dTd', '設計溫差', raw.deltaTDesign, 'K');
+  inp('thr', '恢復判定門檻', raw.recoveryThr, 'K'); inp('recMax', '最大允許水槽熱恢復時間', raw.recoveryMaxSec, 's', '設計假設，非規範值');
+  inp('rho', '密度 ρ', fl.rho, 'kg/m³', fl.name); inp('cp', '比熱 cp', fl.cp, 'kJ/kg·K', fl.name);
+  inp('mode', '控制模型（1 = 線性等效，0 = 理想瞬時）', p.ideal ? 0 : 1, '-');
+  inp('td', '偵測＋控制延遲', p.ideal ? 0 : raw.deadTime, 's'); inp('stroke', '等效冷量全程時間（0→100% 額定）', p.ideal ? 1 : raw.valveStroke, 's', p.ideal ? '理想模式不使用' : '');
+  inp('avail', 'CDU 最大可用冷量', raw.availPct, '% 額定', '簡化模型上限 100%');
+  inp('eff', '有效混合容積係數', raw.mixEffPct, '%', '設計假設'); inp('mg', '設計餘裕', raw.marginPct, '%', '設計假設'); inp('oth', '其他可計入混合容積', raw.otherMixVol, 'm³');
+  inp('maxCand', '內建候選容積上限', r.tank.maxCandidateVolume, 'm³', '工具內建級距，非產業標準規格');
+  inp('size', '選定標稱容積', size, 'm³', sel.overflow ? '超出候選上限，未自動選型（0 = 未選定）' : { auto: '自動選定候選容積', manual: '手動選候選容積', custom: '自訂實際設備容積' }[sel.mode]);
+  inp('hd', '高徑比 H/D', raw.hdRatio, '-');
+  line(['二、暫態（取自 Transient）', '結果', '單位', '說明']);
+  calc('Q0', '跳升前負載 Q0', '{cap}*{p0}/100', p.Q0, 'kW');
+  calc('Q1', '跳升後負載 Q1', '{cap}*{p1}/100', p.Q1, 'kW');
+  calc('dQ', '負載跳升量 ΔQ', '{Q1}-{Q0}', p.dQ, 'kW');
+  calc('Qmax', '最大可用冷量', '{cap}*{avail}/100', p.Qmax, 'kW');
+  calc('rate', '冷量增加速率', '{cap}/{stroke}', p.ideal ? raw.cduCap : p.rate, 'kW/s', '額定 ÷ 全程時間');
+  calc('rc', 'ρ·cp', '{rho}*{cp}', r.tank.rc, 'kJ/m³·K');
+  calc('flow', '二次側額定設計流量', '{cap}/({rc}*{dTd})*3600', r.flowM3h, 'm³/h', 'Basis = CDU 額定容量');
+  calc('mcp', '流量熱容 ṁ·cp', '{cap}/{dTd}', r.mcp, 'kW/K');
+  calc('maxDef', '最大缺口', `MAX(0,MAX(${Dr}))`, tr.maxDeficitKw, 'kW');
+  calc('tDef', '最大缺口時間', `INDEX(${A},MATCH(MAX(${Dr}),${Dr},0))`, tr.peakDeficitTimeSec, 's');
+  calc('E', '最大儲熱能量 E', `MAX(0,MAX(${Er}))`, tr.peakStorageEnergyKJ, 'kJ', 'max ∫(負載−冷量)dt');
+  calc('tPk', '儲熱峰值時間', `INDEX(${A},MATCH(MAX(${Er}),${Er},0))`, tr.peakTimeSec, 's');
+  calc('Epos', '正缺口積分（至表尾）', `Transient!F${tLastRow}`, Fvals[nT - 1], 'kJ', '∫max(0,缺口)dt');
+  calc('peakNo', '無水槽第一圈溫升估算', '{T0}+{maxDef}/{mcp}', r.peakNoTank, '°C', '比較用途');
+  line(['三、容積', '結果', '單位', '說明']);
+  calc('vTh', '① 理論有效容積', '{E}/({rc}*({Tm}-{T0}))', r.tank.vTheory, 'm³');
+  calc('vCr', '已計入其他混合容積', 'MIN({oth},{vTh})', r.tank.credited, 'm³');
+  calc('vTE', '② 水槽有效需求', '{vTh}-{vCr}', r.tank.vAfterCredit, 'm³');
+  calc('vPh', '③ 實體需求（÷ 係數）', '{vTE}/({eff}/100)', r.tank.vAfterFactor, 'm³');
+  calc('vReq', '④ 設計需求（× 餘裕）', '{vPh}*(1+{mg}/100)', r.tank.vRequired, 'm³');
+  line(['超出候選上限', { f: 'IF({vReq}>{maxCand},"YES","NO")', v: r.tank.candidateOverflow ? 'YES' : 'NO' }, '', ''], 'ovf');
+  calc('vSE', '⑥ 選定有效容積（水槽）', '{size}*{eff}/100', s.vTankEff, 'm³');
+  calc('vEff', '總有效混合容積', '{oth}+{vSE}', s.vEff, 'm³');
+  line(['四、判定', '結果', '單位', '說明']);
+  const peakV = s.vEff > 0 ? s.peak : 'N/A';
+  line(['加水槽後供水最高', typeof peakV === 'number' ? { f: 'IF({vEff}>0,{T0}+{E}/({rc}*{vEff}),"N/A")', v: peakV } : { f: 'IF({vEff}>0,{T0}+{E}/({rc}*{vEff}),"N/A")', v: 'N/A' }, '°C', ''], 'peak');
+  line(['暫態溫升判定', { f: 'IF({size}=0,IF({ovf}="YES","N/A",IF({peakNo}<={Tm},"PASS","FAIL")),IF({peak}<={Tm},"PASS","FAIL"))', v: statusText(st.thermal) }, '', ''], 'thermal');
+  line(['穩態容量判定', { f: 'IF({Qmax}<{Q1},"FAIL",IF({Qmax}={Q1},"WARNING","PASS"))', v: statusText(st.recoveryCapacity) }, '', '最大可用冷量 vs 跳升後負載'], 'capJ');
+  if (recFinite) {
+    calc('recSec', '水槽熱恢復時間', `MAX(${A})-{tPk}`, s.recoverySec, 's', 'Transient 最後一列 = 熱恢復時刻；數值由瀏覽器暫態求解器產生');
+    calc('recT', '熱恢復時刻供水溫度（驗算）', `Transient!G${tLastRow}`, raw.tempSupply + tr.S_at(recAbs) / (r.tank.rc * s.vEff), '°C', '應 = 設計供水 + 門檻');
+    line(['水槽熱恢復時間判定', { f: 'IF({recSec}<={recMax},"PASS","WARNING")', v: statusText(st.recoveryTime) }, '', ''], 'recJ');
+  } else {
+    inp('recSec', '水槽熱恢復時間', s.recoverySec === 0 ? 0 : s.recoverySec === null ? '—' : '無法恢復', 's', '瀏覽器暫態求解器結果');
+    inp('recJ', '水槽熱恢復時間判定', statusText(st.recoveryTime), '', '');
+  }
+  inp('candJ', '候選規格判定', statusText(st.candidate), '', sel.overflow ? '設計需求超出候選上限' : sel.mode === 'custom' ? '自訂設備容積' : '');
+  calc('tau', '水槽停留時間（參考）', '{size}/({flow}/3600)', s.residenceSec, 's', '不作為混合品質判定');
+  calc('D', '單槽直徑', 'IF({size}>0,(4*{size}/(PI()*{hd}))^(1/3),0)', s.dims ? s.dims.D : 0, 'm');
+  calc('H', '單槽高度', '{hd}*{D}', s.dims ? s.dims.H : 0, 'm');
+  calc('plant', '全廠水槽總容積', '{N}*{size}', r.plantVol, 'm³');
+
+  const addr = {}; rows.forEach((row, i) => { if (!row.key) return; if (addr[row.key]) throw new Error('Calculation 重複的 key：' + row.key); addr[row.key] = 'B' + (i + 1); });
+  const cached = {}; rows.forEach(row => { if (row.key) { const c = row.cells[1]; cached[row.key] = c && typeof c === 'object' && 'v' in c ? c.v : c; } });
+  const sub = (f, prefix) => f.replace(/\{(\w+)\}/g, (_, k) => (prefix || '') + addr[k]);
+  const cell = (v, f) => typeof v === 'number' ? { t: 'n', v: Number.isFinite(v) ? v : 0, f } : typeof v === 'boolean' ? { t: 'b', v, f } : { t: 's', v: String(v), f };
+  const toCells = cells => cells.map(c => (c && typeof c === 'object' && c.f) ? cell(c.v, sub(c.f)) : c);
+  const wsCalc = XLSX.utils.aoa_to_sheet(rows.map(row => toCells(row.cells)));
+  wsCalc['!cols'] = [{ wch: 34 }, { wch: 14 }, { wch: 10 }, { wch: 40 }];
+
+  // ---- Transient ----
+  const C = 'Calculation!';
+  const tAoa = [['時間 s', '負載 kW', 'CDU 冷量 kW', '淨缺口 kW（負載−冷量）', '累積淨儲熱 kJ', '正缺口累積 kJ', '水槽供水溫度 °C', '無水槽第一圈溫度 °C', '儲熱峰值', '熱恢復時刻']];
+  times.forEach((t, i) => {
+    const R = i + 2, pr = SurgeTankEngine.profile(p, t), Sv = tr.S_at(t);
+    tAoa.push([t,
+      cell(pr.load, sub(`{Q0}+{dQ}*IF({tr}=0,1,MIN(1,A${R}/{tr}))`, C)),
+      cell(pr.cool, sub(`IF({mode}=1,MIN({Qmax},{Q0}+{rate}*MAX(0,A${R}-{td})),MIN({Qmax},B${R}))`, C)),
+      cell(pr.net, `B${R}-C${R}`),
+      i === 0 ? cell(0, '0') : cell(Sv, `E${R - 1}+(D${R - 1}+D${R})/2*(A${R}-A${R - 1})`),
+      i === 0 ? cell(0, '0') : cell(Fvals[i], `F${R - 1}+IF(D${R - 1}*D${R}>=0,(MAX(0,D${R - 1})+MAX(0,D${R}))/2*(A${R}-A${R - 1}),IF(D${R - 1}>0,D${R - 1}^2/(D${R - 1}-D${R}),D${R}^2/(D${R}-D${R - 1}))*(A${R}-A${R - 1})/2)`),
+      cell(s.vEff > 0 ? raw.tempSupply + Sv / (r.tank.rc * s.vEff) : raw.tempSupply, sub(`IF({vEff}>0,{T0}+E${R}/({rc}*{vEff}),{T0})`, C)),
+      cell(raw.tempSupply + pr.def / r.mcp, sub(`{T0}+MAX(0,D${R})/{mcp}`, C)),
+      Number.isFinite(tr.peakTimeSec) ? cell(t === tr.peakTimeSec, `A${R}=${C}${addr.tPk}`) : false,
+      recFinite ? cell(i === nT - 1, `A${R}=MAX(${A.replace('Transient!', '')})`) : false]);
+  });
+  const wsT = XLSX.utils.aoa_to_sheet(tAoa);
+  wsT['!cols'] = [{ wch: 10 }, { wch: 12 }, { wch: 14 }, { wch: 22 }, { wch: 14 }, { wch: 16 }, { wch: 18 }, { wch: 18 }, { wch: 10 }, { wch: 10 }];
+
+  // ---- Summary（公式皆指向 Calculation）----
+  const ref = k => cell(cached[k], C + addr[k]);
+  const sm = [['CDU 供水緩衝水槽 — 摘要'], ['案名', $('projectName').value || ''], ['依據', $('dataSource').value || ''], ['匯出日期', new Date().toLocaleDateString('zh-TW')],
+    ['工程用途', '概念設計／初步容量估算；非原廠暫態性能保證或最終設備驗收依據'], [],
+    ['CDU 額定容量 kW', ref('cap')], ['CDU 台數', ref('N')], ['跳升前負載 %', ref('p0')], ['跳升後負載 %', ref('p1')], ['上升時間 s', ref('tr')], ['最大可用冷量 % 額定', ref('avail')],
+    ['TCS 設計供水 °C', ref('T0')], ['TCS 供水上限 °C', ref('Tm')], ['冷卻液', fl.name], [],
+    ['最大缺口 kW', ref('maxDef')], ['最大缺口時間 s', ref('tDef')], ['最大儲熱能量 kJ', ref('E')], ['儲熱峰值時間 s', ref('tPk')], ['無水槽第一圈溫升估算 °C', ref('peakNo')], [],
+    ['理論有效容積 m³', ref('vTh')], ['已計入其他混合容積 m³', ref('vCr')], ['實體需求 m³', ref('vPh')], ['設計需求 m³', ref('vReq')], ['超出候選上限', ref('ovf')],
+    ['選定標稱容積 m³/台', ref('size')], ['選定有效容積 m³/台', ref('vSE')], ['全廠水槽總容積 m³', ref('plant')], [],
+    ['加水槽後供水最高 °C', ref('peak')], ['暫態溫升判定', ref('thermal')], ['穩態容量判定', ref('capJ')],
+    ['水槽熱恢復時間 s', ref('recSec')], ['最大允許水槽熱恢復時間 s', ref('recMax')], ['水槽熱恢復時間判定', ref('recJ')], ['候選規格判定', ref('candJ')],
+    ['說明', '水槽熱恢復時間 = 瀏覽器暫態求解器結果；Excel 以 Transient 最後一列時間 − 儲熱峰值時間驗算，並以該列供水溫度驗證 = 設計供水 + 門檻'],
+    [], ['模型', '集中參數儲熱（Lumped Energy Storage）＋' + (p.ideal ? '理想瞬時控制（比較用）' : '線性等效 CDU 冷量反應')], ['詳細假設', '見 Assumptions 工作表']];
+  const wsS = XLSX.utils.aoa_to_sheet(sm);
+  wsS['!cols'] = [{ wch: 26 }, { wch: 60 }];
+
+  // ---- Assumptions ----
+  const as = [['計算假設與模型限制'], [],
+    ['工程用途', '概念設計／初步容量估算；非原廠暫態性能保證或最終設備驗收依據'],
+    ['冷卻液物性', `${fl.name}：ρ ${fl.rho} kg/m³、cp ${fl.cp} kJ/kg·K（40–45°C 近似值，正式設計以供應商資料為準）`],
+    ['熱模型', '集中參數儲熱：ρ·cp·V有效·dT/dt = Q負載 − Q冷量；水槽完全混合；忽略槽體／管路／熱交換器金屬／冷板熱容、熱損失、管路傳輸延遲、分層與混合動態'],
+    ['未建模熱容量', '實際 TCS 總熱慣量可能包含 CDU 熱交換器、管路、歧管、冷板與 IT 設備內冷卻液；本工具只將有效液體容積作為儲熱容量'],
+    ['控制模型', p.ideal ? '理想瞬時：CDU 冷量即時等於負載（僅供比較）' : `線性等效：延遲 ${raw.deadTime} s 後冷量每秒增加 額定 ÷ ${raw.valveStroke} s（全程時間定義為 0→100% 額定），最大 ${raw.availPct}% 額定（上限 100%）；正式設計以 Cv／行程、PID／前饋、HX UA、原廠暫態響應為準`],
+    ['負載模型', `由 ${raw.loadFrom}% 線性升到 ${raw.loadTo}%，上升時間 ${raw.riseTime} s`],
+    ['暫態求解', '分段線性，於所有轉折點與交叉點切段後精確積分；Transient 工作表包含所有切段點，梯形積分即為精確值'],
+    ['流量', '二次側額定設計流量，Basis = CDU 額定容量，不是目前 GPU 負載下的實際流量'],
+    ['無水槽第一圈溫升估算', '最大瞬時缺口 ÷ 額定流量熱容；未含 TCS 循環體積與管路傳輸延遲，僅作比較用途'],
+    ['有效混合容積係數', `${raw.mixEffPct}%（設計假設，反映短路、死角、非完全混合）`],
+    ['設計餘裕', `${raw.marginPct}%（設計假設，非規範值）`],
+    ['容積計算順序', '最大儲熱能量 → 理論有效容積 → 扣除已計入混合容積 → ÷ 有效混合容積係數（實體需求）→ × (1 + 設計餘裕)（設計需求）→ 選定標稱容積 → 選定有效容積'],
+    ['候選容積', `工具內建 0.05–${r.tank.maxCandidateVolume} m³ 級距，非產業標準規格；超出上限時不自動選型`],
+    ['其他可計入混合容積', `${raw.otherMixVol} m³；只計二次側主流路上可完全混合的容積，管路／死管段／隔離槽／旁通不計，不可與 CDU 內部或外部水槽重複計算`],
+    ['穩態容量', 'CDU 最大可用冷量 > 跳升後負載 → PASS；= → WARNING（簡化模型下無法恢復）；< → FAIL（持續冷量不足）'],
+    ['水槽熱恢復時間', `儲熱峰值起，到供水降回 設計供水 + ${raw.recoveryThr} K 的時間；允許 ${raw.recoveryMaxSec} s（設計假設，非規範值）；超過 → WARNING`],
+    ['停留時間', '僅供參考，不作為混合品質判定']];
+  const wsA = XLSX.utils.aoa_to_sheet(as);
+  wsA['!cols'] = [{ wch: 22 }, { wch: 120 }];
+
+  [wsCalc, wsT].forEach(ws => Object.keys(ws).forEach(k => { if (k[0] !== '!' && ws[k].t === 'n' && ws[k].f) ws[k].z = '#,##0.000'; }));
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, wsS, 'Summary');
+  XLSX.utils.book_append_sheet(wb, wsCalc, 'Calculation');
+  XLSX.utils.book_append_sheet(wb, wsT, 'Transient');
+  XLSX.utils.book_append_sheet(wb, wsA, 'Assumptions');
+  return { wb, addr, times };
+}
+
+function exportToExcel() {
+  if (typeof XLSX === 'undefined') { toast('Excel 元件尚未載入，請確認網路後再試'); return; }
+  const r = lastResult; if (!r || !r.valid) { toast('請先修正輸入再匯出'); return; }
+  if (r.tr.sustained) { toast('CDU 最大可用冷量小於負載，能量無上限，無法匯出計算書'); return; }
+  const { wb } = buildWorkbook(r);
+  const mism = XlsxEval.crossCheck(wb);
+  if (mism.length) { console.error('Excel 交叉核對不一致', mism); toast(`Excel 與瀏覽器結果有 ${mism.length} 處不一致，已停止匯出`); return; }
+  const base = safeFileName($('projectName').value) || 'CDU_Buffer_Tank';
+  XLSX.writeFile(wb, `${base}_${new Date().toISOString().slice(0, 10)}.xlsx`);
+  toast('Excel 已匯出，4 個工作表已與瀏覽器結果交叉核對一致');
+}
+
+/* ---------- 回歸測試 ---------- */
+function runRegressionTests() {
+  const E = SurgeTankEngine;
+  const base = () => ({ cduCap: 1000, cduCount: 4, loadFrom: 30, loadTo: 100, riseTime: 1, tempSupply: 40, tempMax: 45, deltaTDesign: 10, recoveryThr: 0.5, recoveryMaxSec: 30, fluid: 'pg25', rho: NaN, cp: NaN,
+    controlModel: 'linear', deadTime: 5, valveStroke: 20, availPct: 100, sizeChoice: 'auto', customSize: 12, mixEffPct: 80, marginPct: 20, otherMixVol: 0, hdRatio: 2 });
+  const run = mod => { const b = base(); if (mod) mod(b); return E.calculate(b); };
+  const near = (a, b, tol = 1e-6) => Math.abs(a - b) <= tol;
+  // 暴力數值積分（獨立於求解器）
+  const brute = r => { let S = 0, P = 0, mx = 0; const dt = 1e-3, H = r.tr.lastKnot + 5; for (let t = 0; t < H; t += dt) { const n = E.profile(r.p, t + dt / 2).net; S += n * dt; P += Math.max(0, n) * dt; mx = Math.max(mx, S); } return { S: mx, P }; };
+  const results = [];
+  const T = (name, fn) => { let pass = false, info = ''; try { const v = fn(); pass = v === true; if (!pass) info = String(v); } catch (e) { info = e.message; } results.push({ name, pass, info }); };
+  const rc = 1012 * 3.98;
+  const r0 = run();
+  const E0 = r0.tr.peakStorageEnergyKJ;
+  const caseB = b => { b.riseTime = 10; b.deadTime = 2; b.valveStroke = 5; };
+  const caseG = b => { b.loadTo = 90; };
+  // —— 第一輪測試（保留，availPct > 100 相關者依第二輪定義改寫）——
+  T('ΔQ = 700 kW', () => r0.p.dQ === 700);
+  T('追蹤時間 = 700 ÷ (1000/20) = 14 s', () => near(r0.p.dQ / r0.p.rate, 14));
+  T('缺口能量 = 700 × (5 + 7 − 0.5) = 8,050 kJ（Case A 與舊公式一致）', () => near(E0, 8050));
+  T('數值積分與求解器一致', () => near(brute(r0).S, E0, 1) || brute(r0).S);
+  T('最大缺口 700 kW', () => near(r0.tr.maxDeficitKw, 700));
+  T('無水槽第一圈估算 47 °C', () => near(r0.peakNoTank, 47));
+  T('理論有效容積', () => near(r0.tank.vTheory, 8050 / (rc * 5)));
+  T('設計需求 = 理論 ÷ 80% × 1.2', () => near(r0.tank.vRequired, 8050 / (rc * 5) / 0.8 * 1.2));
+  T('自動選 0.6 m³', () => r0.sel.size === 0.6 || r0.sel.size);
+  T('加水槽後 ≤ 45 °C', () => r0.sel.ok && r0.sel.peak <= 45);
+  T('加水槽後溫度公式', () => near(r0.sel.peak, 40 + 8050 / (rc * 0.6 * 0.8)));
+  T('流量 ≈ 1.49 LPM/kW', () => r0.lpmPerKW > 1.4 && r0.lpmPerKW < 1.6);
+  T('停留時間 = 容積 ÷ 流量（m³ ÷ m³/s = s）', () => near(r0.sel.residenceSec, 0.6 / r0.flowM3s));
+  T('水閥更慢 → 水槽更大', () => run(b => { b.valveStroke = 60; }).tank.vRequired > r0.tank.vRequired);
+  T('理想瞬時控制 → E = 0，不需水槽', () => { const r = run(b => { b.controlModel = 'ideal'; }); return r.tr.peakStorageEnergyKJ === 0 && r.noTankNeeded && r.sel.size === 0 || `${r.tr.peakStorageEnergyKJ} ${r.sel.size}`; });
+  T('瞬間跳升（上升 0 s）E = ΔQ×(td+tv/2)', () => near(run(b => { b.riseTime = 0; }).tr.peakStorageEnergyKJ, 700 * 12));
+  T('上升比延遲慢時最大缺口 < ΔQ', () => { const r = run(b => { b.riseTime = 10; b.deadTime = 2; }); return r.tr.maxDeficitKw < 700 || r.tr.maxDeficitKw; });
+  T('其他混合容積可抵扣', () => run(b => { b.otherMixVol = 0.2; }).tank.vRequired < r0.tank.vRequired);
+  T('手動容積過小 → THERMAL FAIL', () => { const r = run(b => { b.sizeChoice = 0.2; }); return !r.sel.ok && r.sel.peak > 45; });
+  T('全廠容積 = 台數 × 單槽', () => near(r0.plantVol, 2.4));
+  T('跳升後 ≤ 跳升前 判定錯誤', () => !!run(b => { b.loadTo = 30; }).errors.loadTo);
+  T('上限 ≤ 供水 判定錯誤', () => !!run(b => { b.tempMax = 40; }).errors.tempMax);
+  T('空白延遲判定錯誤', () => run(b => { b.deadTime = NaN; }).errors.deadTime === '必填');
+  T('水比丙二醇需要較小水槽', () => run(b => { b.fluid = 'water'; }).tank.vRequired < r0.tank.vRequired);
+  T('外形體積還原', () => { const d = E.tankDims(0.6, 2); return near(Math.PI / 4 * d.D * d.D * d.H, 0.6, 1e-9); });
+  const timing = (name, mod) => T(name, () => { const r = run(mod); const b = brute(r); return (near(r.tr.peakStorageEnergyKJ, b.S, 1) && near(r.tr.deficitEnergyKJ, b.P, 1)) || `E=${r.tr.peakStorageEnergyKJ} brute=${b.S} P=${r.tr.deficitEnergyKJ}/${b.P}`; });
+  timing('時序 A：tr < td < td+tv', null);
+  timing('時序 B：td < tr', b => { b.riseTime = 8; b.deadTime = 3; });
+  timing('時序 C：td+tv < tr（舊公式會算成 0）', caseB);
+  T('時序 C：E > 0（修正前的低估 bug）', () => { const r = run(caseB); const old = Math.max(0, 700 * (2 + 3.5 / 2 - 5)); return (old === 0 && r.tr.peakStorageEnergyKJ > 100) || r.tr.peakStorageEnergyKJ; });
+  T('時序 C 解析值 = 215.3846 kJ', () => { const r = run(caseB); return near(r.tr.peakStorageEnergyKJ, 215.3846, 1e-4) || r.tr.peakStorageEnergyKJ; });
+  timing('時序 D：tr = 0', b => { b.riseTime = 0; });
+  timing('時序 E：td = 0（線性）', b => { b.deadTime = 0; });
+  timing('td = 0 且 tr = 0', b => { b.deadTime = 0; b.riseTime = 0; });
+  T('單峰：最大儲熱 = 正缺口積分', () => [null, caseB, b => { b.riseTime = 0; }, caseG].every(m => { const r = run(m); return near(r.tr.peakStorageEnergyKJ, r.tr.deficitEnergyKJ, 1e-6); }));
+  T('能量永不為負', () => [0, 1, 5, 20].every(td => [0, 1, 10].every(tr => [1, 5, 60].every(st => run(b => { b.deadTime = td; b.riseTime = tr; b.valveStroke = st; }).tr.peakStorageEnergyKJ >= 0))));
+  T('單位：瞬間跳升 + 延遲 5 s、極快冷量 → E ≈ ΔQ×5 kJ', () => near(run(b => { b.riseTime = 0; b.valveStroke = 1e-6; }).tr.peakStorageEnergyKJ, 3500, 0.01));
+  const mono = (name, key, vals, prop, dir) => T(name, () => { const ys = vals.map(v => prop(run(b => { b[key] = v; }))); for (let i = 1; i < ys.length; i++) if (dir * (ys[i] - ys[i - 1]) < -1e-9) return ys.join(' / '); return true; });
+  mono('延遲 ↑ → 需求不下降', 'deadTime', [0, 2, 5, 10, 20], r => r.tank.vRequired, 1);
+  mono('冷量全程時間 ↑ → 需求不下降', 'valveStroke', [5, 10, 20, 40, 80], r => r.tank.vRequired, 1);
+  mono('允許溫升 ↑（上限 ↑）→ 需求不上升', 'tempMax', [42, 45, 48, 55], r => r.tank.vRequired, -1);
+  mono('有效混合容積係數 ↑ → 需求不上升', 'mixEffPct', [50, 70, 80, 100], r => r.tank.vRequired, -1);
+  mono('水槽容積 ↑ → 峰值不上升', 'sizeChoice', [0.2, 0.4, 0.6, 1, 2], r => r.sel.peak, -1);
+  mono('可用冷量 ↑（同負載）→ 需求不上升', 'availPct', [90, 95, 100], r => Number.isFinite(r.tank.vRequired) ? r.tank.vRequired : 1e9, -1);
+  T('可用 100% = 跳升後 100% → 容量 WARNING、無法恢復', () => r0.status.recoveryCapacity === 'warn' && r0.sel.recoverySec === Infinity && r0.status.recoveryTime === 'na');
+  T('可用 < 負載 → 持續不足 FAIL', () => { const r = run(b => { b.availPct = 90; }); return r.status.recoveryCapacity === 'fail' && r.tr.sustained && !Number.isFinite(r.tr.peakStorageEnergyKJ); });
+  T('Case G（跳升後 90%、可用 100%）水槽熱恢復時間解析正確', () => {
+    // 峰值 17 s；之後冷量以 50 kW/s 由 900 增至 1000 kW（2 s，帶走 100 kJ），再以 100 kW 定值帶走
+    const r = run(caseG), s = r.sel, removal = r.tr.peakStorageEnergyKJ - rc * s.vEff * 0.5;
+    const expect = removal <= 100 ? Math.sqrt(2 * removal / 50) : 2 + (removal - 100) / 100;
+    return (near(r.tr.peakStorageEnergyKJ, 6300) && r.status.recoveryCapacity === 'pass' && near(s.recoverySec, expect, 1e-6)) || `${r.tr.peakStorageEnergyKJ} ${s.recoverySec} vs ${expect}`; });
+  T('熱恢復時刻的槽溫 = 設計供水 + 門檻', () => { const r = run(caseG); const s = r.sel; const Tt = 40 + r.tr.S_at(r.tr.peakTimeSec + s.recoverySec) / (rc * s.vEff); return near(Tt, 40.5, 1e-6) || Tt; });
+  T('可用冷量提高不影響峰值（峰值在追上時）', () => near(run(b => { b.loadTo = 90; b.availPct = 95; }).sel.peak, run(caseG).sel.peak));
+  T('跳升前 0%', () => { const r = run(b => { b.loadFrom = 0; }); return r.valid && near(r.tr.peakStorageEnergyKJ, 1000 * (5 + 10 - 0.5)); });
+  T('允許溫升 0.1 K → 需求很大但有限', () => { const r = run(b => { b.tempMax = 40.1; b.recoveryThr = 0; }); return Number.isFinite(r.tank.vRequired) && r.tank.vRequired > 20; });
+  T('其他混合容積 ≥ 理論 → 需求 0', () => { const r = run(b => { b.otherMixVol = 1; }); return r.tank.vRequired === 0 && r.sel.size === 0; });
+  T('超大水槽 → 峰值接近設計供水', () => run(b => { b.sizeChoice = 10; }).sel.peak < 40.3);
+  T('超小水槽 → 峰值很高', () => run(b => { b.sizeChoice = 0.05; }).sel.peak > 55);
+  T('線性模型全程時間 = 0 判定錯誤', () => !!run(b => { b.valveStroke = 0; }).errors.valveStroke);
+  T('理想模式不檢查全程時間', () => run(b => { b.controlModel = 'ideal'; b.valveStroke = 0; }).valid);
+  T('有效混合容積係數 = 0 判定錯誤', () => !!run(b => { b.mixEffPct = 0; }).errors.mixEffPct);
+  T('恢復門檻 ≥ 允許溫升 判定錯誤', () => !!run(b => { b.recoveryThr = 5; }).errors.recoveryThr);
+  T('可用冷量 ≤ 跳升前 判定錯誤', () => !!run(b => { b.availPct = 30; }).errors.availPct);
+
+  // —— 第二輪：P2-1 候選規格邊界 ——
+  T('pickCandidate(10.0) = 10', () => E.pickCandidate(10) === 10);
+  T('pickCandidate(10.01) = null（不得回傳 11）', () => E.pickCandidate(10.01) === null);
+  T('pickCandidate(50) = null（50 不在候選庫）', () => E.pickCandidate(50) === null);
+  T('pickCandidate(0.55) = 0.6', () => E.pickCandidate(0.55) === 0.6);
+  const rH = run(b => { b.cduCap = 20000; });
+  T('Case H：候選溢位 → autoSize = null、candidateOverflow = true', () => (rH.tank.autoSize === null && rH.tank.candidateOverflow && rH.volume.candidateOverflow && rH.selection.overflow && rH.selection.size === null) || JSON.stringify({ a: rH.tank.autoSize, o: rH.tank.candidateOverflow, v: rH.tank.vRequired }));
+  T('Case H：候選狀態 WARNING、暫態 N/A，不得顯示 PASS', () => rH.status.candidate === 'warn' && rH.status.thermal === 'na' && !rH.status.engineeringPass);
+  T('Case H：候選比較表只列候選庫內容積', () => rH.options.length > 0 && rH.options.every(o => E.isCandidate(o.size) && o.belowRequired));
+  T('選定容積不在候選庫 → candidatePass = false', () => { const r = run(b => { b.sizeChoice = 0.7; }); return r.selection.candidatePass === false && r.status.candidate === 'fail'; });
+  T('自訂設備容積 → 視為使用者宣告的實際設備', () => { const r = run(b => { b.cduCap = 20000; b.sizeChoice = 'custom'; b.customSize = 15; }); return r.selection.mode === 'custom' && r.selection.size === 15 && r.status.candidate === 'info' && r.sel.thermalPass; });
+  T('自訂容積 ≤ 0 判定錯誤', () => !!run(b => { b.sizeChoice = 'custom'; b.customSize = 0; }).errors.customSize);
+  T('所有自動選型結果都在候選庫內', () => [500, 1000, 2000, 5000, 10000, 16000].every(cap => { const r = run(b => { b.cduCap = cap; }); return r.selection.overflow || E.isCandidate(r.selection.size); }));
+  // —— P2-2 Recovery Target ——
+  const rG = run(caseG);
+  T('Case G：Qmax > Q1 → 穩態容量 PASS', () => rG.p.Qmax > rG.p.Q1 && rG.recoveryCheck.capacityPass);
+  T('Case G：熱恢復時間 > 30 s → WARNING（容量與時間分開）', () => (rG.sel.recoverySec > 30 && rG.status.recoveryTime === 'warn' && rG.recoveryCheck.capacityPass && !rG.recoveryCheck.recoveryTimePass) || rG.sel.recoverySec);
+  T('Case G：允許 60 s → 熱恢復時間 PASS', () => { const r = run(b => { caseG(b); b.recoveryMaxSec = 60; }); return r.status.recoveryTime === 'pass' && r.status.engineeringPass; });
+  T('時序 C：容量無餘量但負載爬升期間已完成熱恢復 → 時間判定看實際時間', () => { const r = run(caseB); return (r.status.recoveryCapacity === 'warn' && Number.isFinite(r.sel.recoverySec) && r.status.recoveryTime === (r.sel.recoverySec <= 30 ? 'pass' : 'warn')) || `${r.status.recoveryCapacity} ${r.sel.recoverySec} ${r.status.recoveryTime}`; });
+  T('recoveryMaxSec ≤ 0 判定錯誤', () => !!run(b => { b.recoveryMaxSec = 0; }).errors.recoveryMaxSec);
+  // —— P2-3 控制模型邊界 ——
+  T('availPct = 101 → 判定錯誤', () => !!run(b => { b.availPct = 101; }).errors.availPct);
+  T('availPct = 100 有效；跳升後 100% → 容量 WARNING', () => r0.valid && r0.status.recoveryCapacity === 'warn');
+  T('availPct < loadTo → 持續缺口 FAIL', () => run(b => { b.availPct = 95; }).status.recoveryCapacity === 'fail');
+  T('冷量增加速率 = 額定 ÷ 全程時間（與 0→100% 定義一致）', () => near(r0.p.rate, 50) && near(r0.p.Qmax, 1000));
+  // —— P2-4 單調性（第二輪新增）——
+  T('recoveryMaxSec ↑ → 時間判定不變嚴格', () => { const order = { warn: 0, na: 0, pass: 1 }; const ys = [10, 30, 60, 120].map(v => order[run(b => { caseG(b); b.recoveryMaxSec = v; }).status.recoveryTime]); return ys.every((y, i) => i === 0 || y >= ys[i - 1]) || ys.join(','); });
+  mono('恢復門檻 ↑ → 熱恢復時間不增加', 'recoveryThr', [0.2, 0.5, 1, 2], r => r.sel.recoverySec, -1);
+  T('設計溫差 ↑ → E 不變、流量下降、第一圈溫升上升', () => { const a = run(b => { b.deltaTDesign = 8; }), c = run(b => { b.deltaTDesign = 12; }); return near(a.tr.peakStorageEnergyKJ, c.tr.peakStorageEnergyKJ) && a.flowM3h > c.flowM3h && a.peakNoTank < c.peakNoTank; });
+  // —— P2-5 Golden Cases ——
+  T('Golden A：預設 E = 8050 kJ', () => near(E0, 8050));
+  T('Golden B：tr 10 / td 2 / 全程 5 → E ≈ 215.3846 kJ', () => near(run(caseB).tr.peakStorageEnergyKJ, 215.3846, 1e-4));
+  T('Golden C：瞬間跳升 E = 8400 kJ', () => near(run(b => { b.riseTime = 0; }).tr.peakStorageEnergyKJ, 8400));
+  T('Golden D：無控制延遲 E = 700×(7−0.5)', () => near(run(b => { b.deadTime = 0; }).tr.peakStorageEnergyKJ, 700 * 6.5));
+  T('Golden E：理想控制 E = 0', () => run(b => { b.controlModel = 'ideal'; }).tr.peakStorageEnergyKJ === 0);
+  T('Golden F：持續缺口 E = Infinity', () => run(b => { b.availPct = 90; }).tr.peakStorageEnergyKJ === Infinity);
+  T('Golden G：容量有餘 → 熱恢復時間有限', () => Number.isFinite(rG.sel.recoverySec) && rG.sel.recoverySec > 0);
+  T('Golden H：候選溢位 → autoSize null', () => rH.tank.autoSize === null && rH.tank.candidateOverflow);
+  // —— P2-6 Excel 交叉核對 ——
+  if (typeof XLSX !== 'undefined') {
+    const cases = [['預設', null], ['Case G 熱恢復', caseG], ['Case B 時序', caseB], ['瞬間跳升＋其他容積', b => { b.riseTime = 0; b.otherMixVol = 0.1; }], ['理想＋手動', b => { b.controlModel = 'ideal'; b.loadTo = 90; b.sizeChoice = 0.3; }], ['Case H 溢位', b => { b.cduCap = 20000; }], ['自訂容積', b => { b.cduCap = 20000; b.sizeChoice = 'custom'; b.customSize = 15; b.loadTo = 90; }]];
+    cases.forEach(([nm, m]) => T(`Excel 交叉核對：${nm}`, () => {
+      const r = run(m); const { wb, addr } = buildWorkbook(r); const mm = XlsxEval.crossCheck(wb);
+      if (mm.length) return mm.slice(0, 3).join(' | ');
+      const ev = XlsxEval.evaluator(wb), g = k => ev.cellVal('Calculation', addr[k]);
+      const num = (k, v) => near(g(k), v, 1e-6 * Math.max(1, Math.abs(v)));
+      const chk = {
+        E: num('E', r.tr.peakStorageEnergyKJ), vReq: num('vReq', r.tank.vRequired), size: g('size') === (r.selection.size || 0),
+        peak: r.sel.vEff > 0 ? num('peak', r.sel.peak) : g('peak') === 'N/A', maxDef: num('maxDef', r.tr.maxDeficitKw), tDef: num('tDef', r.tr.peakDeficitTimeSec),
+        tPk: num('tPk', r.tr.peakTimeSec), vEff: num('vEff', r.sel.vEff),
+        rec: typeof g('recSec') === 'number' && Number.isFinite(r.sel.recoverySec) ? num('recSec', r.sel.recoverySec) : !Number.isFinite(r.sel.recoverySec) || r.sel.recoverySec === null,
+        thermal: g('thermal') === statusText(r.status.thermal), cap: g('capJ') === statusText(r.status.recoveryCapacity),
+        ovf: g('ovf') === (r.tank.candidateOverflow ? 'YES' : 'NO'), recJ: g('recJ') === statusText(r.status.recoveryTime)
+      };
+      if (addr.recT) chk.recT = num('recT', r.raw.tempSupply + r.raw.recoveryThr);
+      const bad = Object.keys(chk).filter(k => !chk[k]);
+      return bad.length === 0 || 'mismatch: ' + bad.join(',');
+    }));
+  }
+  const failed = results.filter(x => !x.pass);
+  console.log(`[Regression] ${results.length - failed.length}/${results.length} passed`, failed);
+  return { total: results.length, failed: failed.length, results };
+}
+
+/* ---------- 啟動 ---------- */
+(function init() {
+  $('tankSizeChoice').innerHTML = '<option value="auto">自動</option>' + SurgeTankEngine.CANDIDATE_VOLUMES.map(v => `<option value="${v}">${v} m³（${Math.round(v * 1000)} L）</option>`).join('') + '<option value="custom">自訂（實際設備容積）…</option>';
+  const restored = loadInputs();
+  calculate();
+  if (restored) setText('autosaveHint', '已還原上次輸入');
+})();
+</script>
+</body>
+</html>
