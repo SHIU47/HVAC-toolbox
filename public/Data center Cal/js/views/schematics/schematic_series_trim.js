@@ -88,8 +88,9 @@
             // 設計工況 (0.4% DB) 狀態判斷
             const isDesignMode1 = op?.mode ? (op.mode === 'free') : ((designCond.designDb != null && op?.thresholds?.full != null) ? designCond.designDb <= op.thresholds.full : true);
 
-            // 尖峰工況 (年最高 DB)
-            const maxDb = peak?.db ?? designCond.maxDb ?? ((designCond.designDb ?? 35.0) + 3.0);
+            // 尖峰工況 (ASHRAE n=20 或年最高 DB)
+            const peakDbVal = peak?.db ?? designCond?.peakDb?.value ?? designCond?.maxDb ?? ((designCond?.designDb ?? 35.0) + 3.0);
+            const peakBasis = peak?.basis ?? designCond?.peakDb?.basis ?? '年最高 DB';
             const fwsPre_peak = (peak?.temps?.fwsPre !== undefined && peak?.temps?.fwsPre !== null) ? peak.temps.fwsPre.toFixed(1) : (fwsSupplyC !== undefined ? fwsSupplyC.toFixed(1) : '—');
             const trimKw_peak = peak?.chillerKw !== undefined ? Math.round(peak.chillerKw) : 0;
             const condIn_peak = (peak?.temps?.condIn !== undefined && peak?.temps?.condIn !== null) ? peak.temps.condIn.toFixed(1) : condWaterEnterExact;
@@ -120,9 +121,9 @@
             // 雙迴路混合架構 (dry_cooler_trim 專屬: NVIDIA DSX 官方標準 Trim/Hybrid Cooling)
             // =========================================================================
             const facilitySchematicSvg = `
-                <!-- 年最高 DB 尖峰工況小表格 -->
+                <!-- 尖峰工況小表格 -->
                 <rect x="740" y="8" width="510" height="26" rx="6" fill="#0f172a" stroke="#f59e0b" stroke-width="1.2" />
-                <text x="995" y="25" fill="#fef3c7" font-size="9.5" font-weight="bold" text-anchor="middle" ${fitTextAttr(`年最高 DB ${maxDb.toFixed(1)}°C 工況：預冷至 ${fwsPre_peak}°C ｜ Trim 負擔 ${trimKw_peak} kW ｜ 冷凝器 ${condIn_peak}→${condOut_peak}°C ｜ 冰機 COP ${cop_peak}`, 495, 9.5)}>年最高 DB ${maxDb.toFixed(1)}°C 工況：預冷至 ${fwsPre_peak}°C ｜ Trim 負擔 ${trimKw_peak} kW ｜ 冷凝器 ${condIn_peak}→${condOut_peak}°C ｜ 冰機 COP ${cop_peak}</text>
+                <text x="995" y="25" fill="#fef3c7" font-size="9.5" font-weight="bold" text-anchor="middle" ${fitTextAttr(`尖峰設計 DB ${peakDbVal.toFixed(1)}°C（${peakBasis}）工況：預冷至 ${fwsPre_peak}°C ｜ Trim 負擔 ${trimKw_peak} kW ｜ 冷凝器 ${condIn_peak}→${condOut_peak}°C ｜ 冰機 COP ${cop_peak}`, 495, 9.5)}>尖峰設計 DB ${peakDbVal.toFixed(1)}°C（${peakBasis}）工況：預冷至 ${fwsPre_peak}°C ｜ Trim 負擔 ${trimKw_peak} kW ｜ 冷凝器 ${condIn_peak}→${condOut_peak}°C ｜ 冰機 COP ${cop_peak}</text>
 
                 <!-- ======================================================= -->
                 <!-- 1. PRIMARY FWS LOOP (廠務側串聯換熱鏈) -->

@@ -112,7 +112,7 @@
                 if (s.key === 'cdu_pump') s.requiredKw = cduSys.hydraulics.pump_power_kw;
 
                 if (s.key === 'trim_chiller') {
-                    const peakDb = designCond.maxDb ?? ((designCond.designDb ?? 34.0) + 3.0);
+                    const peakDb = designCond?.peakDb?.value ?? designCond?.maxDb ?? ((designCond?.designDb ?? 34.0) + 3.0);
                     const opPeak = helpers.trimOperatingPoint
                         ? helpers.trimOperatingPoint(cduSys, peakDb)
                         : (root.AppStore?.trimOperatingPoint ? root.AppStore.trimOperatingPoint(cduSys, peakDb) : { chiller_fraction: 0.35 });
@@ -139,7 +139,7 @@
                     const d = root.CDUEngine.deratedCapacityKW(curItem.capKw, cduSys.fwsSupplyC);
                     derateFactor = d.derate_factor;
                 } else if (s.key === 'trim_chiller' && typeof root.ChillerEngine !== 'undefined') {
-                    const peakDb = designCond.maxDb ?? ((designCond.designDb ?? 34.0) + 3.0);
+                    const peakDb = designCond?.peakDb?.value ?? designCond?.maxDb ?? ((designCond?.designDb ?? 34.0) + 3.0);
                     const opPeak = helpers.trimOperatingPoint
                         ? helpers.trimOperatingPoint(cduSys, peakDb)
                         : (root.AppStore?.trimOperatingPoint ? root.AppStore.trimOperatingPoint(cduSys, peakDb) : {});
@@ -178,6 +178,14 @@
                 }
                 if (s.key === 'trim_chiller') {
                     s.maxMechanicalPassed = s.effectiveCapKw >= s.maxMechanicalKw;
+                    const peak = designCond?.peakDb;
+                    if (peak && Number.isFinite(peak.value)) {
+                        let basisNote = `（選型基準 DB ${peak.value}°C，${peak.basis}）`;
+                        if (designCond.dataQualityWarning) {
+                            basisNote += ' ⚠ ' + designCond.dataQualityWarning;
+                        }
+                        s.requiredText += basisNote;
+                    }
                 }
             });
         },
@@ -252,6 +260,23 @@
                 const fwsSupplyC = cduSys?.fwsSupplyC ?? 40.0;
                 if ((designWb + towerApp + (hasPhe ? pheApp : 0)) < fwsSupplyC) {
                     checks.push('⚠ 設計濕球 + 塔 approach 已低於 FWS 供水溫，冷卻水塔可直接供冷；建議改用閉式塔或加裝水側經濟器');
+                }
+            }
+
+            // Y-3: pure dry cooler warning when peakDb + dcApproach + pheApproach > fwsSupplyC
+            const isDryCoolerPure = cduArchDesc?.id === 'dry_cooler_pure' || cduSys?.architecture === 'dry_cooler_pure';
+            if (isDryCoolerPure) {
+                const peak = dCond?.peakDb;
+                const peakVal = peak?.value ?? dCond?.maxDb;
+                if (peakVal != null && Number.isFinite(peakVal)) {
+                    const dcApproach = cduSys?.dryCoolerApproachC ?? 5.0;
+                    const hasPhe = cduSys?.hasPhe !== undefined ? !!cduSys.hasPhe : true;
+                    const pheApproach = hasPhe ? (cduSys?.pheApproachC ?? 2.0) : 0.0;
+                    const fwsSupplyC = cduSys?.fwsSupplyC ?? 40.0;
+                    const tSupplyPeak = peakVal + dcApproach + pheApproach;
+                    if (tSupplyPeak > fwsSupplyC) {
+                        checks.push(`⚠ ASHRAE 尖峰乾球 ${peakVal}°C 時 FWS 供水將升至 ${tSupplyPeak.toFixed(1)}°C（超出設計 ${fwsSupplyC}°C），純乾冷器無機械備援`);
+                    }
                 }
             }
 

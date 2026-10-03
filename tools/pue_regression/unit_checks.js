@@ -2606,6 +2606,62 @@ function freshCtx() {
     const tcNoPheHtml = win.document.getElementById('stepContent').innerHTML;
     assert(!tcNoPheHtml.includes('結冰風險'), 'Taichung with hasPhe=false must not show freeze notice');
   });
+
+  test('Y-3 Trim chiller sizing uses peakDb and pure dry cooler warns on peak exceedance', async () => {
+    const { buildWindow } = require('./dom_harness.js');
+    const win = buildWindow();
+    win.CatalogManager.ready = null;
+    await win.App.init();
+
+    // 1. Kaohsiung: peakDb = 36.7 (ASHRAE n=20)
+    win.ViewWeather.selectCity('高雄 (Kaohsiung)');
+    const du = win.AppStore.state.designUnits[0];
+    du.plantDesign.cduSystem.architecture = 'dry_cooler_trim';
+    du.plantDesign.cduSystem.fwsSupplyC = 42.0;
+    du.plantDesign.cduSystem.fwsReturnC = 54.0;
+    du.plantDesign.cduSystem.dryCoolerApproachC = 5.0;
+    du.plantDesign.cduSystem.pheApproachC = 2.0;
+    win.AppStore.calculate();
+
+    const trimItem = du.plantDesign.cduSystem.sizing.find(s => s.key === 'trim_chiller');
+    assert(trimItem, 'trim_chiller sizing item must exist');
+    // At 36.7°C DB: 36.7 + 7 = 43.7°C. (43.7 - 42) / (54 - 42) = 1.7 / 12 = ~14.2%
+    assert(Math.abs(trimItem.peakRatio - (1.7 / 12)) < 0.01, `peakRatio (${trimItem.peakRatio}) must match 1.7 / 12 (~0.1417)`);
+    assert(trimItem.requiredText.includes('選型基準 DB 36.7°C，ASHRAE n=20 年回歸'), `requiredText (${trimItem.requiredText}) must include peak basis`);
+
+    // Verify schematic header
+    win.ViewCooling.render(win.document.getElementById('stepContent'));
+    const trimHtml = win.document.getElementById('stepContent').innerHTML;
+    assert(trimHtml.includes('尖峰設計 DB 36.7°C（ASHRAE n=20 年回歸）工況'), 'Trim schematic must show updated peak header');
+
+    // 2. Taoyuan: dataQualityWarning appended
+    win.ViewWeather.selectCity('桃園 (Taoyuan Pilot)');
+    const tyTrim = win.AppStore.state.designUnits[0].plantDesign.cduSystem.sizing.find(s => s.key === 'trim_chiller');
+    assert(tyTrim.requiredText.includes('選型基準 DB 42°C') || tyTrim.requiredText.includes('選型基準 DB 42.0°C'), 'Taoyuan trim must show 42°C peak');
+    assert(tyTrim.requiredText.includes('⚠') && tyTrim.requiredText.includes('7.7°C'), 'Taoyuan trim must include data quality warning in requiredText');
+
+    // 3. dry_cooler_pure validation check on peak exceedance
+    const pureDu = win.AppStore.state.designUnits[0];
+    pureDu.plantDesign.cduSystem.architecture = 'dry_cooler_pure';
+    pureDu.plantDesign.cduSystem.fwsSupplyC = 42.0;
+    pureDu.plantDesign.cduSystem.dryCoolerApproachC = 5.0;
+    pureDu.plantDesign.cduSystem.hasPhe = true;
+    pureDu.plantDesign.cduSystem.pheApproachC = 2.0;
+    win.ViewWeather.selectCity('高雄 (Kaohsiung)'); // peakDb = 36.7 -> 36.7 + 5 + 2 = 43.7 > 42.0
+    win.AppStore.calculate();
+
+    const val = pureDu.plantDesign.cduSystem.validation;
+    assert(val, 'validation must exist on cduSystem');
+    const warnCheck = val.checks.find(c => c.includes('ASHRAE 尖峰乾球 36.7°C 時 FWS 供水將升至 43.7°C'));
+    assert(warnCheck, `Expected pure dry cooler peak warning, got: ${JSON.stringify(val.checks)}`);
+
+    // If fwsSupplyC is high enough (e.g. 45°C), no warning (43.7 <= 45.0)
+    pureDu.plantDesign.cduSystem.fwsSupplyC = 45.0;
+    win.AppStore.calculate();
+    const valHigh = pureDu.plantDesign.cduSystem.validation;
+    const warnCheckHigh = valHigh.checks.find(c => c.includes('ASHRAE 尖峰乾球'));
+    assert(!warnCheckHigh, 'No warning should be emitted when FWS supply is high enough');
+  });
 })();
 
 console.log(`\n${passCount} passed, ${failCount} failed, ${skipCount} skipped`);

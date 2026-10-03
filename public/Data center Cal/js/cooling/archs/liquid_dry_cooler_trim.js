@@ -85,7 +85,7 @@
                     const designCond = (typeof ctx.helpers?.designConditions === 'function')
                         ? ctx.helpers.designConditions()
                         : (root.AppStore?.designConditions ? root.AppStore.designConditions() : { designDb: 34.0, designWb: 28.0, maxDb: 38.0 });
-                    const peakDb = designCond.maxDb ?? ((designCond.designDb ?? 34.0) + 3.0);
+                    const peakDb = designCond.peakDb?.value ?? designCond.maxDb ?? ((designCond.designDb ?? 34.0) + 3.0);
                     const dummyCduSys = ctx.sys || { fwsSupplyC: 40.0, fwsReturnC: 55.0, dryCoolerApproachC: 5.0, pheApproachC: 2.0 };
                     const opPeak = (typeof ctx.helpers?.trimOperatingPoint === 'function')
                         ? ctx.helpers.trimOperatingPoint(dummyCduSys, peakDb)
@@ -98,7 +98,7 @@
                     const designCond = (typeof ctx.helpers?.designConditions === 'function')
                         ? ctx.helpers.designConditions()
                         : (root.AppStore?.designConditions ? root.AppStore.designConditions() : { designDb: 34.0, designWb: 28.0, maxDb: 38.0 });
-                    const peakDb = designCond.maxDb ?? ((designCond.designDb ?? 34.0) + 3.0);
+                    const peakDb = designCond.peakDb?.value ?? designCond.maxDb ?? ((designCond.designDb ?? 34.0) + 3.0);
                     const dummyCduSys = ctx.sys || { fwsSupplyC: 40.0, fwsReturnC: 55.0, dryCoolerApproachC: 5.0, pheApproachC: 2.0 };
                     const opPeak = (typeof ctx.helpers?.trimOperatingPoint === 'function')
                         ? ctx.helpers.trimOperatingPoint(dummyCduSys, peakDb)
@@ -116,7 +116,7 @@
                 },
                 derate: (curItem, ctx) => {
                     if (typeof root.ChillerEngine === 'undefined') return 1.0;
-                    const peakDb = ctx.designCond?.maxDb ?? ((ctx.designCond?.designDb ?? 34.0) + 3.0);
+                    const peakDb = ctx.designCond?.peakDb?.value ?? ctx.designCond?.maxDb ?? ((ctx.designCond?.designDb ?? 34.0) + 3.0);
                     const opPeak = ctx.helpers?.trimOperatingPoint
                         ? ctx.helpers.trimOperatingPoint(ctx.sys, peakDb)
                         : (root.AppStore?.trimOperatingPoint ? root.AppStore.trimOperatingPoint(ctx.sys, peakDb) : {});
@@ -215,9 +215,10 @@
 
         peakPoint(sys, design, equip) {
             const peakDb = design?.peakDb?.value ?? design?.maxDb ?? ((design?.designDb ?? 35.0) + 3.0);
+            const peakBasis = design?.peakDb?.basis ?? '年最高 DB';
             const designWb = design?.designWb ?? 28.0;
             const res = this.operatingPoint(sys, { db: peakDb, wb: designWb }, equip, { withChiller: true, design });
-            return { ...res, db: peakDb };
+            return { ...res, db: peakDb, basis: peakBasis };
         },
 
         topology(sys, op, design, extra) {
