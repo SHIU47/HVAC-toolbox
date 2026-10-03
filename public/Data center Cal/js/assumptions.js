@@ -35,6 +35,7 @@ const ASSUMPTIONS = {
   design_extreme_return_years:      { val: 20,    unit: 'years', label: 'ASHRAE 極端年最高乾球回歸期', ref: 'ASHRAE HOF Ch.14 極端年 n 年回歸期；關鍵設施常用 n=20' },
   design_extreme_fallback_margin_c: { val: 2.0,   unit: '°C',    label: '無 ASHRAE 極值時之 TMY 最高溫安全餘裕', ref: '保守推估裕度' },
   design_extreme_tmy_gap_warn_c:    { val: 5.0,   unit: '°C',    label: 'ASHRAE 極值與 TMY 最高溫差距警示門檻', ref: '差距過大提示核對測站品質' },
+  freeze_risk_db_c:                 { val: 4.0,   unit: '°C',    label: '外氣結霜/結冰風險門檻', ref: '乾冷器盤管靜止水在夜間輻射冷卻下可能於外氣 0～3°C 結冰，取 4°C 安全餘裕' },
 
   // ── 絕熱冷卻塔常數 (P1-4 / P4-4) ─────────────────────────────────────────
   adiabatic_coil_air_dt_k:        { val: 10.0, unit: 'K',  label: '絕熱預冷盤管空氣側溫升', ref: '乾冷器／絕熱盤管空氣側溫升典型 8–12 K' },

@@ -292,9 +292,26 @@
                 const id = (p.idPrefix || (p.key + '_')) + targetId;
                 if (p.type === 'boolean') {
                     const checked = sys[p.key] !== undefined ? !!sys[p.key] : (p.default !== undefined ? !!p.default : false);
-                    return `                                            <div class="flex items-center gap-2 col-span-2 py-1">
-                                                <input type="checkbox" id="${id}" ${checked ? 'checked' : ''} onchange="${updateFn}" class="w-4 h-4 rounded text-sky-600 focus:ring-sky-500 border-slate-300">
-                                                <label for="${id}" class="text-xs font-bold text-slate-700 select-none cursor-pointer">${p.label || p.key}</label>
+                    let freezeNotice = '';
+                    if (p.key === 'hasPhe' && checked && ['dry_cooler_pure', 'dry_cooler_trim', 'adiabatic_tower'].includes(archDesc.id)) {
+                        const dc = (typeof window !== 'undefined' && window.AppStore) ? window.AppStore.designConditions() : null;
+                        const freezeDb = dc?.freezeDb;
+                        if (freezeDb && Number.isFinite(freezeDb.value)) {
+                            const riskLimit = typeof A === 'function' ? A('freeze_risk_db_c') : 4.0;
+                            const pheApp = sys.pheApproachC ?? 2.0;
+                            if (freezeDb.value > riskLimit) {
+                                freezeNotice = `<div class="text-[9.5px] text-slate-500 mt-1">本案場 ASHRAE 50 年回歸最低乾球 ${freezeDb.value}°C，無結冰風險。若室外側使用防腐處理純水且不需壓力隔離，可取消 PHE，自然冷卻門檻可提高 ${pheApp}°C。</div>`;
+                            } else {
+                                freezeNotice = `<div class="text-[9.5px] text-amber-700 font-medium mt-1">⚠ 本案場 50 年回歸最低乾球 ${freezeDb.value}°C，有結冰風險，室外側需乙二醇並保留 PHE 隔離。</div>`;
+                            }
+                        }
+                    }
+                    return `                                            <div class="col-span-2 py-1">
+                                                <div class="flex items-center gap-2">
+                                                    <input type="checkbox" id="${id}" ${checked ? 'checked' : ''} onchange="${updateFn}" class="w-4 h-4 rounded text-sky-600 focus:ring-sky-500 border-slate-300">
+                                                    <label for="${id}" class="text-xs font-bold text-slate-700 select-none cursor-pointer">${p.label || p.key}</label>
+                                                </div>
+                                                ${freezeNotice}
                                             </div>`;
                 }
                 let val;

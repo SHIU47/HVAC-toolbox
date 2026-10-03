@@ -2569,6 +2569,43 @@ function freshCtx() {
     assert.strictEqual(fbCond.designBasis, 'TMY 排序 0.4%');
     assert.strictEqual(fbCond.designDb, 31.6); // TMY sorted for Hsinchu
   });
+
+  test('Y-1 Step 4 parameter panel renders PHE freeze risk notice according to freezeDb', async () => {
+    const { buildWindow } = require('./dom_harness.js');
+    const win = buildWindow();
+    win.CatalogManager.ready = null;
+    await win.App.init();
+
+    // Set first DU to dry_cooler_pure with hasPhe=true
+    const du = win.AppStore.state.designUnits[0];
+    du.plantDesign.cduSystem.architecture = 'dry_cooler_pure';
+    du.plantDesign.cduSystem.hasPhe = true;
+
+    // 1. Kaohsiung: freezeDb = 5.2 > 4.0 -> "無結冰風險"
+    win.ViewWeather.selectCity('高雄 (Kaohsiung)');
+    win.ViewCooling.render(win.document.getElementById('stepContent'));
+    const khHtml = win.document.getElementById('stepContent').innerHTML;
+    assert(khHtml.includes('本案場 ASHRAE 50 年回歸最低乾球 5.2°C，無結冰風險'), 'Kaohsiung must show no freeze risk notice');
+
+    // 2. Taichung: freezeDb = 3.1 <= 4.0 -> "有結冰風險"
+    win.ViewWeather.selectCity('台中 (Taichung CC)');
+    win.ViewCooling.render(win.document.getElementById('stepContent'));
+    const tcHtml = win.document.getElementById('stepContent').innerHTML;
+    assert(tcHtml.includes('本案場 50 年回歸最低乾球 3.1°C，有結冰風險'), 'Taichung must show freeze risk warning');
+
+    // 3. Hsinchu: freezeDb is null -> no notice
+    win.ViewWeather.selectCity('新竹 (Hsinchu)');
+    win.ViewCooling.render(win.document.getElementById('stepContent'));
+    const hcHtml = win.document.getElementById('stepContent').innerHTML;
+    assert(!hcHtml.includes('結冰風險'), 'Hsinchu (null freezeDb) must not show freeze notice');
+
+    // 4. Taichung with hasPhe=false -> no notice
+    win.ViewWeather.selectCity('台中 (Taichung CC)');
+    du.plantDesign.cduSystem.hasPhe = false;
+    win.ViewCooling.render(win.document.getElementById('stepContent'));
+    const tcNoPheHtml = win.document.getElementById('stepContent').innerHTML;
+    assert(!tcNoPheHtml.includes('結冰風險'), 'Taichung with hasPhe=false must not show freeze notice');
+  });
 })();
 
 console.log(`\n${passCount} passed, ${failCount} failed, ${skipCount} skipped`);
