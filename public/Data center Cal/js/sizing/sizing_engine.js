@@ -244,16 +244,23 @@
             };
         },
 
-        validateFw(fwSys, pipeFwVelocityMps) {
+        validateFw(fwSys, pipeFwVelocityMps, archDesc) {
             const fwVelOk = pipeFwVelocityMps >= 1.0 && pipeFwVelocityMps <= 3.0;
+            const fwArchDesc = archDesc || ((typeof root.CoolingArchRegistry !== 'undefined') ? root.CoolingArchRegistry.get(fwSys?.architecture) : null);
+            const minChws = (typeof root.A === 'function') ? root.A('rdhx_min_chws_c') : 17.0;
+            const sizing = fwSys?.sizing || [];
+            const checks = [
+                (sizing[0] ? ((sizing[0].passed ? '✓' : '✗') + ' ' + sizing[0].label + ' 有效容量 ' + sizing[0].effectiveCapKw + ' kW (N-1) ' + (sizing[0].passed ? '滿足' : '不足！')) : ''),
+                (sizing[1] ? ((sizing[1].passed ? '✓' : '✗') + ' ' + sizing[1].label + ' 有效容量 ' + sizing[1].effectiveCapKw + ' kW (N-1) ' + (sizing[1].passed ? '滿足' : '不足！')) : ''),
+                (sizing[2] ? ((sizing[2].passed ? '✓' : '✗') + ' ' + sizing[2].label + ' 有效容量 ' + sizing[2].effectiveCapKw + ' kW (N-1) ' + (sizing[2].passed ? '滿足' : '不足！')) : ''),
+                (fwVelOk ? '✓' : '⚠') + ' 二次側管路流速 (計算值) ' + pipeFwVelocityMps + ' m/s，建議範圍 1.0~3.0 m/s' + (fwVelOk ? '' : '，建議調整管徑')
+            ];
+            if (fwArchDesc?.flags?.isRdhx && (fwSys?.chwSupplyC ?? 12.0) < minChws) {
+                checks.push('⚠ RDHX 供水低於露點保護溫度，有結露風險');
+            }
             return {
-                ok: fwSys.sizing.every(s => s.passed),
-                checks: [
-                    (fwSys.sizing[0] ? ((fwSys.sizing[0].passed ? '✓' : '✗') + ' ' + fwSys.sizing[0].label + ' 有效容量 ' + fwSys.sizing[0].effectiveCapKw + ' kW (N-1) ' + (fwSys.sizing[0].passed ? '滿足' : '不足！')) : ''),
-                    (fwSys.sizing[1] ? ((fwSys.sizing[1].passed ? '✓' : '✗') + ' ' + fwSys.sizing[1].label + ' 有效容量 ' + fwSys.sizing[1].effectiveCapKw + ' kW (N-1) ' + (fwSys.sizing[1].passed ? '滿足' : '不足！')) : ''),
-                    (fwSys.sizing[2] ? ((fwSys.sizing[2].passed ? '✓' : '✗') + ' ' + fwSys.sizing[2].label + ' 有效容量 ' + fwSys.sizing[2].effectiveCapKw + ' kW (N-1) ' + (fwSys.sizing[2].passed ? '滿足' : '不足！')) : ''),
-                    (fwVelOk ? '✓' : '⚠') + ' 二次側管路流速 (計算值) ' + pipeFwVelocityMps + ' m/s，建議範圍 1.0~3.0 m/s' + (fwVelOk ? '' : '，建議調整管徑')
-                ].filter(Boolean)
+                ok: sizing.every(s => s.passed),
+                checks: checks.filter(Boolean)
             };
         }
     };

@@ -108,19 +108,32 @@
             };
         },
 
-        topology(sys, op, design) {
+        topology(sys, op, design, extra) {
             if (!op) op = this.operatingPoint(sys, design);
             const chwSup = op?.temps?.chwSup ?? sys?.chwSupplyC ?? 12.0;
             const chwRet = op?.temps?.chwRet ?? sys?.chwReturnC ?? 18.0;
-            const fullThresh = op?.thresholds?.full ?? 8.0;
-            const mechThresh = op?.thresholds?.mech ?? 14.0;
+            const fcApproach = (typeof root.A === 'function') ? root.A('air_chiller_fc_coil_approach_c') : 4.0;
+            const fullThresh = op?.thresholds?.full ?? Number((chwSup - fcApproach).toFixed(1));
+            const mechThresh = op?.thresholds?.mech ?? Number((chwRet - fcApproach).toFixed(1));
+            const minChws = (typeof root.A === 'function') ? root.A('rdhx_min_chws_c') : 17.0;
+
+            const modeHours = design?.fwModeHours || op?.fwModeHours || extra?.fwModeHours || design?.cduModeHours;
+            const h_free = modeHours?.free !== undefined ? `${modeHours.free} h` : '';
+            const h_partial = modeHours?.partial !== undefined ? `${modeHours.partial} h` : '';
+            const h_mech = modeHours?.mechanical !== undefined ? `${modeHours.mechanical} h` : '';
+
+            const warnings = [];
+            if (chwSup < minChws) {
+                warnings.push('RDHX 供水低於露點保護溫度，有結露風險');
+            }
+
             return {
                 title: 'RDHX 背板水冷散熱拓樸',
                 referenceLabel: null,
                 banners: [
-                    { id: 'mode1', label: `全自然冷卻 (DB ≤${fullThresh}°C)`, detail: '乾冷器直冷高溫背板', tone: 'emerald' },
-                    { id: 'mode2', label: `部分自然冷卻 (${fullThresh} < DB < ${mechThresh}°C)`, detail: '串聯預冷節能模式', tone: 'amber' },
-                    { id: 'mode3', label: `全機械製冷 (DB ≥${mechThresh}°C)`, detail: '氣冷冰水主機供冷', tone: 'indigo' }
+                    { id: 'mode1', label: `全自然冷卻 (DB ≤ ${fullThresh}°C)${h_free ? ` — 全年 ${h_free}` : ''}`, detail: '氣冷 FC 盤管自然供冷', tone: 'emerald' },
+                    { id: 'mode2', label: `部分預冷 (${fullThresh} < DB < ${mechThresh}°C)${h_partial ? ` — 全年 ${h_partial}` : ''}`, detail: 'FC 盤管預冷 + 氣冷冰機接力', tone: 'amber' },
+                    { id: 'mode3', label: `全機械製冷 (DB ≥ ${mechThresh}°C)${h_mech ? ` — 全年 ${h_mech}` : ''}`, detail: '氣冷冰水主機供冷', tone: 'indigo' }
                 ],
                 nodes: [
                     {
@@ -133,25 +146,36 @@
                         ]
                     },
                     {
+                        id: 'fc_coil',
+                        kind: 'hx',
+                        title: 'Free-Cooling 盤管 (串聯預冷)',
+                        lines: [
+                            `全自然冷卻 DB ≤ ${fullThresh}°C`,
+                            `部分預冷 DB < ${mechThresh}°C${(h_free || h_partial) ? ` — 全年 ${h_free || '0 h'}/${h_partial || '0 h'}` : ''}`,
+                            '室外低溫乾球直接預冷冰水回水',
+                            '串聯於蒸發器前段，節省壓縮機功耗'
+                        ]
+                    },
+                    {
                         id: 'evaporator',
                         kind: 'hx',
-                        title: 'RDHX 高溫水冷循環',
+                        title: '氣冷冰水主機 (Air-Cooled Chiller)',
                         lines: [
-                            '微通道水-空氣熱交換器',
-                            `中高溫供水 ${chwSup}°C ⇄ 回水 ${chwRet}°C`,
-                            '機櫃排風零增溫 (Neutral Room)',
-                            '極低風阻・EC 變頻風扇輔助'
+                            '氣冷壓縮製冷 + FC 盤管整合',
+                            `供水 ${chwSup}°C ⇄ 回水 ${chwRet}°C`,
+                            '高溫時接力修整至目標供水溫',
+                            '全封閉冷媒迴路・零水耗 (WUE = 0)'
                         ]
                     },
                     {
                         id: 'heat_rejection',
-                        kind: 'dry_cooler',
-                        title: '室外乾冷器/氣冷冰水主機',
+                        kind: 'chiller',
+                        title: '室外氣冷排熱機組 (Air-Cooled Plant)',
                         lines: [
-                            '高溫進水直冷 (WUE = 0)',
-                            `室外風冷散熱 ⇄ 供水 ${chwSup}°C`,
-                            '大幅延長全年自然冷卻小時',
-                            '無結露風險 (高於機房露點溫度)'
+                            'V-Bank 氣冷冷凝盤管 + 變頻風扇',
+                            '以室外乾球溫度 (DB) 直接風冷散熱',
+                            '全封閉冷媒迴路 ｜ 零水耗 (WUE = 0)',
+                            (chwSup < minChws ? '⚠ 供水低於露點保護溫度，有結露風險' : '無結露風險 (高於機房露點溫度)')
                         ]
                     },
                     {
@@ -162,11 +186,12 @@
                     }
                 ],
                 pipes: [
-                    { from: 'rdhx', to: 'evaporator', label: `${chwRet}°C`, tone: 'hot' },
+                    { from: 'rdhx', to: 'fc_coil', label: `${chwRet}°C`, tone: 'hot' },
+                    { from: 'fc_coil', to: 'evaporator', label: `${op?.temps?.coilAvail ?? chwSup}°C`, tone: 'warm' },
                     { from: 'evaporator', to: 'rdhx', label: `${chwSup}°C`, tone: 'cold' }
                 ],
                 footer: [],
-                warnings: []
+                warnings
             };
         },
 

@@ -139,21 +139,55 @@
             };
         },
 
-        topology(sys, op, design) {
+        topology(sys, op, design, extra) {
             if (!op) op = this.operatingPoint(sys, design);
             const chwSup = op?.temps?.chwSup ?? sys?.chwSupplyC ?? 12.0;
             const chwRet = op?.temps?.chwRet ?? sys?.chwReturnC ?? 18.0;
-            const condIn = op?.temps?.condIn ?? 24.0;
-            const condOut = op?.temps?.condOut ?? 29.0;
-            const fullThresh = op?.thresholds?.full ?? 6.5;
-            const mechThresh = op?.thresholds?.mech ?? 12.5;
+            const designWb = design?.designWb ?? 28.0;
+            const towerApp = (typeof root.A === 'function') ? root.A('tower_approach_c') : 4.0;
+            const hxApp = (typeof root.A === 'function') ? root.A('hx_approach_c') : 1.5;
+            const minCewt = (typeof root.A === 'function') ? root.A('min_cewt_c') : 16.0;
+            const tCw = Number(Math.max(minCewt, designWb + towerApp).toFixed(1));
+            const tCwOut = Number((tCw + 5.0).toFixed(1));
+            const fullThresh = op?.thresholds?.full ?? Number((chwSup - towerApp - hxApp).toFixed(1));
+            const mechThresh = op?.thresholds?.mech ?? Number((chwRet - towerApp - hxApp).toFixed(1));
+
+            // 設計 COP：以設計工況計算模擬值
+            const chItem = (sys?.sizing || []).find(s => s.key === 'water_cooled_chiller');
+            const chModel = chItem?.catalog?.find(c => c.model === chItem.selectedModel);
+            let copDesign = chModel?.cop;
+            if (!copDesign) {
+                if (typeof root.ChillerEngine !== 'undefined') {
+                    const mockChillers = [{
+                        cooling_capacity_kw: 500,
+                        cop_design: 6.0,
+                        cop_curve: { type: 'fixed' },
+                        t_chws_design: 7.0,
+                        qty_running: 1,
+                        qty_total: 2,
+                        chiller_type: 'water_cooled'
+                    }];
+                    const resCop = root.ChillerEngine.calcPower(400, mockChillers, chwSup, tCw, 30.0);
+                    copDesign = resCop.cop_actual || 6.0;
+                } else if (typeof root.CoolingArchHelpers !== 'undefined') {
+                    copDesign = root.CoolingArchHelpers.chillerFallbackCop(chwSup);
+                } else {
+                    copDesign = 5.8;
+                }
+            }
+
+            const modeHours = design?.fwModeHours || op?.fwModeHours || extra?.fwModeHours || design?.cduModeHours;
+            const h_free = modeHours?.free !== undefined ? `${modeHours.free} h` : '';
+            const h_partial = modeHours?.partial !== undefined ? `${modeHours.partial} h` : '';
+            const h_mech = modeHours?.mechanical !== undefined ? `${modeHours.mechanical} h` : '';
+
             return {
                 title: '水冷式冰水主機 + 濕式冷卻塔',
                 referenceLabel: null,
                 banners: [
-                    { id: 'mode1', label: `全板換自然冷卻 (WB ≤${fullThresh}°C)`, detail: '100% 水側省能器 (WSE)', tone: 'emerald' },
-                    { id: 'mode2', label: `部分板換預冷 (${fullThresh} < WB < ${mechThresh}°C)`, detail: 'WSE 預冷 + 冰機修整', tone: 'amber' },
-                    { id: 'mode3', label: `全機械製冷 (WB ≥${mechThresh}°C)`, detail: '全額冰機壓縮製冷', tone: 'blue' }
+                    { id: 'mode1', label: `全板換自然冷卻 (WB ≤ ${fullThresh}°C)${h_free ? ` — 全年 ${h_free}` : ''}`, detail: '100% 水側省能器 (WSE)', tone: 'emerald' },
+                    { id: 'mode2', label: `部分板換預冷 (${fullThresh} < WB < ${mechThresh}°C)${h_partial ? ` — 全年 ${h_partial}` : ''}`, detail: 'WSE 預冷 + 冰機修整', tone: 'amber' },
+                    { id: 'mode3', label: `全機械製冷 (WB ≥ ${mechThresh}°C)${h_mech ? ` — 全年 ${h_mech}` : ''}`, detail: '全額冰機壓縮製冷', tone: 'blue' }
                 ],
                 nodes: [
                     {
@@ -166,13 +200,24 @@
                         ]
                     },
                     {
+                        id: 'wse',
+                        kind: 'hx',
+                        title: '水側經濟器 (WSE 板式熱交換器)',
+                        lines: [
+                            '板式熱交換器自然預冷',
+                            `門檻: WB ≤ ${fullThresh}°C 滿載自冷`,
+                            `冷卻水供水 ${tCw}°C 預冷冰水回水`,
+                            '冷卻塔出水直接供冷'
+                        ]
+                    },
+                    {
                         id: 'evaporator',
                         kind: 'chiller',
                         title: '水冷式冰機 (Centrifugal/Screw)',
                         lines: [
                             '高效率水冷壓縮製冷',
                             `供水 ${chwSup}°C ⇄ 回水 ${chwRet}°C`,
-                            '設計 COP: 5.8 ~ 6.5',
+                            `設計 COP: ${copDesign.toFixed(1)} (設計工況)`,
                             '冷凝熱經冷卻水路排放至水塔'
                         ]
                     },
@@ -182,8 +227,8 @@
                         title: '濕式冷卻水塔 (Cooling Tower)',
                         lines: [
                             '高效開放式冷卻水塔',
-                            `進水 ${condOut}°C ⇄ 出水 ${condIn}°C`,
-                            '以濕球溫度 (WB) 蒸發散熱',
+                            `出水 ${tCw}°C (設計 WB ${designWb}°C + ${towerApp}°C) ⇄ 進水 ${tCwOut}°C`,
+                            '冷卻塔出水同時供給 WSE 板換與冰機冷凝器',
                             '連續排污與自動補水控制'
                         ]
                     },
@@ -201,10 +246,12 @@
                     }
                 ],
                 pipes: [
-                    { from: 'crah', to: 'evaporator', label: `${chwRet}°C`, tone: 'hot' },
+                    { from: 'crah', to: 'wse', label: `${chwRet}°C`, tone: 'hot' },
+                    { from: 'wse', to: 'evaporator', label: `${chwSup}°C`, tone: 'warm' },
                     { from: 'evaporator', to: 'crah', label: `${chwSup}°C`, tone: 'cold' },
-                    { from: 'evaporator', to: 'heat_rejection', label: `${condOut}°C`, tone: 'hot' },
-                    { from: 'heat_rejection', to: 'evaporator', label: `${condIn}°C`, tone: 'cold' }
+                    { from: 'heat_rejection', to: 'wse', label: `${tCw}°C`, tone: 'cold' },
+                    { from: 'heat_rejection', to: 'evaporator', label: `${tCw}°C`, tone: 'cold' },
+                    { from: 'evaporator', to: 'heat_rejection', label: `${tCwOut}°C`, tone: 'hot' }
                 ],
                 footer: [],
                 warnings: []

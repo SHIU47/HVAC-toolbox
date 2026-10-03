@@ -84,6 +84,8 @@
             const chwSup = op?.temps?.chwSup ?? sys?.chwSupplyC ?? 12.0;
             const chwRet = op?.temps?.chwRet ?? sys?.chwReturnC ?? 18.0;
             const distSup = op?.temps?.districtSup ?? (chwSup - 2.0);
+            const A = (k) => root.AppStore?.getAssumption ? root.AppStore.getAssumption(k) : (root.ASSUMPTIONS?.[k]?.val ?? 5.5);
+            const distCop = A('district_chw_cop') || 5.5;
             return {
                 title: '市政區域冰水排熱拓樸',
                 referenceLabel: null,
@@ -118,6 +120,7 @@
                         lines: [
                             '大型中央冷能集中製造與配送',
                             `市政供水 ${distSup}°C ⇄ 回水 ${chwRet}°C`,
+                            `合約等效 COP: ${distCop.toFixed(1)} (園區基準)`,
                             '超大型離心機組與深層水源熱泵',
                             '園區級能源調度與蓄冷槽削峰'
                         ]

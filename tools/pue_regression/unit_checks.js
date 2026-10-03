@@ -1958,6 +1958,115 @@ function freshCtx() {
   });
 })();
 
+// ═══════════════════════════════════════════════════════════════
+// P4-5 Fanwall Topologies: FC Coil, WSE, RDHX Dew Point & District COP
+// ═══════════════════════════════════════════════════════════════
+(function () {
+  const ctx = freshCtx();
+  const { CoolingArchRegistry, SizingEngine, AppStore: S, ASSUMPTIONS, A } = ctx;
+
+  test('P4-5 rdhx_min_chws_c exists in ASSUMPTIONS with default 17.0', () => {
+    assert(ASSUMPTIONS.rdhx_min_chws_c, 'rdhx_min_chws_c must be defined in ASSUMPTIONS');
+    assert.strictEqual(ASSUMPTIONS.rdhx_min_chws_c.val, 17.0);
+    assert.strictEqual(A('rdhx_min_chws_c'), 17.0);
+  });
+
+  test('P4-5 air_air_cooled_chiller topology includes fc_coil node and series pre-cooling banners without continuous mechanical text', () => {
+    const arch = CoolingArchRegistry.get('air_cooled_chiller');
+    const sys = { chwSupplyC: 12.0, chwReturnC: 18.0 };
+    const op = arch.operatingPoint(sys, { db: 30, wb: 22 }, {});
+    const topo = arch.topology(sys, op, { designDb: 35.0, fwModeHours: { free: 1200, partial: 2800, mechanical: 4760 } });
+
+    const fcNode = topo.nodes.find(n => n.id === 'fc_coil');
+    assert(fcNode, 'Must contain fc_coil node');
+    assert.strictEqual(fcNode.title, 'Free-Cooling 盤管 (串聯預冷)');
+
+    const topoStr = JSON.stringify(topo);
+    assert(!topoStr.includes('全時連續供冷'), 'Must not contain "全時連續供冷"');
+    assert(topo.banners.some(b => b.label.includes('全自然冷卻') && b.label.includes('1200 h')), 'Banner must display free cooling hours');
+    assert(topo.banners.some(b => b.label.includes('部分預冷') && b.label.includes('2800 h')), 'Banner must display partial hours');
+  });
+
+  test('P4-5 air_water_cooled_chiller topology includes wse node, cooling water temp with tower approach, and simulated COP', () => {
+    const arch = CoolingArchRegistry.get('water_cooled_chiller');
+    const sys = { chwSupplyC: 12.0, chwReturnC: 18.0 };
+    const op = arch.operatingPoint(sys, { db: 35, wb: 28 }, {});
+    const topo = arch.topology(sys, op, { designWb: 28.0, fwModeHours: { free: 500, partial: 1500, mechanical: 6760 } });
+
+    const wseNode = topo.nodes.find(n => n.id === 'wse');
+    assert(wseNode, 'Must contain wse node');
+    assert.strictEqual(wseNode.title, '水側經濟器 (WSE 板式熱交換器)');
+
+    const evapNode = topo.nodes.find(n => n.id === 'evaporator');
+    assert(evapNode, 'Must contain evaporator node');
+    assert(evapNode.lines.some(l => l.includes('設計 COP:')), 'Evaporator lines must show design COP');
+
+    const rejNode = topo.nodes.find(n => n.id === 'heat_rejection');
+    assert(rejNode, 'Must contain heat_rejection node');
+    assert(rejNode.lines.some(l => l.includes('32') && l.includes('設計 WB 28')), 'Heat rejection must show designWb + tower approach');
+  });
+
+  test('P4-5 air_rdhx describes air-cooled chiller + FC coil and does not contain 22°C or dry cooler direct cooling', () => {
+    const arch = CoolingArchRegistry.get('rdhx');
+    const sys = { chwSupplyC: 18.0, chwReturnC: 24.0 };
+    const op = arch.operatingPoint(sys, { db: 25, wb: 18 }, {});
+    const topo = arch.topology(sys, op, { designDb: 35.0 });
+
+    const topoStr = JSON.stringify(topo);
+    assert(!topoStr.includes('22°C 高溫供水'), 'Must not contain "22°C 高溫供水"');
+    assert(!topoStr.includes('乾冷器直冷'), 'Must not contain "乾冷器直冷"');
+
+    const rdhxNode = topo.nodes.find(n => n.id === 'rdhx');
+    const fcNode = topo.nodes.find(n => n.id === 'fc_coil');
+    const evapNode = topo.nodes.find(n => n.id === 'evaporator');
+    assert(rdhxNode && fcNode && evapNode, 'Must contain rdhx, fc_coil, and evaporator nodes');
+  });
+
+  test('P4-5 RDHX dew point check generates warning below 17°C and passes at/above 17°C', () => {
+    const arch = CoolingArchRegistry.get('rdhx');
+    
+    // Case A: chwSupplyC = 12.0 < 17.0 -> warning in validateFw and topology
+    const sysLow = { architecture: 'rdhx', chwSupplyC: 12.0, chwReturnC: 18.0, sizing: [] };
+    const valLow = SizingEngine.validateFw(sysLow, { air_load_kw: 100 }, arch);
+    assert(valLow.checks.some(c => c.includes('RDHX 供水低於露點保護溫度，有結露風險')), 'validateFw must warn on dew point risk');
+    const topoLow = arch.topology(sysLow, arch.operatingPoint(sysLow, { db: 35, wb: 28 }, {}), { designDb: 35.0 });
+    assert(topoLow.warnings.some(w => w.includes('RDHX 供水低於露點保護溫度，有結露風險')), 'topology must include dew point warning');
+
+    // Case B: chwSupplyC = 18.0 >= 17.0 -> no dew point warning
+    const sysSafe = { architecture: 'rdhx', chwSupplyC: 18.0, chwReturnC: 24.0, sizing: [] };
+    const valSafe = SizingEngine.validateFw(sysSafe, { air_load_kw: 100 }, arch);
+    assert(!valSafe.checks.some(c => c.includes('RDHX 供水低於露點保護溫度，有結露風險')), 'validateFw must pass dew point check');
+    const topoSafe = arch.topology(sysSafe, arch.operatingPoint(sysSafe, { db: 35, wb: 28 }, {}), { designDb: 35.0 });
+    assert(!topoSafe.warnings.some(w => w.includes('RDHX 供水低於露點保護溫度，有結露風險')), 'topology must not have dew point warning');
+  });
+
+  test('P4-5 air_district_chw topology displays A(district_chw_cop)', () => {
+    const arch = CoolingArchRegistry.get('chilled_water_plant');
+    const sys = { chwSupplyC: 12.0, chwReturnC: 18.0 };
+    const topo = arch.topology(sys, arch.operatingPoint(sys, { db: 35, wb: 28 }, {}), { designDb: 35.0 });
+    const distCop = A('district_chw_cop');
+    const rejNode = topo.nodes.find(n => n.id === 'heat_rejection');
+    assert(rejNode, 'Must contain heat_rejection node');
+    assert(rejNode.lines.some(l => l.includes(`合約等效 COP: ${distCop.toFixed(1)}`)), 'Heat rejection lines must display district COP');
+  });
+
+  test('P4-5 AnnualRunner tracks fwModeHours for air loop systems', () => {
+    const kaohsiung = ctx.BUILTIN_WEATHER_DATA['高雄 (Kaohsiung)'];
+    S.state.site.hourly = kaohsiung.hourlyData;
+    const du = S.state.halls[0].dus[0];
+    du.plantDesign.fanwallSystem.architecture = 'air_cooled_chiller';
+    du.plantDesign.fanwallSystem.chwSupplyC = 12.0;
+    du.plantDesign.fanwallSystem.chwReturnC = 18.0;
+    S.calculate();
+
+    const du0 = S.state.results.byDu?.[0];
+    assert(du0, 'byDu[0] must exist');
+    assert(du0.fwModeHours, 'du0 must have fwModeHours');
+    const { free, partial, mechanical } = du0.fwModeHours;
+    assert.strictEqual(free + partial + mechanical, 8760, 'fwModeHours sum must equal 8760');
+  });
+})();
+
 console.log(`\n${passCount} passed, ${failCount} failed, ${skipCount} skipped`);
 process.exit(failCount > 0 ? 1 : 0);
 

@@ -113,19 +113,26 @@
             };
         },
 
-        topology(sys, op, design) {
+        topology(sys, op, design, extra) {
             if (!op) op = this.operatingPoint(sys, design);
             const chwSup = op?.temps?.chwSup ?? sys?.chwSupplyC ?? 12.0;
             const chwRet = op?.temps?.chwRet ?? sys?.chwReturnC ?? 18.0;
-            const fullThresh = op?.thresholds?.full ?? 8.0;
-            const mechThresh = op?.thresholds?.mech ?? 14.0;
+            const fcApproach = (typeof root.A === 'function') ? root.A('air_chiller_fc_coil_approach_c') : 4.0;
+            const fullThresh = op?.thresholds?.full ?? Number((chwSup - fcApproach).toFixed(1));
+            const mechThresh = op?.thresholds?.mech ?? Number((chwRet - fcApproach).toFixed(1));
+
+            const modeHours = design?.fwModeHours || op?.fwModeHours || extra?.fwModeHours || design?.cduModeHours;
+            const h_free = modeHours?.free !== undefined ? `${modeHours.free} h` : '';
+            const h_partial = modeHours?.partial !== undefined ? `${modeHours.partial} h` : '';
+            const h_mech = modeHours?.mechanical !== undefined ? `${modeHours.mechanical} h` : '';
+
             return {
                 title: '氣冷式冰水主機 (Air-Cooled Chiller)',
                 referenceLabel: null,
                 banners: [
-                    { id: 'mode1', label: `全自然冷卻 (DB ≤${fullThresh}°C)`, detail: '100% 走 Economizer 盤管', tone: 'emerald' },
-                    { id: 'mode2', label: `部分預冷 (${fullThresh} < DB < ${mechThresh}°C)`, detail: 'FC 盤管預冷 + 冰機接力', tone: 'amber' },
-                    { id: 'mode3', label: `全機械製冷 (DB ≥${mechThresh}°C)`, detail: '全時連續供冷・穩定控溫', tone: 'indigo' }
+                    { id: 'mode1', label: `全自然冷卻 (DB ≤ ${fullThresh}°C)${h_free ? ` — 全年 ${h_free}` : ''}`, detail: '100% 走 Economizer 盤管', tone: 'emerald' },
+                    { id: 'mode2', label: `部分預冷 (${fullThresh} < DB < ${mechThresh}°C)${h_partial ? ` — 全年 ${h_partial}` : ''}`, detail: 'FC 盤管預冷 + 冰機接力', tone: 'amber' },
+                    { id: 'mode3', label: `全機械製冷 (DB ≥ ${mechThresh}°C)${h_mech ? ` — 全年 ${h_mech}` : ''}`, detail: '氣冷壓縮製冷', tone: 'indigo' }
                 ],
                 nodes: [
                     {
@@ -138,14 +145,25 @@
                         ]
                     },
                     {
+                        id: 'fc_coil',
+                        kind: 'hx',
+                        title: 'Free-Cooling 盤管 (串聯預冷)',
+                        lines: [
+                            `全自然冷卻 DB ≤ ${fullThresh}°C`,
+                            `部分預冷 DB < ${mechThresh}°C${(h_free || h_partial) ? ` — 全年 ${h_free || '0 h'}/${h_partial || '0 h'}` : ''}`,
+                            '室外低溫乾球直接預冷冰水回水',
+                            '串聯於蒸發器前段，節省壓縮機功耗'
+                        ]
+                    },
+                    {
                         id: 'evaporator',
                         kind: 'hx',
                         title: '冰水蒸發器 (CHW Evaporator)',
                         lines: [
-                            '機械壓縮製冷',
+                            '機械壓縮製冷核心',
                             `供水 ${chwSup}°C ⇄ 回水 ${chwRet}°C`,
-                            '全時連續供冷・穩定控溫',
-                            '氣冷散熱・無冷卻水塔耗水'
+                            '氣冷散熱・無冷卻水塔耗水',
+                            '接力修整供水溫度'
                         ]
                     },
                     {
@@ -156,7 +174,7 @@
                             'V-Bank 氣冷冷凝盤管 + 變頻 EC 風扇',
                             '以室外乾球溫度 (DB) 直接風冷散熱',
                             '全封閉冷媒迴路 ｜ 零水耗 (WUE = 0)',
-                            '低溫時支援冷媒自然循環節能模式 (Economizer)'
+                            '整合式冷媒/水側自然冷卻盤管'
                         ]
                     },
                     {
@@ -167,7 +185,8 @@
                     }
                 ],
                 pipes: [
-                    { from: 'crah', to: 'evaporator', label: `${chwRet}°C`, tone: 'hot' },
+                    { from: 'crah', to: 'fc_coil', label: `${chwRet}°C`, tone: 'hot' },
+                    { from: 'fc_coil', to: 'evaporator', label: `${op?.temps?.coilAvail ?? chwSup}°C`, tone: 'warm' },
                     { from: 'evaporator', to: 'crah', label: `${chwSup}°C`, tone: 'cold' }
                 ],
                 footer: [],
