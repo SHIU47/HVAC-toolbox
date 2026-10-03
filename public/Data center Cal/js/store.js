@@ -1331,34 +1331,70 @@
         },
 
         // ═══════════════════════════════════════════════════════════════
-        // 自由冷卻動態物理門檻統一查詢 (Single Source of Truth)
-        // [P1-4 審查] 此函式供 view_weather.js 繪製氣象直方圖與全時自由冷卻標記；
-        // 主計算引擎與 AnnualRunner 不依賴此函式。待後續 UI 重構整併。
+        // 主要液冷架構物理門檻查詢 (Single Source of Truth)
+        // 取液冷負載最大單元之架構描述檔計算動態物理門檻供 Step 1 使用
         // ═══════════════════════════════════════════════════════════════
-        getEffectiveFcThresholds() {
-            let plantFcThresh = 34.8;
-            const allCduSystems = [
-                ...(this.state.halls ? this.state.halls.flatMap(h => h.dus.map(d => d.plantDesign.cduSystem)) : []),
-                ...(this.state.corePods ? this.state.corePods.map(p => p.plantDesign.cduSystem) : [])
-            ];
-            if (allCduSystems.length > 0) {
-                const minFc = Math.min(...allCduSystems.map(c => {
-                    const arch = c.architecture || 'dry_cooler_hx';
-                    const dcApp = c.dryCoolerApproachC || 5.0;
-                    const archDesc = (typeof window !== 'undefined' && window.CoolingArchRegistry) ? window.CoolingArchRegistry.get(arch) : ((typeof CoolingArchRegistry !== 'undefined') ? CoolingArchRegistry.get(arch) : null);
-                    const pheApp = archDesc?.flags?.isTrim ? (c.pheApproachC ?? 2.0) : 0.0;
-                    return (c.fwsSupplyC || 40.0) - dcApp - pheApp;
-                }));
-                plantFcThresh = minFc;
+        dominantCduThresholds() {
+            let maxLiqKw = -1;
+            let targetCduSys = null;
+
+            if (this.state.halls) {
+                for (const h of this.state.halls) {
+                    if (h.dus) {
+                        for (const du of h.dus) {
+                            const summ = (typeof this.calcDuSummary === 'function') ? this.calcDuSummary(du) : null;
+                            const liqKw = summ?.liquidHeatKw ?? du.plantDesign?.cduSystem?.designBasis?.liq_load_kw ?? 0;
+                            if (liqKw > maxLiqKw) {
+                                maxLiqKw = liqKw;
+                                targetCduSys = du.plantDesign?.cduSystem;
+                            }
+                        }
+                    }
+                }
             }
-            if (this.state.assumptions_override?.nvidia_dsx_mode1_db_max_c !== undefined) {
-                plantFcThresh = this.state.assumptions_override.nvidia_dsx_mode1_db_max_c;
+            if (this.state.corePods) {
+                for (const pod of this.state.corePods) {
+                    const summ = (typeof this.calcCorePodSummary === 'function') ? this.calcCorePodSummary(pod) : null;
+                    const liqKw = summ?.liquidHeatKw ?? pod.plantDesign?.cduSystem?.designBasis?.liq_load_kw ?? 0;
+                    if (liqKw > maxLiqKw) {
+                        maxLiqKw = liqKw;
+                        targetCduSys = pod.plantDesign?.cduSystem;
+                    }
+                }
             }
-            const mode1 = Number(plantFcThresh.toFixed(1));
-            const mode2 = (this.state.assumptions_override?.nvidia_dsx_mode2_db_max_c !== undefined)
-                ? Number(this.state.assumptions_override.nvidia_dsx_mode2_db_max_c.toFixed(1))
-                : Number((mode1 + 5.7).toFixed(1));
-            return { mode1DbMax: mode1, mode2DbMax: mode2 };
+
+            if (!targetCduSys) {
+                targetCduSys = { architecture: 'dry_cooler_trim', fwsSupplyC: 40.0, fwsReturnC: 55.0, dryCoolerApproachC: 5.0, hasPhe: true, pheApproachC: 2.0 };
+            }
+
+            const archKey = targetCduSys.architecture || 'dry_cooler_trim';
+            const registry = (typeof window !== 'undefined' && window.CoolingArchRegistry)
+                ? window.CoolingArchRegistry
+                : ((typeof CoolingArchRegistry !== 'undefined') ? CoolingArchRegistry : null);
+            const archDesc = registry ? registry.get(archKey) : null;
+            const archName = archDesc?.cardLabel || archDesc?.name || archKey;
+
+            const designCond = (typeof this.designConditions === 'function')
+                ? this.designConditions()
+                : { designDb: 35.0, designWb: 28.0 };
+            const designPoint = { db: designCond.designDb ?? 35.0, wb: designCond.designWb ?? 28.0 };
+            const equip = (typeof this.resolveEquipment === 'function' && archDesc)
+                ? this.resolveEquipment(archDesc, targetCduSys)
+                : {};
+
+            let thresholds = { basis: 'db', full: 33.0, mech: 48.0 };
+            if (archDesc?.operatingPoint) {
+                const op = archDesc.operatingPoint(targetCduSys, designPoint, equip, { design: designCond });
+                if (op?.thresholds) {
+                    thresholds = op.thresholds;
+                }
+            }
+
+            return {
+                thresholds,
+                archName,
+                basis: thresholds.basis || 'db'
+            };
         },
 
         calculate() {

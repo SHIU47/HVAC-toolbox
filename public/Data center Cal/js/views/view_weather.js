@@ -29,9 +29,12 @@
             const site = state.site;
             const stats = site.stats || { avgDB: 22.8, maxDB: 36.4, minDB: 8.5, avgWB: 19.5, avgDP: 17.2, avgRH: 76.5 };
 
-            const fcThresh = window.AppStore ? window.AppStore.getEffectiveFcThresholds() : { mode1DbMax: 30.0, mode2DbMax: 35.7 };
-            const mode1DbMax = fcThresh.mode1DbMax;
-            const mode2DbMax = fcThresh.mode2DbMax;
+            const domThresh = window.AppStore ? window.AppStore.dominantCduThresholds() : null;
+            const archName = domThresh?.archName || '主要液冷架構';
+            const basis = domThresh?.basis || 'db';
+            const thresholds = domThresh?.thresholds || { basis: 'db', full: 35.0, mech: 47.0 };
+            const mode1Max = thresholds.full;
+            const mode2Max = thresholds.mech;
 
             // 計算 8,760h 自由冷卻時數與佔比
             const hourly = site.hourly || [];
@@ -39,19 +42,20 @@
 
             if (hourly.length >= 8760) {
                 for (let i = 0; i < 8760; i++) {
-                    const w = hourly[i] || { db: 25 };
-                    if (w.db <= mode1DbMax) {
+                    const w = hourly[i] || { db: 25, wb: 20 };
+                    const val = (basis === 'wb') ? (w.wb ?? 20) : (w.db ?? 25);
+                    if (mode1Max != null && val <= mode1Max) {
                         climateFreeCount++;
-                    } else if (w.db <= mode2DbMax) {
+                    } else if (mode2Max != null && val <= mode2Max) {
                         climateTrimCount++;
                     } else {
                         climateMechCount++;
                     }
                 }
             } else {
-                climateFreeCount = 8760;
+                climateFreeCount = (mode1Max != null) ? 8760 : 0;
                 climateTrimCount = 0;
-                climateMechCount = 0;
+                climateMechCount = (mode1Max != null) ? 0 : 8760;
             }
 
             const freePct = ((climateFreeCount / 8760) * 100).toFixed(1);
@@ -132,27 +136,29 @@
                         </div>
                     </div>
 
-                    <!-- 版面 1.5: 自由冷卻氣候門檻設定 (NVIDIA DSX Mode 1 & 2) -->
+                    <!-- 版面 1.5: 自由冷卻氣候門檻 (依主要架構物理門檻) -->
                     <div class="bg-gradient-to-r from-emerald-50/80 to-teal-50/80 p-5 rounded-2xl border-2 border-emerald-300 shadow-xs flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
                         <div>
                             <h3 class="text-sm font-black text-emerald-950 flex items-center gap-1.5">
-                                <span>⚙️</span> 自由冷卻直冷/輔助氣候門檻設定 (NVIDIA DSX Climate Thresholds)
+                                <span>⚙️</span> 自由冷卻運轉模式氣候門檻（依 ${archName} 門檻）
                             </h3>
                             <p class="text-xs text-emerald-800/90 mt-0.5">
-                                設定晶片液冷直冷 (Mode 1 Full Free Cooling) 與部分輔助 (Mode 2 Trim Cooling) 之室外乾球溫度切點，即時動態連動下方圖表。
+                                ${basis === 'wb' ? '以室外濕球溫度 (WB) 為基準，依密閉塔與板換溫差計算全時直冷門檻' : '以室外乾球溫度 (DB) 為基準，依乾冷器與板換溫差計算全直冷與輔助冷卻門檻'}。
                             </p>
                         </div>
                         <div class="flex items-center gap-3 flex-wrap">
                             <div class="bg-white px-3 py-1.5 rounded-xl border border-emerald-300 shadow-xs flex items-center gap-2 text-xs">
-                                <span class="font-bold text-emerald-900">🟢 Mode 1 全直冷上限:</span>
-                                <input type="number" step="0.1" value="${mode1DbMax}" onchange="ViewWeather.updateFcThreshold('nvidia_dsx_mode1_db_max_c', parseFloat(this.value))" class="w-16 font-black text-emerald-800 text-center border rounded p-1 bg-slate-50">
-                                <span class="font-bold text-slate-500">°C</span>
+                                <span class="font-bold text-emerald-900">🟢 Mode 1 全直冷門檻:</span>
+                                <span class="font-black text-emerald-800 text-sm">${mode1Max != null ? `${mode1Max}°C` : '無'}</span>
+                                <span class="text-[10px] text-slate-500 font-bold">${basis.toUpperCase()}</span>
                             </div>
+                            ${mode2Max != null ? `
                             <div class="bg-white px-3 py-1.5 rounded-xl border border-emerald-300 shadow-xs flex items-center gap-2 text-xs">
                                 <span class="font-bold text-teal-900">🔵 Mode 2 部分輔助上限:</span>
-                                <input type="number" step="0.1" value="${mode2DbMax}" onchange="ViewWeather.updateFcThreshold('nvidia_dsx_mode2_db_max_c', parseFloat(this.value))" class="w-16 font-black text-teal-800 text-center border rounded p-1 bg-slate-50">
-                                <span class="font-bold text-slate-500">°C</span>
+                                <span class="font-black text-teal-800 text-sm">${mode2Max}°C</span>
+                                <span class="text-[10px] text-slate-500 font-bold">${basis.toUpperCase()}</span>
                             </div>
+                            ` : ''}
                         </div>
                     </div>
 
@@ -167,7 +173,7 @@
                                     </h3>
                                 </div>
                                 <p class="text-xs text-slate-500 mt-1">
-                                    依據當前設定之 <strong>Mode 1 (≤ ${mode1DbMax}°C)</strong> 與 <strong>Mode 2 (≤ ${mode2DbMax}°C)</strong> 門檻統計
+                                    依 ${archName} 門檻統計：<strong>Mode 1 (≤ ${mode1Max != null ? `${mode1Max}°C` : 'N/A'})</strong>${mode2Max != null ? ` 與 <strong>Mode 2 (≤ ${mode2Max}°C)</strong>` : ''}
                                 </p>
                             </div>
                             <div class="flex items-center gap-2">
@@ -182,7 +188,7 @@
                             <div class="p-4 bg-emerald-50 rounded-xl border border-emerald-200">
                                 <div class="text-[11px] font-bold text-emerald-800 flex items-center justify-between">
                                     <span>Mode 1 100% 全直冷</span>
-                                    <span class="text-[10px] bg-emerald-200 text-emerald-900 px-1.5 py-0.5 rounded font-black">≤ ${mode1DbMax}°C</span>
+                                    <span class="text-[10px] bg-emerald-200 text-emerald-900 px-1.5 py-0.5 rounded font-black">${mode1Max != null ? `≤ ${mode1Max}°C` : 'N/A'}</span>
                                 </div>
                                 <div class="text-2xl font-black text-emerald-950 mt-1">${climateFreeCount.toLocaleString()} <span class="text-xs font-bold text-emerald-700">小時</span></div>
                                 <div class="text-[11px] text-emerald-700 font-bold mt-0.5">佔全年 ${freePct}% (冰機 100% 停機)</div>
@@ -191,16 +197,16 @@
                             <div class="p-4 bg-teal-50 rounded-xl border border-teal-200">
                                 <div class="text-[11px] font-bold text-teal-800 flex items-center justify-between">
                                     <span>Mode 2 部分輔助冷卻</span>
-                                    <span class="text-[10px] bg-teal-200 text-teal-900 px-1.5 py-0.5 rounded font-black">${mode1DbMax}°C ~ ${mode2DbMax}°C</span>
+                                    <span class="text-[10px] bg-teal-200 text-teal-900 px-1.5 py-0.5 rounded font-black">${mode2Max != null ? `${mode1Max}°C ~ ${mode2Max}°C` : '無'}</span>
                                 </div>
                                 <div class="text-2xl font-black text-teal-950 mt-1">${climateTrimCount.toLocaleString()} <span class="text-xs font-bold text-teal-700">小時</span></div>
-                                <div class="text-[11px] text-teal-700 font-bold mt-0.5">佔全年 ${trimPct}% (乾冷器+部分製冷)</div>
+                                <div class="text-[11px] text-teal-700 font-bold mt-0.5">${mode2Max != null ? `佔全年 ${trimPct}% (乾冷器+部分製冷)` : '無此模式'}</div>
                             </div>
 
                             <div class="p-4 bg-amber-50 rounded-xl border border-amber-200">
                                 <div class="text-[11px] font-bold text-amber-800 flex items-center justify-between">
                                     <span>Mode 3 全額機械製冷</span>
-                                    <span class="text-[10px] bg-amber-200 text-amber-900 px-1.5 py-0.5 rounded font-black">> ${mode2DbMax}°C</span>
+                                    <span class="text-[10px] bg-amber-200 text-amber-900 px-1.5 py-0.5 rounded font-black">${mode2Max != null ? `> ${mode2Max}°C` : (mode1Max != null ? `> ${mode1Max}°C` : '全年')}</span>
                                 </div>
                                 <div class="text-2xl font-black text-amber-950 mt-1">${climateMechCount.toLocaleString()} <span class="text-xs font-bold text-amber-700">小時</span></div>
                                 <div class="text-[11px] text-amber-700 font-bold mt-0.5">佔全年 ${mechPct}% (冰機全負載)</div>
@@ -404,18 +410,22 @@
             const keys = Object.keys(bins).map(Number).sort((a,b) => a-b);
             const total = Object.values(bins).reduce((a,b) => a+b, 0) || 8760;
 
-            const fcThresh = window.AppStore ? window.AppStore.getEffectiveFcThresholds() : { mode1DbMax: 30.0, mode2DbMax: 35.7 };
-            const mode1DbMax = fcThresh.mode1DbMax;
-            const mode2DbMax = fcThresh.mode2DbMax;
+            const domThresh = window.AppStore ? window.AppStore.dominantCduThresholds() : null;
+            const basis = domThresh?.basis || 'db';
+            const thresholds = domThresh?.thresholds || { basis: 'db', full: 35.0, mech: 47.0 };
+            const mode1Max = thresholds.full;
+            const mode2Max = thresholds.mech;
 
             const labels = keys.map(k => k + ' ~ ' + (k+selectedBinStep));
             const data = keys.map(k => bins[k] || 0);
 
-            // 乾球溫度時依設定的門檻點給予三色標記
+            // 當選取的溫度指標與架構基準相符時給予三色標記
+            const isMatchingMetric = (basis === 'wb' && selectedBinMetric === 'wb') || (basis !== 'wb' && selectedBinMetric === 'db');
+
             const bgColors = keys.map(k => {
-                if (selectedBinMetric === 'db') {
-                    if (k <= mode1DbMax) return '#10b981'; // 綠色: Mode 1 全直冷
-                    if (k <= mode2DbMax) return '#06b6d4'; // 藍色: Mode 2 輔助直冷
+                if (isMatchingMetric) {
+                    if (mode1Max != null && k <= mode1Max) return '#10b981'; // 綠色: Mode 1 全直冷
+                    if (mode2Max != null && k <= mode2Max) return '#06b6d4'; // 藍色: Mode 2 輔助直冷
                     return '#f59e0b'; // 黃色: Mode 3 機械製冷
                 }
                 return '#3b82f6';
@@ -429,7 +439,7 @@
                     data: {
                         labels,
                         datasets: [{
-                            label: selectedBinMetric === 'db' ? `發生時數 (綠: ≤${mode1DbMax}°C直冷, 藍: ≤${mode2DbMax}°C輔助, 黃: >${mode2DbMax}°C機械)` : '發生時數 (hrs)',
+                            label: isMatchingMetric ? `發生時數 (依 ${domThresh?.archName || ''} 門檻: 綠 ≤${mode1Max}°C直冷${mode2Max != null ? `, 藍 ≤${mode2Max}°C輔助, 黃 >${mode2Max}°C機械` : `, 黃 >${mode1Max}°C未達標`})` : '發生時數 (hrs)',
                             data,
                             backgroundColor: bgColors,
                             borderRadius: 4
@@ -450,9 +460,9 @@
                     const h = bins[k] || 0;
                     const pct = ((h / total) * 100).toFixed(1);
                     let badge = '';
-                    if (selectedBinMetric === 'db') {
-                        if (k <= mode1DbMax) badge = '<span class="text-[9px] font-black text-emerald-700 bg-emerald-100 px-1 py-0.2 rounded ml-1">Mode 1 直冷</span>';
-                        else if (k <= mode2DbMax) badge = '<span class="text-[9px] font-black text-teal-700 bg-teal-100 px-1 py-0.2 rounded ml-1">Mode 2 輔助</span>';
+                    if (isMatchingMetric) {
+                        if (mode1Max != null && k <= mode1Max) badge = '<span class="text-[9px] font-black text-emerald-700 bg-emerald-100 px-1 py-0.2 rounded ml-1">Mode 1 直冷</span>';
+                        else if (mode2Max != null && k <= mode2Max) badge = '<span class="text-[9px] font-black text-teal-700 bg-teal-100 px-1 py-0.2 rounded ml-1">Mode 2 輔助</span>';
                         else badge = '<span class="text-[9px] font-black text-amber-700 bg-amber-100 px-1 py-0.2 rounded ml-1">Mode 3 機械</span>';
                     }
                     html += '<tr class="border-b border-slate-100"><td>' + k + ' ~ ' + (k+selectedBinStep) + badge + '</td><td class="text-right font-bold">' + h + '</td><td class="text-right text-slate-500">' + pct + '%</td></tr>';
@@ -468,9 +478,11 @@
             const site = state.site;
             const labels = ['1月', '2月', '3月', '4月', '5月', '6月', '7月', '8月', '9月', '10月', '11月', '12月'];
 
-            const fcThresh = window.AppStore ? window.AppStore.getEffectiveFcThresholds() : { mode1DbMax: 30.0, mode2DbMax: 35.7 };
-            const mode1DbMax = fcThresh.mode1DbMax;
-            const mode2DbMax = fcThresh.mode2DbMax;
+            const domThresh = window.AppStore ? window.AppStore.dominantCduThresholds() : null;
+            const basis = domThresh?.basis || 'db';
+            const thresholds = domThresh?.thresholds || { basis: 'db', full: 35.0, mech: 47.0 };
+            const mode1Max = thresholds.full;
+            const mode2Max = thresholds.mech;
 
             const MONTH_HOURS_FC = [744, 672, 744, 720, 744, 720, 744, 744, 720, 744, 720, 744];
             const MONTH_START_FC = [];
@@ -484,18 +496,19 @@
 
             if (hourly.length >= 8760) {
                 for (let i = 0; i < 8760; i++) {
-                    const w = hourly[i] || { db: 25 };
+                    const w = hourly[i] || { db: 25, wb: 20 };
                     const m = hourToMonthFC(i);
-                    if (w.db <= mode1DbMax) {
+                    const val = (basis === 'wb') ? (w.wb ?? 20) : (w.db ?? 25);
+                    if (mode1Max != null && val <= mode1Max) {
                         mode1Monthly[m]++;
-                    } else if (w.db <= mode2DbMax) {
+                    } else if (mode2Max != null && val <= mode2Max) {
                         mode2Monthly[m]++;
                     } else {
                         mode3Monthly[m]++;
                     }
                 }
             } else {
-                for (let m = 0; m < 12; m++) mode1Monthly[m] = MONTH_HOURS_FC[m];
+                for (let m = 0; m < 12; m++) mode1Monthly[m] = (mode1Max != null) ? MONTH_HOURS_FC[m] : 0;
             }
 
             if (fcChart) fcChart.destroy();
@@ -504,9 +517,9 @@
                 data: {
                     labels,
                     datasets: [
-                        { label: `Mode 1 全直冷 (≤${mode1DbMax}°C)`, data: mode1Monthly, backgroundColor: '#10b981' },
-                        { label: `Mode 2 輔助冷卻 (${mode1DbMax}~${mode2DbMax}°C)`, data: mode2Monthly, backgroundColor: '#06b6d4' },
-                        { label: `Mode 3 機械製冷 (>${mode2DbMax}°C)`, data: mode3Monthly, backgroundColor: '#f59e0b' }
+                        { label: `Mode 1 全直冷 (${mode1Max != null ? `≤${mode1Max}°C` : '無'})`, data: mode1Monthly, backgroundColor: '#10b981' },
+                        { label: `Mode 2 輔助冷卻 (${mode2Max != null ? `${mode1Max}~${mode2Max}°C` : '無'})`, data: mode2Monthly, backgroundColor: '#06b6d4' },
+                        { label: `Mode 3 機械製冷 (${mode2Max != null ? `>${mode2Max}°C` : (mode1Max != null ? `>${mode1Max}°C` : '全年')})`, data: mode3Monthly, backgroundColor: '#f59e0b' }
                     ]
                 },
                 options: {
@@ -520,18 +533,6 @@
             });
         },
 
-        updateFcThreshold(key, val) {
-            if (isNaN(val)) return;
-            const state = window.AppStore.state;
-            state.assumptions_override = state.assumptions_override || {};
-            state.assumptions_override[key] = val;
-            if (key === 'nvidia_dsx_mode1_db_max_c') {
-                state.assumptions_override.nvidia_dsx_mode2_db_max_c = Number((val + 5.7).toFixed(1));
-            }
-            window.AppStore.notify();
-            this.render(document.getElementById('stepContent'));
-        },
-
         renderMonthlyTrends() {
             const ctx = document.getElementById('monthlyTrendChart');
             if (!ctx) return;
@@ -543,12 +544,13 @@
             const wbData = monthly.map(m => m.avgWB);
             const rhData = monthly.map(m => m.avgRH);
 
-            const fcThresh = window.AppStore ? window.AppStore.getEffectiveFcThresholds() : { mode1DbMax: 30.0, mode2DbMax: 35.7 };
-            const mode1DbMax = fcThresh.mode1DbMax;
-            const mode2DbMax = fcThresh.mode2DbMax;
+            const domThresh = window.AppStore ? window.AppStore.dominantCduThresholds() : null;
+            const thresholds = domThresh?.thresholds || { basis: 'db', full: 35.0, mech: 47.0 };
+            const mode1Max = thresholds.full;
+            const mode2Max = thresholds.mech;
 
-            const mode1Line = new Array(12).fill(mode1DbMax);
-            const mode2Line = new Array(12).fill(mode2DbMax);
+            const mode1Line = mode1Max != null ? new Array(12).fill(mode1Max) : [];
+            const mode2Line = mode2Max != null ? new Array(12).fill(mode2Max) : [];
 
             if (trendChart) trendChart.destroy();
             trendChart = new Chart(ctx, {
@@ -558,8 +560,8 @@
                     datasets: [
                         { label: '乾球均溫 DB (°C)', data: dbData, borderColor: '#ef4444', backgroundColor: 'rgba(239, 68, 68, 0.1)', tension: 0.3, yAxisID: 'y' },
                         { label: '濕球均溫 WB (°C)', data: wbData, borderColor: '#0284c7', backgroundColor: 'rgba(2, 132, 199, 0.1)', tension: 0.3, yAxisID: 'y' },
-                        { label: `Mode 1 全直冷門檻 (${mode1DbMax}°C)`, data: mode1Line, borderColor: '#10b981', borderDash: [6, 4], pointRadius: 0, borderWidth: 2, yAxisID: 'y' },
-                        { label: `Mode 2 輔助冷卻上限 (${mode2DbMax}°C)`, data: mode2Line, borderColor: '#06b6d4', borderDash: [4, 4], pointRadius: 0, borderWidth: 2, yAxisID: 'y' },
+                        ...(mode1Max != null ? [{ label: `Mode 1 全直冷門檻 (${mode1Max}°C)`, data: mode1Line, borderColor: '#10b981', borderDash: [6, 4], pointRadius: 0, borderWidth: 2, yAxisID: 'y' }] : []),
+                        ...(mode2Max != null ? [{ label: `Mode 2 輔助冷卻上限 (${mode2Max}°C)`, data: mode2Line, borderColor: '#06b6d4', borderDash: [4, 4], pointRadius: 0, borderWidth: 2, yAxisID: 'y' }] : []),
                         { label: '平均濕度 RH (%)', data: rhData, borderColor: '#8b5cf6', borderDash: [2, 2], tension: 0.3, yAxisID: 'y1' }
                     ]
                 },

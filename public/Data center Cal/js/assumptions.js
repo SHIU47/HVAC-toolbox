@@ -50,8 +50,6 @@ const ASSUMPTIONS = {
   nvidia_dsx_mt_supply_c:         { val: 22.0,  unit: '°C',     label: 'NVIDIA DSX MTFW 中溫一次側供水基準', ref: 'NVIDIA DSX BOD Rev5 Section 6.9.2 (71.6°F)' },
   nvidia_dsx_mode1_db_max_c:      { val: 34.8,  unit: '°C',     label: 'NVIDIA DSX Full Free Cooling 乾球上限', ref: 'NVIDIA DSX Facilities Guide v2.0 p.42' },
   nvidia_dsx_mode2_db_max_c:      { val: 40.5,  unit: '°C',     label: 'NVIDIA DSX Trim Cooling 乾球上限', ref: 'NVIDIA DSX Facilities Guide v2.0 p.42' },
-  // [P1-4 審查] 保留供測試與相容性參考；P4-1 起 liquid_dry_cooler_trim 已改用動態物理門檻 (FWS回 - dcApproach - pheApproach)
-  nvidia_dsx_mode2_offset_c:      { val: 5.7,   unit: '°C',     label: 'Mode 2 Trim 區間寬度 (保留供相容)', ref: '40.5 - 34.8 = 5.7°C' },
   trim_chw_dt_default_c:          { val: 5.0,   unit: '°C',     label: 'Trim 冰機蒸發器設計溫差 (ΔT)', ref: 'AHRI 550/590 標準工況 5°C (44-54°F)' },
   cdw_dt_design_c:                { val: 5.0,   unit: '°C',     label: '水冷冰機冷凝冷卻水設計溫差 (ΔT)', ref: 'AHRI 550/590 標準工況冷卻水 30→35°C' },
 

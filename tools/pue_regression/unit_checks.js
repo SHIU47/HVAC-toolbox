@@ -878,10 +878,6 @@ function freshCtx() {
     assert(ASSUMPTIONS.district_chw_cop, 'district_chw_cop must exist');
     assert.strictEqual(ASSUMPTIONS.district_chw_cop.val, 5.0);
     assert(ASSUMPTIONS.district_chw_cop.ref, 'must have ref');
-
-    assert(ASSUMPTIONS.nvidia_dsx_mode2_offset_c, 'nvidia_dsx_mode2_offset_c must exist');
-    assert.strictEqual(ASSUMPTIONS.nvidia_dsx_mode2_offset_c.val, 5.7);
-    assert(ASSUMPTIONS.nvidia_dsx_mode2_offset_c.ref, 'must have ref');
   });
 
   test('C-6 M9 IDs generated in copySU loop are all strictly unique', () => {
@@ -1123,20 +1119,20 @@ function freshCtx() {
 })();
 
 // ═══════════════════════════════════════════════════════════════
-// P1-4 getEffectiveFcThresholds and nvidia_dsx_mode2_offset_c audit
+// F-8 dominantCduThresholds replaces getEffectiveFcThresholds
 // ═══════════════════════════════════════════════════════════════
 (function () {
   const ctx = freshCtx();
   const { AppStore: S, ASSUMPTIONS } = ctx;
 
-  test('P1-4 getEffectiveFcThresholds is retained and callable by view_weather.js', () => {
-    assert(typeof S.getEffectiveFcThresholds === 'function', 'getEffectiveFcThresholds must exist for view_weather.js');
-    const thresh = S.getEffectiveFcThresholds();
-    assert(typeof thresh.mode1DbMax === 'number' && typeof thresh.mode2DbMax === 'number');
-  });
-
-  test('P1-4 nvidia_dsx_mode2_offset_c is retained for schematic_series_trim until P4-1', () => {
-    assert(ASSUMPTIONS.nvidia_dsx_mode2_offset_c, 'nvidia_dsx_mode2_offset_c must be retained until P4-1');
+  test('F-8 dominantCduThresholds returns thresholds from dominant CDU unit and legacy functions are deleted', () => {
+    assert.strictEqual(S.getEffectiveFcThresholds, undefined, 'getEffectiveFcThresholds must be deleted');
+    assert.strictEqual(ASSUMPTIONS.nvidia_dsx_mode2_offset_c, undefined, 'nvidia_dsx_mode2_offset_c must be deleted');
+    assert(typeof S.dominantCduThresholds === 'function', 'dominantCduThresholds must exist');
+    const dom = S.dominantCduThresholds();
+    assert(dom && dom.thresholds, 'dominantCduThresholds must return thresholds');
+    assert(dom.archName, 'dominantCduThresholds must return archName');
+    assert(dom.basis, 'dominantCduThresholds must return basis');
   });
 })();
 
@@ -1449,11 +1445,11 @@ function freshCtx() {
     }
   });
 
-  test('P2-5 getEffectiveFcThresholds respects isTrim flag', () => {
+  test('P2-5 dominantCduThresholds respects dominant architecture thresholds', () => {
     const S = ctx.AppStore;
-    const thresh = S.getEffectiveFcThresholds();
-    assert(typeof thresh.mode1DbMax === 'number', 'mode1DbMax must be number');
-    assert(typeof thresh.mode2DbMax === 'number', 'mode2DbMax must be number');
+    const dom = S.dominantCduThresholds();
+    assert(typeof dom.thresholds.full === 'number', 'full threshold must be number');
+    assert(typeof dom.thresholds.mech === 'number', 'mech threshold must be number');
   });
 })();
 
@@ -2388,6 +2384,38 @@ function freshCtx() {
     const html = win.document.getElementById('stepContent').innerHTML;
     assert(html.includes('全年 2 h 超出冷卻能力（供水溫上升）'), 'Step 4 HTML must display Kaohsiung 2 h deficit warning for pure dry cooler');
     assert(!html.includes('100% 乾式自然風冷'), 'Step 4 HTML must not contain 100% 乾式自然風冷');
+  });
+})();
+
+// ── F-8: Step 1 dominant CDU thresholds and Mode 3 mechanical hours ────────
+(function () {
+  const { buildWindow } = require('./dom_harness.js');
+  test('F-8 Step 1 displays dominant CDU thresholds and Mode 3 mechanical hours drops to 0 in default project', async () => {
+    const win = buildWindow();
+    await win.App.init();
+
+    // 1. Default Kaohsiung project: dominant arch is dry_cooler_hx (dry_cooler_trim)
+    const dom = win.AppStore.dominantCduThresholds();
+    assert.strictEqual(dom.basis, 'db');
+    assert.strictEqual(dom.thresholds.full, 35.0, 'Mode 1 full FC threshold must be 35.0°C (42 - 5 - 2)');
+    assert.strictEqual(dom.thresholds.mech, 47.0, 'Mode 2 mech threshold must be 47.0°C (54 - 5 - 2)');
+
+    win.App.renderStep(1);
+    const html = win.document.getElementById('stepContent').innerHTML;
+    assert(html.includes('依 乾冷器 + Trim 冰機 門檻') || html.includes('依') && html.includes('門檻'), 'Step 1 must cite dominant arch thresholds');
+    assert(html.includes('35°C') || html.includes('35.0°C'), 'Step 1 must display Mode 1 threshold');
+    assert(html.includes('47°C') || html.includes('47.0°C'), 'Step 1 must display Mode 2 threshold');
+    // Mode 3 mechanical hours is 0 (Kaohsiung max DB is 36.4°C <= 47.0°C)
+    assert(html.includes('>0 <span class="text-xs font-bold text-amber-700">小時</span>') || html.includes('>0 小時<'), 'Mode 3 hours must drop to 0');
+
+    // 2. Switch dominant CDU to cooling_tower_hx (wet bulb basis)
+    const du = win.AppStore.state.designUnits[0];
+    du.plantDesign.cduSystem.architecture = 'cooling_tower_hx';
+    const domWb = win.AppStore.dominantCduThresholds();
+    assert.strictEqual(domWb.basis, 'wb');
+    win.App.renderStep(1);
+    const htmlWb = win.document.getElementById('stepContent').innerHTML;
+    assert(htmlWb.includes('WB'), 'Step 1 must reflect WB basis for closed cooling tower');
   });
 })();
 
