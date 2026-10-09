@@ -1,0 +1,1658 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>空氣線圖 Pro</title>
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  <style>
+    :root {
+      --bg: #F3F5F8; --card: #FFFFFF; --line: #E4E8EE; --line-strong: #CFD6DF;
+      --ink: #0F172A; --ink-2: #334155; --muted: #64748B; --faint: #94A3B8;
+      --accent: #2563EB; --accent-soft: #EEF4FF;
+      --pass: #15803D; --pass-soft: #ECFDF3; --warn: #B45309; --warn-soft: #FFF7E6; --fail: #DC2626; --fail-soft: #FEF2F2;
+      --assume: #475569; --assume-soft: #F1F5F9;
+      --c-heat: #E11D48; --c-cool: #2563EB; --c-wash: #0D9488; --c-steam: #7C3AED; --c-fan: #D97706; --c-mix: #64748B;
+      --radius: 12px;
+      --font: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang TC", "Microsoft JhengHei", "Noto Sans TC", sans-serif;
+      --mono: "JetBrains Mono", "SFMono-Regular", Consolas, monospace;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    [hidden] { display: none !important; }
+    button, input, select { font: inherit; color: inherit; }
+    body { background: var(--bg); color: var(--ink); font-family: var(--font); font-size: 14px; line-height: 1.5; -webkit-font-smoothing: antialiased; }
+    td, .kpi-v, .iw input, .ro b, .readout b { font-variant-numeric: tabular-nums; }
+
+    .topbar { position: sticky; top: 0; z-index: 50; background: rgba(255,255,255,0.92); backdrop-filter: blur(8px); border-bottom: 1px solid var(--line);
+      display: flex; align-items: center; gap: 20px; padding: 10px 24px; flex-wrap: wrap; }
+    .brand { display: flex; align-items: center; gap: 10px; }
+    .logo { width: 34px; height: 34px; border-radius: 9px; background: var(--accent); color: #fff; display: grid; place-items: center; }
+    .app-title { font-size: 15px; font-weight: 700; }
+    .app-sub { font-size: 12px; color: var(--muted); }
+    .project { display: flex; gap: 8px; flex: 1; min-width: 260px; }
+    .project input { border: 1px solid transparent; background: #F1F4F8; border-radius: 8px; padding: 7px 10px; font-size: 13px; outline: none; min-width: 0; }
+    .project input:focus { border-color: var(--accent); background: #fff; }
+    .project .pn { flex: 1.2; font-weight: 600; } .project .ps { flex: 1; color: var(--ink-2); }
+    .actions { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+    .autosave { font-size: 12px; color: var(--faint); margin-right: 4px; }
+    .btn { border: 1px solid var(--line-strong); background: #fff; color: var(--ink-2); border-radius: 8px; padding: 7px 12px; font-size: 13px; font-weight: 600; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }
+    .btn:hover { background: #F8FAFC; border-color: #B8C2CE; }
+    .btn.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+    .btn.primary:hover { background: #1D4ED8; }
+    .btn.quiet { border-color: transparent; background: transparent; color: var(--muted); }
+    .btn.quiet:hover { background: #EEF1F5; color: var(--ink); }
+    .btn.sm { padding: 4px 9px; font-size: 12px; }
+    .menu-wrap { position: relative; }
+    .menu { position: absolute; right: 0; top: calc(100% + 6px); background: #fff; border: 1px solid var(--line); border-radius: 10px; box-shadow: 0 10px 30px rgba(15,23,42,.12); padding: 6px; min-width: 260px; z-index: 80; }
+    .menu button { display: block; width: 100%; text-align: left; border: none; background: none; padding: 8px 10px; border-radius: 7px; cursor: pointer; }
+    .menu button:hover { background: var(--accent-soft); }
+    .menu button b { display: block; font-size: 13px; } .menu button span { font-size: 12px; color: var(--muted); }
+
+    /* 版面：左側可收合輸入欄 + 線圖為主的大畫面 */
+    .app { display: grid; grid-template-columns: 400px minmax(0, 1fr); height: calc(100vh - var(--topH, 57px)); }
+    .app.side-off { grid-template-columns: minmax(0, 1fr); }
+    .side { overflow-y: auto; background: #fff; border-right: 1px solid var(--line); min-width: 0; scrollbar-width: thin; }
+    .app.side-off .side { display: none; }
+    .side-h { position: sticky; top: 0; z-index: 6; background: rgba(255,255,255,.96); backdrop-filter: blur(6px); display: flex; align-items: center; gap: 8px; padding: 10px 12px 10px 16px; border-bottom: 1px solid var(--line); }
+    .side-h b { font-size: 14px; } .side-h span { font-size: 12px; color: var(--muted); }
+    .side-h .btn { margin-left: auto; }
+    .side .card { border: none; border-bottom: 1px solid var(--line); border-radius: 0; }
+    .side .grid.g3 { grid-template-columns: 1fr 1fr; }
+    .side-open-btn { display: none; }
+    .app.side-off .side-open-btn { display: inline-flex; }
+    .main { overflow-y: auto; min-width: 0; padding: 14px 18px 40px; scrollbar-width: thin; }
+    .results { display: flex; flex-direction: column; gap: 14px; min-width: 0; }
+    .stage { background: #fff; border: 1px solid var(--line); border-radius: var(--radius); display: flex; flex-direction: column; overflow: hidden; }
+    .st-bar { display: flex; align-items: center; gap: 12px; padding: 10px 14px; border-bottom: 1px solid var(--line); flex-wrap: wrap; }
+    .st-bar .seg button { display: inline-flex; align-items: center; gap: 6px; }
+    .vpill { border: none; display: inline-flex; align-items: center; gap: 6px; padding: 5px 12px; border-radius: 999px; font-weight: 700; font-size: 13px; cursor: pointer; white-space: nowrap; }
+    .vpill.pass { background: var(--pass-soft); color: var(--pass); } .vpill.warn { background: var(--warn-soft); color: var(--warn); } .vpill.fail { background: var(--fail-soft); color: var(--fail); }
+    .kin { display: flex; gap: 6px 22px; margin-left: auto; flex-wrap: wrap; }
+    .kin > div { font-size: 11.5px; color: var(--muted); line-height: 1.25; white-space: nowrap; }
+    .kin b { display: block; font-size: 19px; color: var(--ink); font-weight: 800; letter-spacing: -.3px; }
+    .kin b small { font-size: 11px; color: var(--muted); font-weight: 600; margin: 0 2px; }
+    .kin .sup.ok b { color: var(--pass); } .kin .sup.bad b { color: var(--fail); }
+    .st-issues { display: flex; gap: 4px 16px; flex-wrap: wrap; padding: 6px 14px; font-size: 12.5px; font-weight: 600; background: #FCFCFD; border-bottom: 1px solid var(--line); cursor: pointer; max-height: 52px; overflow: hidden; }
+    .st-issues .f { color: var(--fail); } .st-issues .w { color: var(--warn); }
+    .chart-area { height: max(460px, calc(100vh - var(--topH, 57px) - 150px)); min-height: 0; }
+    .chart-area svg { width: 100%; height: 100%; display: block; user-select: none; }
+    .st-foot { display: flex; justify-content: space-between; align-items: center; gap: 8px 14px; padding: 7px 14px; border-top: 1px solid var(--line); flex-wrap: wrap; background: #FCFCFD; }
+    .st-foot .readout { margin: 0; background: none; padding: 0; flex: 1; min-width: 300px; }
+    @media (max-width: 900px) {
+      .app { display: block; height: auto; }
+      .side { position: fixed; z-index: 90; top: 0; bottom: 0; left: 0; width: min(92vw, 400px); box-shadow: 0 0 40px rgba(15,23,42,.25); }
+      .main { overflow: visible; padding: 12px; }
+      .chart-area { height: 440px; }
+      .kin { margin-left: 0; }
+    }
+    .sec { padding: 16px 18px 18px; }
+    .sec-h { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; }
+    .sec-h .no { width: 24px; height: 24px; border-radius: 50%; background: var(--accent-soft); color: var(--accent); font-size: 12px; font-weight: 700; display: grid; place-items: center; flex: none; }
+    .sec-h h2 { font-size: 15px; font-weight: 700; }
+    .sec-h p { font-size: 12px; color: var(--muted); }
+    .sec-h .right { margin-left: auto; }
+    .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px 14px; }
+    .grid.g3 { grid-template-columns: repeat(3, 1fr); }
+    .grid > * { min-width: 0; }
+    .field.full { grid-column: 1 / -1; }
+    .field label { display: block; font-size: 13px; font-weight: 600; color: var(--ink-2); margin-bottom: 5px; }
+    .iw { display: flex; align-items: center; height: 38px; border: 1px solid var(--line-strong); border-radius: 8px; background: #fff; transition: border-color .15s, box-shadow .15s; }
+    .iw:focus-within { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15); }
+    .iw input, .iw select { flex: 1; min-width: 0; width: 100%; height: 100%; border: none; background: transparent; padding: 0 8px 0 11px; font-size: 14.5px; font-weight: 600; outline: none; }
+    .iw select { cursor: pointer; }
+    .iw .u { flex: none; padding-right: 10px; font-size: 12px; color: var(--muted); white-space: nowrap; }
+    .iw.bad { border-color: var(--fail); background: var(--fail-soft); }
+    .hint { font-size: 12px; color: var(--muted); margin-top: 4px; line-height: 1.45; }
+    .seg { display: inline-flex; background: #EEF1F5; border-radius: 9px; padding: 3px; gap: 2px; }
+    .seg button { border: none; background: transparent; padding: 5px 12px; border-radius: 7px; font-size: 13px; font-weight: 600; color: var(--muted); cursor: pointer; }
+    .seg button.on { background: #fff; color: var(--ink); box-shadow: 0 1px 3px rgba(15,23,42,.12); }
+    .seg.full { display: flex; } .seg.full button { flex: 1; }
+    .ro { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px 10px; margin-top: 10px; font-size: 12px; color: var(--muted); background: #F6F8FB; border-radius: 8px; padding: 8px 10px; }
+    .ro b { color: var(--ink); font-weight: 700; }
+    .note { margin-top: 12px; font-size: 12.5px; color: var(--ink-2); background: #F6F8FB; border-radius: 8px; padding: 9px 11px; line-height: 1.55; }
+    .note.assume { background: var(--assume-soft); border-left: 3px solid var(--assume); }
+    .chk-inline { display: flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 600; color: var(--ink-2); cursor: pointer; }
+
+    .season-cols { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+    .season-cols > div { min-width: 0; }
+    .scol-h { font-size: 13px; font-weight: 700; margin-bottom: 8px; display: flex; align-items: center; gap: 6px; }
+    .scol-h i { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
+    .scol .field + .field { margin-top: 10px; }
+    .scol .ro { grid-template-columns: 1fr 1fr; }
+    @media (max-width: 520px) { .season-cols { grid-template-columns: 1fr; } }
+
+    /* 處理段 */
+    .stages { display: flex; flex-direction: column; gap: 10px; }
+    .stg { border: 1px solid var(--line); border-left: 4px solid var(--tc, var(--line-strong)); border-radius: 10px; background: #fff; }
+    .stg.off { opacity: .55; }
+    .stg.dragging { opacity: .4; }
+    .stg.drop-target { box-shadow: 0 -3px 0 var(--accent); }
+    .stg-h { display: flex; align-items: center; gap: 8px; padding: 8px 10px; border-bottom: 1px solid var(--line); }
+    .stg-h .grip { cursor: grab; color: var(--faint); font-size: 14px; letter-spacing: -2px; user-select: none; padding: 0 2px; }
+    .stg-h .idx { width: 20px; height: 20px; border-radius: 50%; background: var(--tc); color: #fff; font-size: 11px; font-weight: 800; display: grid; place-items: center; flex: none; }
+    .stg-h input.nm { flex: 1; min-width: 0; border: 1px solid transparent; border-radius: 6px; padding: 3px 6px; font-weight: 700; font-size: 14px; background: transparent; outline: none; }
+    .stg-h input.nm:focus { border-color: var(--accent); background: #fff; }
+    .stg-h .ty { font-size: 11.5px; font-weight: 700; color: var(--tc); white-space: nowrap; }
+    .sw { display: inline-flex; gap: 3px; }
+    .sw label { font-size: 11.5px; font-weight: 700; border: 1px solid var(--line-strong); border-radius: 6px; padding: 1px 6px; cursor: pointer; color: var(--faint); user-select: none; }
+    .sw input { display: none; }
+    .sw label.on { background: var(--ink); border-color: var(--ink); color: #fff; }
+    .ib { border: none; background: transparent; color: var(--faint); cursor: pointer; width: 24px; height: 24px; border-radius: 6px; font-size: 13px; display: grid; place-items: center; }
+    .ib:hover { background: #EEF1F5; color: var(--ink); }
+    .ib.del:hover { background: var(--fail-soft); color: var(--fail); }
+    .stg-b { padding: 10px 12px 12px; }
+    .stg-b .grid { gap: 10px 10px; }
+    .stg-b .field label { font-size: 12px; margin-bottom: 3px; }
+    .stg-b .iw { height: 34px; } .stg-b .iw input, .stg-b .iw select { font-size: 13.5px; }
+    .stg-r { display: flex; flex-wrap: wrap; gap: 4px 12px; padding: 7px 12px; border-top: 1px dashed var(--line); font-size: 12px; color: var(--muted); }
+    .stg-r b { color: var(--ink); font-weight: 700; }
+    .stg-r .e { color: var(--fail); font-weight: 700; } .stg-r .w { color: var(--warn); font-weight: 700; }
+    .add-row { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 12px; }
+    .add-row .btn { padding: 5px 10px; font-size: 12.5px; }
+    .add-row .btn i { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
+
+    details.adv > summary { list-style: none; cursor: pointer; padding: 14px 18px; display: flex; align-items: center; font-weight: 700; font-size: 14px; }
+    details.adv > summary::-webkit-details-marker { display: none; }
+    details.adv > summary .sum { font-weight: 400; font-size: 12px; color: var(--muted); margin-left: auto; }
+    details.adv > summary::after { content: '▸'; color: var(--faint); margin-left: 10px; }
+    details.adv[open] > summary::after { content: '▾'; }
+    details.adv .adv-body { padding: 0 18px 18px; display: flex; flex-direction: column; gap: 14px; }
+    table.wt { width: 100%; border-collapse: collapse; font-size: 13px; }
+    table.wt th { font-size: 12px; color: var(--muted); font-weight: 600; text-align: left; padding: 4px 6px; }
+    table.wt td { padding: 4px 6px; }
+    table.wt .iw { height: 32px; }
+
+    /* 結果 */
+    .res-head { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+    .res-head .seg button { padding: 6px 16px; }
+    .res-head .sv { display: inline-flex; align-items: center; gap: 5px; font-size: 12px; font-weight: 700; }
+    .dotv { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
+    .dotv.pass { background: var(--pass); } .dotv.warn { background: var(--warn); } .dotv.fail { background: var(--fail); }
+
+    .verdict { padding: 16px 20px; border-left: 5px solid var(--assume); }
+    .verdict.pass { border-left-color: var(--pass); } .verdict.warn { border-left-color: var(--warn); } .verdict.fail { border-left-color: var(--fail); }
+    .v-head { display: flex; align-items: center; gap: 12px; }
+    .v-icon { width: 34px; height: 34px; border-radius: 50%; display: grid; place-items: center; font-weight: 800; font-size: 16px; color: #fff; flex: none; background: var(--assume); }
+    .verdict.pass .v-icon { background: var(--pass); } .verdict.warn .v-icon { background: var(--warn); } .verdict.fail .v-icon { background: var(--fail); }
+    .v-title { font-size: 17px; font-weight: 800; }
+    .v-sub { font-size: 13px; color: var(--muted); }
+    .v-list { margin: 10px 0 0 46px; font-size: 13px; color: var(--ink-2); display: flex; flex-direction: column; gap: 3px; }
+    .v-list .f { color: var(--fail); font-weight: 700; } .v-list .w { color: var(--warn); font-weight: 700; }
+
+    .kpis { display: grid; grid-template-columns: repeat(4, 1fr); }
+    .kpi { padding: 14px 18px; min-width: 0; }
+    .kpi + .kpi { border-left: 1px solid var(--line); }
+    .kpi-l { font-size: 12.5px; color: var(--muted); font-weight: 600; }
+    .kpi-v { font-size: 26px; font-weight: 800; letter-spacing: -0.5px; line-height: 1.2; margin-top: 2px; white-space: nowrap; }
+    .kpi-v small { font-size: 13px; font-weight: 600; color: var(--muted); margin-left: 3px; letter-spacing: 0; }
+    .kpi-v.bad { color: var(--fail); } .kpi-v.good { color: var(--pass); }
+    .kpi-s { font-size: 12px; color: var(--muted); margin-top: 2px; }
+    @media (max-width: 1280px) { .kpis { grid-template-columns: repeat(2, 1fr); } .kpi:nth-child(3) { border-left: none; } .kpi:nth-child(n+3) { border-top: 1px solid var(--line); } }
+
+    .panel { padding: 16px 20px; }
+    .panel-h { display: flex; justify-content: space-between; align-items: center; gap: 10px; margin-bottom: 10px; flex-wrap: wrap; }
+    .panel-h h3 { font-size: 14px; font-weight: 700; }
+    .panel-h span.s { font-size: 12px; color: var(--muted); }
+    .toggles { display: flex; flex-wrap: wrap; gap: 4px 12px; font-size: 12px; color: var(--ink-2); }
+    .toggles label { display: flex; align-items: center; gap: 4px; cursor: pointer; }
+    .chart-box { position: relative; }
+    .chart-box svg { width: 100%; height: auto; display: block; user-select: none; }
+    .readout { display: flex; flex-wrap: wrap; gap: 2px 14px; font-size: 12.5px; color: var(--muted); min-height: 22px; margin-top: 6px; padding: 4px 8px; background: #F6F8FB; border-radius: 7px; }
+    .readout b { color: var(--ink); }
+    .readout .t { color: var(--ink); font-weight: 700; }
+    .legend { display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: 12px; color: var(--muted); margin-top: 8px; }
+    .legend i { display: inline-block; width: 14px; height: 3px; border-radius: 2px; margin-right: 5px; vertical-align: 3px; }
+    .legend i.zone { height: 10px; vertical-align: -1px; background: rgba(37,99,235,.12); border: 1px dashed var(--accent); }
+
+    .tabs { display: flex; gap: 2px; border-bottom: 1px solid var(--line); margin: -4px -20px 12px; padding: 0 16px; overflow-x: auto; }
+    .tabs button { border: none; background: none; padding: 9px 12px; font-size: 13px; font-weight: 600; color: var(--muted); cursor: pointer; border-bottom: 2px solid transparent; white-space: nowrap; }
+    .tabs button.on { color: var(--accent); border-bottom-color: var(--accent); }
+    .tbl-wrap { overflow-x: auto; margin: 0 -20px; padding: 0 20px; }
+    table.tb { width: 100%; border-collapse: collapse; font-size: 13px; }
+    table.tb th { text-align: right; font-size: 12px; color: var(--muted); font-weight: 600; padding: 6px 8px; border-bottom: 1px solid var(--line); white-space: nowrap; vertical-align: bottom; }
+    table.tb td { text-align: right; padding: 7px 8px; border-bottom: 1px solid var(--line); white-space: nowrap; }
+    table.tb th:first-child, table.tb td:first-child { text-align: left; }
+    table.tb td.l, table.tb th.l { text-align: left; }
+    table.tb tbody tr:hover { background: #F8FAFC; }
+    table.tb tr.offrow td { color: var(--faint); }
+    table.tb .sub { display: block; font-size: 11px; color: var(--muted); font-weight: 500; }
+    .pn { display: inline-grid; place-items: center; width: 20px; height: 20px; border-radius: 50%; font-size: 11px; font-weight: 800; color: #fff; background: var(--ink-2); margin-right: 6px; vertical-align: -1px; }
+    .tag { display: inline-block; font-size: 11px; font-weight: 800; letter-spacing: .3px; padding: 1px 8px; border-radius: 999px; }
+    .tag.ok { background: var(--pass-soft); color: var(--pass); } .tag.bad { background: var(--fail-soft); color: var(--fail); }
+    .tag.warn { background: var(--warn-soft); color: var(--warn); } .tag.off { background: #EEF1F5; color: var(--muted); }
+
+    /* 處理段清單 */
+    .plist { display: flex; flex-direction: column; }
+    .prow { display: grid; grid-template-columns: minmax(160px, 260px) minmax(0, 1fr); gap: 12px 24px; align-items: center; padding: 14px 6px; border-top: 1px solid var(--line); }
+    .prow .mg { grid-column: 1 / -1; padding-left: 30px; }
+    .prow:first-child { border-top: none; }
+    .prow:hover { background: #FAFBFC; }
+    .pname { display: flex; align-items: flex-start; gap: 10px; min-width: 0; }
+    .pname .pn { margin: 2px 0 0; flex: none; }
+    .pname b { font-size: 14.5px; }
+    .pname small { display: block; color: var(--muted); font-size: 12px; }
+    .prow.off { grid-template-columns: 1fr; padding: 9px 6px; }
+    .prow.off .pname b { color: var(--muted); font-weight: 600; }
+    .prow.off .pname small { display: inline; margin-left: 4px; }
+    .prow.off .pn { opacity: .55; }
+    .io { display: flex; align-items: center; gap: 8px; min-width: 0; max-width: 560px; }
+    .sc { flex: none; border: 1px solid var(--line); border-radius: 8px; padding: 5px 10px; font-size: 13px; line-height: 1.3; background: #F8FAFC; white-space: nowrap; font-variant-numeric: tabular-nums; }
+    .sc b { font-size: 15px; } .sc small { display: block; color: var(--muted); font-size: 11.5px; }
+    .sc.out { background: #fff; border-color: var(--tc); box-shadow: inset 3px 0 0 var(--tc); }
+    .dl { flex: 1; min-width: 70px; display: flex; flex-direction: column; align-items: center; font-size: 11.5px; color: var(--ink-2); font-weight: 600; font-variant-numeric: tabular-nums; position: relative; white-space: nowrap; }
+    .dl span:first-child { padding-bottom: 5px; }
+    .dl span:last-child { padding-top: 5px; color: var(--muted); }
+    .dl::before { content: ''; position: absolute; left: 0; right: 7px; top: 50%; height: 2px; background: var(--tc); border-radius: 2px; }
+    .dl::after { content: ''; position: absolute; right: 0; top: calc(50% - 5px); border: 5px solid transparent; border-left: 8px solid var(--tc); border-right: none; }
+    .mg { display: grid; grid-template-columns: repeat(auto-fill, minmax(128px, 1fr)); gap: 10px 18px; min-width: 0; }
+    .m { min-width: 0; }
+    .m small { display: block; font-size: 11.5px; color: var(--muted); font-weight: 600; }
+    .m b { font-size: 16.5px; font-weight: 800; font-variant-numeric: tabular-nums; white-space: nowrap; }
+    .m b i { font-style: normal; font-size: 11.5px; color: var(--muted); font-weight: 600; margin: 0 2px; }
+    .m span { display: block; font-size: 11.5px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .m.warn b { color: var(--warn); } .m.fail b { color: var(--fail); }
+    .shr { height: 4px; background: #EEF1F5; border-radius: 2px; margin-top: 3px; max-width: 110px; } .shr i { display: block; height: 100%; background: var(--c-cool); border-radius: 2px; }
+    .pchips { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: 6px; }
+    .prow:not(.off) .pchips { padding-left: 30px; }
+    .pc { font-size: 12px; font-weight: 600; padding: 2px 10px; border-radius: 999px; background: #F1F5F9; color: var(--ink-2); }
+    .pc.warn { background: var(--warn-soft); color: var(--warn); } .pc.fail { background: var(--fail-soft); color: var(--fail); }
+    @media (max-width: 700px) { .prow { grid-template-columns: 1fr; } .prow .mg, .prow:not(.off) .pchips { padding-left: 0; } }
+    @media print { .prow { grid-template-columns: 1fr 1.4fr; break-inside: avoid; } .prow .mg { grid-column: 1 / -1; grid-template-columns: repeat(6, 1fr); } }
+    .empty { text-align: center; padding: 34px 20px; display: flex; flex-direction: column; align-items: center; gap: 10px; }
+    .empty b { font-size: 15px; } .empty p { max-width: 520px; color: var(--ink-2); font-size: 13px; }
+    .prog { width: 280px; height: 8px; background: #EEF1F5; border-radius: 4px; overflow: hidden; } .prog i { display: block; height: 100%; background: var(--accent); transition: width .2s; }
+    .ann-head { display: flex; align-items: center; gap: 6px 12px; flex-wrap: wrap; margin-bottom: 12px; font-size: 12.5px; color: var(--muted); }
+    .ann-head b { font-size: 15px; color: var(--ink); }
+    .ann-kpi { padding: 12px 14px; background: #FAFBFC; border: 1px solid var(--line); border-radius: 10px; }
+    .ann-chart { margin: 14px 0 6px; }
+    .checks { list-style: none; display: flex; flex-direction: column; }
+    .chk { display: flex; gap: 12px; padding: 9px 0; border-top: 1px solid var(--line); }
+    .chk:first-child { border-top: none; }
+    .chk .dot { width: 22px; height: 22px; border-radius: 50%; display: grid; place-items: center; font-size: 12px; font-weight: 800; color: #fff; flex: none; margin-top: 1px; }
+    .chk.pass .dot { background: var(--pass); } .chk.warn .dot { background: var(--warn); } .chk.fail .dot { background: var(--fail); }
+    .chk.info .dot { background: #fff; color: var(--assume); border: 1.5px solid var(--assume); }
+    .chk-t { font-weight: 700; font-size: 13.5px; }
+    .chk-t .lvl { font-size: 11px; font-weight: 800; letter-spacing: .5px; margin-left: 6px; }
+    .chk.pass .lvl { color: var(--pass); } .chk.warn .lvl { color: var(--warn); } .chk.fail .lvl { color: var(--fail); } .chk.info .lvl { color: var(--assume); }
+    .chk-v { font-size: 13px; color: var(--ink-2); }
+    .chk-d { font-size: 12px; color: var(--muted); }
+
+    details.more > summary { list-style: none; cursor: pointer; padding: 14px 20px; font-weight: 700; display: flex; justify-content: space-between; }
+    details.more > summary::-webkit-details-marker { display: none; }
+    details.more > summary::after { content: '展開 ▸'; font-weight: 500; font-size: 12px; color: var(--muted); }
+    details.more[open] > summary::after { content: '收合 ▾'; }
+    .notes { padding: 0 20px 18px; font-size: 12.5px; color: var(--ink-2); display: flex; flex-direction: column; gap: 6px; line-height: 1.65; }
+    .notes h4 { font-size: 13px; margin-top: 6px; color: var(--ink); }
+    .notes code { font-family: var(--mono); font-size: 12.5px; background: #F1F4F8; padding: 1px 5px; border-radius: 4px; }
+
+    .toast { position: fixed; bottom: 24px; left: 50%; transform: translate(-50%, 10px); background: var(--ink); color: #fff; padding: 10px 18px; border-radius: 10px; font-size: 13px; font-weight: 600; opacity: 0; pointer-events: none; transition: all .25s; z-index: 100; }
+    .toast.show { opacity: 1; transform: translate(-50%, 0); }
+    .to-results { display: none; }
+    @media (max-width: 1080px) {
+      .to-results { display: block; position: fixed; right: 16px; bottom: 16px; z-index: 60; border: none; background: var(--ink); color: #fff; border-radius: 999px; padding: 10px 18px; font-weight: 700; box-shadow: 0 6px 18px rgba(15,23,42,.25); }
+      .topbar { position: static; }
+    }
+    @media (max-width: 520px) { .grid, .grid.g3 { grid-template-columns: 1fr 1fr; } .topbar { padding: 10px 16px; } }
+
+    .print-only { display: none; }
+    @media print {
+      @page { size: A4 portrait; margin: 10mm; }
+      body { background: #fff; font-size: 11px; }
+      .topbar, .side, .no-print, .toast { display: none !important; }
+      .app { display: block; height: auto; } .main { overflow: visible; padding: 0; }
+      .results { gap: 8px; }
+      .chart-area { height: auto; } .chart-area svg { height: auto; }
+      .st-issues { max-height: none; }
+      .card { border-color: #CBD5E1; break-inside: avoid; }
+      .print-only { display: block; }
+      .tbl-wrap { overflow: visible; }
+      table.tb td, table.tb th { padding: 3px 4px; font-size: 9px; white-space: normal; }
+      table.tb .sub { font-size: 8.5px; }
+      .tabs { display: none; }
+      details.more { display: none; }
+      .kpi-v { font-size: 20px; }
+    }
+    .p-head { padding: 12px 16px; }
+    .p-head h1 { font-size: 16px; } .p-head .m { font-size: 11px; color: var(--muted); }
+    .p-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px 12px; margin-top: 8px; font-size: 11px; }
+    .p-grid small { display: block; color: var(--muted); font-size: 10px; font-weight: 700; }
+  </style>
+</head>
+<body>
+
+<header class="topbar">
+  <div class="brand">
+    <div class="logo"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 20h18"/><path d="M3 20V4"/><path d="M3 18c6-1 11-5 16-14"/><circle cx="9" cy="13" r="1.6" fill="currentColor"/><circle cx="15" cy="9" r="1.6" fill="currentColor"/></svg></div>
+    <div><div class="app-title">空氣線圖 Pro</div><div class="app-sub">空調箱處理過程・盤管負荷・水路核算</div></div>
+  </div>
+  <div class="project">
+    <input class="pn" id="pName" placeholder="專案名稱" data-k="project.name">
+    <input class="ps" id="pSub" placeholder="系統編號／備註（例：MAU-01）" data-k="project.sub">
+  </div>
+  <div class="actions">
+    <span class="autosave" id="autosave"></span>
+    <div class="menu-wrap">
+      <button class="btn" id="btnTpl">範本 ▾</button>
+      <div class="menu" id="tplMenu" hidden>
+        <button data-tpl="MAU"><b>半導體廠 MAU（全外氣）</b><span>預熱／預冷／水洗／除濕／風機／再熱</span></button>
+        <button data-tpl="AHU"><b>一般 AHU（回風混合）</b><span>混風／冷卻除濕／風機／再熱＋室內負荷核對</span></button>
+        <button data-tpl="DOAS"><b>外氣處理機（冷卻＋蒸汽加濕）</b><span>預熱／冷卻除濕／蒸汽加濕／風機／再熱</span></button>
+      </div>
+    </div>
+    <button class="btn quiet" id="btnOpen" title="開啟 .json 專案檔">開啟</button>
+    <button class="btn quiet" id="btnSave" title="另存 .json 專案檔">保存</button>
+    <button class="btn" id="btnXlsx">匯出 Excel</button>
+    <button class="btn primary" id="btnPrint">列印報告</button>
+    <input type="file" id="fileOpen" accept=".json,application/json" hidden>
+  </div>
+</header>
+
+<div class="app" id="app">
+  <aside class="side" id="inputs">
+    <div class="side-h"><b>輸入參數</b><span>改動即時重算</span><button class="btn sm quiet" data-side="close" title="收合輸入欄，放大線圖">« 收合</button></div>
+
+    <div class="card sec">
+      <div class="sec-h"><span class="no">1</span><div><h2>系統與風量</h2><p>型式、設計風量、盤管迎風面、大氣壓力</p></div></div>
+      <div class="grid">
+        <div class="field full"><label>系統型式</label>
+          <div class="seg full" id="segSystem"><button data-v="MAU">MAU 全外氣</button><button data-v="AHU">AHU 回風混合</button></div></div>
+        <div class="field"><label>設計風量</label><div class="iw"><input type="number" data-k="airflow" min="1" step="100"><span class="u">CMH</span></div></div>
+        <div class="field"><label>風量基準</label><div class="iw"><select data-k="flowBasis"><option value="fan">送風機入口實際</option><option value="inlet">第 1 點（外氣／混風）實際</option><option value="std">標準空氣 1.2 kg/m³</option></select></div></div>
+        <div class="field"><label>盤管迎風寬</label><div class="iw"><input type="number" data-k="coilW" min="1" step="50"><span class="u">mm</span></div></div>
+        <div class="field"><label>盤管迎風高</label><div class="iw"><input type="number" data-k="coilH" min="1" step="50"><span class="u">mm</span></div></div>
+        <div class="field"><label>大氣壓力</label><div class="iw"><select data-k="pressureMode"><option value="alt">依海拔高度</option><option value="kpa">直接輸入</option></select></div></div>
+        <div class="field" id="fAlt"><label>海拔高度</label><div class="iw"><input type="number" data-k="altitude" step="10"><span class="u">m</span></div></div>
+        <div class="field" id="fKpa" hidden><label>大氣壓力</label><div class="iw"><input type="number" data-k="pressure" step="0.1"><span class="u">kPa</span></div></div>
+      </div>
+      <div class="ro" id="roSystem"></div>
+    </div>
+
+    <div class="card sec">
+      <div class="sec-h"><span class="no">2</span><div><h2>外氣設計條件</h2><p>夏季、冬季兩個工況同時核算</p></div></div>
+      <div class="season-cols">
+        <div class="scol" data-s="summer">
+          <div class="scol-h"><i style="background:#F97316"></i>夏季</div>
+          <div class="field"><label>乾球溫度 DB</label><div class="iw"><input type="number" step="0.1" data-k="seasons.summer.oa.db"><span class="u">°C</span></div></div>
+          <div class="field"><label><select class="oamode" data-k="seasons.summer.oa.mode" style="border:none;background:none;font-weight:600;color:var(--ink-2);cursor:pointer"><option value="rh">相對濕度 RH</option><option value="wb">濕球溫度 WB</option></select></label>
+            <div class="iw" data-oaf="summer-rh"><input type="number" step="0.1" data-k="seasons.summer.oa.rh"><span class="u">%</span></div>
+            <div class="iw" data-oaf="summer-wb" hidden><input type="number" step="0.1" data-k="seasons.summer.oa.wb"><span class="u">°C</span></div></div>
+          <div class="ro" id="roOA-summer"></div>
+        </div>
+        <div class="scol" data-s="winter">
+          <div class="scol-h"><i style="background:#3B82F6"></i>冬季</div>
+          <div class="field"><label>乾球溫度 DB</label><div class="iw"><input type="number" step="0.1" data-k="seasons.winter.oa.db"><span class="u">°C</span></div></div>
+          <div class="field"><label><select class="oamode" data-k="seasons.winter.oa.mode" style="border:none;background:none;font-weight:600;color:var(--ink-2);cursor:pointer"><option value="rh">相對濕度 RH</option><option value="wb">濕球溫度 WB</option></select></label>
+            <div class="iw" data-oaf="winter-rh"><input type="number" step="0.1" data-k="seasons.winter.oa.rh"><span class="u">%</span></div>
+            <div class="iw" data-oaf="winter-wb" hidden><input type="number" step="0.1" data-k="seasons.winter.oa.wb"><span class="u">°C</span></div></div>
+          <div class="ro" id="roOA-winter"></div>
+        </div>
+      </div>
+      <div class="note assume">外氣設計值請依專案氣象資料（如 ASHRAE 0.4% 冷卻／99.6% 加熱）輸入；預設值僅為範例。</div>
+    </div>
+
+    <div class="card sec" id="secAHU">
+      <div class="sec-h"><span class="no">3</span><div><h2>回風與混風</h2><p>回風＝室內狀態；外氣比以體積計，混風以乾空氣質量平衡</p></div></div>
+      <div class="field" style="margin-bottom:12px"><label>外氣比（體積）</label><div class="iw"><input type="number" data-k="oaPct" min="0" max="100" step="1"><span class="u">%</span></div></div>
+      <div class="season-cols">
+        <div class="scol"><div class="scol-h"><i style="background:#F97316"></i>夏季回風</div>
+          <div class="grid"><div class="field"><label>DB</label><div class="iw"><input type="number" step="0.1" data-k="seasons.summer.ra.db"><span class="u">°C</span></div></div>
+          <div class="field"><label>RH</label><div class="iw"><input type="number" step="1" data-k="seasons.summer.ra.rh"><span class="u">%</span></div></div>
+          <div class="field"><label>室內顯熱</label><div class="iw"><input type="number" step="1" data-k="seasons.summer.load.qs" data-opt="1" placeholder="不核對"><span class="u">kW</span></div></div>
+          <div class="field"><label>室內潛熱</label><div class="iw"><input type="number" step="1" data-k="seasons.summer.load.ql" data-opt="1" placeholder="不核對"><span class="u">kW</span></div></div></div></div>
+        <div class="scol"><div class="scol-h"><i style="background:#3B82F6"></i>冬季回風</div>
+          <div class="grid"><div class="field"><label>DB</label><div class="iw"><input type="number" step="0.1" data-k="seasons.winter.ra.db"><span class="u">°C</span></div></div>
+          <div class="field"><label>RH</label><div class="iw"><input type="number" step="1" data-k="seasons.winter.ra.rh"><span class="u">%</span></div></div>
+          <div class="field"><label>室內顯熱</label><div class="iw"><input type="number" step="1" data-k="seasons.winter.load.qs" data-opt="1" placeholder="不核對"><span class="u">kW</span></div></div>
+          <div class="field"><label>室內潛熱</label><div class="iw"><input type="number" step="1" data-k="seasons.winter.load.ql" data-opt="1" placeholder="不核對"><span class="u">kW</span></div></div></div></div>
+      </div>
+      <div class="hint">室內負荷（正值＝需冷卻）填入後，會核對送風能否吸收該負荷並在線圖上畫出室內 SHR 線。</div>
+    </div>
+
+    <div class="card sec">
+      <div class="sec-h"><span class="no" id="noTarget">4</span><div><h2>送風目標</h2><p>處理後送風狀態的允許範圍（兩季皆核對）</p></div></div>
+      <div class="grid">
+        <div class="field"><label>送風乾球 DB</label><div class="iw"><input type="number" step="0.1" data-k="target.db"><span class="u">°C</span></div></div>
+        <div class="field"><label>允許偏差 ±</label><div class="iw"><input type="number" step="0.1" min="0" data-k="target.dbTol"><span class="u">K</span></div></div>
+        <div class="field"><label>送風相對濕度 RH</label><div class="iw"><input type="number" step="1" data-k="target.rh"><span class="u">%</span></div></div>
+        <div class="field"><label>允許偏差 ±</label><div class="iw"><input type="number" step="0.5" min="0" data-k="target.rhTol"><span class="u">%</span></div></div>
+        <div class="field full"><label class="chk-inline"><input type="checkbox" data-k="target.checkRh"> 核對送風相對濕度（一般 AHU 只控溫可取消）</label></div>
+      </div>
+    </div>
+
+    <div class="card sec">
+      <div class="sec-h"><span class="no" id="noStages">5</span><div><h2>處理段序列</h2><p>依氣流方向排列；拖曳 ⋮⋮ 或用 ↑↓ 調整順序</p></div></div>
+      <div class="stages" id="stages"></div>
+      <div class="add-row">
+        <button class="btn" data-add="HEAT"><i style="background:var(--c-heat)"></i>加熱盤管</button>
+        <button class="btn" data-add="COOL"><i style="background:var(--c-cool)"></i>冷卻盤管</button>
+        <button class="btn" data-add="WASH"><i style="background:var(--c-wash)"></i>水洗／噴淋</button>
+        <button class="btn" data-add="STEAM"><i style="background:var(--c-steam)"></i>蒸汽加濕</button>
+        <button class="btn" data-add="FAN"><i style="background:var(--c-fan)"></i>送風機</button>
+      </div>
+      <div class="note"><b>夏／冬</b>：該處理段在哪一季運轉。盤管依<b>設定點控制</b>：入口已達設定值時自動停機（例如夏季外氣已高於預熱設定，預熱盤管不作動）。</div>
+    </div>
+
+    <details class="card adv" id="advWater">
+      <summary>水路設定<span class="sum" id="sumWater"></span></summary>
+      <div class="adv-body">
+        <table class="wt"><thead><tr><th>水路</th><th>進水 °C</th><th>出水 °C</th></tr></thead><tbody id="waterRows"></tbody></table>
+        <div class="hint">冰水：進水＝供水（低溫）、出水＝回水；熱水：進水＝供水（高溫）。噴淋水溫只用於「指定水溫」的水洗段。</div>
+      </div>
+    </details>
+
+    <details class="card adv" id="advAnnual">
+      <summary>全年能耗（EPW 逐時）<span class="sum" id="sumAnnual">未載入氣象檔</span></summary>
+      <div class="adv-body">
+        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap"><button class="btn sm" data-epw="1">載入 EPW 氣象檔</button><span class="hint" id="epwInfo" style="margin:0"></span></div>
+        <div class="grid">
+          <div class="field"><label>換季溫度</label><div class="iw"><input type="number" step="1" data-k="annual.changeover"><span class="u">°C</span></div><div class="hint">外氣 ≥ 此溫度用「夏」啟用設定</div></div>
+          <div class="field"><label>電價</label><div class="iw"><input type="number" step="0.1" data-k="annual.price"><span class="u">元/kWh</span></div></div>
+          <div class="field"><label>低溫冰水 COP</label><div class="iw"><input type="number" step="0.1" data-k="annual.copL"></div></div>
+          <div class="field"><label>中溫冰水 COP</label><div class="iw"><input type="number" step="0.1" data-k="annual.copM"></div></div>
+          <div class="field"><label>熱水熱源 COP</label><div class="iw"><input type="number" step="0.1" data-k="annual.copHW"></div><div class="hint">熱泵≈3、電熱=1</div></div>
+          <div class="field"><label>蒸汽加濕效率</label><div class="iw"><input type="number" step="0.05" data-k="annual.steamEff"></div><div class="hint">電熱式≈1</div></div>
+        </div>
+        <div class="note assume" style="margin:0">COP 與電價為估算假設；冰水 COP 宜為冷凍站整體（含泵與冷卻水塔）。</div>
+      </div>
+    </details>
+    <input type="file" id="fileEpw" accept=".epw" hidden>
+
+    <details class="card adv">
+      <summary>設計基準與管徑準則<span class="sum">迎風風速、出口 RH 上限、ADP 逼近、管摩擦</span></summary>
+      <div class="adv-body">
+        <div class="grid">
+          <div class="field"><label>濕盤管迎風風速上限</label><div class="iw"><input type="number" step="0.1" data-k="basis.faceVelWet"><span class="u">m/s</span></div><div class="hint">超過易帶水（ASHRAE 建議約 2.5 m/s）</div></div>
+          <div class="field"><label>乾盤管迎風風速上限</label><div class="iw"><input type="number" step="0.1" data-k="basis.faceVelMax"><span class="u">m/s</span></div></div>
+          <div class="field"><label>冷卻盤管出口 RH 上限</label><div class="iw"><input type="number" step="1" data-k="basis.rhLeaveMax"><span class="u">%</span></div><div class="hint">溫度控制模式時的出口濕度</div></div>
+          <div class="field"><label>ADP − 冰水供水 最小逼近</label><div class="iw"><input type="number" step="0.1" data-k="basis.adpApproach"><span class="u">K</span></div></div>
+          <div class="field"><label>盤管水側／管壁熱阻折減 φ</label><div class="iw"><input type="number" step="0.05" data-k="basis.coilPhi"></div><div class="hint">排數估算用：總 NTU＝空氣側 NTU × φ（常用 0.7–0.8）</div></div>
+          <div class="field"><label>水管摩擦上限</label><div class="iw"><input type="number" step="10" data-k="basis.maxPaPerM"><span class="u">Pa/m</span></div><div class="hint">ASHRAE 建議 100–400 Pa/m</div></div>
+          <div class="field"><label>水管流速上限（≤50A / 65–250A / ≥300A）</label><div class="iw"><input type="text" data-k="basis.vLimits" data-list="3"><span class="u">m/s</span></div></div>
+        </div>
+      </div>
+    </details>
+  </section>
+
+  </aside>
+  <main class="main"><div class="results" id="results"></div></main>
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+/* ===== ENGINE START ===== */
+// 濕空氣性質：ASHRAE Handbook—Fundamentals (2017/2021) Ch.1
+const Psy = (() => {
+  const RA = 0.287042, EPS = 0.621945;
+  const pAtAlt = (z) => 101.325 * Math.pow(1 - 2.25577e-5 * z, 5.2559);                      // 式 (3)
+  const psat = (T) => {                                                                        // Hyland–Wexler 式 (5)(6)，kPa
+    const K = T + 273.15;
+    const ln = T >= 0
+      ? -5.8002206e3 / K + 1.3914993 - 4.8640239e-2 * K + 4.1764768e-5 * K * K - 1.4452093e-8 * K ** 3 + 6.5459673 * Math.log(K)
+      : -5.6745359e3 / K + 6.3925247 - 9.677843e-3 * K + 6.2215701e-7 * K * K + 2.0747825e-9 * K ** 3 - 9.484024e-13 * K ** 4 + 4.1635019 * Math.log(K);
+    return Math.exp(ln) / 1000;
+  };
+  const wFromPw = (pw, P) => EPS * pw / (P - pw);                                              // 式 (20)
+  const pwFromW = (w, P) => w * P / (EPS + w);
+  const wsat = (T, P) => wFromPw(psat(T), P);                                                  // 式 (21)
+  const enth = (t, w) => 1.006 * t + w * (2501 + 1.86 * t);                                    // 式 (30)
+  const vol = (t, w, P) => RA * (t + 273.15) * (1 + 1.607858 * w) / P;                         // 式 (26)
+  const bisect = (f, lo, hi, n = 80) => {                                                      // f(lo) < 0 < f(hi)
+    for (let i = 0; i < n; i++) { const m = (lo + hi) / 2; if (f(m) < 0) lo = m; else hi = m; if (hi - lo < 1e-7) break; }
+    return (lo + hi) / 2;
+  };
+  const dewPoint = (pw) => pw <= 0 ? -100 : bisect(t => psat(t) - pw, -100, 200);
+  const wFromWB = (t, tw, P) => {                                                              // 式 (33)(35)：熱力濕球
+    const ws = wsat(tw, P);
+    return tw >= 0 ? ((2501 - 2.326 * tw) * ws - 1.006 * (t - tw)) / (2501 + 1.86 * t - 4.186 * tw)
+                   : ((2830 - 0.24 * tw) * ws - 1.006 * (t - tw)) / (2830 + 1.86 * t - 2.1 * tw);
+  };
+  const wetBulb = (t, w, P) => {
+    if (w >= wsat(t, P)) return t;
+    let lo = Math.min(t, dewPoint(pwFromW(w, P))) - 2;
+    while (wFromWB(t, lo, P) > w && lo > -100) lo -= 5;
+    return bisect(tw => wFromWB(t, tw, P) - w, lo, t);
+  };
+  // 狀態點：露點與濕球需迭代求解，改為第一次讀取時才計算（全年 8760 小時模擬的效能關鍵）
+  const state = (t, w, P) => {
+    const ps = psat(t), pw = pwFromW(w, P), ws = wFromPw(ps, P);
+    const s = { db: t, w, rh: pw / ps * 100, h: enth(t, w), v: vol(t, w, P), pw, ws, sat: w > ws * 1.0005 };
+    let dp, wb;
+    Object.defineProperty(s, 'dp', { enumerable: true, get: () => dp ?? (dp = dewPoint(pw)) });
+    Object.defineProperty(s, 'wb', { enumerable: true, get: () => wb ?? (wb = wetBulb(t, w, P)) });
+    return s;
+  };
+  const byDBRH = (t, rh, P) => state(t, wFromPw(Math.max(0, rh) / 100 * psat(t), P), P);
+  const byDBWB = (t, wb, P) => state(t, Math.max(0, wFromWB(t, Math.min(wb, t), P)), P);
+  const tFromHW = (h, w) => (h - 2501 * w) / (1.006 + 1.86 * w);
+  const byHW = (h, w, P) => state(tFromHW(h, w), w, P);
+  // 乾空氣質量加權混合（焓與含濕量守恆）
+  const mix = (s1, m1, s2, m2, P) => { const m = m1 + m2; return byHW((m1 * s1.h + m2 * s2.h) / m, (m1 * s1.w + m2 * s2.w) / m, P); };
+  // 裝置露點 ADP：入口→出口直線延長與飽和線交點；不相交回傳 null
+  const adp = (s1, s2, P) => {
+    if (!(s2.w < s1.w - 1e-7 && s2.db < s1.db - 1e-6)) return null;
+    const k = (s1.w - s2.w) / (s1.db - s2.db);
+    const g = (t) => (s2.w + k * (t - s2.db)) - wsat(t, P);
+    if (g(s2.db) >= -1e-6) return { db: s2.db, w: s2.w, bf: 0 };
+    let lo = s2.db, found = false;
+    for (let t = s2.db - 0.25; t >= -40; t -= 0.25) { if (g(t) > 0) { lo = t; found = true; break; } }
+    if (!found) return null;
+    const t = bisect(x => -g(x), lo, s2.db);
+    return { db: t, w: wsat(t, P), bf: (s2.db - t) / (s1.db - t) };
+  };
+  // 入口→出口直線是否穿越飽和區（霧區）
+  const crossesFog = (s1, s2, P) => { for (let i = 1; i < 40; i++) { const r = i / 40, t = s2.db + (s1.db - s2.db) * r, w = s2.w + (s1.w - s2.w) * r; if (w > wsat(t, P)) return true; } return false; };
+  return { pAtAlt, psat, wFromPw, pwFromW, wsat, enth, vol, dewPoint, wFromWB, wetBulb, state, byDBRH, byDBWB, byHW, tFromHW, mix, adp, crossesFog, bisect };
+})();
+
+// 水性質（0–100 °C）
+const Water = {
+  rho: (T) => 1000 * (1 - ((T + 288.9414) / (508929.2 * (T + 68.12963))) * Math.pow(T - 3.9863, 2)),
+  cp: (T) => 4.2174 - 3.720283e-3 * T + 1.412855e-4 * T * T - 2.654387e-6 * T ** 3 + 2.093236e-8 * T ** 4,
+  mu: (T) => 2.414e-5 * Math.pow(10, 247.8 / (T + 133.15))
+};
+const H_STEAM = 2676;          // 100 °C 飽和蒸汽焓 kJ/kg
+// 碳鋼管 SCH40 內徑 (mm)
+const PIPES = [['15A', 15.8], ['20A', 20.9], ['25A', 26.6], ['32A', 35.1], ['40A', 40.9], ['50A', 52.5], ['65A', 62.7], ['80A', 77.9], ['100A', 102.3], ['125A', 128.2],
+  ['150A', 154.1], ['200A', 202.7], ['250A', 254.5], ['300A', 303.2], ['350A', 333.4], ['400A', 381.0], ['450A', 428.7], ['500A', 477.9]];
+const pipeEval = (lpm, T, idMm) => {
+  const Q = lpm / 60000, d = idMm / 1000, A = Math.PI * d * d / 4, v = Q / A;
+  const rho = Water.rho(T), mu = Water.mu(T), Re = rho * v * d / mu;
+  const f = Re < 2300 ? 64 / Math.max(Re, 1) : 0.25 / Math.pow(Math.log10(0.046e-3 / (3.7 * d) + 5.74 / Math.pow(Re, 0.9)), 2);   // Swamee–Jain
+  return { v, Re, paPerM: f / d * rho * v * v / 2 };
+};
+const sizePipe = (lpm, T, basis) => {
+  if (!(lpm > 0)) return null;
+  const lim = basis.vLimits || [1.2, 2.4, 3.0];
+  for (let i = 0; i < PIPES.length; i++) {
+    const [dn, id] = PIPES[i], e = pipeEval(lpm, T, id);
+    const vmax = i <= 5 ? lim[0] : i <= 12 ? lim[1] : lim[2];
+    if (e.v <= vmax && e.paPerM <= basis.maxPaPerM) return { dn, id, ...e, vmax };
+  }
+  const [dn, id] = PIPES[PIPES.length - 1];
+  return { dn: dn + '+', id, ...pipeEval(lpm, T, id), over: true };
+};
+// 盤管排數估算：Carrier 旁通因子表（每排旁通因子 bf1 依鰭片密度與迎風風速內插）
+const bf1Of = (faceV, fpi) => {
+  const x = Math.min(1, Math.max(0, (faceV - 1.5) / (3.6 - 1.5)));
+  const b8 = 0.660 + (0.740 - 0.660) * x, b14 = 0.473 + (0.612 - 0.473) * x;
+  const y = Math.min(1, Math.max(0, (fpi - 8) / 6));
+  return b8 + (b14 - b8) * y;
+};
+const coilRows = (bf, faceV, fpi) => {
+  if (bf == null) return null;
+  if (bf <= 0.001) return { rows: Infinity, bf1: null };
+  const bf1 = bf1Of(faceV, fpi);
+  return { rows: Math.max(1, Math.ceil(Math.log(bf) / Math.log(bf1) - 1e-9)), bf1 };
+};
+// 逆流熱交換器：由效率求 NTU（Cr = Cmin/Cmax）
+const ntuCounterflow = (eps, Cr) => {
+  if (!(eps > 0)) return 0;
+  if (eps >= 1 || eps * Cr >= 1) return Infinity;
+  return Math.abs(1 - Cr) < 1e-6 ? eps / (1 - eps) : Math.log((1 - eps * Cr) / (1 - eps)) / (1 - Cr);
+};
+// 盤管 ε-NTU 模型
+//   濕盤管：焓勢法（Braun–Klein–Mitchell）——以「水溫對應的飽和空氣焓」為水側勢，cs = Δh_s/ΔT_w 為等效比熱
+//   乾盤管／熱水盤管：顯熱 ε-NTU
+//   排數 = 所需空氣側 NTU ÷ (每排空氣側 NTU × 水側與管壁熱阻折減 φ)；每排 NTU = −ln(每排旁通因子)
+function coilModel({ inS, out, m, q, wc, wet, heating, faceV, fpi, phi, P }) {
+  const tin = wc.tin, tout = wc.tout, dTw = Math.abs(tout - tin);
+  if (!(dTw > 0) || !(q > 0)) return null;
+  const cpw = Water.cp((tin + tout) / 2), mw = q / (cpw * dTw);
+  let eps, Ca, Cw, pinch = null;
+  if (wet) {
+    const hs = (t) => Psy.enth(t, Psy.wsat(t, P));
+    const hsi = hs(tin), hso = hs(tout), cs = (hso - hsi) / (tout - tin);
+    if (out.h <= hsi + 0.05) pinch = `出口空氣焓 ${out.h.toFixed(1)} ≤ 冰水供水 ${tin} °C 飽和焓 ${hsi.toFixed(1)} kJ/kg`;
+    else if (inS.h <= hso + 0.05) pinch = `入口空氣焓 ${inS.h.toFixed(1)} ≤ 冰水回水 ${tout} °C 飽和焓 ${hso.toFixed(1)} kJ/kg（逆流夾點）`;
+    Ca = m; Cw = mw * cpw / cs;
+    const Cmin = Math.min(Ca, Cw);
+    eps = m * (inS.h - out.h) / (Cmin * (inS.h - hsi));
+  } else {
+    const cpa = 1.006 + 1.86 * inS.w;
+    Ca = m * cpa; Cw = mw * cpw;
+    const Cmin = Math.min(Ca, Cw);
+    if (heating) { if (out.db >= tin) pinch = `出風 ${out.db.toFixed(1)} °C ≥ 熱水供水 ${tin} °C`; else if (inS.db >= tout) pinch = `入風 ${inS.db.toFixed(1)} °C ≥ 熱水回水 ${tout} °C`; eps = Ca * (out.db - inS.db) / (Cmin * (tin - inS.db)); }
+    else { if (out.db <= tin) pinch = `出風 ${out.db.toFixed(1)} °C ≤ 冰水供水 ${tin} °C`; else if (inS.db <= tout) pinch = `入風 ${inS.db.toFixed(1)} °C ≤ 冰水回水 ${tout} °C`; eps = Ca * (inS.db - out.db) / (Cmin * (inS.db - tin)); }
+  }
+  const Cmin = Math.min(Ca, Cw), Cr = Cmin / Math.max(Ca, Cw);
+  const ntu = pinch ? Infinity : ntuCounterflow(eps, Cr);
+  const ntuAir = ntu * Cmin / Ca;                       // 換算為以空氣側容量為基準
+  const ntuRow = -Math.log(bf1Of(faceV, fpi)) * phi;
+  const rows = Number.isFinite(ntuAir) ? Math.max(1, Math.ceil(ntuAir / ntuRow - 1e-9)) : Infinity;
+  return { eps, Cr, ntu: ntuAir, ntuRow, rows, pinch, wet };
+}
+
+const TYPES = {
+  HEAT: { label: '加熱盤管', color: '#E11D48' },
+  COOL: { label: '冷卻盤管', color: '#2563EB' },
+  WASH: { label: '水洗／噴淋', color: '#0D9488' },
+  STEAM: { label: '蒸汽加濕', color: '#7C3AED' },
+  FAN: { label: '送風機', color: '#D97706' }
+};
+const SEASONS = { summer: '夏季', winter: '冬季' };
+
+// 單一季節模擬：依序處理每一段（乾空氣質量流率全程守恆）
+function simulate(cfg, sk, opt = {}) {
+  const P = cfg.pressureMode === 'kpa' ? cfg.pressure : Psy.pAtAlt(cfg.altitude || 0);
+  const S = cfg.seasons[sk], B = cfg.basis;
+  const issues = [];
+  const add = (lvl, title, detail, stage) => issues.push({ lvl, title, detail, stage });
+  const oa = opt.oa ? opt.oa(P) : S.oa.mode === 'wb' ? Psy.byDBWB(S.oa.db, S.oa.wb, P) : Psy.byDBRH(S.oa.db, S.oa.rh, P);
+  if (!opt.oa && S.oa.mode === 'wb' && S.oa.wb > S.oa.db) add('fail', '外氣濕球溫度高於乾球溫度', `WB ${S.oa.wb} °C > DB ${S.oa.db} °C`);
+  let ra = null, start = oa, xOa = 1;
+  if (cfg.system === 'AHU') {
+    ra = Psy.byDBRH(S.ra.db, S.ra.rh, P);
+    const r = Math.min(1, Math.max(0, cfg.oaPct / 100));
+    const mo = r / oa.v, mr = (1 - r) / ra.v;
+    xOa = mo + mr > 0 ? mo / (mo + mr) : 0;
+    start = Psy.mix(oa, xOa, ra, 1 - xOa, P);
+    if (start.sat) add('fail', '混風點落在飽和線外（起霧）', `混風含濕量 ${(start.w * 1000).toFixed(2)} g/kg > 飽和 ${(start.ws * 1000).toFixed(2)} g/kg；需預熱外氣或提高回風比例`);
+  }
+  const faceA = Math.max(1e-6, cfg.coilW * cfg.coilH / 1e6);
+  const hasFan = cfg.stages.some(s => s.type === 'FAN' && s.on && s.on[sk]);
+  const basis = cfg.flowBasis === 'fan' && !hasFan ? 'inlet' : cfg.flowBasis;
+  // 乾空氣質量流率 kg/s：標準空氣／第 1 點實際／送風機入口實際（風機入口狀態受上游影響，迭代至收斂）
+  let m = opt.m || (basis === 'std' ? cfg.airflow / 3600 * 1.2 / (1 + start.w) : cfg.airflow / 3600 / start.v);
+  const pre = issues.slice();
+  let out = null;
+  for (let it = 0; it < (basis === 'fan' && !opt.m ? 6 : 1); it++) {
+    issues.length = 0; issues.push(...pre);
+    out = runStages(m);
+    if (basis !== 'fan' || opt.m) break;
+    const mNew = cfg.airflow / 3600 / out.fanIn.v;
+    if (Math.abs(mNew - m) < 1e-7) break;
+    m = mNew;
+  }
+  const { points, rows, tot, circuits } = out;
+  let cur = out.cur;
+  function runStages(m) {
+  const points = [{ label: cfg.system === 'AHU' ? '混風 MA' : '外氣 OA', state: start, type: 'START' }];
+  const rows = [];
+  let cur = start, fanIn = null;
+  const tot = { cool: 0, heat: 0, condensate: 0, humid: 0, fanKw: 0, fanHeat: 0, steamKg: 0 };
+  const circuits = {};
+
+  cfg.stages.forEach((st) => {
+    const on = st.on && st.on[sk];
+    const inS = cur;
+    const r = { id: st.id, name: st.name, type: st.type, status: on ? 'on' : 'disabled', in: inS, out: inS, q: 0, qs: 0, ql: 0, notes: [], flags: [] };
+    const flag = (lvl, title, detail) => { r.flags.push({ lvl, title }); add(lvl, `${st.name}：${title}`, detail, st.id); };
+    if (!on) { rows.push(r); return; }
+    const vIn = m * inS.v;                              // m³/s（入口實際）
+    r.area = num(st.area) > 0 ? num(st.area) : faceA;
+    r.faceV = vIn / r.area;
+    const phi = B.coilPhi || 0.75;
+
+    if (st.type === 'HEAT') {
+      // 加濕需求重設：預熱到「下游循環水洗出口含濕量 = 送風目標含濕量」所需的最低溫度（設定值為上限）
+      let tSet = st.db, hum = null;
+      if (st.ctrl === 'HUM') {
+        const idx = cfg.stages.indexOf(st);
+        const wash = cfg.stages.slice(idx + 1).find(s => s.type === 'WASH' && s.on && s.on[sk] && s.wmode === 'RECIRC');
+        if (wash) {
+          const eps = Math.min(1, wash.eff / 100), wT = Psy.wFromPw(cfg.target.rh / 100 * Psy.psat(cfg.target.db), P);
+          const wOut = (T) => inS.w + eps * (Psy.wsat(Psy.state(T, inS.w, P).wb, P) - inS.w);
+          if (wOut(inS.db) >= wT) { tSet = inS.db; hum = '外氣經水洗即可達加濕目標，不需預熱'; }
+          else if (wOut(st.db) < wT) { tSet = st.db; hum = `已達最高預熱 ${st.db} °C，水洗後仍低於送風目標 ${(wT * 1000).toFixed(2)} g/kg`; }
+          else { tSet = Psy.bisect(T => wOut(T) - wT, inS.db, st.db); hum = `加濕需求重設：預熱至 ${tSet.toFixed(1)} °C（上限 ${st.db} °C），水洗出口達 ${(wT * 1000).toFixed(2)} g/kg`; }
+        } else hum = '下游沒有循環水洗段，改依固定出風溫度控制';
+        r.tSet = tSet;
+      }
+      if (inS.db >= tSet - 1e-6) { r.status = 'off'; r.notes.push(hum || `入口 ${inS.db.toFixed(1)} °C 已達設定 ${st.db} °C`); }
+      else {
+        if (hum) r.notes.push(hum);
+        r.out = Psy.state(tSet, inS.w, P);
+        r.q = m * (r.out.h - inS.h); r.qs = r.q;
+        tot.heat += r.q;
+        if (st.src === 'HW') {
+          const wc = cfg.water.HW;
+          if (!(wc.tin > wc.tout)) flag('fail', '熱水供水溫須高於回水溫', `供 ${wc.tin} / 回 ${wc.tout} °C`);
+          if (wc.tin <= tSet) flag('fail', '熱水供水溫不高於出風設定，無法加熱到設定點', `供水 ${wc.tin} °C ≤ 出風 ${tSet.toFixed(1)} °C`);
+          else if (wc.tin - tSet < 5) flag('warn', '熱水供水與出風溫差 < 5 K，盤管面積將很大', `${(wc.tin - tSet).toFixed(1)} K`);
+          if (wc.tout <= inS.db) flag('fail', '熱水回水溫不高於入口空氣（逆流盤管不可能）', `回水 ${wc.tout} °C ≤ 入風 ${inS.db.toFixed(1)} °C`);
+          if (inS.db < 3) flag('warn', '入口空氣低於 3 °C，熱水盤管需防凍', '建議：防凍開關、最低水量、或改用乙二醇／蒸汽預熱');
+          water(r, 'HW', r.q);
+          if (!opt.fast) { r.coil = coilModel({ inS, out: r.out, m, q: r.q, wc, wet: false, heating: true, faceV: r.faceV, fpi: st.fpi || 10, phi, P }); r.rowsEst = r.coil; }
+        }
+        if (r.faceV > B.faceVelMax) flag('warn', '迎風風速超過上限', `${r.faceV.toFixed(2)} > ${B.faceVelMax} m/s`);
+      }
+    } else if (st.type === 'COOL') {
+      const wc = cfg.water[st.circuit] || cfg.water.CHW_L;
+      const tgt = Psy.byDBRH(st.db, st.rh, P);
+      let out = null;
+      if (st.ctrl === 'STATE') {
+        if (tgt.db >= inS.db - 1e-6 && tgt.w >= inS.w - 1e-9) r.notes.push('入口已低於設定出口狀態');
+        else if (tgt.w > inS.w + 1e-9) flag('fail', '冷卻盤管無法加濕', `設定出口 ${(tgt.w * 1000).toFixed(2)} g/kg > 入口 ${(inS.w * 1000).toFixed(2)} g/kg`);
+        else if (tgt.db > inS.db + 1e-6) flag('fail', '冷卻盤管無法升溫', `設定出口 ${tgt.db} °C > 入口 ${inS.db.toFixed(1)} °C`);
+        else out = tgt;
+      } else if (st.ctrl === 'DB') {
+        if (inS.db <= st.db + 1e-6) r.notes.push(`入口 ${inS.db.toFixed(1)} °C 已低於設定 ${st.db} °C`);
+        else out = Psy.state(st.db, Math.min(inS.w, Psy.wFromPw(B.rhLeaveMax / 100 * Psy.psat(st.db), P)), P);
+      } else {
+        if (inS.w <= tgt.w + 1e-9) r.notes.push(`入口含濕量 ${(inS.w * 1000).toFixed(2)} g/kg 已低於露點設定 ${(tgt.w * 1000).toFixed(2)} g/kg`);
+        else if (tgt.db > inS.db + 1e-6) flag('fail', '入口溫度已低於設定出口溫度，仍需除濕 → 須過冷再熱', `入口 ${inS.db.toFixed(1)} °C < 設定 ${tgt.db} °C`);
+        else out = tgt;
+      }
+      if (!out) { if (!r.flags.length) r.status = 'off'; else r.status = 'error'; }
+      else {
+        r.out = out;
+        const dw = Math.max(0, inS.w - out.w);
+        r.condKgH = m * dw * 3600;
+        r.q = m * ((inS.h - out.h) - dw * 4.186 * out.db);                 // 扣除凝結水焓（ASHRAE 式 (47)）
+        r.qs = m * (1.006 + 1.86 * out.w) * (inS.db - out.db);
+        r.ql = r.q - r.qs;
+        r.shr = r.q > 0 ? r.qs / r.q : null;
+        tot.cool += r.q; tot.condensate += r.condKgH;
+        if (dw > 0) {
+          r.adp = Psy.adp(inS, out, P);
+          if (r.adp) r.bf = r.adp.bf;
+          else if (Psy.crossesFog(inS, out, P)) r.notes.push('入口→出口直線穿越飽和區：ADP／旁通因子不適用，排數改以濕盤管 NTU 估算');
+          else flag('warn', '出口狀態無法以單一盤管直線過程達成', `處理線延長不與飽和線相交：出口偏乾（RH ${out.rh.toFixed(0)}%），濕盤管出口 RH 通常 90–95%`);
+        }
+        // 水溫物理檢核
+        const adpT = r.adp ? r.adp.db : (dw > 0 ? out.dp : null);
+        if (!(wc.tout > wc.tin)) flag('fail', '冰水回水溫須高於供水溫', `供 ${wc.tin} / 回 ${wc.tout} °C`);
+        if (wc.tin >= out.db) flag('fail', '冰水供水溫不低於出風溫度，無法降溫', `供水 ${wc.tin} °C ≥ 出風 ${out.db.toFixed(1)} °C`);
+        else if (adpT != null && wc.tin >= adpT) flag('fail', '冰水供水溫不低於盤管露點，無法除濕到設定', `供水 ${wc.tin} °C ≥ ${r.adp ? 'ADP' : '出口露點'} ${adpT.toFixed(1)} °C`);
+        else if (adpT != null && adpT - wc.tin < B.adpApproach) flag('warn', `${r.adp ? 'ADP' : '出口露點'} 與冰水供水逼近過小`, `${(adpT - wc.tin).toFixed(1)} K < ${B.adpApproach} K，盤管排數將很多`);
+        if (wc.tout >= inS.db) flag('fail', '冰水回水溫不低於入口空氣（逆流盤管不可能）', `回水 ${wc.tout} °C ≥ 入風 ${inS.db.toFixed(1)} °C`);
+        if (out.rh > 98) flag('warn', '出口 RH > 98%，易帶水／起霧', `${out.rh.toFixed(1)}%`);
+        const vLim = dw > 0 ? B.faceVelWet : B.faceVelMax;
+        if (r.faceV > vLim) flag('warn', dw > 0 ? '濕盤管迎風風速過高，易帶水' : '迎風風速超過上限', `${r.faceV.toFixed(2)} > ${vLim} m/s`);
+        water(r, st.circuit, r.q);
+        if (!opt.fast && wc.tout > wc.tin) {
+          r.coil = coilModel({ inS, out, m, q: r.q, wc, wet: dw > 0, heating: false, faceV: r.faceV, fpi: st.fpi || 12, phi, P });
+          r.rowsEst = r.coil;
+          if (r.coil && r.coil.pinch) flag('fail', '冰水條件無法達到設定出口（熱交換夾點）', r.coil.pinch);
+          else if (r.coil && r.coil.rows > 10) flag('warn', '估算排數超過 10 排', `所需 NTU ${r.coil.ntu.toFixed(2)}；可降低迎風風速、提高鰭片密度、降低冰水溫度或加大水量`);
+        }
+      }
+    } else if (st.type === 'WASH') {
+      const Tw = st.wmode === 'RECIRC' ? inS.wb : cfg.water.WW.tin;
+      const eps = Math.min(1, Math.max(0, st.eff / 100));
+      const satW = Psy.wsat(Tw, P);
+      r.Tw = Tw;
+      r.out = Psy.state(inS.db + eps * (Tw - inS.db), inS.w + eps * (satW - inS.w), P);
+      r.q = m * (r.out.h - inS.h);
+      r.evapKgH = m * (r.out.w - inS.w) * 3600;
+      r.sprayLpm = (st.lg || 0) * m * 60 / Water.rho(Tw) * 1000;
+      if (r.evapKgH > 0) tot.humid += r.evapKgH; else tot.condensate += -r.evapKgH;
+      if (st.wmode === 'TEMP') { if (r.q < 0) tot.cool += -r.q; else tot.heat += r.q; }
+      if (r.out.rh > 100.05) flag('fail', '出口過飽和', `${r.out.rh.toFixed(1)}%`);
+      if (r.faceV > B.faceVelWet) flag('warn', '水洗段風速過高，易帶水（需擋水板）', `${r.faceV.toFixed(2)} > ${B.faceVelWet} m/s`);
+      if (st.wmode === 'RECIRC') r.notes.push(`循環水絕熱加濕，水溫≈入口濕球 ${Tw.toFixed(1)} °C`);
+      const banks = st.banks || 1, effMax = banks >= 2 ? 95 : 80, lgMin = banks >= 2 ? 0.6 : 0.3;
+      if (st.eff > effMax) flag('warn', `飽和效率 ${st.eff}% 超過 ${banks} 排噴淋的常見上限 ${effMax}%`, banks >= 2 ? '一般雙排噴淋約 85–95%' : '單排噴淋約 65–80%；更高效率需雙排噴淋或填料式');
+      if ((st.lg || 0) < lgMin) flag('warn', `水氣比 L/G ${st.lg} 偏低`, `${banks} 排噴淋一般 L/G ≥ ${lgMin}，水量不足時效率難以達到設定`);
+    } else if (st.type === 'STEAM') {
+      const wT = st.sctrl === 'LOCAL' ? Psy.wFromPw(st.rh / 100 * Psy.psat(inS.db), P) : Psy.wFromPw(cfg.target.rh / 100 * Psy.psat(cfg.target.db), P);
+      r.wTarget = wT;
+      if (inS.w >= wT - 1e-9) { r.status = 'off'; r.notes.push(st.sctrl === 'LOCAL' ? `入口 RH ${inS.rh.toFixed(0)}% 已達設定 ${st.rh}%` : `入口含濕量 ${(inS.w * 1000).toFixed(2)} g/kg 已達送風目標 ${(wT * 1000).toFixed(2)} g/kg`); }
+      else {
+        const dw = wT - inS.w;
+        r.out = Psy.byHW(inS.h + dw * H_STEAM, wT, P);
+        r.steamKgH = m * dw * 3600;
+        r.q = m * dw * (H_STEAM - 4.186 * 15);                             // 由 15 °C 補給水產生蒸汽所需熱量
+        tot.humid += r.steamKgH; tot.steamKg += r.steamKgH; tot.heat += r.q;
+        if (r.out.rh > 95) flag('warn', '加濕後 RH > 95%，吸收距離不足時會凝結', `${r.out.rh.toFixed(1)}%`);
+      }
+    } else if (st.type === 'FAN') {
+      if (!fanIn) fanIn = inS;
+      const shaft = vIn * st.dp / (st.effFan / 100) / 1000;
+      const elec = shaft / (st.effMotor / 100);
+      const heat = st.motorIn ? elec : shaft;
+      r.fanShaft = shaft; r.fanElec = elec; r.q = heat; r.qs = heat; r.airM3s = vIn;
+      r.out = Psy.byHW(inS.h + heat / m, inS.w, P);
+      tot.fanKw += elec; tot.fanHeat += heat;
+      if (!(st.effFan > 0 && st.effFan <= 95)) flag('fail', '風機效率超出合理範圍', `${st.effFan}%`);
+    }
+    if (r.status === 'on' && r.out !== inS) points.push({ label: st.name, state: r.out, type: st.type, id: st.id });
+    cur = r.out;
+    rows.push(r);
+  });
+  Object.values(circuits).forEach(c => { c.pipe = sizePipe(c.lpm, c.Tm, B); });
+  return { points, rows, tot, circuits, cur, fanIn: fanIn || start };
+
+  function water(r, cid, q) {
+    const wc = cfg.water[cid]; if (!wc || !(q > 0)) return;
+    const dT = Math.abs(wc.tout - wc.tin); if (!(dT > 0)) return;
+    const Tm = (wc.tin + wc.tout) / 2, kgS = q / (Water.cp(Tm) * dT), lpm = kgS / Water.rho(Tm) * 60000;
+    r.water = { cid, dT, Tm, kgS, lpm, pipe: sizePipe(lpm, Tm, B) };
+    const c = circuits[cid] || (circuits[cid] = { cid, q: 0, lpm: 0, Tm, names: [] });
+    c.q += q; c.lpm += lpm; c.names.push(r.name);
+  }
+  }
+
+  // 先加熱、後冷卻（同一工況兩者都運轉）＝能源浪費；冷卻後再熱（除濕再熱）不在此列
+  const firstHeat = rows.findIndex(r => r.status === 'on' && r.type === 'HEAT');
+  const lateCool = firstHeat >= 0 ? rows.slice(firstHeat + 1).find(r => r.status === 'on' && r.type === 'COOL') : null;
+  const simulHC = lateCool ? { heat: rows[firstHeat], cool: lateCool, kw: Math.min(rows[firstHeat].q, lateCool.q) } : null;
+  if (simulHC) add('warn', `先加熱後冷卻：${simulHC.heat.name} → ${simulHC.cool.name}`, `${simulHC.heat.name} 加熱 ${simulHC.heat.q.toFixed(1)} kW 後又被 ${simulHC.cool.name} 冷卻；檢查設定點或改為季節啟用`);
+
+  // 送風目標
+  const sup = cur, T = cfg.target;
+  const dbOk = Math.abs(sup.db - T.db) <= T.dbTol + 1e-9;
+  const rhOk = !T.checkRh || Math.abs(sup.rh - T.rh) <= T.rhTol + 1e-9;
+  const target = { dbOk, rhOk, ok: dbOk && rhOk };
+  if (!dbOk) add('fail', `送風溫度不在目標範圍`, `送風 ${sup.db.toFixed(1)} °C，目標 ${T.db} ± ${T.dbTol} °C`);
+  if (!rhOk) add('fail', `送風相對濕度不在目標範圍`, `送風 ${sup.rh.toFixed(1)}%，目標 ${T.rh} ± ${T.rhTol}%`);
+  // 室內負荷核對（AHU）
+  let room = null;
+  if (cfg.system === 'AHU' && (num(S.load.qs) || num(S.load.ql))) {
+    const qs = num(S.load.qs) || 0, ql = num(S.load.ql) || 0;
+    const cpa = 1.006 + 1.86 * ra.w;
+    const req = Psy.state(ra.db - qs / (m * cpa), ra.w - ql / (m * 2501), P);
+    const capS = m * cpa * (ra.db - sup.db), capL = m * 2501 * (ra.w - sup.w);
+    room = { qs, ql, req, capS, capL, shr: qs + ql !== 0 ? qs / (qs + ql) : 1 };
+    const tol = 0.05;
+    if (qs > 0 && capS < qs * (1 - tol)) add('fail', '送風顯熱能力不足', `可承擔 ${capS.toFixed(1)} kW < 室內顯熱 ${qs} kW（需送風 ≤ ${req.db.toFixed(1)} °C）`);
+    else if (qs > 0 && capS > qs * 1.25) add('warn', '送風顯熱能力過大 25% 以上（室溫將低於設計）', `可承擔 ${capS.toFixed(1)} kW vs 室內 ${qs} kW`);
+    if (ql > 0 && capL < ql * (1 - tol)) add('fail', '送風除濕（潛熱）能力不足', `可承擔 ${capL.toFixed(1)} kW < 室內潛熱 ${ql} kW（需送風 ≤ ${(req.w * 1000).toFixed(2)} g/kg）`);
+  }
+  const lvls = issues.map(i => i.lvl);
+  const verdict = lvls.includes('fail') ? 'fail' : lvls.includes('warn') ? 'warn' : 'pass';
+  return { sk, P, m, basis, faceA, oa, ra, xOa, start, simulHC, supply: sup, points, rows, tot, circuits, issues, target, room, verdict };
+}
+function num(v) { const n = typeof v === 'number' ? v : parseFloat(v); return Number.isFinite(n) ? n : null; }
+
+// ───── 全年逐時模擬（EPW 氣象檔）─────
+function parseEPW(text) {
+  const lines = text.split(/\r?\n/);
+  if (!/^LOCATION/i.test(lines[0] || '')) throw new Error('不是 EPW 檔（缺 LOCATION 標頭）');
+  const loc = lines[0].split(',');
+  const hours = [];
+  for (let i = 8; i < lines.length; i++) {
+    const c = lines[i].split(','); if (c.length < 10) continue;
+    const month = +c[1], db = +c[6], dp = +c[7], rh = +c[8];
+    if (!Number.isFinite(db) || db > 70 || db < -70) continue;
+    hours.push([month, db, Number.isFinite(dp) && dp < 99 ? Math.min(dp, db) : null, Number.isFinite(rh) && rh <= 110 ? rh : null]);
+  }
+  if (hours.length < 8000) throw new Error(`逐時資料只有 ${hours.length} 筆（應為 8760）`);
+  return { city: (loc[1] || '').trim(), country: (loc[3] || '').trim(), lat: +loc[6], lon: +loc[7], elev: +loc[9], hours };
+}
+function annualInit(cfg, design) {
+  const stages = {};
+  cfg.stages.forEach(s => {
+    const mx = Math.max(0, ...['summer', 'winter'].map(k => { const r = design[k].rows.find(x => x.id === s.id); return r && r.status === 'on' ? r.q : 0; }));
+    stages[s.id] = { hours: 0, kwh: 0, peak: 0, design: mx, over: 0, kg: 0, elec: 0 };
+  });
+  return { n: 0, stages, circ: {}, cool: 0, heat: 0, humid: 0, cond: 0, fanKwh: 0, elec: 0, unmet: 0, reasons: {}, summerH: 0, hcH: 0, hcKwh: 0,
+    monthly: Array.from({ length: 12 }, () => ({ cool: 0, heat: 0, humid: 0, elec: 0 })) };
+}
+// 逐時：外氣乾球 ≥ 換季溫度用夏季的處理段啟用設定，否則用冬季；乾空氣流率取設計值（定風量）
+function annualRun(cfg, epw, design, acc, from, to) {
+  const A = cfg.annual;
+  for (let i = from; i < to && i < epw.hours.length; i++) {
+    const [month, db, dp, rh] = epw.hours[i], sk = db >= A.changeover ? 'summer' : 'winter';
+    const R = simulate(cfg, sk, { m: design[sk].m, fast: true, oa: (P) => dp != null ? Psy.state(db, Psy.wFromPw(Psy.psat(dp), P), P) : Psy.byDBRH(db, rh ?? 50, P) });
+    const mo = acc.monthly[Math.max(0, Math.min(11, month - 1))];
+    acc.n++; if (sk === 'summer') acc.summerH++;
+    R.rows.forEach(r => {
+      if (r.status !== 'on') return;
+      const s = acc.stages[r.id], st = cfg.stages.find(x => x.id === r.id); if (!s || !st) return;
+      s.hours++; s.kwh += r.q; s.peak = Math.max(s.peak, r.q); if (s.design > 0 && r.q > s.design * 1.005) s.over++;
+      let e = 0;
+      if (r.type === 'COOL') { e = r.q / (st.circuit === 'CHW_M' ? A.copM : A.copL); acc.cool += r.q; mo.cool += r.q; s.kg += r.condKgH; acc.cond += r.condKgH; }
+      else if (r.type === 'HEAT') { e = st.src === 'ELEC' ? r.q : r.q / A.copHW; acc.heat += r.q; mo.heat += r.q; }
+      else if (r.type === 'STEAM') { e = r.q / A.steamEff; acc.heat += r.q; mo.heat += r.q; s.kg += r.steamKgH; acc.humid += r.steamKgH; mo.humid += r.steamKgH; }
+      else if (r.type === 'WASH') { if (r.evapKgH > 0) { acc.humid += r.evapKgH; mo.humid += r.evapKgH; } else acc.cond += -r.evapKgH; s.kg += Math.abs(r.evapKgH); }
+      else if (r.type === 'FAN') { e = r.fanElec; acc.fanKwh += r.fanElec; }
+      s.elec += e; acc.elec += e; mo.elec += e;
+      if (r.water) acc.circ[r.water.cid] = (acc.circ[r.water.cid] || 0) + r.q;
+    });
+    if (R.simulHC) { acc.hcH++; acc.hcKwh += R.simulHC.kw; }
+    if (!R.target.ok) {
+      acc.unmet++;
+      const why = !R.target.dbOk ? (R.supply.db > cfg.target.db ? '送風溫度偏高' : '送風溫度偏低') : (R.supply.rh > cfg.target.rh ? '送風濕度偏高' : '送風濕度偏低');
+      acc.reasons[why] = (acc.reasons[why] || 0) + 1;
+    }
+  }
+  return acc;
+}
+/* ===== ENGINE END ===== */
+</script>
+
+<script>
+// ───────────────────────── 預設與範本 ─────────────────────────
+const uid = () => 's' + Math.random().toString(36).slice(2, 8);
+const both = () => ({ summer: true, winter: true });
+const BASE = () => ({
+  ver: 10, project: { name: '', sub: '' },
+  system: 'MAU', airflow: 35000, flowBasis: 'fan', coilW: 2400, coilH: 1600,
+  pressureMode: 'alt', altitude: 0, pressure: 101.325, oaPct: 30,
+  seasons: {
+    summer: { oa: { db: 35, mode: 'rh', rh: 75, wb: 31 }, ra: { db: 26, rh: 50 }, load: { qs: '', ql: '' } },
+    winter: { oa: { db: 8, mode: 'rh', rh: 60, wb: 4 }, ra: { db: 22, rh: 45 }, load: { qs: '', ql: '' } }
+  },
+  target: { db: 23, dbTol: 1, rh: 50, rhTol: 5, checkRh: true },
+  water: { CHW_L: { name: '低溫冰水 CHW-L', tin: 7, tout: 12.5 }, CHW_M: { name: '中溫冰水 CHW-M', tin: 12, tout: 18 }, HW: { name: '熱水 HW', tin: 60, tout: 50 }, WW: { name: '噴淋水 WW', tin: 25, tout: 25 } },
+  basis: { faceVelWet: 2.5, faceVelMax: 3.5, rhLeaveMax: 95, adpApproach: 1.5, maxPaPerM: 400, vLimits: [1.2, 2.4, 3.0], coilPhi: 0.75 },
+  annual: { changeover: 18, copL: 5.0, copM: 6.0, copHW: 3.0, steamEff: 1.0, price: 4.0 },
+  stages: []
+});
+const TEMPLATES = {
+  MAU: () => Object.assign(BASE(), { stages: [
+    { id: uid(), type: 'HEAT', name: '預熱盤管', on: { summer: false, winter: true }, src: 'HW', ctrl: 'HUM', db: 30 },
+    { id: uid(), type: 'COOL', name: '預冷盤管', on: { summer: true, winter: false }, circuit: 'CHW_M', ctrl: 'DB', db: 25, rh: 95, fpi: 12 },
+    { id: uid(), type: 'WASH', name: '水洗段', on: both(), wmode: 'RECIRC', eff: 85, lg: 1.0, banks: 2 },
+    { id: uid(), type: 'COOL', name: '除濕盤管', on: both(), circuit: 'CHW_L', ctrl: 'DP', db: 13, rh: 95, fpi: 12 },
+    { id: uid(), type: 'FAN', name: '送風機', on: both(), dp: 1500, effFan: 70, effMotor: 93, motorIn: true },
+    { id: uid(), type: 'HEAT', name: '再熱盤管', on: both(), src: 'HW', db: 23 }
+  ] }),
+  AHU: () => { const c = BASE(); Object.assign(c, { system: 'AHU', oaPct: 20, coilW: 2600, coilH: 1600, target: { db: 15, dbTol: 1.5, rh: 85, rhTol: 10, checkRh: false } });
+    c.seasons.summer.load = { qs: 115, ql: 25 };
+    c.stages = [
+      { id: uid(), type: 'COOL', name: '冷卻盤管', on: both(), circuit: 'CHW_L', ctrl: 'DB', db: 14, rh: 95, fpi: 12 },
+      { id: uid(), type: 'FAN', name: '送風機', on: both(), dp: 800, effFan: 70, effMotor: 93, motorIn: true },
+      { id: uid(), type: 'HEAT', name: '再熱盤管', on: both(), src: 'HW', db: 14 }
+    ]; return c; },
+  DOAS: () => { const c = BASE(); Object.assign(c, { airflow: 20000, coilW: 2000, coilH: 1400, target: { db: 22, dbTol: 1, rh: 45, rhTol: 5, checkRh: true } });
+    c.seasons.winter.oa = { db: 5, mode: 'rh', rh: 50, wb: 1 };
+    c.stages = [
+      { id: uid(), type: 'HEAT', name: '預熱盤管', on: both(), src: 'HW', db: 12 },
+      { id: uid(), type: 'COOL', name: '冷卻除濕盤管', on: both(), circuit: 'CHW_L', ctrl: 'DP', db: 11.5, rh: 95, fpi: 12 },
+      { id: uid(), type: 'STEAM', name: '蒸汽加濕器', on: both(), sctrl: 'SUPPLY', rh: 45 },
+      { id: uid(), type: 'FAN', name: '送風機', on: both(), dp: 1000, effFan: 70, effMotor: 93, motorIn: true },
+      { id: uid(), type: 'HEAT', name: '再熱盤管', on: both(), src: 'HW', db: 22 }
+    ]; return c; }
+};
+const NEW_STAGE = {
+  HEAT: () => ({ type: 'HEAT', name: '加熱盤管', on: both(), src: 'HW', db: 20 }),
+  COOL: () => ({ type: 'COOL', name: '冷卻盤管', on: both(), circuit: 'CHW_L', ctrl: 'DP', db: 13, rh: 95, fpi: 12 }),
+  WASH: () => ({ type: 'WASH', name: '水洗段', on: both(), wmode: 'RECIRC', eff: 75, lg: 0.6, banks: 1 }),
+  STEAM: () => ({ type: 'STEAM', name: '蒸汽加濕器', on: both(), sctrl: 'SUPPLY', rh: 45 }),
+  FAN: () => ({ type: 'FAN', name: '送風機', on: both(), dp: 1000, effFan: 70, effMotor: 93, motorIn: true })
+};
+
+// ───────────────────────── 狀態 ─────────────────────────
+const LS_KEY = 'psychroPro.v10';
+let cfg = load() || TEMPLATES.MAU();
+const ui = { season: 'summer', tab: 'process', show: { h: true, wb: false, v: false, other: false, adp: true } };
+let RES = null;
+function load() { try { const s = localStorage.getItem(LS_KEY); if (!s) return null; const c = JSON.parse(s); return c && c.ver === 10 ? merge(BASE(), c) : null; } catch (e) { return null; } }
+function merge(base, c) { const out = { ...base, ...c }; ['seasons', 'target', 'water', 'basis', 'project', 'annual'].forEach(k => { out[k] = deepMerge(base[k], c[k] || {}); }); return out; }
+function deepMerge(a, b) { if (typeof a !== 'object' || a === null || Array.isArray(a)) return b === undefined ? a : b; const o = { ...a }; Object.keys(b || {}).forEach(k => { o[k] = deepMerge(a[k], b[k]); }); return o; }
+let saveTimer = null;
+function persist() { clearTimeout(saveTimer); saveTimer = setTimeout(() => { try { localStorage.setItem(LS_KEY, JSON.stringify(cfg)); document.getElementById('autosave').textContent = '已自動儲存 ' + new Date().toTimeString().slice(0, 5); } catch (e) {} }, 400); }
+
+const $ = (s, r = document) => r.querySelector(s);
+const $$ = (s, r = document) => [...r.querySelectorAll(s)];
+const getPath = (o, p) => p.split('.').reduce((a, k) => (a == null ? a : a[k]), o);
+const setPath = (o, p, v) => { const ks = p.split('.'); let t = o; ks.slice(0, -1).forEach(k => { t = t[k]; }); t[ks[ks.length - 1]] = v; };
+const f = (n, d = 1) => (n == null || !Number.isFinite(n)) ? '—' : n.toFixed(d);
+const fk = (n, d = 1) => (n == null || !Number.isFinite(n)) ? '—' : (Math.abs(n) >= 1000 ? Math.round(n).toLocaleString() : n.toFixed(d));
+const esc = (s) => String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+function toast(msg) { const t = $('#toast'); t.textContent = msg; t.classList.add('show'); clearTimeout(t._h); t._h = setTimeout(() => t.classList.remove('show'), 2200); }
+
+// 欄位範圍檢核（不合理時不寫入計算）
+const RANGE = {
+  airflow: [1, 2e6], coilW: [100, 10000], coilH: [100, 10000], altitude: [-400, 5000], pressure: [50, 110], oaPct: [0, 100],
+  'oa.db': [-40, 55], 'oa.rh': [0.1, 100], 'oa.wb': [-40, 50], 'ra.db': [0, 45], 'ra.rh': [1, 100],
+  'target.db': [-10, 60], 'target.rh': [1, 100], 'target.dbTol': [0, 20], 'target.rhTol': [0, 50],
+  'basis.faceVelWet': [0.5, 6], 'basis.faceVelMax': [0.5, 8], 'basis.rhLeaveMax': [50, 100], 'basis.adpApproach': [0, 10], 'basis.maxPaPerM': [20, 2000],
+  area: [0.1, 100], banks: [1, 2], 'basis.coilPhi': [0.3, 1], 'annual.changeover': [-10, 40], 'annual.copL': [0.5, 15], 'annual.copM': [0.5, 15], 'annual.copHW': [0.3, 8], 'annual.steamEff': [0.3, 1.2], 'annual.price': [0, 50],
+  db: [-20, 80], rh: [1, 100], eff: [1, 100], lg: [0, 5], dp: [0, 5000], effFan: [10, 95], effMotor: [50, 100], fpi: [6, 18], tin: [0, 100], tout: [0, 100]
+};
+const rangeOf = (key) => RANGE[key] || RANGE[key.replace(/^seasons\.\w+\./, '')] || RANGE[key.split('.').pop()];
+
+// ───────────────────────── 輸入綁定 ─────────────────────────
+function bindStatic() {
+  $$('.iw.bad').forEach(el => el.classList.remove('bad'));
+  $$('[data-k]').forEach(el => {
+    const v = getPath(cfg, el.dataset.k);
+    if (el.type === 'checkbox') el.checked = !!v;
+    else if (el.dataset.list) el.value = (v || []).join(' / ');
+    else el.value = v ?? '';
+  });
+  $$('#segSystem button').forEach(b => b.classList.toggle('on', b.dataset.v === cfg.system));
+  $('#pName').value = cfg.project.name || ''; $('#pSub').value = cfg.project.sub || '';
+  syncVisibility();
+  renderWaterRows();
+  renderStages();
+}
+function syncVisibility() {
+  $('#secAHU').hidden = cfg.system !== 'AHU';
+  $('#noTarget').textContent = cfg.system === 'AHU' ? '4' : '3';
+  $('#noStages').textContent = cfg.system === 'AHU' ? '5' : '4';
+  $('#fAlt').hidden = cfg.pressureMode === 'kpa'; $('#fKpa').hidden = cfg.pressureMode !== 'kpa';
+  ['summer', 'winter'].forEach(s => {
+    const md = cfg.seasons[s].oa.mode;
+    $(`[data-oaf="${s}-rh"]`).hidden = md !== 'rh'; $(`[data-oaf="${s}-wb"]`).hidden = md !== 'wb';
+  });
+}
+function onFieldInput(el) {
+  const key = el.dataset.k;
+  let val;
+  if (el.type === 'checkbox') val = el.checked;
+  else if (el.tagName === 'SELECT' || el.type === 'text' && !el.dataset.list || el.closest('.project')) val = el.value;
+  else if (el.dataset.list) {
+    const arr = el.value.split(/[\/,\s]+/).map(Number).filter(Number.isFinite);
+    const ok = arr.length === +el.dataset.list && arr.every(x => x > 0 && x < 10);
+    el.closest('.iw').classList.toggle('bad', !ok); if (!ok) return; val = arr;
+  } else {
+    if (el.value === '' && el.dataset.opt) { val = ''; el.closest('.iw').classList.remove('bad'); }
+    else {
+      const n = parseFloat(el.value), rg = rangeOf(key);
+      const ok = Number.isFinite(n) && (!rg || (n >= rg[0] && n <= rg[1]));
+      el.closest('.iw').classList.toggle('bad', !ok);
+      el.title = ok ? '' : (rg ? `合理範圍 ${rg[0]} ~ ${rg[1]}` : '請輸入數字');
+      if (!ok) return;
+      val = n;
+    }
+  }
+  setPath(cfg, key, val);
+  if (/pressureMode|oa\.mode/.test(key)) syncVisibility();
+  if (key === 'pressureMode' || key.endsWith('.mode')) bindOA();
+  schedule();
+}
+function bindOA() { /* 切換 RH/WB 時同步另一個欄位的顯示值 */
+  ['summer', 'winter'].forEach(s => { const o = cfg.seasons[s].oa; const P = RES ? RES.summer.P : 101.325;
+    const st = o.mode === 'wb' ? Psy.byDBRH(o.db, o.rh, P) : null;
+    if (o.mode === 'wb' && st) { o.wb = Math.round(st.wb * 10) / 10; $(`[data-k="seasons.${s}.oa.wb"]`).value = o.wb; }
+    if (o.mode === 'rh') { const s2 = Psy.byDBWB(o.db, o.wb, P); o.rh = Math.round(Math.min(100, s2.rh) * 10) / 10; $(`[data-k="seasons.${s}.oa.rh"]`).value = o.rh; }
+  });
+}
+document.addEventListener('input', e => { const el = e.target; if (el.dataset && el.dataset.k && el.type !== 'checkbox' && el.tagName !== 'SELECT') onFieldInput(el); });
+document.addEventListener('change', e => { const el = e.target; if (el.dataset && el.dataset.k && (el.type === 'checkbox' || el.tagName === 'SELECT')) onFieldInput(el); });
+$('#segSystem').addEventListener('click', e => { const b = e.target.closest('button'); if (!b) return; cfg.system = b.dataset.v; $$('#segSystem button').forEach(x => x.classList.toggle('on', x === b)); syncVisibility(); schedule(); });
+
+// 水路設定
+function renderWaterRows() {
+  $('#waterRows').innerHTML = Object.entries(cfg.water).map(([k, w]) => `<tr><td style="font-weight:600">${esc(w.name)}</td>
+    <td><div class="iw"><input type="number" step="0.1" data-k="water.${k}.tin" value="${w.tin}"></div></td>
+    <td><div class="iw"><input type="number" step="0.1" data-k="water.${k}.tout" value="${w.tout}"></div></td></tr>`).join('');
+  updWaterSum();
+}
+function updWaterSum() { const w = cfg.water; $('#sumWater').textContent = `CHW-L ${w.CHW_L.tin}/${w.CHW_L.tout}・CHW-M ${w.CHW_M.tin}/${w.CHW_M.tout}・HW ${w.HW.tin}/${w.HW.tout} °C`; }
+
+// ───────────────────────── 處理段卡片 ─────────────────────────
+const nf = (lab, k, v, u, extra = '') => `<div class="field"><label>${lab}</label><div class="iw"><input type="number" data-f="${k}" value="${v ?? ''}" ${extra}>${u ? `<span class="u">${u}</span>` : ''}</div></div>`;
+const sf = (lab, k, v, opts, cls = '') => `<div class="field ${cls}"><label>${lab}</label><div class="iw"><select data-f="${k}">${opts.map(([ov, ol]) => `<option value="${ov}" ${ov == v ? 'selected' : ''}>${ol}</option>`).join('')}</select></div></div>`;
+function stageBody(s) {
+  const areaF = nf('段斷面積', 'area', s.area ?? '', 'm²', `step="0.1" placeholder="同機組 ${(cfg.coilW * cfg.coilH / 1e6).toFixed(2)}"`);
+  if (s.type === 'HEAT') return `<div class="grid g3">${sf('控制方式', 'ctrl', s.ctrl || 'DB', [['DB', '固定出風溫度'], ['HUM', '依加濕需求重設']])}${sf('熱源', 'src', s.src, [['HW', '熱水 HW'], ['ELEC', '電熱']])}${nf(s.ctrl === 'HUM' ? '最高預熱溫度' : '出風溫度設定', 'db', s.db, '°C', 'step="0.5"')}${s.src === 'HW' ? sf('鰭片密度', 'fpi', s.fpi || 10, [[8, '8 FPI'], [10, '10 FPI'], [12, '12 FPI'], [14, '14 FPI']]) : ''}${areaF}</div>${s.ctrl === 'HUM' ? '<div class="hint">只預熱到「下游循環水洗出口含濕量＝送風目標」所需的溫度；外氣夠濕時自動停機，避免預熱後再除濕</div>' : ''}`;
+  if (s.type === 'COOL') {
+    const ctrl = sf('控制方式', 'ctrl', s.ctrl, [['DP', '露點控制（除濕）'], ['DB', '出風溫度控制'], ['STATE', '固定出口狀態']]);
+    const circ = sf('冰水水路', 'circuit', s.circuit, [['CHW_L', '低溫 CHW-L'], ['CHW_M', '中溫 CHW-M']]);
+    const db = nf(s.ctrl === 'DB' ? '出風溫度設定' : '出口 DB', 'db', s.db, '°C', 'step="0.5"');
+    const rh = s.ctrl === 'DB' ? `<div class="field"><label>出口 RH</label><div class="iw" style="background:#F6F8FB"><input disabled value="≤ ${cfg.basis.rhLeaveMax}"><span class="u">%</span></div></div>` : nf('出口 RH', 'rh', s.rh, '%', 'step="1"');
+    const fpi = sf('鰭片密度', 'fpi', s.fpi || 12, [[8, '8 FPI'], [10, '10 FPI'], [12, '12 FPI'], [14, '14 FPI']]);
+    const hint = s.ctrl === 'DP' ? '入口含濕量高於設定點才作動，出口＝設定 DB/RH（決定露點）' : s.ctrl === 'DB' ? '控制出風溫度；出口 RH 不超過設計基準上限' : '出口固定為設定 DB/RH（請確認為可達成的盤管出口）';
+    return `<div class="grid g3">${ctrl}${circ}${fpi}${db}${rh}${areaF}</div><div class="hint">${hint}</div>`;
+  }
+  if (s.type === 'WASH') return `<div class="grid g3">${sf('噴淋水', 'wmode', s.wmode, [['RECIRC', '循環水（絕熱）'], ['TEMP', '指定水溫 WW']])}${sf('噴淋排數', 'banks', s.banks || 1, [[1, '單排'], [2, '雙排']])}${nf('飽和效率', 'eff', s.eff, '%', 'step="1"')}${nf('水氣比 L/G', 'lg', s.lg, 'kg/kg', 'step="0.1"')}${areaF}</div><div class="hint">常見飽和效率：單排 65–80%（L/G ≥ 0.3）、雙排 85–95%（L/G ≥ 0.6）</div>`;
+  if (s.type === 'STEAM') return `<div class="grid g3">${sf('控制方式', 'sctrl', s.sctrl || 'SUPPLY', [['SUPPLY', '送風目標露點'], ['LOCAL', '就地 RH 設定']], s.sctrl === 'LOCAL' ? '' : 'full')}${s.sctrl === 'LOCAL' ? nf('就地 RH 設定', 'rh', s.rh, '%', 'step="1"') : ''}</div><div class="hint">${s.sctrl === 'LOCAL' ? '加濕到本段位置的 RH；後段再熱會使送風 RH 下降' : '加濕到「送風目標 DB/RH」對應的含濕量（再熱後送風 RH 剛好達標）'}</div>`;
+  if (s.type === 'FAN') return `<div class="grid g3">${nf('全壓', 'dp', s.dp, 'Pa', 'step="50"')}${nf('風機效率', 'effFan', s.effFan, '%', 'step="1"')}${nf('馬達效率', 'effMotor', s.effMotor, '%', 'step="1"')}
+    <div class="field full"><label class="chk-inline"><input type="checkbox" data-f="motorIn" ${s.motorIn ? 'checked' : ''}> 馬達位於氣流中（Plug fan／風牆：馬達損失也進入氣流）</label></div></div>`;
+  return '';
+}
+function renderStages() {
+  $('#stages').innerHTML = cfg.stages.map((s, i) => {
+    const T = TYPES[s.type], anyOn = s.on.summer || s.on.winter;
+    return `<div class="stg ${anyOn ? '' : 'off'}" data-id="${s.id}" style="--tc:${T.color}">
+      <div class="stg-h"><span class="grip" draggable="true" title="拖曳排序">⋮⋮</span><span class="idx">${i + 1}</span>
+        <input class="nm" data-f="name" value="${esc(s.name)}"><span class="ty">${T.label}</span>
+        <span class="sw" title="運轉季節">${['summer', 'winter'].map(k => `<label class="${s.on[k] ? 'on' : ''}"><input type="checkbox" data-on="${k}" ${s.on[k] ? 'checked' : ''}>${k === 'summer' ? '夏' : '冬'}</label>`).join('')}</span>
+        <button class="ib" data-act="up" title="上移">↑</button><button class="ib" data-act="down" title="下移">↓</button><button class="ib del" data-act="del" title="刪除">✕</button></div>
+      <div class="stg-b">${stageBody(s)}</div>
+      <div class="stg-r" id="sr-${s.id}"></div></div>`;
+  }).join('') || '<div class="hint">尚無處理段，請用下方按鈕新增。</div>';
+  if (RES) updateStageResults();
+}
+const stageOf = (el) => { const c = el.closest('.stg'); return c ? cfg.stages.find(s => s.id === c.dataset.id) : null; };
+const STRUCT_FIELDS = ['ctrl', 'src', 'wmode', 'circuit', 'sctrl'];
+$('#stages').addEventListener('input', e => {
+  const el = e.target, s = stageOf(el); if (!s || !el.dataset.f || el.tagName === 'SELECT' || el.type === 'checkbox') return;
+  const k = el.dataset.f;
+  if (k === 'name') { s.name = el.value; schedule(); return; }
+  if (k === 'area' && el.value === '') { s.area = ''; el.closest('.iw').classList.remove('bad'); schedule(); return; }
+  const n = parseFloat(el.value), rg = RANGE[k];
+  const ok = Number.isFinite(n) && (!rg || (n >= rg[0] && n <= rg[1]));
+  el.closest('.iw').classList.toggle('bad', !ok); el.title = ok ? '' : (rg ? `合理範圍 ${rg[0]} ~ ${rg[1]}` : '');
+  if (!ok) return;
+  s[k] = n; schedule();
+});
+$('#stages').addEventListener('change', e => {
+  const el = e.target, s = stageOf(el); if (!s) return;
+  if (el.dataset.on) { s.on[el.dataset.on] = el.checked; renderStages(); schedule(); return; }
+  if (el.dataset.f === 'motorIn') { s.motorIn = el.checked; schedule(); return; }
+  if (el.tagName === 'SELECT') { const k = el.dataset.f; s[k] = (k === 'fpi' || k === 'banks') ? +el.value : el.value; if (STRUCT_FIELDS.includes(k)) renderStages(); schedule(); }
+});
+$('#stages').addEventListener('click', e => {
+  const b = e.target.closest('[data-act]'); if (!b) return; const s = stageOf(b); const i = cfg.stages.indexOf(s);
+  if (b.dataset.act === 'del') { cfg.stages.splice(i, 1); toast(`已刪除「${s.name}」`); }
+  if (b.dataset.act === 'up' && i > 0) [cfg.stages[i - 1], cfg.stages[i]] = [cfg.stages[i], cfg.stages[i - 1]];
+  if (b.dataset.act === 'down' && i < cfg.stages.length - 1) [cfg.stages[i + 1], cfg.stages[i]] = [cfg.stages[i], cfg.stages[i + 1]];
+  renderStages(); schedule();
+});
+// 拖曳排序
+let dragId = null;
+$('#stages').addEventListener('dragstart', e => { const c = e.target.closest('.stg'); if (!c) return; dragId = c.dataset.id; c.classList.add('dragging'); e.dataTransfer.effectAllowed = 'move'; try { e.dataTransfer.setData('text/plain', dragId); } catch (_) {} });
+$('#stages').addEventListener('dragover', e => { if (!dragId) return; e.preventDefault(); $$('.stg').forEach(x => x.classList.remove('drop-target')); const c = e.target.closest('.stg'); if (c && c.dataset.id !== dragId) c.classList.add('drop-target'); });
+$('#stages').addEventListener('drop', e => { e.preventDefault(); const c = e.target.closest('.stg'); if (!c || !dragId) return; const from = cfg.stages.findIndex(s => s.id === dragId); const [it] = cfg.stages.splice(from, 1); const to = cfg.stages.findIndex(s => s.id === c.dataset.id); cfg.stages.splice(to, 0, it); dragId = null; renderStages(); schedule(); });
+$('#stages').addEventListener('dragend', () => { dragId = null; $$('.stg').forEach(x => x.classList.remove('dragging', 'drop-target')); });
+$$('[data-add]').forEach(b => b.addEventListener('click', () => { const s = { id: uid(), ...NEW_STAGE[b.dataset.add]() }; cfg.stages.push(s); renderStages(); schedule(); toast(`已新增「${s.name}」`); }));
+
+// ───────────────────────── 計算與呈現 ─────────────────────────
+let calcTimer = null;
+function schedule() { clearTimeout(calcTimer); calcTimer = setTimeout(compute, 90); persist(); }
+function compute() {
+  RES = { summer: simulate(cfg, 'summer'), winter: simulate(cfg, 'winter') };
+  updWaterSum();
+  updateReadouts();
+  updateStageResults();
+  renderResults();
+  scheduleAnnual();
+}
+// ───────────────────────── 全年能耗 ─────────────────────────
+let EPW = null, ANN = null, annTimer = null, annToken = 0;
+try { const s = localStorage.getItem(LS_KEY + '.epw'); if (s) EPW = JSON.parse(s); } catch (_) {}
+function updEpwInfo() {
+  const t = EPW ? `${EPW.city || '未命名'}${EPW.country ? '，' + EPW.country : ''}・${EPW.hours.length} h` : '未載入氣象檔';
+  $('#sumAnnual').textContent = t; $('#epwInfo').textContent = EPW ? (EPW.name || '') : '';
+}
+function scheduleAnnual() {
+  updEpwInfo();
+  if (!EPW) return;
+  clearTimeout(annTimer); annToken++;
+  if (ANN) ANN.stale = true;
+  annTimer = setTimeout(runAnnualAsync, 350);
+}
+function runAnnualAsync() {
+  const tok = ++annToken, snap = JSON.parse(JSON.stringify(cfg)), design = RES, N = EPW.hours.length;
+  const acc = annualInit(snap, design); let i = 0; const t0 = performance.now();
+  ANN = { running: true, progress: 0, acc: ANN && ANN.acc, stale: true };
+  refreshAnnual();
+  const step = () => {
+    if (tok !== annToken) return;
+    const ts = performance.now();
+    while (i < N && performance.now() - ts < 24) { annualRun(snap, EPW, design, acc, i, i + 48); i += 48; }
+    if (i < N) { ANN.progress = i / N; const p = $('#annProg'); if (p) p.style.width = (ANN.progress * 100).toFixed(0) + '%'; setTimeout(step, 0); }
+    else { ANN = { running: false, progress: 1, acc, stale: false, ms: performance.now() - t0 }; refreshAnnual(); }
+  };
+  setTimeout(step, 0);
+}
+function refreshAnnual() { if (ui.tab === 'annual') { const tb = $('#tabBody'); if (tb) tb.innerHTML = tabBody(); } }
+$('#fileEpw').addEventListener('change', async e => {
+  const file = e.target.files[0]; if (!file) return;
+  try { EPW = { ...parseEPW(await file.text()), name: file.name }; try { localStorage.setItem(LS_KEY + '.epw', JSON.stringify(EPW)); } catch (_) {}
+    toast(`已載入 ${EPW.city}（${EPW.hours.length} 小時）`); ui.tab = 'annual'; renderResults(); scheduleAnnual();
+  } catch (err) { toast('無法讀取：' + err.message); }
+  e.target.value = '';
+});
+document.addEventListener('click', e => { if (e.target.closest('[data-epw]')) $('#fileEpw').click(); });
+function annualHtml() {
+  if (!EPW) return `<div class="empty"><b>尚未載入氣象檔</b><p>載入 EPW 逐時氣象檔（8760 小時）後，會以同一套控制邏輯逐時模擬，算出全年冷卻、加熱、加濕、凝結水與耗電，並統計超過設計選型的時數。</p>
+    <button class="btn primary" data-epw="1">載入 EPW 氣象檔</button><div class="hint">可用 climate.onebuilding.org 的 TMYx 檔；你的「PUE計算/weather」資料夾已有新竹、台中、桃園等檔案。</div></div>`;
+  if (!ANN || !ANN.acc || (ANN.running && !ANN.acc)) return `<div class="empty"><b>全年逐時模擬中…</b><div class="prog"><i id="annProg" style="width:${((ANN && ANN.progress) || 0) * 100}%"></i></div></div>`;
+  const a = ANN.acc, A = cfg.annual, M = (v) => v / 1000;
+  const elevNote = cfg.pressureMode === 'alt' && Number.isFinite(EPW.elev) && Math.abs(EPW.elev - (cfg.altitude || 0)) > 50 ? `<span class="pc warn">氣象站海拔 ${EPW.elev} m 與設定海拔 ${cfg.altitude} m 不同</span>` : '';
+  const kpi = (l, v, u, s, cls = '') => `<div class="m ${cls}"><small>${l}</small><b>${v}<i>${u}</i></b>${s ? `<span>${s}</span>` : ''}</div>`;
+  const circ = Object.entries(a.circ).filter(([k]) => k !== 'HW').map(([k, v]) => `${cfg.water[k].name.split(' ')[0]} ${fk(M(v), 1)}`).join('・');
+  const mx = Math.max(1, ...a.monthly.map(x => Math.max(x.cool, x.heat)));
+  const W = 760, H = 210, ml = 44, mb = 24, pw = W - ml - 10, ph = H - mb - 14, bw = pw / 12;
+  let bars = '';
+  for (let k = 0; k <= 4; k++) { const v = mx * k / 4, yy = 14 + ph - ph * k / 4; bars += `<line x1="${ml}" x2="${W - 10}" y1="${yy}" y2="${yy}" stroke="#EEF1F5"/><text x="${ml - 6}" y="${yy + 4}" text-anchor="end" class="ax">${fk(M(v), 0)}</text>`; }
+  a.monthly.forEach((x, i) => { const x0 = ml + i * bw, hc = ph * x.cool / mx, hh = ph * x.heat / mx;
+    bars += `<rect x="${x0 + bw * 0.14}" y="${14 + ph - hc}" width="${bw * 0.34}" height="${hc}" rx="2" fill="#2563EB"><title>${i + 1} 月冷卻 ${fk(M(x.cool), 1)} MWh</title></rect><rect x="${x0 + bw * 0.52}" y="${14 + ph - hh}" width="${bw * 0.34}" height="${hh}" rx="2" fill="#E11D48"><title>${i + 1} 月加熱 ${fk(M(x.heat), 1)} MWh</title></rect><text x="${x0 + bw / 2}" y="${H - 6}" text-anchor="middle" class="ax">${i + 1}月</text>`; });
+  const rows = cfg.stages.map((s, i) => { const x = a.stages[s.id]; if (!x) return '';
+    return `<tr><td><span class="pn" style="background:${TYPES[s.type].color}">${i + 1}</span>${esc(s.name)}</td><td>${fk(x.hours, 0)}</td><td>${(x.hours / a.n * 100).toFixed(0)}%</td><td><b>${fk(M(x.kwh), 1)}</b></td><td>${fk(x.peak, 1)}</td><td>${fk(x.design, 1)}</td><td>${x.over ? `<span class="tag warn">${x.over} h</span>` : '0'}</td><td>${fk(M(x.elec), 1)}</td></tr>`; }).join('');
+  const reasons = Object.entries(a.reasons).sort((p, q) => q[1] - p[1]).map(([k, v]) => `<span class="pc warn">${k} ${v} h</span>`).join('');
+  return `<div class="ann-head"><b>${esc(EPW.city || '氣象站')}</b><span>${esc(EPW.country || '')}・緯度 ${f(EPW.lat, 2)}・海拔 ${EPW.elev} m・${a.n} 小時・夏季設定 ${a.summerH} h／冬季設定 ${a.n - a.summerH} h（換季 ${A.changeover} °C）</span>${elevNote}
+      <button class="btn sm quiet" data-epw="1">更換氣象檔</button>${ANN.running ? '<span class="hint" style="margin:0">更新中…</span>' : ''}</div>
+    <div class="mg ann-kpi">
+      ${kpi('年冷卻量', fk(M(a.cool), 0), 'MWh', circ)}
+      ${kpi('年加熱量', fk(M(a.heat), 0), 'MWh', '熱水盤管＋蒸汽')}
+      ${kpi('年加濕量', fk(a.humid / 1000, 1), 't', '水洗蒸發＋蒸汽')}
+      ${kpi('年凝結水', fk(a.cond / 1000, 1), 'm³', '可回收作補給水')}
+      ${kpi('風機耗電', fk(M(a.fanKwh), 0), 'MWh', `平均 ${f(a.fanKwh / a.n, 1)} kW`)}
+      ${kpi('估計年耗電', fk(M(a.elec), 0), 'MWh', `電費約 ${fk(a.elec * A.price / 1e4, 0)} 萬元`)}
+      ${kpi('送風未達標', fk(a.unmet, 0), 'h', `${(a.unmet / a.n * 100).toFixed(1)}% 時數`, a.unmet > 0 ? 'warn' : '')}
+      ${kpi('先熱後冷', fk(a.hcH, 0), 'h', a.hcH ? `浪費約 ${fk(a.hcKwh / 1000, 0)} MWh 熱量` : '無同時冷熱', a.hcH ? 'warn' : '')}
+    </div>
+    ${reasons ? `<div class="pchips" style="padding:0;margin-top:8px">${reasons}</div>` : ''}
+    <div class="ann-chart"><div class="legend" style="margin:0 0 4px"><span><i style="background:#2563EB"></i>冷卻 MWh</span><span><i style="background:#E11D48"></i>加熱 MWh</span></div>
+      <svg viewBox="0 0 ${W} ${H}" style="width:100%;height:auto;display:block"><style>.ax{font:11px var(--mono);fill:#94A3B8}</style>${bars}</svg></div>
+    <div class="tbl-wrap"><table class="tb"><thead><tr><th>處理段</th><th>運轉時數</th><th>運轉率</th><th>年能量 MWh</th><th>全年尖峰 kW</th><th>設計選型 kW</th><th>超過選型</th><th>年耗電 MWh</th></tr></thead><tbody>${rows}</tbody></table></div>
+    <div class="hint">「超過選型」＝該小時負荷大於兩季設計工況的較大值，表示設計外氣條件可能偏鬆。COP、電價為假設值（側欄「全年能耗」可改）。計算 ${f((ANN.ms || 0) / 1000, 1)} 秒。</div>`;
+}
+function updateReadouts() {
+  const R = RES.summer, A = R.faceA;
+  $('#roSystem').innerHTML = `<div>迎風面積 <b>${f(A, 2)}</b> m²</div><div>大氣壓力 <b>${f(R.P, 2)}</b> kPa</div><div>乾空氣 <b>${f(R.m, 2)}</b> kg/s（夏）</div>`;
+  ['summer', 'winter'].forEach(sk => { const o = RES[sk].oa;
+    $(`#roOA-${sk}`).innerHTML = `<div>WB <b>${f(o.wb)}</b> °C</div><div>DP <b>${f(o.dp)}</b> °C</div><div>W <b>${f(o.w * 1000, 2)}</b> g/kg</div><div>h <b>${f(o.h)}</b> kJ/kg</div>${o.sat ? '<div style="grid-column:1/-1;color:var(--fail);font-weight:700">輸入狀態過飽和</div>' : ''}`; });
+}
+function stageSummary(r) {
+  if (!r || r.status === 'disabled') return '<span>停用</span>';
+  if (r.status === 'off') return `<span>未作動</span>`;
+  if (r.status === 'error') return `<span class="e">無法達成</span>`;
+  const T = r.type;
+  if (T === 'COOL') return `<span>冷卻 <b>${fk(r.q)}</b> kW</span>${r.condKgH > 0 ? `<span>除濕 <b>${f(r.condKgH)}</b> kg/h</span>` : ''}`;
+  if (T === 'HEAT' || T === 'FAN') return `<span>${T === 'FAN' ? '風機熱' : '加熱'} <b>${fk(r.q)}</b> kW</span>`;
+  if (T === 'WASH') return `<span>${r.evapKgH >= 0 ? '加濕' : '除濕'} <b>${f(Math.abs(r.evapKgH))}</b> kg/h</span>`;
+  if (T === 'STEAM') return `<span>蒸汽 <b>${f(r.steamKgH)}</b> kg/h</span>`;
+  return '';
+}
+function updateStageResults() {
+  cfg.stages.forEach(s => {
+    const el = $(`#sr-${s.id}`); if (!el) return;
+    const parts = ['summer', 'winter'].map(sk => { const r = RES[sk].rows.find(x => x.id === s.id); const fl = r && r.flags.length ? (r.flags.some(x => x.lvl === 'fail') ? '<span class="e">✕</span>' : '<span class="w">!</span>') : '';
+      return `<span style="color:var(--ink-2);font-weight:700">${sk === 'summer' ? '夏' : '冬'}</span> ${stageSummary(r)} ${fl}`; });
+    el.innerHTML = parts.join('<span style="color:var(--line-strong)">｜</span>');
+  });
+}
+
+// ───────────────────────── 空氣線圖 ─────────────────────────
+function chartRange() {
+  let dbs = [], ws = [];
+  ['summer', 'winter'].forEach(sk => { const R = RES[sk]; R.points.forEach(p => { dbs.push(p.state.db); ws.push(p.state.w); }); [R.oa, R.ra, R.room && R.room.req].forEach(s => { if (s) { dbs.push(s.db); ws.push(s.w); } }); R.rows.forEach(r => { if (r.adp) dbs.push(r.adp.db); }); });
+  dbs.push(cfg.target.db - cfg.target.dbTol, cfg.target.db + cfg.target.dbTol);
+  const dbMin = Math.max(-20, Math.min(0, Math.floor((Math.min(...dbs) - 2) / 5) * 5));
+  const dbMax = Math.min(60, Math.max(40, Math.ceil((Math.max(...dbs) + 2) / 5) * 5));
+  const wMax = Math.min(0.05, Math.max(0.025, Math.ceil((Math.max(...ws) + 0.002) / 0.005) * 0.005));
+  return { dbMin, dbMax, wMax };
+}
+// 冷卻盤管實際過程曲線（逆流、Lewis 數 = 1）：空氣逐段趨近盤管表面溫度的飽和狀態；
+// 表面高於空氣露點時只降溫不除濕；曲線兩端與計算的入口／出口狀態一致，且不越過飽和線
+function coilPath(a, b, P) {
+  if (!(a.db > b.db + 0.05)) return null;
+  const tsOut = Math.min(b.dp, b.db) - 1, tsIn = Math.min(a.db - 1, tsOut + 0.6 * (a.db - b.db));
+  let t = a.db, w = a.w; const pts = [[t, w]];
+  for (let i = 0; i < 6000 && t > b.db + 1e-4; i++) {
+    const fr = (a.db - t) / (a.db - b.db), ts = tsIn + (tsOut - tsIn) * fr;
+    const wt = Math.min(w, Psy.wsat(ts, P));
+    t += 0.02 * (ts - t); w += 0.02 * (wt - w);
+    if (i % 8 === 0) pts.push([Math.max(t, b.db), w]);
+  }
+  const wEnd = w;
+  const out = pts.map(([t1, w1]) => { const p = Math.min(1, (a.db - t1) / (a.db - b.db)); return [t1, Math.min(w1 + (b.w - wEnd) * p, Psy.wsat(t1, P) * 0.997)]; });
+  out[0] = [a.db, a.w]; out.push([b.db, b.w]);
+  return out;
+}
+function buildChart(W, H) {
+  const R = RES[ui.season], P = R.P, V = chartRange();
+  const ml = 46, mr = 64, mt = 14, mb = 42, pw = W - ml - mr, ph = H - mt - mb;
+  const x = (t) => ml + (t - V.dbMin) / (V.dbMax - V.dbMin) * pw, y = (w) => mt + ph - w / V.wMax * ph;
+  const path = (pts) => pts.length < 2 ? '' : 'M' + pts.map(p => `${x(p[0]).toFixed(1)},${y(p[1]).toFixed(1)}`).join('L');
+  const sample = (fn, t0, t1, n = 60) => { const a = []; for (let i = 0; i <= n; i++) { const t = t0 + (t1 - t0) * i / n, w = fn(t); if (Number.isFinite(w)) a.push([t, w]); } return a; };
+  const ws = (t) => Psy.wsat(t, P);
+  let g = '';
+  // 格線：每 1 °C／1 g/kg 細線，每 5 為粗線（同印刷版空氣線圖）
+  for (let t = Math.ceil(V.dbMin); t <= V.dbMax; t++) { const major = t % 5 === 0;
+    g += `<line x1="${x(t)}" y1="${mt}" x2="${x(t)}" y2="${mt + ph}" stroke="${major ? '#E2E8F0' : '#F4F6F9'}"/>`;
+    if (major) g += `<text x="${x(t)}" y="${mt + ph + 17}" text-anchor="middle" class="ax">${t}</text>`; }
+  const wLab = V.wMax > 0.032 ? 5 : 2;
+  for (let gk = 0; gk <= Math.round(V.wMax * 1000); gk++) { const w = gk / 1000, major = gk % 5 === 0;
+    g += `<line x1="${ml}" y1="${y(w)}" x2="${ml + pw}" y2="${y(w)}" stroke="${major ? '#E2E8F0' : '#F4F6F9'}"/>`;
+    if (gk % wLab === 0) g += `<line x1="${ml + pw}" y1="${y(w)}" x2="${ml + pw + 5}" y2="${y(w)}" stroke="#94A3B8"/><text x="${ml + pw + 9}" y="${y(w) + 4}" class="ax">${gk}</text>`; }
+  g += `<text x="${ml + pw / 2}" y="${H - 6}" text-anchor="middle" class="axl">乾球溫度 DB (°C)</text>`;
+  g += `<text x="${W - 12}" y="${mt + ph / 2}" text-anchor="middle" class="axl" transform="rotate(90 ${W - 12} ${mt + ph / 2})">含濕量 W (g/kg 乾空氣)</text>`;
+  g += `<rect id="hit" x="${ml}" y="${mt}" width="${pw}" height="${ph}" fill="transparent" style="cursor:crosshair"/>`;
+  let lines = '';
+  // 比容線
+  if (ui.show.v) for (let v = 0.76; v <= 0.98; v += 0.02) {
+    const wv = (t) => (v * P / (0.287042 * (t + 273.15)) - 1) / 1.607858;
+    const t0 = v * P / 0.287042 - 273.15, ts = Psy.bisect(t => ws(t) - wv(t), -40, t0);
+    if (ts > V.dbMax || t0 < V.dbMin) continue;
+    lines += `<path d="${path(sample(wv, ts, t0, 8))}" stroke="#C4B5FD" stroke-width="1" fill="none"/>`;
+    const lt = Math.min(t0, V.dbMax) - 0.6; if (lt > V.dbMin) lines += `<text x="${x(lt)}" y="${y(Math.max(0.0006, wv(lt))) - 3}" class="lb" fill="#8B5CF6" text-anchor="end">${v.toFixed(2)}</text>`;
+  }
+  // 濕球線
+  if (ui.show.wb) for (let tw = Math.ceil(V.dbMin / 5) * 5; tw <= V.dbMax; tw += 5) {
+    const tEnd = Psy.bisect(t => -Psy.wFromWB(t, tw, P), tw, tw + 120);
+    lines += `<path d="${path(sample(t => Psy.wFromWB(t, tw, P), tw, tEnd, 20))}" stroke="#5EEAD4" stroke-width="1" fill="none"/>`;
+  }
+  // 等焓線（止於飽和線），焓值標在飽和線外側
+  if (ui.show.h) {
+    const hMin = Math.ceil(Psy.enth(V.dbMin, 0) / 10) * 10, hMax = Psy.enth(V.dbMax, Math.min(V.wMax, ws(V.dbMax)));
+    for (let h = hMin; h <= hMax; h += 10) {
+      const ts = Psy.bisect(t => Psy.enth(t, ws(t)) - h, -60, 100), t0 = h / 1.006;
+      lines += `<path d="${path(sample(t => (h - 1.006 * t) / (2501 + 1.86 * t), ts, t0, 6))}" stroke="#C7D2FE" stroke-width="1" stroke-dasharray="6 4" fill="none"/>`;
+      const wsT = ws(ts);
+      if (wsT <= V.wMax * 0.98 && ts >= V.dbMin) lines += `<text x="${x(ts) - 6}" y="${y(wsT) - 5}" class="lb" fill="#6366F1" text-anchor="end">${h}</text>`;
+    }
+  }
+  // 等 RH 線
+  for (let rh = 10; rh <= 90; rh += 10) {
+    const fn = (t) => Psy.wFromPw(rh / 100 * Psy.psat(t), P);
+    lines += `<path d="${path(sample(fn, V.dbMin, V.dbMax, 100))}" stroke="${rh === 50 ? '#94A3B8' : '#CBD5E1'}" stroke-width="${rh === 50 ? 1.3 : 1}" fill="none"/>`;
+    let lt = V.dbMax - 1; if (fn(lt) > V.wMax * 0.95) lt = Psy.bisect(t => fn(t) - V.wMax * 0.94, V.dbMin, V.dbMax);
+    lines += `<text x="${x(lt)}" y="${y(fn(lt)) - 4}" class="rhl" text-anchor="end">${rh}%</text>`;
+  }
+  // 飽和線（RH 100%）與飽和溫度刻度
+  lines += `<path d="${path(sample(ws, V.dbMin, V.dbMax, 160))}" stroke="#1E293B" stroke-width="2.2" fill="none"/>`;
+  for (let t = Math.ceil(V.dbMin / 5) * 5; t <= V.dbMax; t += 5) { const w = ws(t); if (w > V.wMax * 0.97) break;
+    lines += `<circle cx="${x(t)}" cy="${y(w)}" r="2.2" fill="#1E293B"/><text x="${x(t) + 6}" y="${y(w) + 13}" class="sat">${t}</text>`; }
+  // 送風目標範圍
+  const T = cfg.target, rl = T.checkRh ? Math.max(1, T.rh - T.rhTol) : 1, rhh = T.checkRh ? Math.min(100, T.rh + T.rhTol) : 100;
+  const zLo = sample(t => Psy.wFromPw(rl / 100 * Psy.psat(t), P), T.db - T.dbTol, T.db + T.dbTol, 12);
+  const zHi = sample(t => Psy.wFromPw(rhh / 100 * Psy.psat(t), P), T.db + T.dbTol, T.db - T.dbTol, 12);
+  lines += `<path d="${path(zLo.concat(zHi))}Z" fill="rgba(37,99,235,.10)" stroke="#2563EB" stroke-dasharray="5 4" stroke-width="1.3"/>`;
+  // 程序線：冷卻盤管畫實際盤管曲線，其餘為直線；箭頭放在路徑中點
+  const arrowAt = (pts, type) => { const n = pts.length, i = Math.max(1, Math.floor(n / 2)); const [t0, w0] = pts[i - 1], [t1, w1] = n === 2 ? [(pts[0][0] + pts[1][0]) / 2, (pts[0][1] + pts[1][1]) / 2] : pts[i];
+    const p0 = n === 2 ? [t0 + (t1 - t0) * 0.9, w0 + (w1 - w0) * 0.9] : [t0, w0];
+    return `<path d="M${x(p0[0])},${y(p0[1])}L${x(t1)},${y(w1)}" stroke="none" fill="none" marker-end="url(#arr-${type})"/>`; };
+  const proc = (Rs, faded) => {
+    let s = '';
+    const op = faded ? 0.3 : 1;
+    if (Rs.ra) {
+      s += `<line x1="${x(Rs.oa.db)}" y1="${y(Rs.oa.w)}" x2="${x(Rs.ra.db)}" y2="${y(Rs.ra.w)}" stroke="#94A3B8" stroke-width="2" stroke-dasharray="7 5" opacity="${op}"/>`;
+      if (!faded) [[Rs.oa, 'OA'], [Rs.ra, 'RA']].forEach(([st, l]) => { s += `<rect x="${x(st.db) - 14}" y="${y(st.w) - 10}" width="28" height="20" rx="6" fill="#fff" stroke="#64748B" stroke-width="1.6"/><text x="${x(st.db)}" y="${y(st.w) + 4}" text-anchor="middle" class="pt" fill="#475569">${l}</text>`; });
+    }
+    for (let i = 1; i < Rs.points.length; i++) {
+      const pa = Rs.points[i - 1].state, pb = Rs.points[i].state, type = Rs.points[i].type, c = TYPES[type].color;
+      const pts = (type === 'COOL' && coilPath(pa, pb, P)) || [[pa.db, pa.w], [pb.db, pb.w]];
+      if (!faded) s += `<path d="${path(pts)}" stroke="#fff" stroke-width="7" fill="none" stroke-linecap="round" stroke-linejoin="round"/>`;
+      s += `<path d="${path(pts)}" stroke="${c}" stroke-width="${faded ? 2 : 3.4}" fill="none" stroke-linecap="round" stroke-linejoin="round" opacity="${op}"/>`;
+      if (!faded) s += arrowAt(pts, type);
+    }
+    if (!faded && ui.show.adp) Rs.rows.forEach(r => { if (r.adp && r.status === 'on') s += `<line x1="${x(r.out.db)}" y1="${y(r.out.w)}" x2="${x(r.adp.db)}" y2="${y(r.adp.w)}" stroke="#2563EB" stroke-dasharray="3 3" opacity=".6"/><circle cx="${x(r.adp.db)}" cy="${y(r.adp.w)}" r="3.5" fill="#fff" stroke="#2563EB" stroke-width="1.5"/><text x="${x(r.adp.db) - 7}" y="${y(r.adp.w) + 4}" class="lb" fill="#2563EB" text-anchor="end">ADP ${f(r.adp.db)}°</text>`; });
+    if (!faded && Rs.room) {
+      const a2 = Rs.ra, b2 = Rs.room.req;
+      s += `<line x1="${x(a2.db)}" y1="${y(a2.w)}" x2="${x(b2.db)}" y2="${y(b2.w)}" stroke="#0F172A" stroke-dasharray="2 4" stroke-width="1.5"/><path d="M${x(b2.db)},${y(b2.w) - 7}L${x(b2.db) + 7},${y(b2.w)}L${x(b2.db)},${y(b2.w) + 7}L${x(b2.db) - 7},${y(b2.w)}Z" fill="#fff" stroke="#0F172A" stroke-width="1.5"/><text x="${x(b2.db)}" y="${y(b2.w) + 20}" class="lb" fill="#0F172A" text-anchor="middle">需求送風（室內 SHR ${f(Rs.room.shr, 2)}）</text>`;
+    }
+    if (!faded) {
+      // 狀態點：實際位置畫小圓點，編號泡泡自動避開重疊並以引線連回
+      const placed = [];
+      const cands = [[0, 0], [-20, -20], [20, -20], [20, 20], [-20, 20], [0, -28], [28, 0], [0, 28], [-28, 0], [-34, -34], [34, -34]];
+      Rs.points.forEach((p, i) => {
+        const c = p.type === 'START' ? '#334155' : TYPES[p.type].color, px = x(p.state.db), py = y(p.state.w);
+        let off = cands[cands.length - 1];
+        for (const cd of cands) { const bx = px + cd[0], by = py + cd[1];
+          if (bx < ml + 12 || bx > ml + pw - 12 || by < mt + 12 || by > mt + ph - 12) continue;
+          if (placed.every(q => Math.hypot(q[0] - bx, q[1] - by) > 25)) { off = cd; break; } }
+        const bx = px + off[0], by = py + off[1]; placed.push([bx, by]);
+        s += `<g class="ptg" data-i="${i}"><circle cx="${px}" cy="${py}" r="4" fill="${c}" stroke="#fff" stroke-width="1.5"/>${off[0] || off[1] ? `<line x1="${px}" y1="${py}" x2="${bx}" y2="${by}" stroke="${c}" stroke-width="1.2"/>` : ''}<circle cx="${bx}" cy="${by}" r="11" fill="#fff" stroke="${c}" stroke-width="2.4"/><text x="${bx}" y="${by + 4}" text-anchor="middle" class="pt" fill="${c}">${i + 1}</text></g>`;
+      });
+    }
+    return s;
+  };
+  const other = ui.season === 'summer' ? 'winter' : 'summer';
+  const procS = (ui.show.other ? proc(RES[other], true) : '') + proc(R, false);
+  // 狀態點圖例：放在左上角（飽和線以上的霧區永遠是空白）
+  const leg = [];
+  if (R.ra) leg.push(['OA', '外氣', R.oa, '#64748B'], ['RA', '回風', R.ra, '#64748B']);
+  R.points.forEach((p, i) => leg.push([String(i + 1), p.label, p.state, p.type === 'START' ? '#334155' : TYPES[p.type].color]));
+  const lh = 19, lw = 236, lx = ml + 12, ly = mt + 12;
+  let legend = `<g class="pleg"><rect x="${lx}" y="${ly}" width="${lw}" height="${leg.length * lh + 30}" rx="8" fill="rgba(255,255,255,.92)" stroke="#E4E8EE"/>
+    <text x="${lx + 12}" y="${ly + 19}" class="lgt">${SEASONS[ui.season]}・狀態點</text>`;
+  leg.forEach(([n, l, s, c], i) => { const yy = ly + 40 + i * lh;
+    legend += `<circle cx="${lx + 20}" cy="${yy - 4}" r="8" fill="#fff" stroke="${c}" stroke-width="2"/><text x="${lx + 20}" y="${yy}" text-anchor="middle" class="lgn" fill="${c}">${n}</text>
+      <text x="${lx + 34}" y="${yy}" class="lgl">${esc(l.length > 9 ? l.slice(0, 9) + '…' : l)}</text><text x="${lx + lw - 10}" y="${yy}" text-anchor="end" class="lgv">${f(s.db)}° / ${f(Math.min(100, s.rh), 0)}%</text>`; });
+  legend += '</g>';
+  // 處理段類型圖例：右下角
+  const types = [...new Set(R.points.slice(1).map(p => p.type))];
+  let tleg = '';
+  types.forEach((k, i) => { const yy = mt + ph - 12 - (types.length - 1 - i) * 17; tleg += `<line x1="${ml + pw - 112}" y1="${yy - 4}" x2="${ml + pw - 92}" y2="${yy - 4}" stroke="${TYPES[k].color}" stroke-width="3"/><text x="${ml + pw - 86}" y="${yy}" class="lgl">${TYPES[k].label}</text>`; });
+  return `<svg viewBox="0 0 ${W} ${H}" id="psy" data-v='${JSON.stringify({ ...V, ml, mt, pw, ph, W, H })}'>
+    <style>.ax{font:12px var(--mono);fill:#94A3B8}.axl{font:12.5px var(--font);fill:#64748B;font-weight:600}.lb{font:11px var(--mono)}.pt{font:800 12px var(--font)}.ptg{cursor:pointer}.lgt{font:700 12.5px var(--font);fill:#0F172A}.lgn{font:800 10px var(--font)}.lgl{font:600 12px var(--font);fill:#334155}.lgv{font:12px var(--mono);fill:#64748B}.rhl{font:600 11px var(--mono);fill:#64748B}.sat{font:700 11px var(--mono);fill:#1E293B}</style>
+    <rect x="${ml}" y="${mt}" width="${pw}" height="${ph}" fill="#FCFDFE"/>
+    <defs><clipPath id="clipPlot"><rect x="${ml}" y="${mt}" width="${pw}" height="${ph}"/></clipPath>
+      ${Object.entries(TYPES).map(([k, T]) => `<marker id="arr-${k}" viewBox="0 0 10 10" refX="6" refY="5" markerUnits="userSpaceOnUse" markerWidth="15" markerHeight="15" orient="auto"><path d="M1,1L9,5L1,9Z" fill="${T.color}"/></marker>`).join('')}</defs>
+    ${g}<g clip-path="url(#clipPlot)">${lines}${procS}</g>${legend}${tleg}
+    <rect x="${ml}" y="${mt}" width="${pw}" height="${ph}" fill="none" stroke="#CBD5E1"/>
+    <g id="cross" pointer-events="none"></g>
+    <g pointer-events="all">${''}</g>
+  </svg>`;
+}
+function stateLine(s) { return `DB <b>${f(s.db)}</b> °C・WB <b>${f(s.wb)}</b>・DP <b>${f(s.dp)}</b>・RH <b>${f(Math.min(s.rh, 100), 0)}</b>%・W <b>${f(s.w * 1000, 2)}</b> g/kg・h <b>${f(s.h)}</b> kJ/kg・v <b>${f(s.v, 3)}</b> m³/kg`; }
+function bindChart() {
+  const svg = $('#psy'); if (!svg) return; const V = JSON.parse(svg.dataset.v), P = RES[ui.season].P;
+  const ro = $('#readout'), cross = $('#cross');
+  const def = () => { ro.innerHTML = `<span>滑鼠移到線圖讀取任一點性質・移到編號點看該點狀態</span><span>大氣壓力 ${f(P, 2)} kPa</span>`; cross.innerHTML = ''; };
+  def();
+  const toData = (ev) => { const pt = svg.createSVGPoint(); pt.x = ev.clientX; pt.y = ev.clientY; const p = pt.matrixTransform(svg.getScreenCTM().inverse());
+    return { px: p.x, py: p.y, t: V.dbMin + (p.x - V.ml) / V.pw * (V.dbMax - V.dbMin), w: (V.mt + V.ph - p.y) / V.ph * V.wMax }; };
+  svg.addEventListener('mousemove', ev => {
+    const g = ev.target.closest('.ptg');
+    if (g) { const p = RES[ui.season].points[+g.dataset.i]; ro.innerHTML = `<span class="t">點 ${+g.dataset.i + 1}・${esc(p.label)}</span><span>${stateLine(p.state)}</span>`; cross.innerHTML = ''; return; }
+    const d = toData(ev);
+    if (d.px < V.ml || d.px > V.ml + V.pw || d.py < V.mt || d.py > V.mt + V.ph || d.w < 0) { def(); return; }
+    cross.innerHTML = `<line x1="${d.px}" y1="${V.mt}" x2="${d.px}" y2="${V.mt + V.ph}" stroke="#94A3B8" stroke-dasharray="2 3"/><line x1="${V.ml}" y1="${d.py}" x2="${V.ml + V.pw}" y2="${d.py}" stroke="#94A3B8" stroke-dasharray="2 3"/>`;
+    if (d.w > Psy.wsat(d.t, P)) { ro.innerHTML = `<span>DB <b>${f(d.t)}</b> °C・W <b>${f(d.w * 1000, 2)}</b> g/kg</span><span style="color:var(--fail)">超過飽和線（霧區）</span>`; return; }
+    ro.innerHTML = `<span class="t">游標</span><span>${stateLine(Psy.state(d.t, d.w, P))}</span>`;
+  });
+  svg.addEventListener('mouseleave', def);
+}
+
+// ───────────────────────── 結果區 ─────────────────────────
+const lvlTxt = { pass: '通過', warn: '注意', fail: '不合格', info: '資訊' };
+const lvlIcon = { pass: '✓', warn: '!', fail: '✕', info: 'i' };
+function renderResults() {
+  const R = RES[ui.season], sk = ui.season, sn = SEASONS[sk];
+  const vS = RES.summer.verdict, vW = RES.winter.verdict;
+  const fails = R.issues.filter(i => i.lvl === 'fail'), warns = R.issues.filter(i => i.lvl === 'warn');
+  const sup = R.supply, T = cfg.target, t = R.tot;
+  const vt = R.verdict === 'pass' ? '送風達標・過程合理' : R.verdict === 'warn' ? `可達成・${warns.length} 項注意` : `${fails.length} 項不合格`;
+  const issueLine = [...fails, ...warns].map(i => `<span class="${i.lvl === 'fail' ? 'f' : 'w'}">${i.lvl === 'fail' ? '✕' : '!'} ${esc(i.title)}</span>`).join('');
+  const hum = t.humid > t.condensate;
+  const html = `
+  <div class="card print-only p-head"><h1>空氣線圖 Pro・處理過程核算報告</h1><div class="m">${esc(cfg.project.name || '未命名專案')}　${esc(cfg.project.sub || '')}　${new Date().toLocaleString()}</div>
+    <div class="p-grid"><div><small>系統</small>${cfg.system === 'AHU' ? `AHU 回風混合（外氣 ${cfg.oaPct}%）` : 'MAU 全外氣'}</div><div><small>風量</small>${cfg.airflow.toLocaleString()} CMH（${{ fan: '風機入口實際', inlet: '第 1 點實際', std: '標準空氣' }[cfg.flowBasis]}）</div>
+    <div><small>夏季外氣</small>${f(RES.summer.oa.db)} °C / ${f(RES.summer.oa.rh, 0)}%</div><div><small>冬季外氣</small>${f(RES.winter.oa.db)} °C / ${f(RES.winter.oa.rh, 0)}%</div>
+    <div><small>送風目標</small>${T.db} ± ${T.dbTol} °C${T.checkRh ? ` / ${T.rh} ± ${T.rhTol}%` : ''}</div><div><small>盤管迎風</small>${cfg.coilW} × ${cfg.coilH} mm</div><div><small>判定</small>${sn}：${vt}</div><div><small>大氣壓力</small>${f(R.P, 2)} kPa</div></div></div>
+  <section class="stage">
+    <div class="st-bar">
+      <button class="btn sm side-open-btn no-print" data-side="open" title="展開輸入參數">☰ 輸入參數</button>
+      <div class="seg no-print" id="segSeason"><button data-v="summer" class="${sk === 'summer' ? 'on' : ''}"><span class="dotv ${vS}"></span>夏季</button><button data-v="winter" class="${sk === 'winter' ? 'on' : ''}"><span class="dotv ${vW}"></span>冬季</button></div>
+      <button class="vpill ${R.verdict}" data-goto="checks" title="查看檢核清單">${lvlIcon[R.verdict]} ${vt}</button>
+      <div class="kin">
+        <div>冷卻<b>${fk(t.cool)}<small>kW</small></b>${f(t.cool / 3.51685)} RT</div>
+        <div>加熱<b>${fk(t.heat)}<small>kW</small></b>${t.steamKg > 0 ? `蒸汽 ${fk(t.steamKg)} kg/h` : '盤管合計'}</div>
+        <div>${hum ? '加濕' : '除濕'}<b>${f(Math.max(t.humid, t.condensate))}<small>kg/h</small></b>${t.humid > 0 && t.condensate > 0 ? `除 ${f(t.condensate)}／加 ${f(t.humid)}` : '≈ L/h'}</div>
+        <div>風機<b>${f(t.fanKw)}<small>kW</small></b>ṁ ${f(R.m, 2)} kg/s</div>
+        <div class="sup ${R.target.ok ? 'ok' : 'bad'}">送風<b>${f(sup.db)}<small>°C</small> ${f(Math.min(100, sup.rh), 0)}<small>%</small></b>目標 ${T.db}±${T.dbTol}${T.checkRh ? ` / ${T.rh}±${T.rhTol}%` : ''}</div>
+      </div>
+    </div>
+    ${issueLine ? `<div class="st-issues" data-goto="checks" title="點選查看全部">${issueLine}</div>` : ''}
+    <div class="chart-area" id="chartArea"></div>
+    <div class="st-foot">
+      <div class="readout" id="readout"></div>
+      <div class="toggles no-print">${[['h', '等焓線'], ['wb', '濕球線'], ['v', '比容線'], ['adp', 'ADP'], ['other', `${sk === 'summer' ? '冬季' : '夏季'}過程`]].map(([k, l]) => `<label><input type="checkbox" data-show="${k}" ${ui.show[k] ? 'checked' : ''}>${l}</label>`).join('')}</div>
+    </div>
+  </section>
+  <div class="card panel" id="tabsCard">
+    <div class="tabs no-print">${[['process', '處理段'], ['states', '狀態點'], ['water', '水路與管徑'], ['select', '選型彙總（兩季取大）'], ['annual', '全年能耗'], ['checks', `檢核 ${fails.length ? `<span class="tag bad">${fails.length}</span>` : warns.length ? `<span class="tag warn">${warns.length}</span>` : ''}`]].map(([k, l]) => `<button data-tab="${k}" class="${ui.tab === k ? 'on' : ''}">${l}</button>`).join('')}</div>
+    <div id="tabBody">${tabBody()}</div>
+  </div>
+  <details class="card more no-print"><summary>計算方法與假設</summary>${notesHtml()}</details>`;
+  $('#results').innerHTML = html;
+  drawChart();
+}
+function drawChart() {
+  const box = $('#chartArea'); if (!box || !RES) return;
+  const W = Math.max(480, Math.round(box.clientWidth)), H = Math.max(360, Math.round(box.clientHeight));
+  box.innerHTML = buildChart(W, H);
+  bindChart();
+}
+let roTimer = null;
+new ResizeObserver(() => { clearTimeout(roTimer); roTimer = setTimeout(() => { const b = $('#chartArea'); if (b && b.firstElementChild && (Math.abs(b.clientWidth - b.firstElementChild.viewBox.baseVal.width) > 2 || Math.abs(b.clientHeight - b.firstElementChild.viewBox.baseVal.height) > 2)) drawChart(); }, 80); }).observe(document.getElementById('results'));
+function tabBody() {
+  const R = RES[ui.season];
+  if (ui.tab === 'process') {
+    const B = cfg.basis;
+    const m = (label, val, unit, sub, cls = '') => `<div class="m ${cls}"><small>${label}</small><b>${val}${unit ? `<i>${unit}</i>` : ''}</b>${sub ? `<span>${sub}</span>` : ''}</div>`;
+    const sc = (s, out) => `<div class="sc ${out ? 'out' : ''}"><b>${f(s.db)}°</b> / ${f(Math.min(100, s.rh), 0)}%<small>W ${f(s.w * 1000, 2)} g/kg・h ${f(s.h)}</small></div>`;
+    const rowsHtml = R.rows.map((r, i) => {
+      const T = TYPES[r.type], on = r.status === 'on', stg = cfg.stages.find(s => s.id === r.id) || {};
+      const badge = `<span class="pn" style="background:${T.color}">${i + 1}</span>`;
+      const chips = r.flags.map(x => `<span class="pc ${x.lvl}">${x.lvl === 'fail' ? '✕' : '!'} ${esc(x.title)}</span>`).join('') + r.notes.map(n => `<span class="pc">${esc(n)}</span>`).join('');
+      if (!on) {
+        const tag = r.status === 'error' ? '<span class="tag bad">無法達成</span>' : r.status === 'off' ? '<span class="tag off">未作動</span>' : '<span class="tag off">本季停用</span>';
+        return `<div class="prow off" style="--tc:${T.color}"><div class="pname">${badge}<div><b>${esc(r.name)}</b> ${tag} <small>${T.label}</small></div></div>${chips ? `<div class="pchips">${chips}</div>` : ''}</div>`;
+      }
+      const dT = r.out.db - r.in.db, dWg = (r.out.w - r.in.w) * 1000, dwKg = (r.out.w - r.in.w) * R.m * 3600;
+      const fvBad = r.flags.some(x => /風速/.test(x.title));
+      const fv = m('迎風風速', f(r.faceV, 2), 'm/s', `上限 ${r.type === 'COOL' && r.condKgH > 0 || r.type === 'WASH' ? B.faceVelWet : B.faceVelMax}・${f(r.area, 2)} m²`, fvBad ? 'warn' : '');
+      const rowsM = (r, fpi) => !r.coil ? '' : m('估計排數', r.coil.pinch ? '—' : Number.isFinite(r.coil.rows) ? r.coil.rows : '∞', r.coil.pinch ? '' : '排', r.coil.pinch ? '水溫條件不足（夾點）' : `NTU ${f(r.coil.ntu, 2)}・${fpi} FPI・${r.coil.wet ? '濕盤管' : '乾盤管'}`, r.coil.pinch ? 'fail' : r.coil.rows > 10 ? 'warn' : '');
+      const wat = r.water ? m(cfg.water[r.water.cid].name.replace(/\s.*$/, '') + '水量', fk(r.water.lpm, 0), 'LPM', r.water.pipe ? `${r.water.pipe.dn}・${f(r.water.pipe.v, 2)} m/s・${f(r.water.pipe.paPerM, 0)} Pa/m` : '') : '';
+      let ms = '';
+      if (r.type === 'COOL') {
+        const shrBar = r.shr != null ? `<div class="shr"><i style="width:${Math.min(100, r.shr * 100)}%"></i></div>` : '';
+        ms = m('冷卻負荷', fk(r.q), 'kW', `${f(r.q / 3.51685)} RT`)
+          + `<div class="m"><small>顯熱／潛熱</small><b>${fk(r.qs)}<i>/</i>${fk(r.ql)}<i>kW</i></b><span>SHR ${f(r.shr, 3)}</span>${shrBar}</div>`
+          + m('除濕量', f(r.condKgH), 'kg/h', '≈ L/h 凝結水')
+          + (r.adp ? m('ADP／旁通因子', f(r.adp.db), '°C', `BF ${f(r.bf, 3)}`) : m('出口露點', f(r.out.dp), '°C', '直線過程穿越飽和區'))
+          + rowsM(r, stg.fpi || 12)
+          + fv + wat;
+      } else if (r.type === 'HEAT') {
+        ms = m('加熱負荷', fk(r.q), 'kW', stg.src === 'ELEC' ? '電熱' : '熱水盤管') + rowsM(r, stg.fpi || 10) + fv + (wat || m('熱源', '電熱', '', ''));
+      } else if (r.type === 'WASH') {
+        ms = m(dwKg >= 0 ? '加濕量' : '除濕量', f(Math.abs(dwKg)), 'kg/h', '蒸發／凝結水量') + m('噴淋水溫', f(r.Tw), '°C', stg.wmode === 'RECIRC' ? '循環水≈入口濕球' : '指定水溫 WW')
+          + m('循環水量', fk(r.sprayLpm, 0), 'LPM', `L/G ${stg.lg}`) + m('焓變化', f(r.q), 'kW', '絕熱時≈0') + fv;
+      } else if (r.type === 'STEAM') {
+        ms = m('蒸汽量', f(r.steamKgH), 'kg/h', '加濕量') + m('產汽熱量', fk(r.q), 'kW', '15 °C 補給水') + m('目標含濕量', f(r.wTarget * 1000, 2), 'g/kg', stg.sctrl === 'LOCAL' ? `就地 RH ${stg.rh}%` : '依送風目標露點');
+      } else if (r.type === 'FAN') {
+        ms = m('風機熱', f(r.q), 'kW', stg.motorIn ? '含馬達損失' : '僅軸功率') + m('軸／電功率', `${f(r.fanShaft)}<i>/</i>${f(r.fanElec)}`, 'kW', `η 風機 ${stg.effFan}%・馬達 ${stg.effMotor}%`)
+          + m('實際風量', fk(r.airM3s * 3600, 0), 'm³/h', `全壓 ${stg.dp} Pa`);
+      }
+      return `<div class="prow" style="--tc:${T.color}">
+        <div class="pname">${badge}<div><b>${esc(r.name)}</b><small>${T.label}${r.type === 'COOL' ? `・${{ DP: '露點控制', DB: '溫度控制', STATE: '固定出口' }[stg.ctrl] || ''}` : ''}</small></div></div>
+        <div class="io">${sc(r.in)}<div class="dl"><span>${dT >= 0 ? '+' : ''}${f(dT)} K</span><span>${Math.abs(dWg) < 0.005 ? 'W 不變' : (dWg > 0 ? '+' : '') + f(dWg, 2) + ' g/kg'}</span></div>${sc(r.out, true)}</div>
+        <div class="mg">${ms}</div>
+        ${chips ? `<div class="pchips">${chips}</div>` : ''}
+      </div>`;
+    }).join('');
+    return `<div class="plist">${rowsHtml}</div>
+      <div class="hint">冷卻負荷已扣除凝結水焓（ASHRAE 式 47）；顯熱以出口含濕量的濕空氣比熱計。排數以 ε-NTU 估算（濕盤管用焓勢法；每排 NTU 取 Carrier 旁通因子並乘 φ），正式選型請以盤管廠商軟體確認。</div>`;
+  }
+  if (ui.tab === 'annual') return annualHtml();
+  if (ui.tab === 'states') {
+    const pts = [];
+    if (R.ra) { pts.push({ label: '外氣 OA', state: R.oa, n: 'OA' }, { label: '回風 RA', state: R.ra, n: 'RA' }); }
+    R.points.forEach((p, i) => pts.push({ ...p, n: i + 1 }));
+    if (R.room) pts.push({ label: '需求送風（室內負荷）', state: R.room.req, n: '◇' });
+    return `<div class="tbl-wrap"><table class="tb"><thead><tr><th>狀態點</th><th>DB °C</th><th>WB °C</th><th>DP °C</th><th>RH %</th><th>W g/kg</th><th>h kJ/kg</th><th>v m³/kg</th></tr></thead><tbody>
+      ${pts.map(p => `<tr><td><span class="pn" style="background:${p.type && p.type !== 'START' ? TYPES[p.type].color : '#334155'}">${p.n}</span>${esc(p.label)}</td><td>${f(p.state.db, 2)}</td><td>${f(p.state.wb, 2)}</td><td>${f(p.state.dp, 2)}</td><td>${f(Math.min(100, p.state.rh), 1)}</td><td>${f(p.state.w * 1000, 3)}</td><td>${f(p.state.h, 2)}</td><td>${f(p.state.v, 4)}</td></tr>`).join('')}
+      </tbody></table></div><div class="hint">W、h、v 皆以每 kg 乾空氣計；大氣壓力 ${f(R.P, 3)} kPa；乾空氣質量流率 ${f(R.m, 3)} kg/s（全程守恆）。</div>`;
+  }
+  if (ui.tab === 'water') {
+    const cs = Object.keys(cfg.water).map(cid => {
+      const a = RES.summer.circuits[cid], b = RES.winter.circuits[cid];
+      if (!a && !b) return '';
+      const gov = (a && (!b || a.lpm >= b.lpm)) ? a : b, govS = gov === a ? '夏' : '冬';
+      const w = cfg.water[cid], p = gov.pipe;
+      return `<tr><td><b>${esc(w.name)}</b><span class="sub">${[...new Set([...(a ? a.names : []), ...(b ? b.names : [])])].join('、')}</span></td><td>${w.tin} → ${w.tout}</td>
+        <td>${a ? fk(a.q) : '—'}</td><td>${b ? fk(b.q) : '—'}</td><td><b>${fk(gov.lpm, 0)}</b><span class="sub">${govS}季決定</span></td>
+        <td><b>${p ? p.dn : '—'}</b></td><td>${p ? f(p.v, 2) : '—'}</td><td>${p ? f(p.paPerM, 0) : '—'}</td></tr>`;
+    }).join('');
+    return `<div class="tbl-wrap"><table class="tb"><thead><tr><th>水路</th><th>進→出 °C</th><th>夏季 kW</th><th>冬季 kW</th><th>設計水量 LPM</th><th>建議管徑</th><th>流速 m/s</th><th>摩擦 Pa/m</th></tr></thead><tbody>${cs || '<tr><td colspan="8">無作動的水盤管</td></tr>'}</tbody></table></div>
+      <div class="hint">管徑：碳鋼 SCH40，取同時滿足流速上限（≤50A ${cfg.basis.vLimits[0]}／65–250A ${cfg.basis.vLimits[1]}／≥300A ${cfg.basis.vLimits[2]} m/s）與摩擦 ≤ ${cfg.basis.maxPaPerM} Pa/m 的最小管徑；水性質依平均水溫。此為單台主管，分支管請依盤管接管尺寸。</div>`;
+  }
+  if (ui.tab === 'select') {
+    const tr = cfg.stages.map((s, i) => {
+      const a = RES.summer.rows.find(r => r.id === s.id), b = RES.winter.rows.find(r => r.id === s.id);
+      const pick = (fn) => { const va = a && a.status === 'on' ? fn(a) : null, vb = b && b.status === 'on' ? fn(b) : null; if (va == null && vb == null) return null; return (vb == null || (va != null && va >= vb)) ? { v: va, s: '夏' } : { v: vb, s: '冬' }; };
+      const q = pick(r => r.q), lpm = pick(r => r.water ? r.water.lpm : null), rows = pick(r => r.rowsEst && Number.isFinite(r.rowsEst.rows) ? r.rowsEst.rows : null);
+      const cond = pick(r => r.condKgH || r.steamKgH || (r.evapKgH != null ? Math.abs(r.evapKgH) : null));
+      const fv = pick(r => r.faceV);
+      return `<tr><td><span class="pn" style="background:${TYPES[s.type].color}">${i + 1}</span><b>${esc(s.name)}</b><span class="sub">${TYPES[s.type].label}</span></td>
+        <td>${q ? `<b>${fk(q.v)}</b> <span class="sub">${q.s}季</span>` : '—'}</td><td>${s.type === 'COOL' && q ? f(q.v / 3.51685) : '—'}</td>
+        <td>${cond && cond.v > 0.05 ? `${f(cond.v)} <span class="sub">${cond.s}季</span>` : '—'}</td><td>${lpm ? `${fk(lpm.v, 0)} <span class="sub">${lpm.s}季</span>` : '—'}</td>
+        <td>${rows ? rows.v + ' 排' : '—'}</td><td>${fv ? f(fv.v, 2) : '—'}</td></tr>`;
+    }).join('');
+    return `<div class="tbl-wrap"><table class="tb"><thead><tr><th>處理段</th><th>選型負荷 kW</th><th>RT</th><th>除／加濕 kg/h</th><th>水量 LPM</th><th>估計排數</th><th>迎風 m/s</th></tr></thead><tbody>${tr}</tbody></table></div>
+      <div class="hint">每一段取夏、冬兩工況中較大者作為選型值，並標示由哪一季決定。</div>`;
+  }
+  // checks
+  const items = R.issues.map(i => ({ ...i }));
+  if (!items.some(i => i.title.startsWith('送風'))) items.push({ lvl: 'pass', title: '送風狀態在目標範圍內', detail: `${f(R.supply.db)} °C / ${f(Math.min(100, R.supply.rh), 1)}%` });
+  if (R.room && !items.some(i => /顯熱能力|潛熱/.test(i.title))) items.push({ lvl: 'pass', title: '送風可承擔室內負荷', detail: `顯熱 ${f(R.room.capS)} kW ≥ ${R.room.qs} kW・潛熱 ${f(R.room.capL)} kW ≥ ${R.room.ql} kW` });
+  R.rows.forEach(r => { if (r.status === 'on' && !r.flags.length && (r.type === 'COOL' || r.type === 'HEAT')) items.push({ lvl: 'pass', title: `${r.name}：水溫與迎風風速合理`, detail: r.water ? `${cfg.water[r.water.cid].name} ${cfg.water[r.water.cid].tin}/${cfg.water[r.water.cid].tout} °C・迎風 ${f(r.faceV, 2)} m/s` : `迎風 ${f(r.faceV, 2)} m/s` }); });
+  const order = { fail: 0, warn: 1, info: 2, pass: 3 };
+  items.sort((a, b) => order[a.lvl] - order[b.lvl]);
+  return `<ul class="checks">${items.map(i => `<li class="chk ${i.lvl}"><span class="dot">${lvlIcon[i.lvl]}</span><div><div class="chk-t">${esc(i.title)}<span class="lvl">${lvlTxt[i.lvl]}</span></div>${i.detail ? `<div class="chk-v">${esc(i.detail)}</div>` : ''}</div></li>`).join('')}</ul>`;
+}
+function notesHtml() {
+  return `<div class="notes">
+    <h4>濕空氣性質（ASHRAE Handbook—Fundamentals Ch.1）</h4>
+    <div>飽和蒸氣壓：Hyland–Wexler（式 5、6，含冰面）；含濕量 <code>W = 0.621945·pw/(P−pw)</code>；焓 <code>h = 1.006t + W(2501 + 1.86t)</code>；比容 <code>v = 0.287042(t+273.15)(1+1.607858W)/P</code>。</div>
+    <div>濕球溫度以熱力濕球定義（式 33/35）求解；露點以飽和蒸氣壓反解。大氣壓力依海拔 <code>P = 101.325(1 − 2.25577×10⁻⁵Z)^5.2559</code>。</div>
+    <h4>質量守恆</h4>
+    <div>乾空氣質量流率 ṁ 全程不變，依「風量基準」決定：送風機入口實際（定風量風機的實際條件，預設；風機入口狀態受上游處理影響，迭代求解）、第 1 點（外氣或混風）實際、或標準空氣 1.2 kg/m³。各段迎風風速以該段入口實際比容計。混風依外氣比（體積）換算成乾空氣質量比後，以焓與含濕量守恆求混風點。</div>
+    <h4>各處理段</h4>
+    <div><b>加熱盤管</b>：顯熱加熱，含濕量不變；入口已高於設定時不作動。「依加濕需求重設」時，預熱溫度取使下游循環水洗出口含濕量等於送風目標的最低值（設定值為上限），外氣夠濕時停機。熱水盤管檢核供水 &gt; 出風、回水 &gt; 入風（逆流）。</div>
+    <div><b>冷卻盤管</b>：露點控制＝入口含濕量高於設定才除濕至設定點；溫度控制＝降到設定溫度，出口 RH 不超過設計基準；固定出口＝直接採用設定 DB/RH。負荷 <code>Q = ṁ[(h₁−h₂) − (W₁−W₂)·4.186t₂]</code>。ADP 為入口→出口直線延長與飽和線交點，旁通因子 <code>BF = (t₂−ADP)/(t₁−ADP)</code>。</div>
+    <div><b>盤管排數（ε-NTU）</b>：濕盤管用焓勢法——水側勢為「水溫對應的飽和空氣焓」，等效比熱 <code>cs = Δh_s/ΔT_w</code>，水側容量 <code>ṁ_w·cp_w/cs</code>；乾盤管與熱水盤管用顯熱 ε-NTU。由逆流效率反求所需 NTU，排數 <code>n = NTU ÷ (−ln BF₁ × φ)</code>，BF₁ 為 Carrier 每排旁通因子（8–14 FPI、1.5–3.6 m/s 內插），φ 為水側與管壁熱阻折減（設計基準，預設 0.75）。出口空氣焓低於供水溫飽和焓、或入口焓低於回水溫飽和焓時為熱交換夾點，判定水溫條件不足。</div>
+    <div><b>水洗／噴淋</b>：出口 = 入口 + ε × (水溫飽和點 − 入口)；循環水時水溫 ≈ 入口濕球（絕熱加濕）。循環水量 = L/G × ṁ。</div>
+    <div><b>蒸汽加濕</b>：加濕至設定 RH，加入焓 = ΔW × 2676 kJ/kg（100 °C 飽和蒸汽），產汽熱量以 15 °C 補給水計。</div>
+    <div><b>送風機</b>：軸功率 = Q·ΔP/η風機，電功率 = 軸功率/η馬達；馬達在氣流中時電功率全部轉為空氣熱，否則只計軸功率。風機位置依序列決定（吸入式／壓入式）。</div>
+    <h4>水量與管徑</h4>
+    <div>水量 <code>= Q /(cp·ΔT)</code>，cp、ρ、μ 依平均水溫；管徑取碳鋼 SCH40 中同時滿足流速上限與摩擦上限（Swamee–Jain、粗糙度 0.046 mm）的最小管徑。</div>
+    <h4>全年能耗</h4>
+    <div>讀入 EPW 逐時氣象（乾球、露點），每小時以相同控制邏輯模擬一次：外氣 ≥ 換季溫度採「夏」啟用設定，否則採「冬」；乾空氣流率固定為該季設計值（定風量）。耗電 = 冷卻量/冰水 COP + 熱水加熱/熱源 COP + 蒸汽/效率 + 風機電功率。各段年運轉時數、尖峰負荷，以及超過設計選型負荷的時數一併統計。</div>
+    <h4>限制</h4>
+    <div>盤管排數為初估（φ、旁通因子為經驗值），正式選型以廠商軟體確認；水洗段效率為輸入值，只以噴淋排數與 L/G 做合理性檢核；未計空調箱漏風、管路得熱、加濕吸收距離與部分負載時的冷凍站效率變化。</div>
+  </div>`;
+}
+$('#results').addEventListener('click', e => {
+  const sb = e.target.closest('#segSeason button'); if (sb) { ui.season = sb.dataset.v; renderResults(); return; }
+  const gt = e.target.closest('[data-goto]'); if (gt) { ui.tab = gt.dataset.goto; renderResults(); $('#tabsCard').scrollIntoView({ behavior: 'smooth', block: 'start' }); return; }
+  const tb = e.target.closest('[data-tab]'); if (tb) { ui.tab = tb.dataset.tab; renderResults(); }
+});
+$('#results').addEventListener('change', e => { const k = e.target.dataset.show; if (k) { ui.show[k] = e.target.checked; renderResults(); } });
+
+// ───────────────────────── 檔案、範本、匯出 ─────────────────────────
+$('#btnTpl').addEventListener('click', e => { e.stopPropagation(); $('#tplMenu').hidden = !$('#tplMenu').hidden; });
+document.addEventListener('click', e => { if (!e.target.closest('.menu-wrap')) $('#tplMenu').hidden = true; });
+$('#tplMenu').addEventListener('click', e => { const b = e.target.closest('[data-tpl]'); if (!b) return;
+  if (!confirm('套用範本會取代目前所有輸入，確定嗎？（可先按「保存」備份）')) return;
+  const keep = cfg.project; cfg = TEMPLATES[b.dataset.tpl](); cfg.project = keep; $('#tplMenu').hidden = true; bindStatic(); compute(); persist(); toast('已套用範本'); });
+$('#btnSave').addEventListener('click', () => { const blob = new Blob([JSON.stringify(cfg, null, 2)], { type: 'application/json' }); const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `${cfg.project.name || '空氣線圖'}_${new Date().toISOString().slice(0, 10)}.json`; a.click(); URL.revokeObjectURL(a.href); });
+$('#btnOpen').addEventListener('click', () => $('#fileOpen').click());
+$('#fileOpen').addEventListener('change', async e => { const file = e.target.files[0]; if (!file) return; try { const c = JSON.parse(await file.text()); if (c.ver !== 10 || !Array.isArray(c.stages)) throw new Error('格式不符'); cfg = merge(BASE(), c); bindStatic(); compute(); persist(); toast('已開啟 ' + file.name); } catch (err) { toast('無法開啟：' + err.message); } e.target.value = ''; });
+$('#btnPrint').addEventListener('click', () => window.print());
+document.addEventListener('click', e => { const b = e.target.closest('[data-side]'); if (!b) return; setSide(b.dataset.side === 'open'); });
+function setSide(open) { ui.side = open; $('#app').classList.toggle('side-off', !open); try { localStorage.setItem(LS_KEY + '.side', open ? '1' : '0'); } catch (_) {} if (window.innerWidth > 900) setTimeout(drawChart, 0); }
+function syncTopH() { document.documentElement.style.setProperty('--topH', document.querySelector('.topbar').offsetHeight + 'px'); }
+window.addEventListener('resize', syncTopH);
+$('#btnXlsx').addEventListener('click', exportXlsx);
+function exportXlsx() {
+  if (!window.XLSX) { toast('Excel 元件未載入（需網路）'); return; }
+  const wb = XLSX.utils.book_new(), r2 = (n, d = 2) => n == null || !Number.isFinite(n) ? '' : Math.round(n * 10 ** d) / 10 ** d;
+  const info = [['空氣線圖 Pro 核算報告'], ['專案', cfg.project.name], ['系統編號', cfg.project.sub], ['產出時間', new Date().toLocaleString()], [],
+    ['系統型式', cfg.system === 'AHU' ? 'AHU 回風混合' : 'MAU 全外氣'], ['設計風量 CMH', cfg.airflow], ['風量基準', { fan: '送風機入口實際', inlet: '第 1 點（外氣／混風）實際', std: '標準空氣 1.2 kg/m³' }[cfg.flowBasis]],
+    ['盤管迎風 W×H mm', `${cfg.coilW} × ${cfg.coilH}`], ['大氣壓力 kPa', r2(RES.summer.P, 3)], ['外氣比 %', cfg.system === 'AHU' ? cfg.oaPct : ''],
+    ['送風目標', `${cfg.target.db} ± ${cfg.target.dbTol} °C${cfg.target.checkRh ? ` / ${cfg.target.rh} ± ${cfg.target.rhTol}%` : ''}`], [],
+    ['工況', '外氣 DB °C', '外氣 RH %', '外氣 WB °C', '送風 DB °C', '送風 RH %', '判定', '冷卻 kW', '加熱 kW', '除濕 kg/h', '加濕 kg/h', '風機 kW'],
+    ...['summer', 'winter'].map(sk => { const R = RES[sk]; return [SEASONS[sk], r2(R.oa.db, 1), r2(R.oa.rh, 1), r2(R.oa.wb, 1), r2(R.supply.db, 1), r2(Math.min(100, R.supply.rh), 1), lvlTxt[R.verdict], r2(R.tot.cool, 1), r2(R.tot.heat, 1), r2(R.tot.condensate, 1), r2(R.tot.humid, 1), r2(R.tot.fanKw, 1)]; })];
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(info), '總覽');
+  const proc = [['工況', '#', '處理段', '類型', '狀態', '入口 DB', '入口 RH', '出口 DB', '出口 RH', '出口 W g/kg', '負荷 kW', 'RT', '顯熱 kW', '潛熱 kW', 'SHR', 'ADP °C', 'BF', '估計排數', '迎風 m/s', '凝結/加濕 kg/h', '水路', '水量 LPM', '管徑', '流速 m/s', '問題']];
+  ['summer', 'winter'].forEach(sk => RES[sk].rows.forEach((r, i) => { const on = r.status === 'on';
+    proc.push([SEASONS[sk], i + 1, r.name, TYPES[r.type].label, { on: '運轉', off: '未作動', error: '無法達成', disabled: '本季停用' }[r.status], r2(r.in.db, 1), r2(Math.min(100, r.in.rh), 1), r2(r.out.db, 1), r2(Math.min(100, r.out.rh), 1), r2(r.out.w * 1000, 3),
+      on ? r2(r.q, 1) : '', on && r.type === 'COOL' ? r2(r.q / 3.51685, 1) : '', on && r.type === 'COOL' ? r2(r.qs, 1) : '', on && r.type === 'COOL' ? r2(r.ql, 1) : '', on && r.shr != null ? r2(r.shr, 3) : '',
+      r.adp ? r2(r.adp.db, 1) : '', r.adp ? r2(r.bf, 3) : '', r.rowsEst && Number.isFinite(r.rowsEst.rows) ? r.rowsEst.rows : '', on ? r2(r.faceV, 2) : '',
+      on ? r2(r.condKgH || r.steamKgH || r.evapKgH, 1) : '', r.water ? cfg.water[r.water.cid].name : '', r.water ? r2(r.water.lpm, 0) : '', r.water && r.water.pipe ? r.water.pipe.dn : '', r.water && r.water.pipe ? r2(r.water.pipe.v, 2) : '',
+      [...r.flags.map(x => x.title), ...r.notes].join('；')]); }));
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(proc), '處理段');
+  const sp = [['工況', '點', '名稱', 'DB °C', 'WB °C', 'DP °C', 'RH %', 'W g/kg', 'h kJ/kg', 'v m³/kg']];
+  ['summer', 'winter'].forEach(sk => { const R = RES[sk]; const L = []; if (R.ra) L.push(['OA', '外氣', R.oa], ['RA', '回風', R.ra]); R.points.forEach((p, i) => L.push([i + 1, p.label, p.state])); if (R.room) L.push(['◇', '需求送風', R.room.req]);
+    L.forEach(([n, l, s]) => sp.push([SEASONS[sk], n, l, r2(s.db), r2(s.wb), r2(s.dp), r2(Math.min(100, s.rh), 1), r2(s.w * 1000, 3), r2(s.h), r2(s.v, 4)])); });
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(sp), '狀態點');
+  const wt = [['水路', '進水 °C', '出水 °C', '工況', '負荷 kW', '水量 LPM', '管徑', '流速 m/s', '摩擦 Pa/m']];
+  ['summer', 'winter'].forEach(sk => Object.values(RES[sk].circuits).forEach(c => wt.push([cfg.water[c.cid].name, cfg.water[c.cid].tin, cfg.water[c.cid].tout, SEASONS[sk], r2(c.q, 1), r2(c.lpm, 0), c.pipe ? c.pipe.dn : '', c.pipe ? r2(c.pipe.v, 2) : '', c.pipe ? r2(c.pipe.paPerM, 0) : ''])));
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(wt), '水路');
+  const ck = [['工況', '等級', '項目', '說明']];
+  ['summer', 'winter'].forEach(sk => RES[sk].issues.forEach(i => ck.push([SEASONS[sk], lvlTxt[i.lvl], i.title, i.detail || ''])));
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(ck), '檢核');
+  if (EPW && ANN && ANN.acc && !ANN.running) {
+    const a = ANN.acc, A = cfg.annual;
+    const an = [['全年能耗（EPW 逐時）'], ['氣象檔', EPW.name || '', EPW.city || '', EPW.country || ''], ['小時數', a.n], ['換季溫度 °C', A.changeover], ['冰水 COP（低溫／中溫）', A.copL, A.copM], ['熱水熱源 COP', A.copHW], ['蒸汽效率', A.steamEff], ['電價 元/kWh', A.price], [],
+      ['年冷卻量 MWh', r2(a.cool / 1000, 1)], ['年加熱量 MWh', r2(a.heat / 1000, 1)], ['年加濕量 t', r2(a.humid / 1000, 2)], ['年凝結水 m³', r2(a.cond / 1000, 2)], ['風機耗電 MWh', r2(a.fanKwh / 1000, 1)], ['估計年耗電 MWh', r2(a.elec / 1000, 1)], ['估計電費 元', Math.round(a.elec * A.price)], ['送風未達標時數', a.unmet], ['先加熱後冷卻時數', a.hcH], ['先加熱後冷卻浪費熱量 MWh', r2(a.hcKwh / 1000, 1)], [],
+      ['處理段', '運轉時數', '年能量 MWh', '全年尖峰 kW', '設計選型 kW', '超過選型時數', '年耗電 MWh'],
+      ...cfg.stages.map(s => { const x = a.stages[s.id] || {}; return [s.name, x.hours, r2(x.kwh / 1000, 2), r2(x.peak, 1), r2(x.design, 1), x.over, r2(x.elec / 1000, 2)]; }), [],
+      ['月份', '冷卻 MWh', '加熱 MWh', '加濕 kg', '耗電 MWh'], ...a.monthly.map((x, i) => [i + 1, r2(x.cool / 1000, 2), r2(x.heat / 1000, 2), r2(x.humid, 0), r2(x.elec / 1000, 2)])];
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(an), '全年能耗');
+  }
+  XLSX.writeFile(wb, `${cfg.project.name || '空氣線圖'}_${new Date().toISOString().slice(0, 10)}.xlsx`);
+}
+
+ui.side = (() => { try { const v = localStorage.getItem(LS_KEY + '.side'); if (v != null) return v === '1'; } catch (_) {} return window.innerWidth > 900; })();
+if (window.innerWidth <= 900) ui.side = false;
+$('#app').classList.toggle('side-off', !ui.side);
+syncTopH();
+bindStatic();
+compute();
+</script>
+</body>
+</html>
