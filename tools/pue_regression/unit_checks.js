@@ -2761,6 +2761,33 @@ function freshCtx() {
     assert.strictEqual(cond.designDb, 33.5);
     assert.strictEqual(cond.peakDb.value, 36.7);
   });
+
+  test('G-3 Standby and Bypass labels merged into titles without overlap', async () => {
+    const { buildWindow } = require('./dom_harness.js');
+    const win = buildWindow();
+    win.CatalogManager.ready = null;
+    await win.App.init();
+
+    // 1. Trim chiller standby header check
+    win.ViewWeather.selectCity('高雄 (Kaohsiung)');
+    const du = win.AppStore.state.halls[0].dus[0];
+    du.plantDesign.cduSystem.architecture = 'dry_cooler_trim';
+    win.ViewCooling.render(win.document.getElementById('stepContent'));
+    const trimHtml = win.document.getElementById('stepContent').innerHTML;
+
+    assert(trimHtml.includes('Water Cooled Chillers — 待機'), 'Trim chiller header must include " — 待機"');
+    assert(!trimHtml.includes('<text x="918" y="202"'), 'Old overlapping standby header text must be removed');
+    assert(trimHtml.includes('待機 (Standby)'), 'Pipe standby badge must be preserved');
+
+    // 2. Fanwall air-cooled chiller bypass header check (in Alabama where tAvail >= return temp)
+    win.ViewWeather.selectCity('美國 (Alabama Andalusia)');
+    du.plantDesign.fanwallSystem.architecture = 'air_cooled_chiller';
+    win.ViewCooling.render(win.document.getElementById('stepContent'));
+    const fwHtml = win.document.getElementById('stepContent').innerHTML;
+
+    assert(fwHtml.includes('Free-Cooling 盤管 — 旁通'), 'Fanwall FC coil header must include " — 旁通"');
+    assert(!fwHtml.includes('<text x="600" y="72"'), 'Old overlapping bypass header text must be removed');
+  });
 })();
 
 console.log(`\n${passCount} passed, ${failCount} failed, ${skipCount} skipped`);

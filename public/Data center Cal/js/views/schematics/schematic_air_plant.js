@@ -121,6 +121,7 @@
             const ecoStroke = isEcoBypass ? '#475569' : '#10b981';
             const ecoHeaderFill = isEcoBypass ? '#1e293b' : '#064e3b';
             const ecoTitleFill = isEcoBypass ? '#94a3b8' : '#d1fae5';
+            const ecoTitle = (nEco.title || 'Free-Cooling 盤管') + (isEcoBypass ? ' — 旁通' : '');
             const ecoIconStroke = isEcoBypass ? '#64748b' : '#34d399';
             const ecoBasis = op?.thresholds?.basis === 'wb' ? '濕球' : '外氣乾球';
             const ecoTAvail = (op?.tAvail !== undefined && op?.tAvail !== null) ? Number(op.tAvail).toFixed(1) : '—';
@@ -151,8 +152,7 @@
                 <!-- Economizer (FC 盤管 / WSE 板換) -->
                 <rect x="435" y="55" width="175" height="135" rx="10" fill="#0f172a" stroke="${ecoStroke}" stroke-width="2" />
                 <rect x="435" y="55" width="175" height="26" rx="10" fill="${ecoHeaderFill}" />
-                <text x="522" y="73" fill="${ecoTitleFill}" font-size="11" font-weight="bold" text-anchor="middle" ${fitTextAttr(nEco.title || 'Free-Cooling 盤管', 165, 11)}>${nEco.title || 'Free-Cooling 盤管'}</text>
-                ${isEcoBypass ? '<text x="600" y="72" fill="#94a3b8" font-size="8.5" font-weight="bold" text-anchor="end">旁通 (Bypass)</text>' : ''}
+                <text x="522" y="73" fill="${ecoTitleFill}" font-size="11" font-weight="bold" text-anchor="middle" ${fitTextAttr(ecoTitle, 165, 11)}>${ecoTitle}</text>
                 
                 <rect x="443" y="88" width="18" height="90" rx="3" fill="#1e293b" stroke="${ecoIconStroke}" stroke-width="1" />
                 <path d="M 447 96 L 457 106 L 447 116 M 453 96 L 463 106 L 453 116 M 447 116 L 457 126 L 447 136 M 453 116 L 463 126 L 453 136 M 447 136 L 457 146 L 447 156" stroke="${ecoIconStroke}" stroke-width="1.3" fill="none" stroke-linecap="round" />

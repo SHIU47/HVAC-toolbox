@@ -108,6 +108,7 @@
             const chillerStroke = isDesignMode1 ? '#475569' : '#818cf8';
             const chillerHeaderFill = isDesignMode1 ? '#1e293b' : '#312e81';
             const chillerIconStroke = isDesignMode1 ? '#64748b' : '#a5b4fc';
+            const chillerTitle = (nChiller.title || 'Water Cooled Chillers') + (isDesignMode1 ? ' — 待機' : '');
             const chillerLine1 = nChiller.lines?.[0] || 'Trim';
             const chillerLine2 = isDesignMode1 ? '設計工況無修整需求 (停機)' : (nChiller.lines?.[1] || '冷凝熱串聯排放至 Dry Coolers');
             const chillerLine3 = isDesignMode1 ? '年尖峰或高溫時自動啟動' : (nChiller.lines?.[2] || '高效離心/螺桿式機械壓縮製冷');
@@ -194,8 +195,7 @@
                 <!-- ======================================================= -->
                 <rect x="730" y="185" width="200" height="100" rx="10" fill="#1e1b4b" stroke="${chillerStroke}" stroke-width="2" />
                 <rect x="730" y="185" width="200" height="26" rx="10" fill="${chillerHeaderFill}" />
-                <text x="830" y="203" fill="#f8fafc" font-size="11.5" font-weight="bold" text-anchor="middle" ${fitTextAttr(nChiller.title || 'Water Cooled Chillers', 180, 11.5)}>${nChiller.title || 'Water Cooled Chillers'}</text>
-                ${isDesignMode1 ? '<text x="918" y="202" fill="#94a3b8" font-size="8.5" font-weight="bold" text-anchor="end">待機 (Standby)</text>' : ''}
+                <text x="830" y="203" fill="#f8fafc" font-size="11.5" font-weight="bold" text-anchor="middle" ${fitTextAttr(chillerTitle, 180, 11.5)}>${chillerTitle}</text>
 
                 <circle cx="755" cy="235" r="13" fill="#312e81" stroke="${chillerIconStroke}" stroke-width="1.5" />
                 <text x="755" y="239" fill="#ffffff" font-size="8.5" font-weight="bold" text-anchor="middle">${chillerLine1}</text>
