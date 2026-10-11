@@ -31,7 +31,7 @@ const APP_FILES = [
   'cooling/archs/air_rdhx.js',
   'sizing/sizing_engine.js',
   'simulation/annual_runner.js',
-  'weather_builtin.js', 'ashrae_design_conditions.js', 'epw_parser.js', 'components/equipment_designer.js',
+  'weather_builtin.js', 'weather_source.js', 'ashrae_design_conditions.js', 'epw_parser.js', 'components/equipment_designer.js',
   'device_catalog_builtin.js', 'catalog_manager.js', 'ui_kit.js', 'store.js', 'excel_export.js',
   'views/view_weather.js', 'views/view_hall_su.js', 'views/view_corepod.js',
   'views/schematics/schematic_common.js',
@@ -84,6 +84,7 @@ const SKELETON_HTML = `<!doctype html>
 function buildWindow(options = {}) {
   const dom = new JSDOM(SKELETON_HTML, { url: 'http://localhost/', runScripts: 'dangerously', pretendToBeVisual: true });
   const win = dom.window;
+  win.__nodeRequire = require;
 
   // Vendor 套件 stub — 只需要不 throw，不需要真的畫圖
   win.Chart = function (el, cfg) { this._el = el; this._cfg = cfg; this.destroy = () => {}; this.update = () => {}; };

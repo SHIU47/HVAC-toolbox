@@ -2824,6 +2824,47 @@ function freshCtx() {
     assert(rHtml.includes('Mode 1 全自然冷卻'), 'RDHX line 1 must have title');
     assert(rHtml.includes('氣冷 FC 盤管自然供冷'), 'RDHX line 2 must have detail');
   });
+
+  test('W-1 WeatherSource module provides listStations, loadStation, caching, and error handling', async () => {
+    const { buildWindow } = require('./dom_harness.js');
+    const win = buildWindow();
+    assert(win.WeatherSource, 'WeatherSource must be defined on window');
+    assert(typeof win.WeatherSource.listStations === 'function', 'listStations must be function');
+    assert(typeof win.WeatherSource.loadStation === 'function', 'loadStation must be function');
+    assert(typeof win.WeatherSource.adaptHourly === 'function', 'adaptHourly must be function');
+    assert(typeof win.WeatherSource.basePath === 'function', 'basePath must be function');
+    assert(typeof win.WeatherSource.mode === 'function', 'mode must be function');
+
+    // Test listStations
+    const list = await win.WeatherSource.listStations();
+    assert(list.length >= 7, 'Station list must contain at least 7 stations');
+    const first = list[0];
+    assert(first.id && first.cityZh && first.countryZh, 'Station items must have id, cityZh, countryZh');
+    assert(first.source === 'builtin' || first.source === 'catalog', 'Station source must be builtin or catalog');
+
+    // Test loadStation builtin
+    const ty = await win.WeatherSource.loadStation('桃園 (Taoyuan Pilot)');
+    assert.strictEqual(ty.source, 'builtin');
+    assert.strictEqual(ty.hourlyData.length, 8760);
+    assert.strictEqual(ty.stats.avgDB, 22.9);
+
+    // Test LRU cache
+    const tyCached = await win.WeatherSource.loadStation('桃園 (Taoyuan Pilot)');
+    assert.strictEqual(ty, tyCached, 'Second call must return cached reference');
+
+    // Test file protocol error
+    const origMode = win.WeatherSource.mode;
+    win.WeatherSource.mode = () => 'file';
+    let fileErr = null;
+    try {
+      await win.WeatherSource.loadStation('CHN_BJ_Beijing-Capital.Intl.AP.545110_TMYx.2011-2025');
+    } catch (e) {
+      fileErr = e;
+    }
+    win.WeatherSource.mode = origMode;
+    assert(fileErr, 'Loading catalog station in file mode must throw');
+    assert.strictEqual(fileErr.code, 'FILE_PROTOCOL', 'Error code must be FILE_PROTOCOL');
+  });
 })();
 
 console.log(`\n${passCount} passed, ${failCount} failed, ${skipCount} skipped`);

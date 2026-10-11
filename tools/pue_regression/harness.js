@@ -2,7 +2,7 @@
 // 用法： const ctx = require('./harness.js');  → ctx.AppStore / ctx.ChillerEngine / ...
 const fs = require('fs'), vm = require('vm'), path = require('path');
 const JS = path.resolve(__dirname, '../../public/Data center Cal/js');
-const ctx = { console, Math, JSON, Date, setTimeout, clearTimeout, parseFloat, parseInt, Number, String, Array, Object, isFinite, isNaN, Promise };
+const ctx = { console, Math, JSON, Date, setTimeout, clearTimeout, parseFloat, parseInt, Number, String, Array, Object, isFinite, isNaN, Promise, process, __nodeRequire: require };
 ctx.window = ctx; ctx.global = ctx; ctx.globalThis = ctx;
 vm.createContext(ctx);
 // ⚠ 順序需與 index.html 一致；Phase C 新增檔案時同步更新此清單
@@ -29,6 +29,7 @@ const FILES = ['assumptions.js','engines_core.js','engines_cdu.js','engines_crah
   'sizing/sizing_engine.js',
   'simulation/annual_runner.js',
   'weather_builtin.js',
+  'weather_source.js',
   'ashrae_design_conditions.js',
   'epw_parser.js',
   'device_catalog_builtin.js','catalog_manager.js','store.js'];
