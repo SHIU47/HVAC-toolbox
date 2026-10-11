@@ -152,6 +152,9 @@
         REVERSE_BUILTIN_MAP,
 
         mode() {
+            if (typeof window !== 'undefined' && window.__PUE_EXE__) {
+                return 'exe';
+            }
             if (typeof location !== 'undefined' && location.protocol === 'file:') {
                 return 'file';
             }

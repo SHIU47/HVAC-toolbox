@@ -3002,6 +3002,23 @@ function freshCtx() {
     assert.strictEqual(migrated.site.stationSource, 'builtin');
     assert.strictEqual(migrated.site.stationId, 'TWN_NOR_Taoyuan.589650_TMYx.2011-2025');
   });
+
+  test('W-5 WeatherSource respects window.__PUE_EXE__ and build_exe configures weather_catalog bundling', () => {
+    const { buildWindow } = require('./dom_harness.js');
+    const win = buildWindow();
+    assert.strictEqual(win.WeatherSource.mode(), 'http');
+    assert.strictEqual(win.WeatherSource.basePath(), '../天氣資料/');
+
+    win.__PUE_EXE__ = true;
+    assert.strictEqual(win.WeatherSource.mode(), 'exe');
+    assert.strictEqual(win.WeatherSource.basePath(), 'weather_catalog/');
+
+    // Verify build_exe.js source content has weather_catalog and window.__PUE_EXE__
+    const buildExeContent = fs.readFileSync(path.resolve(__dirname, '../../public/Data center Cal/build_exe.js'), 'utf8');
+    assert(buildExeContent.includes('weather_catalog/weather_data.js'), 'Must bundle weather_catalog/weather_data.js');
+    assert(buildExeContent.includes('weather_catalog/hourly'), 'Must bundle weather_catalog/hourly');
+    assert(buildExeContent.includes('window.__PUE_EXE__ = true'), 'Must inject window.__PUE_EXE__ into index.html');
+  });
 })();
 
 console.log(`\n${passCount} passed, ${failCount} failed, ${skipCount} skipped`);
