@@ -284,21 +284,21 @@ adaptHourly(raw) {
 
 ## 5. 任務清單
 
-| 任務 | 內容 | 允許變動 |
-|---|---|---|
-| G-1 | `updateSite` / `deserializeProject` 不沿用舊城市設計條件；修 `topo_preview.js` | 工具輸出 |
-| G-2 | `run.js` 帶入 `designConditions`、`harness.js` 補檔、載入順序檢查 → 重存 `baseline_after_R3` | 工具 |
-| G-3 | 待機／旁通標籤重疊 | 拓樸圖 |
-| G-4 | Fanwall 兩行橫幅、共用 banner renderer | 拓樸圖 |
-| W-1 | `weather_source.js` | 0 差異 |
-| W-2 | Hourly adapter | 0 差異 |
-| W-3 | Step 1 測站選擇器 | Step 1 UI |
-| W-4 | 專案檔記錄測站、schema v6 | 0 差異（內建城市） |
-| W-5 | exe 打包 165 站（不實際打包） | 建置腳本 |
-| ~~W-6~~ | 本輪不做（§6-W2） | — |
-| W-7 | `run.js --catalog` 165 站掃描 | 工具 |
-| Q-1 | 冰機運轉範圍警示 | 驗證訊息 |
-| Q-2 | 泵浦水力公式 | 數值可變 |
+| 任務 | 內容 | 允許變動 | 狀態 / Commit |
+|---|---|---|---|
+| G-1 | `updateSite` / `deserializeProject` 不沿用舊城市設計條件；修 `topo_preview.js` | 工具輸出 | 已完成 (`3ef5ea7`) |
+| G-2 | `run.js` 帶入 `designConditions`、`harness.js` 補檔、載入順序檢查 → 重存 `baseline_after_R3` | 工具 | 已完成 (`1032167`, `dd87626`) |
+| G-3 | 待機／旁通標籤重疊 | 拓樸圖 | 已完成 (`e7e0ae9`) |
+| G-4 | Fanwall 兩行橫幅、共用 banner renderer | 拓樸圖 | 已完成 (`bd8c9e8`) |
+| W-1 | `weather_source.js` | 0 差異 | 已完成 (`33763e1`) |
+| W-2 | Hourly adapter | 0 差異 | 已完成 (`3a47ee3`) |
+| W-3 | Step 1 測站選擇器 | Step 1 UI | 已完成 (`0ac2e55`) |
+| W-4 | 專案檔記錄測站、schema v6 | 0 差異（內建城市） | 已完成 (`215cb96`) |
+| W-5 | exe 打包 165 站（不實際打包） | 建置腳本 | 已完成 (`d930b39`) |
+| ~~W-6~~ | 本輪不做（§6-W2） | — | 依決策略過 |
+| W-7 | `run.js --catalog` 165 站掃描 | 工具 | 已完成 (`c6ee911`) |
+| Q-1 | 冰機運轉範圍警示 | 驗證訊息 | 已完成 (`4655398`) |
+| Q-2 | 泵浦水力公式 | 數值可變 | 已完成 (`8a145d7`) |
 
 ### 完成回報格式
 1. 每個任務：commit hash、回歸摘要、截圖／接線測試。
