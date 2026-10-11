@@ -2865,6 +2865,42 @@ function freshCtx() {
     assert(fileErr, 'Loading catalog station in file mode must throw');
     assert.strictEqual(fileErr.code, 'FILE_PROTOCOL', 'Error code must be FILE_PROTOCOL');
   });
+
+  test('W-2 adaptHourly validates length, maps 0..11 to 1..12, and preserves Kaohsiung July avg DB within 0.3C', () => {
+    const { buildWindow } = require('./dom_harness.js');
+    const win = buildWindow();
+    const WS = win.WeatherSource;
+    const fs = require('fs');
+    const path = require('path');
+
+    // 1. Validation: throws on null, non-array, or < 8760
+    assert.throws(() => WS.adaptHourly(null), /WeatherSourceError/);
+    assert.throws(() => WS.adaptHourly([]), /WeatherSourceError/);
+    assert.throws(() => WS.adaptHourly(new Array(8759).fill({ m: 0, d: 1, h: 1, db: 20, wb: 15 })), /WeatherSourceError/);
+
+    // 2. Leap year slice: 8784 -> 8760
+    const mock8784 = new Array(8784).fill(0).map((_, i) => ({ m: Math.floor(i / 730), d: 1, h: 1, db: 25, wb: 20, dp: 18, rh: 70 }));
+    const adapted8784 = WS.adaptHourly(mock8784);
+    assert.strictEqual(adapted8784.length, 8760, 'adaptHourly must slice to exactly 8760 records');
+
+    // 3. Month conversion: m=0..11 -> month=1..12
+    const sample = WS.adaptHourly(new Array(8760).fill(0).map((_, i) => ({ m: Math.floor(i / 730), d: 1, h: 1, db: 20, wb: 15, dp: 10, rh: 50 })));
+    assert.strictEqual(sample[0].month, 1, 'm=0 must map to month=1');
+    assert.strictEqual(sample[8759].month, 12, 'm=11 must map to month=12');
+    const months = new Set(sample.map(h => h.month));
+    assert.strictEqual(months.size, 12, 'Must contain all 12 months');
+
+    // 4. Real Kaohsiung EPW verification: July avg DB diff < 0.3°C
+    const khPath = path.resolve(__dirname, '../../public/天氣資料/hourly/TWN_SOR_Kaohsiung.Intl.AP.467400_TMYx.2011-2025.json');
+    const rawKh = JSON.parse(fs.readFileSync(khPath, 'utf8'));
+    const adaptedKh = WS.adaptHourly(rawKh);
+    const computedStats = win.AppStore.computeMonthlyStats(adaptedKh);
+    const catalogJulAvgDb = computedStats[6].avgDB; // July is index 6
+    const builtinKh = win.BUILTIN_WEATHER_DATA['高雄 (Kaohsiung)'];
+    const builtinJulAvgDb = builtinKh.monthlyStats.find(m => m.month === 7).avgDB;
+    const diff = Math.abs(builtinJulAvgDb - catalogJulAvgDb);
+    assert(diff < 0.3, `July avgDB difference (${diff}°C) must be < 0.3°C`);
+  });
 })();
 
 console.log(`\n${passCount} passed, ${failCount} failed, ${skipCount} skipped`);
