@@ -2901,6 +2901,57 @@ function freshCtx() {
     const diff = Math.abs(builtinJulAvgDb - catalogJulAvgDb);
     assert(diff < 0.3, `July avgDB difference (${diff}°C) must be < 0.3°C`);
   });
+
+  test('W-3 Step 1 station selector provides search, filters, data quality icon, and file protocol warning', async () => {
+    const { buildWindow } = require('./dom_harness.js');
+    const win = buildWindow();
+    win.CatalogManager.ready = null;
+    await win.App.init();
+    await win.ViewWeather.initStations();
+
+    // 1. Initial render contains search input and filter selects
+    win.ViewWeather.render(win.document.getElementById('stepContent'));
+    const html = win.document.getElementById('stepContent').innerHTML;
+    assert(html.includes('id="stationSearchInput"'), 'Must render stationSearchInput');
+    assert(html.includes('id="stationContinentSelect"'), 'Must render stationContinentSelect');
+    assert(html.includes('id="stationCountrySelect"'), 'Must render stationCountrySelect');
+    assert(html.includes('id="stationZoneSelect"'), 'Must render stationZoneSelect');
+
+    // 2. Search filtering
+    win.ViewWeather.onSearch('Tokyo');
+    const tokyoList = win.ViewWeather.filterStations();
+    assert(tokyoList.length >= 1, 'Search for Tokyo must return at least 1 station');
+    assert(tokyoList.every(s => (s.cityZh && s.cityZh.includes('Tokyo')) || (s.city && s.city.includes('Tokyo')) || (s.id && s.id.includes('Tokyo'))), 'All results must match Tokyo');
+
+    // 3. Continent & Country filtering
+    win.ViewWeather.onSearch('');
+    win.ViewWeather.onFilterContinent('Asia');
+    win.ViewWeather.onFilterCountry('日本');
+    const jpnList = win.ViewWeather.filterStations();
+    assert.strictEqual(jpnList.length, 3, 'Japan has 3 stations in catalog');
+
+    // 4. Zone filtering
+    win.ViewWeather.onFilterCountry('');
+    win.ViewWeather.onFilterContinent('');
+    win.ViewWeather.onFilterZone('0A');
+    const zone0AList = win.ViewWeather.filterStations();
+    assert(zone0AList.length > 0, 'Must return 0A stations');
+    assert(zone0AList.every(s => s.zone === '0A'), 'All stations must have zone 0A');
+
+    // 5. Selecting a station updates store with stationId, hourly, and designConditions
+    win.ViewWeather.onFilterZone('');
+    await win.ViewWeather.selectStation('JPN_TK_Tokyo-Chiyoda.476620_TMYx.2011-2025');
+    assert.strictEqual(win.AppStore.state.site.stationId, 'JPN_TK_Tokyo-Chiyoda.476620_TMYx.2011-2025');
+    assert.strictEqual(win.AppStore.state.site.hourly.length, 8760);
+    assert.strictEqual(win.AppStore.designConditions().peakDb.value, 38.6);
+
+    // 6. File protocol warning banner
+    win.ViewWeather.fileProtocolError = true;
+    win.ViewWeather.render(win.document.getElementById('stepContent'));
+    const bannerHtml = win.document.getElementById('stepContent').innerHTML;
+    assert(bannerHtml.includes('直接開啟 HTML 檔案時，瀏覽器不允許讀取本機氣象資料'), 'Banner must display file protocol explanation');
+    assert(bannerHtml.includes('標示為「內建・離線可用」的測站仍可正常選用'), 'Banner must explain builtin offline availability');
+  });
 })();
 
 console.log(`\n${passCount} passed, ${failCount} failed, ${skipCount} skipped`);

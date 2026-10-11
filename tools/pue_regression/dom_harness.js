@@ -85,6 +85,7 @@ function buildWindow(options = {}) {
   const dom = new JSDOM(SKELETON_HTML, { url: 'http://localhost/', runScripts: 'dangerously', pretendToBeVisual: true });
   const win = dom.window;
   win.__nodeRequire = require;
+  win.__nodeProcess = process;
 
   // Vendor 套件 stub — 只需要不 throw，不需要真的畫圖
   win.Chart = function (el, cfg) { this._el = el; this._cfg = cfg; this.destroy = () => {}; this.update = () => {}; };

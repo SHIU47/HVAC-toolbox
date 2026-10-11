@@ -54,12 +54,13 @@
 
     function getNodeWeatherDir() {
         if (pathModule && fsModule) {
+            const proc = (typeof process !== 'undefined' ? process : null) || (root && root.__nodeProcess);
             if (typeof __dirname !== 'undefined') {
                 const p1 = pathModule.resolve(__dirname, '../../天氣資料');
                 if (fsModule.existsSync(p1)) return p1;
             }
-            if (typeof process !== 'undefined' && process.cwd) {
-                const p2 = pathModule.resolve(process.cwd(), 'public/天氣資料');
+            if (proc && proc.cwd) {
+                const p2 = pathModule.resolve(proc.cwd(), 'public/天氣資料');
                 if (fsModule.existsSync(p2)) return p2;
             }
         }
