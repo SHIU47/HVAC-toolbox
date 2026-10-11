@@ -2712,6 +2712,36 @@ function freshCtx() {
     assert.strictEqual(du.plantDesign.fanwallSystem.roomDbC, 20);
     assert.strictEqual(du.plantDesign.fanwallSystem.roomRhPct, 60);
   });
+
+  test('G-1 clear designConditions on site change when omitted', async () => {
+    const { buildWindow } = require('./dom_harness.js');
+    const win = buildWindow();
+    win.CatalogManager.ready = null;
+    await win.App.init();
+
+    // 1. Initial city is Taoyuan (peakDb = 42.0)
+    const tyCond = win.AppStore.designConditions();
+    assert.strictEqual(tyCond.peakDb.value, 42.0);
+
+    // 2. updateSite with Kaohsiung hourly but WITHOUT designConditions
+    const kh = win.BUILTIN_WEATHER_DATA['高雄 (Kaohsiung)'];
+    win.AppStore.updateSite({ hourly: kh.hourlyData, selectedCity: '高雄 (Kaohsiung)' });
+
+    // site.designConditions must be cleared to null
+    assert.strictEqual(win.AppStore.state.site.designConditions, null);
+    const fbCond = win.AppStore.designConditions();
+    assert.strictEqual(fbCond.peakDb.basis, 'TMY 最高 + 餘裕（無 ASHRAE 極值）');
+
+    // 3. updateSite with Kaohsiung WITH designConditions
+    win.AppStore.updateSite({
+      hourly: kh.hourlyData,
+      selectedCity: '高雄 (Kaohsiung)',
+      designConditions: kh.designConditions || null
+    });
+    const khCond = win.AppStore.designConditions();
+    assert.strictEqual(khCond.peakDb.value, 36.7);
+    assert.strictEqual(khCond.designDb, 33.5);
+  });
 })();
 
 console.log(`\n${passCount} passed, ${failCount} failed, ${skipCount} skipped`);

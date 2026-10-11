@@ -56,7 +56,7 @@ function preparePreviewHtml() {
             const city = q.get('city') || '高雄 (Kaohsiung)';
             const d = window.BUILTIN_WEATHER_DATA ? window.BUILTIN_WEATHER_DATA[city] : null;
             if (d && S) {
-                S.updateSite({ selectedCity: city, hourly: d.hourlyData, isRealEpw: true });
+                S.updateSite({ selectedCity: city, hourly: d.hourlyData, designConditions: d.designConditions || null, isRealEpw: true });
             }
             if (S && S.state && S.state.halls && S.state.halls[0] && S.state.halls[0].dus) {
                 const du = S.state.halls[0].dus[0];
