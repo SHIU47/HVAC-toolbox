@@ -81,6 +81,15 @@
                 if (ok) {
                     this.renderStep(this.currentStep);
                     this.updateStickyBar();
+                    if (window.AppStore.weatherLoadingPromise) {
+                        window.AppStore.weatherLoadingPromise.then(() => {
+                            this.renderStep(this.currentStep);
+                            this.updateStickyBar();
+                        }).catch(() => {
+                            this.renderStep(this.currentStep);
+                            this.updateStickyBar();
+                        });
+                    }
                     alert('✅ 專案檔載入成功！');
                 } else {
                     alert('❌ 專案檔格式錯誤，無法載入。');

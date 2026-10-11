@@ -10,8 +10,18 @@
     const ViewDashboard = {
         render(container) {
             const state = window.AppStore.state;
-            const res = state.results;
-            const overall = res.overall;
+            if (state.site && state.site.isWeatherLoading) {
+                container.innerHTML = `
+                    <div class="bg-white p-12 rounded-2xl border border-slate-200 text-center space-y-4 shadow-sm">
+                        <div class="text-4xl">⏳</div>
+                        <h3 class="text-lg font-bold text-slate-800">氣象資料載入中...</h3>
+                        <p class="text-xs text-slate-500">正在非同步載入「${state.site.selectedCity || state.site.stationId}」之 8,760 小時氣象資料，請稍候。</p>
+                    </div>
+                `;
+                return;
+            }
+            const res = state.results || {};
+            const overall = res.overall || {};
             const byDu = res.byDu || [];
             const byCorePod = res.byCorePod || [];
             const corePodGroup = res.corePodGroup || { annualPue: 1.00, totalItKw: 0 };

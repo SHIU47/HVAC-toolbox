@@ -209,10 +209,12 @@
         serializeProject() {
             const s = this.state;
             const exportData = {
-                schemaVersion: 'v5',
+                schemaVersion: 'v6',
                 savedAt: new Date().toISOString(),
                 site: {
                     selectedCity: s.site.selectedCity,
+                    stationId: s.site.stationId || null,
+                    stationSource: s.site.stationSource || (s.site.userUploaded ? 'epw' : 'builtin'),
                     stats: s.site.stats,
                     userUploaded: s.site.userUploaded || false,
                     designConditions: s.site.designConditions || null
@@ -300,7 +302,19 @@
                 });
             }
 
-            stateData.schemaVersion = 'v5';
+            if (stateData.site) {
+                if (!stateData.site.stationSource) {
+                    if (stateData.site.userUploaded) {
+                        stateData.site.stationSource = 'epw';
+                    } else if (stateData.site.selectedCity) {
+                        stateData.site.stationSource = 'builtin';
+                        const ws = (typeof window !== 'undefined' && window.WeatherSource) ? window.WeatherSource : ((typeof WeatherSource !== 'undefined') ? WeatherSource : null);
+                        stateData.site.stationId = ws?.REVERSE_BUILTIN_MAP?.[stateData.site.selectedCity] || stateData.site.selectedCity;
+                    }
+                }
+            }
+
+            stateData.schemaVersion = 'v6';
             return stateData;
         },
 
@@ -322,39 +336,74 @@
                     if (stateData.site.selectedCity) {
                         this.state.site.selectedCity = stateData.site.selectedCity;
                     }
+                    this.state.site.stationId = stateData.site.stationId || null;
+                    this.state.site.stationSource = stateData.site.stationSource || (stateData.site.userUploaded ? 'epw' : 'builtin');
                     if (stateData.site.stats) {
                         this.state.site.stats = stateData.site.stats;
                     }
                     if (stateData.site.designConditions !== undefined) {
                         this.state.site.designConditions = stateData.site.designConditions;
                     }
-                    // v45 fix: 專案匯出檔(serializeProject)從來沒有內嵌完整8760小時氣象陣列
-                    // (只存 selectedCity/stats)，但這裡之前完全沒有補讀，導致重新開啟專案檔後
-                    // this.state.site.hourly 是空的，calculate() 會悄悄退回 generateFallbackWeather()
-                    // 那個溫和的合成氣候(全年幾乎不超過32°C)，而不是案場真實氣候(例如高雄夏天
-                    // 常態超過36°C) —— 畫面上城市名稱/氣象統計還是對的，但實際8760小時模擬
-                    // 用的是假天氣，PUE/WUE會嚴重失真且完全不會有任何警示。
-                    // 對內建城市，比照 Step1 選擇城市(view_weather.js selectCity)同一個
-                    // BUILTIN_WEATHER_DATA 來源重新載入真實逐時氣象；使用者自行上傳的EPW
-                    // 目前匯出檔本來就沒存原始逐時資料，無法在這裡復原，只能請使用者重新上傳。
+
                     const cityName = stateData.site.selectedCity;
-                    if (cityName && !stateData.site.userUploaded && typeof window !== 'undefined' && window.BUILTIN_WEATHER_DATA && window.BUILTIN_WEATHER_DATA[cityName]) {
-                        const data = window.BUILTIN_WEATHER_DATA[cityName];
-                        this.state.site.hourly = data.hourlyData;
-                        this.state.site.monthlyStats = data.monthlyStats;
-                        this.state.site.isRealEpw = true;
-                        this.state.site.stationName = data.stationInfo?.location;
-                        this.state.site.country = data.stationInfo?.country;
-                        this.state.site.lat = data.stationInfo?.lat;
-                        this.state.site.lon = data.stationInfo?.lon;
-                        this.state.site.elev = data.stationInfo?.elev;
-                        this.state.site.designConditions = data.designConditions || null;
-                    } else if (cityName) {
-                        console.warn('[deserializeProject] 找不到「' + cityName + '」的內建氣象資料 (可能是使用者自行上傳的EPW，匯出檔未保存原始逐時資料)，本次計算將使用溫和的合成氣候近似值，結果不代表真實案場氣候，請重新於 Step1 上傳/選擇氣象資料。');
+                    const stationSource = this.state.site.stationSource;
+                    const stationId = this.state.site.stationId;
+
+                    if (stationSource === 'builtin') {
+                        if (cityName && typeof window !== 'undefined' && window.BUILTIN_WEATHER_DATA && window.BUILTIN_WEATHER_DATA[cityName]) {
+                            const data = window.BUILTIN_WEATHER_DATA[cityName];
+                            this.state.site.hourly = data.hourlyData;
+                            this.state.site.monthlyStats = data.monthlyStats;
+                            this.state.site.isRealEpw = true;
+                            this.state.site.stationName = data.stationInfo?.location;
+                            this.state.site.country = data.stationInfo?.country;
+                            this.state.site.lat = data.stationInfo?.lat;
+                            this.state.site.lon = data.stationInfo?.lon;
+                            this.state.site.elev = data.stationInfo?.elev;
+                            this.state.site.designConditions = data.designConditions || null;
+                        } else if (cityName) {
+                            console.warn('[deserializeProject] 找不到「' + cityName + '」的內建氣象資料 (可能是使用者自行上傳的EPW，匯出檔未保存原始逐時資料)，本次計算將使用溫和的合成氣候近似值，結果不代表真實案場氣候，請重新於 Step1 上傳/選擇氣象資料。');
+                        }
+                        this.state.site.design = null;
+                        this.calculate();
+                    } else if (stationSource === 'catalog' && stationId) {
+                        this.state.site.isWeatherLoading = true;
+                        this.state.site.design = null;
+                        const ws = (typeof window !== 'undefined' && window.WeatherSource) ? window.WeatherSource : ((typeof WeatherSource !== 'undefined') ? WeatherSource : null);
+                        if (ws) {
+                            this.weatherLoadingPromise = ws.loadStation(stationId).then(stationData => {
+                                this.state.site.isWeatherLoading = false;
+                                this.state.site.hourly = stationData.hourlyData;
+                                this.state.site.monthlyStats = stationData.monthlyStats;
+                                this.state.site.stats = stationData.stats;
+                                this.state.site.isRealEpw = true;
+                                this.state.site.stationName = stationData.stationInfo?.location;
+                                this.state.site.country = stationData.stationInfo?.country;
+                                this.state.site.lat = stationData.stationInfo?.lat;
+                                this.state.site.lon = stationData.stationInfo?.lon;
+                                this.state.site.elev = stationData.stationInfo?.elev;
+                                this.state.site.designConditions = stationData.designConditions || null;
+                                this.state.site.design = null;
+                                this.calculate();
+                                this.notify();
+                                return stationData;
+                            }).catch(err => {
+                                this.state.site.isWeatherLoading = false;
+                                console.error('[deserializeProject] Failed to load catalog weather:', err);
+                                this.notify();
+                                throw err;
+                            });
+                        }
+                    } else {
+                        if (cityName) {
+                            console.warn('[deserializeProject] 找不到「' + cityName + '」的內建氣象資料 (可能是使用者自行上傳的EPW，匯出檔未保存原始逐時資料)，本次計算將使用溫和的合成氣候近似值，結果不代表真實案場氣候，請重新於 Step1 上傳/選擇氣象資料。');
+                        }
+                        this.state.site.design = null;
+                        this.calculate();
                     }
-                    this.state.site.design = null;
+                } else {
+                    this.calculate();
                 }
-                this.calculate();
                 return true;
             } catch (e) {
                 console.error('Failed to parse project JSON:', e);
@@ -1451,6 +1500,9 @@
         },
 
         calculate() {
+            if (this.state.site && this.state.site.isWeatherLoading) {
+                return;
+            }
             this.recalculateBinAnalysis();
             this.state.results = this.state.results || {};
             const hourlyWeather = (this.state.site.hourly && this.state.site.hourly.length >= 8760) 

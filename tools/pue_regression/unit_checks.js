@@ -786,10 +786,10 @@ function freshCtx() {
   const path = require('path');
   const { AppStore: S } = ctx;
 
-  test('C-5 serializeProject produces schemaVersion v5', () => {
+  test('C-5 serializeProject produces schemaVersion v6', () => {
     const json = S.serializeProject();
     const parsed = JSON.parse(json);
-    assert.strictEqual(parsed.schemaVersion, 'v5');
+    assert.strictEqual(parsed.schemaVersion, 'v6');
   });
 
   test('C-5 migrateProject resolves legacy aliases, adds redundancy and enabled', () => {
@@ -815,7 +815,7 @@ function freshCtx() {
     };
 
     const migrated = S.migrateProject(v4State);
-    assert.strictEqual(migrated.schemaVersion, 'v5');
+    assert.strictEqual(migrated.schemaVersion, 'v6');
     assert.strictEqual(migrated.corePods[0].enabled, true);
     assert.strictEqual(migrated.halls[0].dus[0].plantDesign.cduSystem.architecture, 'dry_cooler_trim');
     assert.strictEqual(migrated.halls[0].dus[0].plantDesign.fanwallSystem.architecture, 'water_cooled_chiller');
@@ -836,11 +836,11 @@ function freshCtx() {
     const pue1 = S.state.results.overall.annualPue;
     const water1 = S.state.results.overall.annualWaterM3;
 
-    const savedV5 = S.serializeProject();
-    const parsedV5 = JSON.parse(savedV5);
-    assert.strictEqual(parsedV5.schemaVersion, 'v5');
+    const savedV6 = S.serializeProject();
+    const parsedV6 = JSON.parse(savedV6);
+    assert.strictEqual(parsedV6.schemaVersion, 'v6');
 
-    const ok2 = S.deserializeProject(savedV5);
+    const ok2 = S.deserializeProject(savedV6);
     assert.strictEqual(ok2, true);
     const pue2 = S.state.results.overall.annualPue;
     const water2 = S.state.results.overall.annualWaterM3;
@@ -2951,6 +2951,56 @@ function freshCtx() {
     const bannerHtml = win.document.getElementById('stepContent').innerHTML;
     assert(bannerHtml.includes('直接開啟 HTML 檔案時，瀏覽器不允許讀取本機氣象資料'), 'Banner must display file protocol explanation');
     assert(bannerHtml.includes('標示為「內建・離線可用」的測站仍可正常選用'), 'Banner must explain builtin offline availability');
+  });
+
+  test('W-4 Project persistence upgrades schema to v6, preserves catalog stationId, and loads weather on deserialize', async () => {
+    const { buildWindow } = require('./dom_harness.js');
+    const win = buildWindow();
+    win.CatalogManager.ready = null;
+    await win.App.init();
+    await win.ViewWeather.initStations();
+
+    // Select Tokyo
+    await win.ViewWeather.selectStation('JPN_TK_Tokyo-Chiyoda.476620_TMYx.2011-2025');
+    assert.strictEqual(win.AppStore.state.site.stationId, 'JPN_TK_Tokyo-Chiyoda.476620_TMYx.2011-2025');
+
+    // 1. Serialize project
+    const jsonStr = win.AppStore.serializeProject();
+    const parsed = JSON.parse(jsonStr);
+    assert.strictEqual(parsed.schemaVersion, 'v6');
+    assert.strictEqual(parsed.site.stationId, 'JPN_TK_Tokyo-Chiyoda.476620_TMYx.2011-2025');
+    assert.strictEqual(parsed.site.stationSource, 'catalog');
+
+    // 2. Deserialize in a fresh window
+    const win2 = buildWindow();
+    win2.CatalogManager.ready = null;
+    await win2.App.init();
+
+    const ok = win2.AppStore.deserializeProject(jsonStr);
+    assert.strictEqual(ok, true);
+    assert.strictEqual(win2.AppStore.state.site.isWeatherLoading, true);
+
+    // Await the async weather load
+    assert(win2.AppStore.weatherLoadingPromise, 'weatherLoadingPromise must be present');
+    await win2.AppStore.weatherLoadingPromise;
+
+    assert.strictEqual(win2.AppStore.state.site.isWeatherLoading, false);
+    assert.strictEqual(win2.AppStore.state.site.hourly.length, 8760);
+    assert.strictEqual(win2.AppStore.designConditions().peakDb.value, 38.6);
+    assert(win2.AppStore.state.results && win2.AppStore.state.results.overall, 'calculate() must have run after loading');
+
+    // 3. Schema migration from v5 to v6
+    const v5Data = {
+      schemaVersion: 'v5',
+      site: {
+        selectedCity: '桃園 (Taoyuan Pilot)',
+        userUploaded: false
+      }
+    };
+    const migrated = win2.AppStore.migrateProject(v5Data);
+    assert.strictEqual(migrated.schemaVersion, 'v6');
+    assert.strictEqual(migrated.site.stationSource, 'builtin');
+    assert.strictEqual(migrated.site.stationId, 'TWN_NOR_Taoyuan.589650_TMYx.2011-2025');
   });
 })();
 
