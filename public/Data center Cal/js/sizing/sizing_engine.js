@@ -251,6 +251,28 @@
                 trimChillerForCheck ? ((trimChillerForCheck.maxMechanicalPassed ? '✓' : '⚠') + ' Trim Chiller 全機械製冷(Mode 3)最大需求 ' + trimChillerForCheck.maxMechanicalKw + ' kW，N+1可用 ' + trimChillerForCheck.effectiveCapKw + ' kW' + (trimChillerForCheck.maxMechanicalPassed ? '（足夠）' : '（不足！極端高溫時可能超載，實際是否發生請以Dashboard的容量缺口小時數為準）')) : ''
             ];
 
+            // Q-1: Trim chiller CEWT envelope check at extreme/peak heat conditions
+            if (trimChillerForCheck) {
+                const peakDb = dCond?.peakDb?.value ?? dCond?.maxDb ?? ((dCond?.designDb ?? 34.0) + 3.0);
+                const opPeak = (root.AppStore?.trimOperatingPoint) ? root.AppStore.trimOperatingPoint(cduSys, peakDb) : {};
+                if (opPeak && typeof opPeak.tCewt === 'number') {
+                    const curItem = trimChillerForCheck.catalog?.find(c => c.model === trimChillerForCheck.selectedModel) || trimChillerForCheck.catalog?.[0] || {};
+                    let limit = (typeof root.A === 'function') ? root.A('chiller_max_cewt_standard_c') : 45.0;
+                    const htLimit = (typeof root.A === 'function') ? root.A('chiller_max_cewt_hightemp_c') : 60.0;
+                    if (typeof curItem.max_cewt_c === 'number') {
+                        limit = curItem.max_cewt_c;
+                    } else {
+                        const cat = `${curItem.category || ''} ${curItem.model || ''} ${curItem.name || ''}`.toLowerCase();
+                        if (cat.includes('high temp') || cat.includes('heat pump') || cat.includes('heat-pump')) {
+                            limit = htLimit;
+                        }
+                    }
+                    if (opPeak.tCewt > limit) {
+                        checks.push(`⚠ 極端熱工況冷凝進水 ${opPeak.tCewt.toFixed(1)}°C 超過所選冰機運轉上限 ${limit.toFixed(1)}°C，需選用高溫型冰機`);
+                    }
+                }
+            }
+
             // P4-6: R-f D5 warning for water_chiller
             const isWaterChiller = cduArchDesc?.id === 'water_chiller' || cduSys?.architecture === 'water_chiller' || !!cduArchDesc?.flags?.isWaterChiller;
             if (isWaterChiller) {

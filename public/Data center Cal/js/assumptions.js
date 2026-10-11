@@ -63,6 +63,8 @@ const ASSUMPTIONS = {
   chiller_cond_offset_air_k:      { val: 15.0,  unit: 'K',      label: '氣冷冰機冷凝溫度 = 外氣乾球 + 此值', ref: '氣冷冷凝器典型 TD 12–17 K' },
   chiller_min_lift_k:             { val: 10.0,  unit: 'K',      label: '壓縮機最小揚程（冷凝−蒸發），低於此值以此值計', ref: '離心/螺旋機油壓差與防喘振限制，磁浮機可低至 5–8 K' },
   chiller_lift_factor_max:        { val: 2.0,   unit: '-',      label: '揚程修正後 COP 最多為設計 COP 的倍數', ref: '保守上限，避免低揚程外推過度樂觀' },
+  chiller_max_cewt_standard_c:    { val: 45.0,  unit: '°C',     label: '標準氣冷/水冷冰機冷凝進水上限', ref: '標準氣冷/水冷冰機冷凝進水上限，型錄通常為 40～45°C' },
+  chiller_max_cewt_hightemp_c:    { val: 60.0,  unit: '°C',     label: '高溫型（heat-pump 級）冰機冷凝進水上限', ref: '高溫型（heat-pump 級）冰機冷凝進水上限' },
 
   // ── Fanwall 氣冷系統自然冷卻常數 (P0-7) ───────────────────────────────
   air_chiller_fc_coil_approach_c: { val: 4.0,   unit: '°C',     label: '氣冷冰機 free-cooling 盤管 approach（外氣 DB → 預冷後回水）', ref: '廠商型錄典型 3–5°C' },

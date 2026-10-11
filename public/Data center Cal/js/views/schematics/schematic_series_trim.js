@@ -97,6 +97,43 @@
             const condOut_peak = (peak?.temps?.condOut !== undefined && peak?.temps?.condOut !== null) ? peak.temps.condOut.toFixed(1) : condIn_peak;
             const cop_peak = (peak?.chillerCop !== undefined && peak?.chillerCop !== null) ? peak.chillerCop.toFixed(1) : '—';
 
+            // Q-1: Chiller operating envelope limit & warning styling
+            const trimChillerEquip = equip?.trim_chiller || equip?.chillers || [];
+            const stdMax = (typeof root.A === 'function') ? root.A('chiller_max_cewt_standard_c') : 45.0;
+            const htMax = (typeof root.A === 'function') ? root.A('chiller_max_cewt_hightemp_c') : 60.0;
+            let chillerMaxCewt = stdMax;
+            if (Array.isArray(trimChillerEquip) && trimChillerEquip.length > 0) {
+                for (const ch of trimChillerEquip) {
+                    if (typeof ch.max_cewt_c === 'number') {
+                        chillerMaxCewt = Math.max(chillerMaxCewt, ch.max_cewt_c);
+                    } else {
+                        const cat = `${ch.category || ''} ${ch.model || ''} ${ch.name || ''}`.toLowerCase();
+                        if (cat.includes('high temp') || cat.includes('heat pump') || cat.includes('heat-pump')) {
+                            chillerMaxCewt = Math.max(chillerMaxCewt, htMax);
+                        }
+                    }
+                }
+            } else {
+                const trimSizingItem = (cduSys?.sizing || []).find(s => s.key === 'trim_chiller');
+                const curModel = trimSizingItem?.catalog?.find(c => c.model === trimSizingItem.selectedModel);
+                if (curModel) {
+                    if (typeof curModel.max_cewt_c === 'number') {
+                        chillerMaxCewt = curModel.max_cewt_c;
+                    } else {
+                        const cat = `${curModel.category || ''} ${curModel.model || ''} ${curModel.name || ''}`.toLowerCase();
+                        if (cat.includes('high temp') || cat.includes('heat pump') || cat.includes('heat-pump')) {
+                            chillerMaxCewt = htMax;
+                        }
+                    }
+                }
+            }
+            const peakCondInNum = (peak?.temps?.condIn !== undefined && peak?.temps?.condIn !== null) ? Number(peak.temps.condIn) : parseFloat(condIn_peak);
+            const isEnvelopeExceeded = Number.isFinite(peakCondInNum) && (peakCondInNum > chillerMaxCewt);
+            const peakBorderColor = isEnvelopeExceeded ? '#ef4444' : '#f59e0b';
+            const peakBgColor = isEnvelopeExceeded ? '#450a0a' : '#0f172a';
+            const peakTextColor = isEnvelopeExceeded ? '#fca5a5' : '#fef3c7';
+            const condInLabel = isEnvelopeExceeded ? `冷凝器 ⚠ ${condIn_peak}→${condOut_peak}°C` : `冷凝器 ${condIn_peak}→${condOut_peak}°C`;
+
             // 樣式變數 (設計工況 Mode 1 停機 vs Active)
             const secHxStroke = isDesignMode1 ? '#475569' : '#818cf8';
             const secHxHeaderFill = isDesignMode1 ? '#1e293b' : '#312e81';
@@ -123,8 +160,8 @@
             // =========================================================================
             const facilitySchematicSvg = `
                 <!-- 尖峰工況小表格 -->
-                <rect x="740" y="8" width="510" height="26" rx="6" fill="#0f172a" stroke="#f59e0b" stroke-width="1.2" />
-                <text x="995" y="25" fill="#fef3c7" font-size="9.5" font-weight="bold" text-anchor="middle" ${fitTextAttr(`尖峰設計 DB ${peakDbVal.toFixed(1)}°C（${peakBasis}）工況：預冷至 ${fwsPre_peak}°C ｜ Trim 負擔 ${trimKw_peak} kW ｜ 冷凝器 ${condIn_peak}→${condOut_peak}°C ｜ 冰機 COP ${cop_peak}`, 495, 9.5)}>尖峰設計 DB ${peakDbVal.toFixed(1)}°C（${peakBasis}）工況：預冷至 ${fwsPre_peak}°C ｜ Trim 負擔 ${trimKw_peak} kW ｜ 冷凝器 ${condIn_peak}→${condOut_peak}°C ｜ 冰機 COP ${cop_peak}</text>
+                <rect x="740" y="8" width="510" height="26" rx="6" fill="${peakBgColor}" stroke="${peakBorderColor}" stroke-width="${isEnvelopeExceeded ? 2 : 1}" />
+                <text x="995" y="25" fill="${peakTextColor}" font-size="9.5" font-weight="bold" text-anchor="middle" ${fitTextAttr(`尖峰設計 DB ${peakDbVal.toFixed(1)}°C（${peakBasis}）工況：預冷至 ${fwsPre_peak}°C ｜ Trim 負擔 ${trimKw_peak} kW ｜ ${condInLabel} ｜ 冰機 COP ${cop_peak}`, 495, 9.5)}>尖峰設計 DB ${peakDbVal.toFixed(1)}°C（${peakBasis}）工況：預冷至 ${fwsPre_peak}°C ｜ Trim 負擔 ${trimKw_peak} kW ｜ ${condInLabel} ｜ 冰機 COP ${cop_peak}</text>
 
                 <!-- ======================================================= -->
                 <!-- 1. PRIMARY FWS LOOP (廠務側串聯換熱鏈) -->

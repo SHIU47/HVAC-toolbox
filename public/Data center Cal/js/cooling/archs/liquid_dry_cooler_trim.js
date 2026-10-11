@@ -416,6 +416,7 @@
                 deficitKw,
                 heatRemovedKw: Math.max(0, Q_kw - deficitKw),
                 mechLoadKw,
+                chillerEnvelopeExceeded: chRes?.exceedsEnvelope || false,
                 diag: { dcRes, chRes }
             };
         }

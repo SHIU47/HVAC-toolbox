@@ -65,6 +65,7 @@
             let deficitHours = 0;
             let maxDeficitKw = 0;
             let heatRemovedKwh = 0;
+            let chillerEnvelopeHours = 0;
             const cduModeHours = { free: 0, partial: 0, mechanical: 0 };
             const fwModeHours = { free: 0, partial: 0, mechanical: 0 };
 
@@ -213,6 +214,9 @@
                     deficitHours++;
                     if (hr.capacityDeficitKw > maxDeficitKw) maxDeficitKw = hr.capacityDeficitKw;
                 }
+                if (hr.chillerEnvelopeExceeded) {
+                    chillerEnvelopeHours++;
+                }
 
                 cduKwh.unit += hr.cduKwh.unit;
                 cduKwh.pump += hr.cduKwh.pump;
@@ -240,6 +244,7 @@
                 fcHours,
                 deficitHours,
                 maxDeficitKw,
+                chillerEnvelopeHours,
                 totalFacKwh,
                 pue: parseFloat(pue),
                 wue: parseFloat(wue),
@@ -279,6 +284,7 @@
                 fcHours: sim.fcHours,
                 deficitHours: sim.deficitHours,
                 maxDeficitKw: Math.round(sim.maxDeficitKw),
+                chillerEnvelopeHours: sim.chillerEnvelopeHours || 0,
                 cduSystemMwh: Math.round((sim.cduKwh.unit + sim.cduKwh.pump + sim.cduKwh.heatRej + sim.cduKwh.chiller) / 1000),
                 fwSystemMwh: Math.round((sim.fwKwh.crahFan + sim.fwKwh.heatRej + sim.fwKwh.chiller) / 1000),
                 cduUnitKwh: Math.round(sim.cduKwh.unit),
@@ -597,8 +603,10 @@
 
             const allUnitDeficitHours = [...byDuResults, ...byCorePodResults].map(r => r.deficitHours || 0);
             const allUnitMaxDeficitKw = [...byDuResults, ...byCorePodResults].map(r => r.maxDeficitKw || 0);
+            const allUnitEnvelopeHours = [...byDuResults, ...byCorePodResults].map(r => r.chillerEnvelopeHours || 0);
             const overallDeficitHours = allUnitDeficitHours.length ? Math.max(...allUnitDeficitHours) : 0;
             const overallMaxDeficitKw = allUnitMaxDeficitKw.length ? Math.max(...allUnitMaxDeficitKw) : 0;
+            const overallChillerEnvelopeHours = allUnitEnvelopeHours.length ? Math.max(...allUnitEnvelopeHours) : 0;
 
             const totalLiquidHeatKwh = byDuResults.reduce((s, d) => s + (d.liquidHeatKw * 8760), 0) + byCorePodResults.reduce((s, p) => s + (p.liquidHeatKw * 8760), 0);
             const totalAirHeatKwh = byDuResults.reduce((s, d) => s + (((d.airHeatKw || 0) + (d.lossKw || 0)) * 8760), 0) + byCorePodResults.reduce((s, p) => s + (((p.airHeatKw || 0) + (p.lossKw || 0)) * 8760), 0);
@@ -639,6 +647,7 @@
                     mechModeHours: cduMechHours,
                     capacityDeficitHours: overallDeficitHours,
                     maxCapacityDeficitKw: overallMaxDeficitKw,
+                    chillerEnvelopeHours: overallChillerEnvelopeHours,
                     breakdownKwh: overallKwh,
                     energyLedger,
                     thermalLedger,

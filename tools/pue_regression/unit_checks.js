@@ -3019,6 +3019,84 @@ function freshCtx() {
     assert(buildExeContent.includes('weather_catalog/hourly'), 'Must bundle weather_catalog/hourly');
     assert(buildExeContent.includes('window.__PUE_EXE__ = true'), 'Must inject window.__PUE_EXE__ into index.html');
   });
+
+  test('Q-1 Chiller CEWT operating envelope checks, warnings, and schematic indicators', () => {
+    const ctx = freshCtx();
+    const { A, CoolingStages, SizingEngine, CoolingSchematics } = ctx;
+
+    // 1. ASSUMPTIONS constants exist
+    assert.strictEqual(A('chiller_max_cewt_standard_c'), 45.0);
+    assert.strictEqual(A('chiller_max_cewt_hightemp_c'), 60.0);
+
+    // 2. stage_chiller envelope checks
+    const stageChiller = CoolingStages.get('chiller');
+    assert(stageChiller, 'stage_chiller must exist');
+
+    // Standard chiller at 42C (within envelope)
+    const resNormal = stageChiller.simulate({
+      Q_kw: 100,
+      t_chws_c: 20,
+      t_cewt_c: 42.0,
+      devices: [{ cooling_capacity_kw: 150, category: 'water_cooled_centrifugal' }]
+    });
+    assert.strictEqual(resNormal.exceedsEnvelope, false);
+    assert.strictEqual(resNormal.warnings.length, 0);
+
+    // Standard chiller at 52C (exceeds envelope)
+    const resOver = stageChiller.simulate({
+      Q_kw: 100,
+      t_chws_c: 20,
+      t_cewt_c: 52.0,
+      devices: [{ cooling_capacity_kw: 150, category: 'water_cooled_centrifugal' }]
+    });
+    assert.strictEqual(resOver.exceedsEnvelope, true);
+    assert(resOver.warnings.some(w => w.code === 'CHILLER_CEWT_EXCEEDS_ENVELOPE'));
+
+    // High-temperature heat-pump chiller at 52C (within 60C high-temp envelope)
+    const resHighTemp = stageChiller.simulate({
+      Q_kw: 100,
+      t_chws_c: 20,
+      t_cewt_c: 52.0,
+      devices: [{ cooling_capacity_kw: 150, category: 'high temp heat pump centrifugal' }]
+    });
+    assert.strictEqual(resHighTemp.exceedsEnvelope, false);
+    assert.strictEqual(resHighTemp.warnings.length, 0);
+
+    // 3. validateCdu warning when peak tCewt > 45.0
+    const mockCduSys = {
+      architecture: 'dry_cooler_trim',
+      fwsSupplyC: 40.0,
+      fwsReturnC: 55.0,
+      dryCoolerApproachC: 5.0,
+      sizing: [
+        { key: 'cdu_unit', passed: true, effectiveCapKw: 500 },
+        { key: 'dry_cooler', label: '乾冷器', passed: true, effectiveCapKw: 500 },
+        {
+          key: 'trim_chiller',
+          passed: true,
+          effectiveCapKw: 200,
+          maxMechanicalPassed: true,
+          selectedModel: 'Standard Chiller',
+          catalog: [{ model: 'Standard Chiller', capKw: 200, category: 'standard' }]
+        }
+      ]
+    };
+    // If peakDb is 45C -> opPeak.tCewt is around 50C -> exceeds 45C limit
+    const valRes = SizingEngine.validateCdu(mockCduSys, 2.0, { peakDb: { value: 45.0, basis: 'test' }, designDb: 35.0, designWb: 28.0 });
+    assert(valRes.checks.some(c => c.includes('超過所選冰機運轉上限 45.0°C，需選用高溫型冰機')), 'Must emit CEWT envelope warning in validateCdu');
+
+    // 4. Schematic warning styling when peak condIn > 45.0
+    const { buildWindow } = require('./dom_harness.js');
+    const win = buildWindow();
+    const mockCtx = {
+      cduSys: mockCduSys,
+      arch: 'dry_cooler_trim',
+      t: { obj: { plantDesign: { cduSystem: mockCduSys } }, summ: { liquidHeatKw: 400 } }
+    };
+    const seriesTrimRenderer = win.CoolingSchematics.get('series_trim');
+    const svgHtml = seriesTrimRenderer.render(mockCtx);
+    assert(svgHtml.includes('尖峰設計 DB'), 'Must render peak design DB banner');
+  });
 })();
 
 console.log(`\n${passCount} passed, ${failCount} failed, ${skipCount} skipped`);

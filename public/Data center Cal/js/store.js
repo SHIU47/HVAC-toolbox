@@ -1415,6 +1415,7 @@
                 fwMode: fwSim.mode,
                 combinedMode,
                 mechLoadKw,
+                chillerEnvelopeExceeded: !!(cduSim.chillerEnvelopeExceeded || fwSim.chillerEnvelopeExceeded),
                 cduKwh: {
                     unit: cduUnitKw,
                     pump: cduPrimaryPumpKw,

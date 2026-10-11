@@ -366,6 +366,7 @@
                 deficitKw: chRes.deficitKw,
                 heatRemovedKw: Q_kw,
                 mechLoadKw: Q_kw,
+                chillerEnvelopeExceeded: chRes?.exceedsEnvelope || false,
                 op,
                 diag: { chRes, towerRes }
             };
