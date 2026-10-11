@@ -4,6 +4,10 @@
 // 尚未修正的項目用 skip() 標記，修正後把該行改回 test()。
 'use strict';
 const assert = require('assert');
+const { checkHarnessOrder } = require('./check_harness_order.js');
+
+// G-2: Enforce harness script loading order at start of test suite
+checkHarnessOrder();
 
 let passCount = 0, failCount = 0, skipCount = 0;
 function test(name, fn) {
@@ -2741,6 +2745,21 @@ function freshCtx() {
     const khCond = win.AppStore.designConditions();
     assert.strictEqual(khCond.peakDb.value, 36.7);
     assert.strictEqual(khCond.designDb, 33.5);
+  });
+
+  test('G-2 harness includes design conditions and check_harness_order succeeds', () => {
+    const ctx = freshCtx();
+    assert(ctx.AshraeDesign, 'AshraeDesign must be loaded in harness');
+    assert(ctx.EpwParser, 'EpwParser must be loaded in harness');
+    assert.strictEqual(checkHarnessOrder(), true, 'checkHarnessOrder must return true');
+
+    const kh = ctx.BUILTIN_WEATHER_DATA['高雄 (Kaohsiung)'];
+    ctx.AppStore.state.site.hourly = kh.hourlyData;
+    ctx.AppStore.state.site.designConditions = kh.designConditions;
+    ctx.AppStore.state.site.design = null;
+    const cond = ctx.AppStore.designConditions();
+    assert.strictEqual(cond.designDb, 33.5);
+    assert.strictEqual(cond.peakDb.value, 36.7);
   });
 })();
 

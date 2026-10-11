@@ -29,6 +29,8 @@ const FILES = ['assumptions.js','engines_core.js','engines_cdu.js','engines_crah
   'sizing/sizing_engine.js',
   'simulation/annual_runner.js',
   'weather_builtin.js',
+  'ashrae_design_conditions.js',
+  'epw_parser.js',
   'device_catalog_builtin.js','catalog_manager.js','store.js'];
 for (const f of FILES) vm.runInContext(fs.readFileSync(path.join(JS, f), 'utf8'), ctx, { filename: f });
 module.exports = ctx;

@@ -30,6 +30,7 @@ function runAll() {
       for (const fwArch of FW_ARCHS) {
         S.state = JSON.parse(initialStateJson);
         S.state.site.hourly = weather.hourlyData;
+        S.state.site.designConditions = weather.designConditions || null;
         S.state.site.monthlyStats = [];
         S.state.site.isRealEpw = true;
         S.state.site.stationName = weather.stationInfo?.location;
@@ -50,11 +51,19 @@ function runAll() {
         S.calculate();
 
         const o = S.state.results.overall;
+        const dCond = S.designConditions();
         const key = `${city} | cdu=${cduArch} | fw=${fwArch}`;
         const sizingSnapshot = [];
+        const sizingRequiredKw = [];
         const collectSizing = (obj, label) => {
-          (obj.plantDesign.cduSystem.sizing || []).forEach(s => sizingSnapshot.push(`${label}.cdu.${s.key}=${s.passed}`));
-          (obj.plantDesign.fanwallSystem.sizing || []).forEach(s => sizingSnapshot.push(`${label}.fw.${s.key}=${s.passed}`));
+          (obj.plantDesign.cduSystem.sizing || []).forEach(s => {
+            sizingSnapshot.push(`${label}.cdu.${s.key}=${s.passed}`);
+            sizingRequiredKw.push(`${label}.cdu.${s.key}=${Math.round(s.requiredKw || 0)}`);
+          });
+          (obj.plantDesign.fanwallSystem.sizing || []).forEach(s => {
+            sizingSnapshot.push(`${label}.fw.${s.key}=${s.passed}`);
+            sizingRequiredKw.push(`${label}.fw.${s.key}=${Math.round(s.requiredKw || 0)}`);
+          });
         };
         S.state.halls.forEach(h => h.dus.forEach(d => collectSizing(d, d.id)));
         S.state.corePods.forEach(p => collectSizing(p, p.id));
@@ -72,7 +81,11 @@ function runAll() {
           fwFcStats_freeHours: S.state.results.fwFcStats.freeHours,
           cduFcStats_freeHours: S.state.results.cduFcStats.freeHours,
           thermalIsBalanced: o.thermalLedger.is_balanced,
-          sizing: sizingSnapshot
+          designDb: dCond.designDb,
+          designWb: dCond.designWb,
+          peakDb: dCond.peakDb?.value ?? null,
+          sizing: sizingSnapshot,
+          sizingRequiredKw
         };
       }
     }
@@ -96,10 +109,18 @@ function compare(baseline, current) {
     if (diffNum(b.annualP_Pue, c.annualP_Pue, 0.0005)) fields.push(`pPUE ${b.annualP_Pue}→${c.annualP_Pue}`);
     if (diffNum(b.annualWue, c.annualWue, 0.0005)) fields.push(`WUE ${b.annualWue}→${c.annualWue}`);
     if (diffNum(b.capacityDeficitHours, c.capacityDeficitHours, 0)) fields.push(`deficitH ${b.capacityDeficitHours}→${c.capacityDeficitHours}`);
+    if (b.designDb !== undefined && diffNum(b.designDb, c.designDb, 0.05)) fields.push(`designDb ${b.designDb}→${c.designDb}`);
+    if (b.designWb !== undefined && diffNum(b.designWb, c.designWb, 0.05)) fields.push(`designWb ${b.designWb}→${c.designWb}`);
+    if (b.peakDb !== undefined && diffNum(b.peakDb, c.peakDb, 0.05)) fields.push(`peakDb ${b.peakDb}→${c.peakDb}`);
     if (JSON.stringify(b.sizing) !== JSON.stringify(c.sizing)) {
       const bs = new Set(b.sizing), cs = new Set(c.sizing);
       const changed = [...bs, ...cs].filter(x => !(bs.has(x) && cs.has(x)));
       if (changed.length) fields.push(`sizing changed: ${[...new Set(changed)].join(', ')}`);
+    }
+    if (b.sizingRequiredKw && JSON.stringify(b.sizingRequiredKw) !== JSON.stringify(c.sizingRequiredKw)) {
+      const bs = new Set(b.sizingRequiredKw), cs = new Set(c.sizingRequiredKw);
+      const changed = [...bs, ...cs].filter(x => !(bs.has(x) && cs.has(x)));
+      if (changed.length) fields.push(`sizingRequiredKw changed: ${[...new Set(changed)].join(', ')}`);
     }
     if (b.thermalIsBalanced !== c.thermalIsBalanced) fields.push(`thermalBalanced ${b.thermalIsBalanced}→${c.thermalIsBalanced}`);
     if (fields.length) diffs.push({ key, fields });
