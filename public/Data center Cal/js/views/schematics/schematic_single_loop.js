@@ -242,27 +242,7 @@
                     </div>
 
                     <!-- 運轉模式狀態橫幅 -->
-                    <div class="grid grid-cols-1 md:grid-cols-${Math.min(model?.banners?.length || 1, 3)} gap-2 my-2.5 text-xs">
-                        ${(model?.banners || []).map(b => {
-                            const toneMap = {
-                                emerald: { bg: 'bg-emerald-950/40', border: 'border-emerald-800/60', text: 'text-emerald-300', dot: 'bg-emerald-400' },
-                                amber: { bg: 'bg-amber-950/40', border: 'border-amber-800/60', text: 'text-amber-300', dot: 'bg-amber-400' },
-                                red: { bg: 'bg-red-950/40', border: 'border-red-800/60', text: 'text-red-300', dot: 'bg-red-400' },
-                                indigo: { bg: 'bg-indigo-950/40', border: 'border-indigo-800/60', text: 'text-indigo-300', dot: 'bg-indigo-400' },
-                                teal: { bg: 'bg-teal-950/40', border: 'border-teal-800/60', text: 'text-teal-300', dot: 'bg-teal-400' },
-                                blue: { bg: 'bg-blue-950/40', border: 'border-blue-800/60', text: 'text-blue-300', dot: 'bg-blue-400' },
-                                slate: { bg: 'bg-slate-900', border: 'border-slate-700', text: 'text-slate-300', dot: 'bg-slate-400' }
-                            };
-                            const tCls = toneMap[b.tone] || toneMap.emerald;
-                            return `
-                                <div class="p-2.5 rounded-lg ${tCls.bg} border ${tCls.border} flex items-center gap-2">
-                                    <span class="w-2.5 h-2.5 rounded-full ${tCls.dot}"></span>
-                                    <span class="${tCls.text} font-bold text-sm">${b.label}</span>
-                                    <span class="text-slate-300 ml-auto">${b.detail || ''}</span>
-                                </div>
-                            `;
-                        }).join('')}
-                    </div>
+                    ${(root.CoolingSchematicCommon?.renderBanners || root.CoolingSchematics?.renderBanners || (() => ''))(model?.banners)}
 
                     <!-- SVG 拓樸畫布 (viewBox 0 0 1260 330，標準工程正交佈局、零重疊、大字體) -->
                     <div class="w-full overflow-x-auto pt-1">

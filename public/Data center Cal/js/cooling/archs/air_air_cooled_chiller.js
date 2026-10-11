@@ -133,9 +133,30 @@
                 title: '氣冷式冰水主機 (Air-Cooled Chiller)',
                 referenceLabel: null,
                 banners: [
-                    { id: 'mode1', label: `全自然冷卻 (DB ≤ ${fullThresh}°C)${h_free ? ` — 全年 ${h_free}` : ''}`, detail: '100% 走 Economizer 盤管', tone: 'emerald' },
-                    { id: 'mode2', label: `部分預冷 (${fullThresh} < DB < ${mechThresh}°C)${h_partial ? ` — 全年 ${h_partial}` : ''}`, detail: 'FC 盤管預冷 + 冰機接力', tone: 'amber' },
-                    { id: 'mode3', label: `全機械製冷 (DB ≥ ${mechThresh}°C)${h_mech ? ` — 全年 ${h_mech}` : ''}`, detail: '氣冷壓縮製冷', tone: 'indigo' }
+                    {
+                        id: 'mode1',
+                        title: 'Mode 1 全自然冷卻',
+                        label: `Mode 1 全自然冷卻 (DB ≤ ${fullThresh}°C)${h_free ? ` — 全年 ${h_free}` : ''}`,
+                        sub: `DB ≤ ${fullThresh}°C ｜ 全年 ${h_free || '0 h'} ｜ 100% 走 Economizer 盤管`,
+                        detail: `DB ≤ ${fullThresh}°C ｜ 全年 ${h_free || '0 h'} ｜ 100% 走 Economizer 盤管`,
+                        tone: 'emerald'
+                    },
+                    {
+                        id: 'mode2',
+                        title: 'Mode 2 部分預冷',
+                        label: `Mode 2 部分預冷 (${fullThresh} < DB < ${mechThresh}°C)${h_partial ? ` — 全年 ${h_partial}` : ''}`,
+                        sub: `${fullThresh} < DB < ${mechThresh}°C ｜ 全年 ${h_partial || '0 h'} ｜ FC 盤管預冷 + 冰機接力`,
+                        detail: `${fullThresh} < DB < ${mechThresh}°C ｜ 全年 ${h_partial || '0 h'} ｜ FC 盤管預冷 + 冰機接力`,
+                        tone: 'amber'
+                    },
+                    {
+                        id: 'mode3',
+                        title: 'Mode 3 全機械製冷',
+                        label: `Mode 3 全機械製冷 (DB ≥ ${mechThresh}°C)${h_mech ? ` — 全年 ${h_mech}` : ''}`,
+                        sub: `DB ≥ ${mechThresh}°C ｜ 全年 ${h_mech || '0 h'} ｜ 氣冷壓縮製冷`,
+                        detail: `DB ≥ ${mechThresh}°C ｜ 全年 ${h_mech || '0 h'} ｜ 氣冷壓縮製冷`,
+                        tone: 'indigo'
+                    }
                 ],
                 nodes: [
                     {

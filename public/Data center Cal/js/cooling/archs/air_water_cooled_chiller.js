@@ -199,9 +199,30 @@
                 title: '水冷式冰水主機 + 濕式冷卻塔',
                 referenceLabel: null,
                 banners: [
-                    { id: 'mode1', label: `全板換自然冷卻 (WB ≤ ${fullThresh}°C)${h_free ? ` — 全年 ${h_free}` : ''}`, detail: '100% 水側省能器 (WSE)', tone: 'emerald' },
-                    { id: 'mode2', label: `部分板換預冷 (${fullThresh} < WB < ${mechThresh}°C)${h_partial ? ` — 全年 ${h_partial}` : ''}`, detail: 'WSE 預冷 + 冰機修整', tone: 'amber' },
-                    { id: 'mode3', label: `全機械製冷 (WB ≥ ${mechThresh}°C)${h_mech ? ` — 全年 ${h_mech}` : ''}`, detail: '全額冰機壓縮製冷', tone: 'blue' }
+                    {
+                        id: 'mode1',
+                        title: 'Mode 1 全板換自然冷卻',
+                        label: `Mode 1 全板換自然冷卻 (WB ≤ ${fullThresh}°C)${h_free ? ` — 全年 ${h_free}` : ''}`,
+                        sub: `WB ≤ ${fullThresh}°C ｜ 全年 ${h_free || '0 h'} ｜ 100% 水側省能器 (WSE)`,
+                        detail: `WB ≤ ${fullThresh}°C ｜ 全年 ${h_free || '0 h'} ｜ 100% 水側省能器 (WSE)`,
+                        tone: 'emerald'
+                    },
+                    {
+                        id: 'mode2',
+                        title: 'Mode 2 部分板換預冷',
+                        label: `Mode 2 部分板換預冷 (${fullThresh} < WB < ${mechThresh}°C)${h_partial ? ` — 全年 ${h_partial}` : ''}`,
+                        sub: `${fullThresh} < WB < ${mechThresh}°C ｜ 全年 ${h_partial || '0 h'} ｜ WSE 預冷 + 冰機修整`,
+                        detail: `${fullThresh} < WB < ${mechThresh}°C ｜ 全年 ${h_partial || '0 h'} ｜ WSE 預冷 + 冰機修整`,
+                        tone: 'amber'
+                    },
+                    {
+                        id: 'mode3',
+                        title: 'Mode 3 全機械製冷',
+                        label: `Mode 3 全機械製冷 (WB ≥ ${mechThresh}°C)${h_mech ? ` — 全年 ${h_mech}` : ''}`,
+                        sub: `WB ≥ ${mechThresh}°C ｜ 全年 ${h_mech || '0 h'} ｜ 全額冰機壓縮製冷`,
+                        detail: `WB ≥ ${mechThresh}°C ｜ 全年 ${h_mech || '0 h'} ｜ 全額冰機壓縮製冷`,
+                        tone: 'blue'
+                    }
                 ],
                 nodes: [
                     {

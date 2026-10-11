@@ -1786,6 +1786,7 @@ function freshCtx() {
 
   // Load schematics into context
   const schematicFiles = [
+    'views/schematics/schematic_common.js',
     'views/schematics/schematic_single_loop.js',
     'views/schematics/schematic_series_trim.js',
     'views/schematics/schematic_air_plant.js'
@@ -2787,6 +2788,41 @@ function freshCtx() {
 
     assert(fwHtml.includes('Free-Cooling 盤管 — 旁通'), 'Fanwall FC coil header must include " — 旁通"');
     assert(!fwHtml.includes('<text x="600" y="72"'), 'Old overlapping bypass header text must be removed');
+  });
+
+  test('G-4 Fanwall banners use shared 2-line renderer with threshold, hours, and description', async () => {
+    const { buildWindow } = require('./dom_harness.js');
+    const win = buildWindow();
+    win.CatalogManager.ready = null;
+    await win.App.init();
+
+    assert(win.CoolingSchematicCommon, 'CoolingSchematicCommon must be defined on window');
+    assert(typeof win.CoolingSchematicCommon.renderBanners === 'function', 'renderBanners function must exist');
+
+    // 1. Render air-cooled chiller and verify 2-line structure
+    const du = win.AppStore.state.halls[0].dus[0];
+    du.plantDesign.fanwallSystem.architecture = 'air_cooled_chiller';
+    win.ViewCooling.render(win.document.getElementById('stepContent'));
+    const html = win.document.getElementById('stepContent').innerHTML;
+
+    assert(html.includes('Mode 1 全自然冷卻'), 'Banner title must be on line 1');
+    assert(html.includes('100% 走 Economizer 盤管'), 'Line 2 must contain description');
+    assert(html.includes('｜ 全年 '), 'Line 2 must separate fields with ｜');
+    assert(html.includes('flex flex-col gap-1'), 'Banner items must use flex-col 2-line layout');
+
+    // 2. Render water_cooled_chiller
+    du.plantDesign.fanwallSystem.architecture = 'water_cooled_chiller';
+    win.ViewCooling.render(win.document.getElementById('stepContent'));
+    const wHtml = win.document.getElementById('stepContent').innerHTML;
+    assert(wHtml.includes('Mode 1 全板換自然冷卻'), 'Water cooled chiller line 1 must have title');
+    assert(wHtml.includes('100% 水側省能器 (WSE)'), 'Water cooled chiller line 2 must have detail');
+
+    // 3. Render rdhx
+    du.plantDesign.fanwallSystem.architecture = 'rdhx';
+    win.ViewCooling.render(win.document.getElementById('stepContent'));
+    const rHtml = win.document.getElementById('stepContent').innerHTML;
+    assert(rHtml.includes('Mode 1 全自然冷卻'), 'RDHX line 1 must have title');
+    assert(rHtml.includes('氣冷 FC 盤管自然供冷'), 'RDHX line 2 must have detail');
   });
 })();
 
