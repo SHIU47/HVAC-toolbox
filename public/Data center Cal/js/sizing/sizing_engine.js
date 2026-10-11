@@ -173,8 +173,10 @@
                 const derateNote = (s.derateFactor < 0.999) ? `（已依設計工況降額 ×${s.derateFactor.toFixed(2)}）` : '';
                 s.requiredText = '需求 ≥ ' + s.requiredKw.toFixed(1) + ' kW (N+1 最少 ' + s.requiredUnitsN1 + ' 台)' + derateNote;
                 if (s.key === 'cdu_pump') {
-                    s.passed = s.selectedQty >= 2 && (s.effectiveCapKw >= s.requiredKw * 0.9);
-                    s.requiredText = '水力揚程需求 ' + s.requiredKw + ' kW (2用1備 N+1)';
+                    s.effectiveCapKw = Math.round(Math.max(0, s.selectedQty - 1) * s.unitCapKw * s.derateFactor);
+                    const isMotorDeficit = s.requiredKw > s.effectiveCapKw;
+                    s.passed = (s.selectedQty >= 2) && !isMotorDeficit;
+                    s.requiredText = '水力電功率需求 ' + s.requiredKw.toFixed(1) + ' kW (N+1 最少 ' + s.requiredUnitsN1 + ' 台)' + (isMotorDeficit ? ' ⚠ 泵浦馬達功率不足' : '');
                 }
                 if (s.key === 'trim_chiller') {
                     s.maxMechanicalPassed = s.effectiveCapKw >= s.maxMechanicalKw;
@@ -231,8 +233,10 @@
                 const derateNote = (s.derateFactor < 0.999) ? `（已依設計工況降額 ×${s.derateFactor.toFixed(2)}）` : '';
                 s.requiredText = '需求 ≥ ' + s.requiredKw.toFixed(1) + ' kW (N+1 最少 ' + s.requiredUnitsN1 + ' 台)' + derateNote;
                 if (s.key === 'fw_pump') {
-                    s.passed = s.selectedQty >= 2 && (s.effectiveCapKw >= s.requiredKw * 0.9);
-                    s.requiredText = '二次側水力揚程需求 ' + s.requiredKw + ' kW (2用1備 N+1)';
+                    s.effectiveCapKw = Math.round(Math.max(0, s.selectedQty - 1) * s.unitCapKw * s.derateFactor);
+                    const isMotorDeficit = s.requiredKw > s.effectiveCapKw;
+                    s.passed = (s.selectedQty >= 2) && !isMotorDeficit;
+                    s.requiredText = '二次側水力電功率需求 ' + s.requiredKw.toFixed(1) + ' kW (N+1 最少 ' + s.requiredUnitsN1 + ' 台)' + (isMotorDeficit ? ' ⚠ 泵浦馬達功率不足' : '');
                 }
             });
         },

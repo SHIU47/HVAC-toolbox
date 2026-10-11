@@ -1141,15 +1141,26 @@
             }];
         },
 
-        // v31 Phase 2: 泵浦 → PlantPumpEngine.calcPower() 要的陣列格式。
-        // 型錄 pump 分類目前只有 capKw(=額定馬達功率)，尚無額定流量/揚程資料，
-        // 先用 capKw 當 power_kw 近似（比原本跟熱負載硬綁的比例公式更貼近真實選型）。
-        resolvePumpFromSizing(item) {
+        // v31 Phase 2 / Q-2: 泵浦 → PlantPumpEngine.calcPower() 要的陣列格式。
+        // 以水力公式計算之設計點電功率 P_design (hydraulics.pump_power_kw) 取代馬達額定功率。
+        resolvePumpFromSizing(item, sys) {
             if (!item || !item.selectedQty) return [];
             const catEntry = (item.catalog || []).find(c => c.model === item.selectedModel);
-            const powerKw = catEntry?.capKw ?? item.unitCapKw;
-            if (!powerKw) return [];
-            return [{ model: item.selectedModel, power_kw: powerKw, qty_running: this.runningQtyFromSelected(item.selectedQty), qty_total: item.selectedQty }];
+            const nRunning = this.runningQtyFromSelected(item.selectedQty);
+            const pDesign = sys?.hydraulics?.pump_power_kw ?? item?.requiredKw;
+            const motorCapKw = catEntry?.capKw ?? item.unitCapKw ?? 0;
+            const powerKw = (typeof pDesign === 'number' && pDesign > 0 && nRunning > 0)
+                ? (pDesign / nRunning)
+                : motorCapKw;
+            if (!powerKw && !motorCapKw) return [];
+            return [{
+                model: item.selectedModel,
+                power_kw: powerKw,
+                p_design: pDesign,
+                motor_cap_kw: motorCapKw,
+                qty_running: nRunning,
+                qty_total: item.selectedQty
+            }];
         },
 
         // v31 Phase 2: CDU 主機 → CDUEngine.calcPower() 要的陣列格式（型錄需同時有 capKw 與 powerKw）。
@@ -1211,7 +1222,7 @@
                 } else if (resolver === 'crah') {
                     devices = this.resolveCrahFromSizing(item);
                 } else if (resolver === 'pump') {
-                    devices = this.resolvePumpFromSizing(item);
+                    devices = this.resolvePumpFromSizing(item, sys);
                 } else if (eq.role === 'terminal') {
                     if (eq.key === 'cdu_unit') {
                         devices = this.resolveCduFromSizing(item);
@@ -1544,13 +1555,23 @@
             const flowLpm_cdu = duSumm.liquidHeatKw > 0 ? Math.round((duSumm.liquidHeatKw * 60) / (4.186 * 1.0 * dT_cdu)) : 0;
             const pipeCdu = this.selectPipeDnAndVelocity(flowLpm_cdu);
 
+            const cduHeadM = cduSys.pumpHeadM ?? ((typeof A === 'function') ? A('cdu_pump_head_default_m') : 28);
+            const pumpItemCdu = (cduSys.sizing || []).find(s => s.key === 'cdu_pump');
+            const catEntryCdu = pumpItemCdu ? (pumpItemCdu.catalog || []).find(c => c.model === pumpItemCdu.selectedModel) : null;
+            const etaPumpCdu = catEntryCdu?.pumpEtaDesign ?? catEntryCdu?.pump_eta_design ?? ((typeof A === 'function') ? A('pump_eta_default') : 0.75);
+            const etaMotorCdu = (typeof catEntryCdu?.motor_efficiency_pct === 'number' && catEntryCdu.motor_efficiency_pct > 0)
+                ? (catEntryCdu.motor_efficiency_pct / 100)
+                : (catEntryCdu?.motorEtaDesign ?? ((typeof A === 'function') ? A('motor_eta_default') : 0.92));
+            const cduPumpPowerKw = flowLpm_cdu > 0
+                ? (flowLpm_cdu * cduHeadM * 9.80665) / (60000 * etaPumpCdu * etaMotorCdu)
+                : 0;
+
             cduSys.hydraulics = {
                 flow_lpm: flowLpm_cdu,
                 pipe_dn: pipeCdu.pipe_dn,
                 velocity_mps: pipeCdu.velocity_mps,
-                pump_head_m: 28,
-                // v35: 移除無物理來源的 +1.0 kW 假底載，flow=0 時泵浦功率就是 0
-                pump_power_kw: Math.round(flowLpm_cdu > 0 ? (flowLpm_cdu * 28 * 9.81) / (60000 * 0.75 * 0.9) : 0)
+                pump_head_m: cduHeadM,
+                pump_power_kw: cduPumpPowerKw
             };
 
             const reqCduKw = duSumm.liquidHeatKw;
@@ -1581,13 +1602,23 @@
             const flowLpm_fw = airHeatTotal > 0 ? Math.round((airHeatTotal * 60) / (4.186 * 1.0 * dT_fw)) : 0;
             const pipeFw = this.selectPipeDnAndVelocity(flowLpm_fw);
 
+            const fwHeadM = fwSys.pumpHeadM ?? ((typeof A === 'function') ? A('fw_pump_head_default_m') : 22);
+            const pumpItemFw = (fwSys.sizing || []).find(s => s.key === 'fw_pump');
+            const catEntryFw = pumpItemFw ? (pumpItemFw.catalog || []).find(c => c.model === pumpItemFw.selectedModel) : null;
+            const etaPumpFw = catEntryFw?.pumpEtaDesign ?? catEntryFw?.pump_eta_design ?? ((typeof A === 'function') ? A('pump_eta_default') : 0.75);
+            const etaMotorFw = (typeof catEntryFw?.motor_efficiency_pct === 'number' && catEntryFw.motor_efficiency_pct > 0)
+                ? (catEntryFw.motor_efficiency_pct / 100)
+                : (catEntryFw?.motorEtaDesign ?? ((typeof A === 'function') ? A('motor_eta_default') : 0.92));
+            const fwPumpPowerKw = flowLpm_fw > 0
+                ? (flowLpm_fw * fwHeadM * 9.80665) / (60000 * etaPumpFw * etaMotorFw)
+                : 0;
+
             fwSys.hydraulics = {
                 flow_lpm: flowLpm_fw,
                 pipe_dn: pipeFw.pipe_dn,
                 velocity_mps: pipeFw.velocity_mps,
-                pump_head_m: 22,
-                // v35: 移除無物理來源的 +0.5 kW 假底載
-                pump_power_kw: Math.round(flowLpm_fw > 0 ? (flowLpm_fw * 22 * 9.81) / (60000 * 0.75 * 0.9) : 0)
+                pump_head_m: fwHeadM,
+                pump_power_kw: fwPumpPowerKw
             };
 
             const reqAirKw = airHeatTotal;

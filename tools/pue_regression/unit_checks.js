@@ -3097,6 +3097,90 @@ function freshCtx() {
     const svgHtml = seriesTrimRenderer.render(mockCtx);
     assert(svgHtml.includes('尖峰設計 DB'), 'Must render peak design DB banner');
   });
+
+  test('Q-2 Hydraulic pump power with editable head, sizing motor adequacy, and wiring', () => {
+    const ctx = freshCtx();
+    const { A, AppStore, SizingEngine, PlantPumpEngine } = ctx;
+
+    // 1. ASSUMPTIONS defaults exist
+    assert(A('cdu_pump_head_default_m') === 28, 'cdu_pump_head_default_m must default to 28');
+    assert(A('fw_pump_head_default_m') === 22, 'fw_pump_head_default_m must default to 22');
+    assert(A('pump_eta_default') === 0.75, 'pump_eta_default must default to 0.75');
+    assert(A('motor_eta_default') === 0.92, 'motor_eta_default must default to 0.92');
+
+    // 2. bridgeDuToPlantModel uses hydraulic equation
+    const mockDu = {
+      plantDesign: {
+        cduSystem: { architecture: 'dry_cooler_trim', fwsSupplyC: 40.0, fwsReturnC: 55.0 },
+        fanwallSystem: { architecture: 'air_cooled_chiller', chwSupplyC: 12.0, chwReturnC: 18.0 }
+      }
+    };
+    const mockSumm = { liquidHeatKw: 500, airHeatKw: 100, lossKw: 0, dlcPct: 83.3 };
+    AppStore.bridgeDuToPlantModel(mockDu, mockSumm);
+
+    assert(mockDu.plantDesign.cduSystem.hydraulics.pump_head_m === 28, 'Default CDU head must be 28m');
+    const pCdu = mockDu.plantDesign.cduSystem.hydraulics.pump_power_kw;
+    assert(pCdu > 3.0 && pCdu < 3.3, `CDU hydraulic power ${pCdu} should be ~3.17 kW`);
+
+    // Override head to 56m -> power should double
+    mockDu.plantDesign.cduSystem.pumpHeadM = 56;
+    AppStore.bridgeDuToPlantModel(mockDu, mockSumm);
+    assert(mockDu.plantDesign.cduSystem.hydraulics.pump_head_m === 56, 'CDU head must update to 56m');
+    const pCduDouble = mockDu.plantDesign.cduSystem.hydraulics.pump_power_kw;
+    assert(Math.abs((pCduDouble / pCdu) - 2.0) < 0.001, 'Doubled head must double hydraulic power');
+
+    // 3. Sizing Engine evaluates motor adequacy vs P_design
+    const cduSysSizing = {
+      architecture: 'dry_cooler_trim',
+      hydraulics: { pump_power_kw: 10.0 },
+      sizing: [
+        {
+          key: 'cdu_pump',
+          catalog: [
+            { model: 'Pump-Small', capKw: 3.0 },
+            { model: 'Pump-Large', capKw: 11.0 }
+          ],
+          selectedModel: 'Pump-Small',
+          unitCapKw: 3.0,
+          selectedQty: 3 // (3 - 1) * 3 = 6 kW motor capacity < 10 kW required
+        }
+      ]
+    };
+    SizingEngine.evaluateCduSizing(cduSysSizing, 500, { designDb: 35, designWb: 28 });
+    const pumpItem = cduSysSizing.sizing[0];
+    assert(!pumpItem.passed, 'Small pump must fail when motor capacity 6 kW < 10 kW');
+    assert(pumpItem.requiredText.includes('泵浦馬達功率不足'), 'Must flag 泵浦馬達功率不足');
+
+    // Switch to Large pump (2 running * 11 = 22 kW > 10 kW)
+    pumpItem.selectedModel = 'Pump-Large';
+    pumpItem.unitCapKw = 11.0;
+    SizingEngine.evaluateCduSizing(cduSysSizing, 500, { designDb: 35, designWb: 28 });
+    assert(pumpItem.passed, 'Large pump must pass when motor capacity 22 kW >= 10 kW');
+
+    // 4. PlantPumpEngine.calcPower respects p_design
+    const pRes = PlantPumpEngine.calcPower([{ p_design: 10.0, qty_running: 2 }], 1.0);
+    assert(Math.abs(pRes - 10.0) < 1e-4, 'calcPower at speed 1.0 must return p_design');
+
+    // 5. Wiring Test: Step 4 DOM harness renders pump head input and handles changes
+    const { buildWindow } = require('./dom_harness.js');
+    const win = buildWindow();
+    win.AppStore.calculate();
+    const duWin = win.AppStore.state.halls[0].dus[0];
+    const initialPriKwh = win.AppStore.state.results.overall.breakdownKwh.cduPrimaryPumpKwh;
+
+    // Change pumpHeadM on DU to 56
+    duWin.plantDesign.cduSystem.pumpHeadM = 56;
+    win.AppStore.calculate();
+    const doubledPriKwh = win.AppStore.state.results.overall.breakdownKwh.cduPrimaryPumpKwh;
+    const ratio = doubledPriKwh / initialPriKwh;
+    assert(Math.abs(ratio - 2.0) < 0.02, `Doubling head must double primary pump energy (±2%), got ratio ${ratio}`);
+
+    // Verify DOM rendering
+    win.ViewCooling.render(win.document.getElementById('stepContent'));
+    const cduHeadInput = win.document.getElementById(`cduPumpHeadIn_${duWin.id}`);
+    assert(cduHeadInput !== null, 'cduPumpHeadIn input must exist in DOM');
+    assert(Number(cduHeadInput.value) === 56, 'cduPumpHeadIn must reflect updated value 56');
+  });
 })();
 
 console.log(`\n${passCount} passed, ${failCount} failed, ${skipCount} skipped`);

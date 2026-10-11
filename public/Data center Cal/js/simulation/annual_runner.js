@@ -289,6 +289,8 @@
                 fwSystemMwh: Math.round((sim.fwKwh.crahFan + sim.fwKwh.heatRej + sim.fwKwh.chiller) / 1000),
                 cduUnitKwh: Math.round(sim.cduKwh.unit),
                 cduUnitMwh: Math.round(sim.cduKwh.unit / 1000),
+                cduPrimaryPumpKwh: Math.round(sim.cduKwh.pump),
+                cduKwh: sim.cduKwh,
                 cduPumpMwh: Math.round(sim.kwh.cduPump / 1000),
                 crahFanMwh: Math.round(sim.kwh.crahFan / 1000),
                 heatRejectionMwh: Math.round(sim.kwh.heatRejection / 1000),
@@ -446,8 +448,9 @@
             let totalAllItKw = 0;
             let totalAllWaterM3 = 0;
             let totalAllHeatRemovedKwh = 0;
-            const overallKwh = { it: 0, cduPump: 0, crahFan: 0, heatRejection: 0, chiller: 0, loss: 0, cduUnitKwh: 0 };
+            const overallKwh = { it: 0, cduPump: 0, crahFan: 0, heatRejection: 0, chiller: 0, loss: 0, cduUnitKwh: 0, cduPrimaryPumpKwh: 0 };
             let totalAllCduUnitKwh = 0;
+            let totalAllCduPriPumpKwh = 0;
             const monthlyStats = Array.from({ length: 12 }, () => ({ totalKwh: 0, itKwh: 0, coolKwh: 0 }));
             const hourlyFacilityStats = Array.from({ length: 8760 }, () => ({
                 itKw: 0,
@@ -516,6 +519,7 @@
 
                     totalAllWaterM3 += sim.waterM3;
                     totalAllCduUnitKwh += sim.cduKwh.unit;
+                    totalAllCduPriPumpKwh += (sim.cduKwh.pump || 0);
                     totalAllHeatRemovedKwh += sim.heatRemovedKwh;
 
                     overallKwh.it += sim.kwh.it;
@@ -558,6 +562,7 @@
 
                 totalAllWaterM3 += sim.waterM3;
                 totalAllCduUnitKwh += sim.cduKwh.unit;
+                totalAllCduPriPumpKwh += (sim.cduKwh.pump || 0);
                 totalAllHeatRemovedKwh += sim.heatRemovedKwh;
                 totalCorePodTotalKwh += sim.totalFacKwh;
                 totalCorePodItKwh += sim.kwh.it;
@@ -573,6 +578,7 @@
 
             overallKwh.cduUnitKwh = Math.round(totalAllCduUnitKwh);
             overallKwh.cduUnit = overallKwh.cduUnitKwh;
+            overallKwh.cduPrimaryPumpKwh = Math.round(totalAllCduPriPumpKwh);
 
             const overallTotalKwh = overallKwh.it + overallKwh.cduPump + overallKwh.crahFan + overallKwh.heatRejection + overallKwh.chiller + overallKwh.loss;
             const overallPue = overallKwh.it > 0 ? (overallTotalKwh / overallKwh.it).toFixed(3) : '1.000';

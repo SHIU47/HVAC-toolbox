@@ -404,6 +404,8 @@ ${inputsHtml}
                     badge = '<span class="px-2 py-0.5 bg-slate-100 text-slate-500 text-[10px] font-black rounded-md flex items-center gap-1 border border-slate-300">⚪ 尚未選型</span>';
                 } else if (item.passed) {
                     badge = '<span class="px-2 py-0.5 bg-emerald-100 text-emerald-800 text-[10px] font-black rounded-md flex items-center gap-1 border border-emerald-200">🟢 滿足 N+1</span>';
+                } else if ((item.key === 'cdu_pump' || item.key === 'fw_pump' || item.role === 'pump') && item.selectedQty >= 2 && item.requiredKw > (item.effectiveCapKw ?? 0)) {
+                    badge = '<span class="px-2 py-0.5 bg-red-100 text-red-800 text-[10px] font-black rounded-md flex items-center gap-1 border border-red-200">🔴 泵浦馬達功率不足</span>';
                 } else {
                     badge = '<span class="px-2 py-0.5 bg-red-100 text-red-800 text-[10px] font-black rounded-md flex items-center gap-1 border border-red-200">🔴 容量不足</span>';
                 }
@@ -482,6 +484,8 @@ ${inputsHtml}
                     badge = '<span class="px-2 py-0.5 bg-slate-100 text-slate-500 text-[10px] font-black rounded-md flex items-center gap-1 border border-slate-300">⚪ 尚未選型</span>';
                 } else if (item.passed) {
                     badge = '<span class="px-2 py-0.5 bg-emerald-100 text-emerald-800 text-[10px] font-black rounded-md flex items-center gap-1 border border-emerald-200">🟢 滿足 N+1</span>';
+                } else if ((item.key === 'cdu_pump' || item.key === 'fw_pump' || item.role === 'pump') && item.selectedQty >= 2 && item.requiredKw > (item.effectiveCapKw ?? 0)) {
+                    badge = '<span class="px-2 py-0.5 bg-red-100 text-red-800 text-[10px] font-black rounded-md flex items-center gap-1 border border-red-200">🔴 泵浦馬達功率不足</span>';
                 } else {
                     badge = '<span class="px-2 py-0.5 bg-red-100 text-red-800 text-[10px] font-black rounded-md flex items-center gap-1 border border-red-200">🔴 容量不足</span>';
                 }
@@ -685,6 +689,14 @@ ${inputsHtml}
                                         </div>
                                         <span class="px-1.5 py-0.5 bg-white text-emerald-900 border border-emerald-300 rounded font-black text-[9px]">物理連動</span>
                                     </div>
+
+                                    <div class="p-2.5 bg-slate-50 rounded-lg border border-slate-200 space-y-1">
+                                        <div class="flex justify-between items-center">
+                                            <label class="block text-[10px] font-bold text-slate-700">泵浦系統揚程 (m)</label>
+                                            <span class="text-[9px] text-slate-400">概估值，請依管路壓損計算覆寫</span>
+                                        </div>
+                                        <input type="number" id="cduPumpHeadIn_${targetId}" value="${cduSys.pumpHeadM ?? ((typeof A === 'function') ? A('cdu_pump_head_default_m') : 28)}" min="1" max="150" step="1" onchange="ViewCooling.updateCduParams('${targetId}')" class="w-full text-xs font-bold border rounded p-1.5 bg-white text-slate-800">
+                                    </div>
                                 </div>
 
                                 <!-- Required vs Selected 選型表 -->
@@ -754,6 +766,13 @@ ${inputsHtml}
                                         💡 冰水主機溫差: <strong class="font-bold">${Math.max(1, fwSys.chwReturnC - fwSys.chwSupplyC)}°C</strong>，供水溫越高對冰機 COP 越有利。
                                     </div>
                                     ${this.renderArchParamPanel(fwArchDesc, fwSys, targetId, 'fw')}
+                                    <div class="p-2.5 bg-slate-50 rounded-lg border border-slate-200 space-y-1">
+                                        <div class="flex justify-between items-center">
+                                            <label class="block text-[10px] font-bold text-slate-700">泵浦系統揚程 (m)</label>
+                                            <span class="text-[9px] text-slate-400">概估值，請依管路壓損計算覆寫</span>
+                                        </div>
+                                        <input type="number" id="fwPumpHeadIn_${targetId}" value="${fwSys.pumpHeadM ?? ((typeof A === 'function') ? A('fw_pump_head_default_m') : 22)}" min="1" max="150" step="1" onchange="ViewCooling.updateFwParams('${targetId}')" class="w-full text-xs font-bold border rounded p-1.5 bg-white text-slate-800">
+                                    </div>
                                 </div>
 
                                 <!-- Required vs Selected 選型表 -->
@@ -925,6 +944,12 @@ ${inputsHtml}
                     cdu.pheApproachC = pheApp;
                 }
 
+                const cduHeadEl = document.getElementById('cduPumpHeadIn_' + targetId);
+                if (cduHeadEl) {
+                    const v = parseFloat(cduHeadEl.value);
+                    cdu.pumpHeadM = Number.isFinite(v) ? v : ((typeof A === 'function') ? A('cdu_pump_head_default_m') : 28);
+                }
+
                 // 架構專屬參數更新 (D-3: 優先自 archDesc.params 動態讀取)
                 const cduArchDesc = typeof CoolingArchRegistry !== 'undefined' ? CoolingArchRegistry.get(cdu.architecture) : null;
                 let handledCustom = false;
@@ -979,6 +1004,12 @@ ${inputsHtml}
                 const fw = target.plantDesign.fanwallSystem;
                 fw.chwSupplyC = sup;
                 fw.chwReturnC = ret;
+
+                const fwHeadEl = document.getElementById('fwPumpHeadIn_' + targetId);
+                if (fwHeadEl) {
+                    const v = parseFloat(fwHeadEl.value);
+                    fw.pumpHeadM = Number.isFinite(v) ? v : ((typeof A === 'function') ? A('fw_pump_head_default_m') : 22);
+                }
 
                 const fwArchDesc = typeof CoolingArchRegistry !== 'undefined' ? CoolingArchRegistry.get(fw.architecture) : null;
                 if (fwArchDesc && Array.isArray(fwArchDesc.params)) {

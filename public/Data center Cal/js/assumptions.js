@@ -20,6 +20,8 @@ const ASSUMPTIONS = {
   penalty_chiller_cop:    { val: 2.0,  unit: '-',   label: '熱力極限應急冰機 COP', ref: '保守懲罰假設' },
   pump_eta_default:       { val: 0.75, unit: '-',   label: '泵效率預設', ref: 'HI 標準中型端吸泵' },
   motor_eta_default:      { val: 0.92, unit: '-',   label: '馬達效率預設', ref: 'IE3' },
+  cdu_pump_head_default_m:{ val: 28,   unit: 'm',   label: 'CDU 一次側泵浦預設揚程', ref: '概估值，正式設計需依管路壓損計算（可用本站「水管風管壓損計算」工具）' },
+  fw_pump_head_default_m: { val: 22,   unit: 'm',   label: 'Fanwall 二次側泵浦預設揚程', ref: '概估值，正式設計需依管路壓損計算（可用本站「水管風管壓損計算」工具）' },
   sizing_margin_target:   { val: 15,   unit: '%',   label: '選型建議目標裕度', ref: '公司內規（可調）' },
   tower_heat_rejection_factor: { val: 1.2, unit: '-', label: '冷卻塔排熱裕度係數（含壓縮機輸入功或換熱裕度）', ref: 'ASHRAE 典型冰機排熱 = 冷凍噸 × 1.2' },
   district_chw_cop:       { val: 5.0,  unit: '-',   label: '區域冷水／外來冰水等效 COP', ref: 'ASHRAE 90.1 / 園區集中冷站合約典型 4.5–5.5' },
