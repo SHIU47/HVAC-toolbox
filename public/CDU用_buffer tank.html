@@ -523,6 +523,7 @@
     .toast.show { opacity: 1; transform: translate(-50%, 0); }
 
     /* 模式徽章、滑桿、分段切換 */
+    .sub-h { margin: 14px 0 8px; font-size: 12.5px; font-weight: 800; color: var(--ink-2); border-top: 1px dashed var(--line-strong); padding-top: 12px; }
     .mode-badge { font-size: 11px; font-weight: 800; padding: 1px 8px; border-radius: 999px; background: var(--accent); color: #fff; white-space: nowrap; }
     .rng { width: 100%; margin-top: 6px; accent-color: var(--accent); cursor: pointer; height: 16px; }
     .seg { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
@@ -797,7 +798,7 @@
       </div>
 
       <div class="card sec">
-        <div class="sec-h"><span class="no">4</span><div><h2>緩衝水槽選型參數</h2><p>強制湍流混合型緩衝槽（Jet Mixing Surge Tank）</p></div></div>
+        <div class="sec-h"><span class="no">4</span><div><h2>緩衝水槽選型參數</h2><p>上進下出・浸入管噴射混合槽（Top Inlet Eductor Mixing Tank）</p></div></div>
         <div class="field" style="margin-bottom:12px">
           <label><span>選型熱力學模型</span></label>
           <div class="seg" role="radiogroup" aria-label="選型熱力學模型">
@@ -810,7 +811,7 @@
           <div class="field">
             <label for="tankSizeChoice"><span>單槽候選容積</span></label>
             <div class="iw"><select id="tankSizeChoice" onchange="calculate()" aria-label="單槽候選容積"></select></div>
-            <div class="hint">「自動」取不小於設計需求的最小內建候選容積（&le; 30 m³）；超過 30 m³ 時自動以 1 m³ 進位產生工程建議規格</div>
+            <div class="hint"><b>標準品</b>：「自動」或任一候選容積（&le; 30 m³，超過時以 1 m³ 進位）。<b>自訂</b>：選「自訂」填實際容積，H/D 於「進階外形設定」</div>
           </div>
           <div class="field" id="customSizeBox" hidden>
             <label for="customSize"><span>自訂實際設備容積 <i class="req">*</i></span></label>
@@ -838,6 +839,27 @@
             <div class="err" id="err-otherMixVol"></div>
           </div>
         </div>
+        <div class="sub-h">混合構造（上進下出・浸入管噴射器）</div>
+        <div class="grid g3">
+          <div class="field">
+            <label for="nozzleDN"><span>進水管嘴</span></label>
+            <div class="iw"><select id="nozzleDN" onchange="calculate()" aria-label="進水管嘴"></select></div>
+            <div class="hint">標準品取「自動」（管嘴流速 &le; 2.5 m/s）；自訂可指定</div>
+          </div>
+          <div class="field">
+            <label for="jetVel"><span>噴射器出口流速 <i class="req">*</i></span></label>
+            <div class="iw"><input type="number" id="jetVel" step="any" min="0.1" max="10" value="3" oninput="calculate()"><span class="u">m/s</span></div>
+            <div class="hint">額定流量下；常見 2–5 m/s</div>
+            <div class="err" id="err-jetVel"></div>
+          </div>
+          <div class="field">
+            <label for="entrainRatio"><span>捲吸比 <i class="req">*</i></span></label>
+            <div class="iw"><input type="number" id="entrainRatio" step="any" min="0" max="10" value="4" oninput="calculate()"><span class="u">倍</span></div>
+            <div class="hint">每 1 份進水捲吸槽水份數</div>
+            <div class="err" id="err-entrainRatio"></div>
+          </div>
+        </div>
+        <div class="note assume">配置：CDU 出水由頂部進水，經浸入管送至槽高約 1/3，由 4 組噴射器向外下方射出並捲吸槽水形成整槽循環；4 片垂直壁擋板防止同向旋轉；下部側邊出口設防渦集水管，出口後接 Y 型過濾器；頂部設自動排氣閥、底部設排污閥。捲吸比與循環次數為經驗值，正式規格以噴射器廠商性能曲線為準。</div>
         <div class="note" id="sizeReadout"></div>
       </div>
 
@@ -876,7 +898,7 @@
       <!-- 3D 強制湍流混合緩衝槽模擬器（全寬） -->
       <div class="card panel t3d-card">
         <div class="panel-h">
-          <h3>3D 強制湍流混合緩衝槽（Jet Sparger + Baffles）</h3>
+          <h3>3D 上進下出噴射混合緩衝槽（Dip Pipe Eductors + Wall Baffles）</h3>
           <span id="tankVisSub">SS316L 立式混合槽</span>
         </div>
         <div class="tank3d-wrap" id="tank3dWrap">
@@ -968,8 +990,8 @@
       <details class="card more">
         <summary>計算假設與工程模型限制</summary>
         <div class="notes">
-          <h4>為什麼 CDU 二次側必須使用「強制混合型緩衝槽（Mixing Tank）」而非冰水側的「分層型緩衝槽（Stratified Tank）」？</h4>
-          <div>冰水側（FWS）停電緩衝槽追求的是斜溫層（Thermocline Stratification），利用低速布水器維持穩定出水溫度直到冷水流盡；但 CDU 二次側（TCS）緩衝槽的任務是「熱脈衝削峰（Thermal Peak Shaving）」。當 GPU 在 1 秒內拉升至 100% 滿載時，CDU 出口會湧出高達 47°C 的熱脈衝。若採用分層槽，熱水會直接平推穿透或浮在頂部流向機櫃造成超溫跳機；因此必須採用內置<b>文丘里多孔噴射混流管（Venturi Jet Sparger）與交錯折流擋板（Segmental Baffles）</b>的強制湍流混合槽，將湧入的高溫液體瞬間與槽內 40°C 儲液均勻攙混，把供水峰值壓制在 45°C 以內。</div>
+          <h4>為什麼 CDU 二次側必須是「強制混合槽」，而不是冰水側的「分層槽」？</h4>
+          <div>冰水側（FWS）停電緩衝槽追求的是斜溫層（Thermocline Stratification），利用低速布水器維持穩定出水溫度直到冷水流盡；但 CDU 二次側（TCS）緩衝槽的任務是「熱脈衝削峰（Thermal Peak Shaving）」。當 GPU 在 1 秒內拉升至 100% 滿載時，CDU 出口會湧出高達 47°C 的熱脈衝。若採用分層槽，熱水會直接平推穿透或浮在頂部流向機櫃造成超溫跳機；分層槽只能把熱峰往後延（約一個停留時間後整團送出），無法削減峰值，因此必須強制混合。<b>本工具採「上進下出・浸入管噴射混合」</b>：CDU 出水由頂部進入，經浸入管送到槽高約 1/3，由噴射器向外下方射出並捲吸 4 倍左右槽水形成整槽循環；出口在下可避免氣泡被帶往冷板，熱水也不會直接短路至出口。是否混得起來取決於 Richardson 數 Ri = g·β·ΔT·H ÷ v²：Ri &lt; 0.1 時射流動量主導，進水方向（上或下）影響很小；Ri &ge; 1 則浮力主導、會分層，完全混合的計算假設不再成立。</div>
           <h4>單一分段線性精確暫態求解器</h4>
           <div>負載與 CDU 冷量皆為分段線性函數，求解器自動找出所有斜率轉折點與交叉點（Knots）切段後精確解析積分，求得：最大瞬時缺口、最大累積儲熱能量 E = max &int;(Q負載 &minus; Q冷量)dt、峰值溫度時間與二次方程精確熱恢復時間。網頁圖表、3D 模擬器、計算步驟與匯出的 Excel 均共用同一組求解器結果。</div>
           <h4>Model A：閉迴路累積儲熱（Closed-Loop Cumulative Integral，預設選型基準）</h4>
@@ -1007,16 +1029,26 @@
 /* ===================== 計算引擎 ===================== */
 const SurgeTankEngine = (() => {
   const FLUIDS = {
-    pg25: { name: '丙二醇 25%', rho: 1012, cp: 3.95 },
-    water: { name: '水', rho: 991, cp: 4.18 },
-    eg30: { name: '乙二醇 30%', rho: 1030, cp: 3.75 }
+    pg25: { name: '丙二醇 25%', rho: 1012, cp: 3.95, beta: 4.5e-4 },   // beta：40–45 °C 體積膨脹係數近似值 (1/K)
+    water: { name: '水', rho: 991, cp: 4.18, beta: 3.9e-4 },
+    eg30: { name: '乙二醇 30%', rho: 1030, cp: 3.75, beta: 4.6e-4 }
   };
   const CANDIDATE_VOLUMES = [0.05, 0.1, 0.15, 0.2, 0.25, 0.3, 0.4, 0.5, 0.6, 0.8, 1, 1.2, 1.5, 2, 2.5, 3, 4, 5, 6, 8, 10, 12, 15, 20, 25, 30];
   const EXT_STEP = 1;   // 超出內建級距時，自動以 1 m³ 進位產生工程建議規格
   const EPS = 1e-9;
+  // 上進下出・浸入管噴射混合：混合品質判定參數（經驗值，正式規格以噴射器廠商性能曲線為準）
+  const MIX = { TURNS: 3, RI_PASS: 0.1, RI_WARN: 1, NOZZLE_VMAX: 2.5, EDUCTOR_K: 1.1 };
+  // 進水管嘴 DN 與 Sch40 內徑 (m)
+  const NOZZLE_DN = [[50, 0.0525], [65, 0.0627], [80, 0.0779], [100, 0.1023], [125, 0.1282], [150, 0.1541], [200, 0.2027], [250, 0.2545], [300, 0.3048]];
+  function pickNozzle(flowM3s, choice) {
+    const area = d => Math.PI * d * d / 4;
+    let row = choice !== 'auto' && NOZZLE_DN.find(([dn]) => dn === Number(choice));
+    if (!row) row = NOZZLE_DN.find(([, d]) => flowM3s / area(d) <= MIX.NOZZLE_VMAX + EPS) || NOZZLE_DN[NOZZLE_DN.length - 1];
+    return { dn: row[0], d: row[1], vel: flowM3s / area(row[1]), auto: choice === 'auto' };
+  }
 
   function resolveFluid(raw) {
-    if (raw.fluid === 'custom') return { name: '自訂', rho: raw.rho, cp: raw.cp };
+    if (raw.fluid === 'custom') return { name: '自訂', rho: raw.rho, cp: raw.cp, beta: 4.5e-4 };
     return FLUIDS[raw.fluid] || FLUIDS.pg25;
   }
   function tankDims(V, hd) { const D = Math.cbrt(4 * V / (Math.PI * hd)); return { D, H: hd * D }; }
@@ -1059,6 +1091,8 @@ const SurgeTankEngine = (() => {
     need('marginPct', raw.marginPct, v => v >= 0 && v <= 200, '請填 0–200');
     need('otherMixVol', raw.otherMixVol, v => v >= 0, '不可為負值');
     need('hdRatio', raw.hdRatio, v => v >= 0.3 && v <= 6, '請填 0.3–6');
+    need('jetVel', raw.jetVel, v => v >= 0.1 && v <= 10, '請填 0.1–10 m/s');
+    need('entrainRatio', raw.entrainRatio, v => v >= 0 && v <= 10, '請填 0–10');
     return e;
   }
 
@@ -1255,6 +1289,19 @@ const SurgeTankEngine = (() => {
     return { marginKw, status: tr.sustained ? 'fail' : marginKw > EPS ? 'pass' : 'warn' };
   }
 
+  // 混合品質：Ri = g·β·ΔT·H / v²（射流動量 vs 浮力），混合時間 θ = 循環次數 × V有效 ÷ [Q事件·(1 + 捲吸比)]
+  function mixingCheck(ctx, dims, vEff) {
+    const { u, flow, fluid, dTjet, catchUp } = ctx;
+    const vJet = u.jetVel * flow.fEvt;
+    const Ri = 9.81 * fluid.beta * dTjet * dims.H / (vJet * vJet);
+    const thetaSec = MIX.TURNS * vEff / (flow.flowEvtM3s * (1 + u.entrainRatio));
+    return {
+      vJet, Ri, thetaSec, catchUp,
+      riStatus: Ri < MIX.RI_PASS ? 'pass' : Ri < MIX.RI_WARN ? 'warn' : 'fail',
+      timeStatus: catchUp > 0 && thetaSec > catchUp + EPS ? 'warn' : 'pass'
+    };
+  }
+
   function evaluateTank(ctx, size) {
     const { u, tr, tank, cap, flow } = ctx;
     const vTankEff = size * tank.eff;
@@ -1279,6 +1326,7 @@ const SurgeTankEngine = (() => {
     }
     const isB = tank.basis === 'B';
     const peak = isB ? peakB : peakA, recoverySec = isB ? recB : recA;
+    const dims = size > 0 ? tankDims(size, u.hdRatio) : null;
     const thermalPass = peak <= u.tempMax + EPS;
     let recoveryTime;
     if (recoverySec === 0) recoveryTime = 'pass';
@@ -1290,7 +1338,7 @@ const SurgeTankEngine = (() => {
       ok: thermalPass, thermalPass, thermalMarginK: u.tempMax - peak,
       recoverySec, recoverySecA: recA, recoverySecB: recB, recoveryTime, recoveryTimePass: recoveryTime === 'pass', recoveryCapacityPass: cap.status === 'pass',
       belowRequired: tank.needTank && size + EPS < tank.vRequired,
-      residenceSec: size / ctx.flowM3s, dims: size > 0 ? tankDims(size, u.hdRatio) : null
+      residenceSec: size / ctx.flowM3s, dims, mix: dims && vEff > 0 ? mixingCheck(ctx, dims, vEff) : null
     };
   }
 
@@ -1301,7 +1349,7 @@ const SurgeTankEngine = (() => {
   }
 
   function calculate(rawInput) {
-    const raw = { calcMode: 'isolated', pumpMode: 'constant', minFlowPct: 30, thermalModel: 'A', ...rawInput };
+    const raw = { calcMode: 'isolated', pumpMode: 'constant', minFlowPct: 30, thermalModel: 'A', jetVel: 3, entrainRatio: 4, nozzleDN: 'auto', ...rawInput };
     const errors = validateInput(raw);
     if (Object.keys(errors).length) return { valid: false, errors };
     const isShared = raw.calcMode === 'shared';
@@ -1317,7 +1365,10 @@ const SurgeTankEngine = (() => {
     const tank = solveTank(u, fluid, tr, flow);
     const peakNoTank = u.tempSupply + tr.maxDeficitKw / flow.mcpEvt;
     const cap = recoveryCapacity(p, tr);
-    const ctx = { u, tr, tank, flowM3s, flow, cap };
+    const catchUp = p.ideal ? 0 : p.td + p.dQ / p.rate;
+    const ctx = { u, tr, tank, flowM3s, flow, cap, fluid, catchUp, dTjet: tr.maxDeficitKw / flow.mcpEvt };
+    const nozzle = pickNozzle(flowM3s, u.nozzleDN);
+    const eductorDpKPa = MIX.EDUCTOR_K * fluid.rho * u.jetVel * u.jetVel / 2 / 1000;
     const selection = selectTank(u, tank);
     const sel = evaluateTank(ctx, selection.size || 0);
     sel.nominal = selection.size;
@@ -1328,9 +1379,10 @@ const SurgeTankEngine = (() => {
     const candidate = selection.extended ? 'warn' : !selection.candidatePass ? 'fail' : selection.mode === 'custom' ? 'info' : 'pass';
     const hasTank = (selection.size || 0) > 0;
     const thermal = tr.sustained ? 'fail' : hasTank ? (sel.thermalPass ? 'pass' : 'fail') : (peakNoTank <= u.tempMax + EPS ? 'pass' : 'fail');
-    const engineeringPass = thermal === 'pass' && cap.status === 'pass' && sel.recoveryTime === 'pass' && selection.candidatePass && !selection.extended;
+    const mixing = sel.mix ? { ...sel.mix, dTjet: ctx.dTjet, status: sel.mix.riStatus === 'fail' ? 'fail' : (sel.mix.riStatus === 'warn' || sel.mix.timeStatus === 'warn') ? 'warn' : 'pass' } : { dTjet: ctx.dTjet, status: 'na' };
+    const engineeringPass = thermal === 'pass' && cap.status === 'pass' && sel.recoveryTime === 'pass' && selection.candidatePass && !selection.extended && mixing.status !== 'fail';
     return {
-      valid: true, raw, u, isShared, tankCount, fluid, p, tr, tank, sel, selection, options, flow, basis: tank.basis,
+      valid: true, raw, u, isShared, tankCount, fluid, p, tr, tank, sel, selection, options, flow, basis: tank.basis, mixing, nozzle, eductorDpKPa,
       design: { calcMode: raw.calcMode, unitRatedKw: raw.cduCap, calcRatedKw: p.cap, cduCount: raw.cduCount, tankCount, loadFromPct: raw.loadFrom, loadToPct: raw.loadTo, riseTimeSec: raw.riseTime,
         supplyTempC: raw.tempSupply, maxSupplyTempC: raw.tempMax, deltaT_K: raw.deltaTDesign },
       control: { model: p.ideal ? 'ideal' : 'linear-equivalent', deadTimeSec: p.td, responseTimeSec: raw.valveStroke, maxAvailableKw: p.Qmax, rampKwPerSec: p.rate, catchUpSec: p.ideal ? 0 : p.td + p.dQ / p.rate },
@@ -1340,14 +1392,14 @@ const SurgeTankEngine = (() => {
         selectedNominalM3: selection.size, selectedEffectiveM3: hasTank ? sel.vTankEff : 0, totalEffectiveM3: sel.vEff, candidateExtended: selection.extended, maxCandidateVolume: MAX_CANDIDATE },
       thermalCheck: { basis: tank.basis, peakSupplyTempC: sel.peak, peakA: sel.peakA, peakB: sel.peakB, thermalMarginK: sel.thermalMarginK, pass: thermal === 'pass' },
       recoveryCheck: { capacityMarginKw: cap.marginKw, capacityPass: cap.status === 'pass', recoveryTimeSec: sel.recoverySec, recoveryTargetSec: raw.recoveryMaxSec, recoveryTimePass: sel.recoveryTime === 'pass' },
-      status: { thermal, recoveryCapacity: cap.status, recoveryTime: sel.recoveryTime, candidate, engineeringPass },
+      status: { thermal, recoveryCapacity: cap.status, recoveryTime: sel.recoveryTime, candidate, mixing: mixing.status, engineeringPass },
       flowM3s, flowM3h: flowM3s * 3600, lpmPerKW: flowM3s * 60000 / p.cap, mcp, peakNoTank,
       noTankNeeded: peakNoTank <= u.tempMax + EPS && !tr.sustained,
       recovery: cap.status, recoveryMarginKw: cap.marginKw, plantVol: (selection.size || 0) * tankCount
     };
   }
 
-  return { FLUIDS, CANDIDATE_VOLUMES, MAX_CANDIDATE, EXT_STEP, EPS, profile, buildProfile, solveTransient, solveModelB, requiredVeffB, solveTank, evaluateTank, selectTank, recoveryCapacity, tankDims, pickCandidate, isCandidate, isExtended, calcUnit, eventFlowFrac, validateInput, validate: validateInput, calculate };
+  return { FLUIDS, CANDIDATE_VOLUMES, MAX_CANDIDATE, EXT_STEP, EPS, MIX, NOZZLE_DN, pickNozzle, profile, buildProfile, solveTransient, solveModelB, requiredVeffB, solveTank, evaluateTank, selectTank, recoveryCapacity, tankDims, pickCandidate, isCandidate, isExtended, calcUnit, eventFlowFrac, validateInput, validate: validateInput, calculate };
 })();
 
 /* ===================== Three.js 3D 強制湍流混合緩衝槽模擬器 ===================== */
@@ -1360,7 +1412,7 @@ const Tank3DSim = (() => {
   let sph = { r: 6.2, theta: VIEW_THETA, phi: 1.36 }, targetY = 0;
   let dragging = false, prevMouse = { x: 0, y: 0 };
   let lastBuiltKey = '', lastFrame = 0, listener = null;
-  let tracers = null, wellMats = [], bulkState = { Tbulk: 0, Tjet: 0, T0: 40, allow: 5, top: 1.4 };
+  let tracers = null, wellMats = [], bulkState = { Tbulk: 0, Tjet: 0, T0: 40, allow: 5, top: 1.4 }, jetYNorm = 0.3;
 
   // 色溫：T設計(藍) → 綠 → 琥珀 → 上限(橘) → 上限+2K(紅)；x = (T − T設計) ÷ 允許溫升，top = 1 + 2 ÷ 允許溫升
   const RAMP = [[0, [0.15, 0.45, 0.95]], [0.55, [0.08, 0.75, 0.55]], [0.85, [0.98, 0.70, 0.10]], [1.0, [0.96, 0.42, 0.10]], [1.4, [0.80, 0.08, 0.15]]];
@@ -1391,6 +1443,7 @@ const Tank3DSim = (() => {
     uniform float uYMin;
     uniform float uYMax;
     uniform float uTop;
+    uniform float uJetY;
     varying vec3 vPos;
     varying vec3 vNormal;
     vec3 ramp(float x) {
@@ -1407,10 +1460,11 @@ const Tank3DSim = (() => {
       float swirl2 = cos(vPos.x * 6.0 + vPos.z * 6.0 - uTime * 2.6);
       float turb = 0.5 + 0.5 * (0.6 * swirl1 + 0.4 * swirl2);
       // 底部噴射熱羽流隨高度與主體攙混衰減（與 TT 探頭、粒子使用同一分佈式）
-      float plume = exp(-yNorm * 2.9) * 0.68 * (0.7 + 0.3 * turb);
+      float dJ = yNorm - uJetY;
+      float plume = exp(-abs(dJ) * (dJ > 0.0 ? 2.4 : 5.0)) * 0.68 * (0.7 + 0.3 * turb);   // 熱羽流以噴射器高度為中心，向上（浮力）衰減較慢
       float localNorm = mix(uNormBulk, uNormJet, plume) + (turb - 0.5) * 0.05 * max(abs(uNormBulk), 0.2);
       vec3 col = ramp(localNorm);
-      if (yNorm > uEffRatio) col = mix(col, vec3(0.22, 0.30, 0.42), 0.55);   // 非有效混合區
+      if (yNorm < 1.0 - uEffRatio) col = mix(col, vec3(0.22, 0.30, 0.42), 0.55);   // 非有效混合區（出口以下的底部死角）
       float fresnel = pow(1.0 - abs(dot(vNormal, vec3(0.0, 0.0, 1.0))), 1.6);
       col += vec3(0.12, 0.18, 0.28) * fresnel;
       gl_FragColor = vec4(col, 0.80);
@@ -1437,7 +1491,7 @@ const Tank3DSim = (() => {
     scene.add(tankGroup);
     fluidUniforms = {
       uTime: { value: 0 }, uNormBulk: { value: 0 }, uNormJet: { value: 0 }, uEffRatio: { value: 0.8 },
-      uYMin: { value: -1 }, uYMax: { value: 1 }, uTop: { value: 1.4 }
+      uYMin: { value: -1 }, uYMax: { value: 1 }, uTop: { value: 1.4 }, uJetY: { value: 0.3 }
     };
     bindEvents(canvas, wrap);
     initialized = true;
@@ -1553,7 +1607,7 @@ const Tank3DSim = (() => {
     wellMats = [];
 
     // 視覺尺寸正規化（含 2:1 橢圓封頭與支腿）
-    const scale = Math.min(2.75 / ((H + D * 0.5) * 1.22), 1.85 / (D * 1.32));
+    const scale = Math.min(2.6 / ((H + D * 0.5) * 1.4), 1.8 / (D * 1.32));   // 上方預留頂部進水管嘴與尺寸線空間
     const rad = (D / 2) * scale, cylH = H * scale, halfH = cylH / 2, domeH = rad * 0.5;
     const legH = Math.max(0.22, cylH * 0.16);
     const total = legH + domeH * 2 + cylH;
@@ -1623,84 +1677,100 @@ const Tank3DSim = (() => {
     fluid.renderOrder = 2; g.add(fluid);
 
     // 4. 有效混合區分界環 + 標註
-    const effY = -halfH - dh + fluidSpan * eff;
+    const effY = -halfH - dh + fluidSpan * (1 - eff);
     const effPts = []; for (let k = 0; k <= 64; k++) { const a = k / 64 * Math.PI * 2; effPts.push(new THREE.Vector3(Math.sin(a) * rad * 1.002, effY, Math.cos(a) * rad * 1.002)); }
     g.add(polyline(effPts, 0x38BDF8, 0.95));
     const band = new THREE.Mesh(new THREE.CylinderGeometry(rad * 0.99, rad * 0.99, Math.max(0.004, fluidSpan * 0.012), 64, 1, true), new THREE.MeshBasicMaterial({ color: 0x38BDF8, transparent: true, opacity: 0.28, side: THREE.DoubleSide, depthWrite: false }));
     band.position.y = effY; g.add(band);
     const effLbl = textSprite(`η mix ${Math.round(eff * 100)}%`, '#7DD3FC', 0.12);
-    effLbl.position.copy(dirOf(VIEW_THETA + Math.PI / 2).multiplyScalar(rOut + 0.32)).add(new THREE.Vector3(0, effY, 0)); g.add(effLbl);
+    effLbl.position.copy(dirOf(VIEW_THETA + Math.PI / 2 + 0.7).multiplyScalar(rOut + 0.3)).add(new THREE.Vector3(0, effY + cylH * 0.05, 0)); g.add(effLbl);
 
-    // 內部座標：a 軸 = 入口徑向，b 軸 = 垂直方向
-    const phiIn = VIEW_THETA - Math.PI / 2, phiOut = phiIn + Math.PI;
-    const aDir = dirOf(phiIn), bDir = dirOf(phiIn + Math.PI / 2);
-    const at = (a, b, y) => aDir.clone().multiplyScalar(a).add(bDir.clone().multiplyScalar(b)).add(new THREE.Vector3(0, y, 0));
+    // ===== 上進下出・浸入管噴射混合（Top Inlet + Dip Pipe Eductors + Wall Baffles + Bottom Outlet） =====
+    const phiOut = VIEW_THETA + Math.PI / 2;                 // 出口朝向（畫面右側）
+    const oDir = dirOf(phiOut);
+    const topIn = halfH + domeH;                            // 上封頭內頂點
+    const yJet = -halfH + cylH * 0.33;                      // 噴射器高度（約槽高 1/3）
+    const inR = rad * 0.075, pr = rad * 0.06;
+    jetYNorm = (yJet - (-halfH - dh)) / fluidSpan;
 
-    // 5. 底部文丘里多孔噴射混流管（主分配管 + 十字支管 + 文丘里擴散噴嘴）
-    const ySp = -halfH + cylH * 0.06, pr = rad * 0.06;
-    g.add(radial(new THREE.CylinderGeometry(pr, pr, rad * 1.8, 20), spargerMat, phiIn, 0, ySp));
-    g.add(radial(new THREE.CylinderGeometry(pr * 0.75, pr * 0.75, rad * 1.5, 16), spargerMat, phiIn + Math.PI / 2, 0, ySp));
-    const nozzles = [];
-    [-0.62, -0.31, 0.31, 0.62].forEach(a => nozzles.push([a, 0])); [-0.5, 0.5].forEach(b => nozzles.push([0, b]));
-    nozzles.forEach(([a, b]) => {
-      const p = at(a * rad, b * rad, ySp);
-      const throat = new THREE.Mesh(new THREE.CylinderGeometry(pr * 0.38, pr * 0.38, pr * 1.4, 12), spargerMat); throat.position.copy(p).add(new THREE.Vector3(0, pr * 1.2, 0)); g.add(throat);
-      const diff = new THREE.Mesh(new THREE.CylinderGeometry(pr * 0.95, pr * 0.38, pr * 2.2, 16, 1, true), spargerMat); diff.position.copy(p).add(new THREE.Vector3(0, pr * 3.0, 0)); g.add(diff);
-    });
-
-    // 6. 交錯弓形折流擋板（多孔板，切口 25% D）+ 4 根定距拉桿與套管
-    const bY = [-0.26, 0.06, 0.36].map(k => k * cylH);
-    const bR = rad * 0.97, cut = 0.5, al = Math.acos(cut), bt = Math.max(0.006, rad * 0.025);
-    bY.forEach((y, idx) => {
-      const sh = new THREE.Shape();
-      sh.moveTo(bR * Math.cos(al), bR * Math.sin(al));
-      sh.absarc(0, 0, bR, al, Math.PI * 2 - al, false);
-      sh.lineTo(bR * Math.cos(al), bR * Math.sin(al));
-      [[-0.55, 0], [-0.25, 0.45], [-0.25, -0.45], [0.05, 0.25], [0.05, -0.25], [-0.6, 0.45], [-0.6, -0.45], [0.25, 0]].forEach(([hx, hy]) => {
-        const hp = new THREE.Path(); hp.absarc(hx * bR, hy * bR, bR * 0.07, 0, Math.PI * 2, true); sh.holes.push(hp);
-      });
-      const geo = new THREE.ExtrudeGeometry(sh, { depth: bt, bevelEnabled: false, curveSegments: 32 });
-      geo.rotateX(-Math.PI / 2);   // 形狀 x → a 軸、形狀 y → −z
-      const m = new THREE.Mesh(geo, internMat);
-      // 偶數層切口在 +a 側、奇數層在 −a 側：先把形狀 +x 對齊 a 軸
-      m.rotation.y = phiIn - Math.PI / 2 + (idx % 2 === 0 ? 0 : Math.PI);
-      m.position.y = y; g.add(m);
-    });
-    const rodR = Math.max(0.004, rad * 0.018), yR0 = bY[0] - cylH * 0.04, yR1 = bY[2] + cylH * 0.04;
-    [[0.3, 0.6], [0.3, -0.6], [-0.3, 0.6], [-0.3, -0.6]].forEach(([a, b]) => {
-      const rod = new THREE.Mesh(new THREE.CylinderGeometry(rodR, rodR, yR1 - yR0, 8), internMat);
-      rod.position.copy(at(a * rad, b * rad, (yR0 + yR1) / 2)); g.add(rod);
-      for (let k = 0; k < bY.length - 1; k++) {
-        const sl = new THREE.Mesh(new THREE.CylinderGeometry(rodR * 1.9, rodR * 1.9, (bY[k + 1] - bY[k]) * 0.82, 10), internMat);
-        sl.position.copy(at(a * rad, b * rad, (bY[k] + bY[k + 1]) / 2 + bt / 2)); g.add(sl);
-      }
-    });
-
-    // 7. 頂部出口多孔集水管 + 防渦十字擋板
-    const yOut = halfH - cylH * 0.06, po = rad * 0.07;
-    g.add(radial(new THREE.CylinderGeometry(po, po, rad, 18), internMat, phiOut, rad / 2, yOut));
-    for (let k = 1; k <= 4; k++) {
-      const hole = new THREE.Mesh(new THREE.TorusGeometry(po * 0.42, po * 0.12, 6, 14), boltMat);
-      hole.rotation.x = Math.PI / 2; hole.position.copy(at(-rad * k * 0.18, 0, yOut - po * 0.98)); g.add(hole);
+    // 5. 頂部垂直進水管嘴 + 法蘭 + 流向箭頭（CDU 出水由此進入）
+    const nozLen = rad * 0.42, yFl = topIn + wSteel + wIns + wClad + nozLen;
+    const inPipe = new THREE.Mesh(new THREE.CylinderGeometry(inR, inR, nozLen + rad * 0.12, 24), pipeMat);
+    inPipe.position.y = yFl - (nozLen + rad * 0.12) / 2; g.add(inPipe);
+    const inNeck = new THREE.Mesh(new THREE.CylinderGeometry(inR * 1.5, inR * 1.18, nozLen * 0.2, 24), flangeMat);
+    inNeck.position.y = yFl - nozLen * 0.12; g.add(inNeck);
+    const inFl = new THREE.Mesh(new THREE.CylinderGeometry(inR * 2, inR * 2, inR * 0.32, 32), flangeMat);
+    inFl.position.y = yFl; g.add(inFl);
+    for (let k = 0; k < 8; k++) {
+      const a = k / 8 * Math.PI * 2, b = new THREE.Mesh(new THREE.CylinderGeometry(inR * 0.13, inR * 0.13, inR * 0.5, 8), boltMat);
+      b.position.set(Math.cos(a) * inR * 1.62, yFl, Math.sin(a) * inR * 1.62); g.add(b);
     }
-    [0, Math.PI / 2].forEach(rot => {
-      const vb = new THREE.Mesh(new THREE.BoxGeometry(po * 3.2, po * 2.4, po * 0.18), internMat);
-      vb.rotation.y = rot + phiIn; vb.position.copy(at(-rad * 0.04, 0, yOut - po * 1.6)); g.add(vb);
+    const inArrow = new THREE.Group();
+    const arMat = new THREE.MeshStandardMaterial({ color: 0xF97316, emissive: 0xF97316, emissiveIntensity: 0.55 });
+    const arS = new THREE.Mesh(new THREE.CylinderGeometry(rad * 0.035, rad * 0.035, rad * 0.32, 12), arMat); arS.position.y = rad * 0.16; inArrow.add(arS);
+    const arH = new THREE.Mesh(new THREE.ConeGeometry(rad * 0.085, rad * 0.17, 16), arMat); arH.rotation.x = Math.PI; arH.position.y = -rad * 0.02; inArrow.add(arH);
+    inArrow.position.y = yFl + rad * 0.22; g.add(inArrow);
+    const inLbl = textSprite('CDU 出水 ↓ 頂部進水', '#FDBA74', 0.11); inLbl.position.copy(dirOf(VIEW_THETA + Math.PI / 2).multiplyScalar(rad * 1.15)).add(new THREE.Vector3(0, yFl + rad * 0.15, 0)); g.add(inLbl);
+
+    // 6. 浸入管（自頂部送至槽高 1/3）+ 分配頭 + 4 組文丘里噴射器（向外下方 35° 射出，捲吸槽水）
+    const dip = new THREE.Mesh(new THREE.CylinderGeometry(inR * 0.9, inR * 0.9, topIn - yJet, 20), spargerMat);
+    dip.position.y = (topIn + yJet) / 2; g.add(dip);
+    const hub = new THREE.Mesh(new THREE.SphereGeometry(inR * 1.35, 18, 12), spargerMat); hub.position.y = yJet; g.add(hub);
+    const jetMat = new THREE.MeshBasicMaterial({ color: 0xFB923C, transparent: true, opacity: 0.16, depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide });
+    const eductorAngles = [0, 1, 2, 3].map(k => VIEW_THETA + Math.PI / 4 + k * Math.PI / 2);
+    eductorAngles.forEach(a => {
+      const d = dirOf(a), armL = rad * 0.2;
+      g.add(radial(new THREE.CylinderGeometry(pr * 0.55, pr * 0.55, armL, 12), spargerMat, a, armL / 2, yJet));
+      const ed = new THREE.Group();
+      const nz = new THREE.Mesh(new THREE.CylinderGeometry(pr * 0.35, pr * 0.7, pr * 1.4, 14), spargerMat); nz.position.y = pr * 0.7; ed.add(nz);
+      const suc = new THREE.Mesh(new THREE.CylinderGeometry(pr * 1.0, pr * 1.0, pr * 1.3, 18, 1, true), internMat); suc.position.y = pr * 1.6; ed.add(suc);
+      const dif = new THREE.Mesh(new THREE.CylinderGeometry(pr * 1.55, pr * 0.85, pr * 2.6, 18, 1, true), internMat); dif.position.y = pr * 3.5; ed.add(dif);
+      const plume = new THREE.Mesh(new THREE.ConeGeometry(rad * 0.16, rad * 0.5, 20, 1, true), jetMat); plume.rotation.x = Math.PI; plume.position.y = pr * 4.8 + rad * 0.25; ed.add(plume);
+      const ang = 35 * Math.PI / 180;
+      ed.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), d.clone().multiplyScalar(Math.cos(ang)).add(new THREE.Vector3(0, -Math.sin(ang), 0)).normalize());
+      ed.position.copy(d.clone().multiplyScalar(armL)).add(new THREE.Vector3(0, yJet, 0));
+      g.add(ed);
     });
 
-    // 8. 下進上出 ANSI 法蘭接管 + 立體流向箭頭
-    const nIn = flangedNozzle(g, phiIn, ySp, rad * 0.88, rOut + rad * 0.42, pr * 1.15, pipeMat, flangeMat, boltMat);
-    const nOut = flangedNozzle(g, phiOut, yOut, rad * 0.98, rOut + rad * 0.42, po, pipeMat, flangeMat, boltMat);
-    flowArrow(g, nIn.tip, nIn.dir, true, rad * 0.5, 0xF97316);
-    flowArrow(g, nOut.tip, nOut.dir, false, rad * 0.5, 0x38BDF8);
-    const inLbl = textSprite('CDU 出水 →', '#FDBA74', 0.11); inLbl.position.copy(nIn.tip).add(nIn.dir.clone().multiplyScalar(rad * 0.95)).add(new THREE.Vector3(0, 0.12, 0)); g.add(inLbl);
-    const outLbl = textSprite('→ TCS 供水', '#7DD3FC', 0.11); outLbl.position.copy(nOut.tip).add(nOut.dir.clone().multiplyScalar(rad * 0.95)).add(new THREE.Vector3(0, 0.12, 0)); g.add(outLbl);
+    // 7. 4 片垂直壁擋板（防止整槽同向旋轉、促進上下翻轉混合）
+    [0, 1, 2, 3].forEach(k => {
+      const a = VIEW_THETA + k * Math.PI / 2, bw = rad * 0.1;
+      const bf = new THREE.Mesh(new THREE.BoxGeometry(bw, cylH * 0.9, Math.max(0.004, rad * 0.014)), internMat);
+      bf.rotation.y = a - Math.PI / 2;
+      bf.position.copy(dirOf(a).multiplyScalar(rad * 0.97 - bw / 2)); g.add(bf);
+    });
 
-    // 9. 頂部自動排氣閥、底部排污口
-    const vTop = halfH + domeH + wClad;
-    const ventP = new THREE.Mesh(new THREE.CylinderGeometry(rad * 0.04, rad * 0.04, rad * 0.22, 12), pipeMat); ventP.position.y = vTop + rad * 0.09; g.add(ventP);
-    const ventB = new THREE.Mesh(new THREE.CylinderGeometry(rad * 0.075, rad * 0.075, rad * 0.14, 16), flangeMat); ventB.position.y = vTop + rad * 0.25; g.add(ventB);
-    const ventC = new THREE.Mesh(new THREE.SphereGeometry(rad * 0.06, 12, 8), boltMat); ventC.position.y = vTop + rad * 0.34; g.add(ventC);
+    // 8. 下部側邊出口 + 槽內防渦集水管（開口朝下 + 十字擋板）+ 槽外 Y 型過濾器
+    const yOut = -halfH + cylH * 0.08, po = rad * 0.07;
+    flangedNozzle(g, phiOut, yOut, rad * 0.55, rOut + rad * 0.42, po, pipeMat, flangeMat, boltMat);
+    const stub = new THREE.Mesh(new THREE.CylinderGeometry(po, po, po * 2.2, 16), internMat);
+    stub.position.copy(oDir.clone().multiplyScalar(rad * 0.55)).add(new THREE.Vector3(0, yOut - po * 1.1, 0)); g.add(stub);
+    [0, Math.PI / 2].forEach(rot => {
+      const vb = new THREE.Mesh(new THREE.BoxGeometry(po * 2.6, po * 1.6, po * 0.16), internMat);
+      vb.rotation.y = rot + phiOut; vb.position.copy(stub.position).add(new THREE.Vector3(0, -po * 1.6, 0)); g.add(vb);
+    });
+    const r1 = rOut + rad * 0.42, rS = r1 + rad * 0.32;
+    g.add(radial(new THREE.CylinderGeometry(po, po, rad * 0.64, 18), pipeMat, phiOut, r1 + rad * 0.32, yOut));
+    g.add(radial(new THREE.CylinderGeometry(po * 1.45, po * 1.45, po * 3.2, 20), flangeMat, phiOut, rS, yOut));
+    const legDir = oDir.clone().add(new THREE.Vector3(0, -1, 0)).normalize();
+    const leg = new THREE.Mesh(new THREE.CylinderGeometry(po * 0.95, po * 0.95, po * 3.4, 16), flangeMat);
+    leg.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), legDir);
+    leg.position.copy(oDir.clone().multiplyScalar(rS)).add(new THREE.Vector3(0, yOut, 0)).add(legDir.clone().multiplyScalar(po * 1.7)); g.add(leg);
+    const legCap = new THREE.Mesh(new THREE.CylinderGeometry(po * 1.2, po * 1.2, po * 0.4, 16), boltMat);
+    legCap.quaternion.copy(leg.quaternion);
+    legCap.position.copy(oDir.clone().multiplyScalar(rS)).add(new THREE.Vector3(0, yOut, 0)).add(legDir.clone().multiplyScalar(po * 3.5)); g.add(legCap);
+    const outTip = oDir.clone().multiplyScalar(r1 + rad * 0.64).add(new THREE.Vector3(0, yOut, 0));
+    flowArrow(g, outTip, oDir, false, rad * 0.5, 0x38BDF8);
+    const outLbl = textSprite('→ TCS 供水（經 Y 型過濾器）', '#7DD3FC', 0.1);
+    outLbl.position.copy(outTip).add(oDir.clone().multiplyScalar(rad * 0.95)).add(new THREE.Vector3(0, 0.13, 0)); g.add(outLbl);
+
+    // 9. 偏心自動排氣閥（頂部，排除進水夾帶之氣泡）、底部排污口
+    const ventDir = dirOf(phiOut + Math.PI * 0.6);
+    const vTop = halfH + domeH * Math.sqrt(1 - 0.45 * 0.45) + wClad;
+    const vbase = ventDir.clone().multiplyScalar(rad * 0.45);
+    const ventP = new THREE.Mesh(new THREE.CylinderGeometry(rad * 0.04, rad * 0.04, rad * 0.22, 12), pipeMat); ventP.position.copy(vbase).add(new THREE.Vector3(0, vTop + rad * 0.09, 0)); g.add(ventP);
+    const ventB = new THREE.Mesh(new THREE.CylinderGeometry(rad * 0.075, rad * 0.075, rad * 0.14, 16), flangeMat); ventB.position.copy(vbase).add(new THREE.Vector3(0, vTop + rad * 0.25, 0)); g.add(ventB);
+    const ventC = new THREE.Mesh(new THREE.SphereGeometry(rad * 0.06, 12, 8), boltMat); ventC.position.copy(vbase).add(new THREE.Vector3(0, vTop + rad * 0.34, 0)); g.add(ventC);
     const drainP = new THREE.Mesh(new THREE.CylinderGeometry(rad * 0.045, rad * 0.045, rad * 0.26, 12), pipeMat); drainP.position.y = -halfH - domeH - rad * 0.12; g.add(drainP);
     const drainV = new THREE.Mesh(new THREE.BoxGeometry(rad * 0.16, rad * 0.11, rad * 0.11), boltMat); drainV.position.y = -halfH - domeH - rad * 0.24; g.add(drainV);
     const handle = new THREE.Mesh(new THREE.BoxGeometry(rad * 0.3, rad * 0.025, rad * 0.04), spargerMat); handle.position.y = -halfH - domeH - rad * 0.17; g.add(handle);
@@ -1746,38 +1816,35 @@ const Tank3DSim = (() => {
       const tick = sideDir.clone().multiplyScalar(0.06);
       g.add(polyline([p0, p1], 0xFDE68A)); g.add(polyline([p0.clone().sub(tick), p0.clone().add(tick)], 0xFDE68A)); g.add(polyline([p1.clone().sub(tick), p1.clone().add(tick)], 0xFDE68A));
       const hl = textSprite(`H ${D && H ? H.toFixed(2) : ''} m`, '#FDE68A', 0.12); hl.position.copy(p0.clone().lerp(p1, 0.5)).add(sideDir.clone().multiplyScalar(0.22)); g.add(hl);
-      const across = dirOf(VIEW_THETA + Math.PI / 2), yD = halfH + domeH + rad * 0.55;
+      const across = dirOf(VIEW_THETA + Math.PI / 2), yD = halfH + domeH + rad * 1.2;   // 高於頂部進水管嘴與箭頭
       const q0 = across.clone().multiplyScalar(-rad).add(new THREE.Vector3(0, yD, 0)), q1 = across.clone().multiplyScalar(rad).add(new THREE.Vector3(0, yD, 0));
       const tk = new THREE.Vector3(0, 0.05, 0);
       g.add(polyline([q0, q1], 0xFDE68A)); g.add(polyline([q0.clone().sub(tk), q0.clone().add(tk)], 0xFDE68A)); g.add(polyline([q1.clone().sub(tk), q1.clone().add(tk)], 0xFDE68A));
       const dl = textSprite(`Ø ${D.toFixed(2)} m`, '#FDE68A', 0.12); dl.position.copy(q0.clone().lerp(q1, 0.5)).add(new THREE.Vector3(0, 0.13, 0)); g.add(dl);
     }
 
-    // 14. S 型交錯渦流軌跡線（穿越各層折流板缺口）+ 溫度著色示蹤粒子
+    // 14. 整槽迴流流線：噴射器向外下方射出 → 沿壁上升 → 頂部回流向中心 → 沿浸入管外側下降被捲吸；另一條為浸入管內進水
     const curves = [];
-    [[-0.45, 0.15], [0.2, -0.35], [0.5, 0.3], [-0.1, -0.1]].forEach(([a0, b0], ci) => {
-      const pts = [at(a0 * rad, b0 * rad, ySp + pr * 4)];
-      bY.forEach((y, idx) => {
-        const win = (idx % 2 === 0 ? 1 : -1) * 0.74 * rad, sw = Math.sin(ci * 1.7 + idx * 2.1) * 0.35 * rad;
-        pts.push(at(win * 0.7, sw, y - cylH * 0.08));
-        pts.push(at(win, sw * 0.6, y + bt * 0.5));
-        pts.push(at(win * 0.55, -sw, y + cylH * 0.09));
-      });
-      pts.push(at(-rad * 0.35, 0.05 * rad, yOut - po * 2.5));
-      pts.push(at(-rad * 0.7, 0, yOut));
-      curves.push(new THREE.CatmullRomCurve3(pts));
+    eductorAngles.forEach((a, ci) => {
+      const d = dirOf(a), tdir = dirOf(a + Math.PI / 2), sw = (ci % 2 ? 1 : -1) * rad * 0.08;
+      const P = (r, y, t) => d.clone().multiplyScalar(r).add(tdir.clone().multiplyScalar(t || 0)).add(new THREE.Vector3(0, y, 0));
+      curves.push({ hot: false, curve: new THREE.CatmullRomCurve3([
+        P(rad * 0.3, yJet - cylH * 0.04), P(rad * 0.62, -halfH + cylH * 0.12, sw), P(rad * 0.84, -halfH + cylH * 0.3, sw),
+        P(rad * 0.86, halfH - cylH * 0.15, sw * 0.5), P(rad * 0.5, halfH - cylH * 0.06), P(rad * 0.22, yJet + cylH * 0.3, -sw), P(rad * 0.18, yJet + cylH * 0.07, -sw)
+      ], true) });
     });
-    const tubeMat = new THREE.MeshBasicMaterial({ color: 0x7DD3FC, transparent: true, opacity: 0.22, depthWrite: false, blending: THREE.AdditiveBlending });
-    curves.forEach(c => g.add(new THREE.Mesh(new THREE.TubeGeometry(c, 96, Math.max(0.004, rad * 0.014), 6, false), tubeMat)));
-    const perCurve = 46, nP = curves.length * perCurve;
+    curves.push({ hot: true, curve: new THREE.CatmullRomCurve3([new THREE.Vector3(0, topIn + rad * 0.1, 0), new THREE.Vector3(0, (topIn + yJet) / 2, 0), new THREE.Vector3(0, yJet + inR, 0)]) });
+    const tubeMat = new THREE.MeshBasicMaterial({ color: 0x7DD3FC, transparent: true, opacity: 0.2, depthWrite: false, blending: THREE.AdditiveBlending });
+    curves.forEach(c => { if (!c.hot) g.add(new THREE.Mesh(new THREE.TubeGeometry(c.curve, 120, Math.max(0.004, rad * 0.013), 6, true), tubeMat)); });
+    const perCurve = 40, nP = curves.length * perCurve;
     const pGeo = new THREE.BufferGeometry();
     pGeo.setAttribute('position', new THREE.BufferAttribute(new Float32Array(nP * 3), 3));
     pGeo.setAttribute('color', new THREE.BufferAttribute(new Float32Array(nP * 3), 3));
     const phase = new Float32Array(nP), jit = new Float32Array(nP * 3);
-    for (let i = 0; i < nP; i++) { phase[i] = (i % perCurve) / perCurve + Math.random() * 0.02; for (let j = 0; j < 3; j++) jit[i * 3 + j] = (Math.random() - 0.5) * rad * 0.12; }
+    for (let i = 0; i < nP; i++) { phase[i] = (i % perCurve) / perCurve + Math.random() * 0.02; for (let j = 0; j < 3; j++) jit[i * 3 + j] = (Math.random() - 0.5) * rad * (curves[Math.floor(i / perCurve)].hot ? 0.03 : 0.12); }
     const pts = new THREE.Points(pGeo, new THREE.PointsMaterial({ size: Math.max(0.035, rad * 0.075), vertexColors: true, transparent: true, opacity: 0.95, depthWrite: false }));
     pts.renderOrder = 3; g.add(pts);
-    tracers = { geo: pGeo, curves, perCurve, phase, jit, yMin: -halfH - dh, span: fluidSpan };
+    tracers = { geo: pGeo, curves: curves.map(c => c.curve), hot: curves.map(c => c.hot), perCurve, phase, jit, yMin: -halfH - dh, span: fluidSpan };
 
     updateCam();
   }
@@ -1785,7 +1852,8 @@ const Tank3DSim = (() => {
   /* ---------- 熱狀態 ---------- */
   function localNorm(yNorm) {
     const { Tbulk, Tjet, T0, allow } = bulkState;
-    const T = Tbulk + (Tjet - Tbulk) * Math.exp(-yNorm * 2.9) * 0.68;
+    const dJ = yNorm - jetYNorm;
+    const T = Tbulk + (Tjet - Tbulk) * Math.exp(-Math.abs(dJ) * (dJ > 0 ? 2.4 : 5.0)) * 0.68;
     return { T, n: (T - T0) / allow };
   }
   function setHud(html) { const el = document.getElementById('t3dHudInfo'); if (el) el.innerHTML = html; }
@@ -1813,16 +1881,17 @@ const Tank3DSim = (() => {
     if (fluidUniforms) {
       fluidUniforms.uNormBulk.value = (st.Ttank - raw.tempSupply) / allow;
       fluidUniforms.uNormJet.value = (st.Tin - raw.tempSupply) / allow;
+      fluidUniforms.uJetY.value = jetYNorm;
     }
     const timeEl = document.getElementById('t3dTimeReadout');
     if (timeEl) timeEl.textContent = `t = ${simTime.toFixed(1)} s`;
     const modeTitle = r.isShared ? 'TCS 母管集中混合槽' : '單台 CDU 串聯混合槽';
     const dimTxt = s.dims ? `Ø${s.dims.D.toFixed(2)}m × H${s.dims.H.toFixed(2)}m` : '未選型';
     setHud(`<div><b>${modeTitle}</b> · ${r.selection.size || 0} m³ (${dimTxt}) · Model ${r.basis}</div>` +
-      `<div>底部 CDU 湧入：<span class="hot-txt">${st.Tin.toFixed(1)} °C</span> (缺口 ${Math.round(st.def)} kW)</div>` +
-      `<div>頂部混合供水：<b>${st.Ttank.toFixed(2)} °C</b> (上限 ${raw.tempMax.toFixed(1)} °C)</div>`);
+      `<div>頂部 CDU 進水：<span class="hot-txt">${st.Tin.toFixed(1)} °C</span> (缺口 ${Math.round(st.def)} kW)</div>` +
+      `<div>底部出口供水：<b>${st.Ttank.toFixed(2)} °C</b> (上限 ${raw.tempMax.toFixed(1)} °C)</div>`);
     const probesEl = document.getElementById('t3dProbes');
-    const levels = [['TT-5 頂部出口', 0.93], ['TT-4 上折流區', 0.72], ['TT-3 中混流區', 0.50], ['TT-2 下折流區', 0.30], ['TT-1 噴流入口', 0.08]];
+    const levels = [['TT-5 頂部（排氣側）', 0.93], ['TT-4 上循環區', 0.72], ['TT-3 中段', 0.50], ['TT-2 噴射器高度', 0.33], ['TT-1 出口集水區', 0.08]];
     const probeVals = levels.map(([tag, h]) => ({ tag, ...localNorm(h) }));
     if (probesEl) probesEl.innerHTML = probeVals.map(p => {
       const c = rampColor(p.n, bulkState.top).map(v => Math.round(v * 255));
@@ -1879,9 +1948,10 @@ const Tank3DSim = (() => {
       const tmp = new THREE.Vector3();
       for (let i = 0; i < phase.length; i++) {
         phase[i] = (phase[i] + dt * v) % 1;
-        curves[Math.floor(i / perCurve)].getPointAt(phase[i], tmp);
+        const ci = Math.floor(i / perCurve);
+        curves[ci].getPointAt(phase[i], tmp);
         pos[i * 3] = tmp.x + jit[i * 3]; pos[i * 3 + 1] = tmp.y + jit[i * 3 + 1] * 0.5; pos[i * 3 + 2] = tmp.z + jit[i * 3 + 2];
-        const c = rampColor(localNorm((pos[i * 3 + 1] - yMin) / span).n, bulkState.top);
+        const c = rampColor(tracers.hot[ci] ? (bulkState.Tjet - bulkState.T0) / bulkState.allow : localNorm((pos[i * 3 + 1] - yMin) / span).n, bulkState.top);
         col[i * 3] = c[0]; col[i * 3 + 1] = c[1]; col[i * 3 + 2] = c[2];
       }
       geo.attributes.position.needsUpdate = true; geo.attributes.color.needsUpdate = true;
@@ -1986,8 +2056,8 @@ const XlsxEval = (() => {
 /* ===================== 介面與互動 ===================== */
 // v8：共用母管模式下 cduCap 改為永遠代表單台容量（v7 會把總和寫回輸入框），舊存檔語意不同故不沿用
 const AUTOSAVE_KEY = 'cdu_surge_tank_v8_inputs';
-const NUM_FIELDS = ['cduCap', 'cduCount', 'loadFrom', 'loadTo', 'riseTime', 'tempSupply', 'tempMax', 'deltaTDesign', 'recoveryThr', 'recoveryMaxSec', 'fluidRho', 'fluidCp', 'deadTime', 'valveStroke', 'availPct', 'minFlowPct', 'mixEffPct', 'marginPct', 'otherMixVol', 'customSize', 'hdRatio'];
-const TEXT_FIELDS = ['projectName', 'dataSource', 'tankSizeChoice', 'calcMode'];
+const NUM_FIELDS = ['cduCap', 'cduCount', 'loadFrom', 'loadTo', 'riseTime', 'tempSupply', 'tempMax', 'deltaTDesign', 'recoveryThr', 'recoveryMaxSec', 'fluidRho', 'fluidCp', 'deadTime', 'valveStroke', 'availPct', 'minFlowPct', 'mixEffPct', 'marginPct', 'otherMixVol', 'customSize', 'hdRatio', 'jetVel', 'entrainRatio'];
+const TEXT_FIELDS = ['projectName', 'dataSource', 'tankSizeChoice', 'calcMode', 'nozzleDN'];
 const RADIO_FIELDS = ['fluid', 'controlModel', 'pumpMode', 'thermalModel'];
 const DEFAULTS = {
   calcMode: 'isolated', cduCap: 1000, cduCount: 4, loadFrom: 30, loadTo: 100, riseTime: 1,
@@ -1995,6 +2065,7 @@ const DEFAULTS = {
   fluid: 'pg25', fluidRho: 1012, fluidCp: 3.95,
   controlModel: 'linear', deadTime: 5, valveStroke: 120, availPct: 100, pumpMode: 'constant', minFlowPct: 30,
   thermalModel: 'A', tankSizeChoice: 'auto', customSize: 12, mixEffPct: 80, marginPct: 20, otherMixVol: 0, hdRatio: 2,
+  nozzleDN: 'auto', jetVel: 3, entrainRatio: 4,
   projectName: '', dataSource: ''
 };
 const PRESETS = {
@@ -2003,7 +2074,7 @@ const PRESETS = {
   fastValve: { ...DEFAULTS, projectName: '快速致動器改良方案', dataSource: '20s 快閥 + 3s 前饋延遲', valveStroke: 20, deadTime: 3, availPct: 110, recoveryMaxSec: 60, tankSizeChoice: 'auto' },
   tightTemp: { ...DEFAULTS, projectName: '嚴苛溫升限制 (允許 2K)', dataSource: '供水 40°C / 上限 42°C', valveStroke: 50, deadTime: 4, availPct: 110, tempSupply: 40, tempMax: 42, recoveryThr: 0.3, recoveryMaxSec: 120, tankSizeChoice: 'auto' }
 };
-const FIELD_NAMES = { cduCap: 'CDU 容量', cduCount: 'CDU 台數', loadFrom: '跳升前負載', loadTo: '跳升後負載', riseTime: '上升時間', tempSupply: '設計供水', tempMax: '供水上限', deltaTDesign: '設計溫差', recoveryThr: '恢復判定門檻', recoveryMaxSec: '最大允許水槽熱恢復時間', fluidRho: '密度', fluidCp: '比熱', deadTime: '控制延遲', valveStroke: '等效冷量全程時間', availPct: '最大可用冷量', minFlowPct: '變頻最低流量下限', mixEffPct: '有效混合容積係數', marginPct: '設計餘裕', otherMixVol: '其他可計入混合容積', customSize: '實際設備容積', hdRatio: '高徑比' };
+const FIELD_NAMES = { cduCap: 'CDU 容量', cduCount: 'CDU 台數', loadFrom: '跳升前負載', loadTo: '跳升後負載', riseTime: '上升時間', tempSupply: '設計供水', tempMax: '供水上限', deltaTDesign: '設計溫差', recoveryThr: '恢復判定門檻', recoveryMaxSec: '最大允許水槽熱恢復時間', fluidRho: '密度', fluidCp: '比熱', deadTime: '控制延遲', valveStroke: '等效冷量全程時間', availPct: '最大可用冷量', minFlowPct: '變頻最低流量下限', jetVel: '噴射器出口流速', entrainRatio: '捲吸比', mixEffPct: '有效混合容積係數', marginPct: '設計餘裕', otherMixVol: '其他可計入混合容積', customSize: '實際設備容積', hdRatio: '高徑比' };
 const LV = { pass: 'PASS', warn: 'WARNING', fail: 'FAIL', info: 'INFO', na: 'N/A' };
 
 let lastResult = null, lockedT = null;
@@ -2028,7 +2099,8 @@ function readRaw() {
     pumpMode: radioVal('pumpMode', 'constant'),
     thermalModel: radioVal('thermalModel', 'A'),
     rho: num('fluidRho'), cp: num('fluidCp'),
-    sizeChoice: sc === 'auto' || sc === 'custom' ? sc : Number(sc)
+    sizeChoice: sc === 'auto' || sc === 'custom' ? sc : Number(sc),
+    nozzleDN: $('nozzleDN').value === 'auto' ? 'auto' : Number($('nozzleDN').value)
   };
   NUM_FIELDS.forEach(id => { if (!(id in o)) o[id] = num(id); });
   return o;
@@ -2160,8 +2232,20 @@ function buildChecks(r) {
   } else c.push({ id: 'chk-ctrl', s: 'info', t: '理想瞬時控制', v: '冷量即時等於負載', d: '僅供比較，不可作為設計依據' });
   if (r.tank.allowRise < 2) c.push({ id: 'chk-rise', s: 'warn', t: '允許溫升很小', v: `${fx(r.tank.allowRise, 1)} K`, d: '設計供水離上限太近，所需緩衝容積會非常龐大' });
   if (raw.otherMixVol > 0) c.push({ id: 'chk-other', s: 'warn', t: '其他已計入有效混合容積', v: `${fx(r.tank.credited, 3)} m³（輸入 ${fx(raw.otherMixVol, 3)} m³）`, d: '必須是 CDU 二次側主流路中的實際有效混合容積；管路柱塞流或死管段不可計入' });
-  if (hasTank) c.push({ id: 'chk-mix', s: 'info', t: '水槽須為強制混合型構造 (Jet Sparger + Baffles)', v: `平均停留時間 ${f1(s.residenceSec)} 秒（僅供參考）`,
-    d: 'TCS 供水緩衝槽旨在壓制 CDU 出水熱脈衝，必須藉由文丘里噴射擴散管與折流板強制混合，嚴禁做成冷熱分層槽（Stratified Tank）' });
+  const mx = r.mixing;
+  if (hasTank && s.mix) {
+    c.push({ id: 'chk-ri', s: s.mix.riStatus, t: '混合品質：射流動量 vs 浮力（Richardson 數）',
+      v: `Ri = g·β·ΔT·H ÷ v² = 9.81 × ${r.fluid.beta.toExponential(1)} × ${fx(mx.dTjet, 1)} K × ${fx(s.dims.H, 2)} m ÷ ${fx(s.mix.vJet, 2)}² = ${s.mix.Ri < 0.001 ? s.mix.Ri.toExponential(1) : fx(s.mix.Ri, 3)}`,
+      d: s.mix.riStatus === 'pass' ? 'Ri < 0.1：射流動量主導，上進的熱水會被噴射器帶下並與槽水混勻' : s.mix.riStatus === 'warn' ? '0.1 ≤ Ri < 1：浮力開始影響，熱水可能浮在上層；建議提高噴射器流速或增加噴射器數量' : 'Ri ≥ 1：浮力主導，槽內會分層，完全混合假設（Model A／B）不成立；請提高噴射器流速' });
+    c.push({ id: 'chk-mixtime', s: s.mix.timeStatus, t: '混合時間 vs 冷量追上負載時間',
+      v: `θ = ${SurgeTankEngine.MIX.TURNS} × ${fx(s.vEff, 3)} m³ ÷ [${fx(r.flow.flowEvtM3s * 1000, 2)} L/s × (1 + ${fx(r.u.entrainRatio, 1)})] = ${f1(s.mix.thetaSec)} s${s.mix.catchUp > 0 ? `（追上時間 ${f1(s.mix.catchUp)} s）` : ''}`,
+      d: s.mix.timeStatus === 'pass' ? '槽內在熱脈衝期間即可混勻' : '混合比熱脈衝慢，峰值可能高於完全混合計算值；建議提高捲吸比或噴射流速' });
+  }
+  c.push({ id: 'chk-nozzle', s: r.nozzle.vel > 3 ? 'warn' : 'info', t: '進水管嘴與噴射器壓降',
+    v: `DN${r.nozzle.dn}（${r.nozzle.auto ? '自動' : '指定'}），額定流速 ${fx(r.nozzle.vel, 2)} m/s；噴射器壓降約 ${f1(r.eductorDpKPa)} kPa`,
+    d: '噴射器壓降需計入二次側泵揚程；出口後 Y 型過濾器壓降另依廠商資料計入' });
+  if (hasTank) c.push({ id: 'chk-config', s: 'info', t: '上進下出配置要點', v: '頂部排氣閥、下部出口接 Y 型過濾器、底部排污閥',
+    d: '出口在下可避免氣泡被帶往冷板，但底部雜質易被帶出，過濾器網目需配合冷板流道規格；不可做成無噴射器的分層槽' });
   return c;
 }
 
@@ -2192,6 +2276,7 @@ function buildSteps(r) {
     ['(6) 選定有效容積', `${fx(size, 3)} × ${fx(raw.mixEffPct)}% = ${fx(s.vTankEff, 3)} m³；加已計入 ${fx(raw.otherMixVol, 3)} m³ = ${fx(s.vEff, 3)} m³`],
     ['加水槽後供水最高（Model A）', `${fx(raw.tempSupply, 1)} + ${f0(E)} ÷ (${f0(t.rc)} × ${fx(s.vEff, 3)}) = ${tempTxt(s.peakA)}`],
     ['加水槽後供水最高（Model B）', s.vEff > 0 ? `τ = ${fx(s.vEff, 3)} m³ ÷ ${fx(r.flow.flowEvtM3s * 1000, 2)} L/s = ${f1(s.modelB.tau)} s → ${tempTxt(s.peakB)}${Number.isFinite(s.tPeakB) ? ` @ ${fx(s.tPeakB, 1)} s` : ''}` : '—'],
+    ['混合品質（上進下出・噴射混合）', s.mix ? `噴射流速 ${fx(s.mix.vJet, 2)} m/s；Ri = ${s.mix.Ri < 0.001 ? s.mix.Ri.toExponential(1) : fx(s.mix.Ri, 3)}（< 0.1 動量主導）；混合時間 ${f1(s.mix.thetaSec)} s；進水 DN${r.nozzle.dn} ${fx(r.nozzle.vel, 2)} m/s；噴射器壓降 ${f1(r.eductorDpKPa)} kPa` : '—'],
     [`水槽熱恢復時間（Model ${r.basis}）`, size > 0 ? `${r.basis === 'A' ? '儲熱峰值後，槽內熱量降到 ρ·cp·V有效·' + fx(raw.recoveryThr, 2) + ' K' : '槽溫峰值後回到 設計 + ' + fx(raw.recoveryThr, 2) + ' K'} 所需時間 = ${secTxt(s.recoverySec)}（允許 ${fx(raw.recoveryMaxSec, 1)} 秒）` : '—']
   ];
 }
@@ -2525,7 +2610,8 @@ function render(result) {
     ? `Model ${r.basis} 設計需求 <b>${fx(t.vRequired, 3)} m³</b> -> 選定標稱 <b>${fx(sel.size, 3)} m³</b>（${f0(sel.size * 1000)} L，有效 ${fx(s.vTankEff, 3)} m³），約 Ø${fx(s.dims.D, 2)} m × 高 ${fx(s.dims.H, 2)} m` +
       (sel.extended ? `。<b>已超出內建 ${fx(t.maxCandidateVolume)} m³ 級距</b>，自動以 1 m³ 進位，請向廠商確認或改多座並聯` : '') +
       (raw.otherMixVol > 0 ? `；其他已計入有效混合容積 <b>${fx(t.credited, 3)} m³</b>` : '') +
-      `<br>對照：Model ${r.basis === 'A' ? 'B' : 'A'} 設計需求 ${vTxt(r.basis === 'A' ? t.chainB.vRequired : t.chainA.vRequired)}`
+      `<br>對照：Model ${r.basis === 'A' ? 'B' : 'A'} 設計需求 ${vTxt(r.basis === 'A' ? t.chainB.vRequired : t.chainA.vRequired)}` +
+      (s.mix ? `<br>混合：進水 DN${r.nozzle.dn}（${fx(r.nozzle.vel, 2)} m/s）、Ri = ${s.mix.Ri < 0.001 ? s.mix.Ri.toExponential(1) : fx(s.mix.Ri, 3)}、混合時間 ${f1(s.mix.thetaSec)} s、噴射器壓降 ${f1(r.eductorDpKPa)} kPa` : '')
     : '不需水槽';
   $('sizeReadout').className = 'note' + (sel.extended ? ' assume' : '');
   setText('advSummary', `H/D ${fx(raw.hdRatio)}`);
@@ -2579,6 +2665,7 @@ function summaryText() {
   L.push(`TCS 供水 ${fx(raw.tempSupply, 1)} °C、上限 ${fx(raw.tempMax, 1)} °C、設計溫差 ${fx(raw.deltaTDesign, 1)} K，${r.fluid.name}，額定設計流量 ${f1(r.flowM3h)} m³/h；水泵 ${raw.pumpMode === 'variable' ? `變頻（事件流量 ${fx(r.flow.fEvt * 100)}%）` : '定頻'}`);
   L.push(r.p.ideal ? '控制：理想瞬時（僅供比較）' : `控制（線性等效）：延遲 ${fx(r.p.td, 1)} s＋追蹤 ${fx(r.p.dQ / r.p.rate, 1)} s（全程 ${fx(raw.valveStroke, 1)} s）`);
   L.push(`最大缺口 ${f0(r.tr.maxDeficitKw)} kW；最大儲熱能量 ${Number.isFinite(r.tr.peakStorageEnergyKJ) ? f0(r.tr.peakStorageEnergyKJ) + ' kJ' : '無上限'}；無水槽第一圈估算 ${tempTxt(r.peakNoTank)}`);
+  if (s.mix) L.push(`混合構造：上進下出・浸入管噴射器；進水 DN${r.nozzle.dn}，Ri = ${s.mix.Ri < 0.001 ? s.mix.Ri.toExponential(1) : fx(s.mix.Ri, 3)}，混合時間 ${f1(s.mix.thetaSec)} s，噴射器壓降 ${f1(r.eductorDpKPa)} kPa`);
   L.push(`熱模型：選型基準 Model ${r.basis}；設計需求 Model A ${vTxt(r.tank.chainA.vRequired)}／Model B ${vTxt(r.tank.chainB.vRequired)}`);
   if ((sel.size || 0) > 0) L.push(`水槽：理論 ${fx(r.tank.vTheory, 3)} -> 設計需求 ${fx(r.tank.vRequired, 3)} -> 選定標稱 ${fx(sel.size, 3)} m³${sel.extended ? '（超出級距 1 m³ 進位）' : ''} × ${r.tankCount} 座（有效 ${fx(s.vTankEff, 3)} m³，全廠總標稱 ${fx(r.plantVol, 3)} m³）；峰值 A ${tempTxt(s.peakA)}／B ${tempTxt(s.peakB)}；水槽熱恢復 ${secTxt(s.recoverySec)}`);
   L.push(`判定：暫態溫升 ${LV[st.thermal]}／穩態容量 ${LV[st.recoveryCapacity]}／水槽熱恢復時間 ${LV[st.recoveryTime]}（允許 ${fx(raw.recoveryMaxSec, 1)} s）／候選規格 ${LV[st.candidate]}`);
@@ -2709,6 +2796,18 @@ function buildWorkbook(r) {
   calc('D', '單槽直徑', 'IF({size}>0,(4*{size}/(PI()*{hd}))^(1/3),0)', s.dims ? s.dims.D : 0, 'm');
   calc('H', '單槽高度', '{hd}*{D}', s.dims ? s.dims.H : 0, 'm');
   calc('plant', '全廠水槽總標稱容積', '{N}*{size}', r.plantVol, 'm³');
+  line(['五、混合品質（上進下出・浸入管噴射混合）', '結果', '單位', '說明']);
+  inp('beta', '體積膨脹係數 β', fl.beta, '1/K', '40–45 °C 近似值');
+  inp('jetV', '噴射器出口流速（額定流量）', raw.jetVel, 'm/s', '噴射器設計值');
+  inp('Ent', '捲吸比', raw.entrainRatio, '-', '經驗值，以廠商曲線為準');
+  inp('turns', '均勻化所需循環次數', SurgeTankEngine.MIX.TURNS, '次', '經驗值');
+  calc('vJe', '事件期間噴射流速', '{jetV}*{fEvt}/100', raw.jetVel * r.flow.fEvt, 'm/s');
+  calc('dTj', '噴流與槽水最大溫差', '{maxDef}/{mcpE}', r.mixing.dTjet, 'K');
+  calc('Ri', 'Richardson 數 gβΔT·H/v²', 'IF({size}>0,9.81*{beta}*{dTj}*{H}/{vJe}^2,0)', s.mix ? s.mix.Ri : 0, '-', '< 0.1 動量主導（混勻）；>= 1 會分層');
+  calc('tMix', '混合時間', 'IF({size}>0,{turns}*{vEff}/(({flowE}/3600)*(1+{Ent})),0)', s.mix ? s.mix.thetaSec : 0, 's', '需小於冷量追上負載時間');
+  calc('dpJ', '噴射器壓降（額定）', '1.1*{rho}*{jetV}^2/2/1000', r.eductorDpKPa, 'kPa', '計入二次側泵揚程');
+  inp('dNoz', `進水管嘴內徑（DN${r.nozzle.dn}）`, r.nozzle.d, 'm', r.nozzle.auto ? '自動：流速 <= 2.5 m/s' : '指定');
+  calc('vNoz', '進水管嘴流速（額定）', '({flow}/3600)/(PI()*{dNoz}^2/4)', r.nozzle.vel, 'm/s');
 
   const addr = {}; rows.forEach((row, i) => { if (!row.key) return; if (addr[row.key]) throw new Error('Calculation 重複的 key：' + row.key); addr[row.key] = 'B' + (i + 1); });
   const cached = {}; rows.forEach(row => { if (row.key) { const c = row.cells[1]; cached[row.key] = c && typeof c === 'object' && 'v' in c ? c.v : c; } });
@@ -2760,7 +2859,8 @@ function buildWorkbook(r) {
 
   const as = [['計算假設與模型限制'], [],
     ['工程用途', '概念設計／初步容量估算；非原廠暫態性能保證或最終設備驗收依據'],
-    ['強制混合型構造', 'TCS 緩衝槽用於削峰（Thermal Peak Shaving），必須具備多孔文丘里噴射混流管與折流擋板強制混合，不可做成分層槽（Stratified Tank）'],
+    ['強制混合型構造', 'TCS 緩衝槽用於削峰：上進下出，頂部進水經浸入管至槽高約 1/3，以噴射器捲吸槽水強制混合，4 片垂直壁擋板；下部出口設防渦集水管並接 Y 型過濾器，頂部排氣、底部排污。不可做成分層槽'],
+    ['混合判定', `Ri = g·β·ΔT·H ÷ v² < ${SurgeTankEngine.MIX.RI_PASS} 為動量主導；混合時間 = ${SurgeTankEngine.MIX.TURNS} 次循環 × V有效 ÷ [Q·(1+捲吸比)]，需小於冷量追上負載時間；捲吸比與循環次數為經驗值，以噴射器廠商曲線為準`],
     ['冷卻液物性', `${fl.name}：ρ ${fl.rho} kg/m³、cp ${fl.cp} kJ/kg·K（40–45°C 近似值，正式設計以供應商資料為準）`],
     ['輸入基準', '單台 CDU 額定容量與台數永遠為輸入值；共用母管模式計算單元 = 單台 × 台數，其他可計入混合容積同樣 × 台數'],
     ['Model A', '閉迴路累積儲熱：ρ·cp·V有效·dT/dt = Q負載 − Q冷量。閉迴路中 CDU 出口 = 槽溫 + 缺口/ṁcp，代入混合槽方程後即為此式；保守性來自忽略槽體／管路／熱交換器／冷板熱容與一次側 LMTD 自調節'],
@@ -2795,7 +2895,7 @@ function exportToExcel() {
 function runRegressionTests() {
   const E = SurgeTankEngine;
   const base = () => ({ calcMode: 'isolated', cduCap: 1000, cduCount: 4, loadFrom: 30, loadTo: 100, riseTime: 1, tempSupply: 40, tempMax: 45, deltaTDesign: 10, recoveryThr: 0.5, recoveryMaxSec: 30, fluid: 'pg25', rho: NaN, cp: NaN,
-    controlModel: 'linear', deadTime: 5, valveStroke: 20, availPct: 100, pumpMode: 'constant', minFlowPct: 30, thermalModel: 'A',
+    controlModel: 'linear', deadTime: 5, valveStroke: 20, availPct: 100, pumpMode: 'constant', minFlowPct: 30, thermalModel: 'A', jetVel: 3, entrainRatio: 4, nozzleDN: 'auto',
     sizeChoice: 'auto', customSize: 12, mixEffPct: 80, marginPct: 20, otherMixVol: 0, hdRatio: 2 });
   const run = mod => { const b = base(); if (mod) mod(b); return E.calculate(b); };
   const near = (a, b, tol = 1e-6) => Math.abs(a - b) <= tol;
@@ -2876,6 +2976,15 @@ function runRegressionTests() {
     return near(rv.tank.chainA.vRequired, rB.tank.chainA.vRequired) && rv.tank.chainB.vRequired > rB.tank.chainB.vRequired;
   });
 
+  // 上進下出・噴射混合
+  T('Ri = g·β·ΔT·H ÷ v²（PG25、ΔT 7 K、v 3 m/s）', () => near(r0.sel.mix.Ri, 9.81 * 4.5e-4 * 7 * r0.sel.dims.H / 9, 1e-12));
+  T('混合時間 = 3 × V有效 ÷ [Q·(1+4)]', () => near(r0.sel.mix.thetaSec, 3 * r0.sel.vEff / (r0.flowM3s * 5), 1e-9));
+  T('預設案例 Ri < 0.1（動量主導，可混勻）', () => r0.sel.mix.riStatus === 'pass' && r0.status.mixing === 'pass');
+  T('噴射流速過低（0.2 m/s）→ Ri >= 1 分層 → 不通過', () => { const r = run(b => { b.jetVel = 0.2; }); return r.sel.mix.riStatus === 'fail' && !r.status.engineeringPass; });
+  T('變頻泵低流量 → 噴射流速下降、Ri 變大', () => run(b => { b.pumpMode = 'variable'; }).sel.mix.Ri > r0.sel.mix.Ri);
+  T('管嘴自動選型：流速 <= 2.5 m/s 的最小 DN', () => { const n = r0.nozzle, i = E.NOZZLE_DN.findIndex(([dn]) => dn === n.dn); return n.vel <= 2.5 && (i === 0 || r0.flowM3s / (Math.PI * E.NOZZLE_DN[i - 1][1] ** 2 / 4) > 2.5); });
+  T('噴射器壓降 = 1.1 × ρv²/2', () => near(r0.eductorDpKPa, 1.1 * 1012 * 9 / 2 / 1000, 1e-12));
+
   if (typeof XLSX !== 'undefined') {
     const cases = [['預設獨立模式', null], ['共用母管模式', b => { b.calcMode = 'shared'; }], ['Case G 熱恢復', caseG], ['Case B 時序', caseB],
       ['Model B 選型 + 110% 恢復', b => { bod(b); b.thermalModel = 'B'; b.availPct = 110; }], ['Model A + 110% 恢復', b => { bod(b); b.availPct = 110; b.recoveryMaxSec = 120; }],
@@ -2889,6 +2998,7 @@ function runRegressionTests() {
         E: num('E', r.tr.peakStorageEnergyKJ), vReq: num('vReq', r.tank.vRequired), size: g('size') === (r.selection.size || 0), cap: num('cap', r.p.cap),
         peak: r.sel.vEff > 0 ? num('peak', r.sel.peak) : g('peak') === 'N/A', maxDef: num('maxDef', r.tr.maxDeficitKw), peakNo: num('peakNo', r.peakNoTank),
         peakBs: r.sel.vEff > 0 ? g('peakBs') <= r.sel.peakB + 1e-9 : true,
+        Ri: num('Ri', r.sel.mix ? r.sel.mix.Ri : 0), tMix: num('tMix', r.sel.mix ? r.sel.mix.thetaSec : 0),
         rec: addr.tRec ? num('recSec', r.sel.recoverySec) && near(g('recT'), r.u.tempSupply + r.u.recoveryThr, 1e-6) : true
       };
       const bad = Object.keys(chk).filter(k => !chk[k]);
@@ -2913,6 +3023,7 @@ function closeVerifyModal() { $('verifyModal').hidden = true; }
 /* ---------- 啟動 ---------- */
 (function init() {
   $('tankSizeChoice').innerHTML = '<option value="auto">自動選型（內建級距）</option>' + SurgeTankEngine.CANDIDATE_VOLUMES.map(v => `<option value="${v}">${v} m³（${Math.round(v * 1000)} L）</option>`).join('') + '<option value="custom">自訂（實際設備容積）...</option>';
+  $('nozzleDN').innerHTML = '<option value="auto">自動（依流速選）</option>' + SurgeTankEngine.NOZZLE_DN.map(([dn]) => `<option value="${dn}">DN${dn}</option>`).join('');
   Tank3DSim.init();
   Tank3DSim.onTime(onSimTime);
   const restored = loadInputs();
