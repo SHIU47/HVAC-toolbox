@@ -31,6 +31,15 @@ function freshCtx() {
   return require('./harness.js');
 }
 
+// R6 P0-T1 起模擬引擎採用降額後 CDU 容量；預設台數未含降額會產生容量不足，
+// 需要「無 deficit」前提的測試先把 CDU 台數補到降額後的 N+1 需求台數。
+function sizeCduToDeratedN1(S) {
+  const units = [...S.state.halls.flatMap(h => h.dus), ...S.state.corePods];
+  units.forEach(u => (u.plantDesign?.cduSystem?.sizing || []).forEach(s => {
+    if (s.key === 'cdu_unit' && s.requiredUnitsN1 > s.selectedQty) s.selectedQty = s.requiredUnitsN1;
+  }));
+}
+
 // ── P0-3: AHRI 曲線在額定點必須正規化為 1.000 ──────────────────────────
 (function () {
   const ctx = freshCtx();
@@ -247,6 +256,8 @@ function freshCtx() {
   const S = ctx.AppStore;
 
   // Test 1: calcHourlyEnergy returns heatRemovedKw
+  S.calculate();
+  sizeCduToDeratedN1(S);
   S.calculate();
   const du = S.state.halls[0].dus[0];
   const duSumm = S.calcDuSummary(du);
@@ -760,6 +771,8 @@ function freshCtx() {
   });
 
   test('C-4 AnnualRunner.run produces valid overall, byDu, byCorePod, and ledgers', () => {
+    S.calculate();
+    sizeCduToDeratedN1(S);
     S.calculate();
     const r = S.state.results;
     assert(r.overall, 'results.overall must exist');
@@ -1369,6 +1382,8 @@ function freshCtx() {
 
     du.plantDesign.cduSystem.architecture = 'adiabatic_tower';
     S.bridgeDuToPlantModel(du, summ);
+    sizeCduToDeratedN1(S);
+    S.bridgeDuToPlantModel(du, summ);
     let pureDeficitHours = 0;
     AnnualRunner.simulateUnit(du.plantDesign, summ, alabama.hourlyData, {
       calcHourlyEnergy: (pd, ls, w, pre) => S.calcHourlyEnergy(pd, ls, w, pre),
@@ -1377,6 +1392,8 @@ function freshCtx() {
 
     // 4. Run AnnualRunner for adiabatic_trim on Alabama
     du.plantDesign.cduSystem.architecture = 'adiabatic_trim';
+    S.bridgeDuToPlantModel(du, summ);
+    sizeCduToDeratedN1(S);
     S.bridgeDuToPlantModel(du, summ);
     let trimDeficitHours = 0;
     let chillerHours = 0;
@@ -3232,6 +3249,27 @@ function freshCtx() {
   test('R6 P0-F1 resolveTowerFromSizing no longer halves fan_kw_fc', () => {
     const devs = AppStore.resolveTowerFromSizing({ selectedQty: 3, selectedModel: 'X', catalog: [{ model: 'X', fanKwDx: 40 }] });
     assert(devs[0].fan_kw_fc === 40, 'got ' + devs[0].fan_kw_fc);
+  });
+})();
+
+// ── Round 6 P0-T1: CDU 降額容量傳入模擬引擎、CDU/CRAH 運轉中最低轉速 ───────────
+(function () {
+  const ctx = freshCtx();
+  const { AppStore: S, CDUEngine, CRAHEngine } = ctx;
+  test('R6 P0-T1 resolveCduFromSizing passes derated capacity_kw', () => {
+    const devs = S.resolveCduFromSizing({ selectedQty: 10, selectedModel: 'C', derateFactor: 0.76, catalog: [{ model: 'C', capKw: 100, powerKw: 5 }] });
+    assert(Math.abs(devs[0].capacity_kw - 76) < 1e-9 && devs[0].nominal_capacity_kw === 100, JSON.stringify(devs[0]));
+  });
+  test('R6 P0-T1 CDUEngine reports deficit against derated capacity (9 x 76 kW < 862.6 kW)', () => {
+    const r = CDUEngine.calcPower([{ capacity_kw: 76, power_kw: 5, qty_running: 9 }], 862.6);
+    assert(Math.abs(r.deficit_kw - (862.6 - 684)) < 1e-6 && r.speed === 1.0, JSON.stringify(r));
+  });
+  test('R6 P0-T1 CDU pump speed floor 0.75 and CRAH fan speed floor 0.70', () => {
+    const cdu = CDUEngine.calcPower([{ capacity_kw: 100, power_kw: 10, qty_running: 4 }], 100);
+    assert(cdu.speed === 0.75, 'cdu speed ' + cdu.speed);
+    const crah = CRAHEngine.calcPower([{ cooling_capacity_kw: 60, power_kw: 5, qty_running: 2 }], 73);
+    assert(crah.speed === 0.70, 'crah speed ' + crah.speed);
+    assert(Math.abs(crah.power_kw - 10 * (0.10 + 0.90 * Math.pow(0.70, 3))) < 1e-9, 'crah power ' + crah.power_kw);
   });
 })();
 

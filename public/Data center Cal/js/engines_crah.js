@@ -16,14 +16,15 @@ const CRAHEngine = {
    * @returns {{ power_kw, plr, speed, cap_total }}
    */
   calcPower(crah_list, it_air_kw) {
-    if (!crah_list?.length) return { power_kw: 0, plr: 0, speed: 0, cap_total: 0 };
+    if (!crah_list?.length || it_air_kw <= 0) return { power_kw: 0, plr: 0, speed: 0, cap_total: 0 };
 
     const cap_total   = sumRunning(crah_list, 'cooling_capacity_kw');
     const power_rated = sumRunning(crah_list, 'power_kw');
     const plr_raw     = cap_total > 0 ? (it_air_kw / cap_total) : (it_air_kw > 0 ? 1.0 : 0);
     const plr         = Math.min(1.0, plr_raw);
     const deficit_kw  = Math.max(0, it_air_kw - cap_total);
-    const speed       = Math.max(0.30, Math.min(1.0, plr));
+    // R6 P0-T1: 運轉中最低轉速維持冷熱通道氣流組織
+    const speed       = Math.max(A('crah_fan_min_speed_active'), Math.min(1.0, plr));
     // CRAH fan: 10% static base (AHU filter & duct resistance)
     const power_kw    = power_rated * (0.10 + 0.90 * Math.pow(speed, 3));
 

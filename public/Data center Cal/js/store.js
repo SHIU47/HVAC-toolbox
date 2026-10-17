@@ -1170,13 +1170,23 @@
         },
 
         // v31 Phase 2: CDU 主機 → CDUEngine.calcPower() 要的陣列格式（型錄需同時有 capKw 與 powerKw）。
+        // R6 P0-T1: 傳入選型時的高溫降額係數，讓模擬引擎的 PLR 與容量不足判定和 Step 4 一致。
         resolveCduFromSizing(item) {
             if (!item || !item.selectedQty) return [];
             const catEntry = (item.catalog || []).find(c => c.model === item.selectedModel);
             const capKw = catEntry?.capKw ?? item.unitCapKw;
             const powerKw = catEntry?.powerKw;
             if (!capKw || !powerKw) return [];
-            return [{ model: item.selectedModel, capacity_kw: capKw, power_kw: powerKw, qty_running: this.runningQtyFromSelected(item.selectedQty), qty_total: item.selectedQty }];
+            const derateFactor = (typeof item.derateFactor === 'number' && item.derateFactor > 0) ? item.derateFactor : 1.0;
+            return [{
+                model: item.selectedModel,
+                nominal_capacity_kw: capKw,
+                capacity_kw: capKw * derateFactor,
+                derate_factor: derateFactor,
+                power_kw: powerKw,
+                qty_running: this.runningQtyFromSelected(item.selectedQty),
+                qty_total: item.selectedQty
+            }];
         },
 
         // v31 Phase 2: CRAH/RDHX 機組 → CRAHEngine.calcPower() 要的陣列格式（型錄需同時有 capKw 與 fanPowerKw）。

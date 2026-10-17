@@ -26,7 +26,8 @@ const CDUEngine = {
     const plr_raw     = cap_total > 0 ? (it_liquid_kw / cap_total) : (it_liquid_kw > 0 ? 1.0 : 0);
     const plr         = Math.min(1.0, plr_raw);
     const deficit_kw  = Math.max(0, it_liquid_kw - cap_total);
-    const speed       = Math.max(0.45, Math.min(1.0, plr));
+    // R6 P0-T1: 運轉中最低轉速維持冷板歧管最低壓差
+    const speed       = Math.max(A('cdu_pump_min_speed_active'), Math.min(1.0, plr));
     const power_kw    = power_rated * (0.15 + 0.85 * Math.pow(speed, 3));
 
     return { power_kw, plr, plr_raw, deficit_kw, speed, cap_total, power_rated };

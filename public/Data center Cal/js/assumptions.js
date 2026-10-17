@@ -88,7 +88,11 @@ const ASSUMPTIONS = {
   heat_rej_vfd_slope_per_k:       { val: 0.022, unit: '1/K',    label: '乾冷器/絕熱塔外氣低於自然冷卻門檻時，每低 1°C 風扇轉速調降比例', ref: 'ASHRAE 90.1 / EnergyPlus 變速乾冷器 approach 控制模型' },
   evap_tower_vfd_slope_per_k:     { val: 0.025, unit: '1/K',    label: '蒸發式冷卻塔濕球低於設計基準時，每低 1°C 風扇轉速調降比例', ref: 'ASHRAE 90.1 / CTI ATC-105 變速冷卻塔控制' },
   heat_rej_fan_min_speed:         { val: 0.45,  unit: 'ratio',  label: '室外排熱風扇（乾冷器/冷卻塔/絕熱塔）連續運轉最低變頻轉速', ref: 'EC 風扇/VFD 馬達散熱與盤管迎面風速下限（45% 轉速 ≈ 13.7% 功率）' },
-  ct_fan_ref_wb_max_c:            { val: 28.0,  unit: '°C',     label: '冷卻塔風扇 100% 轉速對應之濕球基準上限（冷凝排熱用途之設計濕球）', ref: '台灣主要城市夏季設計濕球 27–29°C' },
+  // ── [Round 6] 終端設備運轉中最低轉速 (P0-T1) ────────────────────────────
+  cdu_pump_min_speed_active:      { val: 0.75,  unit: 'ratio',  label: 'CDU 內建變頻泵運轉中最低轉速（維持冷板歧管最低壓差 ΔP 與最小雷諾數）', ref: 'ASHRAE TC9.9 Liquid Cooling Guidelines / NVIDIA 歧管 ΔP 控制' },
+  crah_fan_min_speed_active:      { val: 0.70,  unit: 'ratio',  label: 'CRAH/Fanwall EC 風機運轉中最低轉速（維持冷熱通道氣流組織與送風量）', ref: 'ASHRAE TC9.9 Thermal Guidelines — 通道氣流與 ΔT 封閉控制' },
+
+  ct_fan_ref_wb_max_c:           { val: 28.0,  unit: '°C',     label: '冷卻塔風扇 100% 轉速對應之濕球基準上限（冷凝排熱用途之設計濕球）', ref: '台灣主要城市夏季設計濕球 27–29°C' },
   ct_vfd_static_fraction:        { val: 0.10,  unit: 'ratio',  label: '排熱風扇無型錄資料時之固定功率比例（與 CoolingTowerEngine.calcFanPower 一致）', ref: 'P = P_rated × (0.10 + 0.90 × s³)' },
 };
 
