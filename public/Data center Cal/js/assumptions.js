@@ -83,6 +83,13 @@ const ASSUMPTIONS = {
 
   // ── [Round 6] 全廠電力損耗 (P0-E1) ───────────────────────────────────────
   electrical_loss_default_pct:    { val: 4.5,   unit: '%',      label: '預設全廠電力轉換與分配損耗率（變壓器 + UPS + PDU + 照明輔助）', ref: 'ISO/IEC 30134-2 / LBNL：MV/LV 變壓器 ~1.0% + 雙轉換 UPS ~2.5% + PDU/線路 ~0.5% + 照明/BMS ~0.5%' },
+
+  // ── [Round 6] 室外排熱風扇變頻 (P0-F1) ───────────────────────────────────
+  heat_rej_vfd_slope_per_k:       { val: 0.022, unit: '1/K',    label: '乾冷器/絕熱塔外氣低於自然冷卻門檻時，每低 1°C 風扇轉速調降比例', ref: 'ASHRAE 90.1 / EnergyPlus 變速乾冷器 approach 控制模型' },
+  evap_tower_vfd_slope_per_k:     { val: 0.025, unit: '1/K',    label: '蒸發式冷卻塔濕球低於設計基準時，每低 1°C 風扇轉速調降比例', ref: 'ASHRAE 90.1 / CTI ATC-105 變速冷卻塔控制' },
+  heat_rej_fan_min_speed:         { val: 0.45,  unit: 'ratio',  label: '室外排熱風扇（乾冷器/冷卻塔/絕熱塔）連續運轉最低變頻轉速', ref: 'EC 風扇/VFD 馬達散熱與盤管迎面風速下限（45% 轉速 ≈ 13.7% 功率）' },
+  ct_fan_ref_wb_max_c:            { val: 28.0,  unit: '°C',     label: '冷卻塔風扇 100% 轉速對應之濕球基準上限（冷凝排熱用途之設計濕球）', ref: '台灣主要城市夏季設計濕球 27–29°C' },
+  ct_vfd_static_fraction:        { val: 0.10,  unit: 'ratio',  label: '排熱風扇無型錄資料時之固定功率比例（與 CoolingTowerEngine.calcFanPower 一致）', ref: 'P = P_rated × (0.10 + 0.90 × s³)' },
 };
 
 function A(key, state) {

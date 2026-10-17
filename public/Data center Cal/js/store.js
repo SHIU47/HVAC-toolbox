@@ -1190,8 +1190,8 @@
         },
 
         // v31 Phase 2/3: 冷卻塔/乾冷器風扇 → CoolingTowerEngine.calcFanPower() 要的陣列格式（型錄需有 fanKwDx）。
-        // fanKwFc 優先用型錄真實值(device_catalog 廠商規格書已有部分機型提供)，
-        // 缺乏時才退回 dx 風扇功率的一半概估。
+        // fanKwFc 優先用型錄真實值(device_catalog 廠商規格書已有部分機型提供)。
+        // R6 P0-F1: 缺乏時沿用額定 fanKwDx，不再無條件砍半；低溫減載由各 Stage 的 VFD 轉速三次方處理。
         resolveTowerFromSizing(item) {
             if (!item || !item.selectedQty) return [];
             const catEntry = (item.catalog || []).find(c => c.model === item.selectedModel);
@@ -1200,7 +1200,7 @@
             return [{
                 model: item.selectedModel,
                 fan_kw_dx: fanKwDx,
-                fan_kw_fc: catEntry?.fanKwFc ?? (fanKwDx * 0.5),
+                fan_kw_fc: catEntry?.fanKwFc ?? fanKwDx,
                 qty_running: this.runningQtyFromSelected(item.selectedQty),
                 qty_total: item.selectedQty,
                 fan_control: 'vfd'

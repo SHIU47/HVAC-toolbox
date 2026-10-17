@@ -29,32 +29,30 @@
          * @returns {{ fanKw: number, waterM3: number }}
          */
         rejectionCost(ctx, Q_reject_kw, isFullFc) {
+            if (Q_reject_kw <= 0) return { fanKw: 0, waterM3: 0 };
             const dcDevices = ctx.equip?.dry_cooler || ctx.devices || [];
             const loadRatio = ctx.loadRatio ?? 1.0;
-            const fanMinSpeed = ctx.fanMinSpeed ?? 0.20;
+            const fanMinSpeed = Math.max(ctx.fanMinSpeed ?? 0, root.A('heat_rej_fan_min_speed'));
             const w = ctx.w || { db: 25, wb: 20 };
             const approach = ctx.approach_c ?? ctx.params?.approach_c ?? (ctx.sys?.dryCoolerApproachC || 5.0);
             const pheApproach = ctx.hx_approach_c ?? ctx.params?.hx_approach_c ?? 0.0;
             const t_supply_c = ctx.t_supply_c ?? ctx.sys?.fwsSupplyC ?? 42.0;
             const freeThresh = t_supply_c - approach - pheApproach;
 
+            // R6 P0-F1: 外氣達自然冷卻門檻時風扇需 100% 轉速才能維持設計 approach；
+            // 低於門檻時依過冷裕度線性降速，功耗再由三次方親和律計算
+            const subcoolMarginC = Math.max(0, freeThresh - w.db);
+            const ambSpeed = isFullFc ? Math.max(fanMinSpeed, 1.0 - root.A('heat_rej_vfd_slope_per_k') * subcoolMarginC) : 1.0;
+            const speedRatio = Math.max(fanMinSpeed, Math.min(1.0, loadRatio * ambSpeed));
+
             let fanKw = 0;
             if (dcDevices.length > 0 && typeof root.CoolingTowerEngine !== 'undefined') {
-                const speedRatio = (ctx.isPureEconomizer || isFullFc) ? loadRatio : 1.0;
-                fanKw = root.CoolingTowerEngine.calcFanPower(dcDevices, speedRatio, isFullFc, fanMinSpeed);
-            } else if (isFullFc) {
-                const minRatio = ctx.isPureEconomizer ? 0.2 : 0.15;
-                const fanRatio = Math.max(minRatio, Math.min(1.0, (w.db + 273.15) / (freeThresh + 273.15)));
-                fanKw = (Q_reject_kw / 500) * 8.0 * fanRatio;
+                fanKw = root.CoolingTowerEngine.calcFanPower(dcDevices, speedRatio, false, fanMinSpeed);
             } else {
-                if (ctx.isPureEconomizer) {
-                    const fanRatio = Math.max(0.2, Math.min(1.0, (w.db + 273.15) / (freeThresh + 273.15)));
-                    fanKw = (Q_reject_kw / 500) * 8.0 * fanRatio;
-                } else {
-                    fanKw = (Q_reject_kw / 500) * 15.0;
-                }
+                const fStatic = root.A('ct_vfd_static_fraction');
+                fanKw = (Q_reject_kw / 500) * 14.0 * (fStatic + (1 - fStatic) * Math.pow(speedRatio, 3));
             }
-            return { fanKw, waterM3: 0 };
+            return { fanKw, waterM3: 0, diag: { speedRatio } };
         },
 
         simulate(ctx) {

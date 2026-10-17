@@ -3211,6 +3211,30 @@ function freshCtx() {
   });
 })();
 
+// ── Round 6 P0-F1: 排熱風扇不再於自然冷卻時砍半，改依過冷裕度變頻 ──────────
+(function () {
+  const ctx = freshCtx();
+  const { CoolingStages, AppStore } = ctx;
+  const dc = CoolingStages.get('dry_cooler');
+  const devices = [{ fan_kw_dx: 30, fan_kw_fc: 30, qty_running: 2, fan_control: 'vfd' }];
+  const base = { devices, loadRatio: 1.0, t_supply_c: 42, approach_c: 5, hx_approach_c: 2 };
+  test('R6 P0-F1 dry cooler at free-cooling threshold runs 100% rated fan power', () => {
+    const r = dc.rejectionCost({ ...base, w: { db: 35, wb: 25 } }, 1000, true);
+    assert(Math.abs(r.fanKw - 60) < 1e-6, 'got ' + r.fanKw);
+  });
+  test('R6 P0-F1 dry cooler fan modulates down with subcool margin but not below min speed', () => {
+    const r15 = dc.rejectionCost({ ...base, w: { db: 15, wb: 10 } }, 1000, true).fanKw;
+    const r30 = dc.rejectionCost({ ...base, w: { db: 30, wb: 22 } }, 1000, true).fanKw;
+    const floorKw = 60 * (0.10 + 0.90 * Math.pow(0.45, 3));
+    assert(r30 < 60 && r15 < r30, `expected monotonic decrease, got r30=${r30} r15=${r15}`);
+    assert(r15 >= floorKw - 1e-6, `must respect 0.45 speed floor, got ${r15} < ${floorKw}`);
+  });
+  test('R6 P0-F1 resolveTowerFromSizing no longer halves fan_kw_fc', () => {
+    const devs = AppStore.resolveTowerFromSizing({ selectedQty: 3, selectedModel: 'X', catalog: [{ model: 'X', fanKwDx: 40 }] });
+    assert(devs[0].fan_kw_fc === 40, 'got ' + devs[0].fan_kw_fc);
+  });
+})();
+
 console.log(`\n${passCount} passed, ${failCount} failed, ${skipCount} skipped`);
 process.exit(failCount > 0 ? 1 : 0);
 

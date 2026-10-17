@@ -30,26 +30,33 @@
          * @returns {{ fanKw: number, waterM3: number, diag: Object }}
          */
         rejectionCost(ctx, Q_reject_kw, isFullFc) {
+            if (Q_reject_kw <= 0) return { fanKw: 0, waterM3: 0, diag: { evap: 0, bd: 0 } };
             const ctDevices = ctx.equip?.cooling_tower || ctx.devices || [];
             const loadRatio = ctx.loadRatio ?? 1.0;
-            const fanMinSpeed = ctx.fanMinSpeed ?? 0.20;
+            const fanMinSpeed = Math.max(ctx.fanMinSpeed ?? 0, root.A('heat_rej_fan_min_speed'));
             const evapFactor = ctx.evapFactor ?? ((typeof root.A === 'function') ? root.A('ct_evap_m3h_per_kw') : 0.00124);
             const cycles = ctx.cycles ?? (ctx.sys?.cyclesOfConcentration || 5);
             const w = ctx.w || { db: 25, wb: 20 };
             const t_supply_c = ctx.t_supply_c ?? ctx.sys?.fwsSupplyC ?? 42.0;
+            const approach = ctx.approach_c ?? (ctx.sys?.ctApproachC ?? 4.0);
 
-            const isLowFan = isFullFc && (w.wb <= (t_supply_c - 8.0));
-            const ctFanKw = (ctDevices.length > 0 && typeof root.CoolingTowerEngine !== 'undefined')
-                ? root.CoolingTowerEngine.calcFanPower(ctDevices, loadRatio, isLowFan, fanMinSpeed)
-                : null;
+            // R6 P0-F1: 濕球低於設計基準（出水溫 − approach，上限 ct_fan_ref_wb_max_c）越多，風扇轉速越低；
+            // 冷凝排熱用途由呼叫端以 refWbC 指定基準
+            const refWb = ctx.refWbC ?? Math.min(root.A('ct_fan_ref_wb_max_c'), t_supply_c - approach);
+            const subcoolMarginC = Math.max(0, refWb - w.wb);
+            const ambSpeed = Math.max(fanMinSpeed, 1.0 - root.A('evap_tower_vfd_slope_per_k') * subcoolMarginC);
+            const speedRatio = Math.max(fanMinSpeed, Math.min(1.0, loadRatio * ambSpeed));
 
-            const fanKw = ctFanKw ?? (((ctx.heatLoadKw ?? Q_reject_kw) / 500) * (isLowFan ? 8.0 : (isFullFc ? 12.0 : 14.0)));
+            const fStatic = root.A('ct_vfd_static_fraction');
+            const fanKw = (ctDevices.length > 0 && typeof root.CoolingTowerEngine !== 'undefined')
+                ? root.CoolingTowerEngine.calcFanPower(ctDevices, speedRatio, false, fanMinSpeed)
+                : (((ctx.heatLoadKw ?? Q_reject_kw) / 500) * 14.0 * (fStatic + (1 - fStatic) * Math.pow(speedRatio, 3)));
 
             const evap = Q_reject_kw * evapFactor;
             const bd = evap / Math.max(1, cycles - 1);
             const waterM3 = evap + bd;
 
-            return { fanKw, waterM3, diag: { evap, bd } };
+            return { fanKw, waterM3, diag: { evap, bd, speedRatio } };
         },
 
         simulate(ctx) {

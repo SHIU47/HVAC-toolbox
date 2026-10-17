@@ -155,25 +155,9 @@
             const Q_mech = isFullFc ? 0 : (Q_kw * chillerFraction);
             mechLoadKw = Q_mech;
 
-            // Economizer fan and water consumption
+            // Economizer fan (fc_coil) — 只排自然冷卻量，與冰機冷凝風扇無關
             if (economizer.type === 'fc_coil') {
                 const ecoCost = ecoStage.rejectionCost(stageCtx, Q_fc, isFullFc);
-                fanKw = ecoCost.fanKw;
-                waterM3 = ecoCost.waterM3 || 0;
-            } else if (economizer.type === 'evap_tower' && mechanical.condenserSink === 'evap_tower') {
-                // Cooling tower serves both WSE economizer and chiller condenser
-                const fwTowerDevices = ctx.equip?.[economizer.equipKey] || ctx.equip?.cooling_tower || [];
-                const fwTowerFanKw = (fwTowerDevices.length > 0 && typeof root.CoolingTowerEngine !== 'undefined')
-                    ? root.CoolingTowerEngine.calcFanPower(fwTowerDevices, loadRatio, isFullFc, fanMinSpeed)
-                    : null;
-
-                if (isFullFc) {
-                    fanKw = fwTowerFanKw ?? (Q_kw * 0.04);
-                } else {
-                    fanKw = fwTowerFanKw ?? ((Q_kw / 500) * 14.0);
-                }
-            } else {
-                const ecoCost = ecoStage.rejectionCost(stageCtx, Q_kw, isFullFc);
                 fanKw = ecoCost.fanKw;
                 waterM3 = ecoCost.waterM3 || 0;
             }
@@ -219,6 +203,18 @@
 
                 compressorKw = chRes.compressorKw;
                 if (chRes.deficitKw) deficitKw += chRes.deficitKw;
+            }
+
+            // R6 P0-F1: 串聯冰機的冷凝熱與預冷熱同排至外部排熱設備 → Q_reject = Q_kw + 壓縮機功
+            if (economizer.type === 'evap_tower' && mechanical.condenserSink === 'evap_tower') {
+                // 冷卻塔同時擔任 WSE 與冰機冷凝排熱：自然冷卻時依冰水出水溫基準調速，機械模式依冷凝設計濕球調速
+                const towerCtx = { ...stageCtx, devices: ctx.equip?.[economizer.equipKey] || ctx.equip?.cooling_tower || [] };
+                if (!isFullFc) towerCtx.refWbC = (typeof root.A === 'function') ? root.A('ct_fan_ref_wb_max_c') : 28.0;
+                fanKw = ecoStage.rejectionCost(towerCtx, Q_kw + compressorKw, isFullFc).fanKw;
+            } else if (economizer.type !== 'fc_coil') {
+                const ecoCost = ecoStage.rejectionCost(stageCtx, Q_kw + compressorKw, isFullFc);
+                fanKw = ecoCost.fanKw;
+                waterM3 = ecoCost.waterM3 || 0;
             }
 
             // Evaporative water consumption for water-cooled chiller systems

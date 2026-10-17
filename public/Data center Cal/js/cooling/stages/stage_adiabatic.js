@@ -43,26 +43,28 @@
             const isDry = w.db <= drySwitchpoint;
             const atDevices = ctx.equip?.adiabatic_tower || ctx.devices || [];
             const loadRatio = ctx.loadRatio ?? 1.0;
-            const fanMinSpeed = ctx.fanMinSpeed ?? 0.20;
+            const fanMinSpeed = Math.max(ctx.fanMinSpeed ?? 0, root.A('heat_rej_fan_min_speed'));
             const cycles = ctx.cycles ?? (sys.cyclesOfConcentration || 5);
 
-            const atFanKw = (atDevices.length > 0 && typeof root.CoolingTowerEngine !== 'undefined')
-                ? root.CoolingTowerEngine.calcFanPower(atDevices, loadRatio, isDry, fanMinSpeed)
-                : null;
+            // R6 P0-F1: 有效進風溫度（乾式=DB，濕式=噴霧預冷後）低於切換點越多，風扇轉速越低
+            const effectiveDb = isDry ? w.db : (w.db - (w.db - w.wb) * satEff);
+            const subcoolMarginC = Math.max(0, drySwitchpoint - effectiveDb);
+            const ambSpeed = Math.max(fanMinSpeed, 1.0 - root.A('heat_rej_vfd_slope_per_k') * subcoolMarginC);
+            const speedRatio = Math.max(fanMinSpeed, Math.min(1.0, loadRatio * ambSpeed));
 
-            let fanKw = 0;
+            const fStatic = root.A('ct_vfd_static_fraction');
+            let fanKw = (atDevices.length > 0 && typeof root.CoolingTowerEngine !== 'undefined')
+                ? root.CoolingTowerEngine.calcFanPower(atDevices, speedRatio, false, fanMinSpeed)
+                : ((Q_reject_kw / 500) * 14.0 * (fStatic + (1 - fStatic) * Math.pow(speedRatio, 3)));
             let waterM3 = 0;
             let sprayPumpKw = 0;
 
-            if (isDry) {
-                fanKw = atFanKw ?? ((Q_reject_kw / 500) * 7.5);
-            } else {
-                fanKw = atFanKw ?? ((Q_reject_kw / 500) * 11.0);
+            if (!isDry) {
                 sprayPumpKw = (Q_reject_kw * 0.0003); // Spray pump power (~0.03% of load)
                 fanKw += sprayPumpKw;
 
                 // Air-side sensible energy balance to calculate adiabatic evaporation
-                const T_eff = w.db - (w.db - w.wb) * satEff;
+                const T_eff = effectiveDb;
                 const dtAir = (typeof root.A === 'function') ? root.A('adiabatic_coil_air_dt_k') : 10.0;
                 const m_air = Q_reject_kw / (1.006 * Math.max(1.0, dtAir));
                 const m_evap = Math.max(0, m_air * 1.006 * (w.db - T_eff) / 2450.0);
@@ -71,7 +73,7 @@
                 waterM3 = evap + bd;
             }
 
-            return { fanKw, waterM3, diag: { isDry, drySwitchpoint, sprayPumpKw } };
+            return { fanKw, waterM3, diag: { isDry, drySwitchpoint, sprayPumpKw, speedRatio } };
         },
 
         simulate(ctx) {
