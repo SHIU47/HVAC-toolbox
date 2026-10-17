@@ -64,7 +64,10 @@ const ASSUMPTIONS = {
   chiller_cond_offset_water_k:    { val: 7.0,   unit: 'K',      label: '水冷冰機冷凝溫度 = 冷卻水進水溫 + 此值（含冷卻水溫升 5K + approach 2K）', ref: 'AHRI 550/590 標準工況 30→35°C，冷凝器 approach ≈ 2K' },
   chiller_cond_offset_air_k:      { val: 15.0,  unit: 'K',      label: '氣冷冰機冷凝溫度 = 外氣乾球 + 此值', ref: '氣冷冷凝器典型 TD 12–17 K' },
   chiller_min_lift_k:             { val: 10.0,  unit: 'K',      label: '壓縮機最小揚程（冷凝−蒸發），低於此值以此值計', ref: '離心/螺旋機油壓差與防喘振限制，磁浮機可低至 5–8 K' },
-  chiller_lift_factor_max:        { val: 2.0,   unit: '-',      label: '揚程修正後 COP 最多為設計 COP 的倍數', ref: '保守上限，避免低揚程外推過度樂觀' },
+  chiller_lift_factor_max:        { val: 1.35,  unit: '-',      label: '揚程修正後 COP 最多為設計 COP 的倍數', ref: '受壓縮機吸氣壓力上限 (MOP) 與最小壓比限制，溫水供水最大 COP 增益 1.35x（R6 P0-C2，原 2.0）' },
+  chiller_carnot_damp_air:        { val: 0.40,  unit: 'ratio',  label: '氣冷冰機 Carnot 揚程修正阻尼係數（扣除佔總功耗 ~25% 之冷凝風扇與固定損耗）', ref: 'AHRI 550/590 氣冷冰機 EER 對外氣溫度敏感度 ~1.8%/°C' },
+  chiller_carnot_damp_water:      { val: 0.65,  unit: 'ratio',  label: '水冷冰機 Carnot 揚程修正阻尼係數（反映壓縮機壓比極限與馬達/變頻固定損耗）', ref: 'AHRI 550/590 水冷冰機 EIR-FT 敏感度' },
+  chiller_evap_temp_cap_c:        { val: 20.0,  unit: '°C',     label: '冰機供水溫度增益上限（高於此值不再獲得額外 Carnot 減載增益）', ref: '壓縮機吸氣壓力 / MOP 操作包絡限制' },
   chiller_max_cewt_standard_c:    { val: 45.0,  unit: '°C',     label: '標準氣冷/水冷冰機冷凝進水上限', ref: '標準氣冷/水冷冰機冷凝進水上限，型錄通常為 40～45°C' },
   chiller_max_cewt_hightemp_c:    { val: 60.0,  unit: '°C',     label: '高溫型（heat-pump 級）冰機冷凝進水上限', ref: '高溫型（heat-pump 級）冰機冷凝進水上限' },
 
@@ -80,6 +83,52 @@ const ASSUMPTIONS = {
   chiller_fallback_cop_chw_ge20:  { val: 5.8,   unit: '-',      label: '高溫冰水 (≥20°C) 兜底 COP', ref: '典型高溫水冷/氣冷冰機滿載能效' },
   chiller_fallback_cop_chw_ge12:  { val: 4.2,   unit: '-',      label: '標準冰水 (12–20°C) 兜底 COP', ref: 'ASHRAE 90.1 / AHRI 550/590 標準工況典型值' },
   chiller_fallback_cop_chw_lt12:  { val: 3.0,   unit: '-',      label: '低溫冰水 (<12°C) 兜底 COP', ref: '低溫供水/高揚程典型保守值' },
+
+  // ── [Round 6] 全廠電力損耗 (P0-E1) ───────────────────────────────────────
+  electrical_loss_default_pct:    { val: 4.5,   unit: '%',      label: '預設全廠電力轉換與分配損耗率（變壓器 + UPS + PDU + 照明輔助）', ref: 'ISO/IEC 30134-2 / LBNL：MV/LV 變壓器 ~1.0% + 雙轉換 UPS ~2.5% + PDU/線路 ~0.5% + 照明/BMS ~0.5%' },
+
+  // ── [Round 6] 室外排熱風扇變頻 (P0-F1) ───────────────────────────────────
+  heat_rej_vfd_slope_per_k:       { val: 0.022, unit: '1/K',    label: '乾冷器/絕熱塔外氣低於自然冷卻門檻時，每低 1°C 風扇轉速調降比例', ref: 'ASHRAE 90.1 / EnergyPlus 變速乾冷器 approach 控制模型' },
+  evap_tower_vfd_slope_per_k:     { val: 0.025, unit: '1/K',    label: '蒸發式冷卻塔濕球低於設計基準時，每低 1°C 風扇轉速調降比例', ref: 'ASHRAE 90.1 / CTI ATC-105 變速冷卻塔控制' },
+  heat_rej_fan_min_speed:         { val: 0.45,  unit: 'ratio',  label: '室外排熱風扇（乾冷器/冷卻塔/絕熱塔）連續運轉最低變頻轉速', ref: 'EC 風扇/VFD 馬達散熱與盤管迎面風速下限（45% 轉速 ≈ 13.7% 功率）' },
+  // ── [Round 6] 終端設備運轉中最低轉速 (P0-T1) ────────────────────────────
+  cdu_pump_min_speed_active:      { val: 0.75,  unit: 'ratio',  label: 'CDU 內建變頻泵運轉中最低轉速（維持冷板歧管最低壓差 ΔP 與最小雷諾數）', ref: 'ASHRAE TC9.9 Liquid Cooling Guidelines / NVIDIA 歧管 ΔP 控制' },
+  crah_fan_min_speed_active:      { val: 0.70,  unit: 'ratio',  label: 'CRAH/Fanwall EC 風機運轉中最低轉速（維持冷熱通道氣流組織與送風量）', ref: 'ASHRAE TC9.9 Thermal Guidelines — 通道氣流與 ΔT 封閉控制' },
+
+  ct_fan_ref_wb_max_c:           { val: 28.0,  unit: '°C',     label: '冷卻塔風扇 100% 轉速對應之濕球基準上限（冷凝排熱用途之設計濕球）', ref: '台灣主要城市夏季設計濕球 27–29°C' },
+  ct_vfd_static_fraction:        { val: 0.10,  unit: 'ratio',  label: '排熱風扇無型錄資料時之固定功率比例（與 CoolingTowerEngine.calcFanPower 一致）', ref: 'P = P_rated × (0.10 + 0.90 × s³)' },
+
+  // ── [Round 6] 水力迴路揚程、冷卻水泵與噴淋水泵 (P1-H1) ───────────────────
+  glycol_cp_kj_kgk: {
+    val: 3.90, unit: 'kJ/(kg·K)',
+    label: '30% 乙二醇/丙二醇水溶液比熱容（乾冷器與閉式塔防凍/防腐迴路）',
+    ref: 'ASHRAE Fundamentals Handbook Chapter 31 — Physical Properties of Secondary Coolants (EG/PG 25-30%)'
+  },
+  phe_secondary_loop_head_m: {
+    val: 16.0, unit: 'm',
+    label: '板式熱交換器 (PHE) 雙迴路隔離或串聯雙熱交換器之附加水頭損失 (含 PHE 壓降 + 二次側管損)',
+    ref: 'Alfa Laval / SWEP Brazed & Gasketed PHE Hydraulic Drop (50-70 kPa) + Secondary Loop Piping (90-100 kPa)'
+  },
+  cw_pump_head_default_m: {
+    val: 22.0, unit: 'm',
+    label: '水冷式冰水主機之冷卻水迴路 (CW Loop: 冷凝器 + 冷卻塔噴嘴 + 管路) 預設揚程',
+    ref: 'ASHRAE HVAC Systems and Equipment Handbook — Condenser Water Pump Sizing'
+  },
+  cw_loop_delta_t_c: {
+    val: 5.5, unit: '°C',
+    label: '水冷式冰機冷凝器冷卻水設計溫差 (AHRI 550/590 標準 30°C 進 / 35.5°C 出)',
+    ref: 'AHRI Standard 550/590 Condenser Water Rating ΔT'
+  },
+  closed_tower_spray_pump_kw_per_kw: {
+    val: 0.0055, unit: 'kW/kW_th',
+    label: '閉式冷卻水塔 (Closed-Circuit Tower) 盤管外部噴淋水泵單位排熱量功耗比 (~5.5 W/kW)',
+    ref: 'BAC FXV3 / Evapcoeco-ATWB Catalog Spray Pump Motor Spec (e.g. 7.5-11 kW per 1500 kW cell)'
+  },
+  adiabatic_spray_pump_kw_per_kw: {
+    val: 0.0020, unit: 'kW/kW_th',
+    label: '絕熱預冷塔 (Adiabatic Cooler) 濕模式增濕循環水泵與水處理電磁閥單位排熱量功耗比 (~2.0 W/kW)',
+    ref: 'BAC TrilliumSeries / Güntner HydroPad Recirculation Pump Spec'
+  },
 };
 
 function A(key, state) {

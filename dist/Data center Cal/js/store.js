@@ -53,7 +53,7 @@
 
             // 全廠電力系統損失率 (Facility Electrical Loss %, e.g., 0.0% ~ 15.0%)
             // 涵蓋高/低壓變壓器、UPS 雙轉換損耗、PDU、電纜配電阻抗發熱等
-            facilityElectricalLossPct: 0.0,
+            facilityElectricalLossPct: (typeof A === 'function') ? A('electrical_loss_default_pct') : 4.5,
 
             // Step 2: Hall -> DU -> SU Hierarchy
             halls: [
@@ -211,6 +211,7 @@
             const exportData = {
                 schemaVersion: 'v6',
                 savedAt: new Date().toISOString(),
+                facilityElectricalLossPct: s.facilityElectricalLossPct ?? A('electrical_loss_default_pct'),
                 site: {
                     selectedCity: s.site.selectedCity,
                     stationId: s.site.stationId || null,
@@ -332,6 +333,11 @@
                 if (stateData.assumptions_override) {
                     this.state.assumptions_override = stateData.assumptions_override;
                 }
+                // P0-E1: 舊專案檔未存電損時套用預設值；使用者主動設 0% 時保留 0%
+                const lossPct = Number(stateData.facilityElectricalLossPct);
+                this.state.facilityElectricalLossPct = (stateData.facilityElectricalLossPct !== undefined && stateData.facilityElectricalLossPct !== null && Number.isFinite(lossPct))
+                    ? Math.max(0, Math.min(50, lossPct))
+                    : A('electrical_loss_default_pct');
                 if (stateData.site) {
                     if (stateData.site.selectedCity) {
                         this.state.site.selectedCity = stateData.site.selectedCity;
@@ -350,8 +356,9 @@
                     const stationId = this.state.site.stationId;
 
                     if (stationSource === 'builtin') {
-                        if (cityName && typeof window !== 'undefined' && window.BUILTIN_WEATHER_DATA && window.BUILTIN_WEATHER_DATA[cityName]) {
-                            const data = window.BUILTIN_WEATHER_DATA[cityName];
+                        const globalScope = (typeof window !== 'undefined') ? window : globalThis;
+                        if (cityName && globalScope.BUILTIN_WEATHER_DATA && globalScope.BUILTIN_WEATHER_DATA[cityName]) {
+                            const data = globalScope.BUILTIN_WEATHER_DATA[cityName];
                             this.state.site.hourly = data.hourlyData;
                             this.state.site.monthlyStats = data.monthlyStats;
                             this.state.site.isRealEpw = true;
@@ -1164,13 +1171,23 @@
         },
 
         // v31 Phase 2: CDU 主機 → CDUEngine.calcPower() 要的陣列格式（型錄需同時有 capKw 與 powerKw）。
+        // R6 P0-T1: 傳入選型時的高溫降額係數，讓模擬引擎的 PLR 與容量不足判定和 Step 4 一致。
         resolveCduFromSizing(item) {
             if (!item || !item.selectedQty) return [];
             const catEntry = (item.catalog || []).find(c => c.model === item.selectedModel);
             const capKw = catEntry?.capKw ?? item.unitCapKw;
             const powerKw = catEntry?.powerKw;
             if (!capKw || !powerKw) return [];
-            return [{ model: item.selectedModel, capacity_kw: capKw, power_kw: powerKw, qty_running: this.runningQtyFromSelected(item.selectedQty), qty_total: item.selectedQty }];
+            const derateFactor = (typeof item.derateFactor === 'number' && item.derateFactor > 0) ? item.derateFactor : 1.0;
+            return [{
+                model: item.selectedModel,
+                nominal_capacity_kw: capKw,
+                capacity_kw: capKw * derateFactor,
+                derate_factor: derateFactor,
+                power_kw: powerKw,
+                qty_running: this.runningQtyFromSelected(item.selectedQty),
+                qty_total: item.selectedQty
+            }];
         },
 
         // v31 Phase 2: CRAH/RDHX 機組 → CRAHEngine.calcPower() 要的陣列格式（型錄需同時有 capKw 與 fanPowerKw）。
@@ -1184,8 +1201,8 @@
         },
 
         // v31 Phase 2/3: 冷卻塔/乾冷器風扇 → CoolingTowerEngine.calcFanPower() 要的陣列格式（型錄需有 fanKwDx）。
-        // fanKwFc 優先用型錄真實值(device_catalog 廠商規格書已有部分機型提供)，
-        // 缺乏時才退回 dx 風扇功率的一半概估。
+        // fanKwFc 優先用型錄真實值(device_catalog 廠商規格書已有部分機型提供)。
+        // R6 P0-F1: 缺乏時沿用額定 fanKwDx，不再無條件砍半；低溫減載由各 Stage 的 VFD 轉速三次方處理。
         resolveTowerFromSizing(item) {
             if (!item || !item.selectedQty) return [];
             const catEntry = (item.catalog || []).find(c => c.model === item.selectedModel);
@@ -1194,7 +1211,7 @@
             return [{
                 model: item.selectedModel,
                 fan_kw_dx: fanKwDx,
-                fan_kw_fc: catEntry?.fanKwFc ?? (fanKwDx * 0.5),
+                fan_kw_fc: catEntry?.fanKwFc ?? fanKwDx,
                 qty_running: this.runningQtyFromSelected(item.selectedQty),
                 qty_total: item.selectedQty,
                 fan_control: 'vfd'
@@ -1551,20 +1568,38 @@
                 dlc_ratio: duSumm.dlcPct
             };
 
+            const arch = cduSys.architecture || 'dry_cooler_hx';
+            const cduArchDesc = (typeof CoolingArchRegistry !== 'undefined') ? CoolingArchRegistry.get(arch) : null;
+            const hasGlycol = ['dry_cooler_hx', 'dry_cooler_pure', 'dry_cooler_trim', 'cooling_tower_hx'].includes(cduSys.architecture);
+            const cpCdu = hasGlycol ? ((typeof A === 'function') ? A('glycol_cp_kj_kgk') : 3.90) : 4.186;
             const dT_cdu = Math.max(1.0, (cduSys.fwsReturnC || 55) - (cduSys.fwsSupplyC || 40));
-            const flowLpm_cdu = duSumm.liquidHeatKw > 0 ? Math.round((duSumm.liquidHeatKw * 60) / (4.186 * 1.0 * dT_cdu)) : 0;
+            const flowLpm_cdu = duSumm.liquidHeatKw > 0 ? Math.round((duSumm.liquidHeatKw * 60) / (cpCdu * 1.0 * dT_cdu)) : 0;
             const pipeCdu = this.selectPipeDnAndVelocity(flowLpm_cdu);
 
-            const cduHeadM = cduSys.pumpHeadM ?? ((typeof A === 'function') ? A('cdu_pump_head_default_m') : 28);
+            const baseCduHeadM = cduSys.pumpHeadM ?? ((typeof A === 'function') ? A('cdu_pump_head_default_m') : 28);
+            const extraPheHeadM = (cduSys.hasPhe !== false || cduArchDesc?.flags?.isTrim || cduSys.architecture === 'dry_cooler_trim')
+                ? ((typeof A === 'function') ? A('phe_secondary_loop_head_m') : 16.0)
+                : 0.0;
+            const cduHeadM = baseCduHeadM + extraPheHeadM;
+
             const pumpItemCdu = (cduSys.sizing || []).find(s => s.key === 'cdu_pump');
             const catEntryCdu = pumpItemCdu ? (pumpItemCdu.catalog || []).find(c => c.model === pumpItemCdu.selectedModel) : null;
             const etaPumpCdu = catEntryCdu?.pumpEtaDesign ?? catEntryCdu?.pump_eta_design ?? ((typeof A === 'function') ? A('pump_eta_default') : 0.75);
             const etaMotorCdu = (typeof catEntryCdu?.motor_efficiency_pct === 'number' && catEntryCdu.motor_efficiency_pct > 0)
                 ? (catEntryCdu.motor_efficiency_pct / 100)
                 : (catEntryCdu?.motorEtaDesign ?? ((typeof A === 'function') ? A('motor_eta_default') : 0.92));
-            const cduPumpPowerKw = flowLpm_cdu > 0
+            let cduPumpPowerKw = flowLpm_cdu > 0
                 ? (flowLpm_cdu * cduHeadM * 9.80665) / (60000 * etaPumpCdu * etaMotorCdu)
                 : 0;
+
+            // P1-H1: 若液冷採用水冷式冰機 (water_chiller)，加計冷凝器側冷卻水泵 (CW Pump) 水力功耗
+            if ((cduArchDesc?.flags?.isWaterChiller || cduSys.architecture === 'water_chiller') && duSumm.liquidHeatKw > 0) {
+                const cwDt = (typeof A === 'function') ? A('cw_loop_delta_t_c') : 5.5;
+                const cwHeadM = (typeof A === 'function') ? A('cw_pump_head_default_m') : 22.0;
+                const qRejCdu = duSumm.liquidHeatKw * 1.18;
+                const flowLpmCw = (qRejCdu * 60) / (4.186 * cwDt);
+                cduPumpPowerKw += (flowLpmCw * cwHeadM * 9.80665) / (60000 * etaPumpCdu * etaMotorCdu);
+            }
 
             cduSys.hydraulics = {
                 flow_lpm: flowLpm_cdu,
@@ -1577,7 +1612,6 @@
             const reqCduKw = duSumm.liquidHeatKw;
 
             // V21 依架構生成專屬 sizing 清單 (若品項不符則重置)
-            const arch = cduSys.architecture || 'dry_cooler_hx';
             if (!cduSys.sizing || cduSys.sizing.length === 0 || cduSys.sizingArch !== arch) {
                 cduSys.sizing = this.generateCduSizing(arch, reqCduKw, cduSys.hydraulics.pump_power_kw);
                 cduSys.sizingArch = arch;
@@ -1588,7 +1622,6 @@
                 SizingEngine.evaluateCduSizing(cduSys, reqCduKw, dCond, {
                     trimOperatingPoint: this.trimOperatingPoint.bind(this)
                 });
-                const cduArchDesc = (typeof CoolingArchRegistry !== 'undefined') ? CoolingArchRegistry.get(arch) : null;
                 cduSys.validation = SizingEngine.validateCdu(cduSys, pipeCdu.velocity_mps, dCond, cduArchDesc);
             }
 
@@ -1609,9 +1642,19 @@
             const etaMotorFw = (typeof catEntryFw?.motor_efficiency_pct === 'number' && catEntryFw.motor_efficiency_pct > 0)
                 ? (catEntryFw.motor_efficiency_pct / 100)
                 : (catEntryFw?.motorEtaDesign ?? ((typeof A === 'function') ? A('motor_eta_default') : 0.92));
-            const fwPumpPowerKw = flowLpm_fw > 0
+            const fwArch = fwSys.architecture || 'air_cooled_chiller';
+            const fwArchDesc = (typeof CoolingArchRegistry !== 'undefined') ? CoolingArchRegistry.get(fwArch) : null;
+            let fwPumpPowerKw = flowLpm_fw > 0
                 ? (flowLpm_fw * fwHeadM * 9.80665) / (60000 * etaPumpFw * etaMotorFw)
                 : 0;
+
+            if ((fwArchDesc?.flags?.consumesWater || fwSys.architecture === 'water_cooled_chiller') && airHeatTotal > 0) {
+                const cwDt = (typeof A === 'function') ? A('cw_loop_delta_t_c') : 5.5;
+                const cwHeadM = (typeof A === 'function') ? A('cw_pump_head_default_m') : 22.0;
+                const qRejFw = airHeatTotal * 1.20;
+                const flowLpmCwFw = (qRejFw * 60) / (4.186 * cwDt);
+                fwPumpPowerKw += (flowLpmCwFw * cwHeadM * 9.80665) / (60000 * etaPumpFw * etaMotorFw);
+            }
 
             fwSys.hydraulics = {
                 flow_lpm: flowLpm_fw,
@@ -1622,7 +1665,6 @@
             };
 
             const reqAirKw = airHeatTotal;
-            const fwArch = fwSys.architecture || 'air_cooled_chiller';
 
             // V24 Phase 2: 若架構變更或尚未初始化，依新架構動態生成選型清單
             if (!fwSys.sizing || fwSys.sizing.length === 0 || fwSys.sizingArch !== fwArch) {

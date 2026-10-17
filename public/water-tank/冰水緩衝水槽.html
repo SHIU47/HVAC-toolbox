@@ -1,0 +1,3186 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>冰水緩衝水槽計算器 — 停電與冰機重啟熱緩衝選型計算書 (工業級 3D 斜溫層熱流模擬)</title>
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <style>
+    :root {
+      --bg: #F1F5F9;
+      --card: #FFFFFF;
+      --card-subtle: #F8FAFC;
+      --line: #E2E8F0;
+      --line-strong: #CBD5E1;
+      --ink: #0F172A;
+      --ink-2: #334155;
+      --muted: #64748B;
+      --faint: #94A3B8;
+      --accent: #0284C7;
+      --accent-hover: #0369A1;
+      --accent-soft: #E0F2FE;
+      --water: #0EA5E9;
+      --water-deep: #0284C7;
+      --warm: #EF4444;
+      --warm-soft: #FEE2E2;
+      --pass: #15803D;
+      --pass-soft: #DCFCE7;
+      --warn: #B45309;
+      --warn-soft: #FEF3C7;
+      --fail: #DC2626;
+      --fail-soft: #FEE2E2;
+      --radius: 12px;
+      --shadow-sm: 0 1px 2px 0 rgba(15, 23, 42, 0.04);
+      --shadow-md: 0 4px 12px -2px rgba(15, 23, 42, 0.08);
+      --font: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang TC", "Microsoft JhengHei", "Noto Sans TC", sans-serif;
+      --mono: "JetBrains Mono", "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    [hidden] { display: none !important; }
+    button, input, select { font: inherit; color: inherit; }
+    body {
+      background: var(--bg);
+      color: var(--ink);
+      font-family: var(--font);
+      font-size: 14px;
+      line-height: 1.5;
+      -webkit-font-smoothing: antialiased;
+    }
+    .num, .kpi-v, code, .iw input, td, .vc-val, .hud-v { font-variant-numeric: tabular-nums; }
+
+    .topbar {
+      position: sticky; top: 0; z-index: 50;
+      background: rgba(255, 255, 255, 0.94);
+      backdrop-filter: blur(10px);
+      border-bottom: 1px solid var(--line);
+      display: flex; align-items: center; gap: 16px;
+      padding: 10px 24px; flex-wrap: wrap;
+      box-shadow: var(--shadow-sm);
+    }
+    .brand { display: flex; align-items: center; gap: 11px; }
+    .logo {
+      width: 36px; height: 36px; border-radius: 10px;
+      background: linear-gradient(135deg, #EF4444 0%, #F59E0B 35%, #0EA5E9 75%, #0284C7 100%);
+      color: #fff; display: grid; place-items: center;
+      box-shadow: 0 2px 6px rgba(2, 132, 199, 0.3); flex: none;
+    }
+    .app-title { font-size: 15.5px; font-weight: 800; letter-spacing: -0.2px; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+    .app-badge { font-size: 11px; font-weight: 700; padding: 1px 7px; border-radius: 6px; background: var(--accent-soft); color: var(--accent); }
+    .app-badge.hot { background: #FEF2F2; color: #DC2626; border: 1px solid #FECACA; }
+    .app-sub { font-size: 12px; color: var(--muted); }
+    .project { display: flex; gap: 8px; flex: 1; min-width: 240px; }
+    .project input {
+      border: 1px solid var(--line); background: var(--card-subtle);
+      border-radius: 8px; padding: 6px 11px; font-size: 13px; outline: none; min-width: 0; transition: all 0.15s;
+    }
+    .project input:focus { border-color: var(--accent); background: #fff; box-shadow: 0 0 0 3px rgba(2, 132, 199, 0.12); }
+    .project .pn { flex: 1.2; font-weight: 600; }
+    .project .ps { flex: 1; color: var(--ink-2); }
+    .actions { display: flex; align-items: center; gap: 7px; flex-wrap: wrap; }
+    .autosave { font-size: 12px; color: var(--faint); margin-right: 4px; }
+    .btn {
+      border: 1px solid var(--line-strong); background: #fff; color: var(--ink-2);
+      border-radius: 8px; padding: 6px 11px; font-size: 12.5px; font-weight: 600;
+      cursor: pointer; display: inline-flex; align-items: center; gap: 6px; transition: all 0.15s; white-space: nowrap;
+    }
+    .btn:hover { background: var(--card-subtle); border-color: #94A3B8; color: var(--ink); }
+    .btn.primary { background: var(--accent); border-color: var(--accent); color: #fff; box-shadow: 0 1px 3px rgba(2, 132, 199, 0.25); }
+    .btn.primary:hover { background: var(--accent-hover); }
+    .btn.verify { background: var(--pass-soft); border-color: #86EFAC; color: var(--pass); }
+    .btn.verify:hover { background: #BBF7D0; }
+    .btn.quiet { border-color: transparent; background: transparent; color: var(--muted); }
+    .btn.quiet:hover { background: #E2E8F0; color: var(--ink); }
+
+    .scenario-bar {
+      max-width: 1640px; margin: 12px auto 0; padding: 0 24px;
+      display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+    }
+    .scenario-label { font-size: 12px; font-weight: 700; color: var(--muted); display: flex; align-items: center; gap: 5px; }
+    .preset-btn {
+      border: 1px solid var(--line-strong); background: #fff; border-radius: 999px;
+      padding: 4px 12px; font-size: 12px; font-weight: 600; color: var(--ink-2);
+      cursor: pointer; transition: all 0.15s; display: inline-flex; align-items: center; gap: 5px;
+    }
+    .preset-btn:hover { border-color: var(--accent); color: var(--accent); background: var(--accent-soft); }
+    .preset-btn small { color: var(--muted); font-weight: 500; }
+
+    .layout {
+      display: grid; grid-template-columns: minmax(390px, 445px) 1fr;
+      gap: 20px; padding: 14px 24px 60px; max-width: 1640px; margin: 0 auto; align-items: start;
+    }
+    @media (max-width: 1120px) { .layout { grid-template-columns: 1fr; } }
+    /* 寬螢幕：頁面固定，左側輸入與右側結果各自獨立捲動 */
+    @media (min-width: 1121px) {
+      html { height: 100%; overflow: hidden; }
+      body { height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
+      .topbar, .scenario-bar { flex: none; }
+      .layout { flex: 1 1 auto; min-height: 0; width: 100%; grid-template-rows: minmax(0, 1fr); align-items: stretch; padding-bottom: 14px; }
+      .inputs, .results { min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding-right: 6px; scrollbar-width: thin; scrollbar-gutter: stable; }
+      .inputs > *, .results > * { flex-shrink: 0; }
+    }
+    .card { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); box-shadow: var(--shadow-sm); }
+    .inputs, .results { display: flex; flex-direction: column; gap: 14px; }
+
+    .sec { padding: 16px 18px 18px; }
+    .sec-h { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; }
+    .sec-h .no {
+      width: 25px; height: 25px; border-radius: 7px;
+      background: var(--accent-soft); color: var(--accent);
+      font-size: 12.5px; font-weight: 800; display: grid; place-items: center; flex: none;
+    }
+    .sec-h h2 { font-size: 15px; font-weight: 700; }
+    .sec-h p { font-size: 12px; color: var(--muted); }
+    .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px 14px; }
+    .field.full { grid-column: 1 / -1; }
+    .grid > *, .layout > * { min-width: 0; }
+    .field label { display: block; font-size: 12.5px; font-weight: 600; color: var(--ink-2); margin-bottom: 5px; }
+    .req { color: var(--fail); font-style: normal; margin-left: 2px; }
+    .iw {
+      display: flex; align-items: center; height: 38px;
+      border: 1px solid var(--line-strong); border-radius: 8px;
+      background: #fff; transition: border-color .15s, box-shadow .15s;
+    }
+    .iw:focus-within { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(2, 132, 199, 0.14); }
+    .iw input {
+      flex: 1; min-width: 0; width: 100%; height: 100%;
+      border: none; background: transparent; padding: 0 8px 0 11px;
+      font-size: 14.5px; font-weight: 600; outline: none;
+    }
+    .iw .u { flex: none; padding-right: 10px; font-size: 12px; color: var(--muted); white-space: nowrap; user-select: none; }
+    .iw:has(input.is-invalid) { border-color: var(--fail); background: var(--fail-soft); }
+    .hint { font-size: 11.5px; color: var(--muted); margin-top: 4px; line-height: 1.45; }
+    .err { display: none; font-size: 12px; color: var(--fail); font-weight: 600; margin-top: 4px; }
+    .err.show { display: block; }
+    .note {
+      margin-top: 12px; font-size: 12.5px; color: var(--ink-2);
+      background: var(--card-subtle); border: 1px solid var(--line);
+      border-radius: 8px; padding: 9px 12px; line-height: 1.55;
+    }
+    .note b { font-family: var(--mono); color: var(--ink); }
+    .chips { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 6px; }
+    .chip {
+      border: 1px solid var(--line-strong); background: #fff; border-radius: 999px;
+      padding: 2px 10px; font-size: 11.5px; font-weight: 600; color: var(--ink-2); cursor: pointer; transition: all 0.12s;
+    }
+    .chip:hover { border-color: var(--accent); color: var(--accent); background: var(--accent-soft); }
+    .chip.on { background: var(--accent); border-color: var(--accent); color: #fff; }
+
+    .seg { display: flex; background: #E2E8F0; border-radius: 9px; padding: 3px; margin-bottom: 8px; }
+    .seg button {
+      flex: 1; border: none; background: transparent; padding: 7px 10px;
+      border-radius: 7px; font-size: 12.5px; font-weight: 600; color: var(--muted); cursor: pointer; transition: all 0.15s;
+    }
+    .seg button.on { background: #fff; color: var(--ink); box-shadow: 0 1px 2px rgba(15, 23, 42, 0.12); }
+    .mode-desc { font-size: 12px; color: var(--muted); margin-bottom: 12px; line-height: 1.5; }
+
+    /* Dual Load Readout Box */
+    .mode-compare-mini {
+      margin-top: 12px; border: 1px solid #BAE6FD; background: #F0F9FF;
+      border-radius: 9px; padding: 10px 12px; font-size: 12px; color: var(--ink-2);
+    }
+    .mode-compare-mini .mc-title {
+      font-weight: 800; color: #0369A1; margin-bottom: 6px; display: flex; justify-content: space-between; align-items: center;
+    }
+    .mode-compare-grid {
+      display: grid; grid-template-columns: 1fr 1fr; gap: 8px;
+    }
+    .mc-col {
+      background: #fff; border: 1px solid #E0F2FE; border-radius: 7px; padding: 7px 9px;
+    }
+    .mc-col.active {
+      border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent);
+    }
+    .mc-col h4 { font-size: 11.5px; font-weight: 700; color: var(--ink); display: flex; justify-content: space-between; }
+    .mc-col p { font-size: 11.5px; color: var(--muted); margin-top: 2px; }
+    .mc-col b { font-family: var(--mono); color: var(--ink); }
+
+    details.adv > summary {
+      list-style: none; cursor: pointer; padding: 13px 18px;
+      display: flex; align-items: center; justify-content: space-between; font-weight: 700; font-size: 13.5px;
+    }
+    details.adv > summary::-webkit-details-marker { display: none; }
+    details.adv > summary .sum { font-weight: 500; font-size: 12px; color: var(--muted); margin-left: auto; }
+    details.adv > summary::after { content: '[+]'; font-family: var(--mono); font-size: 11px; color: var(--faint); margin-left: 10px; }
+    details.adv[open] > summary::after { content: '[-]'; }
+    details.adv .adv-body { padding: 0 18px 16px; display: flex; flex-direction: column; gap: 14px; }
+    .radios { display: flex; flex-wrap: wrap; gap: 8px 16px; font-size: 13px; }
+    .radios label { display: flex; align-items: center; gap: 6px; cursor: pointer; font-weight: 500; }
+
+    .basis {
+      padding: 11px 16px; display: grid; grid-template-columns: repeat(5, minmax(0, 1fr));
+      gap: 8px 14px; background: linear-gradient(180deg, #FFFFFF 0%, #F8FAFC 100%);
+    }
+    .basis div { font-size: 12.5px; color: var(--ink); font-weight: 600; min-width: 0; }
+    .basis small { display: block; font-size: 10.5px; font-weight: 800; letter-spacing: .6px; color: var(--muted); margin-bottom: 1px; }
+    @media (max-width: 900px) { .basis { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+
+    .verdict { padding: 16px 20px; border-left-width: 5px; }
+    .verdict.pass { border-left-color: var(--pass); }
+    .verdict.warn { border-left-color: var(--warn); }
+    .verdict.fail { border-left-color: var(--fail); }
+    .v-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+    .v-head-left { display: flex; align-items: center; gap: 12px; }
+    .v-icon {
+      width: 36px; height: 36px; border-radius: 8px;
+      display: grid; place-items: center; font-weight: 800; font-size: 11px; letter-spacing: 0.5px; color: #fff; flex: none;
+      font-family: var(--mono);
+    }
+    .verdict.pass .v-icon { background: var(--pass); }
+    .verdict.warn .v-icon { background: var(--warn); }
+    .verdict.fail .v-icon { background: var(--fail); }
+    .v-title { font-size: 17.5px; font-weight: 800; }
+    .v-sub { font-size: 12.5px; color: var(--muted); margin-top: 1px; }
+    .v-layers { display: flex; flex-wrap: wrap; gap: 7px; margin: 11px 0 0 48px; }
+    .layer { font-size: 12px; font-weight: 700; padding: 3px 10px; border-radius: 999px; }
+    .layer.pass { background: var(--pass-soft); color: var(--pass); }
+    .layer.warn { background: var(--warn-soft); color: var(--warn); }
+    .layer.fail { background: var(--fail-soft); color: var(--fail); }
+    .v-list { margin: 10px 0 0 48px; font-size: 12.5px; color: var(--ink-2); display: flex; flex-direction: column; gap: 4px; }
+    .v-list a { color: var(--ink); font-weight: 700; cursor: pointer; text-decoration: underline; text-decoration-color: var(--line-strong); }
+    .v-list a:hover { color: var(--accent); }
+
+    .kpis { display: grid; grid-template-columns: repeat(3, 1fr); }
+    .kpi { padding: 15px 18px; min-width: 0; }
+    .kpi + .kpi { border-left: 1px solid var(--line); }
+    .kpi-l { font-size: 12px; color: var(--muted); font-weight: 600; }
+    .kpi-v { font-size: 28px; font-weight: 800; letter-spacing: -0.5px; line-height: 1.2; margin-top: 3px; }
+    .kpi-v small { font-size: 13.5px; font-weight: 600; color: var(--muted); margin-left: 4px; letter-spacing: 0; }
+    .kpi-s { font-size: 12px; color: var(--muted); margin-top: 3px; }
+    @media (max-width: 640px) {
+      .kpis { grid-template-columns: 1fr; }
+      .kpi + .kpi { border-left: none; border-top: 1px solid var(--line); }
+    }
+
+    /* ==================== 3D SIMULATOR PANEL ==================== */
+    .sim3d-card {
+      overflow: hidden;
+      border: 1px solid #CBD5E1;
+      background: #0B1120;
+      color: #F8FAFC;
+    }
+    .sim3d-header {
+      padding: 13px 18px;
+      background: linear-gradient(90deg, #0B1120 0%, #1E293B 100%);
+      border-bottom: 1px solid #334155;
+      display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap;
+    }
+    .sim3d-title {
+      display: flex; align-items: center; gap: 9px;
+      font-size: 15px; font-weight: 800; color: #F8FAFC;
+    }
+    .sim3d-title .pulse-dot {
+      width: 9px; height: 9px; border-radius: 50%;
+      background: #38BDF8; box-shadow: 0 0 10px #38BDF8;
+    }
+    .sim3d-sub { font-size: 12px; color: #94A3B8; font-weight: 500; margin-top: 2px; }
+    .sim3d-toolbar { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+    .sim-btn {
+      background: #1E293B; border: 1px solid #475569; color: #E2E8F0;
+      padding: 5px 10px; border-radius: 7px; font-size: 11.5px; font-weight: 600;
+      cursor: pointer; transition: all 0.15s; display: inline-flex; align-items: center; gap: 4px;
+    }
+    .sim-btn:hover { background: #334155; border-color: #64748B; color: #fff; }
+    .sim-btn.active { background: #0284C7; border-color: #38BDF8; color: #fff; }
+
+    .sim3d-body {
+      display: grid;
+      grid-template-columns: 1fr 305px;
+      min-height: 485px;
+    }
+    @media (max-width: 960px) {
+      .sim3d-body { grid-template-columns: 1fr; }
+    }
+    .sim3d-stage-wrap {
+      position: relative;
+      width: 100%;
+      height: 485px;
+      background: radial-gradient(circle at 50% 35%, #1E293B 0%, #070B14 100%);
+      overflow: hidden;
+      user-select: none;
+    }
+    #threeCanvasWrap {
+      width: 100%;
+      height: 100%;
+    }
+    #threeCanvasWrap canvas {
+      display: block;
+      width: 100% !important;
+      height: 100% !important;
+      outline: none;
+    }
+    /* Overlay Badges on 3D Stage */
+    .sim3d-overlay-tl {
+      position: absolute; top: 12px; left: 12px;
+      background: rgba(11, 17, 32, 0.86); backdrop-filter: blur(8px);
+      border: 1px solid rgba(148, 163, 184, 0.28);
+      border-radius: 9px; padding: 9px 13px;
+      pointer-events: none; font-size: 12px; line-height: 1.5;
+    }
+    .sim3d-overlay-tl .ov-h { font-weight: 800; color: #38BDF8; font-size: 12.5px; margin-bottom: 2px; }
+    .sim3d-overlay-tl .ov-r { color: #CBD5E1; font-family: var(--mono); font-size: 11.5px; }
+
+    /* Hardware Legend on 3D Stage Bottom-Right */
+    .sim3d-hw-legend {
+      position: absolute; bottom: 38px; right: 12px;
+      background: rgba(11, 17, 32, 0.84); backdrop-filter: blur(6px);
+      border: 1px solid rgba(148, 163, 184, 0.24);
+      border-radius: 8px; padding: 7px 10px;
+      pointer-events: none; font-size: 10.5px; color: #CBD5E1;
+      display: flex; flex-direction: column; gap: 3px;
+    }
+    .hw-row { display: flex; align-items: center; gap: 6px; }
+    .hw-dot { width: 8px; height: 8px; border-radius: 2px; display: inline-block; }
+
+    /* Colorbar Legend on 3D Stage Top-Right */
+    .sim3d-colorbar {
+      position: absolute; top: 12px; right: 12px;
+      background: rgba(11, 17, 32, 0.86); backdrop-filter: blur(8px);
+      border: 1px solid rgba(148, 163, 184, 0.28);
+      border-radius: 9px; padding: 9px 11px;
+      display: flex; align-items: center; gap: 8px;
+      pointer-events: none; font-size: 11px; color: #E2E8F0;
+    }
+    .cb-gradient {
+      width: 13px; height: 124px; border-radius: 4px;
+      background: linear-gradient(180deg, #EF4444 0%, #F59E0B 30%, #10B981 52%, #0EA5E9 76%, #0284C7 100%);
+      border: 1px solid rgba(255,255,255,0.3);
+    }
+    .cb-labels {
+      height: 124px; display: flex; flex-direction: column; justify-content: space-between;
+      font-family: var(--mono); font-size: 11px;
+    }
+
+    .sim3d-hint-bl {
+      position: absolute; bottom: 10px; left: 12px;
+      font-size: 11px; color: #94A3B8;
+      background: rgba(11, 17, 32, 0.78); padding: 4px 10px; border-radius: 6px;
+      border: 1px solid rgba(148, 163, 184, 0.2);
+      pointer-events: none;
+    }
+
+    /* Right Telemetry Sidebar inside 3D Card */
+    .sim3d-telemetry {
+      background: #111827;
+      border-left: 1px solid #334155;
+      padding: 14px 16px;
+      display: flex; flex-direction: column; gap: 10px; justify-content: space-between;
+    }
+    @media (max-width: 960px) {
+      .sim3d-telemetry { border-left: none; border-top: 1px solid #334155; }
+    }
+    .hud-box {
+      background: rgba(30, 41, 59, 0.75);
+      border: 1px solid #334155;
+      border-radius: 8px;
+      padding: 8px 11px;
+    }
+    .hud-l { font-size: 11px; color: #94A3B8; font-weight: 600; display: flex; justify-content: space-between; }
+    .hud-v { font-size: 16px; font-weight: 800; color: #F8FAFC; font-family: var(--mono); margin-top: 2px; }
+    .hud-v small { font-size: 11px; font-weight: 500; color: #94A3B8; margin-left: 4px; }
+    .hud-s { font-size: 11px; color: #94A3B8; margin-top: 3px; line-height: 1.35; }
+    .hud-bar {
+      height: 6px; background: #0B1120; border-radius: 999px; overflow: hidden; margin-top: 5px;
+    }
+    .hud-bar-fill {
+      height: 100%; border-radius: 999px; transition: width 0.08s linear;
+    }
+
+    /* RTD Probe Array Bar in Telemetry */
+    .rtd-strip {
+      display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; margin-top: 6px;
+    }
+    .rtd-cell {
+      background: #0B1120; border: 1px solid #334155; border-radius: 5px;
+      padding: 3px 2px; text-align: center; font-family: var(--mono); font-size: 10px;
+    }
+    .rtd-cell .rtd-id { display: block; font-size: 9px; color: #94A3B8; }
+    .rtd-cell .rtd-t { font-weight: 700; color: #F8FAFC; }
+
+    /* Bottom Timeline Scrubber Bar */
+    .sim3d-controls {
+      padding: 12px 18px;
+      background: #1E293B;
+      border-top: 1px solid #334155;
+      display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+    }
+    .play-btn {
+      background: #0EA5E9; border: none; color: #fff;
+      padding: 7px 14px; border-radius: 8px; font-size: 12.5px; font-weight: 800;
+      cursor: pointer; display: inline-flex; align-items: center; gap: 6px;
+      box-shadow: 0 2px 8px rgba(14, 165, 233, 0.35); transition: all 0.15s;
+    }
+    .play-btn:hover { background: #0284C7; }
+    .play-btn.playing { background: #F59E0B; box-shadow: 0 2px 8px rgba(245, 158, 11, 0.35); }
+    .scrubber-wrap {
+      flex: 1; min-width: 200px; display: flex; flex-direction: column; gap: 4px;
+    }
+    .scrubber-top {
+      display: flex; justify-content: space-between; font-size: 11.5px; color: #CBD5E1; font-family: var(--mono);
+    }
+    input[type="range"].sim-slider {
+      width: 100%; accent-color: #38BDF8; cursor: pointer; height: 6px;
+    }
+
+    .tank-overview { display: grid; grid-template-columns: 1.2fr 1.1fr; gap: 14px; }
+    @media (max-width: 960px) { .tank-overview { grid-template-columns: 1fr; } }
+    .vol-chain { display: flex; flex-direction: column; gap: 8px; margin-top: 4px; }
+    .vc-step {
+      display: grid; grid-template-columns: 24px 1fr auto; align-items: center; gap: 10px;
+      padding: 7px 11px; border-radius: 8px; background: var(--card-subtle); border: 1px solid var(--line); font-size: 12.5px;
+    }
+    .vc-step.highlight { background: var(--accent-soft); border-color: #BAE6FD; font-weight: 700; }
+    .vc-no {
+      width: 20px; height: 20px; border-radius: 50%; background: #E2E8F0; color: var(--ink-2);
+      font-size: 11px; font-weight: 800; display: grid; place-items: center;
+    }
+    .vc-step.highlight .vc-no { background: var(--accent); color: #fff; }
+    .vc-label small { display: block; font-size: 11px; color: var(--muted); font-weight: 400; }
+    .vc-val { font-family: var(--mono); font-weight: 700; font-size: 13.5px; color: var(--ink); }
+
+    .panel { padding: 15px 18px; }
+    .panel-h { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; margin-bottom: 10px; flex-wrap: wrap; }
+    .panel-h h3 { font-size: 14px; font-weight: 700; }
+    .panel-h span { font-size: 11.5px; color: var(--muted); }
+
+    /* Time Bar & Tank Stage */
+    .tbar { position: relative; height: 34px; background: #E2E8F0; border-radius: 8px; margin: 26px 0 26px; }
+    .tbar-seg { position: absolute; top: 0; height: 100%; display: grid; place-items: center; overflow: hidden; transition: width .3s ease, left .3s ease; }
+    .tbar-seg span { font-size: 12px; font-weight: 700; color: #fff; white-space: nowrap; }
+    .tbar-seg.tank { left: 0; background: linear-gradient(90deg, #0EA5E9, #0284C7); border-radius: 8px; }
+    .tbar-mk { position: absolute; top: -8px; bottom: -8px; width: 2.5px; background: var(--ink); z-index: 2; }
+    .tbar-mk label { position: absolute; top: -19px; left: 50%; transform: translateX(-50%); font-size: 11.5px; font-weight: 700; white-space: nowrap; }
+    .tbar-mk.down { background: transparent; border-left: 2px dashed var(--warn); }
+    .tbar-mk.down label { top: auto; bottom: -19px; color: var(--warn); }
+
+    .tanks { display: flex; flex-wrap: wrap; gap: 6px; align-items: flex-end; margin-top: 6px; }
+    .tank-stage {
+      flex: 1 1 100%; position: relative; display: flex; align-items: flex-end;
+      gap: 7px; padding-right: 36px; border-bottom: 2px solid var(--ink-2); min-height: 110px;
+    }
+    .floor { position: absolute; left: 0; right: 0; border-top: 1px dashed var(--line-strong); pointer-events: none; }
+    .floor span { position: absolute; right: 0; top: -1px; font-size: 10.5px; color: var(--faint); font-weight: 600; }
+    .tank {
+      position: relative; flex: none; border-radius: 6px 6px 2px 2px;
+      background: linear-gradient(180deg, #7DD3FC 0%, #38BDF8 15%, var(--water-deep) 100%);
+      border: 1.5px solid #0369A1;
+      display: grid; place-items: center; color: #fff; font-size: 11px; font-weight: 700;
+      box-shadow: inset 0 2px 4px rgba(255,255,255,0.35);
+    }
+    .tank-cap { flex: 1 1 100%; font-size: 12px; color: var(--muted); margin-top: 8px; }
+    .tank-cap b { color: var(--ink); }
+    .tank-more { font-size: 12px; color: var(--muted); font-weight: 600; padding: 0 4px 4px; }
+    .tank-x { font-size: 13px; font-weight: 700; color: var(--ink-2); padding: 0 0 4px 6px; }
+    .legend { display: flex; flex-wrap: wrap; gap: 6px 14px; font-size: 12px; color: var(--muted); margin-top: 12px; }
+    .legend i { display: inline-block; width: 10px; height: 10px; border-radius: 3px; margin-right: 5px; vertical-align: -1px; }
+    .legend b { color: var(--ink); font-weight: 700; }
+    .empty { font-size: 13px; color: var(--muted); padding: 6px 0; }
+
+    .chart-wrap { position: relative; user-select: none; }
+    .chart svg { width: 100%; height: auto; min-height: 175px; display: block; overflow: visible; cursor: crosshair; }
+    .chart-tooltip {
+      position: absolute; top: 8px; right: 8px;
+      background: rgba(15, 23, 42, 0.92); color: #fff;
+      padding: 6px 10px; border-radius: 7px; font-size: 11.5px;
+      font-variant-numeric: tabular-nums; pointer-events: none;
+      opacity: 0; transition: opacity 0.12s; z-index: 10;
+      box-shadow: var(--shadow-md); line-height: 1.45;
+    }
+    .chart-tooltip.show { opacity: 1; }
+
+    .checks { list-style: none; display: flex; flex-direction: column; }
+    .chk { display: flex; gap: 12px; padding: 10px 4px; border-top: 1px solid var(--line); transition: background .3s; border-radius: 6px; }
+    .chk:first-child { border-top: none; }
+    .chk.flash { background: var(--accent-soft); }
+    .chk .dot {
+      width: 24px; height: 24px; border-radius: 6px;
+      display: grid; place-items: center; font-size: 10px; font-weight: 800; color: #fff; flex: none; margin-top: 1px;
+      font-family: var(--mono);
+    }
+    .chk.pass .dot { background: var(--pass); }
+    .chk.warn .dot { background: var(--warn); }
+    .chk.fail .dot { background: var(--fail); }
+    .chk.info .dot { background: var(--faint); }
+    .chk-t { font-weight: 700; font-size: 13.5px; }
+    .chk-t .lvl { font-size: 11px; font-weight: 800; letter-spacing: .5px; margin-left: 6px; font-family: var(--mono); }
+    .chk.pass .lvl { color: var(--pass); }
+    .chk.warn .lvl { color: var(--warn); }
+    .chk.fail .lvl { color: var(--fail); }
+    .chk-v { font-size: 13px; color: var(--ink-2); }
+    .chk-d { font-size: 12px; color: var(--muted); }
+
+    .tbl-wrap { overflow-x: auto; margin: 0 -18px; padding: 0 18px; }
+    table.opts { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+    table.opts th { text-align: right; font-size: 11.5px; color: var(--muted); font-weight: 600; padding: 7px 8px; border-bottom: 1px solid var(--line); white-space: nowrap; }
+    table.opts td { text-align: right; padding: 8px; border-bottom: 1px solid var(--line); white-space: nowrap; }
+    table.opts th:first-child, table.opts td:first-child, table.opts th:last-child, table.opts td:last-child { text-align: left; }
+    table.opts tbody tr { cursor: pointer; transition: background 0.12s; }
+    table.opts tbody tr:hover { background: var(--card-subtle); }
+    table.opts tr.cur { background: var(--accent-soft); }
+    table.opts tr.cur td:first-child { box-shadow: inset 3px 0 0 var(--accent); font-weight: 700; }
+    .tag { display: inline-block; font-size: 11px; font-weight: 700; padding: 1px 8px; border-radius: 999px; }
+    .tag.best { background: var(--pass-soft); color: var(--pass); }
+    .tag.warn { background: var(--warn-soft); color: var(--warn); }
+    .tag.plain { color: var(--muted); padding-left: 0; font-weight: 600; }
+
+    details.more > summary { list-style: none; cursor: pointer; padding: 14px 18px; font-weight: 700; display: flex; justify-content: space-between; }
+    details.more > summary::-webkit-details-marker { display: none; }
+    details.more > summary::after { content: '展開 [+]'; font-weight: 500; font-size: 12px; color: var(--muted); font-family: var(--mono); }
+    details.more[open] > summary::after { content: '收合 [-]'; }
+    .steps { list-style: none; padding: 0 18px 16px; display: flex; flex-direction: column; gap: 10px; }
+    .steps li { display: flex; gap: 10px; }
+    .steps .n { width: 20px; height: 20px; border-radius: 50%; background: #E2E8F0; font-size: 11px; font-weight: 700; display: grid; place-items: center; flex: none; margin-top: 2px; }
+    .steps .st-t { font-size: 12px; color: var(--muted); }
+    .steps code { font-family: var(--mono); font-size: 12.5px; color: var(--ink); word-break: break-word; }
+    .notes { padding: 0 18px 18px; font-size: 12.5px; color: var(--ink-2); display: flex; flex-direction: column; gap: 6px; line-height: 1.6; }
+
+    .is-stale .kpis, .is-stale .viz, .is-stale .checks-card, .is-stale .opts-card, .is-stale .tank-overview, .is-stale .sim3d-card { opacity: 0.4; filter: grayscale(70%); pointer-events: none; }
+
+    /* Verification & Reset Modals */
+    .modal-backdrop {
+      position: fixed; inset: 0; background: rgba(15, 23, 42, 0.55);
+      backdrop-filter: blur(4px); z-index: 200; display: grid; place-items: center; padding: 20px;
+    }
+    .modal {
+      background: #fff; border-radius: 14px; max-width: 820px; width: 100%;
+      max-height: 85vh; display: flex; flex-direction: column; box-shadow: 0 20px 40px rgba(15, 23, 42, 0.25); overflow: hidden;
+    }
+    .modal.sm { max-width: 420px; }
+    .modal-h { padding: 16px 20px; border-bottom: 1px solid var(--line); display: flex; justify-content: space-between; align-items: center; }
+    .modal-h h3 { font-size: 16px; font-weight: 800; }
+    .modal-b { padding: 16px 20px; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; }
+    .modal-f { padding: 12px 20px; border-top: 1px solid var(--line); display: flex; justify-content: flex-end; gap: 8px; background: var(--card-subtle); }
+    .test-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px 12px; font-size: 12px; }
+    @media (max-width: 640px) { .test-grid { grid-template-columns: 1fr; } }
+    .test-item { display: flex; align-items: center; gap: 7px; padding: 5px 8px; border-radius: 6px; background: var(--card-subtle); }
+    .test-item.pass { border-left: 3px solid var(--pass); }
+    .test-item.fail { border-left: 3px solid var(--fail); background: var(--fail-soft); }
+
+    .to-results { display: none; }
+    @media (max-width: 1120px) {
+      .to-results { display: block; position: fixed; right: 16px; bottom: 16px; z-index: 60; border: none; background: var(--ink); color: #fff; border-radius: 999px; padding: 10px 18px; font-weight: 700; box-shadow: 0 6px 20px rgba(15,23,42,.25); }
+      .topbar { position: static; }
+    }
+    @media (max-width: 520px) { .grid { grid-template-columns: 1fr; } .topbar, .scenario-bar, .layout { padding-left: 14px; padding-right: 14px; } }
+
+    .toast { position: fixed; bottom: 24px; left: 50%; transform: translate(-50%, 10px); background: var(--ink); color: #fff; padding: 10px 18px; border-radius: 10px; font-size: 13px; font-weight: 600; opacity: 0; pointer-events: none; transition: opacity .2s, transform .2s; z-index: 1000; max-width: 90vw; }
+    .toast.show { opacity: 1; transform: translate(-50%, 0); }
+
+    @media print {
+      body { background: #fff; font-size: 12px; }
+      html, body { height: auto; overflow: visible; }
+      body { display: block; }
+      .inputs, .results { overflow: visible; max-height: none; }
+      .actions, .to-results, .scenario-bar, .chips, .seg, .toast, .modal-backdrop, .sim3d-controls, .sim3d-toolbar { display: none !important; }
+      .sim3d-box { height: 380px; break-inside: avoid; page-break-inside: avoid; }
+      .topbar { position: static; border-bottom: 2px solid var(--ink); box-shadow: none; }
+      .project input { background: none; border: none; padding: 0; }
+      .layout { display: block; padding: 12px 0; }
+      .results { position: static; max-height: none; overflow: visible; margin-top: 14px; }
+      .inputs { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+      .card { break-inside: avoid; page-break-inside: avoid; box-shadow: none; }
+      .sec { padding: 10px 12px; }
+      .is-stale .kpis, .is-stale .viz, .is-stale .checks-card, .is-stale .opts-card { opacity: 1; filter: none; }
+    }
+  
+    /* Suite Navigator Tabs */
+    .suite-tabs {
+      display: inline-flex; align-items: center; gap: 4px;
+      background: var(--card-subtle); padding: 3px 5px;
+      border-radius: 9px; border: 1px solid var(--line);
+    }
+    .tab-link {
+      display: inline-flex; align-items: center; gap: 5px;
+      padding: 5px 11px; font-size: 12px; font-weight: 700;
+      color: var(--ink-2); text-decoration: none; border-radius: 7px;
+      transition: all 0.15s; white-space: nowrap;
+    }
+    .tab-link:hover {
+      background: #FFFFFF; color: var(--accent); box-shadow: var(--shadow-sm);
+    }
+    .tab-link.active {
+      background: var(--accent); color: #FFFFFF !important;
+      box-shadow: 0 1px 4px rgba(2, 132, 199, 0.35);
+    }
+
+  </style>
+</head>
+<body>
+  <div class="toast" id="toastMsg" role="status" aria-live="polite"></div>
+
+  <header class="topbar">
+    <div class="brand">
+      <div class="logo">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><ellipse cx="12" cy="5" rx="7" ry="2.5"/><path d="M5 5v14c0 1.4 3.1 2.5 7 2.5s7-1.1 7-2.5V5"/><path d="M5 12c0 1.4 3.1 2.5 7 2.5s7-1.1 7-2.5"/></svg>
+      </div>
+      <div>
+        <div class="app-title">
+          冰水緩衝水槽計算器
+          <span class="app-badge">純水槽熱緩衝</span>
+          <span class="app-badge hot">ASME 工業級 3D 結構與斜溫層模擬</span>
+        </div>
+        <div class="app-sub">停電／冰機重啟期間，100% 靠緩衝水槽有效冷水吸收熱負載（含共管 vs 逐台獨立同基準檢核）</div>
+      </div>
+    </div>
+    
+    <nav class="suite-tabs">
+      <a href="./index.html" class="tab-link">⌂ 套件總覽</a>
+      <a href="./定壓膨脹水箱.html" class="tab-link ">🎈 定壓膨脹</a>
+      <a href="./冰水緩衝水槽.html" class="tab-link active">❄️ 冰水緩衝 (3D)</a>
+      <a href="./CDU液冷緩衝水槽.html" class="tab-link ">⚡ CDU液冷 (3D)</a>
+    </nav>
+    <div class="project">
+      <input id="projectName" class="pn" placeholder="案名，例如 AIDC Phase 1 CHW" value="" oninput="calculate()" aria-label="案名">
+      <input id="dataSource" class="ps" placeholder="依據／備註，例如 冰機快速重啟 6 min" value="" oninput="calculate()" aria-label="依據">
+    </div>
+    <div class="actions">
+      <a href="../index.html" class="btn" title="返回 HVAC-Pro 主系統首頁">⌂ HVAC-Pro 首頁</a>
+      
+      <span class="autosave" id="autosaveHint"></span>
+      <button type="button" class="btn verify" id="btnVerify" onclick="openVerifyModal()" title="執行內建黃金案例與公式驗算">工程驗算</button>
+      <button type="button" class="btn quiet" onclick="openResetModal()">重設</button>
+      <button type="button" class="btn" onclick="copySummary()">複製摘要</button>
+      <button type="button" class="btn" onclick="printReport()">列印 / PDF</button>
+      <button type="button" class="btn primary" onclick="exportToExcel()">匯出 Excel 計算書</button>
+    </div>
+  </header>
+
+  <div class="scenario-bar" aria-label="快速工程範例">
+    <span class="scenario-label">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+      快速工程情境：
+    </span>
+    <button type="button" class="preset-btn" onclick="applyPreset('small')">小型機房 <small>(800kW / 5min)</small></button>
+    <button type="button" class="preset-btn" onclick="applyPreset('medium')">中型 AIDC <small>(2,500kW / 6min)</small></button>
+    <button type="button" class="preset-btn" onclick="applyPreset('large')">大型 AIDC <small>(6,000kW / 6min)</small></button>
+    <button type="button" class="preset-btn" onclick="applyPreset('xlarge')">超大型園區 <small>(20,000kW / 15min 現場立式大槽)</small></button>
+  </div>
+
+  <div class="layout">
+    <section class="inputs">
+
+      <div class="card sec">
+        <div class="sec-h"><span class="no">1</span><div><h2>系統架構與熱負載</h2><p>共用集管 vs 逐台獨立（切換時自動換算單台／全廠負載）</p></div></div>
+        <input type="hidden" id="tankMode" value="shared">
+        <div class="seg">
+          <button type="button" id="segShared" class="on" onclick="setTankMode('shared')">共用集管（全廠一組水槽）</button>
+          <button type="button" id="segIsolated" onclick="setTankMode('isolated')">逐台獨立（每台冰機自帶）</button>
+        </div>
+        <div class="mode-desc" id="modeDesc"></div>
+        <div class="grid">
+          <div class="field">
+            <label for="load"><span id="lblLoad">系統總冷負載</span> <i class="req">*</i></label>
+            <div class="iw"><input type="number" id="load" step="any" min="0" value="4000" oninput="calculate()"><span class="u">kW</span></div>
+            <div class="hint" id="hintLoad">緩衝期間仍要被帶走的熱量</div>
+            <div class="err" id="err-load"></div>
+          </div>
+          <div class="field">
+            <label for="chillerN"><span id="lblN">冰機運轉台數</span> <i class="req">*</i></label>
+            <div class="iw"><input type="number" id="chillerN" step="1" min="1" value="4" oninput="calculate()"><span class="u">台</span></div>
+            <div class="hint" id="hintN">用於防短循環最小水量檢核</div>
+            <div class="err" id="err-chillerN"></div>
+          </div>
+        </div>
+        <!-- 共管 vs 逐台獨立 同基準即時對照小卡 -->
+        <div class="mode-compare-mini" id="modeCompareMini"></div>
+      </div>
+
+      <div class="card sec">
+        <div class="sec-h"><span class="no">2</span><div><h2>緩衝時間與溫差條件</h2><p>要撐多久、供回水溫度與可利用溫差 ΔT</p></div></div>
+        <div class="grid">
+          <div class="field">
+            <label for="durationMin">目標緩衝時間 <i class="req">*</i></label>
+            <div class="iw"><input type="number" id="durationMin" step="any" min="0" value="6" oninput="calculate()"><span class="u">分鐘</span></div>
+            <div class="chips">
+              <button type="button" class="chip" onclick="setVal('durationMin',3)">3 分</button>
+              <button type="button" class="chip" onclick="setVal('durationMin',5)">5 分</button>
+              <button type="button" class="chip" onclick="setVal('durationMin',6)">6 分</button>
+              <button type="button" class="chip" onclick="setVal('durationMin',10)">10 分</button>
+              <button type="button" class="chip" onclick="setVal('durationMin',15)">15 分</button>
+            </div>
+            <div class="hint">發電機接手＋冰機重啟並加載至滿載所需時間</div>
+            <div class="err" id="err-durationMin"></div>
+          </div>
+          <div class="field">
+            <label for="deltaT">可利用溫差 ΔT <i class="req">*</i></label>
+            <div class="iw"><input type="number" id="deltaT" step="any" min="0" value="5" oninput="calculate()"><span class="u">°C</span></div>
+            <div class="chips">
+              <button type="button" class="chip" onclick="setVal('deltaT',4)">4°C</button>
+              <button type="button" class="chip" onclick="setVal('deltaT',5)">5°C</button>
+              <button type="button" class="chip" onclick="setVal('deltaT',6)">6°C</button>
+              <button type="button" class="chip" onclick="setVal('deltaT',8)">8°C</button>
+            </div>
+            <div class="hint">分層式取「回水 − 供水溫差」；上進溫水向下推移</div>
+            <div class="err" id="err-deltaT"></div>
+          </div>
+          <div class="field full">
+            <label for="supplyTemp">設計冰水供水溫度 T_supply（供 3D 熱流與 RTD 溫度計顯示）</label>
+            <div class="iw"><input type="number" id="supplyTemp" step="0.5" value="7" oninput="calculate()"><span class="u">°C（回水 = T_supply + ΔT）</span></div>
+            <div class="chips">
+              <button type="button" class="chip" onclick="setVal('supplyTemp',7)">7°C (標準空調)</button>
+              <button type="button" class="chip" onclick="setVal('supplyTemp',10)">10°C (中溫冰水)</button>
+              <button type="button" class="chip" onclick="setVal('supplyTemp',15)">15°C (AIDC 預冷)</button>
+              <button type="button" class="chip" onclick="setVal('supplyTemp',18)">18°C (液冷 CDU)</button>
+            </div>
+            <div class="hint">設計供水溫度（純水模式建議 ≥ 4°C 避免密度反轉與盤管結冰凍裂）</div>
+            <div class="err" id="err-supplyTemp"></div>
+          </div>
+        </div>
+        <div class="note" id="flowReadout"></div>
+      </div>
+
+      <div class="card sec">
+        <div class="sec-h"><span class="no">3</span><div><h2>緩衝水槽選型與安全係數</h2><p>單槽標稱規格、高徑比 H/D、有效利用率與工程餘裕</p></div></div>
+        <div class="grid">
+          <div class="field full">
+            <label for="moduleSize">單槽標稱容積 <i class="req">*</i></label>
+            <div class="iw"><input type="number" id="moduleSize" step="any" min="0" value="25" oninput="calculate()"><span class="u">m³／槽</span></div>
+            <div class="chips" id="sizeChips"></div>
+            <div class="hint">≤100 m³ 多為工廠預製壓力容器；150 m³ 以上多為現場組立立式鋼槽。也可點擊右側「規格比較表」任一列套用</div>
+            <div class="err" id="err-moduleSize"></div>
+          </div>
+          <div class="field full">
+            <label for="hdRatio">圓筒槽體高徑比 H/D <i class="req">*</i></label>
+            <div class="iw"><input type="number" id="hdRatio" step="any" min="0.8" max="6" value="2" oninput="calculate()"><span class="u">高 ÷ 直徑</span></div>
+            <div class="chips">
+              <button type="button" class="chip" onclick="setVal('hdRatio',1)">1.0（矮胖）</button>
+              <button type="button" class="chip" onclick="setVal('hdRatio',2)">2.0（標準）</button>
+              <button type="button" class="chip" onclick="setVal('hdRatio',2.5)">2.5（瘦高分層佳）</button>
+              <button type="button" class="chip" onclick="setVal('hdRatio',3)">3.0（細高）</button>
+            </div>
+            <div class="hint">ASME 2:1 橢圓封頭立式容器幾何下限 H/D ≥ 0.8（上下封頭佔 0.5D），建議 1.0 ~ 3.0</div>
+            <div class="note" id="sizeReadout"></div>
+            <div class="err" id="err-hdRatio"></div>
+          </div>
+          <div class="field">
+            <label for="tankEffPct">水槽有效利用率 <i class="req">*</i></label>
+            <div class="iw"><input type="number" id="tankEffPct" step="any" min="10" max="100" value="90" oninput="calculate()"><span class="u">%</span></div>
+            <div class="hint">扣除斜溫混水層（Thermocline）與進出口死水區，分層式約 85–90%</div>
+            <div class="err" id="err-tankEffPct"></div>
+          </div>
+          <div class="field">
+            <label for="marginPct">設計安全餘裕 <i class="req">*</i></label>
+            <div class="iw"><input type="number" id="marginPct" step="any" min="0" value="10" oninput="calculate()"><span class="u">%</span></div>
+            <div class="hint">工程選型安全係數（常用 10–20%）</div>
+            <div class="err" id="err-marginPct"></div>
+          </div>
+        </div>
+      </div>
+
+      <details class="card adv" id="advBox">
+        <summary>進階設定（流體物性與防短循環） <span class="sum" id="advSummary"></span></summary>
+        <div class="adv-body">
+          <div class="field">
+            <label>載熱流體</label>
+            <div class="radios">
+              <label><input type="radio" name="fluid" value="water" checked onchange="calculate()"> 純水</label>
+              <label><input type="radio" name="fluid" value="eg30" onchange="calculate()"> 乙二醇 30%</label>
+              <label><input type="radio" name="fluid" value="pg30" onchange="calculate()"> 丙二醇 30%</label>
+              <label><input type="radio" name="fluid" value="custom" onchange="calculate()"> 自訂物性</label>
+            </div>
+          </div>
+          <div class="grid" id="customFluidBox" hidden>
+            <div class="field">
+              <label for="fluidCp">比熱 cp <i class="req">*</i></label>
+              <div class="iw"><input type="number" id="fluidCp" step="any" value="4.186" oninput="calculate()"><span class="u">kJ/kg·K</span></div>
+              <div class="err" id="err-fluidCp"></div>
+            </div>
+            <div class="field">
+              <label for="fluidRho">密度 ρ <i class="req">*</i></label>
+              <div class="iw"><input type="number" id="fluidRho" step="any" value="1000" oninput="calculate()"><span class="u">kg/m³</span></div>
+              <div class="err" id="err-fluidRho"></div>
+            </div>
+          </div>
+          <div class="field">
+            <label for="minVolIndex">防短循環最小系統水量指標</label>
+            <div class="iw"><input type="number" id="minVolIndex" step="any" min="0" value="6.5" oninput="calculate()"><span class="u">L / kW（每台冰機）</span></div>
+            <div class="hint">舒適空調常用 3.2–6.5 L/kW（3–6 gal/RT）；資料中心／製程常用 6.5–10.8 L/kW。僅以緩衝水槽本身容積檢核（保守不計管路），填 0 可略過。</div>
+            <div class="err" id="err-minVolIndex"></div>
+          </div>
+        </div>
+      </details>
+    </section>
+
+    <aside class="results" id="results">
+      <div class="card basis" id="basisBar" aria-label="設計基準"></div>
+
+      <div class="card verdict" id="verdict" role="status" aria-live="polite">
+        <div class="v-head">
+          <div class="v-head-left">
+            <div class="v-icon" id="verdictIcon">PASS</div>
+            <div><div class="v-title" id="verdictTitle"></div><div class="v-sub" id="verdictSub"></div></div>
+          </div>
+          <div id="verdictAction"></div>
+        </div>
+        <div class="v-layers" id="verdictLayers"></div>
+        <div class="v-list" id="verdictList"></div>
+      </div>
+
+      <div class="card kpis" aria-live="polite">
+        <div class="kpi"><div class="kpi-l">建議配置方案</div><div class="kpi-v" id="kpiPlan">—</div><div class="kpi-s" id="kpiPlanSub"></div></div>
+        <div class="kpi"><div class="kpi-l" id="kpiVolLabel">水槽裝設總容積</div><div class="kpi-v" id="kpiVol">—</div><div class="kpi-s" id="kpiVolSub"></div></div>
+        <div class="kpi"><div class="kpi-l">實際可撐緩衝時間</div><div class="kpi-v" id="kpiTime">—</div><div class="kpi-s" id="kpiTimeSub"></div></div>
+      </div>
+
+      <!-- ==================== INDUSTRIAL 3D BUFFER TANK & THERMOCLINE SIMULATOR ==================== -->
+      <div class="card sim3d-card" id="sim3dCard">
+        <div class="sim3d-header">
+          <div>
+            <div class="sim3d-title">
+              <span class="pulse-dot"></span>
+              3D 工業級緩衝水槽結構與斜溫層熱流擴散模擬 (ASME 2:1 橢圓封頭 / 八爪多孔布水器)
+            </div>
+            <div class="sim3d-sub">擬真結構：雙層保溫金屬殼體剖面、頂部/底部八爪散流管(Sparger)與防衝板、ANSI 法蘭蝶閥、7 點式 RTD 溫度感測器、人孔與護籠爬梯</div>
+          </div>
+          <div class="sim3d-toolbar">
+            <button type="button" class="sim-btn active" id="btnViewCutaway" onclick="Tank3DSim.setViewMode('cutaway')">單槽剖面內構</button>
+            <button type="button" class="sim-btn" id="btnViewExterior" onclick="Tank3DSim.setViewMode('exterior')">單槽完整外觀</button>
+            <button type="button" class="sim-btn" id="btnViewArray" onclick="Tank3DSim.setViewMode('array')">全廠槽群陣列</button>
+            <button type="button" class="sim-btn" onclick="Tank3DSim.resetCamera('front')">正視剖面</button>
+            <button type="button" class="sim-btn" onclick="Tank3DSim.resetCamera('top')">俯視布水器</button>
+            <button type="button" class="sim-btn" onclick="Tank3DSim.resetCamera('iso')">等角透視</button>
+          </div>
+        </div>
+
+        <div class="sim3d-body">
+          <div class="sim3d-stage-wrap" id="sim3dStageWrap">
+            <div id="threeCanvasWrap"></div>
+
+            <!-- 左上角幾何尺寸與水力規格 HUD -->
+            <div class="sim3d-overlay-tl">
+              <div class="ov-h" id="ov3dTitle">ASME 立式緩衝罐剖面 (含 1.75m 工程師比例尺)</div>
+              <div class="ov-r" id="ov3dDim">筒身 Ø2.52m × 直筒 4.61m (總高 5.87m · 25 m³)</div>
+              <div class="ov-r" id="ov3dNozzle">管嘴 DN200 法蘭 · 散流器八爪多孔配水</div>
+              <div class="ov-r" id="ov3dFlow">平推速度 v_z = 0.48 m/min (向下擴散)</div>
+            </div>
+
+            <!-- 右上角溫度梯度色階尺 -->
+            <div class="sim3d-colorbar">
+              <div class="cb-gradient"></div>
+              <div class="cb-labels">
+                <span id="cbTempHot">12.0°C (CHWR 回水)</span>
+                <span id="cbTempMid">9.5°C (斜溫混水層)</span>
+                <span id="cbTempCold">7.0°C (CHWS 供水)</span>
+              </div>
+            </div>
+
+            <!-- 右下角工業構件圖例 -->
+            <div class="sim3d-hw-legend">
+              <div class="hw-row"><span class="hw-dot" style="background:#EF4444"></span>頂部 CHWR 溫水進水法蘭與八爪布水器</div>
+              <div class="hw-row"><span class="hw-dot" style="background:#0284C7"></span>底部 CHWS 冰水出水法蘭與八爪集水器</div>
+              <div class="hw-row"><span class="hw-dot" style="background:#FACC15"></span>護籠爬梯 / 頂部平台護欄 / 蝶閥手輪</div>
+              <div class="hw-row"><span class="hw-dot" style="background:#10B981"></span>TT-1~TT-7 側壁 RTD 溫度傳訊器陣列</div>
+              <div class="hw-row"><span class="hw-dot" style="background:#FEF08A"></span>斜溫層 10% / 50% / 90% 等溫環與混水層帶</div>
+            </div>
+
+            <div class="sim3d-hint-bl">滑鼠操作：左鍵拖曳 360° 旋轉 · 滾輪縮放細節 · 右鍵上下平移視角</div>
+          </div>
+
+          <!-- 右側即時熱流與 RTD 遙測面板 -->
+          <div class="sim3d-telemetry">
+            <div class="hud-box">
+              <div class="hud-l"><span>模擬放電經過時間 t</span><span id="hudTimeStatus" style="color:#38BDF8">目標時間內</span></div>
+              <div class="hud-v" id="hudTimeVal">2.4 <small>/ 目標 6.0 min</small></div>
+              <div class="hud-bar"><div class="hud-bar-fill" id="hudTimeBar" style="width:40%;background:#38BDF8;"></div></div>
+              <div class="hud-s" id="hudTimeSub">100% 有效冷水耗盡上限：7.9 min</div>
+            </div>
+
+            <div class="hud-box">
+              <div class="hud-l"><span>熱鋒面下移深度 & 斜溫層厚度</span><span>由上往下平推</span></div>
+              <div class="hud-v" id="hudFrontVal">1.82 <small>m (自頂部下移)</small></div>
+              <div class="hud-s" id="hudThermoThick">斜溫層厚度 δ_th ≈ 0.50 m (有效利用率 90%)</div>
+            </div>
+
+            <div class="hud-box">
+              <div class="hud-l"><span>底部出口瞬時供水溫度 T_out(t)</span><span id="hudTempBadge" style="color:#4ADE80">供水穩定</span></div>
+              <div class="hud-v" id="hudOutletTemp">7.00 <small>°C</small></div>
+              <div class="hud-bar"><div class="hud-bar-fill" id="hudTempBar" style="width:8%;background:#0EA5E9;"></div></div>
+              <div class="hud-s" id="hudOutletSub">斜溫層尚未抵達底部集水器，維持設計供水</div>
+            </div>
+
+            <div class="hud-box">
+              <div class="hud-l"><span>側壁 RTD 溫度傳訊器陣列 (頂 TT-1 → 底 TT-7)</span></div>
+              <div class="rtd-strip" id="hudRtdStrip"></div>
+              <div class="hud-s" id="hudSpargerCheck" style="margin-top:6px;">單槽流量 143 m³/h · 管嘴 DN200</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 底部時間軸控制器 -->
+        <div class="sim3d-controls">
+          <button type="button" class="play-btn" id="btnSimPlay" onclick="Tank3DSim.togglePlay()">播放熱流擴散</button>
+          <button type="button" class="sim-btn" onclick="Tank3DSim.setTime(0)">重置 t=0</button>
+          <button type="button" class="sim-btn" onclick="Tank3DSim.jumpToTarget()">跳至目標時間</button>
+          <div class="scrubber-wrap">
+            <div class="scrubber-top">
+              <span>t = 0.0 min (全槽滿載冷水)</span>
+              <span id="scrubberTargetLabel" style="color:#FBBF24">目標緩衝 6.0 min</span>
+              <span id="scrubberMaxLabel">耗盡上限 9.0 min</span>
+            </div>
+            <input type="range" class="sim-slider" id="simTimeSlider" min="0" max="10" step="0.05" value="2.0" oninput="Tank3DSim.onSliderInput(this.value)">
+          </div>
+          <div style="display:flex;align-items:center;gap:4px;">
+            <span style="font-size:11.5px;color:#94A3B8;">倍速:</span>
+            <button type="button" class="sim-btn" id="spd1" onclick="Tank3DSim.setSpeed(1)">1x</button>
+            <button type="button" class="sim-btn active" id="spd10" onclick="Tank3DSim.setSpeed(10)">10x</button>
+            <button type="button" class="sim-btn" id="spd30" onclick="Tank3DSim.setSpeed(30)">30x</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- 容積放大推導鏈 + 放電時序互動曲線 -->
+      <div class="tank-overview">
+        <div class="card panel">
+          <div class="panel-h"><h3>容積放大推導鏈（不計管路水量）</h3><span id="vcSubtitle">由總緩衝熱量至裝設總量</span></div>
+          <div class="vol-chain" id="volChainBox"></div>
+        </div>
+        <div class="card panel chart" style="display:flex;flex-direction:column;">
+          <div class="panel-h"><h3>緩衝放電歷程（剩餘有效冷水）</h3><span>滑鼠移入檢視並連動 3D 熱流時間軸</span></div>
+          <div class="chart-wrap" style="flex:1;">
+            <div id="chartDischarge"></div>
+            <div class="chart-tooltip" id="tipDischarge"></div>
+          </div>
+          <div class="legend">
+            <span><i style="background:var(--water-deep)"></i>全部水槽運轉</span>
+            <span><i style="background:var(--warn)"></i>N-1（1 槽維修隔離）</span>
+            <span><i style="background:var(--fail)"></i>目標緩衝時間</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="card panel viz">
+        <div class="panel-h"><h3>水槽可撐時間與 2D 樓層高度比例圖</h3><span id="tbarCaption"></span></div>
+        <div class="tbar" id="tbar"></div>
+        <div class="tanks" id="tankRow"></div>
+        <div class="legend" id="tbarLegend"></div>
+      </div>
+
+      <div class="card panel checks-card">
+        <div class="panel-h"><h3>工程檢核項目（含共管/逐台獨立與斜溫層流速檢核）</h3><span id="checkSummary"></span></div>
+        <ul class="checks" id="checkList"></ul>
+      </div>
+
+      <div class="card panel opts-card">
+        <div class="panel-h"><h3>單槽候選規格敏感度比較</h3><span>點擊任一列即可套用該單槽規格並更新 3D 模型</span></div>
+        <div class="tbl-wrap"><table class="opts">
+          <thead><tr id="optsHead"></tr></thead>
+          <tbody id="optsBody"></tbody>
+        </table></div>
+      </div>
+
+      <details class="card more">
+        <summary>詳細計算步驟展開</summary>
+        <ol class="steps" id="calcSteps"></ol>
+      </details>
+
+      <details class="card more">
+        <summary>計算假設與「共用集管 vs 逐台獨立」工程說明</summary>
+        <div class="notes">
+          <div>1. <b>純水槽保守設計（不計既有管路水量）</b>：停電期間要吸收的總熱量 100% 由緩衝水槽內儲存的冷水承擔，$V_{\text{gross}} = \frac{P \times t \times 60}{\rho \cdot c_p \cdot \Delta T}$。管路內的冰水視為額外隱性安全裕度，不予抵扣。</div>
+          <div>2. <b>ASME 2:1 橢圓封頭與八爪多孔散流器（Sparger）</b>：實際立式壓力緩衝罐由直圓筒身與上下 2:1 橢圓封頭（封頭深度 $h_{\text{head}} = D/4$）焊接組成。停電放電時，溫回水由頂部八爪輻射多孔散流管低速均勻注入，並配置防衝擊擋板（Anti-impingement Baffle）抑制射流擾動，使斜溫混水層（Thermocline）以平推流（Plug Flow）由上往下穩定推進。</div>
+          <div>3. <b>共用集管 vs 逐台獨立的整數進位法則</b>：在相同全廠總冷負載 $P_{\text{total}}$ 與單槽容積 $V_{\text{unit}}$ 下：
+            <br>• <b>共用集管</b>：全廠所需槽數 $N_{\text{shared}} = \lceil \frac{V_{\text{target,total}}}{V_{\text{unit}}} \rceil$，各槽可跨冰機互相支援。
+            <br>• <b>逐台獨立</b>：每台冰機需獨立進位 $N_{\text{unit}} = \lceil \frac{V_{\text{target,total}} / N_{\text{chiller}}}{V_{\text{unit}}} \rceil$，全廠總槽數 $N_{\text{isolated}} = N_{\text{chiller}} \times N_{\text{unit}} \ge N_{\text{shared}}$。因此逐台獨立常因「單台整數進位懲罰」需要更多槽體，但具備單機水路完全隔離的優點。</div>
+          <div>4. <b>防短循環最小水量檢核</b>：以單台冰機額定容量乘以最小水量指標（L/kW）進行檢核，確保低負載時壓縮機不會頻繁啟停。</div>
+        </div>
+      </details>
+    </aside>
+  </div>
+
+  <!-- 工程驗算 Modal -->
+  <div class="modal-backdrop" id="verifyModal" hidden onclick="if(event.target===this)closeVerifyModal()">
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="verifyModalTitle">
+      <div class="modal-h">
+        <h3 id="verifyModalTitle">冰水緩衝水槽 — 自動回歸測試與公式驗算報告</h3>
+        <button type="button" class="btn quiet" onclick="closeVerifyModal()">關閉</button>
+      </div>
+      <div class="modal-b">
+        <div class="note" id="verifySummaryNote"></div>
+        <div class="test-grid" id="verifyTestList"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 重設確認 Modal -->
+  <div class="modal-backdrop" id="resetModal" hidden onclick="if(event.target===this)closeResetModal()">
+    <div class="modal sm" role="dialog" aria-modal="true" aria-labelledby="resetModalTitle">
+      <div class="modal-h">
+        <h3 id="resetModalTitle">確認重設為預設值</h3>
+        <button type="button" class="btn quiet" onclick="closeResetModal()">關閉</button>
+      </div>
+      <div class="modal-b">
+        <div>確定要將所有輸入參數恢復為系統預設值嗎？目前的輸入將會被覆蓋。</div>
+      </div>
+      <div class="modal-f">
+        <button type="button" class="btn" onclick="closeResetModal()">取消</button>
+        <button type="button" class="btn primary" onclick="confirmReset()">確認重設</button>
+      </div>
+    </div>
+  </div>
+
+  <button type="button" class="to-results" onclick="document.getElementById('results').scrollIntoView({ behavior: 'smooth' })">看結果</button>
+
+<script>
+'use strict';
+
+/* ============================================================================
+ * 1. 核心工程計算引擎 (含共管 vs 逐台獨立同基準對比、ASME 封頭幾何與管嘴選型)
+ * ============================================================================ */
+const BufferTankEngine = (() => {
+  const FLUIDS = {
+    water: { name: '純水', cp: 4.186, rho: 1000 },
+    eg30: { name: '乙二醇 30%', cp: 3.66, rho: 1045 },
+    pg30: { name: '丙二醇 30%', cp: 3.87, rho: 1030 }
+  };
+  const STD_SIZES = [5, 10, 15, 20, 25, 30, 40, 50, 60, 80, 100, 150, 200, 300, 400, 500, 800, 1000, 1500, 2000];
+  const FLOOR_HEIGHT = 3.5; // m
+  const MAX_PREFERRED_COUNT = 8;
+
+  function resolveFluid(raw) {
+    if (raw.fluid === 'custom') return { name: '自訂', cp: raw.cp, rho: raw.rho };
+    return FLUIDS[raw.fluid] || FLUIDS.water;
+  }
+
+  function validate(raw) {
+    const e = {};
+    const need = (id, v, cond, msg) => { if (!Number.isFinite(v)) e[id] = '必填'; else if (!cond(v)) e[id] = msg; };
+    need('load', raw.load, v => v > 0, '必須大於 0');
+    need('chillerN', raw.chillerN, v => v >= 1 && Number.isInteger(v), '請填 1 以上的整數');
+    need('durationMin', raw.durationMin, v => v > 0, '必須大於 0');
+    need('deltaT', raw.deltaT, v => v > 0, '必須大於 0');
+    need('supplyTemp', raw.supplyTemp, v => v >= -20 && v <= 40, '請填 -20 ~ 40°C');
+    need('moduleSize', raw.moduleSize, v => v > 0, '必須大於 0');
+    need('tankEffPct', raw.tankEffPct, v => v >= 10 && v <= 100, '請填 10–100');
+    need('marginPct', raw.marginPct, v => v >= 0 && v <= 200, '請填 0–200');
+    need('minVolIndex', raw.minVolIndex, v => v >= 0, '不可為負值');
+    need('hdRatio', raw.hdRatio, v => v >= 0.8 && v <= 6, '請填 0.8–6');
+    if (raw.fluid === 'custom') {
+      need('fluidCp', raw.cp, v => v > 0, '必須大於 0');
+      need('fluidRho', raw.rho, v => v > 0, '必須大於 0');
+    }
+    return e;
+  }
+
+  // 立式圓筒槽外形：V = π/4 · D² · H (等效圓柱高 H)，並細分 ASME 2:1 橢圓封頭深與直筒高
+  function tankDims(V, hd) {
+    const D = Math.cbrt(4 * V / (Math.PI * hd));
+    const H = hd * D; // 等效液位總高
+    const area = (Math.PI / 4) * D * D;
+    // ASME 2:1 橢圓封頭高度 h_head = D / 4；單顆封頭容積 = π/24 · D³ (相當於 D/6 的直筒高)
+    const headDepth = D * 0.25;
+    const shellH = Math.max(D * 0.05, H - (D / 3)); // 扣除上下封頭等效容積高度後的直筒身高度（精確容積守恆）
+    const totalVesselH = shellH + 2 * headDepth;   // 含上下封頭之容器本體總高
+    const padH = 0.24;                             // 基礎座高
+    const legH = Math.max(0.55, D * 0.24);          // 支腿高
+    const overallH = padH + legH + totalVesselH + 0.35; // 含底部支腿與頂部排氣閥之總淨高
+    return { D, H, shellH, headDepth, totalVesselH, padH, legH, overallH, area, floors: overallH / FLOOR_HEIGHT };
+  }
+
+  // 根據單槽流量 (m³/h) 推算建議管嘴公稱管徑 DN (目標管內流速 ≤ 2.0 m/s，大流量擴充至 DN1000)
+  function selectNozzleDN(flowPerTankM3h) {
+    const qM3s = Math.max(0.001, flowPerTankM3h / 3600);
+    const targetVel = 1.8; // m/s
+    const reqDiaM = Math.sqrt((4 * qM3s) / (Math.PI * targetVel));
+    const reqMM = reqDiaM * 1000;
+    const stdDNs = [80, 100, 125, 150, 200, 250, 300, 350, 400, 450, 500, 600, 700, 800, 900, 1000];
+    const dn = stdDNs.find(d => d >= reqMM) || 1000;
+    const actualVel = qM3s / ((Math.PI / 4) * Math.pow(dn / 1000, 2));
+    return { dn, diaM: dn / 1000, actualVel };
+  }
+
+  function sizeOption(s, ctx) {
+    const count = ctx.targetVol > 1e-9 ? Math.ceil(ctx.targetVol / s - 1e-9) : 0;
+    const installed = count * s;
+    return {
+      size: s, count, installed, dims: tankDims(s, ctx.hd),
+      minutes: installed * ctx.eff * ctx.minPerM3,
+      overPct: ctx.tankReq > 0 ? (installed / ctx.tankReq - 1) * 100 : 0
+    };
+  }
+
+  function calculate(raw) {
+    const errors = validate(raw);
+    if (Object.keys(errors).length) return { valid: false, errors };
+
+    const fluid = resolveFluid(raw);
+    const rc = fluid.rho * fluid.cp;                 // kJ/m³·K
+    const P = raw.load, t = raw.durationMin, dT = raw.deltaT;
+    const supplyT = Number.isFinite(raw.supplyTemp) ? raw.supplyTemp : 7;
+    const returnT = supplyT + dT;
+    const eff = raw.tankEffPct / 100;
+    const isolated = raw.mode === 'isolated';
+    const N = raw.chillerN;
+
+    const totalPlantKW = isolated ? P * N : P;
+    const chillerKW = isolated ? P : P / N;
+
+    const energyKJ = P * t * 60;
+    const grossVol = energyKJ / (rc * dT);                 // 理論需要的「有效冷水」m³
+    const tankReq = grossVol / eff;                        // 除以水槽有效利用率後的「實體容積需求」m³
+    const targetVol = tankReq * (1 + raw.marginPct / 100); // 加上安全餘裕後的「設計需求容積」m³
+    const minPerM3 = rc * dT / (P * 60);                   // 每 m³ 有效冷水可撐幾分鐘
+    const flowM3h = (P / (rc * dT)) * 3600;                // 緩衝期間系統循環流量 m³/h
+    const plantFlowM3h = (totalPlantKW / (rc * dT)) * 3600;// 全廠總循環流量 m³/h
+
+    const ctx = { targetVol, tankReq, eff, minPerM3, hd: raw.hdRatio };
+    const chosen = sizeOption(raw.moduleSize, ctx);
+    const tankMinutes = chosen.installed * eff * minPerM3;
+    const oneDownMinutes = chosen.count >= 1 ? (chosen.count - 1) * raw.moduleSize * eff * minPerM3 : 0;
+
+    // 計算同基準下「共用集管 vs 逐台獨立」的雙向對比
+    const plantTargetVol = isolated ? targetVol * N : targetVol;
+    const unitTargetVol = plantTargetVol / N;
+    const sharedEqCount = Math.ceil(plantTargetVol / raw.moduleSize - 1e-9);
+    const sharedEqInstalled = sharedEqCount * raw.moduleSize;
+    const sharedEqMinutes = (sharedEqInstalled * eff * rc * dT) / (totalPlantKW * 60);
+    const sharedEqOneDownMin = sharedEqCount >= 1
+      ? ((sharedEqCount - 1) * raw.moduleSize * eff * rc * dT) / (totalPlantKW * 60)
+      : 0;
+
+    const isoEqCountPerChiller = Math.ceil(unitTargetVol / raw.moduleSize - 1e-9);
+    const isoEqTotalCount = isoEqCountPerChiller * N;
+    const isoEqTotalInstalled = isoEqTotalCount * raw.moduleSize;
+    const isoEqMinutes = (isoEqCountPerChiller * raw.moduleSize * eff * rc * dT) / (chillerKW * 60);
+    const isoEqOneDownMin = isoEqCountPerChiller >= 1
+      ? ((isoEqCountPerChiller - 1) * raw.moduleSize * eff * rc * dT) / (chillerKW * 60)
+      : 0;
+
+    const archCompare = {
+      totalPlantKW,
+      chillerKW,
+      shared: {
+        count: sharedEqCount,
+        installed: sharedEqInstalled,
+        minutes: sharedEqMinutes,
+        oneDownMinutes: sharedEqOneDownMin
+      },
+      isolated: {
+        countPerChiller: isoEqCountPerChiller,
+        totalCount: isoEqTotalCount,
+        installed: isoEqTotalInstalled,
+        minutes: isoEqMinutes,
+        oneDownMinutes: isoEqOneDownMin
+      },
+      extraTanksInIsolated: isoEqTotalCount - sharedEqCount
+    };
+
+    // 單槽水力與斜溫層物理參數
+    const flowPerTankM3h = chosen.count > 0 ? flowM3h / chosen.count : 0;
+    const flowPerTankM3min = flowPerTankM3h / 60;
+    const pistonVelMmin = chosen.dims.area > 0 ? flowPerTankM3min / chosen.dims.area : 0; // m/min
+    const pistonVelMms = (pistonVelMmin / 60) * 1000; // mm/s
+    const thermoclineThicknessM = Math.max(0.15, (1 - eff) * chosen.dims.H);
+    const nozzleSpec = selectNozzleDN(flowPerTankM3h);
+
+    const sizes = [...new Set([...STD_SIZES, raw.moduleSize])].sort((a, b) => a - b);
+    let singleShown = false;
+    const options = targetVol > 1e-9 ? sizes.map(s => sizeOption(s, ctx)).filter(o => {
+      if (o.size === raw.moduleSize) { if (o.count === 1) singleShown = true; return true; }
+      if (o.count < 1 || o.count > 20) return false;
+      if (o.count === 1) { if (singleShown) return false; singleShown = true; }
+      return true;
+    }) : [];
+
+    const score = o => o.installed * (1 + 0.04 * Math.max(0, o.count - 2));
+    let best = null;
+    const pool = options.filter(o => o.count >= 1 && o.count <= MAX_PREFERRED_COUNT);
+    (pool.length ? pool : options).forEach(o => {
+      if (!best || score(o) < score(best) - 1e-9 || (Math.abs(score(o) - score(best)) < 1e-9 && o.count < best.count)) best = o;
+    });
+
+    const minSysVol = chillerKW * raw.minVolIndex / 1000;
+    const sysVol = chosen.installed;
+    const mult = isolated ? N : 1;
+
+    return {
+      valid: true, raw, fluid, rc, isolated, N, mult,
+      supplyT, returnT, totalPlantKW, chillerKW,
+      energyKJ, grossVol, tankReq, targetVol, minPerM3, flowM3h, plantFlowM3h,
+      count: chosen.count, installed: chosen.installed, effectiveInstalled: chosen.installed * eff,
+      overPct: chosen.overPct, dims: chosen.dims,
+      tankMinutes, achievedMinutes: tankMinutes, oneDownMinutes,
+      flowPerTankM3h, pistonVelMmin, pistonVelMms, thermoclineThicknessM, nozzleSpec,
+      minSysVol, sysVol,
+      plantCount: chosen.count * mult, plantInstalled: chosen.installed * mult, plantTarget: targetVol * mult,
+      archCompare, options, best
+    };
+  }
+
+  // ASME 2:1 橢圓封頭容器：液位高度 z（自底部封頭最低點起算）↔ 其下方容積 s 的精確映射
+  function vesselGeom(dims) {
+    const R = dims.D / 2, h = dims.headDepth, Hs = dims.shellH, Ht = dims.totalVesselH, A = Math.PI * R * R;
+    const Vh = (2 / 3) * A * h;                   // 單顆封頭容積 = π·D³/24
+    const Vtot = 2 * Vh + A * Hs;
+    const capVol = y => A * (y * y / h - (y * y * y) / (3 * h * h));   // 自封頭頂點起 0 ~ h
+    const capArea = y => A * Math.max(0, 2 * y / h - (y * y) / (h * h));
+    const volAt = z => {
+      const zz = Math.max(0, Math.min(Ht, z));
+      if (zz <= h) return capVol(zz);
+      if (zz <= h + Hs) return Vh + A * (zz - h);
+      return Vtot - capVol(Ht - zz);
+    };
+    const areaAt = z => { const zz = Math.max(0, Math.min(Ht, z)); return zz < h ? capArea(zz) : zz <= h + Hs ? A : capArea(Ht - zz); };
+    const zAt = s => {
+      const ss = Math.max(0, Math.min(Vtot, s));
+      if (ss >= Vh && ss <= Vh + A * Hs) return h + (ss - Vh) / A;
+      let lo = ss < Vh ? 0 : h + Hs, hi = ss < Vh ? h : Ht;
+      for (let k = 0; k < 60; k++) { const m = (lo + hi) / 2; if (volAt(m) < ss) lo = m; else hi = m; }
+      return (lo + hi) / 2;
+    };
+    return { R, A, Vh, Vtot, Ht, volAt, areaAt, zAt, radiusAt: z => Math.sqrt(areaAt(z) / Math.PI) };
+  }
+
+  /* 斜溫層熱擴散模型（容積座標，單槽）
+     · 平推：熱鋒面以單槽流量 Q 由頂部布水器向下推進（截面變小的封頭內自然加速）
+     · 不可用容積 (1 − 利用率)·V 拆分：上、下死水各 20%（布水器外側），斜溫層 10–90% 厚度 60%
+     · 斜溫層厚度 δ(t) = δ_end·√(0.3 + 0.7·t/t_ach)：入口混合初始厚度 + 熱擴散 √t 成長
+     · 一致性：t = 可撐時間 t_ach 時，斜溫層 10% 前緣恰抵底部集水器（出水溫升 = 10% ΔT）            */
+  const TC = { DEAD_SHARE: 0.2, LAYER_SHARE: 0.6, DELTA0_SQ: 0.3, EDGE: 2 * Math.atanh(0.8) };   // EDGE：tanh 剖面 10–90% 寬 = 2·atanh(0.8)·λ ≈ 2.197 λ
+  function evalThermoclineAtTime(r, tMin) {
+    const G = vesselGeom(r.dims), H = G.Ht;
+    const t = Math.max(0, tMin);
+    const Q = Math.max(1e-9, r.flowPerTankM3h / 60);                 // 單槽流量 m³/min
+    const tAch = Math.max(1e-6, r.achievedMinutes);
+    const Vuse = Math.min(G.Vtot * 0.98, Q * tAch);                 // = 利用率 × 單槽容積
+    const loss = Math.max(G.Vtot - Vuse, 0.02 * G.Vtot);
+    const deadV = TC.DEAD_SHARE * loss, W = TC.LAYER_SHARE * loss;
+    const sOut = deadV, sIn = G.Vtot - deadV;
+    const delta = W * Math.sqrt(TC.DELTA0_SQ + (1 - TC.DELTA0_SQ) * t / tAch);
+    const lam = delta / TC.EDGE;
+    const sC = sOut + W / 2 + Q * (tAch - t);                         // 鋒面中心（50% 等溫面）
+    const wRaw = s => 0.5 * (1 + Math.tanh((s - sC) / lam));
+    const wOut = wRaw(sOut), wIn = wRaw(sIn);
+    // 布水器外側為不流動死水，只隨擴散緩慢跟隨
+    const warmAtS = s => s < sOut ? wOut * (0.25 + 0.75 * s / Math.max(1e-9, sOut))
+      : s > sIn ? 1 - (1 - wIn) * (0.25 + 0.75 * (G.Vtot - s) / Math.max(1e-9, deadV)) : wRaw(s);
+    const warmAtZ = z => warmAtS(G.volAt(z));
+    const zClamp = s => G.zAt(Math.max(0, Math.min(G.Vtot, s)));
+    const frontHeightFromBottom = zClamp(sC);
+    const z10 = zClamp(sC - delta / 2), z90 = zClamp(sC + delta / 2);
+    const zOut = G.zAt(sOut), zIn = G.zAt(sIn);
+    const aF = Math.max(1e-6, G.areaAt(Math.max(zOut, Math.min(zIn, frontHeightFromBottom))));   // 鋒面速度只在兩布水器之間有意義
+
+    const rtdReadings = [];
+    for (let i = 0; i < 7; i++) {
+      const z = H * (1 - (i + 0.5) / 7);
+      const w = warmAtZ(z);
+      rtdReadings.push({ id: `TT-${i + 1}`, z, temp: r.supplyT + r.raw.deltaT * w, warmFrac: w });
+    }
+    const remColdVol = Math.max(0, r.effectiveInstalled * (1 - t / tAch));
+    return {
+      tMin: t, H, vz: Q / aF, frontDepthFromTop: H - frontHeightFromBottom, frontHeightFromBottom,
+      sigma: lam / aF, thermoclineThick: z90 - z10, thermoclineVol: delta, z10, z90,
+      zOut, zIn, deadVol: deadV, layerVolEnd: W,
+      outletTemp: r.supplyT + r.raw.deltaT * wOut, warmFractionOut: wOut, warmAtZ, geom: G,
+      remColdVol, remColdPct: r.effectiveInstalled > 0 ? (remColdVol / r.effectiveInstalled) * 100 : 0, rtdReadings
+    };
+  }
+
+  return { FLUIDS, STD_SIZES, MAX_PREFERRED_COUNT, FLOOR_HEIGHT, TC, tankDims, vesselGeom, validate, calculate, evalThermoclineAtTime, selectNozzleDN };
+})();
+
+/* ============================================================================
+ * 2. 工業級 THREE.JS 3D 緩衝水槽結構與斜溫層熱流擴散模擬器
+ * ============================================================================ */
+const Tank3DSim = (() => {
+  let scene, camera, renderer, animId;
+  let tankGroup, waterMeshes = [], frontDiscMeshes = [], particleSystems = [], rtdLedMeshes = [], jetSystems = [];
+  let isInitialized = false;
+  const PROFILE_N = 256;
+  let profileTex = null;
+  function getProfileTex() {
+    if (!profileTex) {
+      profileTex = new THREE.DataTexture(new Uint8Array(PROFILE_N * 4), PROFILE_N, 1, THREE.RGBAFormat);
+      profileTex.magFilter = THREE.LinearFilter; profileTex.minFilter = THREE.LinearFilter;
+      profileTex.needsUpdate = true;
+    }
+    return profileTex;
+  }
+  // 與 shader thermalColor 相同的五段色階（0 = CHWS 冰水、1 = CHWR 回水）
+  const THERMAL_STOPS = [[0, 0x0284c7], [0.25, 0x0ea5e9], [0.5, 0x10b981], [0.75, 0xf59e0b], [1, 0xef4444]].map(([x, h]) => [x, [(h >> 16 & 255) / 255, (h >> 8 & 255) / 255, (h & 255) / 255]]);
+  function thermalRGB(w) {
+    const v = Math.max(0, Math.min(1, w));
+    for (let i = 1; i < THERMAL_STOPS.length; i++) {
+      if (v <= THERMAL_STOPS[i][0]) { const [x0, c0] = THERMAL_STOPS[i - 1], [x1, c1] = THERMAL_STOPS[i], k = (v - x0) / (x1 - x0); return c0.map((c, j) => c + (c1[j] - c) * k); }
+    }
+    return THERMAL_STOPS[THERMAL_STOPS.length - 1][1];
+  }
+  function textSprite(text, color, h) {
+    const cv = document.createElement('canvas'), ctx = cv.getContext('2d'), fs = 44;
+    ctx.font = `700 ${fs}px Consolas, monospace`;
+    cv.width = Math.ceil(ctx.measureText(text).width) + 24; cv.height = fs + 20;
+    ctx.font = `700 ${fs}px Consolas, monospace`;
+    ctx.fillStyle = 'rgba(15,23,42,0.80)'; ctx.fillRect(0, 0, cv.width, cv.height);
+    ctx.fillStyle = color; ctx.textBaseline = 'middle'; ctx.fillText(text, 12, cv.height / 2 + 2);
+    const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: new THREE.CanvasTexture(cv), depthTest: false, transparent: true }));
+    sp.scale.set(h * cv.width / cv.height, h, 1); sp.renderOrder = 10;
+    return sp;
+  }
+  function polyline(pts, color, opacity) {
+    return new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts), new THREE.LineBasicMaterial({ color, transparent: (opacity || 1) < 1, opacity: opacity || 1 }));
+  }
+  function circlePts(n) { const p = []; for (let k = 0; k <= n; k++) { const a = k / n * Math.PI * 2; p.push(new THREE.Vector3(Math.sin(a), 0, Math.cos(a))); } return p; }
+  let viewMode = 'cutaway'; // 'cutaway' | 'exterior' | 'array'
+  let isPlaying = false;
+  let simTimeMin = 1.8;
+  let playbackSpeed = 10;
+  let lastFrameTime = 0;
+  let currentResult = null;
+
+  // Orbit Camera State
+  const camState = {
+    theta: 0.45,
+    phi: 1.22,
+    radius: 12,
+    target: (typeof THREE !== "undefined" && THREE.Vector3) ? new THREE.Vector3(0, 2.8, 0) : { x: 0, y: 2.8, z: 0, set(x,y,z){ this.x=x; this.y=y; this.z=z; } },
+    isDragging: false,
+    isPanning: false,
+    prevX: 0,
+    prevY: 0
+  };
+
+  // Custom GLSL Shader for Internal Water Column + Ellipsoidal Heads
+  const waterVertexShader = `
+    varying vec3 vWorldPos;
+    varying vec3 vLocalPos;
+    varying vec3 vNormal;
+    varying vec3 vViewPos;
+    void main() {
+      vLocalPos = position;
+      vec4 worldPosition = modelMatrix * vec4(position, 1.0);
+      vWorldPos = worldPosition.xyz;
+      vNormal = normalize(normalMatrix * normal);
+      vec4 mvPosition = modelViewMatrix * vec4(position, 1.0);
+      vViewPos = -mvPosition.xyz;
+      gl_Position = projectionMatrix * mvPosition;
+    }
+  `;
+
+  const waterFragmentShader = `
+    uniform float uBaseY;       // 底部封頭最低點的 Y（局部座標）
+    uniform float uTotalH;      // 含上下封頭之內腔總高 (m)
+    uniform sampler2D uProfile; // 溫水比例剖面 w(z)，由計算引擎逐點寫入（與 RTD / 出水溫度同源）
+    uniform float uProfileN;
+    uniform float uRipple;      // 斜溫層內微幅內波振幅 (m)
+    uniform float uTimeSec;
+    varying vec3 vWorldPos;
+    varying vec3 vLocalPos;
+    varying vec3 vNormal;
+    varying vec3 vViewPos;
+
+    vec3 thermalColor(float w) {
+      vec3 c0 = vec3(0.008, 0.480, 0.760); // Deep Chilled Water (#0284C7)
+      vec3 c1 = vec3(0.055, 0.647, 0.914); // Chilled Cyan (#0EA5E9)
+      vec3 c2 = vec3(0.063, 0.725, 0.506); // Thermocline Core Green (#10B981)
+      vec3 c3 = vec3(0.961, 0.620, 0.043); // Warm Transition Amber (#F59E0B)
+      vec3 c4 = vec3(0.937, 0.267, 0.267); // Top Hot Return Water (#EF4444)
+      if (w < 0.25) return mix(c0, c1, w / 0.25);
+      if (w < 0.50) return mix(c1, c2, (w - 0.25) / 0.25);
+      if (w < 0.75) return mix(c2, c3, (w - 0.50) / 0.25);
+      return mix(c3, c4, (w - 0.75) / 0.25);
+    }
+
+    void main() {
+      float ripple = uRipple * sin(vWorldPos.x * 5.0 + uTimeSec * 2.0) * cos(vWorldPos.z * 5.0 - uTimeSec * 1.6);
+      float z = clamp(vWorldPos.y - uBaseY + ripple, 0.0, uTotalH);
+      float u = (z / uTotalH) * (uProfileN - 1.0) / uProfileN + 0.5 / uProfileN;
+      float warmFrac = texture2D(uProfile, vec2(u, 0.5)).r;
+
+      vec3 baseCol = thermalColor(warmFrac);
+
+      // 10% / 50% / 90% 等溫面細線（斜溫層邊界）
+      float iso = max(max(1.0 - smoothstep(0.0, 0.018, abs(warmFrac - 0.1)), 1.0 - smoothstep(0.0, 0.018, abs(warmFrac - 0.5))), 1.0 - smoothstep(0.0, 0.018, abs(warmFrac - 0.9)));
+      baseCol = mix(baseCol, vec3(0.98, 0.98, 0.90), iso * 0.45);
+
+      // Volumetric lighting & Fresnel rim
+      vec3 N = normalize(vNormal);
+      vec3 V = normalize(vViewPos);
+      float fresnel = pow(1.0 - abs(dot(N, V)), 2.0);
+      float diff = max(0.35, dot(N, normalize(vec3(0.4, 0.8, 0.6))));
+      vec3 finalCol = baseCol * (0.75 + 0.25 * diff) + vec3(0.15, 0.22, 0.30) * fresnel;
+
+      gl_FragColor = vec4(finalCol, 0.62);   // 半透明：可看見內部布水器與示蹤粒子
+    }
+  `;
+
+  function init() {
+    if (isInitialized || typeof THREE === 'undefined') return;
+    const container = document.getElementById('threeCanvasWrap');
+    if (!container) return;
+
+    scene = new THREE.Scene();
+    camera = new THREE.PerspectiveCamera(40, container.clientWidth / container.clientHeight, 0.1, 600);
+
+    renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, preserveDrawingBuffer: true });
+    renderer.setSize(container.clientWidth, container.clientHeight);
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+    container.innerHTML = '';
+    container.appendChild(renderer.domElement);
+
+    // Industrial Studio Lighting
+    const hemi = new THREE.HemisphereLight(0xe2e8f0, 0x1e293b, 0.65);
+    scene.add(hemi);
+    const keyLight = new THREE.DirectionalLight(0xffffff, 0.95);
+    keyLight.position.set(22, 36, 26);
+    scene.add(keyLight);
+    const fillLight = new THREE.DirectionalLight(0x38bdf8, 0.4);
+    fillLight.position.set(-24, 14, -16);
+    scene.add(fillLight);
+    const rimLight = new THREE.DirectionalLight(0xf8fafc, 0.35);
+    rimLight.position.set(0, -15, -25);
+    scene.add(rimLight);
+
+    tankGroup = new THREE.Group();
+    scene.add(tankGroup);
+
+    bindPointerEvents(renderer.domElement);
+    window.addEventListener('resize', onResize);
+    isInitialized = true;
+
+    lastFrameTime = performance.now();
+    animate();
+  }
+
+  function bindPointerEvents(dom) {
+    dom.addEventListener('mousedown', e => {
+      if (e.button === 2 || e.shiftKey) camState.isPanning = true;
+      else camState.isDragging = true;
+      camState.prevX = e.clientX;
+      camState.prevY = e.clientY;
+    });
+    window.addEventListener('mousemove', e => {
+      if (!camState.isDragging && !camState.isPanning) return;
+      const dx = e.clientX - camState.prevX;
+      const dy = e.clientY - camState.prevY;
+      camState.prevX = e.clientX;
+      camState.prevY = e.clientY;
+      if (camState.isDragging) {
+        camState.theta -= dx * 0.0075;
+        camState.phi = Math.max(0.08, Math.min(Math.PI - 0.12, camState.phi - dy * 0.0075));
+      } else if (camState.isPanning) {
+        const panScale = camState.radius * 0.0015;
+        camState.target.y = Math.max(0.2, camState.target.y + dy * panScale);
+      }
+      updateCameraTransform();
+    });
+    window.addEventListener('mouseup', () => {
+      camState.isDragging = false;
+      camState.isPanning = false;
+    });
+    dom.addEventListener('contextmenu', e => e.preventDefault());
+    dom.addEventListener('wheel', e => {
+      e.preventDefault();
+      camState.radius = Math.max(2.2, Math.min(220, camState.radius * (1 + e.deltaY * 0.001)));
+      updateCameraTransform();
+    }, { passive: false });
+
+    let touchDist = 0;
+    dom.addEventListener('touchstart', e => {
+      if (e.touches.length === 1) {
+        camState.isDragging = true;
+        camState.prevX = e.touches[0].clientX;
+        camState.prevY = e.touches[0].clientY;
+      } else if (e.touches.length === 2) {
+        camState.isDragging = false;
+        touchDist = Math.hypot(
+          e.touches[0].clientX - e.touches[1].clientX,
+          e.touches[0].clientY - e.touches[1].clientY
+        );
+      }
+    }, { passive: true });
+    dom.addEventListener('touchmove', e => {
+      if (e.touches.length === 1 && camState.isDragging) {
+        const dx = e.touches[0].clientX - camState.prevX;
+        const dy = e.touches[0].clientY - camState.prevY;
+        camState.prevX = e.touches[0].clientX;
+        camState.prevY = e.touches[0].clientY;
+        camState.theta -= dx * 0.008;
+        camState.phi = Math.max(0.1, Math.min(Math.PI - 0.12, camState.phi - dy * 0.008));
+        updateCameraTransform();
+      } else if (e.touches.length === 2) {
+        const d = Math.hypot(
+          e.touches[0].clientX - e.touches[1].clientX,
+          e.touches[0].clientY - e.touches[1].clientY
+        );
+        if (touchDist > 0) {
+          camState.radius = Math.max(2.2, Math.min(220, camState.radius * (touchDist / d)));
+          updateCameraTransform();
+        }
+        touchDist = d;
+      }
+    }, { passive: true });
+    dom.addEventListener('touchend', () => { camState.isDragging = false; });
+  }
+
+  function updateCameraTransform() {
+    if (!camera) return;
+    const x = camState.target.x + camState.radius * Math.sin(camState.phi) * Math.sin(camState.theta);
+    const y = camState.target.y + camState.radius * Math.cos(camState.phi);
+    const z = camState.target.z + camState.radius * Math.sin(camState.phi) * Math.cos(camState.theta);
+    camera.position.set(x, y, z);
+    camera.lookAt(camState.target);
+  }
+
+  function onResize() {
+    if (!renderer || !camera) return;
+    const container = document.getElementById('threeCanvasWrap');
+    if (!container || container.clientWidth === 0) return;
+    camera.aspect = container.clientWidth / container.clientHeight;
+    camera.updateProjectionMatrix();
+    renderer.setSize(container.clientWidth, container.clientHeight);
+  }
+
+  // 建立 1.75m 工程師比例尺模型
+  function createEngineerScaleFigure(xOffset, zOffset) {
+    const g = new THREE.Group();
+    const suitMat = new THREE.MeshStandardMaterial({ color: 0x0284c7, roughness: 0.45 });
+    const vestMat = new THREE.MeshStandardMaterial({ color: 0x22c55e, roughness: 0.4 });
+    const hatMat = new THREE.MeshStandardMaterial({ color: 0xfacc15, roughness: 0.25 });
+    const skinMat = new THREE.MeshStandardMaterial({ color: 0xe2e8f0, roughness: 0.5 });
+
+    const legL = new THREE.Mesh(new THREE.CylinderGeometry(0.065, 0.055, 0.78, 12), suitMat);
+    legL.position.set(-0.095, 0.39, 0);
+    const legR = legL.clone();
+    legR.position.set(0.095, 0.39, 0);
+
+    const torso = new THREE.Mesh(new THREE.CylinderGeometry(0.165, 0.135, 0.62, 16), vestMat);
+    torso.position.set(0, 1.09, 0);
+
+    const armL = new THREE.Mesh(new THREE.CylinderGeometry(0.045, 0.04, 0.56, 10), suitMat);
+    armL.position.set(-0.21, 1.07, 0);
+    armL.rotation.z = 0.12;
+    const armR = armL.clone();
+    armR.position.set(0.21, 1.07, 0);
+    armR.rotation.z = -0.12;
+
+    const head = new THREE.Mesh(new THREE.SphereGeometry(0.115, 16, 16), skinMat);
+    head.position.set(0, 1.54, 0);
+    const helmet = new THREE.Mesh(new THREE.SphereGeometry(0.132, 16, 12, 0, Math.PI * 2, 0, Math.PI * 0.55), hatMat);
+    helmet.position.set(0, 1.56, 0);
+
+    g.add(legL, legR, torso, armL, armR, head, helmet);
+    g.position.set(xOffset, 0, zOffset);
+    return g;
+  }
+
+  // 建立八爪輻射多孔散流器 (Octagonal Radial Slotted Pipe Sparger + Anti-impingement Baffle)
+  function createRadialSpargerAssembly(R, nozzleR, yPos, isTopHot, mat) {
+    const spargerGroup = new THREE.Group();
+    spargerGroup.position.y = yPos;
+
+    // 中心分水集管盒 (Center Distribution Hub)
+    const hub = new THREE.Mesh(new THREE.CylinderGeometry(nozzleR * 1.9, nozzleR * 1.9, nozzleR * 1.8, 20), mat);
+    spargerGroup.add(hub);
+
+    // 防衝擊圓盤擋板 (Anti-Impingement Baffle Plate)
+    const baffleMat = new THREE.MeshStandardMaterial({ color: 0x94a3b8, metalness: 0.7, roughness: 0.3, side: THREE.DoubleSide });
+    const baffle = new THREE.Mesh(new THREE.CylinderGeometry(R * 0.28, R * 0.28, 0.015, 24), baffleMat);
+    baffle.position.y = isTopHot ? -nozzleR * 1.5 : nozzleR * 1.5;
+    spargerGroup.add(baffle);
+
+    // 8 支輻射多孔散流支管 (8 Radial Slotted Laterals) + 外環均壓圈
+    const armLen = R * 0.80;
+    const armR = nozzleR * 0.55;
+    const holeMat = new THREE.MeshBasicMaterial({ color: isTopHot ? 0xfca5a5 : 0x7dd3fc });
+
+    for (let i = 0; i < 8; i++) {
+      const ang = (i * Math.PI) / 4;
+      const armGroup = new THREE.Group();
+      armGroup.rotation.y = ang;
+
+      const armPipe = new THREE.Mesh(new THREE.CylinderGeometry(armR, armR, armLen, 12), mat);
+      armPipe.rotation.z = Math.PI / 2;
+      armPipe.position.x = armLen / 2;
+      armGroup.add(armPipe);
+
+      // End cap
+      const cap = new THREE.Mesh(new THREE.SphereGeometry(armR * 1.05, 10, 10), mat);
+      cap.position.x = armLen;
+      armGroup.add(cap);
+
+      // Sparger Orifice Slots along each radial arm
+      for (let k = 1; k <= 4; k++) {
+        const slot = new THREE.Mesh(new THREE.SphereGeometry(armR * 0.42, 8, 8), holeMat);
+        slot.position.set((armLen * k) / 4.4, isTopHot ? armR * 0.9 : -armR * 0.9, 0);
+        armGroup.add(slot);
+      }
+
+      spargerGroup.add(armGroup);
+    }
+
+    // 環形固定支撐圈 (Outer Stabilizer Ring)
+    const ring = new THREE.Mesh(new THREE.TorusGeometry(R * 0.62, armR * 0.45, 10, 36), baffleMat);
+    ring.rotation.x = Math.PI / 2;
+    spargerGroup.add(ring);
+
+    return spargerGroup;
+  }
+
+  // 建立外部 ANSI 法蘭管嘴 + 90度彎頭 + 蝶閥與手輪組件
+  function createExternalNozzleWithValve(R, nozzleR, yPos, isLeft, isTopHot, pipeMat) {
+    const g = new THREE.Group();
+    const dir = isLeft ? -1 : 1;
+    const flangeMat = new THREE.MeshStandardMaterial({ color: 0x475569, metalness: 0.75, roughness: 0.3 });
+    const valveBodyMat = new THREE.MeshStandardMaterial({ color: 0x1e293b, metalness: 0.6, roughness: 0.4 });
+    const wheelMat = new THREE.MeshStandardMaterial({ color: isTopHot ? 0xef4444 : 0xfacc15, metalness: 0.3, roughness: 0.4 });
+
+    // 穿牆水平短管 (Horizontal Nozzle Neck from center hub to outside shell)
+    const neckLen = R * 1.32;
+    const neck = new THREE.Mesh(new THREE.CylinderGeometry(nozzleR, nozzleR, neckLen, 20), pipeMat);
+    neck.rotation.z = Math.PI / 2;
+    neck.position.set(dir * (neckLen / 2), yPos, 0);
+    g.add(neck);
+
+    // 桶壁補強墊板 (Reinforcing Pad on Shell)
+    const repad = new THREE.Mesh(new THREE.CylinderGeometry(nozzleR * 2.1, nozzleR * 2.1, 0.06, 24), flangeMat);
+    repad.rotation.z = Math.PI / 2;
+    repad.position.set(dir * (R * 1.02), yPos, 0);
+    g.add(repad);
+
+    // 雙片對鎖 ANSI 法蘭盤 (Mating Flange Pair + Bolt Ring)
+    const flangeX = dir * (R * 1.24);
+    const fl1 = new THREE.Mesh(new THREE.CylinderGeometry(nozzleR * 1.75, nozzleR * 1.75, 0.04, 24), flangeMat);
+    fl1.rotation.z = Math.PI / 2;
+    fl1.position.set(flangeX, yPos, 0);
+    const fl2 = fl1.clone();
+    fl2.position.set(flangeX + dir * 0.055, yPos, 0);
+    g.add(fl1, fl2);
+
+    // 法蘭對鎖螺栓圈 (8 Hex Bolts)
+    const boltMat = new THREE.MeshStandardMaterial({ color: 0xe2e8f0, metalness: 0.8, roughness: 0.2 });
+    for (let b = 0; b < 8; b++) {
+      const a = (b * Math.PI) / 4;
+      const bolt = new THREE.Mesh(new THREE.CylinderGeometry(0.015, 0.015, 0.14, 6), boltMat);
+      bolt.rotation.z = Math.PI / 2;
+      bolt.position.set(
+        flangeX + dir * 0.025,
+        yPos + Math.cos(a) * nozzleR * 1.42,
+        Math.sin(a) * nozzleR * 1.42
+      );
+      g.add(bolt);
+    }
+
+    // 隔離蝶閥本體 + 手動操作輪 (Isolation Butterfly Valve + Handwheel)
+    const valveX = dir * (R * 1.36);
+    const valveBody = new THREE.Mesh(new THREE.CylinderGeometry(nozzleR * 1.55, nozzleR * 1.55, 0.09, 20), valveBodyMat);
+    valveBody.rotation.z = Math.PI / 2;
+    valveBody.position.set(valveX, yPos, 0);
+    g.add(valveBody);
+
+    const stem = new THREE.Mesh(new THREE.CylinderGeometry(0.025, 0.025, nozzleR * 2.4, 10), flangeMat);
+    stem.rotation.x = Math.PI / 2;
+    stem.position.set(valveX, yPos, nozzleR * 1.2);
+    g.add(stem);
+
+    const wheel = new THREE.Mesh(new THREE.TorusGeometry(nozzleR * 1.15, 0.022, 10, 24), wheelMat);
+    wheel.position.set(valveX, yPos, nozzleR * 2.35);
+    g.add(wheel);
+
+    return g;
+  }
+
+  // 建立擬真工業級單座緩衝水槽 3D 組件
+  function createIndustrialTankAssembly(r, isCutaway, isPrimaryInstrumented) {
+    const unit = new THREE.Group();
+    const D = r.dims.D;
+    const R = D / 2;
+    const shellH = r.dims.shellH;
+    const headH = r.dims.headDepth;       // D / 4 (ASME 2:1 Ellipsoidal Head)
+    const totalVesselH = r.dims.totalVesselH;
+    const eff = r.raw.tankEffPct / 100;
+    const nozzleR = Math.max(0.075, Math.min(R * 0.16, r.nozzleSpec.diaM * 0.65));
+    const waterR = R * 0.962;
+    const st0 = BufferTankEngine.evalThermoclineAtTime(r, simTimeMin);
+    const G = st0.geom;
+
+    // 混凝土基礎平台高 padH 與鋼構支撐高度 legH
+    const padH = 0.24;
+    const legH = Math.max(0.55, D * 0.24);
+    const baseWaterY = padH + legH; // 底部橢圓封頭最低點 Y 座標
+    const cylBottomY = baseWaterY + headH; // 直圓筒身下焊縫 Y 座標
+    const cylTopY = cylBottomY + shellH;   // 直圓筒身上焊縫 Y 座標
+    const topCrownY = cylTopY + headH;     // 頂部橢圓封頭最高點 Y 座標
+
+    // ---------------- 1. 钢筋混凝土八角基礎座 (Octagonal Concrete Foundation Pad) ----------------
+    const concreteMat = new THREE.MeshStandardMaterial({ color: 0x475569, roughness: 0.85, metalness: 0.05 });
+    const padMesh = new THREE.Mesh(new THREE.CylinderGeometry(R * 1.24, R * 1.28, padH, 16), concreteMat);
+    padMesh.position.y = padH / 2;
+    unit.add(padMesh);
+
+    // ---------------- 2. 底部支撐結構：4 柱重型鋼管腳座 + 斜撐 或 大型裙座 (Skirt / Legs) ----------------
+    const structSteelMat = new THREE.MeshStandardMaterial({ color: 0x334155, metalness: 0.65, roughness: 0.35 });
+    const basePlateMat = new THREE.MeshStandardMaterial({ color: 0x1e293b, metalness: 0.7, roughness: 0.3 });
+    const legRadial = R * 0.82;
+    const legTubeR = Math.max(0.065, R * 0.075);
+    const legHeightToSeam = legH + headH * 0.65;
+
+    for (let i = 0; i < 4; i++) {
+      const ang = (i * Math.PI) / 2 + Math.PI / 4;
+      const lx = Math.cos(ang) * legRadial;
+      const lz = Math.sin(ang) * legRadial;
+
+      // 鋼管立柱
+      const legCol = new THREE.Mesh(new THREE.CylinderGeometry(legTubeR, legTubeR * 1.08, legHeightToSeam, 16), structSteelMat);
+      legCol.position.set(lx, padH + legHeightToSeam / 2, lz);
+      unit.add(legCol);
+
+      // 柱底基礎鋼板 + 4 顆地腳螺栓 (Anchor Bolts)
+      const bp = new THREE.Mesh(new THREE.BoxGeometry(legTubeR * 3.4, 0.04, legTubeR * 3.4), basePlateMat);
+      bp.position.set(lx, padH + 0.02, lz);
+      unit.add(bp);
+    }
+
+    // 水平環樑固定圈 (Horizontal Support Ring Beam)
+    const ringBeam = new THREE.Mesh(new THREE.TorusGeometry(legRadial, legTubeR * 0.55, 10, 32), structSteelMat);
+    ringBeam.rotation.x = Math.PI / 2;
+    ringBeam.position.y = padH + legH * 0.55;
+    unit.add(ringBeam);
+
+    // ---------------- 3 ~ 5. 內部斜溫層熱流水體、等溫環與八爪散流器（僅在剖面展示槽中生成以優化陣列效能） ----------------
+    if (isCutaway) {
+      // 3. 內部斜溫層熱流水體 (精確貼合直筒身 + 上下 2:1 橢圓封頭內腔)
+      const waterMat = new THREE.ShaderMaterial({
+        vertexShader: waterVertexShader,
+        fragmentShader: waterFragmentShader,
+        uniforms: {
+          uBaseY: { value: baseWaterY },
+          uTotalH: { value: totalVesselH },
+          uProfile: { value: getProfileTex() },
+          uProfileN: { value: PROFILE_N },
+          uRipple: { value: 0 },
+          uTimeSec: { value: 0 }
+        },
+        transparent: true,
+        side: THREE.DoubleSide
+      });
+
+      // 直筒水柱
+      const cylWaterGeo = new THREE.CylinderGeometry(waterR, waterR, shellH, 48, 48, false);
+      const cylWaterMesh = new THREE.Mesh(cylWaterGeo, waterMat);
+      cylWaterMesh.position.y = cylBottomY + shellH / 2;
+      unit.add(cylWaterMesh);
+
+      // 上封頭水體 (Ellipsoidal Dome)
+      const topWaterGeo = new THREE.SphereGeometry(waterR, 40, 20, 0, Math.PI * 2, 0, Math.PI * 0.5);
+      topWaterGeo.scale(1, (headH * 0.96) / waterR, 1);
+      const topWaterMesh = new THREE.Mesh(topWaterGeo, waterMat);
+      topWaterMesh.position.y = cylTopY;
+      unit.add(topWaterMesh);
+
+      // 下封頭水體 (Ellipsoidal Bottom)
+      const botWaterGeo = new THREE.SphereGeometry(waterR, 40, 20, 0, Math.PI * 2, Math.PI * 0.5, Math.PI * 0.5);
+      botWaterGeo.scale(1, (headH * 0.96) / waterR, 1);
+      const botWaterMesh = new THREE.Mesh(botWaterGeo, waterMat);
+      botWaterMesh.position.y = cylBottomY;
+      unit.add(botWaterMesh);
+
+      waterMeshes.push(cylWaterMesh, topWaterMesh, botWaterMesh);
+
+      // 4. 斜溫層 10% / 50% / 90% 等溫環 + 半透明混水層帶 + 厚度標註
+      const isoDefs = [[0.1, 0x7dd3fc, 0.9], [0.5, 0xfef08a, 1], [0.9, 0xfca5a5, 0.9]];
+      const isoRings = isoDefs.map(([, col, op]) => { const l = polyline(circlePts(64), col, op); unit.add(l); return l; });
+      const layerBand = new THREE.Mesh(new THREE.CylinderGeometry(1, 1, 1, 56, 1, true),
+        new THREE.MeshBasicMaterial({ color: 0xfef08a, transparent: true, opacity: 0.10, side: THREE.DoubleSide, depthWrite: false }));
+      unit.add(layerBand);
+      let layerLabel = null;
+      if (isPrimaryInstrumented) { layerLabel = new THREE.Group(); unit.add(layerLabel); }
+      frontDiscMeshes.push({ isoRings, layerBand, layerLabel, baseWaterY, waterR, G, labelKey: '' });
+
+      // 5. 頂部與底部八爪輻射多孔散流器 (Spargers) + 外部法蘭管嘴與蝶閥
+      // 規範：進出水水平管嘴中心線必須位於直筒身切線（Tangent Line）內側至少 1.4 * nozzleR
+      const topSpargerY = Math.min(cylTopY - nozzleR * 1.4, baseWaterY + st0.zIn);
+      const botSpargerY = Math.max(cylBottomY + nozzleR * 1.4, baseWaterY + st0.zOut);
+      const topSpR = Math.max(R * 0.35, G.radiusAt(Math.max(0, Math.min(G.Ht, topSpargerY - baseWaterY))) * 0.962);
+      const botSpR = Math.max(R * 0.35, G.radiusAt(Math.max(0, Math.min(G.Ht, botSpargerY - baseWaterY))) * 0.962);
+
+      const hotPipeMat = new THREE.MeshStandardMaterial({ color: 0xef4444, metalness: 0.45, roughness: 0.3, emissive: 0x7f1d1d, emissiveIntensity: 0.2 });
+      const coldPipeMat = new THREE.MeshStandardMaterial({ color: 0x0284c7, metalness: 0.45, roughness: 0.3, emissive: 0x0c4a6e, emissiveIntensity: 0.2 });
+
+      // 內部八爪散流管組
+      const topSparger = createRadialSpargerAssembly(topSpR, nozzleR, topSpargerY, true, hotPipeMat);
+      const botSparger = createRadialSpargerAssembly(botSpR, nozzleR, botSpargerY, false, coldPipeMat);
+      unit.add(topSparger, botSparger);
+
+      // 外部左側溫水進水法蘭與蝶閥 (CHWR) + 右側冷水出水法蘭與蝶閥 (CHWS)
+      const topNozzleExt = createExternalNozzleWithValve(R, nozzleR, topSpargerY, true, true, hotPipeMat);
+      const botNozzleExt = createExternalNozzleWithValve(R, nozzleR, botSpargerY, false, false, coldPipeMat);
+      unit.add(topNozzleExt, botNozzleExt);
+      if (isPrimaryInstrumented) {
+        const lh = Math.max(0.3, totalVesselH * 0.055);
+        const inL = textSprite('CHWR 回水進水 →', '#FCA5A5', lh); inL.position.set(-R * 1.95, topSpargerY + lh * 1.3, 0); unit.add(inL);
+        const outL = textSprite('→ CHWS 冰水出水', '#7DD3FC', lh); outL.position.set(R * 1.95, botSpargerY + lh * 1.3, 0); unit.add(outL);
+      }
+
+      // 布水器低速射流示蹤：頂部由中心向外徑向布水（溫水）、底部由外向中心集水
+      if (isPrimaryInstrumented) {
+        const nJ = 96, jPos = new Float32Array(nJ * 3), jCol = new Float32Array(nJ * 3), jPh = new Float32Array(nJ);
+        for (let i = 0; i < nJ; i++) jPh[i] = Math.random();
+        const jGeo = new THREE.BufferGeometry();
+        jGeo.setAttribute('position', new THREE.BufferAttribute(jPos, 3));
+        jGeo.setAttribute('color', new THREE.BufferAttribute(jCol, 3));
+        const jPts = new THREE.Points(jGeo, new THREE.PointsMaterial({ size: Math.max(0.05, R * 0.04), vertexColors: true, transparent: true, opacity: 0.95, depthWrite: false }));
+        unit.add(jPts);
+        jetSystems.push({ geo: jGeo, n: nJ, ph: jPh, topY: topSpargerY, botY: botSpargerY, topR: topSpR * 0.85, botR: botSpR * 0.85, armR: nozzleR * 0.55 });
+      }
+    } else {
+      // 完整閉合外觀槽體（非剖面槽）：外接進出水管嘴 + 垂直液位與溫度指示燈條
+      const topSpargerY = cylTopY - nozzleR * 1.4;
+      const botSpargerY = cylBottomY + nozzleR * 1.4;
+      const hotPipeMat = new THREE.MeshStandardMaterial({ color: 0xef4444, metalness: 0.45, roughness: 0.3 });
+      const coldPipeMat = new THREE.MeshStandardMaterial({ color: 0x0284c7, metalness: 0.45, roughness: 0.3 });
+      const topNozzleExt = createExternalNozzleWithValve(R, nozzleR, topSpargerY, true, true, hotPipeMat);
+      const botNozzleExt = createExternalNozzleWithValve(R, nozzleR, botSpargerY, false, false, coldPipeMat);
+      unit.add(topNozzleExt, botNozzleExt);
+
+      const gaugeGeo = new THREE.CylinderGeometry(0.02, 0.02, shellH * 0.88, 8);
+      const gaugeMesh = new THREE.Mesh(gaugeGeo, new THREE.MeshBasicMaterial({ color: 0x0ea5e9 }));
+      gaugeMesh.position.set(0, cylBottomY + shellH / 2, R * 1.036);
+      unit.add(gaugeMesh);
+    }
+
+    // ---------------- 6. 雙層金屬保溫桶身與 ASME 2:1 橢圓封頭 (含剖面切口邊緣壁厚) ----------------
+    // Cutaway mode: 保留背側 230 度不鏽鋼/鋁皮保溫外殼，切開前側 130 度展示內部斜溫層與八爪散流器
+    const shellStart = isCutaway ? Math.PI * 0.36 : 0;
+    const shellArc = isCutaway ? Math.PI * 1.28 : Math.PI * 2;
+
+    const outerJacketR = R * 1.032; // 外覆保溫鋁皮外徑
+    const innerSteelR = R * 0.992;  // 內層碳鋼壓力桶壁
+
+    const jacketMat = new THREE.MeshStandardMaterial({
+      color: 0xcbd5e1,
+      metalness: 0.62,
+      roughness: 0.28,
+      side: THREE.DoubleSide
+    });
+    const innerSteelMat = new THREE.MeshStandardMaterial({
+      color: 0x475569,
+      metalness: 0.75,
+      roughness: 0.35,
+      side: THREE.DoubleSide
+    });
+
+    // 外層直筒金屬皮
+    const outerShellGeo = new THREE.CylinderGeometry(outerJacketR, outerJacketR, shellH, 48, 1, true, shellStart, shellArc);
+    const outerShellMesh = new THREE.Mesh(outerShellGeo, jacketMat);
+    outerShellMesh.position.y = cylBottomY + shellH / 2;
+    unit.add(outerShellMesh);
+
+    // 內層壓力鋼板與剖面切口橘色保溫層邊條
+    if (isCutaway) {
+      const innerShellGeo = new THREE.CylinderGeometry(innerSteelR, innerSteelR, shellH, 48, 1, true, shellStart, shellArc);
+      const innerShellMesh = new THREE.Mesh(innerShellGeo, innerSteelMat);
+      innerShellMesh.position.y = cylBottomY + shellH / 2;
+      unit.add(innerShellMesh);
+
+      // 切口三層壁厚斷面：碳鋼壓力殼 / PU 保溫發泡 / 鋁皮外護板，及筒身切面
+      const cutMetalMat = new THREE.MeshStandardMaterial({ color: 0xf1f5f9, metalness: 0.95, roughness: 0.12, emissive: 0x1e293b, emissiveIntensity: 0.25, side: THREE.DoubleSide });
+      const cutFoamMat = new THREE.MeshStandardMaterial({ color: 0xf59e0b, roughness: 0.7, side: THREE.DoubleSide });
+      const rSteel = R * 1.004, rFoam = outerJacketR - R * 0.006;
+      const bands = [[innerSteelR, rSteel, cutMetalMat], [rSteel, rFoam, cutFoamMat], [rFoam, outerJacketR, cutMetalMat]];
+      [shellStart, shellStart + shellArc].forEach(th => bands.forEach(([a, b, m]) => {
+        const pl = new THREE.Mesh(new THREE.PlaneGeometry(b - a, shellH), m);
+        pl.rotation.y = th - Math.PI / 2;
+        pl.position.set((a + b) / 2 * Math.sin(th), cylBottomY + shellH / 2, (a + b) / 2 * Math.cos(th));
+        unit.add(pl);
+      }));
+      [cylBottomY, cylTopY].forEach(y => {
+        const ring = new THREE.Mesh(new THREE.RingGeometry(innerSteelR, outerJacketR, 64, 1, shellStart - Math.PI / 2, shellArc), cutMetalMat);
+        ring.rotation.x = -Math.PI / 2; ring.position.y = y; unit.add(ring);
+      });
+
+      // 上下封頭剖面壁厚弧線邊條（Head Cutaway Rim），封閉橢圓封頭切口斷面
+      const createHeadRimGeo = (isTop, th) => {
+        const segs = 20;
+        const positions = [];
+        const yBase = isTop ? cylTopY : cylBottomY;
+        const sign = isTop ? 1 : -1;
+        for (let i = 0; i < segs; i++) {
+          const a0 = (i / segs) * (Math.PI / 2);
+          const a1 = ((i + 1) / segs) * (Math.PI / 2);
+          const c0 = Math.cos(a0), s0 = Math.sin(a0);
+          const c1 = Math.cos(a1), s1 = Math.sin(a1);
+
+          const in0 = [innerSteelR * c0 * Math.sin(th), yBase + sign * headH * s0, innerSteelR * c0 * Math.cos(th)];
+          const out0 = [outerJacketR * c0 * Math.sin(th), yBase + sign * headH * s0, outerJacketR * c0 * Math.cos(th)];
+          const in1 = [innerSteelR * c1 * Math.sin(th), yBase + sign * headH * s1, innerSteelR * c1 * Math.cos(th)];
+          const out1 = [outerJacketR * c1 * Math.sin(th), yBase + sign * headH * s1, outerJacketR * c1 * Math.cos(th)];
+
+          positions.push(...in0, ...out0, ...out1);
+          positions.push(...in0, ...out1, ...in1);
+        }
+        const geo = new THREE.BufferGeometry();
+        geo.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+        geo.computeVertexNormals();
+        return geo;
+      };
+
+      [shellStart, shellStart + shellArc].forEach(th => {
+        const topRimMesh = new THREE.Mesh(createHeadRimGeo(true, th), cutMetalMat);
+        const botRimMesh = new THREE.Mesh(createHeadRimGeo(false, th), cutMetalMat);
+        unit.add(topRimMesh, botRimMesh);
+      });
+
+      // 前側透明玻璃觀察護罩線條 (讓切口仍有立體輪廓感)
+      const frontGlassGeo = new THREE.CylinderGeometry(R, R, shellH, 28, 1, true, shellStart + shellArc, Math.PI * 2 - shellArc);
+      const frontGlassMat = new THREE.MeshPhysicalMaterial({
+        color: 0xe2e8f0, transparent: true, opacity: 0.11, roughness: 0.1, transmission: 0.85, side: THREE.DoubleSide
+      });
+      const frontGlassMesh = new THREE.Mesh(frontGlassGeo, frontGlassMat);
+      frontGlassMesh.position.y = cylBottomY + shellH / 2;
+      unit.add(frontGlassMesh);
+    }
+
+    // 上下 ASME 2:1 橢圓封頭外殼（以 (0, shellArc) 建立並經 rotateY 對齊 CylinderGeometry 切口）
+    const topCapGeo = new THREE.SphereGeometry(outerJacketR, 44, 20, 0, shellArc, 0, Math.PI * 0.5);
+    topCapGeo.rotateY(shellStart + Math.PI / 2);
+    topCapGeo.scale(1, headH / outerJacketR, 1);
+    const topCapMesh = new THREE.Mesh(topCapGeo, jacketMat);
+    topCapMesh.position.y = cylTopY;
+    unit.add(topCapMesh);
+
+    const botCapGeo = new THREE.SphereGeometry(outerJacketR, 44, 20, 0, shellArc, Math.PI * 0.5, Math.PI * 0.5);
+    botCapGeo.rotateY(shellStart + Math.PI / 2);
+    botCapGeo.scale(1, headH / outerJacketR, 1);
+    const botCapMesh = new THREE.Mesh(botCapGeo, jacketMat);
+    botCapMesh.position.y = cylBottomY;
+    unit.add(botCapMesh);
+
+    // 桶身環向焊縫與不鏽鋼保溫束帶 (Circumferential Weld Seams & Cladding Bands)
+    const seamBandMat = new THREE.MeshStandardMaterial({ color: 0x64748b, metalness: 0.8, roughness: 0.25 });
+    const numBands = Math.max(3, Math.round(shellH / 1.1));
+    for (let i = 0; i <= numBands; i++) {
+      const by = cylBottomY + (shellH * i) / numBands;
+      const bandGeo = new THREE.TorusGeometry(outerJacketR * 1.003, 0.014, 8, 48, shellArc);
+      bandGeo.rotateX(Math.PI / 2);
+      bandGeo.rotateY(shellStart + shellArc - Math.PI / 2);   // 弧段對齊筒身 [shellStart, shellStart + shellArc]
+      const band = new THREE.Mesh(bandGeo, seamBandMat);
+      band.position.y = by;
+      unit.add(band);
+    }
+
+    // ---------------- 7. 頂部自動排氣閥 (AAV)、壓力錶與底部排污閥 (Drain Valve) ----------------
+    const brassMat = new THREE.MeshStandardMaterial({ color: 0xeab308, metalness: 0.7, roughness: 0.25 });
+    const aavPipe = new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.035, 0.28, 12), innerSteelMat);
+    aavPipe.position.set(0, topCrownY + 0.14, 0);
+    const aavBody = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.07, 0.18, 16), brassMat);
+    aavBody.position.set(0, topCrownY + 0.34, 0);
+    unit.add(aavPipe, aavBody);
+
+    // 底部最低點排污管與閥門 (Bottom Blowdown Drain)
+    const drainPipe = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 0.26, 12), innerSteelMat);
+    drainPipe.position.set(0, baseWaterY - 0.13, 0);
+    unit.add(drainPipe);
+
+    // ---------------- 8. 細節工業配件：人孔 (Manway)、7點式 RTD 溫度計陣列、護籠爬梯、頂部平台護欄 ----------------
+    if (isPrimaryInstrumented) {
+      // 8A. 下部檢修人孔 (DN500 Hinged Manway on Rear-Right Shell)
+      const mwGroup = new THREE.Group();
+      const mwRadius = Math.max(0.18, Math.min(0.30, shellH * 0.16, R * 0.22));
+      const mwNeck = new THREE.Mesh(new THREE.CylinderGeometry(mwRadius, mwRadius, 0.18, 24), innerSteelMat);
+      mwNeck.rotation.z = Math.PI / 2;
+      const mwCover = new THREE.Mesh(new THREE.CylinderGeometry(mwRadius * 1.22, mwRadius * 1.22, 0.045, 24), jacketMat);
+      mwCover.rotation.z = Math.PI / 2;
+      mwCover.position.x = 0.10;
+      const mwHandle = new THREE.Mesh(new THREE.TorusGeometry(mwRadius * 0.35, 0.018, 8, 16, Math.PI), brassMat);
+      mwHandle.rotation.y = Math.PI / 2;
+      mwHandle.position.x = 0.13;
+      mwGroup.add(mwNeck, mwCover, mwHandle);
+
+      const mwAng = -Math.PI * 0.65;
+      const mwCenterY = cylBottomY + Math.max(mwRadius * 1.6, Math.min(1.0, shellH * 0.28));
+      mwGroup.position.set(Math.sin(mwAng) * outerJacketR, mwCenterY, Math.cos(mwAng) * outerJacketR);
+      mwGroup.rotation.y = mwAng - Math.PI / 2;
+      unit.add(mwGroup);
+
+      // 8B. 7 點式側壁 RTD 溫度傳訊器套管陣列 (TT-1 ~ TT-7 with Status LEDs)
+      const rtdAng = Math.PI * 0.42; // 位於剖面切口右側邊緣，方便正面直接觀察
+      const rtdHeadMat = new THREE.MeshStandardMaterial({ color: 0x1e293b, metalness: 0.5, roughness: 0.3 });
+      for (let i = 0; i < 7; i++) {
+        const fracFromTop = (i + 0.5) / 7;
+        const ry = baseWaterY + totalVesselH * (1 - fracFromTop);
+        const rtdG = new THREE.Group();
+
+        // 伸入水中的不鏽鋼感溫套管 (Thermowell Probe)
+        const probe = new THREE.Mesh(new THREE.CylinderGeometry(0.016, 0.016, 0.32, 10), seamBandMat);
+        probe.rotation.z = Math.PI / 2;
+        probe.position.x = -0.04;
+
+        // 外部感溫變送器接線盒 (Transmitter Head)
+        const txBox = new THREE.Mesh(new THREE.CylinderGeometry(0.055, 0.055, 0.09, 14), rtdHeadMat);
+        txBox.rotation.z = Math.PI / 2;
+        txBox.position.x = 0.14;
+
+        // 隨局部水溫變色之 LED 狀態燈環
+        const ledMat = new THREE.MeshBasicMaterial({ color: 0x0ea5e9 });
+        const ledRing = new THREE.Mesh(new THREE.SphereGeometry(0.042, 12, 12), ledMat);
+        ledRing.position.x = 0.19;
+
+        rtdG.add(probe, txBox, ledRing);
+        rtdG.position.set(Math.sin(rtdAng) * outerJacketR, ry, Math.cos(rtdAng) * outerJacketR);
+        rtdG.rotation.y = rtdAng - Math.PI / 2;
+        unit.add(rtdG);
+
+        rtdLedMeshes.push({ mesh: ledRing, idx: i });
+      }
+
+      // 8C. 工業安全護籠爬梯 (Vertical Caged Access Ladder on Back-Left)
+      const yellowSteelMat = new THREE.MeshStandardMaterial({ color: 0xeab308, metalness: 0.35, roughness: 0.4 });
+      const ladderGroup = new THREE.Group();
+      const ladderH = topCrownY - padH + 0.85;
+      const railW = 0.42;
+      const ladderX = -(outerJacketR + 0.22);
+
+      // 左右爬梯立桿
+      const railGeo = new THREE.CylinderGeometry(0.022, 0.022, ladderH, 10);
+      const railL = new THREE.Mesh(railGeo, yellowSteelMat);
+      railL.position.set(0, padH + ladderH / 2, -railW / 2);
+      const railR = railL.clone();
+      railR.position.z = railW / 2;
+      ladderGroup.add(railL, railR);
+
+      // 踏棍 (Rungs every 0.32m)
+      const numRungs = Math.floor(ladderH / 0.32);
+      for (let k = 1; k < numRungs; k++) {
+        const rung = new THREE.Mesh(new THREE.CylinderGeometry(0.014, 0.014, railW, 8), yellowSteelMat);
+        rung.rotation.x = Math.PI / 2;
+        rung.position.set(0, padH + k * 0.32, 0);
+        ladderGroup.add(rung);
+      }
+
+      // 護籠爬梯立桿與桶壁角鋼固定爪（Stand-off Brackets 每隔 ~1.8m）
+      const bracketStep = 1.8;
+      const bracketStartY = cylBottomY + 0.3;
+      const bracketEndY = cylTopY + 0.2;
+      for (let by = bracketStartY; by <= bracketEndY; by += bracketStep) {
+        const bL = new THREE.Mesh(new THREE.BoxGeometry(0.22, 0.032, 0.032), yellowSteelMat);
+        bL.position.set(0.11, by, -railW / 2);
+        const bR = new THREE.Mesh(new THREE.BoxGeometry(0.22, 0.032, 0.032), yellowSteelMat);
+        bR.position.set(0.11, by, railW / 2);
+        const bPad = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.08, railW + 0.06), yellowSteelMat);
+        bPad.position.set(0.22, by, 0);
+        ladderGroup.add(bL, bR, bPad);
+      }
+
+      // 防墜護籠圓箍 (Safety Cage Hoops starting above 2.2m)
+      const cageStartY = padH + 2.2;
+      const cageR = 0.38;
+      for (let cy = cageStartY; cy <= topCrownY + 0.6; cy += 0.65) {
+        const hoop = new THREE.Mesh(new THREE.TorusGeometry(cageR, 0.014, 8, 24, Math.PI * 1.45), yellowSteelMat);
+        hoop.rotation.x = Math.PI / 2;
+        hoop.rotation.z = Math.PI * 0.28;
+        hoop.position.set(-cageR * 0.75, cy, 0);
+        ladderGroup.add(hoop);
+      }
+
+      ladderGroup.position.set(Math.sin(-Math.PI * 0.72) * (outerJacketR + 0.22), 0, Math.cos(-Math.PI * 0.72) * (outerJacketR + 0.22));
+      ladderGroup.rotation.y = -Math.PI * 0.72 + Math.PI / 2;
+      unit.add(ladderGroup);
+
+      // 8D. 頂部圓形檢修平台與安全欄杆 (Top Inspection Handrail Ring)
+      const railRadius = R * 0.86;
+      const railBaseY = topCrownY - headH * 0.18;
+      const handrailTop = new THREE.Mesh(new THREE.TorusGeometry(railRadius, 0.02, 10, 40), yellowSteelMat);
+      handrailTop.rotation.x = Math.PI / 2;
+      handrailTop.position.y = railBaseY + 1.05;
+      const handrailMid = new THREE.Mesh(new THREE.TorusGeometry(railRadius, 0.015, 8, 40), yellowSteelMat);
+      handrailMid.rotation.x = Math.PI / 2;
+      handrailMid.position.y = railBaseY + 0.55;
+      unit.add(handrailTop, handrailMid);
+
+      for (let p = 0; p < 8; p++) {
+        const pa = (p * Math.PI) / 4;
+        const post = new THREE.Mesh(new THREE.CylinderGeometry(0.018, 0.018, 1.05, 8), yellowSteelMat);
+        post.position.set(Math.cos(pa) * railRadius, railBaseY + 0.525, Math.sin(pa) * railRadius);
+        unit.add(post);
+      }
+    }
+
+    // ---------------- 9. 內部平推熱流流線粒子系統 (Streamline Thermal Particles) ----------------
+    // 平推示蹤：每顆粒子以「容積座標 s」隨單槽流量 Q 下移，半徑依所在高度的內徑縮放（封頭內自然收斂），顏色取自連續溫度剖面
+    if (isPrimaryInstrumented && isCutaway) {
+      const pCount = 320;
+      const sOut = G.volAt(st0.zOut), sIn = G.volAt(st0.zIn);
+      const pS = new Float32Array(pCount), pRn = new Float32Array(pCount), pAng = new Float32Array(pCount);
+      for (let i = 0; i < pCount; i++) { pS[i] = sOut + Math.random() * (sIn - sOut); pRn[i] = Math.sqrt(Math.random()) * 0.9; pAng[i] = Math.random() * Math.PI * 2; }
+      const pGeo = new THREE.BufferGeometry();
+      pGeo.setAttribute('position', new THREE.BufferAttribute(new Float32Array(pCount * 3), 3));
+      pGeo.setAttribute('color', new THREE.BufferAttribute(new Float32Array(pCount * 3), 3));
+      const pts = new THREE.Points(pGeo, new THREE.PointsMaterial({ size: Math.max(0.06, R * 0.05), vertexColors: true, transparent: true, opacity: 0.9, depthWrite: false }));
+      unit.add(pts);
+      particleSystems.push({ pts, pCount, pS, pRn, pAng, sOut, sIn, G, baseWaterY, waterScale: waterR / R });
+    }
+
+    // 地面陰影、實際尺寸線（ØD 與直筒高）
+    const shCv = document.createElement('canvas'); shCv.width = shCv.height = 128;
+    const shx = shCv.getContext('2d'), grd = shx.createRadialGradient(64, 64, 4, 64, 64, 64);
+    grd.addColorStop(0, 'rgba(0,0,0,0.55)'); grd.addColorStop(1, 'rgba(0,0,0,0)'); shx.fillStyle = grd; shx.fillRect(0, 0, 128, 128);
+    const shadow = new THREE.Mesh(new THREE.CircleGeometry(R * 2.1, 48), new THREE.MeshBasicMaterial({ map: new THREE.CanvasTexture(shCv), transparent: true, depthWrite: false }));
+    shadow.rotation.x = -Math.PI / 2; shadow.position.y = 0.004; unit.add(shadow);
+    if (isPrimaryInstrumented) {
+      const dimCol = 0xfde68a, lh = Math.max(0.3, totalVesselH * 0.055), tk = Math.max(0.08, R * 0.06);
+      const sx = R * 1.75, sz = -R * 0.35;
+      const p0 = new THREE.Vector3(sx, cylBottomY, sz), p1 = new THREE.Vector3(sx, cylTopY, sz);
+      unit.add(polyline([p0, p1], dimCol));
+      unit.add(polyline([p0.clone().add(new THREE.Vector3(-tk, 0, 0)), p0.clone().add(new THREE.Vector3(tk, 0, 0))], dimCol));
+      unit.add(polyline([p1.clone().add(new THREE.Vector3(-tk, 0, 0)), p1.clone().add(new THREE.Vector3(tk, 0, 0))], dimCol));
+      const hl = textSprite(`直筒 ${shellH.toFixed(2)} m`, '#FDE68A', lh); hl.position.set(sx + lh * 2.6, (cylBottomY + cylTopY) / 2, sz); unit.add(hl);
+      const yD = topCrownY + 1.35;   // 高於頂部平台護欄
+      const q0 = new THREE.Vector3(-R, yD, 0), q1 = new THREE.Vector3(R, yD, 0);
+      unit.add(polyline([q0, q1], dimCol));
+      unit.add(polyline([q0.clone().add(new THREE.Vector3(0, -tk, 0)), q0.clone().add(new THREE.Vector3(0, tk, 0))], dimCol));
+      unit.add(polyline([q1.clone().add(new THREE.Vector3(0, -tk, 0)), q1.clone().add(new THREE.Vector3(0, tk, 0))], dimCol));
+      const dl = textSprite(`Ø ${D.toFixed(2)} m · 總高 ${totalVesselH.toFixed(2)} m`, '#FDE68A', lh); dl.position.set(0, yD + lh * 0.9, 0); unit.add(dl);
+    }
+
+    return { unit, totalHeight: topCrownY + 0.85, baseWaterY, totalVesselH };
+  }
+
+  function rebuildSceneGeometry(r) {
+    if (!isInitialized) init();
+    if (!scene || !r || !r.valid) return;
+
+    tankGroup.traverse(o => {
+      if (o.geometry) o.geometry.dispose();
+      if (o.material) (Array.isArray(o.material) ? o.material : [o.material]).forEach(m => { if (m.map) m.map.dispose(); m.dispose(); });
+    });
+    while (tankGroup.children.length > 0) tankGroup.remove(tankGroup.children[0]);
+    waterMeshes = [];
+    frontDiscMeshes = [];
+    particleSystems = [];
+    rtdLedMeshes = [];
+    jetSystems = [];
+
+    const D = r.dims.D;
+    const totalVesselH = r.dims.totalVesselH;
+    const gridSpan = Math.max(18, D * 6.5);
+    const gridHelper = new THREE.GridHelper(gridSpan, 24, 0x38bdf8, 0x1e293b);
+    tankGroup.add(gridHelper);
+
+    // 樓層高程參考環線 (每 3.5m 1層樓，依含支腿安裝總淨高計算)
+    const floors = Math.min(12, Math.max(1, Math.ceil(r.dims.overallH / BufferTankEngine.FLOOR_HEIGHT)));
+    const floorLineMat = new THREE.LineBasicMaterial({ color: 0x334155, transparent: true, opacity: 0.5 });
+    for (let f = 1; f <= floors; f++) {
+      const fy = f * BufferTankEngine.FLOOR_HEIGHT;
+      const ringPts = [];
+      const rad = viewMode === 'array' ? D * 2.5 : D * 1.1;
+      for (let s = 0; s <= 48; s++) {
+        const a = (s / 48) * Math.PI * 2;
+        ringPts.push(new THREE.Vector3(Math.cos(a) * rad, fy, Math.sin(a) * rad));
+      }
+      const fGeo = new THREE.BufferGeometry().setFromPoints(ringPts);
+      tankGroup.add(new THREE.Line(fGeo, floorLineMat));
+    }
+
+    if (viewMode === 'cutaway' || viewMode === 'exterior') {
+      const isCut = viewMode === 'cutaway';
+      const built = createIndustrialTankAssembly(r, isCut, true);
+      tankGroup.add(built.unit);
+
+      const engFigure = createEngineerScaleFigure(D * 0.92 + 0.55, 0.25);
+      tankGroup.add(engFigure);
+
+      camState.target.set(0, built.totalHeight * 0.46, 0);
+      camState.radius = Math.max(4.8, Math.max(D * 1.6, built.totalHeight) * 1.68);
+      updateCameraTransform();
+
+      setText('ov3dTitle', isCut
+        ? `ASME 2:1 橢圓封頭緩衝罐 — 130° 剖面內構與熱流視圖`
+        : `ASME 2:1 橢圓封頭緩衝罐 — 完整保溫外觀與附屬件視圖`);
+    } else {
+      // 全廠多槽並聯陣列
+      const showCount = Math.min(20, r.plantCount);
+      const cols = r.isolated ? Math.min(6, r.count) : Math.ceil(Math.sqrt(showCount));
+      const spacing = D * 1.65;
+      const rows = Math.ceil(showCount / Math.max(1, cols));
+      let maxH = 6;
+
+      for (let i = 0; i < showCount; i++) {
+        const c = i % cols;
+        const rw = Math.floor(i / cols);
+        const groupGap = r.isolated ? rw * (D * 0.45) : 0;
+        const x = (c - (cols - 1) / 2) * spacing;
+        const z = (rw - (rows - 1) / 2) * spacing + groupGap;
+        const built = createIndustrialTankAssembly(r, i === 0, i === 0);
+        built.unit.position.set(x, 0, z);
+        tankGroup.add(built.unit);
+        maxH = built.totalHeight;
+      }
+
+      const arraySpan = Math.max(cols, rows) * spacing;
+      const engFigure = createEngineerScaleFigure((cols * spacing) / 2 + 0.9, 0);
+      tankGroup.add(engFigure);
+
+      camState.target.set(0, maxH * 0.45, 0);
+      camState.radius = Math.max(6.5, Math.max(arraySpan, maxH) * 1.62);
+      updateCameraTransform();
+
+      setText('ov3dTitle', r.isolated
+        ? `全廠槽群陣列：逐台獨立 (${r.N} 台 × ${r.count} 槽 = 共 ${r.plantCount} 槽)`
+        : `全廠槽群陣列：共用集管 (共 ${r.plantCount} 槽並聯)`);
+    }
+
+    updateThermalState();
+  }
+
+  // 將 0~1 的熱度轉換為 THREE.Color 與 CSS Hex
+  function warmFracToHexColor(w) {
+    const c = new THREE.Color();
+    if (w < 0.25) c.lerpColors(new THREE.Color(0x0284c7), new THREE.Color(0x0ea5e9), w / 0.25);
+    else if (w < 0.5) c.lerpColors(new THREE.Color(0x0ea5e9), new THREE.Color(0x10b981), (w - 0.25) / 0.25);
+    else if (w < 0.75) c.lerpColors(new THREE.Color(0x10b981), new THREE.Color(0xf59e0b), (w - 0.5) / 0.25);
+    else c.lerpColors(new THREE.Color(0xf59e0b), new THREE.Color(0xef4444), (w - 0.75) / 0.25);
+    return '#' + c.getHexString();
+  }
+
+  function updateThermalState() {
+    if (!currentResult || !currentResult.valid) return;
+    const r = currentResult;
+    const state = BufferTankEngine.evalThermoclineAtTime(r, simTimeMin);
+
+    // 溫度剖面貼圖：逐點寫入 w(z)，水體顏色與 RTD、出水溫度完全同源
+    if (profileTex) {
+      const d = profileTex.image.data;
+      for (let i = 0; i < PROFILE_N; i++) {
+        const v = Math.round(Math.max(0, Math.min(1, state.warmAtZ(state.H * i / (PROFILE_N - 1)))) * 255);
+        d[i * 4] = v; d[i * 4 + 1] = v; d[i * 4 + 2] = v; d[i * 4 + 3] = 255;
+      }
+      profileTex.needsUpdate = true;
+    }
+    waterMeshes.forEach(m => {
+      m.material.uniforms.uTotalH.value = state.H;
+      m.material.uniforms.uRipple.value = Math.min(0.05, state.thermoclineThick * 0.04);
+    });
+
+    // 10% / 50% / 90% 等溫環、混水層帶與厚度標註
+    frontDiscMeshes.forEach(item => {
+      const zs = [state.z10, state.frontHeightFromBottom, state.z90];
+      item.isoRings.forEach((ring, k) => {
+        const rr = Math.max(0.02, item.G.radiusAt(zs[k]) * (item.waterR / item.G.R) * 1.01);
+        ring.scale.set(rr, 1, rr); ring.position.y = item.baseWaterY + zs[k];
+      });
+      const bandR = item.G.radiusAt(state.frontHeightFromBottom) * (item.waterR / item.G.R) * 1.005;
+      item.layerBand.scale.set(bandR, Math.max(0.01, state.z90 - state.z10), bandR);
+      item.layerBand.position.y = item.baseWaterY + (state.z10 + state.z90) / 2;
+      if (item.layerLabel) {
+        const key = state.thermoclineThick.toFixed(2);
+        if (key !== item.labelKey) {
+          item.labelKey = key;
+          item.layerLabel.children.forEach(c => { c.material.map.dispose(); c.material.dispose(); });
+          item.layerLabel.clear();
+          const sp = textSprite(`斜溫層 δ(10–90%) = ${key} m`, '#FEF08A', Math.max(0.3, item.G.Ht * 0.055));
+          item.layerLabel.add(sp);
+        }
+        item.layerLabel.position.set(-item.G.R * 2.6, item.baseWaterY + state.frontHeightFromBottom, item.G.R * 0.3);
+      }
+    });
+
+    // 更新 3D 槽壁上 TT-1 ~ TT-7 RTD 感溫器 LED 顏色
+    rtdLedMeshes.forEach(item => {
+      const reading = state.rtdReadings[item.idx];
+      if (reading) {
+        item.mesh.material.color.set(warmFracToHexColor(reading.warmFrac));
+      }
+    });
+
+    // 更新左上角 HUD 與右側遙測數據
+    setText('ov3dDim', `筒身 Ø${f1(r.dims.D)}m × 直筒 ${f1(r.dims.shellH)}m (含封頭總高 ${f1(r.dims.totalVesselH)}m · ${fx(r.raw.moduleSize)} m³)`);
+    setText('ov3dNozzle', `法蘭管嘴 DN${r.nozzleSpec.dn} (流速 ${fx(r.nozzleSpec.actualVel, 2)} m/s) · 八爪多孔布水器`);
+    setText('ov3dFlow', `熱鋒面下移速度 v_z = ${fx(state.vz, 2)} m/min (${fx(state.vz / 60 * 1000, 1)} mm/s)`);
+
+    setText('cbTempHot', `${f1(r.returnT)}°C (CHWR 回水)`);
+    setText('cbTempMid', `${f1((r.supplyT + r.returnT) / 2)}°C (斜溫混水層)`);
+    setText('cbTempCold', `${f1(r.supplyT)}°C (CHWS 供水)`);
+
+    const targetMin = r.raw.durationMin;
+    const achMin = r.achievedMinutes;
+    const timePct = Math.min(100, (simTimeMin / Math.max(0.1, achMin)) * 100);
+    $('hudTimeVal').innerHTML = `${f1(simTimeMin)} <small>/ 目標 ${f1(targetMin)} min</small>`;
+    $('hudTimeBar').style.width = `${timePct}%`;
+    $('hudTimeBar').style.background = simTimeMin <= targetMin ? '#38BDF8' : (simTimeMin <= achMin ? '#F59E0B' : '#EF4444');
+    setText('hudTimeStatus', simTimeMin <= targetMin ? '目標時間內' : (simTimeMin <= achMin ? '安全餘裕區間' : '有效冷水耗盡'));
+    $('hudTimeStatus').style.color = simTimeMin <= targetMin ? '#38BDF8' : (simTimeMin <= achMin ? '#FBBF24' : '#F87171');
+    setText('hudTimeSub', `100% 有效冷水可撐上限：${f1(achMin)} min (剩餘 ${f1(state.remColdVol)} m³)`);
+
+    const movedDown = Math.min(state.H, Math.max(0, state.frontDepthFromTop));
+    $('hudFrontVal').innerHTML = `${fx(movedDown, 2)} <small>m / 容器高 ${f1(state.H)} m</small>`;
+    setText('hudThermoThick', `斜溫混水層厚度 δ_th ≈ ${fx(state.thermoclineThick, 2)} m (利用率 ${fx(r.raw.tankEffPct)}%)`);
+
+    const tempRise = state.outletTemp - r.supplyT;
+    $('hudOutletTemp').innerHTML = `${fx(state.outletTemp, 2)} <small>°C (設計 ${f1(r.supplyT)}°C)</small>`;
+    const tempPct = Math.min(100, Math.max(4, (tempRise / Math.max(0.1, r.raw.deltaT)) * 100));
+    $('hudTempBar').style.width = `${tempPct}%`;
+    if (tempRise < 0.25) {
+      setText('hudTempBadge', 'PASS 供水穩定');
+      $('hudTempBadge').style.color = '#4ADE80';
+      $('hudTempBar').style.background = '#0EA5E9';
+      setText('hudOutletSub', '斜溫層尚未觸及底部集水器，維持 100% 冷供水');
+    } else if (tempRise < r.raw.deltaT * 0.5) {
+      setText('hudTempBadge', 'WARN 斜溫層抵達底部');
+      $('hudTempBadge').style.color = '#FBBF24';
+      $('hudTempBar').style.background = '#F59E0B';
+      setText('hudOutletSub', `底部開始混入斜溫層溫水 (+${fx(tempRise, 2)}°C)`);
+    } else {
+      setText('hudTempBadge', 'FAIL 供水溫升超標');
+      $('hudTempBadge').style.color = '#F87171';
+      $('hudTempBar').style.background = '#EF4444';
+      setText('hudOutletSub', '有效冷水已耗盡，溫回水穿透至底部出口');
+    }
+
+    // 渲染 7 顆 RTD 溫度傳訊器即時讀數條
+    const rtdStrip = $('hudRtdStrip');
+    if (rtdStrip) {
+      rtdStrip.innerHTML = state.rtdReadings.map(rt => {
+        const col = warmFracToHexColor(rt.warmFrac);
+        return `<div class="rtd-cell" style="border-top:3px solid ${col}"><span class="rtd-id">${rt.id}</span><span class="rtd-t">${f1(rt.temp)}°</span></div>`;
+      }).join('');
+    }
+    setText('hudSpargerCheck', `單槽流量 ${f0(r.flowPerTankM3h)} m³/h · 管嘴 DN${r.nozzleSpec.dn} (${fx(r.nozzleSpec.actualVel, 2)} m/s)`);
+
+    // 同步底部滑桿
+    const slider = $('simTimeSlider');
+    if (slider) {
+      const maxSlider = Math.max(achMin * 1.18, targetMin * 1.25, 1);
+      slider.max = maxSlider.toFixed(2);
+      slider.value = Math.min(maxSlider, simTimeMin);
+      setText('scrubberTargetLabel', `目標緩衝 ${f1(targetMin)} min (可撐 ${f1(achMin)} min)`);
+      setText('scrubberMaxLabel', `模擬上限 ${f1(maxSlider)} min`);
+    }
+  }
+
+  function animate(now = performance.now()) {
+    animId = requestAnimationFrame(animate);
+    const dtSec = Math.min(0.1, (now - lastFrameTime) / 1000);
+    lastFrameTime = now;
+
+    if (isPlaying && currentResult && currentResult.valid) {
+      const maxSim = Math.max(currentResult.achievedMinutes * 1.18, currentResult.raw.durationMin * 1.25, 1);
+      simTimeMin += (dtSec * playbackSpeed) / 60;
+      if (simTimeMin >= maxSim) {
+        simTimeMin = 0;
+      }
+      updateThermalState();
+    }
+
+    const tSec = now * 0.001;
+    waterMeshes.forEach(m => {
+      m.material.uniforms.uTimeSec.value = tSec;
+    });
+
+    if (currentResult && currentResult.valid && (particleSystems.length > 0 || jetSystems.length > 0)) {
+      const r = currentResult;
+      const state = BufferTankEngine.evalThermoclineAtTime(r, simTimeMin);
+      // 示蹤粒子以容積速率下移：播放時與模擬時間同步（Q·Δt），暫停時以全程約 40 秒一輪的視覺速率緩慢流動
+      const Q = r.flowPerTankM3h / 60;
+      particleSystems.forEach(ps => {
+        const span = ps.sIn - ps.sOut;
+        const dS = isPlaying ? Q * dtSec * playbackSpeed / 60 : span * dtSec / 40;
+        const pos = ps.pts.geometry.attributes.position.array, col = ps.pts.geometry.attributes.color.array;
+        for (let i = 0; i < ps.pCount; i++) {
+          ps.pS[i] -= Math.min(dS, span * 0.2);
+          if (ps.pS[i] < ps.sOut) { ps.pS[i] += span; ps.pAng[i] = Math.random() * Math.PI * 2; }
+          const z = ps.G.zAt(ps.pS[i]);
+          const rr = ps.pRn[i] * ps.G.radiusAt(z) * ps.waterScale;
+          const a = ps.pAng[i];
+          pos[i * 3] = Math.sin(a) * rr; pos[i * 3 + 1] = ps.baseWaterY + z; pos[i * 3 + 2] = Math.cos(a) * rr;
+          const c = thermalRGB(state.warmAtZ(z));
+          col[i * 3] = c[0]; col[i * 3 + 1] = c[1]; col[i * 3 + 2] = c[2];
+        }
+        ps.pts.geometry.attributes.position.needsUpdate = true;
+        ps.pts.geometry.attributes.color.needsUpdate = true;
+      });
+      // 布水器射流：頂部 8 支散流管由中心向外布出回水，底部由外向中心收集冰水
+      const cTop = thermalRGB(1), cBot = thermalRGB(state.warmFractionOut);
+      jetSystems.forEach(js => {
+        const pos = js.geo.attributes.position.array, col = js.geo.attributes.color.array, half = js.n / 2;
+        for (let i = 0; i < js.n; i++) {
+          js.ph[i] = (js.ph[i] + dtSec * 0.35) % 1;
+          const top = i < half, arm = (i % 8) * Math.PI / 4, f = js.ph[i];
+          const rr = (top ? 0.12 + 0.88 * f : 1 - 0.88 * f) * (top ? js.topR : js.botR);
+          const y = (top ? js.topY - js.armR * (1 + 2.5 * f) : js.botY + js.armR * (1 + 2.5 * (1 - f)));
+          pos[i * 3] = Math.cos(arm) * rr; pos[i * 3 + 1] = y; pos[i * 3 + 2] = Math.sin(arm) * rr;
+          const c = top ? cTop : cBot;
+          col[i * 3] = c[0]; col[i * 3 + 1] = c[1]; col[i * 3 + 2] = c[2];
+        }
+        js.geo.attributes.position.needsUpdate = true;
+        js.geo.attributes.color.needsUpdate = true;
+      });
+    }
+
+    if (renderer && scene && camera) {
+      renderer.render(scene, camera);
+    }
+  }
+
+  function syncWithCalculation(r) {
+    currentResult = r;
+    if (!r || !r.valid) return;
+    const maxSim = Math.max(r.achievedMinutes * 1.18, r.raw.durationMin * 1.25, 1);
+    if (simTimeMin > maxSim) simTimeMin = r.raw.durationMin * 0.45;
+    rebuildSceneGeometry(r);
+  }
+
+  function togglePlay() {
+    isPlaying = !isPlaying;
+    const btn = $('btnSimPlay');
+    if (btn) {
+      btn.textContent = isPlaying ? '暫停熱流模擬' : '播放熱流擴散';
+      btn.classList.toggle('playing', isPlaying);
+    }
+  }
+
+  function setTime(tMin) {
+    simTimeMin = Math.max(0, Number(tMin) || 0);
+    updateThermalState();
+  }
+
+  function jumpToTarget() {
+    if (!currentResult || !currentResult.valid) return;
+    isPlaying = false;
+    const btn = $('btnSimPlay');
+    if (btn) { btn.textContent = '播放熱流擴散'; btn.classList.remove('playing'); }
+    setTime(currentResult.raw.durationMin);
+  }
+
+  function onSliderInput(v) {
+    isPlaying = false;
+    const btn = $('btnSimPlay');
+    if (btn) { btn.textContent = '播放熱流擴散'; btn.classList.remove('playing'); }
+    setTime(Number(v));
+  }
+
+  function setSpeed(spd) {
+    playbackSpeed = spd;
+    [1, 10, 30].forEach(s => {
+      const el = $('spd' + s);
+      if (el) el.classList.toggle('active', s === spd);
+    });
+  }
+
+  function setViewMode(mode) {
+    viewMode = mode;
+    const bCut = $('btnViewCutaway'), bExt = $('btnViewExterior'), bArr = $('btnViewArray');
+    if (bCut) bCut.classList.toggle('active', mode === 'cutaway');
+    if (bExt) bExt.classList.toggle('active', mode === 'exterior');
+    if (bArr) bArr.classList.toggle('active', mode === 'array');
+    if (currentResult && currentResult.valid) rebuildSceneGeometry(currentResult);
+  }
+
+  function resetCamera(preset) {
+    if (!currentResult || !currentResult.valid) return;
+    if (preset === 'front') {
+      camState.theta = 0;
+      camState.phi = Math.PI / 2;
+    } else if (preset === 'top') {
+      camState.theta = 0;
+      camState.phi = 0.22;
+    } else {
+      camState.theta = 0.45;
+      camState.phi = 1.22;
+    }
+    updateCameraTransform();
+  }
+
+  return {
+    init,
+    syncWithCalculation,
+    togglePlay,
+    setTime,
+    getTime: () => simTimeMin,
+    renderNow: () => { if (renderer && scene && camera) renderer.render(scene, camera); },
+    jumpToTarget,
+    onSliderInput,
+    setSpeed,
+    setViewMode,
+    resetCamera,
+    onResize
+  };
+})();
+
+/* ============================================================================
+ * 3. UI 狀態管理、共管/逐台獨立切換自動換算與報表輸出
+ * ============================================================================ */
+const AUTOSAVE_KEY = 'chw_buffer_tank_v5_industrial3d';
+const NUM_FIELDS = ['load', 'chillerN', 'durationMin', 'deltaT', 'supplyTemp', 'moduleSize', 'hdRatio', 'tankEffPct', 'marginPct', 'minVolIndex', 'fluidCp', 'fluidRho'];
+const TEXT_FIELDS = ['projectName', 'dataSource', 'tankMode'];
+const DEFAULTS = {
+  load: 4000, chillerN: 4, durationMin: 6, deltaT: 5, supplyTemp: 7,
+  moduleSize: 25, hdRatio: 2, tankEffPct: 90, marginPct: 10,
+  minVolIndex: 6.5, fluidCp: 4.186, fluidRho: 1000,
+  tankMode: 'shared', fluid: 'water', projectName: '', dataSource: ''
+};
+const PRESETS = {
+  small:  { tankMode: 'shared', load: 800,   chillerN: 2, durationMin: 5,  deltaT: 5, supplyTemp: 7,  moduleSize: 10,  marginPct: 10, projectName: '小型機房 CHW 緩衝槽' },
+  medium: { tankMode: 'shared', load: 2500,  chillerN: 3, durationMin: 6,  deltaT: 5, supplyTemp: 7,  moduleSize: 20,  marginPct: 10, projectName: '中型 AIDC 冰水緩衝槽' },
+  large:  { tankMode: 'shared', load: 6000,  chillerN: 6, durationMin: 6,  deltaT: 5, supplyTemp: 10, moduleSize: 30,  marginPct: 15, projectName: '大型 AIDC 冰水緩衝槽' },
+  xlarge: { tankMode: 'shared', load: 20000, chillerN: 8, durationMin: 15, deltaT: 6, supplyTemp: 12, moduleSize: 500, marginPct: 15, projectName: '超大型園區立式蓄冷緩衝槽' }
+};
+const PRESET_NAMES = { small: '小型機房', medium: '中型 AIDC', large: '大型 AIDC', xlarge: '超大型園區（現場組立大槽）' };
+const SIZE_CHIPS = [10, 15, 25, 50, 100, 200, 500, 1000];
+const MODE_TEXT = {
+  shared: { desc: '全廠冰機共用一組集管水槽，負載填「全廠總冷負載」，各槽可跨冰機互相支援且無單台整數進位浪費。', load: '系統總冷負載 (全廠)', loadHint: '緩衝期間全廠仍要被帶走的總熱量', n: '冰機運轉台數', nHint: '用於防短循環水量檢核與同基準對照' },
+  isolated: { desc: '每台冰機各自配獨立緩衝槽，負載填「單台冰機冷負載」，先算單台配槽數（無條件進位）再乘以台數。', load: '單台冰機冷負載', loadHint: '單台冰機在緩衝期間要帶走的熱量', n: '冰機台數', nHint: '全廠總量 = 單台配置 × 冰機台數' }
+};
+const FIELD_NAMES = { load: '冷負載', chillerN: '冰機台數', durationMin: '緩衝時間', deltaT: '可利用溫差', supplyTemp: '供水溫度', moduleSize: '單槽容積', hdRatio: '高徑比', tankEffPct: '有效利用率', marginPct: '安全餘裕', minVolIndex: '最小系統水量', fluidCp: '比熱', fluidRho: '密度' };
+const LV = { pass: 'PASS', warn: 'WARNING', fail: 'FAIL' };
+
+let lastResult = null;
+const $ = id => document.getElementById(id);
+const setText = (id, v) => { const el = $(id); if (el) el.textContent = v; };
+const f0 = n => Number(n).toLocaleString('en-US', { maximumFractionDigits: 0 });
+const f1 = n => Number(n).toLocaleString('en-US', { minimumFractionDigits: 1, maximumFractionDigits: 1 });
+const fx = (n, d = 2) => Number(n).toLocaleString('en-US', { maximumFractionDigits: d });
+const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+
+function getFluidChoice() { const r = document.querySelector('input[name="fluid"]:checked'); return r ? r.value : 'water'; }
+
+function readRaw() {
+  const num = id => { const el = $(id); if (!el) return NaN; const v = el.value.trim(); return v === '' ? NaN : Number(v); };
+  return {
+    mode: $('tankMode').value === 'isolated' ? 'isolated' : 'shared',
+    load: num('load'), chillerN: num('chillerN'), durationMin: num('durationMin'), deltaT: num('deltaT'),
+    supplyTemp: num('supplyTemp'),
+    moduleSize: num('moduleSize'), hdRatio: num('hdRatio'),
+    tankEffPct: num('tankEffPct'), marginPct: num('marginPct'), minVolIndex: num('minVolIndex'),
+    fluid: getFluidChoice(), cp: num('fluidCp'), rho: num('fluidRho')
+  };
+}
+
+function setVal(id, v) { $(id).value = v; calculate(); }
+
+function setTankMode(newMode) {
+  const prevMode = $('tankMode').value;
+  if (prevMode !== newMode) {
+    const curLoad = Number($('load').value);
+    const n = Number($('chillerN').value);
+    if (Number.isFinite(curLoad) && curLoad > 0 && Number.isFinite(n) && n >= 1) {
+      if (prevMode === 'shared' && newMode === 'isolated') {
+        $('load').value = Number((curLoad / n).toFixed(2));
+        toast(`已切換為逐台獨立：單台負載自動換算為 ${fx(curLoad / n, 1)} kW/台 (全廠總計 ${f0(curLoad)} kW 不變)`);
+      } else if (prevMode === 'isolated' && newMode === 'shared') {
+        $('load').value = Number((curLoad * n).toFixed(2));
+        toast(`已切換為共用集管：全廠總負載自動換算為 ${f0(curLoad * n)} kW`);
+      }
+    }
+    $('tankMode').value = newMode;
+  }
+  calculate();
+}
+
+function applyPreset(name) {
+  const p = PRESETS[name]; if (!p) return;
+  Object.keys(p).forEach(k => { if ($(k)) $(k).value = p[k]; });
+  calculate();
+  toast('已套用情境：' + PRESET_NAMES[name]);
+}
+
+function openResetModal() { $('resetModal').hidden = false; }
+function closeResetModal() { $('resetModal').hidden = true; }
+function confirmReset() {
+  closeResetModal();
+  applyValues(DEFAULTS);
+  calculate();
+  toast('已重設為預設值');
+}
+
+function applyValues(v) {
+  NUM_FIELDS.concat(TEXT_FIELDS).forEach(id => { if (v[id] !== undefined && $(id)) $(id).value = v[id]; });
+  const r = document.querySelector(`input[name="fluid"][value="${v.fluid || 'water'}"]`);
+  if (r) r.checked = true;
+}
+
+function syncModeUI(mode) {
+  const t = MODE_TEXT[mode];
+  $('segShared').classList.toggle('on', mode === 'shared');
+  $('segIsolated').classList.toggle('on', mode === 'isolated');
+  setText('modeDesc', t.desc); setText('lblLoad', t.load); setText('hintLoad', t.loadHint);
+  setText('lblN', t.n); setText('hintN', t.nHint);
+}
+
+function renderSizeChips(size) {
+  $('sizeChips').innerHTML = SIZE_CHIPS.map(s => `<button type="button" class="chip${s === size ? ' on' : ''}" onclick="setVal('moduleSize',${s})">${s} m³</button>`).join('');
+}
+
+function showErrors(errors) {
+  NUM_FIELDS.forEach(id => {
+    const elInput = $(id);
+    if (!elInput) return;
+    const msg = errors[id];
+    elInput.classList.toggle('is-invalid', !!msg);
+    const el = $('err-' + id);
+    if (el) { el.textContent = msg || ''; el.classList.toggle('show', !!msg); }
+  });
+}
+
+function calculate() {
+  const raw = readRaw();
+  syncModeUI(raw.mode);
+  $('customFluidBox').hidden = raw.fluid !== 'custom';
+  renderSizeChips(raw.moduleSize);
+  const result = BufferTankEngine.calculate(raw);
+  showErrors(result.valid ? {} : result.errors);
+  if (result.errors && (result.errors.fluidCp || result.errors.fluidRho || result.errors.minVolIndex)) $('advBox').open = true;
+  render(result);
+  Tank3DSim.syncWithCalculation(result);
+  saveInputs();
+  return result;
+}
+
+function renderModeCompareMini(r) {
+  const box = $('modeCompareMini');
+  if (!box || !r || !r.valid) return;
+  const ac = r.archCompare;
+  const s = r.raw.moduleSize;
+  const diffNote = ac.extraTanksInIsolated > 0
+    ? `逐台獨立因每台各自整數進位，全廠多出 <b>+${ac.extraTanksInIsolated} 槽 (+${f0(ac.extraTanksInIsolated * s)} m³)</b>`
+    : `此單槽規格下，兩種架構全廠總槽數相同 (${ac.shared.count} 槽)`;
+
+  box.innerHTML = `
+    <div class="mc-title">
+      <span>同基準雙向驗算 (全廠總負載 ${f0(ac.totalPlantKW)} kW · 單台 ${f0(ac.chillerKW)} kW × ${r.N} 台)</span>
+    </div>
+    <div class="mode-compare-grid">
+      <div class="mc-col ${!r.isolated ? 'active' : ''}">
+        <h4><span>共用集管</span><span>${!r.isolated ? '[目前選用]' : ''}</span></h4>
+        <p>全廠 <b>${ac.shared.count} 槽</b> × ${fx(s)} m³ = <b>${f0(ac.shared.installed)} m³</b></p>
+        <p>可撐 <b>${f1(ac.shared.minutes)} 分</b> · 1槽維修可撐 <b>${f1(ac.shared.oneDownMinutes)} 分</b></p>
+      </div>
+      <div class="mc-col ${r.isolated ? 'active' : ''}">
+        <h4><span>逐台獨立</span><span>${r.isolated ? '[目前選用]' : ''}</span></h4>
+        <p>每台 ${ac.isolated.countPerChiller} 槽 × ${r.N} 台 = 全廠 <b>${ac.isolated.totalCount} 槽 (${f0(ac.isolated.installed)} m³)</b></p>
+        <p>可撐 <b>${f1(ac.isolated.minutes)} 分</b> · 單台1槽維修 <b>${f1(ac.isolated.oneDownMinutes)} 分</b></p>
+      </div>
+    </div>
+    <div style="margin-top:6px;font-size:11.5px;color:#0369A1;">比較結論：${diffNote}。</div>
+  `;
+}
+
+function buildChecks(r) {
+  const c = [];
+  const raw = r.raw;
+  const t = raw.durationMin;
+  c.push({ id: 'chk-time', s: r.achievedMinutes + 1e-9 >= t ? 'pass' : 'fail', t: '緩衝時間達標檢核',
+    v: `全部水槽可撐 ${f1(r.achievedMinutes)} 分鐘（目標 ${fx(t, 1)} 分鐘）`,
+    d: `100% 由緩衝水槽有效冷水（${f1(r.effectiveInstalled)} m³）提供，不依賴既有管路水量` });
+
+  const od = r.oneDownMinutes;
+  c.push({ id: 'chk-onedown', s: od + 1e-9 >= t ? 'pass' : 'warn', t: 'N-1 單槽維修隔離能力',
+    v: `任 1 槽隔離時可撐 ${f1(od)} 分鐘（目標 ${fx(t, 1)} 分鐘）`,
+    d: od + 1e-9 >= t ? '單槽隔離檢修時仍可 100% 滿足目標緩衝時間' : r.count === 1 ? '目前僅配置 1 槽，維修時無緩衝能力；若需線上維護，建議改用較小單槽配 2 槽以上' : '單槽維修期間緩衝時間略低於目標；若要求 N+1 備援可再加 1 槽' });
+
+  const vzOk = r.pistonVelMmin <= 1.2;
+  const nozOk = r.nozzleSpec.actualVel <= 2.2;
+  const thermOk = vzOk && nozOk;
+  c.push({ id: 'chk-thermocline', s: thermOk ? 'pass' : 'warn', t: '斜溫層熱流下移速度與布水器穩定度',
+    v: `平推速度 ${fx(r.pistonVelMmin, 2)} m/min（${fx(r.pistonVelMms, 1)} mm/s）· 管嘴 DN${r.nozzleSpec.dn}（流速 ${fx(r.nozzleSpec.actualVel, 2)} m/s）`,
+    d: !vzOk ? '單槽截面下移流速偏快（>1.2 m/min），入口散流器需特別強化防衝擊擋板或改採較低 H/D、增加並聯槽數' : !nozOk ? `管嘴流速偏高（${fx(r.nozzleSpec.actualVel, 2)} m/s > 2.2 m/s），建議放大管嘴口徑或增加並聯槽數分流` : '截面下移速度適中且管嘴流速合規，配合頂部與底部八爪多孔散流器（Sparger）可穩定維持自然溫度分層' });
+
+  // 流體冰點防呆檢核：純水供水 < 4°C 時發出警示
+  const isWater = raw.fluid === 'water';
+  const freezeWarn = isWater && r.supplyT < 4;
+  c.push({ id: 'chk-freeze', s: freezeWarn ? 'warn' : 'pass', t: '流體冰點與防凍安全檢核',
+    v: `流體：${r.fluid.name} · 供水溫度 ${f1(r.supplyT)}°C（冰點 ${isWater ? '0.0' : '< -10'}°C）`,
+    d: freezeWarn ? '純水在低於 4°C 時產生密度反轉且具盤管結冰凍裂風險，強烈建議提高供水溫度或改用乙二醇 / 丙二醇防凍冰水溶液' : isWater ? '供水溫度高於 4°C 密度反轉點，純水運轉無凍結與異常對流風險' : '已選用防凍冰水溶液，低溫抗凍性能優良' });
+
+  c.push({ id: 'chk-count', s: r.count <= BufferTankEngine.MAX_PREFERRED_COUNT ? 'pass' : 'warn', t: '槽數與管閥複雜度',
+    v: `${r.count} 槽 × ${fx(raw.moduleSize)} m³${r.isolated ? `（每台），全廠共 ${r.plantCount} 槽` : ''}`,
+    d: r.count <= BufferTankEngine.MAX_PREFERRED_COUNT ? `比實體需求容積多 ${f0(r.overPct)}%（含安全餘裕 ${fx(raw.marginPct)}% 與槽數整數進位）` : '並聯槽數超過 8 槽，集管平衡與電動閥件較複雜，建議點擊下方建議規格放大單槽容積' });
+
+  if (raw.minVolIndex > 0) {
+    const ok = r.sysVol + 1e-9 >= r.minSysVol;
+    c.push({ id: 'chk-minvol', s: ok ? 'pass' : 'warn', t: '防短循環最小水量',
+      v: `水槽容積 ${f1(r.sysVol)} m³ ／ 最少需 ${f1(r.minSysVol)} m³`,
+      d: `以單台冰機 ${f0(r.chillerKW)} kW × ${fx(raw.minVolIndex)} L/kW 檢核（僅計水槽本身容積）` + (ok ? '' : '；水槽容積小於最小系統水量要求') });
+  }
+
+  const d = r.dims, hd = raw.hdRatio;
+  c.push({ id: 'chk-shape', s: hd < 1 ? 'warn' : 'pass', t: 'ASME 容器幾何與現場安裝',
+    v: `單槽 Ø${f1(d.D)} m × 直筒 ${f1(d.shellH)} m（容器本體總高 ${f1(d.totalVesselH)} m · 含支腿安裝總淨高 ${f1(d.overallH)} m，約 ${fx(d.floors, 1)} 層樓）`,
+    d: (hd < 1 ? '高徑比小於 1，冷溫水不易維持自然溫度分層，有效利用率可能下降；' : '') +
+      (raw.moduleSize > 100 ? '單槽大於 100 m³ 通常為現場焊接立式鋼槽，需配合結構基礎與保溫工程' : '單槽 ≤ 100 m³ 可採工廠預製 ASME 壓力容器吊裝') });
+
+  return c;
+}
+
+function buildSteps(r) {
+  const raw = r.raw, fl = r.fluid;
+  const s = [
+    ['1. 緩衝期間需吸收的總熱量', `E = P × t × 60 = ${f0(raw.load)} kW × ${fx(raw.durationMin)} min × 60 = ${f0(r.energyKJ)} kJ`],
+    ['2. 理論所需有效冷水量（100% 由水槽提供）', `V_gross = E ÷ (ρ·cp·ΔT) = ${f0(r.energyKJ)} ÷ (${f0(fl.rho)} × ${fx(fl.cp, 3)} × ${fx(raw.deltaT)}) = ${f1(r.grossVol)} m³`],
+    ['3. 換算水槽實體需求（÷ 有效利用率）', `V_req = ${f1(r.grossVol)} ÷ ${fx(raw.tankEffPct)}% = ${f1(r.tankReq)} m³`],
+    ['4. 加計設計安全餘裕 → 設計需求容積', `V_target = ${f1(r.tankReq)} × (1 + ${fx(raw.marginPct)}%) = ${f1(r.targetVol)} m³`],
+    ['5. 選定單槽規格與槽數進位', `N_tank = ceil(${f1(r.targetVol)} ÷ ${fx(raw.moduleSize)}) = ${r.count} 槽 → 裝設總容積 ${fx(r.installed, 1)} m³（有效冷水 ${f1(r.effectiveInstalled)} m³）`],
+    ['6. ASME 2:1 橢圓封頭單槽外形與斜溫層流速', `D = ∛(4V ÷ (π × H/D)) = ${fx(r.dims.D, 2)} m，直筒高 ${fx(r.dims.shellH, 2)} m，本體總高 ${fx(r.dims.totalVesselH, 2)} m（含支腿安裝總淨高 ${fx(r.dims.overallH, 2)} m）；平推速度 v_z = ${fx(r.pistonVelMmin, 2)} m/min · 管嘴 DN${r.nozzleSpec.dn}（${fx(r.nozzleSpec.actualVel, 2)} m/s）`],
+    ['7. 實際可撐緩衝時間', `t_actual = (${fx(r.installed, 1)} × ${fx(raw.tankEffPct)}%) × ${f0(fl.rho)} × ${fx(fl.cp, 3)} × ${fx(raw.deltaT)} ÷ ${f0(raw.load)} ÷ 60 = ${f1(r.achievedMinutes)} 分鐘`]
+  ];
+  if (r.isolated) s.push(['8. 全廠總計（逐台獨立 × 冰機台數）', `${r.count} 槽 × ${r.N} 台 = 全廠 ${r.plantCount} 槽，總裝設容積 ${fx(r.plantInstalled, 1)} m³`]);
+  return s;
+}
+
+function renderBasis(r) {
+  const raw = r.raw;
+  $('basisBar').innerHTML =
+    `<div><small>SYSTEM MODE</small>${r.isolated ? `逐台獨立 (${r.N} 台)` : `共用集管 (${r.N} 台冰機)`}</div>` +
+    `<div><small>PLANT / UNIT LOAD</small>全廠 ${f0(r.totalPlantKW)} kW · 單台 ${f0(r.chillerKW)} kW</div>` +
+    `<div><small>TEMPERATURES</small>供水 ${f1(r.supplyT)}°C → 回水 ${f1(r.returnT)}°C (ΔT ${fx(raw.deltaT, 1)}K)</div>` +
+    `<div><small>TANK FACTORS</small>利用率 ${fx(raw.tankEffPct)}% · 餘裕 ${fx(raw.marginPct)}%</div>` +
+    `<div><small>THERMOCLINE</small>v_z ${fx(r.pistonVelMmin, 2)} m/min (DN${r.nozzleSpec.dn})</div>`;
+}
+
+function renderWaterfallAndChart(r) {
+  const raw = r.raw;
+  const steps = [
+    { no: '1', name: '理論有效冷水需求', sub: `總熱量 ${f0(r.energyKJ)} kJ ÷ (ρ·cp·ΔT ${fx(raw.deltaT, 1)}K)`, val: `${f1(r.grossVol)} m³` },
+    { no: '2', name: '實體水槽容積需求', sub: `÷ 水槽有效利用率 ${fx(raw.tankEffPct)}%（扣斜溫混水層/死水）`, val: `${f1(r.tankReq)} m³` },
+    { no: '3', name: '設計目標容積', sub: `× (1 + 安全餘裕 ${fx(raw.marginPct)}%)`, val: `${f1(r.targetVol)} m³` },
+    { no: '4', name: `裝設總容積 (${r.count} 槽 × ${fx(raw.moduleSize)} m³)`, sub: `有效冷水 ${f1(r.effectiveInstalled)} m³ · 可撐 ${f1(r.achievedMinutes)} 分鐘`, val: `${fx(r.installed, 1)} m³`, hi: true }
+  ];
+  $('volChainBox').innerHTML = steps.map(st =>
+    `<div class="vc-step ${st.hi ? 'highlight' : ''}"><span class="vc-no">${st.no}</span><div class="vc-label">${st.name}<small>${st.sub}</small></div><div class="vc-val">${st.val}</div></div>`
+  ).join('');
+
+  const W = 420, H = 185, P = { l: 44, r: 14, t: 16, b: 24 };
+  const xMax = Math.max(r.achievedMinutes, raw.durationMin) * 1.15 || 10;
+  const yMax = Math.max(r.effectiveInstalled, r.grossVol) * 1.12 || 10;
+  const X = t => P.l + (t / xMax) * (W - P.l - P.r);
+  const Y = v => P.t + (1 - v / yMax) * (H - P.t - P.b);
+
+  let g = '';
+  for (let i = 0; i <= 4; i++) {
+    const v = (yMax * i) / 4;
+    g += `<line x1="${P.l}" x2="${W - P.r}" y1="${Y(v)}" y2="${Y(v)}" stroke="#E2E8F0"/>`;
+    g += `<text x="${P.l - 6}" y="${Y(v) + 4}" font-size="10.5" text-anchor="end" fill="#64748B">${f0(v)}</text>`;
+  }
+  const tStep = xMax <= 6 ? 1 : xMax <= 15 ? 2 : 5;
+  for (let t = 0; t <= xMax + 1e-9; t += tStep) {
+    g += `<text x="${X(t)}" y="${H - 7}" font-size="10.5" text-anchor="middle" fill="#64748B">${fx(t, 0)}m</text>`;
+  }
+
+  const xEndAll = X(r.achievedMinutes), y0All = Y(r.effectiveInstalled), yZero = Y(0);
+  g += `<polygon points="${P.l},${y0All} ${xEndAll},${yZero} ${P.l},${yZero}" fill="#0EA5E9" opacity="0.18"/>`;
+  g += `<line x1="${P.l}" y1="${y0All}" x2="${xEndAll}" y2="${yZero}" stroke="#0284C7" stroke-width="2.8"/>`;
+
+  const effOneDown = Math.max(0, (r.count - 1) * raw.moduleSize * (raw.tankEffPct / 100));
+  if (r.count >= 1) {
+    g += `<line x1="${P.l}" y1="${Y(effOneDown)}" x2="${X(r.oneDownMinutes)}" y2="${yZero}" stroke="#B45309" stroke-width="2" stroke-dasharray="4 3"/>`;
+  }
+
+  const xTarget = X(raw.durationMin);
+  g += `<line x1="${xTarget}" x2="${xTarget}" y1="${P.t}" y2="${H - P.b}" stroke="#DC2626" stroke-width="1.8" stroke-dasharray="5 3"/>`;
+  g += `<text x="${xTarget + 4}" y="${P.t + 11}" font-size="10.5" font-weight="700" fill="#DC2626">目標 ${fx(raw.durationMin, 1)}m</text>`;
+  g += `<circle cx="${xEndAll}" cy="${yZero}" r="4" fill="#0284C7" stroke="#fff" stroke-width="1.5"/>`;
+  g += `<line id="chLineD" x1="0" x2="0" y1="${P.t}" y2="${H - P.b}" stroke="#0F172A" stroke-width="1" stroke-dasharray="2 2" opacity="0"/>`;
+
+  $('chartDischarge').innerHTML = `<svg id="svgDischarge" viewBox="0 0 ${W} ${H}" role="img" aria-label="緩衝水槽冷水放電曲線">${g}</svg>`;
+
+  const svg = $('svgDischarge'), line = $('chLineD'), tip = $('tipDischarge');
+  let savedSimTime = null;
+  let lockedSimTime = false;
+
+  svg.onmouseenter = () => {
+    savedSimTime = (typeof Tank3DSim !== 'undefined' && Tank3DSim.getTime) ? Tank3DSim.getTime() : 0;
+    lockedSimTime = false;
+  };
+
+  svg.onmousemove = e => {
+    const rect = svg.getBoundingClientRect();
+    const relX = ((e.clientX - rect.left) / rect.width) * W;
+    const cx = Math.max(P.l, Math.min(W - P.r, relX));
+    const t = ((cx - P.l) / (W - P.l - P.r)) * xMax;
+    const remAll = Math.max(0, r.effectiveInstalled - t / r.minPerM3);
+    const remDown = Math.max(0, effOneDown - t / r.minPerM3);
+    line.setAttribute('x1', cx); line.setAttribute('x2', cx); line.setAttribute('opacity', '0.75');
+    tip.innerHTML = `<b>t = ${f1(t)} 分鐘 (3D 預覽中 · 點擊鎖定)</b><br>剩餘有效冷水：${f1(remAll)} m³<br>N-1 剩餘冷水：${f1(remDown)} m³<br>已吸收熱量：${f0(Math.min(t, r.achievedMinutes) * 60 * raw.load)} kJ`;
+    tip.classList.add('show');
+    Tank3DSim.setTime(t);
+  };
+
+  svg.onclick = e => {
+    const rect = svg.getBoundingClientRect();
+    const relX = ((e.clientX - rect.left) / rect.width) * W;
+    const cx = Math.max(P.l, Math.min(W - P.r, relX));
+    const t = ((cx - P.l) / (W - P.l - P.r)) * xMax;
+    Tank3DSim.setTime(t);
+    lockedSimTime = true;
+    toast(`已鎖定 3D 模擬時間至 t = ${f1(t)} min`);
+  };
+
+  svg.onmouseleave = () => {
+    line.setAttribute('opacity', '0');
+    tip.classList.remove('show');
+    if (!lockedSimTime && savedSimTime !== null) {
+      Tank3DSim.setTime(savedSimTime);
+    }
+  };
+}
+
+function renderTimeBar(r) {
+  const t = r.raw.durationMin;
+  const maxM = Math.max(r.achievedMinutes, t) * 1.15 || 1;
+  const pct = m => Math.min(100, (m / maxM) * 100);
+  const tW = pct(r.tankMinutes);
+  let h = '';
+  if (tW > 0) h += `<div class="tbar-seg tank" style="width:${tW}%">${tW > 12 ? `<span>緩衝水槽可撐 ${f1(r.tankMinutes)} 分鐘</span>` : ''}</div>`;
+  h += `<div class="tbar-mk" style="left:${pct(t)}%"><label>目標 ${fx(t, 1)} 分</label></div>`;
+  if (r.oneDownMinutes !== null && r.count >= 1) h += `<div class="tbar-mk down" style="left:${pct(r.oneDownMinutes)}%"><label>1 槽維修 ${f1(r.oneDownMinutes)} 分</label></div>`;
+  $('tbar').innerHTML = h;
+  setText('tbarCaption', `水槽獨立可撐 ${f1(r.achievedMinutes)} 分鐘（循環流量 ${f0(r.flowM3h)} m³/h）`);
+
+  const d = r.dims, FH = BufferTankEngine.FLOOR_HEIGHT;
+  const floors = Math.max(1, Math.ceil(d.overallH / FH));
+  const sc = Math.min(16, 130 / (floors * FH));
+  const w = Math.max(12, d.D * sc), hBox = d.overallH * sc;
+  const show = Math.min(r.count, Math.max(1, Math.floor(560 / (w + 7))), 16);
+  let fl = '';
+  for (let k = 1; k <= floors; k++) fl += `<div class="floor" style="bottom:${k * FH * sc}px"><span>${k}F</span></div>`;
+  let tk = '';
+  for (let i = 0; i < show; i++) tk += `<div class="tank" style="width:${w}px;height:${hBox}px">${w >= 34 ? fx(r.raw.moduleSize) : ''}</div>`;
+  if (r.count > show) tk += `<span class="tank-more">… 共 ${r.count} 槽</span>`;
+  if (r.isolated) tk += `<span class="tank-x">× ${r.N} 台冰機</span>`;
+  $('tankRow').innerHTML = `<div class="tank-stage" style="height:${floors * FH * sc + 2}px">${fl}${tk}</div>` +
+    `<div class="tank-cap">單槽外徑約 <b>Ø${f1(d.D)} m × 直筒 ${f1(d.shellH)} m（容器本體總高 ${f1(d.totalVesselH)} m · 含支腿安裝總淨高 ${f1(d.overallH)} m）</b>（約 ${fx(d.floors, 1)} 層樓高，每層以 ${FH} m 標示）</div>`;
+
+  $('tbarLegend').innerHTML =
+    `<span><i style="background:var(--water-deep)"></i>水槽有效冷水 <b>${f1(r.effectiveInstalled)}</b> m³（裝設總容積 ${fx(r.installed, 1)} m³）</span>` +
+    `<span>每 m³ 有效冷水可撐 <b>${fx(r.minPerM3, 3)}</b> 分鐘</span>`;
+}
+
+function renderOptions(r) {
+  const iso = r.isolated;
+  $('optsHead').innerHTML = `<th>單槽容積</th><th>數量</th><th>單槽外形 Ø × 總高</th><th>裝設總容積</th><th>可撐時間</th><th>超出實體需求</th>${iso ? '<th>全廠總槽數</th>' : ''}<th>選型評估</th>`;
+  if (!r.options.length) { $('optsBody').innerHTML = `<tr><td colspan="${iso ? 8 : 7}" class="empty">—</td></tr>`; return; }
+  $('optsBody').innerHTML = r.options.map(o => {
+    const cur = Math.abs(o.size - r.raw.moduleSize) < 1e-9;
+    const isBest = r.best && o.size === r.best.size;
+    let tag = '<span class="tag plain">可行</span>';
+    if (isBest) tag = '<span class="tag best">最佳建議</span>';
+    else if (o.count === 1) tag = '<span class="tag warn">單槽無維修備援</span>';
+    else if (o.count > BufferTankEngine.MAX_PREFERRED_COUNT) tag = '<span class="tag warn">槽數偏多</span>';
+    else if (o.overPct > 50) tag = '<span class="tag warn">進位餘裕偏大</span>';
+    return `<tr class="${cur ? 'cur' : ''}" onclick="setVal('moduleSize',${o.size})"><td>${fx(o.size)} m³${cur ? '（目前）' : ''}</td><td>${o.count} 槽</td><td>${f1(o.dims.D)} × ${f1(o.dims.totalVesselH)} m</td><td>${fx(o.installed, 1)} m³</td><td>${f1(o.minutes)} 分</td><td>+${f0(o.overPct)}%</td>${iso ? `<td>${o.count * r.N} 槽</td>` : ''}<td>${tag}</td></tr>`;
+  }).join('');
+}
+
+function render(result) {
+  lastResult = result;
+  const resEl = $('results'), V = $('verdict');
+  if (!result.valid) {
+    resEl.classList.add('is-stale');
+    V.className = 'card verdict fail'; setText('verdictIcon', 'ERR');
+    setText('verdictTitle', '請先修正輸入欄位');
+    setText('verdictSub', '下方結果為上一次有效的計算，僅供參考');
+    $('verdictLayers').innerHTML = ''; $('verdictAction').innerHTML = '';
+    $('verdictList').innerHTML = Object.keys(result.errors).map(k => `<div><a onclick="focusField('${k}')">${FIELD_NAMES[k] || k}</a>：${result.errors[k]}</div>`).join('');
+    return;
+  }
+  resEl.classList.remove('is-stale');
+  const r = result, raw = r.raw;
+  const checks = buildChecks(r);
+  const fails = checks.filter(c => c.s === 'fail'), warns = checks.filter(c => c.s === 'warn');
+
+  let cls, icon, title;
+  if (fails.length) { cls = 'fail'; icon = 'FAIL'; title = '工程檢核：容量不足'; }
+  else if (warns.length) { cls = 'warn'; icon = 'WARN'; title = `工程檢核：設計可行（${warns.length} 項提醒確認）`; }
+  else { cls = 'pass'; icon = 'PASS'; title = '工程檢核：全數通過'; }
+  V.className = 'card verdict ' + cls; setText('verdictIcon', icon); setText('verdictTitle', title);
+  setText('verdictSub', `${r.isolated ? '每台冰機' : '全廠'}配置 ${r.count} 槽 × ${fx(raw.moduleSize)} m³（共 ${fx(r.installed, 1)} m³），獨立可撐 ${f1(r.achievedMinutes)} 分鐘（目標 ${fx(raw.durationMin, 1)} 分鐘）`);
+
+  if (r.best && Math.abs(r.best.size - raw.moduleSize) > 1e-9) {
+    $('verdictAction').innerHTML = `<button type="button" class="btn primary" onclick="setVal('moduleSize', ${r.best.size})">套用最佳規格 (${r.best.count} 槽 × ${r.best.size} m³)</button>`;
+  } else {
+    $('verdictAction').innerHTML = '';
+  }
+
+  const layer = (name, k) => `<span class="layer ${k}">${name} ${LV[k]}</span>`;
+  const timeStatus = r.achievedMinutes + 1e-9 >= raw.durationMin ? 'pass' : 'fail';
+  const n1Status = r.oneDownMinutes + 1e-9 >= raw.durationMin ? 'pass' : 'warn';
+  const countStatus = r.count <= BufferTankEngine.MAX_PREFERRED_COUNT ? 'pass' : 'warn';
+  $('verdictLayers').innerHTML = layer('緩衝時間', timeStatus) + layer('N-1 維修備援', n1Status) + layer('槽數配置', countStatus);
+  $('verdictList').innerHTML = fails.concat(warns).map(c => `<div><a onclick="focusCheck('${c.id}')">${c.t}</a>：${esc(c.v)}</div>`).join('');
+
+  renderModeCompareMini(r);
+  renderBasis(r);
+  $('kpiPlan').innerHTML = `${r.count}<small>槽 × ${fx(raw.moduleSize)} m³</small>`;
+  setText('kpiPlanSub', r.isolated ? `每台冰機；全廠共 ${r.plantCount} 槽` : `最佳建議：${r.best ? `${r.best.count} 槽 × ${fx(r.best.size)} m³` : '—'}`);
+  setText('kpiVolLabel', r.isolated ? '全廠水槽總容積' : '水槽裝設總容積');
+  $('kpiVol').innerHTML = `${fx(r.plantInstalled, 1)}<small>m³</small>`;
+  setText('kpiVolSub', `設計需求 ${f1(r.plantTarget)} m³（含 ${fx(raw.marginPct)}% 安全餘裕）`);
+  $('kpiTime').innerHTML = `${f1(r.achievedMinutes)}<small>分鐘</small>`;
+  setText('kpiTimeSub', `目標 ${fx(raw.durationMin, 1)} 分鐘；1 槽維修時可撐 ${f1(r.oneDownMinutes)} 分`);
+
+  $('flowReadout').innerHTML = `緩衝期間吸收總熱量 <b>${f0(r.energyKJ)} kJ</b>；對應循環流量約 <b>${f1(r.flowM3h)} m³/h</b>（供水 <b>${f1(r.supplyT)}°C</b> → 回水 <b>${f1(r.returnT)}°C</b>）。`;
+
+  renderWaterfallAndChart(r);
+  renderTimeBar(r);
+
+  const ic = { pass: 'OK', warn: 'WN', fail: 'NG', info: 'IN' };
+  $('checkList').innerHTML = checks.map(c => `<li class="chk ${c.s}" id="${c.id}"><span class="dot">${ic[c.s]}</span><div><div class="chk-t">${c.t}<span class="lvl">${LV[c.s] || ''}</span></div><div class="chk-v">${esc(c.v)}</div><div class="chk-d">${esc(c.d)}</div></div></li>`).join('');
+  setText('checkSummary', `${checks.length - warns.length - fails.length} 通過 · ${warns.length} 需確認${fails.length ? ` · ${fails.length} 不合格` : ''}`);
+
+  renderOptions(r);
+  const d = r.dims;
+  $('sizeReadout').innerHTML = `${fx(raw.moduleSize)} m³ 單槽約 <b>Ø${f1(d.D)} m × 直筒 ${f1(d.shellH)} m（含 2:1 橢圓封頭總高 ${f1(d.totalVesselH)} m）</b>，截面積 ${fx(d.area, 2)} m²，建議進出管嘴 <b>DN${r.nozzleSpec.dn}</b>。`;
+  $('calcSteps').innerHTML = buildSteps(r).map((s, i) => `<li><span class="n">${i + 1}</span><div><div class="st-t">${s[0]}</div><code>${s[1]}</code></div></li>`).join('');
+
+  setText('advSummary', `${r.fluid.name} · 最小水量 ${fx(raw.minVolIndex)} L/kW`);
+}
+
+function focusCheck(id) {
+  const el = $(id); if (!el) return;
+  el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  el.classList.add('flash'); setTimeout(() => el.classList.remove('flash'), 1200);
+}
+function focusField(id) {
+  const el = $(id); if (!el) return;
+  if (el.closest('details')) el.closest('details').open = true;
+  el.scrollIntoView({ behavior: 'smooth', block: 'center' }); el.focus();
+}
+function toast(msg) {
+  const el = $('toastMsg'); el.textContent = msg; el.classList.add('show');
+  clearTimeout(toast._t); toast._t = setTimeout(() => el.classList.remove('show'), 2800);
+}
+
+function saveInputs() {
+  try {
+    const v = { fluid: getFluidChoice() };
+    NUM_FIELDS.concat(TEXT_FIELDS).forEach(id => { if ($(id)) v[id] = $(id).value; });
+    localStorage.setItem(AUTOSAVE_KEY, JSON.stringify(v));
+    setText('autosaveHint', '已自動保存');
+  } catch (e) { setText('autosaveHint', ''); }
+}
+function loadInputs() {
+  try {
+    const s = localStorage.getItem(AUTOSAVE_KEY);
+    if (s) { applyValues(JSON.parse(s)); return true; }
+  } catch (e) { /* ignore */ }
+  return false;
+}
+
+function summaryText() {
+  const r = lastResult;
+  if (!r || !r.valid) return null;
+  const raw = r.raw;
+  const L = [];
+  L.push(`【冰水緩衝水槽計算摘要】${$('projectName').value || '未命名案件'}`);
+  if ($('dataSource').value) L.push(`依據：${$('dataSource').value}`);
+  L.push(`架構：${r.isolated ? `逐台獨立（${r.N} 台）` : `共用集管（${r.N} 台冰機）`}（保守不計既有管路水量）`);
+  L.push(`負載：全廠 ${f0(r.totalPlantKW)} kW（單台 ${f0(r.chillerKW)} kW），目標緩衝 ${fx(raw.durationMin)} 分鐘，供水 ${f1(r.supplyT)}°C / 回水 ${f1(r.returnT)}°C (ΔT ${fx(raw.deltaT)} °C)`);
+  L.push(`水槽有效利用率 ${fx(raw.tankEffPct)}%，安全餘裕 ${fx(raw.marginPct)}%`);
+  L.push(`結果：${r.isolated ? '每台' : '全廠'}配置 ${r.count} 槽 × ${fx(raw.moduleSize)} m³ = ${fx(r.installed, 1)} m³${r.isolated ? `；全廠共 ${r.plantCount} 槽 ${fx(r.plantInstalled, 1)} m³` : ''}`);
+  L.push(`單槽尺寸：Ø${f1(r.dims.D)} m × 直筒 ${f1(r.dims.shellH)} m（總高 ${f1(r.dims.totalVesselH)} m）；管嘴 DN${r.nozzleSpec.dn}；熱鋒面下移速度 ${fx(r.pistonVelMmin, 2)} m/min`);
+  L.push(`實際可撐 ${f1(r.achievedMinutes)} 分鐘（目標 ${fx(raw.durationMin)} 分鐘）；1 槽維修隔離時可撐 ${f1(r.oneDownMinutes)} 分鐘`);
+  return L.join('\n');
+}
+
+function copySummary() {
+  const t = summaryText();
+  if (!t) { toast('請先修正輸入'); return; }
+  const done = () => toast('工程摘要已複製到剪貼簿');
+  if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(t).then(done, () => fallbackCopy(t, done));
+  else fallbackCopy(t, done);
+}
+function fallbackCopy(t, done) {
+  const ta = document.createElement('textarea'); ta.value = t; document.body.appendChild(ta); ta.select();
+  try { document.execCommand('copy'); done(); } catch (e) { toast('無法複製，請手動選取'); }
+  ta.remove();
+}
+
+function printReport() {
+  document.querySelectorAll('details').forEach(d => { d.dataset.wasOpen = d.open ? '1' : ''; d.open = true; });
+  if (typeof Tank3DSim !== 'undefined' && Tank3DSim.renderNow) {
+    Tank3DSim.renderNow();
+  }
+  window.print();
+}
+window.addEventListener('afterprint', () => { document.querySelectorAll('details').forEach(d => { if (d.dataset.wasOpen !== undefined) d.open = d.dataset.wasOpen === '1'; }); });
+
+function safeFileName(s) { return (s || '').replace(/[\\/:*?"<>|]+/g, '_').trim().slice(0, 60); }
+
+function exportToExcel() {
+  if (typeof XLSX === 'undefined') { toast('Excel 元件尚未載入，請確認網路後再試'); return; }
+  const r = lastResult;
+  if (!r || !r.valid) { toast('請先修正輸入再匯出'); return; }
+  const raw = r.raw, fl = r.fluid;
+
+  const rows = [];
+  const add = (key, label, val, unit, note) => rows.push({ key, label, val, unit, note });
+  rows.push({ title: '冰水緩衝水槽容量計算書（純水槽保守設計，不計既有管路水量）' });
+  rows.push({ label: '案名', val: $('projectName').value || '', text: true });
+  rows.push({ label: '依據／備註', val: $('dataSource').value || '', text: true });
+  rows.push({ label: '匯出日期', val: new Date().toLocaleDateString('zh-TW'), text: true });
+  rows.push({});
+  rows.push({ header: ['一、輸入參數', '數值', '單位', '說明'] });
+  add('mode', '水槽架構', raw.mode, '', 'shared = 共用集管；isolated = 逐台獨立');
+  add('P', r.isolated ? '單台冰機冷負載' : '系統總冷負載', raw.load, 'kW', '');
+  add('N', '冰機台數', raw.chillerN, '台', '');
+  add('t', '目標緩衝時間', raw.durationMin, 'min', '');
+  add('dT', '可利用溫差 ΔT', raw.deltaT, '°C', '');
+  add('rho', '流體密度 ρ', fl.rho, 'kg/m³', fl.name);
+  add('cp', '流體比熱 cp', fl.cp, 'kJ/kg·K', fl.name);
+  add('eff', '水槽有效利用率', raw.tankEffPct, '%', '扣除斜溫混水層與死水區');
+  add('margin', '設計安全餘裕', raw.marginPct, '%', '');
+  add('size', '單槽標稱容積', raw.moduleSize, 'm³', '');
+  add('hd', '高徑比 H/D', raw.hdRatio, '-', '立式圓筒槽');
+  add('minIdx', '防短循環最小水量指標', raw.minVolIndex, 'L/kW', '每台冰機');
+  rows.push({});
+  rows.push({ header: ['二、計算結果', '結果', '單位', 'Excel 公式'] });
+  add('E', '緩衝期間總熱量 E', { f: '{P}*{t}*60' }, 'kJ');
+  add('V', '理論所需有效冷水量', { f: '{E}/({rho}*{cp}*{dT})' }, 'm³');
+  add('req', '水槽實體容積需求（÷ 有效利用率）', { f: '{V}/({eff}/100)' }, 'm³');
+  add('target', '設計目標容積（加安全餘裕）', { f: '{req}*(1+{margin}/100)' }, 'm³');
+  add('count', '水槽配置數量', { f: 'IF({target}>0,ROUNDUP(ROUND({target}/{size},6),0),0)' }, '槽');
+  add('inst', '裝設水槽總容積', { f: '{count}*{size}' }, 'm³');
+  add('D', '單槽直徑 Ø', { f: '(4*{size}/(PI()*{hd}))^(1/3)' }, 'm');
+  add('H', '單槽等效高 H', { f: '{hd}*{D}' }, 'm');
+  add('minutes', '實際可撐緩衝時間', { f: '({inst}*{eff}/100)*{rho}*{cp}*{dT}/{P}/60' }, 'min');
+  add('oneDown', '任一槽維修時可撐時間', { f: 'IF({count}>0,(({count}-1)*{size}*{eff}/100)*{rho}*{cp}*{dT}/{P}/60,0)' }, 'min');
+  add('chKW', '每台冰機容量', { f: 'IF({mode}="isolated",{P},{P}/{N})' }, 'kW');
+  add('minSys', '防短循環最少系統水量', { f: '{chKW}*{minIdx}/1000' }, 'm³');
+  add('sysVol', '水槽提供系統水量', { f: '{inst}' }, 'm³');
+  add('plantCount', '全廠水槽總數', { f: 'IF({mode}="isolated",{count}*{N},{count})' }, '槽');
+  add('plantVol', '全廠水槽總容積', { f: '{plantCount}*{size}' }, 'm³');
+  rows.push({});
+  rows.push({ header: ['三、單槽規格敏感度比較', '數量（槽）', '裝設總容積（m³）', '可撐時間（min）'] });
+  const optRows = (r.options.length ? r.options : []).map(o => ({ opt: o }));
+  rows.push(...optRows);
+
+  const addr = {};
+  rows.forEach((row, i) => { if (row.key) addr[row.key] = 'B' + (i + 1); });
+  const sub = f => f.replace(/\{(\w+)\}/g, (_, k) => addr[k]);
+  const jsVal = { E: r.energyKJ, V: r.grossVol, req: r.tankReq, target: r.targetVol, count: r.count, inst: r.installed, D: r.dims.D, H: r.dims.H, minutes: r.achievedMinutes, oneDown: r.oneDownMinutes, chKW: r.chillerKW, minSys: r.minSysVol, sysVol: r.sysVol, plantCount: r.plantCount, plantVol: r.plantInstalled };
+
+  const aoa = rows.map(row => {
+    if (row.title) return [row.title];
+    if (row.header) return row.header;
+    if (row.opt) {
+      const o = row.opt, s = o.size;
+      return [`${s} m³／槽`,
+        { t: 'n', v: o.count, f: sub(`IF({target}>0,ROUNDUP(ROUND({target}/${s},6),0),0)`) },
+        { t: 'n', v: o.installed, f: '' },
+        { t: 'n', v: o.minutes, f: '' }];
+    }
+    if (row.label === undefined) return [];
+    if (row.text) return [row.label, row.val];
+    const v = row.val;
+    if (v && typeof v === 'object' && v.f) {
+      const jv = jsVal[row.key];
+      const cell = typeof jv === 'number' ? { t: 'n', v: jv, f: sub(v.f) } : { t: 's', v: '', f: sub(v.f) };
+      return [row.label, cell, row.unit, '= ' + sub(v.f)];
+    }
+    return [row.label, typeof v === 'number' ? v : String(v), row.unit, row.note || ''];
+  });
+  aoa.forEach((line, i) => {
+    const row = rows[i];
+    if (!row.opt) return;
+    const n = i + 1, s = row.opt.size;
+    line[2].f = `B${n}*${s}`;
+    line[3].f = sub(`(C${n}*{eff}/100)*{rho}*{cp}*{dT}/{P}/60`);
+  });
+
+  const ws = XLSX.utils.aoa_to_sheet(aoa);
+  ws['!cols'] = [{ wch: 34 }, { wch: 16 }, { wch: 14 }, { wch: 56 }];
+  Object.keys(ws).forEach(k => { if (/^[BCD]\d+$/.test(k) && ws[k].t === 'n' && ws[k].f) ws[k].z = '#,##0.00'; });
+  ['count', 'plantCount'].forEach(k => { if (ws[addr[k]]) ws[addr[k]].z = '0'; });
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Buffer Tank');
+  const base = safeFileName($('projectName').value) || 'CHW_Buffer_Tank';
+  XLSX.writeFile(wb, `${base}_${new Date().toISOString().slice(0, 10)}.xlsx`);
+  toast('Excel 計算書已匯出（公式完整連動）');
+}
+
+function runRegressionTests() {
+  const E = BufferTankEngine;
+  const base = { mode: 'shared', load: 4000, chillerN: 4, durationMin: 6, deltaT: 5, supplyTemp: 7, moduleSize: 25, hdRatio: 2, tankEffPct: 90, marginPct: 10, minVolIndex: 6.5, fluid: 'water', cp: NaN, rho: NaN };
+  const run = o => E.calculate(Object.assign({}, base, o));
+  const near = (a, b, tol = 0.05) => Math.abs(a - b) <= tol;
+  const results = [];
+  const T = (name, fn) => { let pass = false, info = ''; try { const v = fn(); pass = v === true; if (!pass) info = String(v); } catch (e) { info = e.message; } results.push({ name, pass, info }); };
+
+  const r0 = run({});
+  T('總熱量 E = 4000 × 6 × 60 = 1,440,000 kJ', () => r0.energyKJ === 1440000);
+  T('理論有效冷水 = 68.80 m³（無管路抵扣）', () => near(r0.grossVol, 68.80, 0.01) || r0.grossVol);
+  T('實體水槽需求 = 68.80 / 0.9 = 76.45 m³', () => near(r0.tankReq, 76.45, 0.02) || r0.tankReq);
+  T('加 10% 安全餘裕 = 84.09 m³', () => near(r0.targetVol, 84.09, 0.02) || r0.targetVol);
+  T('單槽 25 m³ → 進位為 4 槽（裝設 100 m³）', () => r0.count === 4 && r0.installed === 100);
+  T('實際可撐時間 = (100 × 0.9) × 4186 × 5 / 4000 / 60 = 7.85 分鐘', () => near(r0.achievedMinutes, (100 * 0.9) * 4186 * 5 / 4000 / 60, 1e-6));
+  T('1 槽維修時 = 3 槽 × 25 m³ = 5.89 分鐘', () => near(r0.oneDownMinutes, (75 * 0.9) * 4186 * 5 / 4000 / 60, 1e-6));
+  const ri = run({ mode: 'isolated', load: 1000 });
+  T('共管 vs 逐台獨立同基準：全廠目標容積完全相等 (84.09 m³)', () => near(r0.plantTarget, ri.plantTarget, 1e-6));
+  T('共管 vs 逐台獨立整數進位驗證：25m³ 時共管 4 槽 vs 逐台 1×4=4 槽', () => r0.plantCount === 4 && ri.plantCount === 4);
+  const r20s = run({ mode: 'shared', load: 4000, moduleSize: 20 });
+  const r20i = run({ mode: 'isolated', load: 1000, moduleSize: 20 });
+  T('整數進位懲罰驗證：單槽 20m³ 時，共管需 5 槽(100m³) vs 逐台需 2×4=8 槽(160m³)', () => r20s.plantCount === 5 && r20i.plantCount === 8);
+  T('斜溫層：t = 0 時底部出水溫度等於設計供水 7.0 °C', () => {
+    const st0 = E.evalThermoclineAtTime(r0, 0);
+    return near(st0.outletTemp, 7.0, 0.01);
+  });
+  T('斜溫層：t = 可撐時間時 10% 前緣恰抵底部集水器（出水 = 7 + 10%×5 °C）', () => {
+    const stEnd = E.evalThermoclineAtTime(r0, r0.achievedMinutes);
+    return near(stEnd.outletTemp, 7.0 + 5.0 * 0.1, 1e-6) || stEnd.outletTemp;
+  });
+  T('斜溫層：目標緩衝時間內出水溫升 < 10% ΔT', () => [0.25, 0.5, 0.75, 1].every(k => E.evalThermoclineAtTime(r0, r0.raw.durationMin * k).outletTemp < 7.5));
+  T('斜溫層：出水溫度隨時間單調上升', () => { let prev = -1; for (let k = 0; k <= 60; k++) { const T = E.evalThermoclineAtTime(r0, r0.achievedMinutes * 1.5 * k / 60).outletTemp; if (T < prev - 1e-9) return false; prev = T; } return true; });
+  T('斜溫層：死水 2×20% + 斜溫層 60% = (1 − 利用率)·V', () => { const st = E.evalThermoclineAtTime(r0, 0); return near(2 * st.deadVol + st.layerVolEnd, 25 * 0.1, 1e-9); });
+  T('封頭容積映射：容積(總高) = 單槽容積，且 z ↔ s 互逆', () => {
+    const G = E.vesselGeom(r0.dims);
+    return near(G.Vtot, 25, 1e-6) && [0.1, 0.4, 3, 12.5, 20, 24.6].every(s => near(G.volAt(G.zAt(s)), s, 1e-6));
+  });
+  T('鋒面速度 = 單槽流量 ÷ 截面積（直筒段）', () => {
+    const st = E.evalThermoclineAtTime(r0, r0.achievedMinutes * 0.5);
+    return near(st.vz, (r0.flowPerTankM3h / 60) / r0.dims.area, 1e-9);
+  });
+  T('斜溫層厚度隨時間增厚（入口混合 + 熱擴散）', () => E.evalThermoclineAtTime(r0, r0.achievedMinutes).thermoclineVol > E.evalThermoclineAtTime(r0, 0).thermoclineVol);
+  T('ASME 2:1 橢圓封頭與直筒尺寸分解正確', () => {
+    const d = E.tankDims(25, 2);
+    return near(d.headDepth, d.D * 0.25, 1e-6) && d.totalVesselH > d.shellH;
+  });
+  T('1000 m³、H/D=2 約 Ø8.60 × 等效高 17.21 m', () => { const d = E.tankDims(1000, 2); return near(d.D, 8.60, 0.01) && near(d.H, 17.21, 0.01); });
+
+  // 4 項新增工程驗算：低高徑比容積守恆、流體冰點檢核、含支腿總高檢核、大管嘴流速檢核
+  T('低高徑比容積守恆：H/D = 0.8 時，封頭幾何總容積精確等於標稱容積 25 m³', () => {
+    const d08 = E.tankDims(25, 0.8);
+    const g08 = E.vesselGeom(d08);
+    return near(g08.Vtot, 25, 1e-6);
+  });
+  T('流體冰點安全檢核：純水供水 < 4°C 時觸發防凍警告，合格時為 PASS', () => {
+    const rFreeze = run({ supplyTemp: 2, fluid: 'water' });
+    const chkWarn = buildChecks(rFreeze).find(c => c.id === 'chk-freeze');
+    const chkPass = buildChecks(r0).find(c => c.id === 'chk-freeze');
+    return chkWarn && chkWarn.s === 'warn' && chkPass && chkPass.s === 'pass';
+  });
+  T('含支腿總淨高檢核：overallH = padH + legH + totalVesselH + 0.35m，樓層高程依淨高計算', () => {
+    const d = r0.dims;
+    const expOverall = d.padH + d.legH + d.totalVesselH + 0.35;
+    return near(d.overallH, expOverall, 1e-6) && near(d.floors, expOverall / E.FLOOR_HEIGHT, 1e-6);
+  });
+  T('大管嘴流速檢核：大流量 6000 m³/h 自動擴充至 DN1000 且實際流速 ≤ 2.2 m/s', () => {
+    const spec = E.selectNozzleDN(6000);
+    return spec.dn === 1000 && spec.actualVel <= 2.2;
+  });
+
+  const failed = results.filter(x => !x.pass);
+  return { total: results.length, failed: failed.length, results };
+}
+
+function openVerifyModal() {
+  const rep = runRegressionTests();
+  const passCount = rep.total - rep.failed;
+  $('verifySummaryNote').innerHTML = `已即時執行 <b>${rep.total} 項</b> 能量平衡、共管/逐台獨立整數進位定律、ASME 幾何與 3D 斜溫層熱擴散物理測試：<b>${passCount} 項通過 (PASS)</b>，<b>${rep.failed} 項失敗</b>。`;
+  $('verifyTestList').innerHTML = rep.results.map(r =>
+    `<div class="test-item ${r.pass ? 'pass' : 'fail'}"><span>[${r.pass ? 'PASS' : 'FAIL'}]</span><div><b>${esc(r.name)}</b>${r.info ? `<br><small>${esc(r.info)}</small>` : ''}</div></div>`
+  ).join('');
+  $('verifyModal').hidden = false;
+}
+function closeVerifyModal() { $('verifyModal').hidden = true; }
+
+/* ---------- 啟動 ---------- */
+window.onload = function () {
+  Tank3DSim.init();
+  const restored = loadInputs();
+  calculate();
+  if (restored) setText('autosaveHint', '已還原上次輸入');
+  const rep = runRegressionTests();
+  setText('btnVerify', `工程驗算 (${rep.total - rep.failed}/${rep.total})`);
+};
+</script>
+</body>
+</html>

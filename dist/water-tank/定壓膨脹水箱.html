@@ -1,0 +1,338 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<script>
+function _0x3704(_0x1f9c70,_0x347a36){_0x1f9c70=_0x1f9c70-0x1e4;var _0x25bc2b=_0x25bc();var _0x370484=_0x25bc2b[_0x1f9c70];return _0x370484;}(function(_0x1e7c53,_0x5375e2){var _0x4e4bd9={_0xe964f4:0x1e7,_0x3257bc:0x1e5,_0x138665:0x1ec,_0x6c272e:0x1f7,_0xc8f106:0x1f0},_0x4a5274=_0x3704,_0x72eada=_0x1e7c53();while(!![]){try{var _0xdcb302=-parseInt(_0x4a5274(0x1ed))/0x1*(-parseInt(_0x4a5274(0x1e8))/0x2)+parseInt(_0x4a5274(0x1ef))/0x3+-parseInt(_0x4a5274(_0x4e4bd9._0xe964f4))/0x4*(parseInt(_0x4a5274(0x1f3))/0x5)+-parseInt(_0x4a5274(0x1f1))/0x6*(-parseInt(_0x4a5274(_0x4e4bd9._0x3257bc))/0x7)+-parseInt(_0x4a5274(0x1e6))/0x8+-parseInt(_0x4a5274(_0x4e4bd9._0x138665))/0x9*(parseInt(_0x4a5274(_0x4e4bd9._0x6c272e))/0xa)+-parseInt(_0x4a5274(0x1f2))/0xb*(-parseInt(_0x4a5274(_0x4e4bd9._0xc8f106))/0xc);if(_0xdcb302===_0x5375e2)break;else _0x72eada['push'](_0x72eada['shift']());}catch(_0x3b81c8){_0x72eada['push'](_0x72eada['shift']());}}}(_0x25bc,0xedb29),(function(){var _0x1fd111={_0xfcea88:0x1f5,_0x1c9557:0x1e4},_0x31dbc6={_0x4e45b8:0x1ee,_0x8cb76d:0x1f6,_0x331f31:0x1f6},_0x4994e9=_0x3704;document[_0x4994e9(_0x1fd111._0xfcea88)](_0x4994e9(_0x1fd111._0x1c9557),function(_0x1e204a){var _0x29624d=_0x4994e9;_0x1e204a[_0x29624d(0x1eb)]();}),document[_0x4994e9(_0x1fd111._0xfcea88)]('keydown',function(_0x3817b9){var _0x1ef682=_0x4994e9;if(_0x3817b9['key']==='F12'||_0x3817b9[_0x1ef682(0x1f4)]&&_0x3817b9[_0x1ef682(0x1e9)]&&['i','I','j','J','c','C','k','K'][_0x1ef682(_0x31dbc6._0x4e45b8)](_0x3817b9[_0x1ef682(_0x31dbc6._0x8cb76d)])||_0x3817b9[_0x1ef682(0x1f4)]&&['u','U','s','S'][_0x1ef682(_0x31dbc6._0x4e45b8)](_0x3817b9[_0x1ef682(_0x31dbc6._0x331f31)]))return _0x3817b9[_0x1ef682(0x1eb)](),_0x3817b9[_0x1ef682(0x1ea)](),![];});}()));function _0x25bc(){var _0x21c1ab=['addEventListener','key','260ezxuNe','contextmenu','297458bDaYRF','10798392BrZxwo','104wsADKy','116128GjEhJg','shiftKey','stopPropagation','preventDefault','372852YpdWlr','10pzexwh','includes','1719744bYbLSW','339588wwcxKF','66UnxKFw','814OtKrCe','60560kDpYHu','ctrlKey'];_0x25bc=function(){return _0x21c1ab;};return _0x25bc();}
+</script>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>定壓膨脹水箱選型審查 — HVAC-Pro 閉迴路壓力維持計算</title>
+  
+  
+  <script src="../security.js" onerror="this.onerror=null;"></script>
+  
+  
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+  <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"></script>
+
+  <style>:root{--bg:#F1F5F9;--card:#FFFFFF;--card-subtle:#F8FAFC;--line:#E2E8F0;--line-strong:#CBD5E1;--ink:#0F172A;--ink-2:#334155;--muted:#64748B;--faint:#94A3B8;--accent:#4F46E5;--accent-hover:#4338CA;--accent-soft:#EEF2FF;--pass:#15803D;--pass-soft:#DCFCE7;--warn:#B45309;--warn-soft:#FEF3C7;--fail:#DC2626;--fail-soft:#FEE2E2;--radius:12px;--shadow-sm:0 1px 2px 0 rgba(15,23,42,0.04);--shadow-md:0 4px 12px -2px rgba(15,23,42,0.08);--font:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang TC","Microsoft JhengHei","Noto Sans TC",sans-serif;--mono:"JetBrains Mono","SFMono-Regular",Consolas,"Liberation Mono",Menlo,monospace}*{box-sizing:border-box;margin:0;padding:0}[hidden]{display:none !important}button,input,select,a{font:inherit;color:inherit}body{background:var(--bg);color:var(--ink);font-family:var(--font);font-size:14px;line-height:1.5;-webkit-font-smoothing:antialiased}.topbar{position:sticky;top:0;z-index:50;background:rgba(255,255,255,0.96);backdrop-filter:blur(10px);border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between;gap:16px;padding:10px 24px;flex-wrap:wrap;box-shadow:var(--shadow-sm)}.brand{display:flex;align-items:center;gap:11px}.logo{width:38px;height:38px;border-radius:10px;background:linear-gradient(135deg,#6366F1 0%,#4F46E5 100%);color:#fff;display:grid;place-items:center;box-shadow:0 2px 8px rgba(79,70,229,0.35);flex:none}.app-title{font-size:16px;font-weight:800;letter-spacing:-0.2px;display:flex;align-items:center;gap:8px;flex-wrap:wrap}.app-badge{font-size:11px;font-weight:700;padding:2px 8px;border-radius:6px;background:var(--accent-soft);color:var(--accent)}.app-badge.hot{background:#FEF2F2;color:#DC2626;border:1px solid #FECACA}.app-sub{font-size:12px;color:var(--muted);margin-top:1px}.suite-tabs{display:inline-flex;align-items:center;gap:4px;background:var(--card-subtle);padding:4px;border-radius:10px;border:1px solid var(--line)}.tab-link{display:inline-flex;align-items:center;gap:6px;padding:6px 13px;font-size:12.5px;font-weight:700;color:var(--ink-2);text-decoration:none;border-radius:7px;transition:all 0.15s;white-space:nowrap}.tab-link:hover{background:#FFFFFF;color:var(--accent);box-shadow:var(--shadow-sm)}.tab-link.active{background:var(--accent);color:#FFFFFF !important;box-shadow:0 2px 6px rgba(79,70,229,0.35)}.actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap}.btn{border:1px solid var(--line-strong);background:#fff;color:var(--ink-2);border-radius:8px;padding:6px 12px;font-size:12.5px;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;gap:6px;transition:all 0.15s;white-space:nowrap;text-decoration:none}.btn:hover{background:var(--card-subtle);border-color:#94A3B8;color:var(--ink)}.btn.primary{background:var(--accent);border-color:var(--accent);color:#fff;box-shadow:0 1px 3px rgba(79,70,229,0.25)}.btn.primary:hover{background:var(--accent-hover)}.scenario-bar{max-width:1640px;margin:12px auto 0;padding:0 24px;display:flex;align-items:center;gap:8px;flex-wrap:wrap}.scenario-label{font-size:12px;font-weight:700;color:var(--muted);display:flex;align-items:center;gap:5px}.preset-btn{border:1px solid var(--line-strong);background:#fff;border-radius:999px;padding:5px 13px;font-size:12px;font-weight:600;color:var(--ink-2);cursor:pointer;transition:all 0.15s;display:inline-flex;align-items:center;gap:5px}.preset-btn:hover{border-color:var(--accent);color:var(--accent);background:var(--accent-soft)}.preset-btn small{color:var(--muted);font-weight:500}.layout{display:grid;grid-template-columns:minmax(390px,450px) 1fr;gap:20px;padding:14px 24px 60px;max-width:1640px;margin:0 auto;align-items:start}@media (max-width:1120px){.layout{grid-template-columns:1fr}}@media (min-width:1121px){html{height:100%;overflow:hidden}body{height:100vh;display:flex;flex-direction:column;overflow:hidden}.topbar,.scenario-bar{flex:none}.layout{flex:1 1 auto;min-height:0;width:100%;grid-template-rows:minmax(0,1fr);align-items:stretch;padding-bottom:14px}.inputs,.results{min-height:0;overflow-y:auto;overscroll-behavior:contain;padding-right:6px;scrollbar-width:thin;scrollbar-gutter:stable}.inputs > *,.results > *{flex-shrink:0}}.card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow-sm)}.inputs,.results{display:flex;flex-direction:column;gap:14px}.sec{padding:16px 18px 18px}.sec-h{display:flex;align-items:center;gap:10px;margin-bottom:14px}.sec-h .no{width:25px;height:25px;border-radius:7px;background:var(--accent-soft);color:var(--accent);font-size:12.5px;font-weight:800;display:grid;place-items:center;flex:none;font-family:var(--mono)}.sec-h h2{font-size:15px;font-weight:700;color:var(--ink)}.sec-h p{font-size:12px;color:var(--muted)}.seg{display:flex;background:var(--card-subtle);border:1px solid var(--line);border-radius:8px;padding:3px;gap:4px;margin-bottom:12px}.seg button{flex:1;border:none;background:transparent;padding:7px 10px;font-size:12.5px;font-weight:700;border-radius:6px;cursor:pointer;color:var(--ink-2);transition:all 0.15s}.seg button.on{background:#fff;color:var(--accent);box-shadow:var(--shadow-sm)}.grid{display:grid;grid-template-columns:1fr 1fr;gap:12px 14px}.field.full{grid-column:1 / -1}.field label{display:block;font-size:12.5px;font-weight:600;color:var(--ink-2);margin-bottom:5px}.req{color:var(--fail);font-style:normal;margin-left:2px}.iw{display:flex;align-items:center;height:38px;border:1px solid var(--line-strong);border-radius:8px;background:#fff;transition:border-color .15s,box-shadow .15s}.iw:focus-within{border-color:var(--accent);box-shadow:0 0 0 3px rgba(79,70,229,0.14)}.iw input{flex:1;min-width:0;width:100%;height:100%;border:none;background:transparent;padding:0 8px 0 11px;font-size:14.5px;font-weight:600;outline:none;font-family:var(--mono)}.iw .u{flex:none;padding-right:10px;font-size:12px;color:var(--muted);white-space:nowrap;user-select:none}.hint{font-size:11px;color:var(--muted);margin-top:4px}.slider-row{display:flex;align-items:center;gap:12px;margin-top:4px}.slider-row input[type="range"]{flex:1;accent-color:var(--accent);cursor:pointer}.slider-val{font-family:var(--mono);font-weight:800;font-size:14px;color:var(--accent);width:44px;text-align:right}.verdict{padding:16px 20px;border-left-width:5px}.verdict.pass{border-left-color:var(--pass)}.verdict.warn{border-left-color:var(--warn)}.verdict.fail{border-left-color:var(--fail)}.v-head{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}.v-head-left{display:flex;align-items:center;gap:12px}.v-icon{width:38px;height:38px;border-radius:8px;display:grid;place-items:center;font-weight:800;font-size:12px;color:#fff;flex:none;background:var(--accent);font-family:var(--mono)}.v-title{font-size:17.5px;font-weight:800}.v-sub{font-size:12.5px;color:var(--muted);margin-top:1px}.kpis{display:grid;grid-template-columns:repeat(4,1fr);margin-top:14px;border-top:1px solid var(--line)}.kpi{padding:14px 16px;min-width:0}.kpi + .kpi{border-left:1px solid var(--line)}.kpi-l{font-size:11.5px;color:var(--muted);font-weight:600}.kpi-v{font-size:24px;font-weight:800;letter-spacing:-0.5px;line-height:1.2;margin-top:2px;font-family:var(--mono);color:var(--ink)}.kpi-v small{font-size:12px;font-weight:600;color:var(--muted);margin-left:4px}.kpi-s{font-size:11.5px;color:var(--muted);margin-top:2px}@media (max-width:800px){.kpis{grid-template-columns:1fr 1fr}.kpi:nth-child(3){border-left:none;border-top:1px solid var(--line)}.kpi:nth-child(4){border-top:1px solid var(--line)}}.audit-list{display:flex;flex-direction:column;gap:8px}.audit-item{padding:10px 14px;border-radius:8px;font-size:12.5px;line-height:1.5;display:flex;align-items:flex-start;gap:10px;border:1px solid transparent}.audit-item.ok{background:var(--pass-soft);border-color:#BBF7D0;color:var(--pass)}.audit-item.warn{background:var(--warn-soft);border-color:#FDE68A;color:var(--warn)}.audit-item.risk{background:var(--fail-soft);border-color:#FECACA;color:var(--fail)}.audit-tag{font-size:10.5px;font-weight:800;padding:1px 6px;border-radius:4px;color:#fff;text-transform:uppercase;font-family:var(--mono);flex:none;margin-top:1px}.audit-item.ok .audit-tag{background:var(--pass)}.audit-item.warn .audit-tag{background:var(--warn)}.audit-item.risk .audit-tag{background:var(--fail)}.tbl-wrap{overflow-x:auto;margin:0 -18px;padding:0 18px}table.opts{width:100%;border-collapse:collapse;font-size:12.5px}table.opts th{text-align:left;font-size:11.5px;color:var(--muted);font-weight:700;padding:8px 10px;border-bottom:2px solid var(--line);background:var(--card-subtle)}table.opts td{padding:8px 10px;border-bottom:1px solid var(--line);font-size:12px}table.opts tr:hover{background:var(--card-subtle)}.modal-backdrop{position:fixed;inset:0;background:rgba(15,23,42,0.55);backdrop-filter:blur(4px);z-index:200;display:grid;place-items:center;padding:20px}.modal{background:#fff;border-radius:14px;max-width:800px;width:100%;max-height:85vh;display:flex;flex-direction:column;box-shadow:var(--shadow-md);overflow:hidden}.modal-h{padding:16px 20px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:center}.modal-h h3{font-size:16px;font-weight:800}.modal-b{padding:18px 20px;overflow-y:auto;display:flex;flex-direction:column;gap:14px;font-size:12.5px}.modal-f{padding:12px 20px;border-top:1px solid var(--line);display:flex;justify-content:flex-end;background:var(--card-subtle)}@media print{body{background:#fff;font-size:12px}.topbar,.scenario-bar,.actions,.modal-backdrop{display:none !important}.layout{display:block;padding:0}.card{box-shadow:none;border-color:#CBD5E1;break-inside:avoid}}</style>
+</head>
+<body>
+
+  
+  <header class="topbar">
+    <div class="brand">
+      <div class="logo">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+      </div>
+      <div>
+        <div class="app-title">
+          定壓膨脹水箱選型審查
+          <span class="app-badge">閉迴路壓力維持</span>
+          <span class="app-badge hot">ASME / ASHRAE 2020 規範</span>
+        </div>
+        <div class="app-sub">波以耳定律氣體受壓膨脹方程 • 流體密度非線性插值 • 泵浦入口防氣蝕檢核</div>
+      </div>
+    </div>
+
+    
+    <nav class="suite-tabs">
+      <a href="./index.html" class="tab-link">⌂ 套件總覽</a>
+      <a href="./定壓膨脹水箱.html" class="tab-link active">🎈 定壓膨脹水箱</a>
+      <a href="./冰水緩衝水槽.html" class="tab-link">❄️ 冰水緩衝 (3D)</a>
+      <a href="./CDU液冷緩衝水槽.html" class="tab-link">⚡ CDU液冷 (3D)</a>
+    </nav>
+
+    <div class="actions">
+      <button type="button" class="btn" onclick="toggleHelp()">操作指南與原理</button>
+      <button type="button" class="btn" onclick="copySummary()">複製摘要</button>
+      <button type="button" class="btn" onclick="window.print()">列印 / PDF</button>
+      <a href="../index.html" class="btn primary">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+        回 HVAC-Pro 首頁
+      </a>
+    </div>
+  </header>
+
+  
+  <div class="scenario-bar">
+    <span class="scenario-label">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+      快速工程情境：
+    </span>
+    <button type="button" class="preset-btn" onclick="applyPreset('coolingStd')">常規冰水系統 <small>(5,000L / 7→35°C / 1.5→4.0 kg)</small></button>
+    <button type="button" class="preset-btn" onclick="applyPreset('fabPcw')">晶圓廠大型 PCW <small>(30,000L / 12→35°C / 2.0→5.0 kg)</small></button>
+    <button type="button" class="preset-btn" onclick="applyPreset('heating')">熱水供暖迴路 <small>(10,000L / 10→80°C / 1.5→4.5 kg)</small></button>
+    <button type="button" class="preset-btn" onclick="applyPreset('roofTank')">頂樓水箱低充壓 <small>(2,000L / 7→35°C / 0.8→3.5 kg)</small></button>
+  </div>
+
+  
+  <div class="layout">
+
+    
+    <section class="inputs">
+
+      
+      <div class="card sec">
+        <div class="sec-h">
+          <span class="no">1</span>
+          <div>
+            <h2>運轉工況與流體熱性質</h2>
+            <p>選擇系統冰水/熱水模式與流體膨脹溫差</p>
+          </div>
+        </div>
+
+        <div class="seg">
+          <button type="button" id="btnCooling" class="on" onclick="switchMode('cooling')">Cooling 冰水系統模式</button>
+          <button type="button" id="btnHeating" onclick="switchMode('heating')">Heating 熱水供暖模式</button>
+        </div>
+
+        <div class="hint" id="modeDesc" style="background:var(--card-subtle); padding:8px 12px; border-radius:8px; margin-bottom:14px; font-size:12px; color:var(--ink-2); line-height:1.5;">
+          冰水模式：停機時水溫由運轉低溫回升至室溫，膨脹由低溫往高溫發生。
+        </div>
+
+        <div class="grid">
+          <div class="field full">
+            <label for="sysVol">系統總水容量 $V_s$ <i class="req">*</i></label>
+            <div class="iw">
+              <input type="number" id="sysVol" value="5000" step="100" min="10" oninput="calculate()">
+              <span class="u">Liters</span>
+            </div>
+            <div class="hint">包含冰水主機蒸發器、配管、水槽與末端盤管總水量</div>
+          </div>
+
+          <div class="field">
+            <label for="temp1"><span id="lblTemp1">初始運轉水溫 $T_1$</span> <i class="req">*</i></label>
+            <div class="iw">
+              <input type="number" id="temp1" value="7" step="0.5" oninput="calculate()">
+              <span class="u">°C</span>
+            </div>
+            <div class="hint" id="hintTemp1">冰水供水溫度（密度最大基準）</div>
+          </div>
+
+          <div class="field">
+            <label for="temp2"><span id="lblTemp2">停機平衡水溫 $T_2$</span> <i class="req">*</i></label>
+            <div class="iw">
+              <input type="number" id="temp2" value="35" step="0.5" oninput="calculate()">
+              <span class="u">°C</span>
+            </div>
+            <div class="hint" id="hintTemp2">周圍環境最高平衡溫度</div>
+          </div>
+        </div>
+      </div>
+
+      
+      <div class="card sec">
+        <div class="sec-h">
+          <span class="no">2</span>
+          <div>
+            <h2>系統壓力限制與安全係數</h2>
+            <p>設定初充氣壓與安全洩壓閥工作區間</p>
+          </div>
+        </div>
+
+        <div class="grid">
+          <div class="field">
+            <label for="press1">初充壓力 $P_1$ <i class="req">*</i></label>
+            <div class="iw">
+              <input type="number" id="press1" value="1.5" step="0.1" min="0.1" oninput="calculate()">
+              <span class="u">$\text{kg/cm}^2\text{G}$</span>
+            </div>
+            <div class="hint">靜水頭壓力 $+ 0.35\text{ kg/cm}^2$（防吸入空氣）</div>
+          </div>
+
+          <div class="field">
+            <label for="press2">安全閥洩壓極限 $P_2$ <i class="req">*</i></label>
+            <div class="iw">
+              <input type="number" id="press2" value="4.0" step="0.1" min="0.2" oninput="calculate()">
+              <span class="u">$\text{kg/cm}^2\text{G}$</span>
+            </div>
+            <div class="hint">安全閥設定值 $\times 0.9$ 確保安全動作</div>
+          </div>
+
+          <div class="field full">
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+              <label for="sfSlider" style="margin-bottom:0;">選型安全係數 $SF$</label>
+              <span class="slider-val" id="sfVal">1.20</span>
+            </div>
+            <div class="slider-row">
+              <input type="range" id="sfSlider" min="1.0" max="2.0" step="0.05" value="1.20" oninput="syncSF(this.value)">
+            </div>
+            <div class="hint">常規冰水建議 1.15 ~ 1.25；老舊管路或水量估算誤差大時建議 1.30</div>
+          </div>
+        </div>
+      </div>
+
+      
+      <div class="card sec">
+        <div class="sec-h">
+          <span class="no">3</span>
+          <div>
+            <h2>系統總水量經驗估算參考表 (Rule of Thumb)</h2>
+            <p>若無法精確清點管路水量，可依設備負載概估</p>
+          </div>
+        </div>
+        <div class="tbl-wrap">
+          <table class="opts">
+            <thead>
+              <tr>
+                <th>系統類型</th>
+                <th>估算基準</th>
+                <th>單位水量範圍</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td style="font-weight:700;">一般商業空調 (FCU / AHU)</td>
+                <td>每冷凍噸 (RT)</td>
+                <td><span style="font-family:var(--mono); font-weight:700;">9 ~ 12</span> L / RT</td>
+              </tr>
+              <tr>
+                <td style="font-weight:700;">潔淨室 / 工廠製程冷卻 (PCW)</td>
+                <td>每冷凍噸 (RT)</td>
+                <td><span style="font-family:var(--mono); font-weight:700;">15 ~ 22</span> L / RT</td>
+              </tr>
+              <tr>
+                <td style="font-weight:700;">短管路熱水供暖迴路</td>
+                <td>每 10 kW 供熱</td>
+                <td><span style="font-family:var(--mono); font-weight:700;">12 ~ 18</span> L / 10kW</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+    </section>
+
+    
+    <section class="results">
+
+      
+      <div class="card verdict pass">
+        <div class="v-head">
+          <div class="v-head-left">
+            <div class="v-icon">Vt</div>
+            <div>
+              <div class="v-title">膨脹水箱選型審查結果</div>
+              <div class="v-sub">波以耳氣囊工作區間與受熱膨脹核算完成</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="kpis">
+          <div class="kpi">
+            <div class="kpi-l">推薦標稱總容量 ($V_t$)</div>
+            <div class="kpi-v" id="totalVol">0.0 <small>L</small></div>
+            <div class="kpi-s">水箱規格標稱總容積</div>
+          </div>
+
+          <div class="kpi">
+            <div class="kpi-l">純熱膨脹水量 ($\Delta V$)</div>
+            <div class="kpi-v" id="expVol">0.00 <small>L</small></div>
+            <div class="kpi-s">流體受熱膨脹體積</div>
+          </div>
+
+          <div class="kpi">
+            <div class="kpi-l">水密度膨脹率 ($e$)</div>
+            <div class="kpi-v" id="densRate">0.00 <small>%</small></div>
+            <div class="kpi-s">$(\rho_1 / \rho_2) - 1$</div>
+          </div>
+
+          <div class="kpi">
+            <div class="kpi-l">氣囊受壓率 ($\eta_{acc}$)</div>
+            <div class="kpi-v" id="acceptance">0.0 <small>%</small></div>
+            <div class="kpi-s">$(P_2 - P_1) / P_{2,abs}$</div>
+          </div>
+        </div>
+      </div>
+
+      
+      <div class="card sec">
+        <div class="sec-h">
+          <span class="no">4</span>
+          <div>
+            <h2>工程安全運轉稽核診斷 (Engineering Audit Logs)</h2>
+            <p>水泵吸入端防氣蝕、壓力極限與安全係數審查</p>
+          </div>
+        </div>
+
+        <div id="auditContainer" class="audit-list">
+          
+        </div>
+      </div>
+
+      
+      <div class="card sec">
+        <div class="sec-h">
+          <span class="no">5</span>
+          <div>
+            <h2>計算公式依據與物性演算法 (Governing Physics)</h2>
+            <p>ASHRAE Systems & Equipment Handbook 閉迴路膨脹公式推導</p>
+          </div>
+        </div>
+
+        <div style="display:flex; flex-direction:column; gap:12px; font-size:12.5px; color:var(--ink-2); line-height:1.6;">
+          <div style="background:var(--card-subtle); padding:12px 16px; border-radius:8px; border:1px solid var(--line);">
+            <div style="font-weight:700; color:var(--ink); margin-bottom:4px;">1. 水體積熱膨脹量公式：</div>
+            <div>$$\Delta V = V_s \cdot \left(\frac{\rho(T_1)}{\rho(T_2)} - 1\right)$$</div>
+            <div class="hint">其中 $\rho(T)$ 依據純水非線性狀態方程五次多項式動態插值求得。</div>
+          </div>
+
+          <div style="background:var(--card-subtle); padding:12px 16px; border-radius:8px; border:1px solid var(--line);">
+            <div style="font-weight:700; color:var(--ink); margin-bottom:4px;">2. 波以耳定律氣囊受壓利用率 (Theoretical Acceptance Ratio)：</div>
+            <div>$$\eta_{acc} = \frac{P_{2,abs} - P_{1,abs}}{P_{2,abs}} = \frac{(P_2 + 1.033) - (P_1 + 1.033)}{P_2 + 1.033}$$</div>
+            <div class="hint">若初充壓力 $P_1$ 與洩壓設定 $P_2$ 差距過小，受壓率會急驟下降，導致水箱體積過大。</div>
+          </div>
+
+          <div style="background:var(--card-subtle); padding:12px 16px; border-radius:8px; border:1px solid var(--line);">
+            <div style="font-weight:700; color:var(--ink); margin-bottom:4px;">3. 最終水箱總容量需求：</div>
+            <div>$$V_t = \frac{\Delta V \cdot SF}{\eta_{acc}}$$</div>
+          </div>
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+
+  
+  <div id="helpModal" class="modal-backdrop" hidden>
+    <div class="modal">
+      <div class="modal-h">
+        <h3>定壓膨脹水箱工程審查 SOP 與故障排除指南</h3>
+        <button type="button" class="btn quiet" onclick="toggleHelp()">✕</button>
+      </div>
+      <div class="modal-b">
+        <div>
+          <h4 style="font-size:14px; font-weight:800; color:var(--ink); margin-bottom:6px;">一、初充壓力 $P_1$ 設定準則</h4>
+          <p style="color:var(--muted); line-height:1.6;">
+            膨脹水箱必須裝設於循環水泵入口吸入側（系統定壓點）。初充壓力 $P_1$ 應等於水箱安裝點至管路最高點之靜水頭高（公尺 / 10）再加上至少 $0.35\text{ kg/cm}^2$，以防止管路頂部產生局部負壓吸入空氣或水泵吸入口產生氣蝕。
+          </p>
+        </div>
+
+        <div>
+          <h4 style="font-size:14px; font-weight:800; color:var(--ink); margin-bottom:6px;">二、極限壓力 $P_2$ 與安全閥連動</h4>
+          <p style="color:var(--muted); line-height:1.6;">
+            極限壓力 $P_2$ 通常設定為安全閥洩壓動作壓力的 90%（例如 5 kg/cm² 安全閥，P2 取 4.5 kg/cm²），且此壓力絕不可超過系統中耐壓等級最脆弱之設備（如板式熱交換器、冰機蒸發器銅管等）。
+          </p>
+        </div>
+
+        <div>
+          <h4 style="font-size:14px; font-weight:800; color:var(--ink); margin-bottom:6px;">三、乙二醇 (Glycol) 系統修正提醒</h4>
+          <p style="color:var(--muted); line-height:1.6;">
+            本工具目前以純水熱物性為計算基準。若為 30% 乙二醇抗凍液系統，其熱膨脹率較純水高出約 15% ~ 20%，建議工程師將最終總容積 $V_t$ 額外乘上 1.20 ~ 1.25 倍安全裕度。
+          </p>
+        </div>
+      </div>
+      <div class="modal-f">
+        <button type="button" class="btn primary" onclick="toggleHelp()">瞭解並關閉</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+const _0x443825=_0x4ac2;(function(_0x22b91a,_0x9471bb){const _0x421662={_0x3b48e6:0x211,_0x43c947:0x219,_0x371e9d:0x1fc,_0x2aecce:0x1ef},_0x259145=_0x4ac2,_0x5cb6da=_0x22b91a();while(!![]){try{const _0x2b4990=parseInt(_0x259145(0x1f5))/0x1*(-parseInt(_0x259145(0x1f9))/0x2)+-parseInt(_0x259145(0x1eb))/0x3+parseInt(_0x259145(_0x421662._0x3b48e6))/0x4+-parseInt(_0x259145(0x1ee))/0x5*(parseInt(_0x259145(0x204))/0x6)+parseInt(_0x259145(0x1db))/0x7*(-parseInt(_0x259145(_0x421662._0x43c947))/0x8)+-parseInt(_0x259145(0x200))/0x9*(-parseInt(_0x259145(0x209))/0xa)+parseInt(_0x259145(_0x421662._0x371e9d))/0xb*(parseInt(_0x259145(_0x421662._0x2aecce))/0xc);if(_0x2b4990===_0x9471bb)break;else _0x5cb6da['push'](_0x5cb6da['shift']());}catch(_0x2f8cb7){_0x5cb6da['push'](_0x5cb6da['shift']());}}}(_0xda53,0xbabc2));let currentMode=_0x443825(0x21a);function switchMode(_0x448f97){const _0x1ea73c={_0x4801eb:0x1f0,_0x58c93e:0x1e2,_0x4f2a5b:0x1d9,_0x57751a:0x1f6,_0x14b067:0x1f6,_0x2093fe:0x1f7,_0x404d82:0x21d,_0x4ee3df:0x1fa,_0x18077a:0x203,_0x5e33b2:0x1d9},_0x8430bc=_0x443825;currentMode=_0x448f97,document['getElementById']('btnCooling')['className']=_0x448f97===_0x8430bc(0x21a)?'on':'',document['getElementById'](_0x8430bc(0x218))[_0x8430bc(0x1f3)]=_0x448f97===_0x8430bc(_0x1ea73c._0x4801eb)?'on':'';const _0x5739fc=document[_0x8430bc(0x1d9)]('modeDesc'),_0x3baa9f=document[_0x8430bc(0x1d9)](_0x8430bc(0x1fb)),_0x3def8f=document['getElementById'](_0x8430bc(_0x1ea73c._0x58c93e)),_0x4999a7=document[_0x8430bc(0x1d9)](_0x8430bc(0x225)),_0x114c59=document[_0x8430bc(_0x1ea73c._0x4f2a5b)](_0x8430bc(0x1e0));_0x448f97==='cooling'?(_0x5739fc[_0x8430bc(_0x1ea73c._0x57751a)]='冰水模式：停機時水溫由運轉低溫回升至室溫，膨脹由低溫往高溫發生。',_0x3baa9f[_0x8430bc(0x1f7)]='初始運轉水溫\x20$T_1$',_0x3def8f[_0x8430bc(0x1f7)]=_0x8430bc(0x1d7),_0x4999a7[_0x8430bc(_0x1ea73c._0x14b067)]=_0x8430bc(0x1f2),_0x114c59['innerText']='周圍環境最高平衡溫度',document[_0x8430bc(0x1d9)](_0x8430bc(0x1fa))[_0x8430bc(0x203)]=0x7,document['getElementById'](_0x8430bc(0x1e6))['value']=0x23):(_0x5739fc['innerText']='熱水供暖模式：充水運轉時水溫由常溫升至設計最高熱水溫度。',_0x3baa9f[_0x8430bc(0x1f7)]=_0x8430bc(0x1e5),_0x3def8f[_0x8430bc(_0x1ea73c._0x2093fe)]='最高供熱水溫\x20$T_2$',_0x4999a7[_0x8430bc(0x1f6)]=_0x8430bc(_0x1ea73c._0x404d82),_0x114c59[_0x8430bc(0x1f6)]=_0x8430bc(0x220),document['getElementById'](_0x8430bc(_0x1ea73c._0x4ee3df))[_0x8430bc(_0x1ea73c._0x18077a)]=0xa,document[_0x8430bc(_0x1ea73c._0x5e33b2)]('temp2')[_0x8430bc(_0x1ea73c._0x18077a)]=0x50),calculate();}function applyPreset(_0x535cc1){const _0x200e23={_0x9778d7:0x1ed,_0x157e55:0x21a,_0x494510:0x1d9,_0x2a0356:0x1fa,_0x34cea3:0x224,_0x3b456f:0x203,_0x23c142:0x1e6,_0x4ac3ae:0x21c,_0x14484b:0x1f0,_0x21a1de:0x1d9,_0x4bbd06:0x203,_0xb1d47:0x1ec,_0x3a843f:0x21c,_0x4d06bd:0x21a,_0x3258e7:0x1ec,_0x5c8872:0x21c},_0x3af0fa=_0x443825;if(_0x535cc1===_0x3af0fa(_0x200e23._0x9778d7))switchMode(_0x3af0fa(_0x200e23._0x157e55)),document[_0x3af0fa(_0x200e23._0x494510)](_0x3af0fa(0x207))[_0x3af0fa(0x203)]=0x1388,document[_0x3af0fa(0x1d9)](_0x3af0fa(_0x200e23._0x2a0356))[_0x3af0fa(0x203)]=0x7,document[_0x3af0fa(0x1d9)](_0x3af0fa(0x1e6))['value']=0x23,document[_0x3af0fa(0x1d9)](_0x3af0fa(0x1ec))[_0x3af0fa(0x203)]=1.5,document[_0x3af0fa(_0x200e23._0x494510)]('press2')[_0x3af0fa(0x203)]=0x4,syncSF(1.2);else{if(_0x535cc1===_0x3af0fa(_0x200e23._0x34cea3))switchMode(_0x3af0fa(0x21a)),document[_0x3af0fa(0x1d9)]('sysVol')[_0x3af0fa(_0x200e23._0x3b456f)]=0x7530,document[_0x3af0fa(0x1d9)](_0x3af0fa(0x1fa))[_0x3af0fa(0x203)]=0xc,document[_0x3af0fa(_0x200e23._0x494510)](_0x3af0fa(_0x200e23._0x23c142))[_0x3af0fa(_0x200e23._0x3b456f)]=0x23,document['getElementById'](_0x3af0fa(0x1ec))[_0x3af0fa(0x203)]=0x2,document[_0x3af0fa(_0x200e23._0x494510)](_0x3af0fa(_0x200e23._0x4ac3ae))['value']=0x5,syncSF(1.25);else{if(_0x535cc1===_0x3af0fa(_0x200e23._0x14484b))switchMode('heating'),document[_0x3af0fa(0x1d9)](_0x3af0fa(0x207))[_0x3af0fa(0x203)]=0x2710,document[_0x3af0fa(0x1d9)]('temp1')['value']=0xa,document[_0x3af0fa(_0x200e23._0x21a1de)](_0x3af0fa(0x1e6))[_0x3af0fa(_0x200e23._0x4bbd06)]=0x50,document[_0x3af0fa(0x1d9)](_0x3af0fa(_0x200e23._0xb1d47))[_0x3af0fa(0x203)]=1.5,document[_0x3af0fa(0x1d9)](_0x3af0fa(_0x200e23._0x3a843f))[_0x3af0fa(_0x200e23._0x3b456f)]=4.5,syncSF(1.25);else _0x535cc1==='roofTank'&&(switchMode(_0x3af0fa(_0x200e23._0x4d06bd)),document['getElementById']('sysVol')[_0x3af0fa(_0x200e23._0x4bbd06)]=0x7d0,document['getElementById']('temp1')['value']=0x7,document[_0x3af0fa(_0x200e23._0x21a1de)](_0x3af0fa(0x1e6))[_0x3af0fa(0x203)]=0x23,document['getElementById'](_0x3af0fa(_0x200e23._0x3258e7))[_0x3af0fa(0x203)]=0.8,document[_0x3af0fa(0x1d9)](_0x3af0fa(_0x200e23._0x5c8872))['value']=3.5,syncSF(1.2));}}calculate();}function syncSF(_0x4ad9b1){const _0x4ca353={_0x2e16ac:0x1d9,_0x180d2b:0x205},_0x491b7c=_0x443825;document[_0x491b7c(_0x4ca353._0x2e16ac)](_0x491b7c(0x20f))[_0x491b7c(0x1f6)]=parseFloat(_0x4ad9b1)[_0x491b7c(0x202)](0x2),document['getElementById'](_0x491b7c(_0x4ca353._0x180d2b))['value']=_0x4ad9b1,calculate();}function getWaterDensity(_0xb293bf){return 999.85+0.0678117*_0xb293bf-0.0090857*_0xb293bf**0x2+0.0001021*_0xb293bf**0x3-0.000001391*_0xb293bf**0x4+6.71e-9*_0xb293bf**0x5;}function calculate(){const _0x2d4d6c={_0x5a62d7:0x1d9,_0x150830:0x207,_0x4be81f:0x1fa,_0x4dd104:0x203,_0x30ec27:0x1d9,_0x3fd0e0:0x1e6,_0x26b75d:0x1ec,_0x507fca:0x21c,_0x172e21:0x1f7,_0x470e28:0x202,_0x12f02b:0x202,_0x5485e9:0x1f6,_0x2b3cb3:0x1d9,_0x182796:0x20f,_0x49cb88:0x1f6},_0x73683b=_0x443825,_0x5fa296=parseFloat(document[_0x73683b(_0x2d4d6c._0x5a62d7)](_0x73683b(_0x2d4d6c._0x150830))[_0x73683b(0x203)])||0x0,_0x4021d1=parseFloat(document['getElementById'](_0x73683b(_0x2d4d6c._0x4be81f))[_0x73683b(_0x2d4d6c._0x4dd104)])||0x0,_0x23ac6c=parseFloat(document[_0x73683b(_0x2d4d6c._0x30ec27)](_0x73683b(_0x2d4d6c._0x3fd0e0))['value'])||0x0,_0x35cc04=parseFloat(document[_0x73683b(0x1d9)](_0x73683b(_0x2d4d6c._0x26b75d))[_0x73683b(_0x2d4d6c._0x4dd104)])||0x0,_0x595c8=parseFloat(document['getElementById'](_0x73683b(_0x2d4d6c._0x507fca))[_0x73683b(0x203)])||0x0,_0x24bac4=parseFloat(document[_0x73683b(_0x2d4d6c._0x5a62d7)]('sfSlider')[_0x73683b(_0x2d4d6c._0x4dd104)])||1.2,_0x3d689b=getWaterDensity(_0x4021d1),_0x41769a=getWaterDensity(_0x23ac6c);let _0x1864bc=0x0,_0x5485ad=0x0;_0x3d689b>_0x41769a&&_0x41769a>0x0&&(_0x1864bc=_0x5fa296*(_0x3d689b/_0x41769a-0x1),_0x5485ad=_0x1864bc/_0x5fa296*0x64);const _0x2d5bba=_0x35cc04+1.033,_0x505dcf=_0x595c8+1.033;let _0x487101=0x0;_0x595c8>_0x35cc04&&(_0x487101=(_0x505dcf-_0x2d5bba)/_0x505dcf);let _0x58279a=0x0;_0x487101>0x0&&_0x1864bc>0x0&&(_0x58279a=_0x1864bc*_0x24bac4/_0x487101);const _0x557105=_0x487101*0x64;document[_0x73683b(0x1d9)](_0x73683b(0x21e))['innerText']=_0x1864bc[_0x73683b(0x202)](0x2),document['getElementById']('totalVol')[_0x73683b(_0x2d4d6c._0x172e21)]=_0x58279a[_0x73683b(_0x2d4d6c._0x470e28)](0x1)+'\x20<small>L</small>',document['getElementById']('densRate')[_0x73683b(0x1f6)]=_0x5485ad[_0x73683b(_0x2d4d6c._0x12f02b)](0x2)+'%',document['getElementById']('acceptance')[_0x73683b(_0x2d4d6c._0x5485e9)]=_0x557105['toFixed'](0x1)+'%',document[_0x73683b(_0x2d4d6c._0x2b3cb3)](_0x73683b(_0x2d4d6c._0x182796))[_0x73683b(_0x2d4d6c._0x49cb88)]=_0x24bac4['toFixed'](0x2),runAudit(_0x1864bc,_0x58279a,_0x35cc04,_0x595c8,_0x487101,_0x24bac4),renderMath();}function runAudit(_0x4871ad,_0x3fc3c3,_0x54a061,_0xd06ce6,_0x6ccb6d,_0x4a499e){const _0x58613c={_0x7a439:0x1d9,_0x5913eb:0x1e9,_0x19b715:0x213,_0x4e8733:0x20c,_0x54675d:0x1e7,_0x27e33b:0x216,_0x58cb16:0x1de,_0x48b303:0x222,_0x54a48a:0x20a,_0x4cad57:0x1df,_0x2fbe55:0x202,_0x261f29:0x1fe},_0x758f82={_0x91be13:0x1f3,_0x4a973d:0x1f8},_0x549d3b=_0x443825,_0x14c318=document[_0x549d3b(_0x58613c._0x7a439)](_0x549d3b(_0x58613c._0x5913eb));_0x14c318[_0x549d3b(0x1f7)]='';const _0x5911f7=[];_0xd06ce6<=_0x54a061&&_0x5911f7[_0x549d3b(0x223)]({'type':_0x549d3b(0x20c),'tag':'ERROR','msg':_0x549d3b(_0x58613c._0x19b715)}),_0x6ccb6d<0.15&&_0x3fc3c3>0x0&&_0x5911f7[_0x549d3b(0x223)]({'type':_0x549d3b(_0x58613c._0x4e8733),'tag':_0x549d3b(_0x58613c._0x54675d),'msg':_0x549d3b(_0x58613c._0x27e33b)+(_0x6ccb6d*0x64)[_0x549d3b(0x202)](0x1)+_0x549d3b(0x20b)}),_0x54a061<0.5&&_0x5911f7[_0x549d3b(0x223)]({'type':'risk','tag':_0x549d3b(0x210),'msg':_0x549d3b(0x1da)+_0x54a061+_0x549d3b(0x1e3)}),currentMode===_0x549d3b(0x21a)&&_0x4a499e>1.35&&_0x5911f7[_0x549d3b(0x223)]({'type':_0x549d3b(0x20a),'tag':_0x549d3b(_0x58613c._0x58cb16),'msg':'安全係數\x20SF\x20=\x20'+_0x4a499e+_0x549d3b(_0x58613c._0x48b303)}),_0x4871ad<=0x0&&_0x3fc3c3===0x0&&_0x5911f7[_0x549d3b(0x223)]({'type':_0x549d3b(_0x58613c._0x54a48a),'tag':'NO\x20EXP','msg':_0x549d3b(0x21b)}),_0x5911f7[_0x549d3b(0x208)]===0x0&&_0x3fc3c3>0x0&&_0x5911f7[_0x549d3b(0x223)]({'type':'ok','tag':_0x549d3b(0x1ea),'msg':_0x549d3b(_0x58613c._0x4cad57)+(_0x6ccb6d*0x64)[_0x549d3b(0x202)](0x1)+_0x549d3b(0x1d8)+_0x3fc3c3[_0x549d3b(_0x58613c._0x2fbe55)](0x0)+'\x20公升。'}),_0x5911f7[_0x549d3b(_0x58613c._0x261f29)](_0x425fea=>{const _0x40694e=_0x549d3b,_0x370dea=document['createElement'](_0x40694e(0x206));_0x370dea[_0x40694e(_0x758f82._0x91be13)]='audit-item\x20'+_0x425fea['type'],_0x370dea['innerHTML']='<span\x20class=\x22audit-tag\x22>'+_0x425fea[_0x40694e(_0x758f82._0x4a973d)]+_0x40694e(0x20d)+_0x425fea['msg']+_0x40694e(0x214),_0x14c318['appendChild'](_0x370dea);});}function copySummary(){const _0x25cf5c={_0x1d793e:0x21a,_0x1af68a:0x1dd,_0x244459:0x1d9,_0x55a2fe:0x1d9,_0x70aa74:0x1fa,_0x5281b3:0x1e6,_0x3080e7:0x217,_0x1408bc:0x1ff,_0x16c7d1:0x1d9,_0x2b8feb:0x1d9,_0xc6c3cb:0x1f6,_0x819e9b:0x1e1,_0x472277:0x1fd,_0x449c6f:0x1dc},_0x3e2a0d=_0x443825,_0x5c306c=document[_0x3e2a0d(0x1d9)]('totalVol')[_0x3e2a0d(0x1f6)],_0x46fb66=document[_0x3e2a0d(0x1d9)](_0x3e2a0d(0x21e))['innerText'],_0x51f9b9=currentMode===_0x3e2a0d(_0x25cf5c._0x1d793e)?_0x3e2a0d(0x227):_0x3e2a0d(_0x25cf5c._0x1af68a),_0x1cc429=_0x3e2a0d(0x21f)+(_0x3e2a0d(0x228)+_0x51f9b9+'\x0a')+(_0x3e2a0d(0x20e)+document[_0x3e2a0d(_0x25cf5c._0x244459)]('sysVol')[_0x3e2a0d(0x203)]+'\x20L\x0a')+(_0x3e2a0d(0x226)+document[_0x3e2a0d(_0x25cf5c._0x55a2fe)](_0x3e2a0d(_0x25cf5c._0x70aa74))['value']+_0x3e2a0d(0x1e8)+document[_0x3e2a0d(0x1d9)](_0x3e2a0d(_0x25cf5c._0x5281b3))[_0x3e2a0d(0x203)]+_0x3e2a0d(_0x25cf5c._0x3080e7))+(_0x3e2a0d(_0x25cf5c._0x1408bc)+document[_0x3e2a0d(_0x25cf5c._0x55a2fe)](_0x3e2a0d(0x1ec))[_0x3e2a0d(0x203)]+_0x3e2a0d(0x201))+('極限壓力\x20P2：'+document[_0x3e2a0d(_0x25cf5c._0x16c7d1)](_0x3e2a0d(0x21c))['value']+'\x20kg/cm²G\x0a')+('安全係數\x20SF：'+document[_0x3e2a0d(_0x25cf5c._0x2b8feb)](_0x3e2a0d(0x20f))[_0x3e2a0d(_0x25cf5c._0xc6c3cb)]+'\x0a')+(_0x3e2a0d(_0x25cf5c._0x819e9b)+_0x46fb66+_0x3e2a0d(_0x25cf5c._0x472277))+('推薦水箱總容積\x20Vt：'+_0x5c306c+'\x0a')+_0x3e2a0d(_0x25cf5c._0x449c6f);navigator['clipboard']['writeText'](_0x1cc429)[_0x3e2a0d(0x1e4)](()=>{alert('選型審查摘要已成功複製至剪貼簿！');})['catch'](()=>{alert(_0x1cc429);});}function toggleHelp(){const _0x2471b4={_0xbdb7f3:0x1d9},_0x5891a9=_0x443825,_0x531071=document[_0x5891a9(_0x2471b4._0xbdb7f3)](_0x5891a9(0x212));_0x531071[_0x5891a9(0x1f4)]=!_0x531071[_0x5891a9(0x1f4)];}function renderMath(){const _0xd1332c=_0x443825;typeof renderMathInElement===_0xd1332c(0x221)&&renderMathInElement(document[_0xd1332c(0x1f1)],{'delimiters':[{'left':'$$','right':'$$','display':!![]},{'left':'$','right':'$','display':![]}]});}function _0xda53(){const _0xb84eee=['膨脹水量\x20ΔV：','lblTemp2','\x20kg/cm²\x20過低：系統最高處存在負壓吸氣風險，水泵吸入口恐發生氣蝕。','then','初始常溫水溫\x20$T_1$','temp2','LOW\x20ACC','°C\x20→\x20','auditContainer','PASS','980562dnoiEn','press1','coolingStd','889230HbBsrO','2778060LbdfcU','heating','body','冰水供水溫度（密度最大基準）','className','hidden','1534GhstNy','innerText','innerHTML','tag','1816wdhJAV','temp1','lblTemp1','121QRqozY','\x20L\x0a','forEach','初充壓力\x20P1：','3564kicoQH','\x20kg/cm²G\x0a','toFixed','value','12zYBitu','sfSlider','div','sysVol','length','20810zpKtAW','warn','%\x20(<\x2015%)：工作壓力區間過窄，將導致水箱體積異常巨大。','risk','</span>\x20<span>','系統水量\x20Vs：','sfVal','CAVITATION','1987924ofIPfw','helpModal','極限壓力\x20P2\x20必須大於初充壓力\x20P1，否則氣囊無法動作。','</span>','onload','受壓利用率僅\x20','°C\x0a','btnHeating','256kBliPZ','cooling','溫度設定未形成膨脹條件（T2\x20水密度未小於\x20T1\x20水密度），膨脹水量為\x200。','press2','初始補水溫度（密度最大基準）','expVol','【定壓膨脹水箱選型審查結果】\x0a','鍋爐最高供水溫度','function','\x20偏高：若水量估算準確，建議採用\x201.15\x20~\x201.25\x20以避免水箱過度超選。','push','fabPcw','hintTemp1','溫差：','冰水系統','模式：','停機平衡水溫\x20$T_2$','%\x20良好，推薦標稱水箱容積\x20','getElementById','初充壓力\x20P1\x20=\x20','224728HpCtSu','依據標準：ASME\x20/\x20ASHRAE\x202020','熱水供暖','HIGH\x20SF','審查完全合規：初充壓力維持充足靜壓，受壓率\x20','hintTemp2'];_0xda53=function(){return _0xb84eee;};return _0xda53();}function _0x4ac2(_0x38aab6,_0x2ceae3){_0x38aab6=_0x38aab6-0x1d7;const _0xda53e9=_0xda53();let _0x4ac246=_0xda53e9[_0x38aab6];return _0x4ac246;}window[_0x443825(0x215)]=()=>{calculate(),setTimeout(renderMath,0x12c);};
+</script>
+</body>
+</html>

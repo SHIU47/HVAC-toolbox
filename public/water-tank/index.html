@@ -1,0 +1,566 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>水箱水槽工程計算套件 — HVAC-Pro Fluid Storage & Expansion Suite</title>
+  
+  <!-- KaTeX for formulas -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+  <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"></script>
+
+  <style>
+    :root {
+      --bg: #F1F5F9;
+      --card: #FFFFFF;
+      --card-subtle: #F8FAFC;
+      --line: #E2E8F0;
+      --line-strong: #CBD5E1;
+      --ink: #0F172A;
+      --ink-2: #334155;
+      --muted: #64748B;
+      --faint: #94A3B8;
+      --accent: #0284C7;
+      --accent-hover: #0369A1;
+      --accent-soft: #E0F2FE;
+      --water: #0EA5E9;
+      --water-deep: #0284C7;
+      --warm: #EF4444;
+      --warm-soft: #FEE2E2;
+      --pass: #15803D;
+      --pass-soft: #DCFCE7;
+      --warn: #B45309;
+      --warn-soft: #FEF3C7;
+      --fail: #DC2626;
+      --fail-soft: #FEE2E2;
+      --radius: 12px;
+      --shadow-sm: 0 1px 2px 0 rgba(15, 23, 42, 0.04);
+      --shadow-md: 0 4px 12px -2px rgba(15, 23, 42, 0.08);
+      --font: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang TC", "Microsoft JhengHei", "Noto Sans TC", sans-serif;
+      --mono: "JetBrains Mono", "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    [hidden] { display: none !important; }
+    button, input, select, a { font: inherit; color: inherit; }
+    
+    body {
+      background: var(--bg);
+      color: var(--ink);
+      font-family: var(--font);
+      font-size: 14px;
+      line-height: 1.5;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* Topbar matching F1/F2 */
+    .topbar {
+      position: sticky; top: 0; z-index: 50;
+      background: rgba(255, 255, 255, 0.96);
+      backdrop-filter: blur(10px);
+      border-bottom: 1px solid var(--line);
+      display: flex; align-items: center; justify-content: space-between; gap: 16px;
+      padding: 10px 24px; flex-wrap: wrap;
+      box-shadow: var(--shadow-sm);
+    }
+    .brand { display: flex; align-items: center; gap: 11px; }
+    .logo {
+      width: 38px; height: 38px; border-radius: 10px;
+      background: linear-gradient(135deg, #0284C7 0%, #2563EB 50%, #4F46E5 100%);
+      color: #fff; display: grid; place-items: center;
+      box-shadow: 0 2px 8px rgba(2, 132, 199, 0.35); flex: none;
+    }
+    .app-title { font-size: 16px; font-weight: 800; letter-spacing: -0.2px; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+    .app-badge { font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 6px; background: var(--accent-soft); color: var(--accent); }
+    .app-badge.hot { background: #FEF2F2; color: #DC2626; border: 1px solid #FECACA; }
+    .app-sub { font-size: 12px; color: var(--muted); margin-top: 1px; }
+
+    /* Suite Navigation Tabs */
+    .suite-tabs {
+      display: inline-flex; align-items: center; gap: 4px;
+      background: var(--card-subtle); padding: 4px;
+      border-radius: 10px; border: 1px solid var(--line);
+    }
+    .tab-link {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 6px 13px; font-size: 12.5px; font-weight: 700;
+      color: var(--ink-2); text-decoration: none; border-radius: 7px;
+      transition: all 0.15s; white-space: nowrap;
+    }
+    .tab-link:hover {
+      background: #FFFFFF; color: var(--accent); box-shadow: var(--shadow-sm);
+    }
+    .tab-link.active {
+      background: var(--accent); color: #FFFFFF !important;
+      box-shadow: 0 2px 6px rgba(2, 132, 199, 0.35);
+    }
+
+    .actions { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+    .btn {
+      border: 1px solid var(--line-strong); background: #fff; color: var(--ink-2);
+      border-radius: 8px; padding: 6px 12px; font-size: 12.5px; font-weight: 600;
+      cursor: pointer; display: inline-flex; align-items: center; gap: 6px; transition: all 0.15s; white-space: nowrap;
+      text-decoration: none;
+    }
+    .btn:hover { background: var(--card-subtle); border-color: #94A3B8; color: var(--ink); }
+    .btn.primary { background: var(--accent); border-color: var(--accent); color: #fff; box-shadow: 0 1px 3px rgba(2, 132, 199, 0.25); }
+    .btn.primary:hover { background: var(--accent-hover); }
+
+    /* Scenario / Quick launcher bar */
+    .scenario-bar {
+      max-width: 1640px; margin: 12px auto 0; padding: 0 24px;
+      display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+    }
+    .scenario-label { font-size: 12px; font-weight: 700; color: var(--muted); display: flex; align-items: center; gap: 5px; }
+    .preset-btn {
+      border: 1px solid var(--line-strong); background: #fff; border-radius: 999px;
+      padding: 5px 13px; font-size: 12px; font-weight: 600; color: var(--ink-2);
+      cursor: pointer; transition: all 0.15s; display: inline-flex; align-items: center; gap: 5px;
+      text-decoration: none;
+    }
+    .preset-btn:hover { border-color: var(--accent); color: var(--accent); background: var(--accent-soft); }
+    .preset-btn small { color: var(--muted); font-weight: 500; }
+
+    /* Main Container */
+    .container {
+      max-width: 1640px; margin: 0 auto; padding: 16px 24px 60px;
+      display: flex; flex-direction: column; gap: 20px;
+    }
+
+    .card {
+      background: var(--card); border: 1px solid var(--line);
+      border-radius: var(--radius); box-shadow: var(--shadow-sm);
+    }
+    .sec { padding: 20px 22px; }
+    .sec-h { display: flex; align-items: flex-start; gap: 12px; margin-bottom: 16px; }
+    .sec-h .no {
+      width: 28px; height: 28px; border-radius: 8px;
+      background: var(--accent-soft); color: var(--accent);
+      font-size: 13px; font-weight: 800; display: grid; place-items: center; flex: none;
+      font-family: var(--mono);
+    }
+    .sec-h h2 { font-size: 16px; font-weight: 800; color: var(--ink); }
+    .sec-h p { font-size: 12px; color: var(--muted); margin-top: 2px; }
+
+    /* Suite Verdict Banner */
+    .verdict { padding: 18px 22px; border-left-width: 5px; }
+    .verdict.pass { border-left-color: var(--pass); }
+    .v-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+    .v-head-left { display: flex; align-items: center; gap: 12px; }
+    .v-icon {
+      width: 40px; height: 40px; border-radius: 10px;
+      display: grid; place-items: center; font-weight: 800; font-size: 14px; color: #fff; flex: none;
+      background: var(--accent);
+    }
+    .v-title { font-size: 18px; font-weight: 800; }
+    .v-sub { font-size: 13px; color: var(--muted); margin-top: 2px; }
+
+    .kpis { display: grid; grid-template-columns: repeat(4, 1fr); margin-top: 16px; border-top: 1px solid var(--line); }
+    .kpi { padding: 14px 16px; min-width: 0; }
+    .kpi + .kpi { border-left: 1px solid var(--line); }
+    .kpi-l { font-size: 11.5px; color: var(--muted); font-weight: 600; }
+    .kpi-v { font-size: 22px; font-weight: 800; letter-spacing: -0.5px; line-height: 1.2; margin-top: 2px; font-family: var(--mono); color: var(--ink); }
+    .kpi-s { font-size: 11.5px; color: var(--muted); margin-top: 2px; }
+    @media (max-width: 900px) {
+      .kpis { grid-template-columns: repeat(2, 1fr); }
+      .kpi:nth-child(3) { border-left: none; border-top: 1px solid var(--line); }
+      .kpi:nth-child(4) { border-top: 1px solid var(--line); }
+    }
+    @media (max-width: 540px) {
+      .kpis { grid-template-columns: 1fr; }
+      .kpi + .kpi { border-left: none; border-top: 1px solid var(--line); }
+    }
+
+    /* 3 App Cards Grid */
+    .app-grid {
+      display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px;
+    }
+    @media (max-width: 1080px) {
+      .app-grid { grid-template-columns: 1fr; }
+    }
+    .app-card {
+      display: flex; flex-direction: column; justify-content: space-between;
+      transition: all 0.2s ease;
+    }
+    .app-card:hover {
+      box-shadow: var(--shadow-md);
+      border-color: #94A3B8;
+      transform: translateY(-2px);
+    }
+    .app-top { display: flex; flex-direction: column; gap: 14px; }
+    .app-badge-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; }
+    .app-card-title { font-size: 17px; font-weight: 800; color: var(--ink); display: flex; align-items: center; gap: 8px; }
+    .app-card-desc { font-size: 12.5px; color: var(--ink-2); line-height: 1.6; }
+    
+    .formula-box {
+      background: var(--card-subtle); border: 1px solid var(--line); border-radius: 8px;
+      padding: 10px 14px; font-size: 12px; color: var(--ink-2);
+    }
+    .formula-box .f-label { font-size: 11px; font-weight: 700; color: var(--muted); margin-bottom: 4px; }
+
+    .feature-list { list-style: none; display: flex; flex-direction: column; gap: 6px; font-size: 12px; color: var(--ink-2); }
+    .feature-list li { display: flex; align-items: center; gap: 8px; }
+    .feature-list li::before { content: "✓"; font-weight: 800; color: var(--pass); }
+
+    .app-btn-row {
+      display: flex; align-items: center; gap: 10px; margin-top: 20px; padding-top: 16px;
+      border-top: 1px solid var(--line);
+    }
+    .app-btn-row .btn.primary { flex: 1; justify-content: center; }
+
+    /* Comparison Table matching F1/F2 */
+    .tbl-wrap { overflow-x: auto; margin: 0 -22px; padding: 0 22px; }
+    table.opts { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+    table.opts th {
+      text-align: left; font-size: 12px; color: var(--muted); font-weight: 700;
+      padding: 10px 12px; border-bottom: 2px solid var(--line-strong); background: var(--card-subtle);
+      white-space: nowrap;
+    }
+    table.opts td {
+      padding: 11px 12px; border-bottom: 1px solid var(--line); vertical-align: top;
+      color: var(--ink-2); line-height: 1.5;
+    }
+    table.opts tbody tr:hover { background: var(--card-subtle); }
+    table.opts td.prop-name { font-weight: 700; color: var(--ink); white-space: nowrap; background: #FAFBFD; width: 150px; }
+
+    .tag { display: inline-block; font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 999px; }
+    .tag.exp { background: #EEF2FF; color: #4338CA; border: 1px solid #C7D2FE; }
+    .tag.chw { background: var(--accent-soft); color: var(--accent); border: 1px solid #BAE6FD; }
+    .tag.cdu { background: #FEF3C7; color: #B45309; border: 1px solid #FDE68A; }
+
+    /* Steps / Decision guidance */
+    .steps { list-style: none; display: flex; flex-direction: column; gap: 12px; }
+    .steps li { display: flex; gap: 12px; align-items: flex-start; }
+    .steps .n {
+      width: 24px; height: 24px; border-radius: 50%; background: #E2E8F0;
+      font-size: 12px; font-weight: 800; display: grid; place-items: center; flex: none; margin-top: 2px;
+      font-family: var(--mono); color: var(--ink);
+    }
+    .steps .st-content { flex: 1; }
+    .steps .st-title { font-weight: 700; font-size: 13.5px; color: var(--ink); }
+    .steps .st-desc { font-size: 12.5px; color: var(--muted); margin-top: 2px; line-height: 1.5; }
+
+    .footer {
+      text-align: center; font-size: 12px; color: var(--muted); padding: 20px 0;
+      border-top: 1px solid var(--line);
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Topbar in identical style to F1 & F2 -->
+  <header class="topbar">
+    <div class="brand">
+      <div class="logo">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><ellipse cx="12" cy="5" rx="7" ry="2.5"/><path d="M5 5v14c0 1.4 3.1 2.5 7 2.5s7-1.1 7-2.5V5"/><path d="M5 12c0 1.4 3.1 2.5 7 2.5s7-1.1 7-2.5"/></svg>
+      </div>
+      <div>
+        <div class="app-title">
+          水箱與儲槽工程計算套件
+          <span class="app-badge">HVAC-Pro 儲能與壓力維持</span>
+          <span class="app-badge hot">ASME / ASHRAE / OCP DLC 工業標準</span>
+        </div>
+        <div class="app-sub">定壓膨脹水箱 • 冰水系統熱緩衝水槽 (3D) • CDU 液冷二次側緩衝水槽 (3D)</div>
+      </div>
+    </div>
+
+    <!-- Suite Navigator Tabs -->
+    <nav class="suite-tabs">
+      <a href="./index.html" class="tab-link active">⌂ 套件總覽</a>
+      <a href="./定壓膨脹水箱.html" class="tab-link">🎈 定壓膨脹水箱</a>
+      <a href="./冰水緩衝水槽.html" class="tab-link">❄️ 冰水緩衝水槽 (3D)</a>
+      <a href="./CDU液冷緩衝水槽.html" class="tab-link">⚡ CDU液冷緩衝水槽 (3D)</a>
+    </nav>
+
+    <div class="actions">
+      <a href="../index.html" class="btn primary">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+        回 HVAC-Pro 首頁
+      </a>
+    </div>
+  </header>
+
+  <!-- Quick Scenario Bar -->
+  <div class="scenario-bar">
+    <span class="scenario-label">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+      快速模組直達：
+    </span>
+    <a href="./定壓膨脹水箱.html" class="preset-btn">🎈 定壓膨脹水箱 <small>(密閉水系統壓力維持)</small></a>
+    <a href="./冰水緩衝水槽.html" class="preset-btn">❄️ 冰水緩衝水槽 <small>(3D 斜溫層模擬 • 冰機重啟抗停電)</small></a>
+    <a href="./CDU液冷緩衝水槽.html" class="preset-btn">⚡ CDU 液冷緩衝水槽 <small>(3D 混合流場 • AI/GPU 突波緩衝)</small></a>
+  </div>
+
+  <!-- Main Suite Content -->
+  <main class="container">
+
+    <!-- Executive Suite Verdict Banner -->
+    <div class="card verdict pass">
+      <div class="v-head">
+        <div class="v-head-left">
+          <div class="v-icon">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+          </div>
+          <div>
+            <div class="v-title">水箱水槽工程計算套件 — 系統總覽與模組入口</div>
+            <div class="v-sub">收整三大水系統關鍵儲能與定壓設施：涵蓋密閉水迴路定壓膨脹、大溫差冰水蓄冷緩衝、以及 AI 高熱密度液冷 (CDU/DLC) 暫態保護。</div>
+          </div>
+        </div>
+      </div>
+      <div class="kpis">
+        <div class="kpi">
+          <div class="kpi-l">內建模組數量</div>
+          <div class="kpi-v">3 <small>大類</small></div>
+          <div class="kpi-s">膨脹水箱 / 冰水緩衝 / CDU液冷</div>
+        </div>
+        <div class="kpi">
+          <div class="kpi-l">3D 物理流場核心</div>
+          <div class="kpi-v">2 <small>套 3D</small></div>
+          <div class="kpi-s">WebGL 斜溫層 + 折流板切面</div>
+        </div>
+        <div class="kpi">
+          <div class="kpi-l">回歸驗證案例數</div>
+          <div class="kpi-v">86 <small>項 PASS</small></div>
+          <div class="kpi-s">自動化工程邊界與交叉驗算</div>
+        </div>
+        <div class="kpi">
+          <div class="kpi-l">符合工業規範</div>
+          <div class="kpi-v">ASME <small>/ OCP</small></div>
+          <div class="kpi-s">ASHRAE 90.1, TC 9.9, ASME Sec VIII</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 3 Core Application Cards Grid -->
+    <div class="app-grid">
+
+      <!-- Card 1: 定壓膨脹水箱 -->
+      <div class="card sec app-card">
+        <div class="app-top">
+          <div class="app-badge-row">
+            <span class="tag exp">閉迴路定壓</span>
+            <span class="tag plain font-mono" style="font-size:11px; color:var(--muted);">ASHRAE / ASME</span>
+          </div>
+          <div class="app-card-title">
+            <span>🎈 定壓膨脹水箱計算</span>
+          </div>
+          <div class="app-card-desc">
+            針對冰水、熱水或製程冷卻水 (PCW) 密閉迴路設計。依據系統總水量與運行溫差核算流體熱膨脹體積，結合波以耳定律 (Boyle's Law) 審查隔膜式氣囊總容積、預充壓力與水泵入口防氣蝕 (NPSHa)。
+          </div>
+          <div class="formula-box">
+            <div class="f-label">📐 核心控制方程 (Boyle's Law & Density Rate)：</div>
+            <div>$$V_t = \frac{V_s \cdot e \cdot SF}{1 - \frac{P_1}{P_2}}$$</div>
+          </div>
+          <ul class="feature-list">
+            <li>支援 Heating (熱水) 與 Cooling (冰水) 雙工況</li>
+            <li>水密度非線性溫度查表與熱膨脹率 ($e$) 計算</li>
+            <li>初充壓力 $P_1$ 與安全閥洩壓極限 $P_2$ 容積率檢核</li>
+            <li>水泵吸入端最低揚程裕度與氣蝕防護稽核</li>
+          </ul>
+        </div>
+        <div class="app-btn-row">
+          <a href="./定壓膨脹水箱.html" class="btn primary">進入計算模組 ➔</a>
+          <a href="./定壓膨脹水箱.html" target="_blank" class="btn" title="在新分頁開啟">新分頁 ↗</a>
+        </div>
+      </div>
+
+      <!-- Card 2: 冰水緩衝水槽 -->
+      <div class="card sec app-card">
+        <div class="app-top">
+          <div class="app-badge-row">
+            <span class="tag chw">3D 斜溫層模擬</span>
+            <span class="tag plain font-mono" style="font-size:11px; color:var(--muted);">24項驗證 PASS</span>
+          </div>
+          <div class="app-card-title">
+            <span>❄️ 冰水緩衝水槽計算器</span>
+          </div>
+          <div class="app-card-desc">
+            針對中央空調冰機房與半導體晶圓廠冰水系統，計算緊急柴油發電機切換、台電瞬停或冰機重新起載 (Restart) 期間所需的有效熱緩衝容積，模擬內部斜溫層 (Thermocline) 衰減動態與多槽陣列管路。
+          </div>
+          <div class="formula-box">
+            <div class="f-label">📐 核心控制方程 (Energy Balance & Stratification)：</div>
+            <div>$$V = \frac{Q_{loss} \cdot \Delta t_{restart}}{\rho \cdot C_p \cdot \Delta T_{allow} \cdot \eta_{eff}}$$</div>
+          </div>
+          <ul class="feature-list">
+            <li>工業級 3D 罐體內部斜溫層動態粒子流與色階渲染</li>
+            <li>共用集管 (全廠一組) vs 逐台冰機獨立設槽同基準檢核</li>
+            <li>1槽/2槽/3槽/4槽 串並聯管路與擴散水力佈局</li>
+            <li>內嵌 24 項數值回歸自動自檢與一鍵 Excel 輸出</li>
+          </ul>
+        </div>
+        <div class="app-btn-row">
+          <a href="./冰水緩衝水槽.html" class="btn primary">進入計算模組 ➔</a>
+          <a href="./冰水緩衝水槽.html" target="_blank" class="btn" title="在新分頁開啟">新分頁 ↗</a>
+        </div>
+      </div>
+
+      <!-- Card 3: CDU 液冷緩衝水槽 -->
+      <div class="card sec app-card">
+        <div class="app-top">
+          <div class="app-badge-row">
+            <span class="tag cdu">AI 液冷 3D 混合</span>
+            <span class="tag plain font-mono" style="font-size:11px; color:var(--muted);">62項驗證 PASS</span>
+          </div>
+          <div class="app-card-title">
+            <span>⚡ CDU 液冷緩衝水槽</span>
+          </div>
+          <div class="app-card-desc">
+            專為 AI 智算中心高熱密度晶片直接液冷 (DLC) 與 CDU 二次側 (TCS) 打造。精算 GPU 劇烈突波負載、三通調節閥動作延遲、水泵切換及一次側冷卻中斷時的供水溫升與暫態混合響應。
+          </div>
+          <div class="formula-box">
+            <div class="f-label">📐 核心控制方程 (Transient Thermal Lumped Model)：</div>
+            <div>$$\Delta T_{rise} = \frac{Q_{it} \cdot t_{ride}}{\rho \cdot C_p \cdot V \cdot \eta_{mix}}$$</div>
+          </div>
+          <ul class="feature-list">
+            <li>3D 工業透視：折流板 (Baffle) 與孔隙式消能擴散管</li>
+            <li>純水 / 乙二醇 (PG25/PG30) 溫度物性與比熱自動折減</li>
+            <li>GB300 / NVL72 基準工況與快速閥件情境一鍵套用</li>
+            <li>內嵌 62 項嚴格工程邊界回歸測試與 Excel 交叉驗算</li>
+          </ul>
+        </div>
+        <div class="app-btn-row">
+          <a href="./CDU液冷緩衝水槽.html" class="btn primary">進入計算模組 ➔</a>
+          <a href="./CDU液冷緩衝水槽.html" target="_blank" class="btn" title="在新分頁開啟">新分頁 ↗</a>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Engineering Comparison Table -->
+    <div class="card sec">
+      <div class="sec-h">
+        <span class="no">2</span>
+        <div>
+          <h2>三種水箱水槽工程選型特性對比矩陣 (Engineering Selection Matrix)</h2>
+          <p>依據物理機制、安裝拓撲、時間尺度與內部水力結構的全面橫向比較</p>
+        </div>
+      </div>
+
+      <div class="tbl-wrap">
+        <table class="opts">
+          <thead>
+            <tr>
+              <th>比較項目</th>
+              <th>🎈 定壓膨脹水箱 (Expansion Tank)</th>
+              <th>❄️ 冰水緩衝水槽 (Chilled Water Buffer)</th>
+              <th>⚡ CDU 液冷緩衝水槽 (CDU DLC Buffer)</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td class="prop-name">核心工程目的</td>
+              <td>吸收水溫升降引起的體積膨脹，維持閉迴路定壓防氣蝕</td>
+              <td>增加冰水迴路熱質量 (Thermal Mass)，提供發電機切換與冰機重啟緩衝</td>
+              <td>吸收 AI/GPU 機櫃劇烈瞬態突波負載，防止冷卻液超溫導致晶片降頻</td>
+            </tr>
+            <tr>
+              <td class="prop-name">系統安裝位置</td>
+              <td>循環水泵吸入端（水力系統定壓基準點）</td>
+              <td>冰水主機出水管與熱交換器/一次-二次迴路之間</td>
+              <td>CDU 液冷機組二次側 (TCS) 供水端或機櫃回水端</td>
+            </tr>
+            <tr>
+              <td class="prop-name">支配物理原理</td>
+              <td>波以耳定律 (Boyle's Law) 氣囊壓縮等溫膨脹方程</td>
+              <td>熱力學第一定律與重力密度差斜溫層 (Thermocline) 分層</td>
+              <td>暫態非完全多腔混合熱容模型與多孔射流消能</td>
+            </tr>
+            <tr>
+              <td class="prop-name">典型緩衝時間</td>
+              <td>長期性（隨四季氣溫與日夜負載自然適應）</td>
+              <td><span style="font-weight:700; color:var(--accent);">3 ~ 15 分鐘</span>（涵蓋柴油發電機發電與冰機復歸）</td>
+              <td><span style="font-weight:700; color:var(--warn);">30 秒 ~ 3 分鐘</span>（極限高熱流密度暫態蓄熱保護）</td>
+            </tr>
+            <tr>
+              <td class="prop-name">典型容積範圍</td>
+              <td>100 L ~ 3,000 L（通常為系統水量的 2% ~ 6%）</td>
+              <td>5,000 L ~ 120,000+ L（常需大型立式多槽陣列）</td>
+              <td>500 L ~ 8,000 L（緊湊模組化，配合 CDU 白區空間）</td>
+            </tr>
+            <tr>
+              <td class="prop-name">內部特徵結構</td>
+              <td>丁基橡膠隔膜 (Diaphragm) / 氣囊 (Bladder)、充氮閥門</td>
+              <td>上下寬口低速擴散管 (Diffuser)、八角形均流板、斜溫分層</td>
+              <td>內置折流板 (Baffle)、多孔消能進水管、防氣閥、高低位連通管</td>
+            </tr>
+            <tr>
+              <td class="prop-name">適用流體介質</td>
+              <td>軟化水、防凍乙二醇水溶液</td>
+              <td>7°C / 12°C 冰水、低溫鹽水</td>
+              <td>純水 (DI Water)、PG25 / PG30 (丙二醇)、介電冷卻液</td>
+            </tr>
+            <tr>
+              <td class="prop-name">主要依循規範</td>
+              <td>ASME Section VIII, ASHRAE Systems & Equipment</td>
+              <td>ASHRAE 90.1, Uptime Institute Tier Standards</td>
+              <td>OCP (Open Compute Project) DLC, ASHRAE TC 9.9</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Engineering Selection Guidance -->
+    <div class="card sec">
+      <div class="sec-h">
+        <span class="no">3</span>
+        <div>
+          <h2>選型決策指南：我應該選擇哪一個計算工具？ (Selection Decision Tree)</h2>
+          <p>根據工程情境與設計瓶頸快速對應至專屬計算模組</p>
+        </div>
+      </div>
+
+      <ul class="steps">
+        <li>
+          <div class="n">1</div>
+          <div class="st-content">
+            <div class="st-title">情境一：管路溫度升高導致壓力飆高，或是冰水泵吸入端可能發生氣蝕 (Cavitation)</div>
+            <div class="st-desc">
+              請使用 <a href="./定壓膨脹水箱.html" style="color:var(--accent); font-weight:700;">🎈 定壓膨脹水箱計算</a>。工具會依據系統總水量與升降溫幅度，精確推算受熱膨脹量，並根據膨脹水箱的充氣壓力 $P_1$ 與安全閥設定壓力 $P_2$，求得所需標準水箱標稱容量。
+            </div>
+          </div>
+        </li>
+        <li>
+          <div class="n">2</div>
+          <div class="st-content">
+            <div class="st-title">情境二：台電瞬停、緊急柴油發電機 (DG) 啟動切換、或冰水主機故障重新起載期間</div>
+            <div class="st-desc">
+              請使用 <a href="./冰水緩衝水槽.html" style="color:var(--accent); font-weight:700;">❄️ 冰水緩衝水槽計算器 (3D)</a>。工具支援「共用集管全廠設槽」與「逐台獨立設槽」雙模式，具備 3D 斜溫層 (Thermocline) 動態粒子流，能評估有效冷水容積與防止冰機短循環。
+            </div>
+          </div>
+        </li>
+        <li>
+          <div class="n">3</div>
+          <div class="st-content">
+            <div class="st-title">情境三：NVIDIA NVL72 / GB300 等 AI 液冷機櫃瞬間全載運算、CDU 調節閥反應時間延遲</div>
+            <div class="st-desc">
+              請使用 <a href="./CDU液冷緩衝水槽.html" style="color:var(--accent); font-weight:700;">⚡ CDU 液冷緩衝水槽 (3D)</a>。專門評估二次側 (TCS) 供水溫度在數十秒暫態內是否會突破晶片結溫限制，並模擬罐體內折流板 (Baffle) 混合消能與丙二醇比熱折減。
+            </div>
+          </div>
+        </li>
+      </ul>
+    </div>
+
+    <!-- Footer -->
+    <footer class="footer">
+      <div>HVAC-Pro Industrial Thermal Engineering Suite • Water Storage & Expansion Module</div>
+      <div style="font-size:11px; margin-top:4px; color:var(--faint);">本套件所有計算核心均經由公式交叉比對與嚴格工程回歸驗證 • 專為晶圓廠、高階資料中心與大型空調機房設計</div>
+    </footer>
+
+  </main>
+
+  <script>
+    // Initialize KaTeX formulas
+    window.addEventListener('DOMContentLoaded', () => {
+      if (typeof renderMathInElement === 'function') {
+        renderMathInElement(document.body, {
+          delimiters: [
+            { left: '$$', right: '$$', display: true },
+            { left: '$', right: '$', display: false }
+          ]
+        });
+      }
+    });
+  </script>
+</body>
+</html>

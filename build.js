@@ -141,6 +141,7 @@ function obfuscateHTML(htmlContent, filename) {
 function copyFileSync(src, dest) {
   const destDir = path.dirname(dest);
   if (!fs.existsSync(destDir)) fs.mkdirSync(destDir, { recursive: true });
+  if (fs.existsSync(dest)) { try { fs.unlinkSync(dest); } catch (_) {} }
   fs.copyFileSync(src, dest);
 }
 
@@ -194,6 +195,7 @@ function buildAll() {
       const { html, count } = obfuscateHTML(raw, rel);
       const destDir = path.dirname(dest);
       if (!fs.existsSync(destDir)) fs.mkdirSync(destDir, { recursive: true });
+      if (fs.existsSync(dest)) { try { fs.unlinkSync(dest); } catch (_) {} }
       fs.writeFileSync(dest, html, 'utf8');
       console.log(`  ✅ ${rel} — ${count} 個腳本區塊已混淆`);
       htmlCount++;
