@@ -20,10 +20,12 @@ const ASSUMPTIONS = {
   penalty_chiller_cop:    { val: 2.0,  unit: '-',   label: '熱力極限應急冰機 COP', ref: '保守懲罰假設' },
   pump_eta_default:       { val: 0.75, unit: '-',   label: '泵效率預設', ref: 'HI 標準中型端吸泵' },
   motor_eta_default:      { val: 0.92, unit: '-',   label: '馬達效率預設', ref: 'IE3' },
+  cdu_pump_head_default_m:{ val: 28,   unit: 'm',   label: 'CDU 一次側泵浦預設揚程', ref: '概估值，正式設計需依管路壓損計算（可用本站「水管風管壓損計算」工具）' },
+  fw_pump_head_default_m: { val: 22,   unit: 'm',   label: 'Fanwall 二次側泵浦預設揚程', ref: '概估值，正式設計需依管路壓損計算（可用本站「水管風管壓損計算」工具）' },
   sizing_margin_target:   { val: 15,   unit: '%',   label: '選型建議目標裕度', ref: '公司內規（可調）' },
-  cooling_diversity_factor: { val: 0.9, unit: '-', label: '冷卻負載同時使用係數（多迴路/多機列不會同時達峰值）', ref: 'ASHRAE 系統設計常用 0.85–0.95' },
-  future_margin_pct:       { val: 10,  unit: '%', label: '未來擴充設計裕度（放大至 Design Load 再進行設備選型）', ref: '公司內規（可調，AI DC 常見 10–20%）' },
-  ct_evap_m3h_per_kw:      { val: 0.00124, unit: 'm³/(h·kW)', label: '濕式冷卻塔蒸發耗水係數（每 kW 排熱）', ref: 'ASHRAE Handbook — CT evaporation ≈1.8 L/min / 100 kW 排熱' },
+  tower_heat_rejection_factor: { val: 1.2, unit: '-', label: '冷卻塔排熱裕度係數（含壓縮機輸入功或換熱裕度）', ref: 'ASHRAE 典型冰機排熱 = 冷凍噸 × 1.2' },
+  district_chw_cop:       { val: 5.0,  unit: '-',   label: '區域冷水／外來冰水等效 COP', ref: 'ASHRAE 90.1 / 園區集中冷站合約典型 4.5–5.5' },
+  ct_evap_m3h_per_kw:      { val: 0.00124, unit: 'm³/(h·kW)', label: '濕式冷卻塔蒸發耗水係數（每 kW 排熱）', ref: '蒸發量 = Q × 潛熱比 / h_fg；h_fg≈2430 kJ/kg、潛熱比≈0.84 → 0.00124 m³/h/kW' },
   min_cewt_c:              { val: 16.0, unit: '°C', label: '冰機冷凝器最低進水溫下限（condenser water relief 下限，避免冬季 COP 失真偏高）', ref: 'AHRI 550/590；典型離心/螺旋式冰機油壓與潤滑限制常見下限 15–18°C' },
   cdu_approach_c:          { val: 3.0, unit: '°C', label: 'CDU 二次側供水（FWS）相對一次側供水（TCS）的最小溫差（approach）', ref: 'ASHRAE TC9.9 液冷白皮書 CDU approach 典型 2–4°C' },
   cdu_derate_pct_per_c:    { val: 2.0, unit: '%/°C', label: 'CDU 容量隨一次側供水溫每升高 1°C 的線性降額率', ref: '廠商型錄常見趨勢（板式換熱器 UA 固定、驅動溫差縮小），概估非實測曲線' },
@@ -32,6 +34,14 @@ const ASSUMPTIONS = {
   ct_rerate_pct_per_c_above_std: { val: 2.5, unit: '%/°C', label: '冷卻水塔容量隨設計濕球溫超過 CTI 標準額定濕球每升高 1°C 的降額率', ref: 'CTI ATC-105 標準額定條件下型錄值，實際設計 WB 偏高時容量下降，概估值' },
   ct_standard_rating_wb_c: { val: 25.6, unit: '°C', label: '冷卻水塔型錄額定容量對應的 CTI 標準額定濕球溫（78°F）', ref: 'CTI ATC-105 標準額定條件' },
   design_wb_fallback_c:    { val: 28.0, unit: '°C', label: '無氣象逐時資料可查時的設計濕球溫度後備值（設備選型降額用）', ref: '台灣主要城市夏季 p99 濕球溫度概估區間 27–29°C' },
+  design_extreme_return_years:      { val: 20,    unit: 'years', label: 'ASHRAE 極端年最高乾球回歸期', ref: 'ASHRAE HOF Ch.14 極端年 n 年回歸期；關鍵設施常用 n=20' },
+  design_extreme_fallback_margin_c: { val: 2.0,   unit: '°C',    label: '無 ASHRAE 極值時之 TMY 最高溫安全餘裕', ref: '保守推估裕度' },
+  design_extreme_tmy_gap_warn_c:    { val: 5.0,   unit: '°C',    label: 'ASHRAE 極值與 TMY 最高溫差距警示門檻', ref: '差距過大提示核對測站品質' },
+  freeze_risk_db_c:                 { val: 4.0,   unit: '°C',    label: '外氣結霜/結冰風險門檻', ref: '乾冷器盤管靜止水在夜間輻射冷卻下可能於外氣 0～3°C 結冰，取 4°C 安全餘裕' },
+
+  // ── 絕熱冷卻塔常數 (P1-4 / P4-4) ─────────────────────────────────────────
+  adiabatic_coil_air_dt_k:        { val: 10.0, unit: 'K',  label: '絕熱預冷盤管空氣側溫升', ref: '乾冷器／絕熱盤管空氣側溫升典型 8–12 K' },
+  adiabatic_switchpoint_offset_c: { val: 9.2,  unit: '°C', label: '絕熱乾轉濕切換溫差偏移（已改為依需求切換，僅供參考）', ref: '外氣乾球高於 (FWS - approach - 此值) 時啟動絕熱噴淋預冷（歷史參考值，現行模型改為依需求切換）' },
 
   // ── NVIDIA DSX 設施設計指引基準常數 ────────────────────────────────────
   nvidia_dsx_t_chip_s45:          { val: 45.0,  unit: '°C',     label: 'NVIDIA Vera Rubin (S45) 晶片進水溫度上限', ref: 'NVIDIA DSX Facilities Guide v2.0 p.62' },
@@ -44,9 +54,32 @@ const ASSUMPTIONS = {
   nvidia_dsx_ht_supply_c:         { val: 37.0,  unit: '°C',     label: 'NVIDIA DSX HTFW 高溫一次側供水基準', ref: 'NVIDIA DSX BOD Rev5 Section 6.9.2 (98.6°F)' },
   nvidia_dsx_ht_return_c:         { val: 47.0,  unit: '°C',     label: 'NVIDIA DSX HTFW 高溫一次側回水基準', ref: 'NVIDIA DSX BOD Rev5 Section 6.9.2 (116.6°F)' },
   nvidia_dsx_mt_supply_c:         { val: 22.0,  unit: '°C',     label: 'NVIDIA DSX MTFW 中溫一次側供水基準', ref: 'NVIDIA DSX BOD Rev5 Section 6.9.2 (71.6°F)' },
-  nvidia_dsx_mt_return_c:         { val: 32.0,  unit: '°C',     label: 'NVIDIA DSX MTFW 中溫一次側回水基準', ref: 'NVIDIA DSX BOD Rev5 Section 6.9.2 (89.6°F)' },
   nvidia_dsx_mode1_db_max_c:      { val: 34.8,  unit: '°C',     label: 'NVIDIA DSX Full Free Cooling 乾球上限', ref: 'NVIDIA DSX Facilities Guide v2.0 p.42' },
   nvidia_dsx_mode2_db_max_c:      { val: 40.5,  unit: '°C',     label: 'NVIDIA DSX Trim Cooling 乾球上限', ref: 'NVIDIA DSX Facilities Guide v2.0 p.42' },
+  trim_chw_dt_default_c:          { val: 5.0,   unit: '°C',     label: 'Trim 冰機蒸發器設計溫差 (ΔT)', ref: 'AHRI 550/590 標準工況 5°C (44-54°F)' },
+  cdw_dt_design_c:                { val: 5.0,   unit: '°C',     label: '水冷冰機冷凝冷卻水設計溫差 (ΔT)', ref: 'AHRI 550/590 標準工況冷卻水 30→35°C' },
+
+  // ── 冰機揚程與外推保護常數 (P0-4) ──────────────────────────────────────
+  chiller_evap_approach_k:        { val: 2.0,   unit: 'K',      label: '冰機蒸發溫度 = 冰水出水溫 − 此值', ref: '殼管/板式蒸發器典型 1.5–3 K' },
+  chiller_cond_offset_water_k:    { val: 7.0,   unit: 'K',      label: '水冷冰機冷凝溫度 = 冷卻水進水溫 + 此值（含冷卻水溫升 5K + approach 2K）', ref: 'AHRI 550/590 標準工況 30→35°C，冷凝器 approach ≈ 2K' },
+  chiller_cond_offset_air_k:      { val: 15.0,  unit: 'K',      label: '氣冷冰機冷凝溫度 = 外氣乾球 + 此值', ref: '氣冷冷凝器典型 TD 12–17 K' },
+  chiller_min_lift_k:             { val: 10.0,  unit: 'K',      label: '壓縮機最小揚程（冷凝−蒸發），低於此值以此值計', ref: '離心/螺旋機油壓差與防喘振限制，磁浮機可低至 5–8 K' },
+  chiller_lift_factor_max:        { val: 2.0,   unit: '-',      label: '揚程修正後 COP 最多為設計 COP 的倍數', ref: '保守上限，避免低揚程外推過度樂觀' },
+  chiller_max_cewt_standard_c:    { val: 45.0,  unit: '°C',     label: '標準氣冷/水冷冰機冷凝進水上限', ref: '標準氣冷/水冷冰機冷凝進水上限，型錄通常為 40～45°C' },
+  chiller_max_cewt_hightemp_c:    { val: 60.0,  unit: '°C',     label: '高溫型（heat-pump 級）冰機冷凝進水上限', ref: '高溫型（heat-pump 級）冰機冷凝進水上限' },
+
+  // ── Fanwall 氣冷系統自然冷卻常數 (P0-7) ───────────────────────────────
+  air_chiller_fc_coil_approach_c: { val: 4.0,   unit: '°C',     label: '氣冷冰機 free-cooling 盤管 approach（外氣 DB → 預冷後回水）', ref: '廠商型錄典型 3–5°C' },
+  air_chiller_fc_fan_kw_per_kw:   { val: 0.05,  unit: 'kW/kW',  label: '氣冷冰機自然冷卻模式風扇耗電（每 kW 自然冷卻量）', ref: '沿用原程式 5% 概估，待型錄風扇功率資料取代' },
+  rdhx_fc_fan_kw_per_kw:          { val: 0.03,  unit: 'kW/kW',  label: 'RDHX 系統自然冷卻模式排熱風扇耗電', ref: '沿用原程式 3% 概估' },
+  rdhx_default_room_dp_c:         { val: 15.0,  unit: '°C',     label: 'RDHX 機房預設露點上限', ref: 'ASHRAE TC9.9 A1 建議露點上限' },
+  rdhx_dewpoint_margin_k:         { val: 2.0,   unit: 'K',      label: 'RDHX 結露保護安全溫差餘裕', ref: '露點 + 2K 安全裕度' },
+  rdhx_min_chws_c:                { val: 17.0,  unit: '°C',     label: 'RDHX 供水露點保護溫度下限', ref: 'ASHRAE TC9.9 A1 建議露點上限 15°C + 2K 安全餘裕' },
+
+  // ── 冰機降級/兜底 COP 基準常數 (P2-6) ────────────────────────────────────
+  chiller_fallback_cop_chw_ge20:  { val: 5.8,   unit: '-',      label: '高溫冰水 (≥20°C) 兜底 COP', ref: '典型高溫水冷/氣冷冰機滿載能效' },
+  chiller_fallback_cop_chw_ge12:  { val: 4.2,   unit: '-',      label: '標準冰水 (12–20°C) 兜底 COP', ref: 'ASHRAE 90.1 / AHRI 550/590 標準工況典型值' },
+  chiller_fallback_cop_chw_lt12:  { val: 3.0,   unit: '-',      label: '低溫冰水 (<12°C) 兜底 COP', ref: '低溫供水/高揚程典型保守值' },
 };
 
 function A(key, state) {
@@ -57,6 +90,14 @@ function A(key, state) {
 
 // Node（projects/verify_engine.js 等）需要 module.exports 才能個別引用；
 // 瀏覽器端以 <script> 全域載入，ASSUMPTIONS / A 直接可用，此段不影響瀏覽器行為。
+if (typeof window !== 'undefined') {
+  window.ASSUMPTIONS = ASSUMPTIONS;
+  window.A = A;
+}
+if (typeof global !== 'undefined') {
+  global.ASSUMPTIONS = ASSUMPTIONS;
+  global.A = A;
+}
 if (typeof module !== 'undefined' && module.exports) {
   module.exports = { ASSUMPTIONS, A };
 }

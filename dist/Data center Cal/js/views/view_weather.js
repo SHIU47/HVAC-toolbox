@@ -23,15 +23,171 @@
             { key: '菲律賓 (Ambulong)', desc: '東南亞熱帶氣候 (真實 EPW)', db: 27.8, wb: 24.5, dp: 23.0, rh: 82.0 },
             { key: '美國 (Alabama Andalusia)', desc: '美洲海外資料中心 (真實 EPW)', db: 18.5, wb: 15.2, dp: 13.0, rh: 68.0 }
         ],
+        searchQuery: '',
+        continentFilter: '',
+        countryFilter: '',
+        zoneFilter: '',
+        fileProtocolError: false,
+        isLoading: false,
+        loadingStationId: null,
+        stationsList: null,
+
+        initStations() {
+            if (this.stationsList && this.stationsList.length > 0) {
+                return Promise.resolve(this.stationsList);
+            }
+            if (window.WeatherSource) {
+                return window.WeatherSource.listStations().then(list => {
+                    this.stationsList = list || [];
+                    this.renderStationList();
+                    const sel = document.getElementById('stationCountrySelect');
+                    if (sel) sel.innerHTML = '<option value="">全部國家</option>' + this.getCountryOptions();
+                    return this.stationsList;
+                });
+            }
+            return Promise.resolve([]);
+        },
+
+        getInitialStations() {
+            if (this.stationsList && this.stationsList.length > 0) return this.stationsList;
+            if (window.BUILTIN_WEATHER_STATIONS && window.BUILTIN_WEATHER_STATIONS.length > 0) {
+                return window.BUILTIN_WEATHER_STATIONS;
+            }
+            return this.builtinList.map(c => ({
+                id: window.WeatherSource?.REVERSE_BUILTIN_MAP?.[c.key] || c.key,
+                city: c.key,
+                cityZh: c.key,
+                stationName: c.key,
+                country: 'TWN',
+                countryZh: '台灣',
+                countryCode: 'TWN',
+                flag: '🇹🇼',
+                continent: 'Asia',
+                extDB: c.db,
+                extWB: c.wb,
+                source: 'builtin',
+                available: true,
+                builtinKey: c.key
+            }));
+        },
+
+        onSearch(q) {
+            this.searchQuery = q || '';
+            this.renderStationList();
+        },
+
+        onFilterContinent(val) {
+            this.continentFilter = val || '';
+            this.countryFilter = '';
+            const sel = document.getElementById('stationCountrySelect');
+            if (sel) sel.innerHTML = '<option value="">全部國家</option>' + this.getCountryOptions();
+            this.renderStationList();
+        },
+
+        onFilterCountry(val) {
+            this.countryFilter = val || '';
+            this.renderStationList();
+        },
+
+        onFilterZone(val) {
+            this.zoneFilter = val || '';
+            this.renderStationList();
+        },
+
+        getCountryOptions() {
+            const list = this.stationsList || this.getInitialStations();
+            const filtered = this.continentFilter ? list.filter(s => s.continent === this.continentFilter) : list;
+            const countries = [...new Set(filtered.map(s => s.countryZh || s.country).filter(Boolean))].sort((a,b) => a.localeCompare(b, 'zh-Hant'));
+            return countries.map(c => `<option value="${c}" ${this.countryFilter === c ? 'selected' : ''}>${c}</option>`).join('');
+        },
+
+        filterStations() {
+            let list = this.stationsList || this.getInitialStations();
+            if (this.searchQuery) {
+                const q = this.searchQuery.trim().toLowerCase();
+                list = list.filter(s => {
+                    return (s.cityZh && s.cityZh.toLowerCase().includes(q)) ||
+                           (s.city && s.city.toLowerCase().includes(q)) ||
+                           (s.countryZh && s.countryZh.toLowerCase().includes(q)) ||
+                           (s.country && s.country.toLowerCase().includes(q)) ||
+                           (s.id && s.id.toLowerCase().includes(q)) ||
+                           (s.wmo && String(s.wmo).includes(q));
+                });
+            }
+            if (this.continentFilter) {
+                list = list.filter(s => s.continent === this.continentFilter);
+            }
+            if (this.countryFilter) {
+                list = list.filter(s => (s.countryZh === this.countryFilter || s.country === this.countryFilter));
+            }
+            if (this.zoneFilter) {
+                list = list.filter(s => s.zone === this.zoneFilter);
+            }
+            return list;
+        },
+
+        renderStationCardsHtml() {
+            if (this.isLoading) {
+                return '<div class="p-4 text-center text-xs text-emerald-800 font-bold bg-emerald-50 rounded-lg flex items-center justify-center gap-2">⏳ 正在載入測站逐時氣象資料...</div>';
+            }
+            const site = window.AppStore.state.site || {};
+            const filtered = this.filterStations();
+            if (filtered.length === 0) {
+                return '<div class="p-6 text-center text-xs text-slate-400">無符合條件之氣象測站</div>';
+            }
+            const toShow = filtered.slice(0, 50);
+            return toShow.map(s => {
+                const isSelected = (site.stationId && s.id === site.stationId) ||
+                    (s.builtinKey && site.selectedCity === s.builtinKey) ||
+                    (site.selectedCity === s.cityZh) ||
+                    (site.selectedCity === s.id);
+                const activeCls = isSelected
+                    ? 'border-emerald-500 bg-emerald-50/90 shadow-md ring-2 ring-emerald-400'
+                    : 'border-slate-200 hover:border-slate-300 bg-white hover:bg-slate-50/70';
+                const v20 = s.designConditions?.extremes?.dbMax?.['20'] ?? s.designConditions?.extremes?.dbMax?.[20];
+                const hasWarn = (v20 != null && s.maxDB != null && (v20 - s.maxDB > 5.0));
+
+                return `
+                    <button type="button" onclick="ViewWeather.selectStation('${s.id}')" class="w-full text-left p-2.5 rounded-xl border transition ${activeCls}">
+                        <div class="flex items-center justify-between gap-2">
+                            <div class="flex items-center gap-1.5 min-w-0">
+                                <span class="text-base shrink-0">${s.flag || '🌐'}</span>
+                                <span class="text-xs font-black text-slate-800 truncate">${s.cityZh || s.city}</span>
+                                <span class="text-[10px] text-slate-400 truncate">(${s.countryZh || s.country})</span>
+                            </div>
+                            <div class="flex items-center gap-1.5 shrink-0">
+                                ${s.source === 'builtin' ? '<span class="text-[10px] bg-emerald-100 text-emerald-800 border border-emerald-300 px-1.5 py-0.5 rounded font-bold">內建・離線可用</span>' : ''}
+                                ${hasWarn ? '<span title="本站 ASHRAE 20年極值與 TMY 最高溫相差 > 5°C" class="text-xs cursor-help">⚠️</span>' : ''}
+                            </div>
+                        </div>
+                        <div class="flex items-center gap-3 mt-1 text-[10px] text-slate-500">
+                            <span>0.4% 設計乾球: <b class="text-slate-700">${s.extDB != null ? s.extDB + '°C' : '-'}</b></span>
+                            ${v20 != null ? `<span>20年回歸最高: <b class="text-amber-700">${v20}°C</b></span>` : ''}
+                            ${s.zone ? `<span>氣候區: <b class="text-slate-600">${s.zone}</b></span>` : ''}
+                        </div>
+                    </button>
+                `;
+            }).join('');
+        },
+
+        renderStationList() {
+            const listEl = document.getElementById('stationListContainer');
+            if (listEl) {
+                listEl.innerHTML = this.renderStationCardsHtml();
+            }
+        },
 
         render(container) {
             const state = window.AppStore.state;
             const site = state.site;
             const stats = site.stats || { avgDB: 22.8, maxDB: 36.4, minDB: 8.5, avgWB: 19.5, avgDP: 17.2, avgRH: 76.5 };
 
-            const fcThresh = window.AppStore ? window.AppStore.getEffectiveFcThresholds() : { mode1DbMax: 30.0, mode2DbMax: 35.7 };
-            const mode1DbMax = fcThresh.mode1DbMax;
-            const mode2DbMax = fcThresh.mode2DbMax;
+            const domThresh = window.AppStore ? window.AppStore.dominantCduThresholds() : null;
+            const archName = domThresh?.archName || '主要液冷架構';
+            const basis = domThresh?.basis || 'db';
+            const thresholds = domThresh?.thresholds || { basis: 'db', full: 35.0, mech: 47.0 };
+            const mode1Max = thresholds.full;
+            const mode2Max = thresholds.mech;
 
             // 計算 8,760h 自由冷卻時數與佔比
             const hourly = site.hourly || [];
@@ -39,19 +195,20 @@
 
             if (hourly.length >= 8760) {
                 for (let i = 0; i < 8760; i++) {
-                    const w = hourly[i] || { db: 25 };
-                    if (w.db <= mode1DbMax) {
+                    const w = hourly[i] || { db: 25, wb: 20 };
+                    const val = (basis === 'wb') ? (w.wb ?? 20) : (w.db ?? 25);
+                    if (mode1Max != null && val <= mode1Max) {
                         climateFreeCount++;
-                    } else if (w.db <= mode2DbMax) {
+                    } else if (mode2Max != null && val <= mode2Max) {
                         climateTrimCount++;
                     } else {
                         climateMechCount++;
                     }
                 }
             } else {
-                climateFreeCount = 8760;
+                climateFreeCount = (mode1Max != null) ? 8760 : 0;
                 climateTrimCount = 0;
-                climateMechCount = 0;
+                climateMechCount = (mode1Max != null) ? 0 : 8760;
             }
 
             const freePct = ((climateFreeCount / 8760) * 100).toFixed(1);
@@ -60,16 +217,22 @@
             const totalFcHours = climateFreeCount + climateTrimCount;
             const totalFcPct = (((climateFreeCount + climateTrimCount) / 8760) * 100).toFixed(1);
 
-            let cityBtns = '';
-            this.builtinList.forEach(c => {
-                const isSelected = site.selectedCity === c.key;
-                const activeCls = isSelected ? 'border-emerald-500 bg-emerald-50/80 shadow-md ring-2 ring-emerald-400' : 'border-slate-200 hover:border-slate-300 bg-slate-50/50';
-                cityBtns += '<button onclick="ViewWeather.selectCity(\'' + c.key + '\')" class="p-3 text-left rounded-xl border transition ' + activeCls + '">'
-                    + '<div class="flex items-center justify-between"><span class="text-xs font-extrabold text-slate-800">' + c.key + '</span><span class="text-[10px] bg-emerald-100 text-emerald-800 px-1.5 py-0.5 rounded font-bold">8760h EPW</span></div>'
-                    + '<div class="text-[11px] text-emerald-800 font-semibold mt-1">' + c.desc + '</div>'
-                    + '<div class="text-[10px] text-slate-500 mt-0.5">年均溫: ' + c.db + '°C / 濕球: ' + c.wb + '°C</div>'
-                    + '</button>';
-            });
+            if (!this.stationsList) {
+                this.initStations();
+            }
+
+            const countryOptions = this.getCountryOptions();
+            const totalStationsCount = (this.stationsList || this.getInitialStations()).length;
+            const fileProtocolWarning = this.fileProtocolError ? `
+                <div class="p-3 mb-3 bg-amber-50 border border-amber-300 rounded-xl text-xs text-amber-900 flex items-start gap-2 shadow-xs">
+                    <span class="text-base shrink-0">⚠️</span>
+                    <div class="space-y-1">
+                        <div class="font-bold">直接開啟 HTML 檔案時，瀏覽器不允許讀取本機氣象資料。</div>
+                        <div class="text-[11px] text-amber-800">請改用桌面版 <b>PUE計算系統.exe</b>、線上版，或在此資料夾執行 <code>npx serve</code> 後用 <code>http://localhost</code> 開啟。也可以下載該站 EPW 後用「上傳 EPW」。</div>
+                        <div class="text-[11px] text-emerald-800 font-semibold pt-0.5">標示為「內建・離線可用」的測站仍可正常選用。</div>
+                    </div>
+                </div>
+            ` : '';
 
             container.innerHTML = `
                 <div class="space-y-6">
@@ -91,17 +254,64 @@
 
                         <!-- 測站與城市選擇 -->
                         <div class="grid grid-cols-1 lg:grid-cols-3 gap-4 mt-6">
-                            <div class="lg:col-span-2 space-y-2">
-                                <label class="block text-xs font-bold text-slate-600 uppercase tracking-wider">選擇案場站點 (Built-in EPW)</label>
-                                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5">
-                                    ${cityBtns}
+                            <div class="lg:col-span-2 space-y-2.5">
+                                <div class="flex items-center justify-between">
+                                    <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider">選擇案場氣象測站 (165 站全球氣候資料庫)</label>
+                                    <span class="text-[11px] text-slate-400 font-medium">共 ${totalStationsCount} 站</span>
+                                </div>
+
+                                ${fileProtocolWarning}
+
+                                <!-- 搜尋與篩選列 -->
+                                <div class="grid grid-cols-1 sm:grid-cols-12 gap-2">
+                                    <div class="sm:col-span-6 relative">
+                                        <input type="text" id="stationSearchInput" placeholder="搜尋城市、國家、WMO (例如: 台北, Tokyo, 545110)..."
+                                            value="${this.searchQuery || ''}"
+                                            oninput="ViewWeather.onSearch(this.value)"
+                                            class="w-full text-xs border border-slate-300 rounded-lg px-2.5 py-1.5 pl-7 bg-white text-slate-800 focus:ring-2 focus:ring-emerald-500 focus:outline-none">
+                                        <span class="absolute left-2 top-2 text-xs text-slate-400">🔍</span>
+                                    </div>
+                                    <div class="sm:col-span-2">
+                                        <select id="stationContinentSelect" onchange="ViewWeather.onFilterContinent(this.value)" class="w-full text-xs border border-slate-300 rounded-lg px-2 py-1.5 bg-white text-slate-700">
+                                            <option value="">全部洲別</option>
+                                            <option value="Asia" ${this.continentFilter === 'Asia' ? 'selected' : ''}>亞洲 (Asia)</option>
+                                            <option value="Americas" ${this.continentFilter === 'Americas' ? 'selected' : ''}>美洲 (Americas)</option>
+                                            <option value="Europe" ${this.continentFilter === 'Europe' ? 'selected' : ''}>歐洲 (Europe)</option>
+                                            <option value="Africa" ${this.continentFilter === 'Africa' ? 'selected' : ''}>非洲 (Africa)</option>
+                                            <option value="Oceania" ${this.continentFilter === 'Oceania' ? 'selected' : ''}>大洋洲 (Oceania)</option>
+                                        </select>
+                                    </div>
+                                    <div class="sm:col-span-2">
+                                        <select id="stationCountrySelect" onchange="ViewWeather.onFilterCountry(this.value)" class="w-full text-xs border border-slate-300 rounded-lg px-2 py-1.5 bg-white text-slate-700">
+                                            <option value="">全部國家</option>
+                                            ${countryOptions}
+                                        </select>
+                                    </div>
+                                    <div class="sm:col-span-2">
+                                        <select id="stationZoneSelect" onchange="ViewWeather.onFilterZone(this.value)" class="w-full text-xs border border-slate-300 rounded-lg px-2 py-1.5 bg-white text-slate-700">
+                                            <option value="">全部氣候區</option>
+                                            <option value="0A" ${this.zoneFilter === '0A' ? 'selected' : ''}>0A (極端濕熱)</option>
+                                            <option value="1A" ${this.zoneFilter === '1A' ? 'selected' : ''}>1A (極熱濕潤)</option>
+                                            <option value="2A" ${this.zoneFilter === '2A' ? 'selected' : ''}>2A (高溫濕潤)</option>
+                                            <option value="3A" ${this.zoneFilter === '3A' ? 'selected' : ''}>3A (溫暖濕潤)</option>
+                                            <option value="4A" ${this.zoneFilter === '4A' ? 'selected' : ''}>4A (混和濕潤)</option>
+                                            <option value="5A" ${this.zoneFilter === '5A' ? 'selected' : ''}>5A (冷涼)</option>
+                                            <option value="6A" ${this.zoneFilter === '6A' ? 'selected' : ''}>6A (寒冷)</option>
+                                        </select>
+                                    </div>
+                                </div>
+
+                                <!-- 測站清單滾動區 (顯示前 50 筆) -->
+                                <div id="stationListContainer" class="max-h-[300px] overflow-y-auto space-y-1.5 pr-1 border border-slate-200 rounded-xl p-2 bg-slate-50/40">
+                                    ${this.renderStationCardsHtml()}
                                 </div>
                             </div>
                             <div>
                                 <label class="block text-xs font-bold text-slate-600 uppercase tracking-wider mb-2">上傳自定義 EPW 檔案</label>
-                                <div id="weatherDropZone" class="border-2 border-dashed border-emerald-400 hover:border-emerald-600 rounded-xl p-5 text-center bg-emerald-50/40 cursor-pointer flex flex-col items-center justify-center min-h-[120px] transition">
+                                <div id="weatherDropZone" class="border-2 border-dashed border-emerald-400 hover:border-emerald-600 rounded-xl p-5 text-center bg-emerald-50/40 cursor-pointer flex flex-col items-center justify-center min-h-[160px] transition">
                                     <span class="text-xl">📂</span>
                                     <div class="text-xs font-bold text-emerald-950 mt-1">點擊或拖曳 .epw 檔案</div>
+                                    <div class="text-[10px] text-slate-500 mt-0.5">支援 EnergyPlus EPW 格式</div>
                                     <input type="file" id="weatherFileInput" accept=".epw,.csv" class="hidden">
                                 </div>
                             </div>
@@ -132,27 +342,29 @@
                         </div>
                     </div>
 
-                    <!-- 版面 1.5: 自由冷卻氣候門檻設定 (NVIDIA DSX Mode 1 & 2) -->
+                    <!-- 版面 1.5: 自由冷卻氣候門檻 (依主要架構物理門檻) -->
                     <div class="bg-gradient-to-r from-emerald-50/80 to-teal-50/80 p-5 rounded-2xl border-2 border-emerald-300 shadow-xs flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
                         <div>
                             <h3 class="text-sm font-black text-emerald-950 flex items-center gap-1.5">
-                                <span>⚙️</span> 自由冷卻直冷/輔助氣候門檻設定 (NVIDIA DSX Climate Thresholds)
+                                <span>⚙️</span> 自由冷卻運轉模式氣候門檻（依 ${archName} 門檻）
                             </h3>
                             <p class="text-xs text-emerald-800/90 mt-0.5">
-                                設定晶片液冷直冷 (Mode 1 Full Free Cooling) 與部分輔助 (Mode 2 Trim Cooling) 之室外乾球溫度切點，即時動態連動下方圖表。
+                                ${basis === 'wb' ? '以室外濕球溫度 (WB) 為基準，依密閉塔與板換溫差計算全時直冷門檻' : '以室外乾球溫度 (DB) 為基準，依乾冷器與板換溫差計算全直冷與輔助冷卻門檻'}。
                             </p>
                         </div>
                         <div class="flex items-center gap-3 flex-wrap">
                             <div class="bg-white px-3 py-1.5 rounded-xl border border-emerald-300 shadow-xs flex items-center gap-2 text-xs">
-                                <span class="font-bold text-emerald-900">🟢 Mode 1 全直冷上限:</span>
-                                <input type="number" step="0.1" value="${mode1DbMax}" onchange="ViewWeather.updateFcThreshold('nvidia_dsx_mode1_db_max_c', parseFloat(this.value))" class="w-16 font-black text-emerald-800 text-center border rounded p-1 bg-slate-50">
-                                <span class="font-bold text-slate-500">°C</span>
+                                <span class="font-bold text-emerald-900">🟢 Mode 1 全直冷門檻:</span>
+                                <span class="font-black text-emerald-800 text-sm">${mode1Max != null ? `${mode1Max}°C` : '無'}</span>
+                                <span class="text-[10px] text-slate-500 font-bold">${basis.toUpperCase()}</span>
                             </div>
+                            ${mode2Max != null ? `
                             <div class="bg-white px-3 py-1.5 rounded-xl border border-emerald-300 shadow-xs flex items-center gap-2 text-xs">
                                 <span class="font-bold text-teal-900">🔵 Mode 2 部分輔助上限:</span>
-                                <input type="number" step="0.1" value="${mode2DbMax}" onchange="ViewWeather.updateFcThreshold('nvidia_dsx_mode2_db_max_c', parseFloat(this.value))" class="w-16 font-black text-teal-800 text-center border rounded p-1 bg-slate-50">
-                                <span class="font-bold text-slate-500">°C</span>
+                                <span class="font-black text-teal-800 text-sm">${mode2Max}°C</span>
+                                <span class="text-[10px] text-slate-500 font-bold">${basis.toUpperCase()}</span>
                             </div>
+                            ` : ''}
                         </div>
                     </div>
 
@@ -167,7 +379,7 @@
                                     </h3>
                                 </div>
                                 <p class="text-xs text-slate-500 mt-1">
-                                    依據當前設定之 <strong>Mode 1 (≤ ${mode1DbMax}°C)</strong> 與 <strong>Mode 2 (≤ ${mode2DbMax}°C)</strong> 門檻統計
+                                    依 ${archName} 門檻統計：<strong>Mode 1 (≤ ${mode1Max != null ? `${mode1Max}°C` : 'N/A'})</strong>${mode2Max != null ? ` 與 <strong>Mode 2 (≤ ${mode2Max}°C)</strong>` : ''}
                                 </p>
                             </div>
                             <div class="flex items-center gap-2">
@@ -182,7 +394,7 @@
                             <div class="p-4 bg-emerald-50 rounded-xl border border-emerald-200">
                                 <div class="text-[11px] font-bold text-emerald-800 flex items-center justify-between">
                                     <span>Mode 1 100% 全直冷</span>
-                                    <span class="text-[10px] bg-emerald-200 text-emerald-900 px-1.5 py-0.5 rounded font-black">≤ ${mode1DbMax}°C</span>
+                                    <span class="text-[10px] bg-emerald-200 text-emerald-900 px-1.5 py-0.5 rounded font-black">${mode1Max != null ? `≤ ${mode1Max}°C` : 'N/A'}</span>
                                 </div>
                                 <div class="text-2xl font-black text-emerald-950 mt-1">${climateFreeCount.toLocaleString()} <span class="text-xs font-bold text-emerald-700">小時</span></div>
                                 <div class="text-[11px] text-emerald-700 font-bold mt-0.5">佔全年 ${freePct}% (冰機 100% 停機)</div>
@@ -191,16 +403,16 @@
                             <div class="p-4 bg-teal-50 rounded-xl border border-teal-200">
                                 <div class="text-[11px] font-bold text-teal-800 flex items-center justify-between">
                                     <span>Mode 2 部分輔助冷卻</span>
-                                    <span class="text-[10px] bg-teal-200 text-teal-900 px-1.5 py-0.5 rounded font-black">${mode1DbMax}°C ~ ${mode2DbMax}°C</span>
+                                    <span class="text-[10px] bg-teal-200 text-teal-900 px-1.5 py-0.5 rounded font-black">${mode2Max != null ? `${mode1Max}°C ~ ${mode2Max}°C` : '無'}</span>
                                 </div>
                                 <div class="text-2xl font-black text-teal-950 mt-1">${climateTrimCount.toLocaleString()} <span class="text-xs font-bold text-teal-700">小時</span></div>
-                                <div class="text-[11px] text-teal-700 font-bold mt-0.5">佔全年 ${trimPct}% (乾冷器+部分製冷)</div>
+                                <div class="text-[11px] text-teal-700 font-bold mt-0.5">${mode2Max != null ? `佔全年 ${trimPct}% (乾冷器+部分製冷)` : '無此模式'}</div>
                             </div>
 
                             <div class="p-4 bg-amber-50 rounded-xl border border-amber-200">
                                 <div class="text-[11px] font-bold text-amber-800 flex items-center justify-between">
                                     <span>Mode 3 全額機械製冷</span>
-                                    <span class="text-[10px] bg-amber-200 text-amber-900 px-1.5 py-0.5 rounded font-black">> ${mode2DbMax}°C</span>
+                                    <span class="text-[10px] bg-amber-200 text-amber-900 px-1.5 py-0.5 rounded font-black">${mode2Max != null ? `> ${mode2Max}°C` : (mode1Max != null ? `> ${mode1Max}°C` : '全年')}</span>
                                 </div>
                                 <div class="text-2xl font-black text-amber-950 mt-1">${climateMechCount.toLocaleString()} <span class="text-xs font-bold text-amber-700">小時</span></div>
                                 <div class="text-[11px] text-amber-700 font-bold mt-0.5">佔全年 ${mechPct}% (冰機全負載)</div>
@@ -237,7 +449,7 @@
                                     <span>📊</span> 氣候區間頻率分析 (Bin Analysis)
                                 </h3>
                                 <p class="text-xs text-slate-400 mt-0.5">
-                                    統計 8,760 小時落在各溫度/濕度區間之發生時數。乾球溫度直方圖已自動標記門檻區間 (🟢 Mode 1 ≤${mode1DbMax}°C | 🔵 Mode 2 ≤${mode2DbMax}°C | 🟡 Mode 3 >${mode2DbMax}°C)
+                                    統計 8,760 小時落在各溫度/濕度區間之發生時數。直方圖已自動標記門檻區間 (🟢 Mode 1 ${mode1Max != null ? `≤${mode1Max}°C` : '無'} | 🔵 Mode 2 ${mode2Max != null ? `≤${mode2Max}°C` : '無'} | 🟡 Mode 3 ${mode2Max != null ? `>${mode2Max}°C` : '全年'})
                                 </p>
                             </div>
                             <div class="flex items-center gap-2">
@@ -269,7 +481,7 @@
                             <div class="flex items-center justify-between mb-3">
                                 <div>
                                     <h3 class="text-sm font-bold text-slate-800">📅 各月份 Free Cooling 潛力時數堆疊分析</h3>
-                                    <div class="text-[11px] text-slate-400">綠色: 全直冷 (≤${mode1DbMax}°C) | 藍色: 輔助直冷 | 黃色: 全機械製冷</div>
+                                    <div class="text-[11px] text-slate-400">綠色: 全直冷 (${mode1Max != null ? `≤${mode1Max}°C` : '無'}) | 藍色: 輔助直冷 | 黃色: 全機械製冷</div>
                                 </div>
                                 <span class="text-xs text-emerald-600 font-bold">三階模式堆疊</span>
                             </div>
@@ -282,7 +494,7 @@
                             <div class="flex items-center justify-between mb-3">
                                 <div>
                                     <h3 class="text-sm font-bold text-slate-800">📈 12 個月氣候雙軸走勢 (含設定門檻線標記)</h3>
-                                    <div class="text-[11px] text-slate-400">包含 Mode 1 (${mode1DbMax}°C) 與 Mode 2 (${mode2DbMax}°C) 基準參考線</div>
+                                    <div class="text-[11px] text-slate-400">包含 Mode 1 (${mode1Max != null ? `${mode1Max}°C` : '無'}) 與 Mode 2 (${mode2Max != null ? `${mode2Max}°C` : '無'}) 基準參考線</div>
                                 </div>
                                 <span class="text-xs text-blue-600 font-bold">Monthly Trends</span>
                             </div>
@@ -346,11 +558,66 @@
             }
         },
 
+        async selectStation(id) {
+            this.isLoading = true;
+            this.loadingStationId = id;
+            this.fileProtocolError = false;
+            this.renderStationList();
+
+            try {
+                const stationData = await window.WeatherSource.loadStation(id);
+                this.isLoading = false;
+                this.loadingStationId = null;
+
+                const meta = (this.stationsList || []).find(s => s.id === id) || {};
+                const cityName = stationData.source === 'builtin' && stationData.builtinKey
+                    ? stationData.builtinKey
+                    : (meta.cityZh || stationData.stationInfo?.location || id);
+
+                window.AppStore.updateSite({
+                    selectedCity: cityName,
+                    stationId: stationData.id,
+                    stationSource: stationData.source,
+                    stationName: stationData.stationInfo?.location || id,
+                    country: stationData.stationInfo?.country || meta.country || '',
+                    lat: stationData.stationInfo?.lat ?? 0,
+                    lon: stationData.stationInfo?.lon ?? 0,
+                    elev: stationData.stationInfo?.elev ?? 0,
+                    isRealEpw: true,
+                    hourly: stationData.hourlyData,
+                    stats: stationData.stats,
+                    monthlyStats: stationData.monthlyStats,
+                    designConditions: stationData.designConditions || null
+                });
+
+                const container = document.getElementById('stepContent');
+                if (container && window.App.currentStep === 1) {
+                    this.render(container);
+                }
+            } catch (err) {
+                this.isLoading = false;
+                this.loadingStationId = null;
+                if (err && err.code === 'FILE_PROTOCOL') {
+                    this.fileProtocolError = true;
+                    const container = document.getElementById('stepContent');
+                    if (container && window.App.currentStep === 1) {
+                        this.render(container);
+                    }
+                } else {
+                    alert('載入測站氣象資料失敗: ' + (err?.message || err));
+                    this.renderStationList();
+                }
+            }
+        },
+
         selectCity(cityName) {
             if (window.BUILTIN_WEATHER_DATA && window.BUILTIN_WEATHER_DATA[cityName]) {
                 const data = window.BUILTIN_WEATHER_DATA[cityName];
+                const stationId = window.WeatherSource?.REVERSE_BUILTIN_MAP?.[cityName] || cityName;
                 window.AppStore.updateSite({
                     selectedCity: cityName,
+                    stationId: stationId,
+                    stationSource: 'builtin',
                     stationName: data.stationInfo.location,
                     country: data.stationInfo.country,
                     lat: data.stationInfo.lat,
@@ -359,11 +626,14 @@
                     isRealEpw: true,
                     hourly: data.hourlyData,
                     stats: data.stats,
-                    monthlyStats: data.monthlyStats
+                    monthlyStats: data.monthlyStats,
+                    designConditions: data.designConditions || null
                 });
+                const container = document.getElementById('stepContent');
+                if (container && window.App.currentStep === 1) this.render(container);
+                return;
             }
-            const container = document.getElementById('stepContent');
-            if (container && window.App.currentStep === 1) this.render(container);
+            this.selectStation(cityName);
         },
 
         loadEpwFile(file) {
@@ -381,7 +651,8 @@
                         isRealEpw: true,
                         hourly: parsed.hourlyData,
                         stats: parsed.stats,
-                        monthlyStats: parsed.monthlyStats
+                        monthlyStats: parsed.monthlyStats,
+                        designConditions: parsed.designConditions || null
                     });
                     const container = document.getElementById('stepContent');
                     if (container && window.App.currentStep === 1) this.render(container);
@@ -404,18 +675,22 @@
             const keys = Object.keys(bins).map(Number).sort((a,b) => a-b);
             const total = Object.values(bins).reduce((a,b) => a+b, 0) || 8760;
 
-            const fcThresh = window.AppStore ? window.AppStore.getEffectiveFcThresholds() : { mode1DbMax: 30.0, mode2DbMax: 35.7 };
-            const mode1DbMax = fcThresh.mode1DbMax;
-            const mode2DbMax = fcThresh.mode2DbMax;
+            const domThresh = window.AppStore ? window.AppStore.dominantCduThresholds() : null;
+            const basis = domThresh?.basis || 'db';
+            const thresholds = domThresh?.thresholds || { basis: 'db', full: 35.0, mech: 47.0 };
+            const mode1Max = thresholds.full;
+            const mode2Max = thresholds.mech;
 
             const labels = keys.map(k => k + ' ~ ' + (k+selectedBinStep));
             const data = keys.map(k => bins[k] || 0);
 
-            // 乾球溫度時依設定的門檻點給予三色標記
+            // 當選取的溫度指標與架構基準相符時給予三色標記
+            const isMatchingMetric = (basis === 'wb' && selectedBinMetric === 'wb') || (basis !== 'wb' && selectedBinMetric === 'db');
+
             const bgColors = keys.map(k => {
-                if (selectedBinMetric === 'db') {
-                    if (k <= mode1DbMax) return '#10b981'; // 綠色: Mode 1 全直冷
-                    if (k <= mode2DbMax) return '#06b6d4'; // 藍色: Mode 2 輔助直冷
+                if (isMatchingMetric) {
+                    if (mode1Max != null && k <= mode1Max) return '#10b981'; // 綠色: Mode 1 全直冷
+                    if (mode2Max != null && k <= mode2Max) return '#06b6d4'; // 藍色: Mode 2 輔助直冷
                     return '#f59e0b'; // 黃色: Mode 3 機械製冷
                 }
                 return '#3b82f6';
@@ -429,7 +704,7 @@
                     data: {
                         labels,
                         datasets: [{
-                            label: selectedBinMetric === 'db' ? `發生時數 (綠: ≤${mode1DbMax}°C直冷, 藍: ≤${mode2DbMax}°C輔助, 黃: >${mode2DbMax}°C機械)` : '發生時數 (hrs)',
+                            label: isMatchingMetric ? `發生時數 (依 ${domThresh?.archName || ''} 門檻: 綠 ≤${mode1Max}°C直冷${mode2Max != null ? `, 藍 ≤${mode2Max}°C輔助, 黃 >${mode2Max}°C機械` : `, 黃 >${mode1Max}°C未達標`})` : '發生時數 (hrs)',
                             data,
                             backgroundColor: bgColors,
                             borderRadius: 4
@@ -450,9 +725,9 @@
                     const h = bins[k] || 0;
                     const pct = ((h / total) * 100).toFixed(1);
                     let badge = '';
-                    if (selectedBinMetric === 'db') {
-                        if (k <= mode1DbMax) badge = '<span class="text-[9px] font-black text-emerald-700 bg-emerald-100 px-1 py-0.2 rounded ml-1">Mode 1 直冷</span>';
-                        else if (k <= mode2DbMax) badge = '<span class="text-[9px] font-black text-teal-700 bg-teal-100 px-1 py-0.2 rounded ml-1">Mode 2 輔助</span>';
+                    if (isMatchingMetric) {
+                        if (mode1Max != null && k <= mode1Max) badge = '<span class="text-[9px] font-black text-emerald-700 bg-emerald-100 px-1 py-0.2 rounded ml-1">Mode 1 直冷</span>';
+                        else if (mode2Max != null && k <= mode2Max) badge = '<span class="text-[9px] font-black text-teal-700 bg-teal-100 px-1 py-0.2 rounded ml-1">Mode 2 輔助</span>';
                         else badge = '<span class="text-[9px] font-black text-amber-700 bg-amber-100 px-1 py-0.2 rounded ml-1">Mode 3 機械</span>';
                     }
                     html += '<tr class="border-b border-slate-100"><td>' + k + ' ~ ' + (k+selectedBinStep) + badge + '</td><td class="text-right font-bold">' + h + '</td><td class="text-right text-slate-500">' + pct + '%</td></tr>';
@@ -468,9 +743,11 @@
             const site = state.site;
             const labels = ['1月', '2月', '3月', '4月', '5月', '6月', '7月', '8月', '9月', '10月', '11月', '12月'];
 
-            const fcThresh = window.AppStore ? window.AppStore.getEffectiveFcThresholds() : { mode1DbMax: 30.0, mode2DbMax: 35.7 };
-            const mode1DbMax = fcThresh.mode1DbMax;
-            const mode2DbMax = fcThresh.mode2DbMax;
+            const domThresh = window.AppStore ? window.AppStore.dominantCduThresholds() : null;
+            const basis = domThresh?.basis || 'db';
+            const thresholds = domThresh?.thresholds || { basis: 'db', full: 35.0, mech: 47.0 };
+            const mode1Max = thresholds.full;
+            const mode2Max = thresholds.mech;
 
             const MONTH_HOURS_FC = [744, 672, 744, 720, 744, 720, 744, 744, 720, 744, 720, 744];
             const MONTH_START_FC = [];
@@ -484,18 +761,19 @@
 
             if (hourly.length >= 8760) {
                 for (let i = 0; i < 8760; i++) {
-                    const w = hourly[i] || { db: 25 };
+                    const w = hourly[i] || { db: 25, wb: 20 };
                     const m = hourToMonthFC(i);
-                    if (w.db <= mode1DbMax) {
+                    const val = (basis === 'wb') ? (w.wb ?? 20) : (w.db ?? 25);
+                    if (mode1Max != null && val <= mode1Max) {
                         mode1Monthly[m]++;
-                    } else if (w.db <= mode2DbMax) {
+                    } else if (mode2Max != null && val <= mode2Max) {
                         mode2Monthly[m]++;
                     } else {
                         mode3Monthly[m]++;
                     }
                 }
             } else {
-                for (let m = 0; m < 12; m++) mode1Monthly[m] = MONTH_HOURS_FC[m];
+                for (let m = 0; m < 12; m++) mode1Monthly[m] = (mode1Max != null) ? MONTH_HOURS_FC[m] : 0;
             }
 
             if (fcChart) fcChart.destroy();
@@ -504,9 +782,9 @@
                 data: {
                     labels,
                     datasets: [
-                        { label: `Mode 1 全直冷 (≤${mode1DbMax}°C)`, data: mode1Monthly, backgroundColor: '#10b981' },
-                        { label: `Mode 2 輔助冷卻 (${mode1DbMax}~${mode2DbMax}°C)`, data: mode2Monthly, backgroundColor: '#06b6d4' },
-                        { label: `Mode 3 機械製冷 (>${mode2DbMax}°C)`, data: mode3Monthly, backgroundColor: '#f59e0b' }
+                        { label: `Mode 1 全直冷 (${mode1Max != null ? `≤${mode1Max}°C` : '無'})`, data: mode1Monthly, backgroundColor: '#10b981' },
+                        { label: `Mode 2 輔助冷卻 (${mode2Max != null ? `${mode1Max}~${mode2Max}°C` : '無'})`, data: mode2Monthly, backgroundColor: '#06b6d4' },
+                        { label: `Mode 3 機械製冷 (${mode2Max != null ? `>${mode2Max}°C` : (mode1Max != null ? `>${mode1Max}°C` : '全年')})`, data: mode3Monthly, backgroundColor: '#f59e0b' }
                     ]
                 },
                 options: {
@@ -520,18 +798,6 @@
             });
         },
 
-        updateFcThreshold(key, val) {
-            if (isNaN(val)) return;
-            const state = window.AppStore.state;
-            state.assumptions_override = state.assumptions_override || {};
-            state.assumptions_override[key] = val;
-            if (key === 'nvidia_dsx_mode1_db_max_c') {
-                state.assumptions_override.nvidia_dsx_mode2_db_max_c = Number((val + 5.7).toFixed(1));
-            }
-            window.AppStore.notify();
-            this.render(document.getElementById('stepContent'));
-        },
-
         renderMonthlyTrends() {
             const ctx = document.getElementById('monthlyTrendChart');
             if (!ctx) return;
@@ -543,12 +809,13 @@
             const wbData = monthly.map(m => m.avgWB);
             const rhData = monthly.map(m => m.avgRH);
 
-            const fcThresh = window.AppStore ? window.AppStore.getEffectiveFcThresholds() : { mode1DbMax: 30.0, mode2DbMax: 35.7 };
-            const mode1DbMax = fcThresh.mode1DbMax;
-            const mode2DbMax = fcThresh.mode2DbMax;
+            const domThresh = window.AppStore ? window.AppStore.dominantCduThresholds() : null;
+            const thresholds = domThresh?.thresholds || { basis: 'db', full: 35.0, mech: 47.0 };
+            const mode1Max = thresholds.full;
+            const mode2Max = thresholds.mech;
 
-            const mode1Line = new Array(12).fill(mode1DbMax);
-            const mode2Line = new Array(12).fill(mode2DbMax);
+            const mode1Line = mode1Max != null ? new Array(12).fill(mode1Max) : [];
+            const mode2Line = mode2Max != null ? new Array(12).fill(mode2Max) : [];
 
             if (trendChart) trendChart.destroy();
             trendChart = new Chart(ctx, {
@@ -558,8 +825,8 @@
                     datasets: [
                         { label: '乾球均溫 DB (°C)', data: dbData, borderColor: '#ef4444', backgroundColor: 'rgba(239, 68, 68, 0.1)', tension: 0.3, yAxisID: 'y' },
                         { label: '濕球均溫 WB (°C)', data: wbData, borderColor: '#0284c7', backgroundColor: 'rgba(2, 132, 199, 0.1)', tension: 0.3, yAxisID: 'y' },
-                        { label: `Mode 1 全直冷門檻 (${mode1DbMax}°C)`, data: mode1Line, borderColor: '#10b981', borderDash: [6, 4], pointRadius: 0, borderWidth: 2, yAxisID: 'y' },
-                        { label: `Mode 2 輔助冷卻上限 (${mode2DbMax}°C)`, data: mode2Line, borderColor: '#06b6d4', borderDash: [4, 4], pointRadius: 0, borderWidth: 2, yAxisID: 'y' },
+                        ...(mode1Max != null ? [{ label: `Mode 1 全直冷門檻 (${mode1Max}°C)`, data: mode1Line, borderColor: '#10b981', borderDash: [6, 4], pointRadius: 0, borderWidth: 2, yAxisID: 'y' }] : []),
+                        ...(mode2Max != null ? [{ label: `Mode 2 輔助冷卻上限 (${mode2Max}°C)`, data: mode2Line, borderColor: '#06b6d4', borderDash: [4, 4], pointRadius: 0, borderWidth: 2, yAxisID: 'y' }] : []),
                         { label: '平均濕度 RH (%)', data: rhData, borderColor: '#8b5cf6', borderDash: [2, 2], tension: 0.3, yAxisID: 'y1' }
                     ]
                 },

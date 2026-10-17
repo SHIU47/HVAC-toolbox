@@ -53,7 +53,7 @@
 
             // 全廠電力系統損失率 (Facility Electrical Loss %, e.g., 0.0% ~ 15.0%)
             // 涵蓋高/低壓變壓器、UPS 雙轉換損耗、PDU、電纜配電阻抗發熱等
-            facilityElectricalLossPct: 0.0,
+            facilityElectricalLossPct: (typeof A === 'function') ? A('electrical_loss_default_pct') : 4.5,
 
             // Step 2: Hall -> DU -> SU Hierarchy
             halls: [
@@ -211,6 +211,7 @@
             const exportData = {
                 schemaVersion: 'v6',
                 savedAt: new Date().toISOString(),
+                facilityElectricalLossPct: s.facilityElectricalLossPct ?? A('electrical_loss_default_pct'),
                 site: {
                     selectedCity: s.site.selectedCity,
                     stationId: s.site.stationId || null,
@@ -332,6 +333,11 @@
                 if (stateData.assumptions_override) {
                     this.state.assumptions_override = stateData.assumptions_override;
                 }
+                // P0-E1: 舊專案檔未存電損時套用預設值；使用者主動設 0% 時保留 0%
+                const lossPct = Number(stateData.facilityElectricalLossPct);
+                this.state.facilityElectricalLossPct = (stateData.facilityElectricalLossPct !== undefined && stateData.facilityElectricalLossPct !== null && Number.isFinite(lossPct))
+                    ? Math.max(0, Math.min(50, lossPct))
+                    : A('electrical_loss_default_pct');
                 if (stateData.site) {
                     if (stateData.site.selectedCity) {
                         this.state.site.selectedCity = stateData.site.selectedCity;

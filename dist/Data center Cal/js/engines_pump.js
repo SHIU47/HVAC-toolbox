@@ -28,7 +28,9 @@ const PlantPumpEngine = {
       const n = p.qty_running ?? p.qty_total ?? 1;
       const p_rated = (p.kw_per_gpm && flow_gpm > 0)
         ? p.kw_per_gpm * (flow_gpm / Math.max(1, n))
-        : (p.power_kw ?? 0);
+        : (p.p_design !== undefined && p.p_design > 0
+            ? (p.p_design / Math.max(1, n))
+            : (p.power_kw ?? 0));
       return sum + n * p_rated * ratio;
     }, 0);
   },

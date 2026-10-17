@@ -80,6 +80,9 @@ const ASSUMPTIONS = {
   chiller_fallback_cop_chw_ge20:  { val: 5.8,   unit: '-',      label: '高溫冰水 (≥20°C) 兜底 COP', ref: '典型高溫水冷/氣冷冰機滿載能效' },
   chiller_fallback_cop_chw_ge12:  { val: 4.2,   unit: '-',      label: '標準冰水 (12–20°C) 兜底 COP', ref: 'ASHRAE 90.1 / AHRI 550/590 標準工況典型值' },
   chiller_fallback_cop_chw_lt12:  { val: 3.0,   unit: '-',      label: '低溫冰水 (<12°C) 兜底 COP', ref: '低溫供水/高揚程典型保守值' },
+
+  // ── [Round 6] 全廠電力損耗 (P0-E1) ───────────────────────────────────────
+  electrical_loss_default_pct:    { val: 4.5,   unit: '%',      label: '預設全廠電力轉換與分配損耗率（變壓器 + UPS + PDU + 照明輔助）', ref: 'ISO/IEC 30134-2 / LBNL：MV/LV 變壓器 ~1.0% + 雙轉換 UPS ~2.5% + PDU/線路 ~0.5% + 照明/BMS ~0.5%' },
 };
 
 function A(key, state) {

@@ -3183,6 +3183,34 @@ function freshCtx() {
   });
 })();
 
+// ── Round 6 P0-E1: 預設電損 4.5%，且序列化/反序列化完整保留（含 0%）──────────
+(function () {
+  const ctx = freshCtx();
+  const S = ctx.AppStore;
+  test('R6 P0-E1 default facilityElectricalLossPct is 4.5%', () => {
+    assert(Math.abs(S.state.facilityElectricalLossPct - 4.5) < 1e-6, 'got ' + S.state.facilityElectricalLossPct);
+  });
+  test('R6 P0-E1 serialize/deserialize preserves facilityElectricalLossPct (3.8% and 0%)', () => {
+    S.setFacilityElectricalLossPct(3.8);
+    const dumped = S.serializeProject();
+    S.setFacilityElectricalLossPct(0.0);
+    S.deserializeProject(dumped);
+    assert(Math.abs(S.state.facilityElectricalLossPct - 3.8) < 1e-6, 'got ' + S.state.facilityElectricalLossPct);
+    S.setFacilityElectricalLossPct(0.0);
+    const dumpedZero = S.serializeProject();
+    S.setFacilityElectricalLossPct(4.5);
+    S.deserializeProject(dumpedZero);
+    assert(S.state.facilityElectricalLossPct === 0, 'explicit 0% must be kept, got ' + S.state.facilityElectricalLossPct);
+  });
+  test('R6 P0-E1 legacy project without facilityElectricalLossPct falls back to default 4.5%', () => {
+    S.setFacilityElectricalLossPct(0.0);
+    const legacy = JSON.parse(S.serializeProject());
+    delete legacy.facilityElectricalLossPct;
+    S.deserializeProject(JSON.stringify(legacy));
+    assert(Math.abs(S.state.facilityElectricalLossPct - 4.5) < 1e-6, 'got ' + S.state.facilityElectricalLossPct);
+  });
+})();
+
 console.log(`\n${passCount} passed, ${failCount} failed, ${skipCount} skipped`);
 process.exit(failCount > 0 ? 1 : 0);
 

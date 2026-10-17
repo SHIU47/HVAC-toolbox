@@ -1,4 +1,4 @@
-﻿const fs = require('fs');
+const fs = require('fs');
 const path = require('path');
 const { execSync } = require('child_process');
 const zlib = require('zlib');
@@ -8,18 +8,26 @@ console.log('=== PUE Calculator Standalone EXE Packager with Custom Icon ===');
 const rootDir = path.resolve(__dirname);
 const fileEntries = [];
 
-function addFile(relPath) {
-    const fullPath = path.join(rootDir, relPath);
-    if (!fs.existsSync(fullPath)) return;
-    const stat = fs.statSync(fullPath);
+function addCustomFile(diskPath, virtualPath) {
+    if (!fs.existsSync(diskPath)) return;
+    const stat = fs.statSync(diskPath);
     if (stat.isDirectory()) {
-        const children = fs.readdirSync(fullPath);
-        children.forEach(c => addFile(path.join(relPath, c)));
+        const children = fs.readdirSync(diskPath);
+        children.forEach(c => addCustomFile(path.join(diskPath, c), path.join(virtualPath, c)));
     } else {
-        const normalized = relPath.replace(/\\/g, '/');
-        const content = fs.readFileSync(fullPath);
+        let content = fs.readFileSync(diskPath);
+        if (virtualPath.replace(/\\/g, '/') === 'index.html') {
+            let html = content.toString('utf8');
+            html = html.replace('<head>', '<head><script>window.__PUE_EXE__ = true;</script>');
+            content = Buffer.from(html, 'utf8');
+        }
+        const normalized = virtualPath.replace(/\\/g, '/');
         fileEntries.push({ path: normalized, content: content });
     }
+}
+
+function addFile(relPath) {
+    addCustomFile(path.join(rootDir, relPath), relPath);
 }
 
 // Add files
@@ -29,6 +37,11 @@ addFile('app_icon.ico');
 addFile('js');
 addFile('device_catalog');
 addFile('weather');
+
+// W-5: Add 165 weather station catalog and hourly JSON files for on-demand loading in EXE
+const weatherDir = path.resolve(rootDir, '../天氣資料');
+addCustomFile(path.join(weatherDir, 'weather_data.js'), 'weather_catalog/weather_data.js');
+addCustomFile(path.join(weatherDir, 'hourly'), 'weather_catalog/hourly');
 
 console.log(`Total files to embed: ${fileEntries.length}`);
 

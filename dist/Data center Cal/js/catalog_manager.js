@@ -70,12 +70,12 @@
             { model: 'High-Density RDHX 80kW MegaDoor', capKw: 80, vendor: 'CoolIT / High-Density', fanPowerKw: 1.6, approachC: 3.5 }
         ],
         pump: [
-            { model: 'Grundfos TPE 3.0kW Inverter Pump', capKw: 3.0, vendor: 'Grundfos' },
-            { model: 'Grundfos TPE 5.5kW Inverter Pump (標準)', capKw: 5.5, vendor: 'Grundfos' },
-            { model: 'Armstrong Design Envelope 11.0kW', capKw: 11.0, vendor: 'Armstrong' },
-            { model: 'Wilo IL-E 15.0kW High Efficiency', capKw: 15.0, vendor: 'Wilo' },
-            { model: 'Grundfos TPE 22.0kW Mega Flow Pump', capKw: 22.0, vendor: 'Grundfos' },
-            { model: 'Armstrong 30.0kW Plant Distribution Pump', capKw: 30.0, vendor: 'Armstrong' }
+            { model: 'Grundfos TPE 3.0kW Inverter Pump', capKw: 3.0, vendor: 'Grundfos', pumpEtaDesign: 0.75, motorEtaDesign: 0.92 },
+            { model: 'Grundfos TPE 5.5kW Inverter Pump (標準)', capKw: 5.5, vendor: 'Grundfos', pumpEtaDesign: 0.75, motorEtaDesign: 0.92 },
+            { model: 'Armstrong Design Envelope 11.0kW', capKw: 11.0, vendor: 'Armstrong', pumpEtaDesign: 0.75, motorEtaDesign: 0.92 },
+            { model: 'Wilo IL-E 15.0kW High Efficiency', capKw: 15.0, vendor: 'Wilo', pumpEtaDesign: 0.75, motorEtaDesign: 0.92 },
+            { model: 'Grundfos TPE 22.0kW Mega Flow Pump', capKw: 22.0, vendor: 'Grundfos', pumpEtaDesign: 0.75, motorEtaDesign: 0.92 },
+            { model: 'Armstrong 30.0kW Plant Distribution Pump', capKw: 30.0, vendor: 'Armstrong', pumpEtaDesign: 0.75, motorEtaDesign: 0.92 }
         ]
     };
 
@@ -97,8 +97,11 @@
                     console.log('[CatalogManager] fetch 載入失敗，改用內嵌廠商型錄資料');
                     this.loadEmbeddedCatalogs();
                 }
+            } else {
+                this.loadEmbeddedCatalogs();
             }
             this.loaded = true;
+            return this;
         },
 
         loadEmbeddedCatalogs() {
@@ -248,17 +251,21 @@
                 });
             } else if (catKey === 'pump') {
                 // device_catalog/pump/*.json: {model,vendor,series,capKw(額定馬達功率),
-                // design_flow_m3h,design_head_m,motor_efficiency_pct,...}。capKw 對應
-                // store.js resolvePumpFromSizing() 目前拿來當 power_kw 用的欄位；
-                // design_flow_m3h/design_head_m 先隨資料帶入，供日後真實水力模型使用。
+                // design_flow_m3h,design_head_m,motor_efficiency_pct,...}。
                 Object.entries(data).forEach(([k, v]) => {
                     if (k === '_meta' || !v.capKw) return;
+                    const etaPump = v.pump_eta_design ?? v.pumpEtaDesign ?? ((typeof A === 'function') ? A('pump_eta_default') : 0.75);
+                    const etaMotor = (typeof v.motor_efficiency_pct === 'number' && v.motor_efficiency_pct > 0)
+                        ? (v.motor_efficiency_pct / 100)
+                        : (v.motorEtaDesign ?? ((typeof A === 'function') ? A('motor_eta_default') : 0.92));
                     this.upsertItem('pump', {
                         model: v.model || k,
                         capKw: v.capKw,
                         vendor: v.vendor || 'Vendor',
                         designFlowM3h: v.design_flow_m3h,
                         designHeadM: v.design_head_m,
+                        pumpEtaDesign: etaPump,
+                        motorEtaDesign: etaMotor,
                         ...v
                     });
                 });
@@ -271,5 +278,5 @@
     };
 
     window.CatalogManager = CatalogManager;
-    CatalogManager.init();
+    CatalogManager.ready = CatalogManager.init();
 })(typeof window !== 'undefined' ? window : global);

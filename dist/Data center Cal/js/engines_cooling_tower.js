@@ -33,24 +33,7 @@ const CoolingTowerEngine = {
     return wb_c + approach_c;
   },
 
-  /**
-   * Physics-based approach temperature at a given WB.
-   * At design WB: use design approach.
-   * At lower WB: fan speed reduces → approach increases.
-   * Curve: ΔAPP ≈ +0.12°C per 1°C below design WB.
-   * @param {number} wb_c           - Current wet-bulb (°C)
-   * @param {number} design_wb_c    - Design WB (p90 summer) (°C)
-   * @param {number} design_approach_c - Design approach at design_wb (°C)
-   * @param {Array}  [annual_data]  - Weather annual_data [{wb, approach}] (preferred source)
-   */
-  calcApproachAtWB(wb_c, design_wb_c, design_approach_c, annual_data) {
-    if (annual_data) {
-      const row = annual_data.find(r => r.wb === Math.round(wb_c));
-      if (row?.approach != null) return row.approach;
-    }
-    const delta = Math.max(0, design_wb_c - wb_c);
-    return Math.min(design_approach_c * 1.8, design_approach_c + delta * 0.12);
-  },
+
 
   /**
    * CT fan power using affinity laws with static-head base.

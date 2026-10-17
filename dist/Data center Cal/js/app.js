@@ -8,16 +8,21 @@
         currentStep: 1,
         totalSteps: 5,
 
-        init() {
+        async init() {
+            if (window.CatalogManager && window.CatalogManager.ready) {
+                try {
+                    await window.CatalogManager.ready;
+                } catch (_) {}
+            }
+
             let restored = false;
             // 嘗試從 localStorage 還原先前暫存工作階段
             if (window.AppStore && typeof window.AppStore.loadAutoSave === 'function') {
                 restored = window.AppStore.loadAutoSave();
             }
 
-            // 還原舊專案後，sizing[].catalog 是產生當下的靜態快照，新增/更新
-            // device_catalog 廠商資料不會自動反映到已存的專案裡，需主動刷新。
-            if (restored && window.AppStore && typeof window.AppStore.refreshDeviceCatalogs === 'function') {
+            // P1-9: 型錄載入完成後刷新 sizing 中的型錄（不論是否 restored）
+            if (window.AppStore && typeof window.AppStore.refreshDeviceCatalogs === 'function') {
                 window.AppStore.refreshDeviceCatalogs();
             }
 
@@ -32,7 +37,8 @@
                         lon: data.stationInfo.lon,
                         elev: data.stationInfo.elev,
                         isRealEpw: true,
-                        hourly: data.hourlyData
+                        hourly: data.hourlyData,
+                        designConditions: data.designConditions || null
                     });
                 } else {
                     window.AppStore.calculate();
@@ -75,6 +81,15 @@
                 if (ok) {
                     this.renderStep(this.currentStep);
                     this.updateStickyBar();
+                    if (window.AppStore.weatherLoadingPromise) {
+                        window.AppStore.weatherLoadingPromise.then(() => {
+                            this.renderStep(this.currentStep);
+                            this.updateStickyBar();
+                        }).catch(() => {
+                            this.renderStep(this.currentStep);
+                            this.updateStickyBar();
+                        });
+                    }
                     alert('✅ 專案檔載入成功！');
                 } else {
                     alert('❌ 專案檔格式錯誤，無法載入。');

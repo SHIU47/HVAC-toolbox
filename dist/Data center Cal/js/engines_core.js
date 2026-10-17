@@ -79,6 +79,17 @@ const AHRI_PRESETS = {
   }
 };
 
+// 額定點：AHRI 550/590 水冷 LCHWT 7°C / ECWT 30°C；氣冷 LCHWT 7°C / 外氣 DB 35°C
+const AHRI_RATING_POINT = { water: { t_chws: 7, t_cond: 30 }, air: { t_chws: 7, t_cond: 35 } };
+for (const [key, p] of Object.entries(AHRI_PRESETS)) {
+  const r = key.startsWith('air_') ? AHRI_RATING_POINT.air : AHRI_RATING_POINT.water;
+  const fCap = biQuad(p.CapFT, r.t_chws, r.t_cond);
+  const fEir = biQuad(p.EIR_FT, r.t_chws, r.t_cond);
+  p.CapFT  = p.CapFT.map(c => c / fCap);
+  p.EIR_FT = p.EIR_FT.map(c => c / fEir);
+  p.rating = r;
+}
+
 const LOAD_PROFILE_PRESETS = {
   constant:   { name: '恆定滿載 (Constant 100%)', states: [{ load_pct: 100, weight_pct: 100, note: '基準滿載運行' }] },
   ai:         { name: 'AI 訓練週期 (AI Training Cycle)', states: [{ load_pct: 100, weight_pct: 70, note: 'AI 訓練階段' }, { load_pct: 25, weight_pct: 30, note: '待機 / 存檔點' }] },
@@ -86,67 +97,13 @@ const LOAD_PROFILE_PRESETS = {
   enterprise: { name: '企業辦公負載 (Enterprise / Office IT)', states: [{ load_pct: 75, weight_pct: 30, note: '上班時段尖峰' }, { load_pct: 20, weight_pct: 70, note: '非上班時段低載' }] },
   custom:     { name: '自訂負載 (Custom Load Profile)', states: [{ load_pct: 100, weight_pct: 50, note: '自訂狀態 1' }, { load_pct: 50, weight_pct: 50, note: '自訂狀態 2' }] }
 };
-
-// ─── Central Engineering Assumptions & Design Basis ───────────
-// Unified reference for all engines — prevents scattered magic numbers.
-// Based on ASHRAE 90.1-2022, AHRI 550/590, and DC Engineering Practice.
-const EngineeringBasis = {
-  // Cooling Tower (ASHRAE 2020 HVAC Systems Ch.40)
-  CT_APPROACH_PHYSICAL_MIN_C: 1.5,  // 2nd Law absolute floor
-  CT_APPROACH_MIN_C:          3.0,  // engineering warning below this
-  CT_APPROACH_DESIGN_C:       5.0,  // ASHRAE typical open tower
-  CT_APPROACH_MAX_C:          9.0,  // warning above this
-  CT_RANGE_MIN_C:             2.0,  // below = flow excessive / load too light
-  CT_RANGE_DESIGN_C:          5.5,  // typical HVAC range
-  CT_RANGE_MAX_C:            14.0,  // critical above this = capacity deficit
-
-  // Plate HX (AHRI 400)
-  HX_APPROACH_DESIGN_C:       2.0,
-  HX_APPROACH_MIN_C:          1.0,
-
-  // CHW Loop
-  CHW_DT_MIN_C:               3.0,
-  CHW_DT_DESIGN_C:            5.0,
-  CHW_DT_MAX_C:              12.0,
-
-  // CDW Loop
-  CDW_DT_MIN_C:               4.0,
-  CDW_DT_DESIGN_C:            5.0,
-  CDW_DT_MAX_C:              10.0,
-
-  // CDU / Liquid Loop (GB300 / NVL72 warm-water)
-  CDU_DT_MIN_C:               5.0,
-  CDU_DT_DESIGN_C:           15.0,
-  CDU_DT_MAX_C:              25.0,
-
-  // Pump Hydraulics (ASHRAE 90.1 §6.5)
-  CP_WATER:                   4.184,  // kJ/(kg·°C)
-  WATER_DENSITY:           1000.0,    // kg/m³
-  PUMP_STATIC_HEAD_FRAC:      0.15,   // affinity law base for static head
-  PUMP_MIN_SPEED_VFD:         0.45,   // VFD absolute minimum speed
-
-  // Chiller Staging (AHRI 550/590)
-  CHILLER_PLR_OPTIMAL:        0.70,   // peak efficiency PLR
-  CHILLER_PLR_STAGE_ON:       0.90,   // add next chiller above this PLR
-  CHILLER_PLR_STAGE_OFF:      0.35,   // shed one chiller below this PLR
-  CHILLER_COP_MIN:            2.5,    // practical warning floor
-  CHILLER_COP_MAX:           12.0,    // practical warning ceiling
-  CHILLER_COP_PHYSICAL_MAX:  15.0,   // 2nd Law ceiling
-
-  // Free Cooling
-  FC_PARTIAL_BAND_C:          3.0,    // partial FC transition width
-  FC_SAFETY_MARGIN_C:         1.5,    // safety buffer above FC threshold
-
-  // Dry Cooler (DB-based sensible rejection)
-  DC_APPROACH_DESIGN_C:       5.0,
-
-  // Plant Operating Modes by WB temperature
-  PLANT_MODE: {
-    SUMMER:   { wb_threshold_c: 24, pump_min_speed: 0.50, fan_min_speed: 0.40 },
-    SHOULDER: { wb_threshold_c: 16, pump_min_speed: 0.40, fan_min_speed: 0.25 },
-    WINTER:   { wb_threshold_c: -99, pump_min_speed: 0.30, fan_min_speed: 0.15 }
-  }
-};
+// ─── Psychrometric: Magnus-Tetens approximation ───────────
+function calcDewPointC(db_c, rh_pct) {
+  const rh = Math.min(100, Math.max(0.1, rh_pct));
+  const a = 17.27, b = 237.7;
+  const alpha = (a * db_c) / (b + db_c) + Math.log(rh / 100);
+  return (b * alpha) / (a - alpha);
+}
 
 if (typeof global !== 'undefined') {
   global.clamp = clamp;
@@ -154,9 +111,20 @@ if (typeof global !== 'undefined') {
   global.biQuad = biQuad;
   global.quadPoly = quadPoly;
   global.sumRunning = sumRunning;
+  global.calcDewPointC = calcDewPointC;
   global.AHRI_PRESETS = AHRI_PRESETS;
-  global.EngineeringBasis = EngineeringBasis;
+  global.LOAD_PROFILE_PRESETS = LOAD_PROFILE_PRESETS;
+}
+if (typeof window !== 'undefined') {
+  window.clamp = clamp;
+  window.uuid = uuid;
+  window.biQuad = biQuad;
+  window.quadPoly = quadPoly;
+  window.sumRunning = sumRunning;
+  window.calcDewPointC = calcDewPointC;
+  window.AHRI_PRESETS = AHRI_PRESETS;
+  window.LOAD_PROFILE_PRESETS = LOAD_PROFILE_PRESETS;
 }
 if (typeof module !== 'undefined' && module.exports) {
-  module.exports = { clamp, uuid, biQuad, quadPoly, sumRunning, AHRI_PRESETS, EngineeringBasis };
+  module.exports = { clamp, uuid, biQuad, quadPoly, sumRunning, calcDewPointC, AHRI_PRESETS, LOAD_PROFILE_PRESETS };
 }

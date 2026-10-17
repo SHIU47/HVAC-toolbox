@@ -10,8 +10,18 @@
     const ViewDashboard = {
         render(container) {
             const state = window.AppStore.state;
-            const res = state.results;
-            const overall = res.overall;
+            if (state.site && state.site.isWeatherLoading) {
+                container.innerHTML = `
+                    <div class="bg-white p-12 rounded-2xl border border-slate-200 text-center space-y-4 shadow-sm">
+                        <div class="text-4xl">⏳</div>
+                        <h3 class="text-lg font-bold text-slate-800">氣象資料載入中...</h3>
+                        <p class="text-xs text-slate-500">正在非同步載入「${state.site.selectedCity || state.site.stationId}」之 8,760 小時氣象資料，請稍候。</p>
+                    </div>
+                `;
+                return;
+            }
+            const res = state.results || {};
+            const overall = res.overall || {};
             const byDu = res.byDu || [];
             const byCorePod = res.byCorePod || [];
             const corePodGroup = res.corePodGroup || { annualPue: 1.00, totalItKw: 0 };
@@ -716,27 +726,18 @@
             // 統計各系統選型規格
             const allCduSystems = [
                 ...(state.halls ? state.halls.flatMap(h => h.dus.map(du => du.plantDesign.cduSystem)) : []),
-                ...(state.corePods ? state.corePods.map(p => p.plantDesign.cduSystem) : [])
+                ...(state.corePods ? state.corePods.filter(p => p.enabled !== false).map(p => p.plantDesign.cduSystem) : [])
             ];
             const allFwSystems = [
                 ...(state.halls ? state.halls.flatMap(h => h.dus.map(du => du.plantDesign.fanwallSystem)) : []),
-                ...(state.corePods ? state.corePods.map(p => p.plantDesign.fanwallSystem) : [])
+                ...(state.corePods ? state.corePods.filter(p => p.enabled !== false).map(p => p.plantDesign.fanwallSystem) : [])
             ];
 
-            const cduArch = allCduSystems[0]?.architecture || 'adiabatic_tower';
+            const cduArch = allCduSystems[0]?.architecture || 'dry_cooler_trim';
             const fwArch = allFwSystems[0]?.architecture || 'air_cooled_chiller';
 
-            const cduArchNames = {
-                dry_cooler_pure: '純乾冷器自然排熱 (Dry Cooler)',
-                adiabatic_tower: '絕熱密閉冷卻水塔 (Adiabatic Tower)',
-                cooling_tower_hx: '開式冷卻水塔 + 板換 (Cooling Tower + PHE)',
-                water_chiller: '水冷冰機製冷 (Water-Cooled Chiller)'
-            };
-            const fwArchNames = {
-                air_cooled_chiller: '氣冷式冰水主機 (Air-Cooled Chiller)',
-                water_cooled_chiller: '水冷式冰水主機 (Water-Cooled Chiller)',
-                rdhx: '背板熱交換器 (RDHx Neutral Loop)'
-            };
+            const cduArchLabel = (window.CoolingArchRegistry ? window.CoolingArchRegistry.getDashboardLabel(cduArch) : '') || '排熱塔';
+            const fwArchLabel = (window.CoolingArchRegistry ? window.CoolingArchRegistry.getDashboardLabel(fwArch) : '') || '冰機';
 
             const isCduFree = curHour.cduMode === 'free';
             const isCduTrim = curHour.cduMode === 'partial';
@@ -752,12 +753,66 @@
             // 散熱風扇推算
             const rejFanSpeed = isCduFree ? Math.max(30, Math.min(100, Math.round((curHour.db / 35) * 90))) : 100;
             // 噴霧水量推算
-            const sprayM3h = (cduArch === 'adiabatic_tower' && curHour.db > 24) ? ((curHour.itKw * 0.91 * 0.0011).toFixed(2)) : '0.00';
+            const sprayM3h = (curHour.waterM3 !== undefined && curHour.waterM3 !== null) ? Number(curHour.waterM3).toFixed(2) : '0.00';
 
-            // 冰機分階推算
+            // 冰機分階推算 (P1-8: 真實逐時物理 COP)
             const chillerKw = curHour.chillerKw || 0;
-            const copBase = (fwArch === 'air_cooled_chiller') ? 4.29 : 6.5;
-            const copDynamic = Math.max(2.5, Math.min(7.5, copBase * (1.0 - (curHour.db - 35.0) * 0.015)));
+            const copDynamic = (chillerKw > 0 && (curHour.mechLoadKw || 0) > 0)
+                ? (curHour.mechLoadKw / chillerKw)
+                : 0;
+
+            // Sizing 設備規格加總計算輔助函式 (P1-8, P2-5)
+            const resolveItemPower = (item) => {
+                if (!item) return 0;
+                const catEntry = (item.catalog || []).find(c => c.model === item.selectedModel);
+                const role = item.role;
+                if (item.key === 'cdu_unit') {
+                    return catEntry?.powerKw ?? 4.2;
+                }
+                if (role === 'pump' || item.key === 'cdu_pump' || item.key === 'fw_pump') {
+                    return catEntry?.capKw ?? catEntry?.powerKw ?? item.unitCapKw ?? 5.5;
+                }
+                if (role === 'heat_rejection' || item.key?.includes('tower') || item.key?.includes('cooler')) {
+                    return catEntry?.fanKwDx ?? ((item.unitCapKw || 1000) / 500 * 10);
+                }
+                if ((role === 'terminal' && item.key !== 'cdu_unit') || item.key === 'crah_unit' || item.key?.includes('rdhx')) {
+                    return catEntry?.fanPowerKw ?? ((item.unitCapKw || 60) * 0.08);
+                }
+                if (role === 'chiller' || item.key?.includes('chiller')) {
+                    const cap = catEntry?.capKw ?? item.unitCapKw ?? 500;
+                    const isAir = (item.key && item.key.indexOf('air') >= 0);
+                    const cop = catEntry?.cop ?? (isAir ? 3.6 : 6.0);
+                    return cop > 0 ? (cap / cop) : cap;
+                }
+                return catEntry?.powerKw ?? catEntry?.capKw ?? item.unitCapKw ?? 0;
+            };
+
+            const getSizingStats = (keys) => {
+                let totalSelectedQty = 0;
+                let totalRunningPowerKw = 0;
+                const keySet = new Set(Array.isArray(keys) ? keys : [keys]);
+                const allItems = [...allCduSystems, ...allFwSystems].flatMap(s => s.sizing || []);
+                allItems.filter(item => keySet.has(item.key)).forEach(item => {
+                    const qty = item.selectedQty || 0;
+                    totalSelectedQty += qty;
+                    const runningQty = (typeof window.AppStore !== 'undefined' && typeof window.AppStore.runningQtyFromSelected === 'function')
+                        ? window.AppStore.runningQtyFromSelected(qty)
+                        : Math.max(1, qty - 1);
+                    const unitPower = resolveItemPower(item);
+                    totalRunningPowerKw += runningQty * unitPower;
+                });
+                return {
+                    qty: totalSelectedQty,
+                    powerKw: Math.round(totalRunningPowerKw)
+                };
+            };
+
+            const cduStats = getSizingStats('cdu_unit');
+            const pumpStats = getSizingStats(['cdu_pump', 'fw_pump']);
+            const rejStats = getSizingStats(['dry_cooler', 'cooling_tower', 'adiabatic_tower']);
+            const fanStats = getSizingStats(['crah_unit', 'rdhx_unit']);
+            const chillerStats = getSizingStats(['trim_chiller', 'air_cooled_chiller', 'water_cooled_chiller']);
+            const chillerOperatingHours = (hourlyProfile || []).filter(h => (h.chillerKw || 0) > 0).length;
 
             // FLH 設備台帳
             const totalItKw = overall.totalItKw || 1;
@@ -765,47 +820,47 @@
                 {
                     name: 'CDU 液冷主機 & 板式換熱器群',
                     tag: '液冷換熱',
-                    qty: `${allCduSystems.length * 4} 台 (N+1 配備)`,
-                    kwh: bk.cduPump ? Math.round(bk.cduPump * 0.35 / 1000) : 0,
-                    powerKw: Math.round(totalItKw * 0.008),
+                    qty: cduStats.qty > 0 ? `${cduStats.qty} 台 (N+1 配備)` : '0 台 (無液冷)',
+                    kwh: Math.round((bk.cduUnitKwh || 0) / 1000),
+                    powerKw: cduStats.powerKw,
                     hours: 8760,
                     note: '全時 100% 運轉散熱'
                 },
                 {
                     name: 'CDU 一次側設施循環泵浦群',
                     tag: '一次水路',
-                    qty: `${allCduSystems.length * 3} 台 (變頻 N+1)`,
-                    kwh: Math.round((bk.cduPump || 0) / 1000),
-                    powerKw: Math.round(totalItKw * 0.018),
+                    qty: pumpStats.qty > 0 ? `${pumpStats.qty} 台 (變頻 N+1)` : '0 台',
+                    kwh: Math.round(Math.max(0, (bk.cduPump || 0) - (bk.cduUnitKwh || 0)) / 1000),
+                    powerKw: pumpStats.powerKw,
                     hours: 8760,
                     note: '變頻定壓差水流量調度'
                 },
                 {
-                    name: `室外排熱設備 (${cduArchNames[cduArch] || '排熱塔'})`,
+                    name: `室外排熱設備 (${cduArchLabel})`,
                     tag: '室外排熱',
-                    qty: `${allCduSystems.length * 4} 台 (EC 風機群)`,
+                    qty: rejStats.qty > 0 ? `${rejStats.qty} 台 (EC 風機群)` : '0 台',
                     kwh: Math.round((bk.heatRejection || 0) / 1000),
-                    powerKw: Math.round(totalItKw * 0.025),
+                    powerKw: rejStats.powerKw,
                     hours: 8760,
                     note: isCduFree ? '全自然排熱 (零冰機)' : '噴霧/乾態智慧切換'
                 },
                 {
                     name: '室內風牆 / CRAH / RDHx 送風機群',
                     tag: '室內氣冷',
-                    qty: `${allFwSystems.length * 8} 台 (EC 軸流風機)`,
+                    qty: fanStats.qty > 0 ? `${fanStats.qty} 台 (EC 軸流風機)` : '0 台',
                     kwh: Math.round((bk.crahFan || 0) / 1000),
-                    powerKw: Math.round(totalItKw * 0.012),
+                    powerKw: fanStats.powerKw,
                     hours: 8760,
                     note: isFwFree ? '氣側節能自然冷卻中' : '連續溫濕度精密控溫'
                 },
                 {
-                    name: `冰水主機壓縮機群 (${fwArchNames[fwArch] || '冰機'})`,
+                    name: `冰水主機壓縮機群 (${fwArchLabel})`,
                     tag: '機械製冷',
-                    qty: `${allFwSystems.length * 2 + 1} 台 (含 N+1 備用)`,
+                    qty: chillerStats.qty > 0 ? `${chillerStats.qty} 台 (含 N+1 備用)` : '0 台 (無冰機)',
                     kwh: Math.round((bk.chiller || 0) / 1000),
-                    powerKw: Math.round(totalItKw * 0.09 / (copBase || 4.29)),
-                    hours: (res.fwFcStats?.mechHours || 3657),
-                    note: isChillerOn ? `分階啟動製冷中 (COP ${copDynamic.toFixed(2)})` : '關機待機中 (零電耗)'
+                    powerKw: chillerStats.powerKw,
+                    hours: chillerOperatingHours,
+                    note: isChillerOn ? `分階啟動製冷中 (COP ${copDynamic > 0 ? copDynamic.toFixed(2) : '-'})` : '關機待機中 (零電耗)'
                 },
                 {
                     name: '全廠高低壓變配電與不斷電系統 (UPS)',
@@ -960,7 +1015,7 @@
                             <div class="flex items-center justify-between border-b border-border-subtle pb-2.5">
                                 <div class="flex items-center gap-2">
                                     <span class="w-2.5 h-2.5 rounded-full ${isCduFree ? 'bg-emerald-500' : 'bg-amber-500'} animate-pulse"></span>
-                                    <span class="font-bold text-sm text-primary">🌬️ 室外排熱 (${cduArchNames[cduArch] || '排熱塔'})</span>
+                                    <span class="font-bold text-sm text-primary">🌬️ 室外排熱 (${cduArchLabel})</span>
                                 </div>
                                 <span class="px-2 py-0.5 rounded text-[10px] font-bold ${isCduFree ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-amber-50 text-amber-700 border border-amber-200'}">
                                     ${isCduFree ? '🟢 零冰機乾態/濕球排熱' : '🟡 噴霧預冷蒸發輔助'}
@@ -1030,7 +1085,7 @@
                             <div class="flex items-center justify-between border-b border-border-subtle pb-2.5">
                                 <div class="flex items-center gap-2">
                                     <span class="w-2.5 h-2.5 rounded-full ${isChillerOn ? 'bg-blue-500' : 'bg-slate-400'} ${isChillerOn ? 'animate-pulse' : ''}"></span>
-                                    <span class="font-bold text-sm text-primary">❄️ 冰水主機壓縮機群 (${fwArchNames[fwArch] || '冰機'})</span>
+                                    <span class="font-bold text-sm text-primary">❄️ 冰水主機壓縮機群 (${fwArchLabel})</span>
                                 </div>
                                 <span class="px-2 py-0.5 rounded text-[10px] font-bold ${isChillerOn ? 'bg-blue-50 text-blue-700 border border-blue-200' : 'bg-slate-100 text-slate-600 border border-slate-200'}">
                                     ${isChillerOn ? '🔵 壓縮機運轉製冷中' : '🟢 冰機關機待機 (0 kW)'}
@@ -1049,7 +1104,7 @@
                                 </div>
                                 <div class="p-2.5 bg-bg rounded-lg">
                                     <span class="text-[10px] text-tertiary block">即時製冷 COP (AHRI 動態)</span>
-                                    <span class="font-mono font-bold ${isChillerOn ? 'text-emerald-700' : 'text-slate-400'} text-sm">${isChillerOn ? ('COP ' + copDynamic.toFixed(2)) : '— (關機)'}</span>
+                                    <span class="font-mono font-bold ${isChillerOn ? 'text-emerald-700' : 'text-slate-400'} text-sm">${isChillerOn ? (copDynamic > 0 ? ('COP ' + copDynamic.toFixed(2)) : 'COP —') : '— (關機)'}</span>
                                     <span class="text-[10px] text-secondary block mt-0.5">隨外氣溫度及冷凝動態修正</span>
                                 </div>
                                 <div class="p-2.5 bg-bg rounded-lg">
