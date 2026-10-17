@@ -572,12 +572,13 @@
       body { display: block; }
       .inputs, .results { overflow: visible; max-height: none; }
       .actions, .to-results, .scenario-bar, .chips, .seg, .toast, .modal-backdrop, .sim3d-controls, .sim3d-toolbar { display: none !important; }
+      .sim3d-box { height: 380px; break-inside: avoid; page-break-inside: avoid; }
       .topbar { position: static; border-bottom: 2px solid var(--ink); box-shadow: none; }
       .project input { background: none; border: none; padding: 0; }
       .layout { display: block; padding: 12px 0; }
       .results { position: static; max-height: none; overflow: visible; margin-top: 14px; }
       .inputs { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-      .card { break-inside: avoid; box-shadow: none; }
+      .card { break-inside: avoid; page-break-inside: avoid; box-shadow: none; }
       .sec { padding: 10px 12px; }
       .is-stale .kpis, .is-stale .viz, .is-stale .checks-card, .is-stale .opts-card { opacity: 1; filter: none; }
     }
@@ -691,6 +692,8 @@
               <button type="button" class="chip" onclick="setVal('supplyTemp',15)">15°C (AIDC 預冷)</button>
               <button type="button" class="chip" onclick="setVal('supplyTemp',18)">18°C (液冷 CDU)</button>
             </div>
+            <div class="hint">設計供水溫度（純水模式建議 ≥ 4°C 避免密度反轉與盤管結冰凍裂）</div>
+            <div class="err" id="err-supplyTemp"></div>
           </div>
         </div>
         <div class="note" id="flowReadout"></div>
@@ -708,13 +711,14 @@
           </div>
           <div class="field full">
             <label for="hdRatio">圓筒槽體高徑比 H/D <i class="req">*</i></label>
-            <div class="iw"><input type="number" id="hdRatio" step="any" min="0.3" max="6" value="2" oninput="calculate()"><span class="u">高 ÷ 直徑</span></div>
+            <div class="iw"><input type="number" id="hdRatio" step="any" min="0.8" max="6" value="2" oninput="calculate()"><span class="u">高 ÷ 直徑</span></div>
             <div class="chips">
               <button type="button" class="chip" onclick="setVal('hdRatio',1)">1.0（矮胖）</button>
               <button type="button" class="chip" onclick="setVal('hdRatio',2)">2.0（標準）</button>
               <button type="button" class="chip" onclick="setVal('hdRatio',2.5)">2.5（瘦高分層佳）</button>
               <button type="button" class="chip" onclick="setVal('hdRatio',3)">3.0（細高）</button>
             </div>
+            <div class="hint">ASME 2:1 橢圓封頭立式容器幾何下限 H/D ≥ 0.8（上下封頭佔 0.5D），建議 1.0 ~ 3.0</div>
             <div class="note" id="sizeReadout"></div>
             <div class="err" id="err-hdRatio"></div>
           </div>
@@ -1014,11 +1018,12 @@ const BufferTankEngine = (() => {
     need('chillerN', raw.chillerN, v => v >= 1 && Number.isInteger(v), '請填 1 以上的整數');
     need('durationMin', raw.durationMin, v => v > 0, '必須大於 0');
     need('deltaT', raw.deltaT, v => v > 0, '必須大於 0');
+    need('supplyTemp', raw.supplyTemp, v => v >= -20 && v <= 40, '請填 -20 ~ 40°C');
     need('moduleSize', raw.moduleSize, v => v > 0, '必須大於 0');
     need('tankEffPct', raw.tankEffPct, v => v >= 10 && v <= 100, '請填 10–100');
     need('marginPct', raw.marginPct, v => v >= 0 && v <= 200, '請填 0–200');
     need('minVolIndex', raw.minVolIndex, v => v >= 0, '不可為負值');
-    need('hdRatio', raw.hdRatio, v => v >= 0.3 && v <= 6, '請填 0.3–6');
+    need('hdRatio', raw.hdRatio, v => v >= 0.8 && v <= 6, '請填 0.8–6');
     if (raw.fluid === 'custom') {
       need('fluidCp', raw.cp, v => v > 0, '必須大於 0');
       need('fluidRho', raw.rho, v => v > 0, '必須大於 0');
@@ -1033,19 +1038,22 @@ const BufferTankEngine = (() => {
     const area = (Math.PI / 4) * D * D;
     // ASME 2:1 橢圓封頭高度 h_head = D / 4；單顆封頭容積 = π/24 · D³ (相當於 D/6 的直筒高)
     const headDepth = D * 0.25;
-    const shellH = Math.max(D * 0.4, H - (D / 3)); // 扣除上下封頭等效容積高度後的直筒身高度
+    const shellH = Math.max(D * 0.05, H - (D / 3)); // 扣除上下封頭等效容積高度後的直筒身高度（精確容積守恆）
     const totalVesselH = shellH + 2 * headDepth;   // 含上下封頭之容器本體總高
-    return { D, H, shellH, headDepth, totalVesselH, area, floors: H / FLOOR_HEIGHT };
+    const padH = 0.24;                             // 基礎座高
+    const legH = Math.max(0.55, D * 0.24);          // 支腿高
+    const overallH = padH + legH + totalVesselH + 0.35; // 含底部支腿與頂部排氣閥之總淨高
+    return { D, H, shellH, headDepth, totalVesselH, padH, legH, overallH, area, floors: overallH / FLOOR_HEIGHT };
   }
 
-  // 根據單槽流量 (m³/h) 推算建議管嘴公稱管徑 DN (目標管內流速 ≤ 2.0 m/s)
+  // 根據單槽流量 (m³/h) 推算建議管嘴公稱管徑 DN (目標管內流速 ≤ 2.0 m/s，大流量擴充至 DN1000)
   function selectNozzleDN(flowPerTankM3h) {
     const qM3s = Math.max(0.001, flowPerTankM3h / 3600);
     const targetVel = 1.8; // m/s
     const reqDiaM = Math.sqrt((4 * qM3s) / (Math.PI * targetVel));
     const reqMM = reqDiaM * 1000;
-    const stdDNs = [80, 100, 125, 150, 200, 250, 300, 350, 400, 450, 500, 600];
-    const dn = stdDNs.find(d => d >= reqMM) || 600;
+    const stdDNs = [80, 100, 125, 150, 200, 250, 300, 350, 400, 450, 500, 600, 700, 800, 900, 1000];
+    const dn = stdDNs.find(d => d >= reqMM) || 1000;
     const actualVel = qM3s / ((Math.PI / 4) * Math.pow(dn / 1000, 2));
     return { dn, diaM: dn / 1000, actualVel };
   }
@@ -1238,7 +1246,7 @@ const BufferTankEngine = (() => {
     };
   }
 
-  return { FLUIDS, STD_SIZES, MAX_PREFERRED_COUNT, FLOOR_HEIGHT, TC, tankDims, vesselGeom, validate, calculate, evalThermoclineAtTime };
+  return { FLUIDS, STD_SIZES, MAX_PREFERRED_COUNT, FLOOR_HEIGHT, TC, tankDims, vesselGeom, validate, calculate, evalThermoclineAtTime, selectNozzleDN };
 })();
 
 /* ============================================================================
@@ -1343,7 +1351,7 @@ const Tank3DSim = (() => {
     }
 
     void main() {
-      float ripple = uRipple * sin(vLocalPos.x * 5.0 + uTimeSec * 2.0) * cos(vLocalPos.z * 5.0 - uTimeSec * 1.6);
+      float ripple = uRipple * sin(vWorldPos.x * 5.0 + uTimeSec * 2.0) * cos(vWorldPos.z * 5.0 - uTimeSec * 1.6);
       float z = clamp(vWorldPos.y - uBaseY + ripple, 0.0, uTotalH);
       float u = (z / uTotalH) * (uProfileN - 1.0) / uProfileN + 0.5 / uProfileN;
       float warmFrac = texture2D(uProfile, vec2(u, 0.5)).r;
@@ -1373,7 +1381,7 @@ const Tank3DSim = (() => {
     scene = new THREE.Scene();
     camera = new THREE.PerspectiveCamera(40, container.clientWidth / container.clientHeight, 0.1, 600);
 
-    renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+    renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, preserveDrawingBuffer: true });
     renderer.setSize(container.clientWidth, container.clientHeight);
     renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
     container.innerHTML = '';
@@ -1651,6 +1659,9 @@ const Tank3DSim = (() => {
     const totalVesselH = r.dims.totalVesselH;
     const eff = r.raw.tankEffPct / 100;
     const nozzleR = Math.max(0.075, Math.min(R * 0.16, r.nozzleSpec.diaM * 0.65));
+    const waterR = R * 0.962;
+    const st0 = BufferTankEngine.evalThermoclineAtTime(r, simTimeMin);
+    const G = st0.geom;
 
     // 混凝土基礎平台高 padH 與鋼構支撐高度 legH
     const padH = 0.24;
@@ -1695,92 +1706,106 @@ const Tank3DSim = (() => {
     ringBeam.position.y = padH + legH * 0.55;
     unit.add(ringBeam);
 
-    // ---------------- 3. 內部斜溫層熱流水體 (精確貼合直筒身 + 上下 2:1 橢圓封頭內腔) ----------------
-    const waterR = R * 0.962;
-    const waterMat = new THREE.ShaderMaterial({
-      vertexShader: waterVertexShader,
-      fragmentShader: waterFragmentShader,
-      uniforms: {
-        uBaseY: { value: baseWaterY },
-        uTotalH: { value: totalVesselH },
-        uProfile: { value: getProfileTex() },
-        uProfileN: { value: PROFILE_N },
-        uRipple: { value: 0 },
-        uTimeSec: { value: 0 }
-      },
-      transparent: true,
-      side: THREE.DoubleSide
-    });
+    // ---------------- 3 ~ 5. 內部斜溫層熱流水體、等溫環與八爪散流器（僅在剖面展示槽中生成以優化陣列效能） ----------------
+    if (isCutaway) {
+      // 3. 內部斜溫層熱流水體 (精確貼合直筒身 + 上下 2:1 橢圓封頭內腔)
+      const waterMat = new THREE.ShaderMaterial({
+        vertexShader: waterVertexShader,
+        fragmentShader: waterFragmentShader,
+        uniforms: {
+          uBaseY: { value: baseWaterY },
+          uTotalH: { value: totalVesselH },
+          uProfile: { value: getProfileTex() },
+          uProfileN: { value: PROFILE_N },
+          uRipple: { value: 0 },
+          uTimeSec: { value: 0 }
+        },
+        transparent: true,
+        side: THREE.DoubleSide
+      });
 
-    // 直筒水柱
-    const cylWaterGeo = new THREE.CylinderGeometry(waterR, waterR, shellH, 48, 48, false);
-    const cylWaterMesh = new THREE.Mesh(cylWaterGeo, waterMat);
-    cylWaterMesh.position.y = cylBottomY + shellH / 2;
-    unit.add(cylWaterMesh);
+      // 直筒水柱
+      const cylWaterGeo = new THREE.CylinderGeometry(waterR, waterR, shellH, 48, 48, false);
+      const cylWaterMesh = new THREE.Mesh(cylWaterGeo, waterMat);
+      cylWaterMesh.position.y = cylBottomY + shellH / 2;
+      unit.add(cylWaterMesh);
 
-    // 上封頭水體 (Ellipsoidal Dome)
-    const topWaterGeo = new THREE.SphereGeometry(waterR, 40, 20, 0, Math.PI * 2, 0, Math.PI * 0.5);
-    topWaterGeo.scale(1, (headH * 0.96) / waterR, 1);
-    const topWaterMesh = new THREE.Mesh(topWaterGeo, waterMat);
-    topWaterMesh.position.y = cylTopY;
-    unit.add(topWaterMesh);
+      // 上封頭水體 (Ellipsoidal Dome)
+      const topWaterGeo = new THREE.SphereGeometry(waterR, 40, 20, 0, Math.PI * 2, 0, Math.PI * 0.5);
+      topWaterGeo.scale(1, (headH * 0.96) / waterR, 1);
+      const topWaterMesh = new THREE.Mesh(topWaterGeo, waterMat);
+      topWaterMesh.position.y = cylTopY;
+      unit.add(topWaterMesh);
 
-    // 下封頭水體 (Ellipsoidal Bottom)
-    const botWaterGeo = new THREE.SphereGeometry(waterR, 40, 20, 0, Math.PI * 2, Math.PI * 0.5, Math.PI * 0.5);
-    botWaterGeo.scale(1, (headH * 0.96) / waterR, 1);
-    const botWaterMesh = new THREE.Mesh(botWaterGeo, waterMat);
-    botWaterMesh.position.y = cylBottomY;
-    unit.add(botWaterMesh);
+      // 下封頭水體 (Ellipsoidal Bottom)
+      const botWaterGeo = new THREE.SphereGeometry(waterR, 40, 20, 0, Math.PI * 2, Math.PI * 0.5, Math.PI * 0.5);
+      botWaterGeo.scale(1, (headH * 0.96) / waterR, 1);
+      const botWaterMesh = new THREE.Mesh(botWaterGeo, waterMat);
+      botWaterMesh.position.y = cylBottomY;
+      unit.add(botWaterMesh);
 
-    waterMeshes.push(cylWaterMesh, topWaterMesh, botWaterMesh);
+      waterMeshes.push(cylWaterMesh, topWaterMesh, botWaterMesh);
 
-    // ---------------- 4. 斜溫層 10% / 50% / 90% 等溫環 + 半透明混水層帶 + 厚度標註 ----------------
-    const st0 = BufferTankEngine.evalThermoclineAtTime(r, simTimeMin);
-    const G = st0.geom;
-    const isoDefs = [[0.1, 0x7dd3fc, 0.9], [0.5, 0xfef08a, 1], [0.9, 0xfca5a5, 0.9]];
-    const isoRings = isoDefs.map(([, col, op]) => { const l = polyline(circlePts(64), col, op); unit.add(l); return l; });
-    const layerBand = new THREE.Mesh(new THREE.CylinderGeometry(1, 1, 1, 56, 1, true),
-      new THREE.MeshBasicMaterial({ color: 0xfef08a, transparent: true, opacity: 0.10, side: THREE.DoubleSide, depthWrite: false }));
-    unit.add(layerBand);
-    let layerLabel = null;
-    if (isPrimaryInstrumented) { layerLabel = new THREE.Group(); unit.add(layerLabel); }
-    frontDiscMeshes.push({ isoRings, layerBand, layerLabel, baseWaterY, waterR, G, labelKey: '' });
+      // 4. 斜溫層 10% / 50% / 90% 等溫環 + 半透明混水層帶 + 厚度標註
+      const isoDefs = [[0.1, 0x7dd3fc, 0.9], [0.5, 0xfef08a, 1], [0.9, 0xfca5a5, 0.9]];
+      const isoRings = isoDefs.map(([, col, op]) => { const l = polyline(circlePts(64), col, op); unit.add(l); return l; });
+      const layerBand = new THREE.Mesh(new THREE.CylinderGeometry(1, 1, 1, 56, 1, true),
+        new THREE.MeshBasicMaterial({ color: 0xfef08a, transparent: true, opacity: 0.10, side: THREE.DoubleSide, depthWrite: false }));
+      unit.add(layerBand);
+      let layerLabel = null;
+      if (isPrimaryInstrumented) { layerLabel = new THREE.Group(); unit.add(layerLabel); }
+      frontDiscMeshes.push({ isoRings, layerBand, layerLabel, baseWaterY, waterR, G, labelKey: '' });
 
-    // ---------------- 5. 頂部與底部八爪輻射多孔散流器 (Spargers) + 外部法蘭管嘴與蝶閥 ----------------
-    // 布水器高度由計算引擎的死水容積反算（與斜溫層模型同源），散流支管長度依該高度的封頭內半徑縮放
-    const topSpargerY = baseWaterY + st0.zIn;
-    const botSpargerY = baseWaterY + st0.zOut;
-    const topSpR = Math.max(R * 0.35, G.radiusAt(st0.zIn) * 0.962);
-    const botSpR = Math.max(R * 0.35, G.radiusAt(st0.zOut) * 0.962);
+      // 5. 頂部與底部八爪輻射多孔散流器 (Spargers) + 外部法蘭管嘴與蝶閥
+      // 規範：進出水水平管嘴中心線必須位於直筒身切線（Tangent Line）內側至少 1.4 * nozzleR
+      const topSpargerY = Math.min(cylTopY - nozzleR * 1.4, baseWaterY + st0.zIn);
+      const botSpargerY = Math.max(cylBottomY + nozzleR * 1.4, baseWaterY + st0.zOut);
+      const topSpR = Math.max(R * 0.35, G.radiusAt(Math.max(0, Math.min(G.Ht, topSpargerY - baseWaterY))) * 0.962);
+      const botSpR = Math.max(R * 0.35, G.radiusAt(Math.max(0, Math.min(G.Ht, botSpargerY - baseWaterY))) * 0.962);
 
-    const hotPipeMat = new THREE.MeshStandardMaterial({ color: 0xef4444, metalness: 0.45, roughness: 0.3, emissive: 0x7f1d1d, emissiveIntensity: 0.2 });
-    const coldPipeMat = new THREE.MeshStandardMaterial({ color: 0x0284c7, metalness: 0.45, roughness: 0.3, emissive: 0x0c4a6e, emissiveIntensity: 0.2 });
+      const hotPipeMat = new THREE.MeshStandardMaterial({ color: 0xef4444, metalness: 0.45, roughness: 0.3, emissive: 0x7f1d1d, emissiveIntensity: 0.2 });
+      const coldPipeMat = new THREE.MeshStandardMaterial({ color: 0x0284c7, metalness: 0.45, roughness: 0.3, emissive: 0x0c4a6e, emissiveIntensity: 0.2 });
 
-    // 內部八爪散流管組
-    const topSparger = createRadialSpargerAssembly(topSpR, nozzleR, topSpargerY, true, hotPipeMat);
-    const botSparger = createRadialSpargerAssembly(botSpR, nozzleR, botSpargerY, false, coldPipeMat);
-    unit.add(topSparger, botSparger);
+      // 內部八爪散流管組
+      const topSparger = createRadialSpargerAssembly(topSpR, nozzleR, topSpargerY, true, hotPipeMat);
+      const botSparger = createRadialSpargerAssembly(botSpR, nozzleR, botSpargerY, false, coldPipeMat);
+      unit.add(topSparger, botSparger);
 
-    // 外部左側溫水進水法蘭與蝶閥 (CHWR) + 右側冷水出水法蘭與蝶閥 (CHWS)
-    const topNozzleExt = createExternalNozzleWithValve(R, nozzleR, topSpargerY, true, true, hotPipeMat);
-    const botNozzleExt = createExternalNozzleWithValve(R, nozzleR, botSpargerY, false, false, coldPipeMat);
-    unit.add(topNozzleExt, botNozzleExt);
-    if (isPrimaryInstrumented) {
-      const lh = Math.max(0.3, totalVesselH * 0.055);
-      const inL = textSprite('CHWR 回水進水 →', '#FCA5A5', lh); inL.position.set(-R * 1.95, topSpargerY + lh * 1.3, 0); unit.add(inL);
-      const outL = textSprite('→ CHWS 冰水出水', '#7DD3FC', lh); outL.position.set(R * 1.95, botSpargerY + lh * 1.3, 0); unit.add(outL);
-    }
+      // 外部左側溫水進水法蘭與蝶閥 (CHWR) + 右側冷水出水法蘭與蝶閥 (CHWS)
+      const topNozzleExt = createExternalNozzleWithValve(R, nozzleR, topSpargerY, true, true, hotPipeMat);
+      const botNozzleExt = createExternalNozzleWithValve(R, nozzleR, botSpargerY, false, false, coldPipeMat);
+      unit.add(topNozzleExt, botNozzleExt);
+      if (isPrimaryInstrumented) {
+        const lh = Math.max(0.3, totalVesselH * 0.055);
+        const inL = textSprite('CHWR 回水進水 →', '#FCA5A5', lh); inL.position.set(-R * 1.95, topSpargerY + lh * 1.3, 0); unit.add(inL);
+        const outL = textSprite('→ CHWS 冰水出水', '#7DD3FC', lh); outL.position.set(R * 1.95, botSpargerY + lh * 1.3, 0); unit.add(outL);
+      }
 
-    // 布水器低速射流示蹤：頂部由中心向外徑向布水（溫水）、底部由外向中心集水
-    if (isPrimaryInstrumented) {
-      const nJ = 96, jPos = new Float32Array(nJ * 3), jCol = new Float32Array(nJ * 3), jPh = new Float32Array(nJ);
-      for (let i = 0; i < nJ; i++) jPh[i] = Math.random();
-      const jGeo = new THREE.BufferGeometry();
-      jGeo.setAttribute('position', new THREE.BufferAttribute(jPos, 3));
-      jGeo.setAttribute('color', new THREE.BufferAttribute(jCol, 3));
-      const jPts = new THREE.Points(jGeo, new THREE.PointsMaterial({ size: Math.max(0.05, R * 0.04), vertexColors: true, transparent: true, opacity: 0.95, depthWrite: false }));
-      unit.add(jPts);
-      jetSystems.push({ geo: jGeo, n: nJ, ph: jPh, topY: topSpargerY, botY: botSpargerY, topR: topSpR * 0.85, botR: botSpR * 0.85, armR: nozzleR * 0.55 });
+      // 布水器低速射流示蹤：頂部由中心向外徑向布水（溫水）、底部由外向中心集水
+      if (isPrimaryInstrumented) {
+        const nJ = 96, jPos = new Float32Array(nJ * 3), jCol = new Float32Array(nJ * 3), jPh = new Float32Array(nJ);
+        for (let i = 0; i < nJ; i++) jPh[i] = Math.random();
+        const jGeo = new THREE.BufferGeometry();
+        jGeo.setAttribute('position', new THREE.BufferAttribute(jPos, 3));
+        jGeo.setAttribute('color', new THREE.BufferAttribute(jCol, 3));
+        const jPts = new THREE.Points(jGeo, new THREE.PointsMaterial({ size: Math.max(0.05, R * 0.04), vertexColors: true, transparent: true, opacity: 0.95, depthWrite: false }));
+        unit.add(jPts);
+        jetSystems.push({ geo: jGeo, n: nJ, ph: jPh, topY: topSpargerY, botY: botSpargerY, topR: topSpR * 0.85, botR: botSpR * 0.85, armR: nozzleR * 0.55 });
+      }
+    } else {
+      // 完整閉合外觀槽體（非剖面槽）：外接進出水管嘴 + 垂直液位與溫度指示燈條
+      const topSpargerY = cylTopY - nozzleR * 1.4;
+      const botSpargerY = cylBottomY + nozzleR * 1.4;
+      const hotPipeMat = new THREE.MeshStandardMaterial({ color: 0xef4444, metalness: 0.45, roughness: 0.3 });
+      const coldPipeMat = new THREE.MeshStandardMaterial({ color: 0x0284c7, metalness: 0.45, roughness: 0.3 });
+      const topNozzleExt = createExternalNozzleWithValve(R, nozzleR, topSpargerY, true, true, hotPipeMat);
+      const botNozzleExt = createExternalNozzleWithValve(R, nozzleR, botSpargerY, false, false, coldPipeMat);
+      unit.add(topNozzleExt, botNozzleExt);
+
+      const gaugeGeo = new THREE.CylinderGeometry(0.02, 0.02, shellH * 0.88, 8);
+      const gaugeMesh = new THREE.Mesh(gaugeGeo, new THREE.MeshBasicMaterial({ color: 0x0ea5e9 }));
+      gaugeMesh.position.set(0, cylBottomY + shellH / 2, R * 1.036);
+      unit.add(gaugeMesh);
     }
 
     // ---------------- 6. 雙層金屬保溫桶身與 ASME 2:1 橢圓封頭 (含剖面切口邊緣壁厚) ----------------
@@ -1817,7 +1842,7 @@ const Tank3DSim = (() => {
       innerShellMesh.position.y = cylBottomY + shellH / 2;
       unit.add(innerShellMesh);
 
-      // 切口三層壁厚斷面：碳鋼壓力殼 / PU 保溫發泡 / 鋁皮外護板，及筒身上下端環形切面
+      // 切口三層壁厚斷面：碳鋼壓力殼 / PU 保溫發泡 / 鋁皮外護板，及筒身切面
       const cutMetalMat = new THREE.MeshStandardMaterial({ color: 0xf1f5f9, metalness: 0.95, roughness: 0.12, emissive: 0x1e293b, emissiveIntensity: 0.25, side: THREE.DoubleSide });
       const cutFoamMat = new THREE.MeshStandardMaterial({ color: 0xf59e0b, roughness: 0.7, side: THREE.DoubleSide });
       const rSteel = R * 1.004, rFoam = outerJacketR - R * 0.006;
@@ -1833,6 +1858,38 @@ const Tank3DSim = (() => {
         ring.rotation.x = -Math.PI / 2; ring.position.y = y; unit.add(ring);
       });
 
+      // 上下封頭剖面壁厚弧線邊條（Head Cutaway Rim），封閉橢圓封頭切口斷面
+      const createHeadRimGeo = (isTop, th) => {
+        const segs = 20;
+        const positions = [];
+        const yBase = isTop ? cylTopY : cylBottomY;
+        const sign = isTop ? 1 : -1;
+        for (let i = 0; i < segs; i++) {
+          const a0 = (i / segs) * (Math.PI / 2);
+          const a1 = ((i + 1) / segs) * (Math.PI / 2);
+          const c0 = Math.cos(a0), s0 = Math.sin(a0);
+          const c1 = Math.cos(a1), s1 = Math.sin(a1);
+
+          const in0 = [innerSteelR * c0 * Math.sin(th), yBase + sign * headH * s0, innerSteelR * c0 * Math.cos(th)];
+          const out0 = [outerJacketR * c0 * Math.sin(th), yBase + sign * headH * s0, outerJacketR * c0 * Math.cos(th)];
+          const in1 = [innerSteelR * c1 * Math.sin(th), yBase + sign * headH * s1, innerSteelR * c1 * Math.cos(th)];
+          const out1 = [outerJacketR * c1 * Math.sin(th), yBase + sign * headH * s1, outerJacketR * c1 * Math.cos(th)];
+
+          positions.push(...in0, ...out0, ...out1);
+          positions.push(...in0, ...out1, ...in1);
+        }
+        const geo = new THREE.BufferGeometry();
+        geo.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+        geo.computeVertexNormals();
+        return geo;
+      };
+
+      [shellStart, shellStart + shellArc].forEach(th => {
+        const topRimMesh = new THREE.Mesh(createHeadRimGeo(true, th), cutMetalMat);
+        const botRimMesh = new THREE.Mesh(createHeadRimGeo(false, th), cutMetalMat);
+        unit.add(topRimMesh, botRimMesh);
+      });
+
       // 前側透明玻璃觀察護罩線條 (讓切口仍有立體輪廓感)
       const frontGlassGeo = new THREE.CylinderGeometry(R, R, shellH, 28, 1, true, shellStart + shellArc, Math.PI * 2 - shellArc);
       const frontGlassMat = new THREE.MeshPhysicalMaterial({
@@ -1843,14 +1900,16 @@ const Tank3DSim = (() => {
       unit.add(frontGlassMesh);
     }
 
-    // 上下 ASME 2:1 橢圓封頭外殼（SphereGeometry 的 phi 起點比 CylinderGeometry 的 theta 多 π/2，需補正剖面才會與筒身對齊）
-    const topCapGeo = new THREE.SphereGeometry(outerJacketR, 44, 20, shellStart + Math.PI / 2, shellArc, 0, Math.PI * 0.5);
+    // 上下 ASME 2:1 橢圓封頭外殼（以 (0, shellArc) 建立並經 rotateY 對齊 CylinderGeometry 切口）
+    const topCapGeo = new THREE.SphereGeometry(outerJacketR, 44, 20, 0, shellArc, 0, Math.PI * 0.5);
+    topCapGeo.rotateY(shellStart + Math.PI / 2);
     topCapGeo.scale(1, headH / outerJacketR, 1);
     const topCapMesh = new THREE.Mesh(topCapGeo, jacketMat);
     topCapMesh.position.y = cylTopY;
     unit.add(topCapMesh);
 
-    const botCapGeo = new THREE.SphereGeometry(outerJacketR, 44, 20, shellStart + Math.PI / 2, shellArc, Math.PI * 0.5, Math.PI * 0.5);
+    const botCapGeo = new THREE.SphereGeometry(outerJacketR, 44, 20, 0, shellArc, Math.PI * 0.5, Math.PI * 0.5);
+    botCapGeo.rotateY(shellStart + Math.PI / 2);
     botCapGeo.scale(1, headH / outerJacketR, 1);
     const botCapMesh = new THREE.Mesh(botCapGeo, jacketMat);
     botCapMesh.position.y = cylBottomY;
@@ -1886,7 +1945,7 @@ const Tank3DSim = (() => {
     if (isPrimaryInstrumented) {
       // 8A. 下部檢修人孔 (DN500 Hinged Manway on Rear-Right Shell)
       const mwGroup = new THREE.Group();
-      const mwRadius = Math.max(0.24, Math.min(0.32, R * 0.22));
+      const mwRadius = Math.max(0.18, Math.min(0.30, shellH * 0.16, R * 0.22));
       const mwNeck = new THREE.Mesh(new THREE.CylinderGeometry(mwRadius, mwRadius, 0.18, 24), innerSteelMat);
       mwNeck.rotation.z = Math.PI / 2;
       const mwCover = new THREE.Mesh(new THREE.CylinderGeometry(mwRadius * 1.22, mwRadius * 1.22, 0.045, 24), jacketMat);
@@ -1898,7 +1957,8 @@ const Tank3DSim = (() => {
       mwGroup.add(mwNeck, mwCover, mwHandle);
 
       const mwAng = -Math.PI * 0.65;
-      mwGroup.position.set(Math.sin(mwAng) * outerJacketR, cylBottomY + Math.min(1.1, shellH * 0.25), Math.cos(mwAng) * outerJacketR);
+      const mwCenterY = cylBottomY + Math.max(mwRadius * 1.6, Math.min(1.0, shellH * 0.28));
+      mwGroup.position.set(Math.sin(mwAng) * outerJacketR, mwCenterY, Math.cos(mwAng) * outerJacketR);
       mwGroup.rotation.y = mwAng - Math.PI / 2;
       unit.add(mwGroup);
 
@@ -1957,6 +2017,20 @@ const Tank3DSim = (() => {
         ladderGroup.add(rung);
       }
 
+      // 護籠爬梯立桿與桶壁角鋼固定爪（Stand-off Brackets 每隔 ~1.8m）
+      const bracketStep = 1.8;
+      const bracketStartY = cylBottomY + 0.3;
+      const bracketEndY = cylTopY + 0.2;
+      for (let by = bracketStartY; by <= bracketEndY; by += bracketStep) {
+        const bL = new THREE.Mesh(new THREE.BoxGeometry(0.22, 0.032, 0.032), yellowSteelMat);
+        bL.position.set(0.11, by, -railW / 2);
+        const bR = new THREE.Mesh(new THREE.BoxGeometry(0.22, 0.032, 0.032), yellowSteelMat);
+        bR.position.set(0.11, by, railW / 2);
+        const bPad = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.08, railW + 0.06), yellowSteelMat);
+        bPad.position.set(0.22, by, 0);
+        ladderGroup.add(bL, bR, bPad);
+      }
+
       // 防墜護籠圓箍 (Safety Cage Hoops starting above 2.2m)
       const cageStartY = padH + 2.2;
       const cageR = 0.38;
@@ -1993,7 +2067,7 @@ const Tank3DSim = (() => {
 
     // ---------------- 9. 內部平推熱流流線粒子系統 (Streamline Thermal Particles) ----------------
     // 平推示蹤：每顆粒子以「容積座標 s」隨單槽流量 Q 下移，半徑依所在高度的內徑縮放（封頭內自然收斂），顏色取自連續溫度剖面
-    if (isPrimaryInstrumented) {
+    if (isPrimaryInstrumented && isCutaway) {
       const pCount = 320;
       const sOut = G.volAt(st0.zOut), sIn = G.volAt(st0.zIn);
       const pS = new Float32Array(pCount), pRn = new Float32Array(pCount), pAng = new Float32Array(pCount);
@@ -2052,8 +2126,8 @@ const Tank3DSim = (() => {
     const gridHelper = new THREE.GridHelper(gridSpan, 24, 0x38bdf8, 0x1e293b);
     tankGroup.add(gridHelper);
 
-    // 樓層高程參考環線 (每 3.5m 1層樓)
-    const floors = Math.min(12, Math.max(1, Math.ceil((totalVesselH + 1) / BufferTankEngine.FLOOR_HEIGHT)));
+    // 樓層高程參考環線 (每 3.5m 1層樓，依含支腿安裝總淨高計算)
+    const floors = Math.min(12, Math.max(1, Math.ceil(r.dims.overallH / BufferTankEngine.FLOOR_HEIGHT)));
     const floorLineMat = new THREE.LineBasicMaterial({ color: 0x334155, transparent: true, opacity: 0.5 });
     for (let f = 1; f <= floors; f++) {
       const fy = f * BufferTankEngine.FLOOR_HEIGHT;
@@ -2354,9 +2428,10 @@ const Tank3DSim = (() => {
 
   function setViewMode(mode) {
     viewMode = mode;
-    $('btnViewCutaway').classList.toggle('active', mode === 'cutaway');
-    $('btnViewExterior').classList.toggle('active', mode === 'exterior');
-    $('btnViewArray').classList.toggle('active', mode === 'array');
+    const bCut = $('btnViewCutaway'), bExt = $('btnViewExterior'), bArr = $('btnViewArray');
+    if (bCut) bCut.classList.toggle('active', mode === 'cutaway');
+    if (bExt) bExt.classList.toggle('active', mode === 'exterior');
+    if (bArr) bArr.classList.toggle('active', mode === 'array');
     if (currentResult && currentResult.valid) rebuildSceneGeometry(currentResult);
   }
 
@@ -2380,6 +2455,8 @@ const Tank3DSim = (() => {
     syncWithCalculation,
     togglePlay,
     setTime,
+    getTime: () => simTimeMin,
+    renderNow: () => { if (renderer && scene && camera) renderer.render(scene, camera); },
     jumpToTarget,
     onSliderInput,
     setSpeed,
@@ -2413,7 +2490,7 @@ const MODE_TEXT = {
   shared: { desc: '全廠冰機共用一組集管水槽，負載填「全廠總冷負載」，各槽可跨冰機互相支援且無單台整數進位浪費。', load: '系統總冷負載 (全廠)', loadHint: '緩衝期間全廠仍要被帶走的總熱量', n: '冰機運轉台數', nHint: '用於防短循環水量檢核與同基準對照' },
   isolated: { desc: '每台冰機各自配獨立緩衝槽，負載填「單台冰機冷負載」，先算單台配槽數（無條件進位）再乘以台數。', load: '單台冰機冷負載', loadHint: '單台冰機在緩衝期間要帶走的熱量', n: '冰機台數', nHint: '全廠總量 = 單台配置 × 冰機台數' }
 };
-const FIELD_NAMES = { load: '冷負載', chillerN: '冰機台數', durationMin: '緩衝時間', deltaT: '可利用溫差', moduleSize: '單槽容積', hdRatio: '高徑比', tankEffPct: '有效利用率', marginPct: '安全餘裕', minVolIndex: '最小系統水量', fluidCp: '比熱', fluidRho: '密度' };
+const FIELD_NAMES = { load: '冷負載', chillerN: '冰機台數', durationMin: '緩衝時間', deltaT: '可利用溫差', supplyTemp: '供水溫度', moduleSize: '單槽容積', hdRatio: '高徑比', tankEffPct: '有效利用率', marginPct: '安全餘裕', minVolIndex: '最小系統水量', fluidCp: '比熱', fluidRho: '密度' };
 const LV = { pass: 'PASS', warn: 'WARNING', fail: 'FAIL' };
 
 let lastResult = null;
@@ -2561,9 +2638,18 @@ function buildChecks(r) {
     d: od + 1e-9 >= t ? '單槽隔離檢修時仍可 100% 滿足目標緩衝時間' : r.count === 1 ? '目前僅配置 1 槽，維修時無緩衝能力；若需線上維護，建議改用較小單槽配 2 槽以上' : '單槽維修期間緩衝時間略低於目標；若要求 N+1 備援可再加 1 槽' });
 
   const vzOk = r.pistonVelMmin <= 1.2;
-  c.push({ id: 'chk-thermocline', s: vzOk ? 'pass' : 'warn', t: '斜溫層熱流下移速度與布水器穩定度',
+  const nozOk = r.nozzleSpec.actualVel <= 2.2;
+  const thermOk = vzOk && nozOk;
+  c.push({ id: 'chk-thermocline', s: thermOk ? 'pass' : 'warn', t: '斜溫層熱流下移速度與布水器穩定度',
     v: `平推速度 ${fx(r.pistonVelMmin, 2)} m/min（${fx(r.pistonVelMms, 1)} mm/s）· 管嘴 DN${r.nozzleSpec.dn}（流速 ${fx(r.nozzleSpec.actualVel, 2)} m/s）`,
-    d: vzOk ? '截面下移速度適中，配合頂部與底部八爪多孔散流器（Sparger）可穩定維持自然溫度分層' : '單槽截面下移流速偏快（>1.2 m/min），入口散流器需特別強化防衝擊擋板或改採較低 H/D、增加並聯槽數' });
+    d: !vzOk ? '單槽截面下移流速偏快（>1.2 m/min），入口散流器需特別強化防衝擊擋板或改採較低 H/D、增加並聯槽數' : !nozOk ? `管嘴流速偏高（${fx(r.nozzleSpec.actualVel, 2)} m/s > 2.2 m/s），建議放大管嘴口徑或增加並聯槽數分流` : '截面下移速度適中且管嘴流速合規，配合頂部與底部八爪多孔散流器（Sparger）可穩定維持自然溫度分層' });
+
+  // 流體冰點防呆檢核：純水供水 < 4°C 時發出警示
+  const isWater = raw.fluid === 'water';
+  const freezeWarn = isWater && r.supplyT < 4;
+  c.push({ id: 'chk-freeze', s: freezeWarn ? 'warn' : 'pass', t: '流體冰點與防凍安全檢核',
+    v: `流體：${r.fluid.name} · 供水溫度 ${f1(r.supplyT)}°C（冰點 ${isWater ? '0.0' : '< -10'}°C）`,
+    d: freezeWarn ? '純水在低於 4°C 時產生密度反轉且具盤管結冰凍裂風險，強烈建議提高供水溫度或改用乙二醇 / 丙二醇防凍冰水溶液' : isWater ? '供水溫度高於 4°C 密度反轉點，純水運轉無凍結與異常對流風險' : '已選用防凍冰水溶液，低溫抗凍性能優良' });
 
   c.push({ id: 'chk-count', s: r.count <= BufferTankEngine.MAX_PREFERRED_COUNT ? 'pass' : 'warn', t: '槽數與管閥複雜度',
     v: `${r.count} 槽 × ${fx(raw.moduleSize)} m³${r.isolated ? `（每台），全廠共 ${r.plantCount} 槽` : ''}`,
@@ -2578,7 +2664,7 @@ function buildChecks(r) {
 
   const d = r.dims, hd = raw.hdRatio;
   c.push({ id: 'chk-shape', s: hd < 1 ? 'warn' : 'pass', t: 'ASME 容器幾何與現場安裝',
-    v: `單槽 Ø${f1(d.D)} m × 直筒 ${f1(d.shellH)} m（含上下封頭總高 ${f1(d.totalVesselH)} m，約 ${fx(d.floors, 1)} 層樓）`,
+    v: `單槽 Ø${f1(d.D)} m × 直筒 ${f1(d.shellH)} m（容器本體總高 ${f1(d.totalVesselH)} m · 含支腿安裝總淨高 ${f1(d.overallH)} m，約 ${fx(d.floors, 1)} 層樓）`,
     d: (hd < 1 ? '高徑比小於 1，冷溫水不易維持自然溫度分層，有效利用率可能下降；' : '') +
       (raw.moduleSize > 100 ? '單槽大於 100 m³ 通常為現場焊接立式鋼槽，需配合結構基礎與保溫工程' : '單槽 ≤ 100 m³ 可採工廠預製 ASME 壓力容器吊裝') });
 
@@ -2593,7 +2679,7 @@ function buildSteps(r) {
     ['3. 換算水槽實體需求（÷ 有效利用率）', `V_req = ${f1(r.grossVol)} ÷ ${fx(raw.tankEffPct)}% = ${f1(r.tankReq)} m³`],
     ['4. 加計設計安全餘裕 → 設計需求容積', `V_target = ${f1(r.tankReq)} × (1 + ${fx(raw.marginPct)}%) = ${f1(r.targetVol)} m³`],
     ['5. 選定單槽規格與槽數進位', `N_tank = ceil(${f1(r.targetVol)} ÷ ${fx(raw.moduleSize)}) = ${r.count} 槽 → 裝設總容積 ${fx(r.installed, 1)} m³（有效冷水 ${f1(r.effectiveInstalled)} m³）`],
-    ['6. ASME 2:1 橢圓封頭單槽外形與斜溫層流速', `D = ∛(4V ÷ (π × H/D)) = ${fx(r.dims.D, 2)} m，直筒高 ${fx(r.dims.shellH, 2)} m，總高 ${fx(r.dims.totalVesselH, 2)} m；平推速度 v_z = ${fx(r.pistonVelMmin, 2)} m/min`],
+    ['6. ASME 2:1 橢圓封頭單槽外形與斜溫層流速', `D = ∛(4V ÷ (π × H/D)) = ${fx(r.dims.D, 2)} m，直筒高 ${fx(r.dims.shellH, 2)} m，本體總高 ${fx(r.dims.totalVesselH, 2)} m（含支腿安裝總淨高 ${fx(r.dims.overallH, 2)} m）；平推速度 v_z = ${fx(r.pistonVelMmin, 2)} m/min · 管嘴 DN${r.nozzleSpec.dn}（${fx(r.nozzleSpec.actualVel, 2)} m/s）`],
     ['7. 實際可撐緩衝時間', `t_actual = (${fx(r.installed, 1)} × ${fx(raw.tankEffPct)}%) × ${f0(fl.rho)} × ${fx(fl.cp, 3)} × ${fx(raw.deltaT)} ÷ ${f0(raw.load)} ÷ 60 = ${f1(r.achievedMinutes)} 分鐘`]
   ];
   if (r.isolated) s.push(['8. 全廠總計（逐台獨立 × 冰機台數）', `${r.count} 槽 × ${r.N} 台 = 全廠 ${r.plantCount} 槽，總裝設容積 ${fx(r.plantInstalled, 1)} m³`]);
@@ -2657,6 +2743,14 @@ function renderWaterfallAndChart(r) {
   $('chartDischarge').innerHTML = `<svg id="svgDischarge" viewBox="0 0 ${W} ${H}" role="img" aria-label="緩衝水槽冷水放電曲線">${g}</svg>`;
 
   const svg = $('svgDischarge'), line = $('chLineD'), tip = $('tipDischarge');
+  let savedSimTime = null;
+  let lockedSimTime = false;
+
+  svg.onmouseenter = () => {
+    savedSimTime = (typeof Tank3DSim !== 'undefined' && Tank3DSim.getTime) ? Tank3DSim.getTime() : 0;
+    lockedSimTime = false;
+  };
+
   svg.onmousemove = e => {
     const rect = svg.getBoundingClientRect();
     const relX = ((e.clientX - rect.left) / rect.width) * W;
@@ -2665,11 +2759,28 @@ function renderWaterfallAndChart(r) {
     const remAll = Math.max(0, r.effectiveInstalled - t / r.minPerM3);
     const remDown = Math.max(0, effOneDown - t / r.minPerM3);
     line.setAttribute('x1', cx); line.setAttribute('x2', cx); line.setAttribute('opacity', '0.75');
-    tip.innerHTML = `<b>t = ${f1(t)} 分鐘 (已同步至 3D 模型)</b><br>剩餘有效冷水：${f1(remAll)} m³<br>N-1 剩餘冷水：${f1(remDown)} m³<br>已吸收熱量：${f0(Math.min(t, r.achievedMinutes) * 60 * raw.load)} kJ`;
+    tip.innerHTML = `<b>t = ${f1(t)} 分鐘 (3D 預覽中 · 點擊鎖定)</b><br>剩餘有效冷水：${f1(remAll)} m³<br>N-1 剩餘冷水：${f1(remDown)} m³<br>已吸收熱量：${f0(Math.min(t, r.achievedMinutes) * 60 * raw.load)} kJ`;
     tip.classList.add('show');
     Tank3DSim.setTime(t);
   };
-  svg.onmouseleave = () => { line.setAttribute('opacity', '0'); tip.classList.remove('show'); };
+
+  svg.onclick = e => {
+    const rect = svg.getBoundingClientRect();
+    const relX = ((e.clientX - rect.left) / rect.width) * W;
+    const cx = Math.max(P.l, Math.min(W - P.r, relX));
+    const t = ((cx - P.l) / (W - P.l - P.r)) * xMax;
+    Tank3DSim.setTime(t);
+    lockedSimTime = true;
+    toast(`已鎖定 3D 模擬時間至 t = ${f1(t)} min`);
+  };
+
+  svg.onmouseleave = () => {
+    line.setAttribute('opacity', '0');
+    tip.classList.remove('show');
+    if (!lockedSimTime && savedSimTime !== null) {
+      Tank3DSim.setTime(savedSimTime);
+    }
+  };
 }
 
 function renderTimeBar(r) {
@@ -2685,9 +2796,9 @@ function renderTimeBar(r) {
   setText('tbarCaption', `水槽獨立可撐 ${f1(r.achievedMinutes)} 分鐘（循環流量 ${f0(r.flowM3h)} m³/h）`);
 
   const d = r.dims, FH = BufferTankEngine.FLOOR_HEIGHT;
-  const floors = Math.max(1, Math.ceil(d.H / FH));
+  const floors = Math.max(1, Math.ceil(d.overallH / FH));
   const sc = Math.min(16, 130 / (floors * FH));
-  const w = Math.max(12, d.D * sc), hBox = d.H * sc;
+  const w = Math.max(12, d.D * sc), hBox = d.overallH * sc;
   const show = Math.min(r.count, Math.max(1, Math.floor(560 / (w + 7))), 16);
   let fl = '';
   for (let k = 1; k <= floors; k++) fl += `<div class="floor" style="bottom:${k * FH * sc}px"><span>${k}F</span></div>`;
@@ -2696,7 +2807,7 @@ function renderTimeBar(r) {
   if (r.count > show) tk += `<span class="tank-more">… 共 ${r.count} 槽</span>`;
   if (r.isolated) tk += `<span class="tank-x">× ${r.N} 台冰機</span>`;
   $('tankRow').innerHTML = `<div class="tank-stage" style="height:${floors * FH * sc + 2}px">${fl}${tk}</div>` +
-    `<div class="tank-cap">單槽外徑約 <b>Ø${f1(d.D)} m × 直筒 ${f1(d.shellH)} m（總高 ${f1(d.totalVesselH)} m）</b>（約 ${fx(d.floors, 1)} 層樓高，每層以 ${FH} m 標示）</div>`;
+    `<div class="tank-cap">單槽外徑約 <b>Ø${f1(d.D)} m × 直筒 ${f1(d.shellH)} m（容器本體總高 ${f1(d.totalVesselH)} m · 含支腿安裝總淨高 ${f1(d.overallH)} m）</b>（約 ${fx(d.floors, 1)} 層樓高，每層以 ${FH} m 標示）</div>`;
 
   $('tbarLegend').innerHTML =
     `<span><i style="background:var(--water-deep)"></i>水槽有效冷水 <b>${f1(r.effectiveInstalled)}</b> m³（裝設總容積 ${fx(r.installed, 1)} m³）</span>` +
@@ -2845,6 +2956,9 @@ function fallbackCopy(t, done) {
 
 function printReport() {
   document.querySelectorAll('details').forEach(d => { d.dataset.wasOpen = d.open ? '1' : ''; d.open = true; });
+  if (typeof Tank3DSim !== 'undefined' && Tank3DSim.renderNow) {
+    Tank3DSim.renderNow();
+  }
   window.print();
 }
 window.addEventListener('afterprint', () => { document.querySelectorAll('details').forEach(d => { if (d.dataset.wasOpen !== undefined) d.open = d.dataset.wasOpen === '1'; }); });
@@ -2990,6 +3104,28 @@ function runRegressionTests() {
     return near(d.headDepth, d.D * 0.25, 1e-6) && d.totalVesselH > d.shellH;
   });
   T('1000 m³、H/D=2 約 Ø8.60 × 等效高 17.21 m', () => { const d = E.tankDims(1000, 2); return near(d.D, 8.60, 0.01) && near(d.H, 17.21, 0.01); });
+
+  // 4 項新增工程驗算：低高徑比容積守恆、流體冰點檢核、含支腿總高檢核、大管嘴流速檢核
+  T('低高徑比容積守恆：H/D = 0.8 時，封頭幾何總容積精確等於標稱容積 25 m³', () => {
+    const d08 = E.tankDims(25, 0.8);
+    const g08 = E.vesselGeom(d08);
+    return near(g08.Vtot, 25, 1e-6);
+  });
+  T('流體冰點安全檢核：純水供水 < 4°C 時觸發防凍警告，合格時為 PASS', () => {
+    const rFreeze = run({ supplyTemp: 2, fluid: 'water' });
+    const chkWarn = buildChecks(rFreeze).find(c => c.id === 'chk-freeze');
+    const chkPass = buildChecks(r0).find(c => c.id === 'chk-freeze');
+    return chkWarn && chkWarn.s === 'warn' && chkPass && chkPass.s === 'pass';
+  });
+  T('含支腿總淨高檢核：overallH = padH + legH + totalVesselH + 0.35m，樓層高程依淨高計算', () => {
+    const d = r0.dims;
+    const expOverall = d.padH + d.legH + d.totalVesselH + 0.35;
+    return near(d.overallH, expOverall, 1e-6) && near(d.floors, expOverall / E.FLOOR_HEIGHT, 1e-6);
+  });
+  T('大管嘴流速檢核：大流量 6000 m³/h 自動擴充至 DN1000 且實際流速 ≤ 2.2 m/s', () => {
+    const spec = E.selectNozzleDN(6000);
+    return spec.dn === 1000 && spec.actualVel <= 2.2;
+  });
 
   const failed = results.filter(x => !x.pass);
   return { total: results.length, failed: failed.length, results };
