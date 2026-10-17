@@ -3363,6 +3363,104 @@ function sizeCduToDeratedN1(S) {
   });
 })();
 
+// ── Round 6 P1-CAT: 設備型錄分類與 AHRI 雙二次曲線設定 ──
+(function () {
+  const ctx = freshCtx();
+  const { CatalogManager } = ctx;
+
+  test('R6 P1-CAT Carrier 30XA 1000kW has air_cooled and air_cooled_screw preset', () => {
+    const carrier = CatalogManager.get('chiller_air').find(c => c.model === 'Carrier 30XA 1000kW');
+    assert(carrier, 'Carrier 30XA 1000kW must be in chiller_air catalog');
+    assert(carrier.cop_curve?.preset === 'air_cooled_screw', 'cop_curve preset must be air_cooled_screw');
+  });
+
+  test('R6 P1-CAT CatalogManager routes dry_cooler correctly from cooling_tower files', () => {
+    const dcList = CatalogManager.get('dry_cooler');
+    assert(dcList && dcList.length >= 3, 'dry_cooler catalog must have entries');
+    const gunther = dcList.find(c => c.model && c.model.includes('Güntner'));
+    assert(gunther, 'Güntner dry coolers must be routed to dry_cooler category');
+  });
+})();
+
+// ── Round 6 P1-XLS: Excel 計算書匯出與月度數據 ──
+(function () {
+  const ctx = freshCtx();
+  const { AppStore: S } = ctx;
+
+  test('R6 P1-XLS AnnualRunner monthlyPue returns totalMwh and itMwh', () => {
+    S.calculate();
+    const monthlyPue = S.state.results.monthlyPue;
+    assert(Array.isArray(monthlyPue) && monthlyPue.length === 12, 'monthlyPue must have 12 months');
+    monthlyPue.forEach(m => {
+      assert(typeof m.totalMwh === 'number' && m.totalMwh > 0, 'month must have totalMwh');
+      assert(typeof m.itMwh === 'number' && m.itMwh > 0, 'month must have itMwh');
+    });
+  });
+})();
+
+// ── Round 6 P1-UI: Dashboard 狀態卡片解除硬編碼與釋出項目 ──
+(function () {
+  const fs = require('fs');
+  const path = require('path');
+
+  test('R6 P1-UI view_dashboard.js has no hardcoded 45°C ⇄ 57°C or 20°C ⇄ 30°C', () => {
+    const code = fs.readFileSync(path.resolve(__dirname, '../../public/Data center Cal/js/views/view_dashboard.js'), 'utf8');
+    assert(!code.includes('>45°C ⇄ 57°C<'), 'Must not hardcode 45°C ⇄ 57°C');
+    assert(!code.includes('>20°C ⇄ 30°C<'), 'Must not hardcode 20°C ⇄ 30°C');
+    assert(!code.includes('allCduSystems.length * 4'), 'Must not hardcode CDU count to length * 4');
+    assert(!code.includes('allFwSystems.length * 8'), 'Must not hardcode FW fan count to length * 8');
+  });
+
+  test('R6 Release Items: index.html and app.js use V33', () => {
+    const html = fs.readFileSync(path.resolve(__dirname, '../../public/Data center Cal/index.html'), 'utf8');
+    assert(html.includes('v33</span>'), 'index.html must display v33 badge');
+    const appJs = fs.readFileSync(path.resolve(__dirname, '../../public/Data center Cal/js/app.js'), 'utf8');
+    assert(appJs.includes('(V33)'), 'app.js must declare V33');
+  });
+})();
+
+// ── Round 6 Physics & PUE Benchmarks: 高雄預設與 17.95MW 專案 ──
+(function () {
+  const fs = require('fs');
+  const path = require('path');
+  const ctx = freshCtx();
+  const { AppStore: S } = ctx;
+
+  test('R6 Benchmark: Default project Kaohsiung 4.5% loss PUE is 1.183 ± 0.005', () => {
+    S.state.site.selectedCity = '高雄 (Kaohsiung)';
+    const data = ctx.BUILTIN_WEATHER_DATA['高雄 (Kaohsiung)'];
+    S.state.site.hourly = data.hourlyData;
+    S.state.site.monthlyStats = data.monthlyStats;
+    S.state.site.designConditions = data.designConditions;
+    S.state.site.stationSource = 'builtin';
+    S.state.facilityElectricalLossPct = 4.5;
+    S.calculate();
+    const pue = S.state.results.overall.annualPue;
+    assert(Math.abs(pue - 1.183) < 0.005, `Default Kaohsiung 4.5% loss PUE must be ~1.183, got ${pue}`);
+  });
+
+  test('R6 Benchmark: Default project Kaohsiung 0.0% loss PUE is 1.124 ± 0.005', () => {
+    S.state.facilityElectricalLossPct = 0.0;
+    S.calculate();
+    const pue = S.state.results.overall.annualPue;
+    assert(Math.abs(pue - 1.124) < 0.005, `Default Kaohsiung 0% loss PUE must be ~1.124, got ${pue}`);
+  });
+
+  const projPath = path.resolve(__dirname, '../../public/Data center Cal/projects/PUE_Project_高雄 (Kaohsiung)_20260901.json');
+  if (fs.existsSync(projPath)) {
+    test('R6 Benchmark: 17.95 MW Kaohsiung project 4.5% loss PUE is 1.164 ± 0.005 and DU-01 is 1.128 ± 0.005', () => {
+      const projRaw = fs.readFileSync(projPath, 'utf8');
+      S.deserializeProject(projRaw);
+      S.state.facilityElectricalLossPct = 4.5;
+      S.calculate();
+      const pue = S.state.results.overall.annualPue;
+      const du1Pue = S.state.results.byDu[0]?.annualPue;
+      assert(Math.abs(pue - 1.164) < 0.005, `17.95MW project PUE must be ~1.164, got ${pue}`);
+      assert(Math.abs(du1Pue - 1.128) < 0.005, `DU-01 PUE must be ~1.128, got ${du1Pue}`);
+    });
+  }
+})();
+
 console.log(`\n${passCount} passed, ${failCount} failed, ${skipCount} skipped`);
 process.exit(failCount > 0 ? 1 : 0);
 

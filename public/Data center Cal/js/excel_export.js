@@ -205,8 +205,11 @@
                 s3.getRow(s3.rowCount).font = fontHeader;
                 s3.getRow(s3.rowCount).fill = fillDark;
 
-                const mode1DbMax = overrides.nvidia_dsx_mode1_db_max_c || 34.8;
-                const mode2DbMax = overrides.nvidia_dsx_mode2_db_max_c || 40.5;
+                const dom = (typeof window !== 'undefined' && window.AppStore?.dominantCduThresholds)
+                    ? window.AppStore.dominantCduThresholds()
+                    : { thresholds: { full: 33.0, mech: 48.0 } };
+                const mode1DbMax = Number.isFinite(dom?.thresholds?.full) ? dom.thresholds.full : (overrides.nvidia_dsx_mode1_db_max_c || 33.0);
+                const mode2DbMax = Number.isFinite(dom?.thresholds?.mech) ? dom.thresholds.mech : (overrides.nvidia_dsx_mode2_db_max_c || 48.0);
 
                 s3.addRow(['Mode 1 (100% 全直冷)', `DB ≤ ${mode1DbMax}°C`, fc.freeHours, `${fc.freeHoursPct}%`, '乾冷器直冷散熱，冰水主機 100% 停機']);
                 s3.addRow(['Mode 2 (部分輔助冷卻)', `${mode1DbMax}°C ~ ${mode2DbMax}°C`, fc.trimHours, `${fc.trimHoursPct}%`, '乾冷器預冷 + 冰水主機補足溫差']);
@@ -357,93 +360,103 @@
                 s5.getRow(1).fill = fillIndigo;
 
                 let s5Row = 2;
+                const coolingUnits = [];
                 halls.forEach(h => {
                     (h.dus || []).forEach(d => {
-                        const plant = d.plantDesign || {};
-                        const cduSizing = plant.cduSystem?.sizing || [];
-                        const fwSizing = plant.fanwallSystem?.sizing || [];
+                        coolingUnits.push({ hallName: h.name, unitName: d.name, plant: d.plantDesign || {} });
+                    });
+                });
+                (state.corePods || []).filter(p => p.enabled !== false).forEach(p => {
+                    coolingUnits.push({ hallName: 'CorePOD機房', unitName: p.name, plant: p.plantDesign || {} });
+                });
 
-                        cduSizing.forEach(item => {
-                            const reqKw = item.requiredKw ?? 0;
-                            const unitCapKw = item.unitCapKw ?? 0;
-                            const qty = item.selectedQty ?? 0;
-                            const effectiveCap = Math.max(0, qty - 1) * unitCapKw;
-                            const isConfigured = qty > 0;
-                            const isPass = isConfigured && effectiveCap >= reqKw;
-                            const r = s5.addRow([
-                                h.name,
-                                d.name,
-                                'CDU液冷系統',
-                                item.label,
-                                item.selectedModel || '（尚未選型）',
-                                reqKw,
-                                unitCapKw,
-                                qty,
-                                { formula: `G${s5Row}*H${s5Row}` },
-                                { formula: `MAX(0,(H${s5Row}-1))*G${s5Row}` },
-                                { formula: `IF(F${s5Row}>0, (J${s5Row}/F${s5Row}-1)*100, 0)` },
-                                { formula: `IF(H${s5Row}=0, "⬜ 尚未選型", IF(J${s5Row}>=F${s5Row}, "✅ 滿足 N+1", "❌ 容量不足"))` }
-                            ]);
-                            r.getCell(8).alignment = { horizontal: 'center' };
-                            r.getCell(9).font = fontFormula;
-                            r.getCell(10).font = fontFormula;
-                            r.getCell(11).font = fontFormula;
-                            r.getCell(12).font = fontBold;
-                            r.getCell(6).numFmt = '#,##0.0';
-                            r.getCell(7).numFmt = '#,##0.0';
-                            r.getCell(9).numFmt = '#,##0.0';
-                            r.getCell(10).numFmt = '#,##0.0';
-                            r.getCell(11).numFmt = '+0.0%;-0.0%;0.0%';
-                            const statusFill = !isConfigured
-                                ? { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF1F5F9' } }
-                                : (isPass
-                                    ? { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFECFDF5' } }
-                                    : { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFEF2F2' } });
-                            r.getCell(12).fill = statusFill;
-                            for (let c = 1; c <= 12; c++) r.getCell(c).border = borderThin;
-                            s5Row++;
-                        });
+                coolingUnits.forEach(u => {
+                    const plant = u.plant || {};
+                    const cduSizing = plant.cduSystem?.sizing || [];
+                    const fwSizing = plant.fanwallSystem?.sizing || [];
 
-                        fwSizing.forEach(item => {
-                            const reqKw = item.requiredKw ?? 0;
-                            const unitCapKw = item.unitCapKw ?? 0;
-                            const qty = item.selectedQty ?? 0;
-                            const effectiveCap = Math.max(0, qty - 1) * unitCapKw;
-                            const isConfigured = qty > 0;
-                            const isPass = isConfigured && effectiveCap >= reqKw;
-                            const r = s5.addRow([
-                                h.name,
-                                d.name,
-                                '氣冷排熱系統',
-                                item.label,
-                                item.selectedModel || '（尚未選型）',
-                                reqKw,
-                                unitCapKw,
-                                qty,
-                                { formula: `G${s5Row}*H${s5Row}` },
-                                { formula: `MAX(0,(H${s5Row}-1))*G${s5Row}` },
-                                { formula: `IF(F${s5Row}>0, (J${s5Row}/F${s5Row}-1)*100, 0)` },
-                                { formula: `IF(H${s5Row}=0, "⬜ 尚未選型", IF(J${s5Row}>=F${s5Row}, "✅ 滿足 N+1", "❌ 容量不足"))` }
-                            ]);
-                            r.getCell(8).alignment = { horizontal: 'center' };
-                            r.getCell(9).font = fontFormula;
-                            r.getCell(10).font = fontFormula;
-                            r.getCell(11).font = fontFormula;
-                            r.getCell(12).font = fontBold;
-                            r.getCell(6).numFmt = '#,##0.0';
-                            r.getCell(7).numFmt = '#,##0.0';
-                            r.getCell(9).numFmt = '#,##0.0';
-                            r.getCell(10).numFmt = '#,##0.0';
-                            r.getCell(11).numFmt = '+0.0%;-0.0%;0.0%';
-                            const statusFill = !isConfigured
-                                ? { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF1F5F9' } }
-                                : (isPass
-                                    ? { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFECFDF5' } }
-                                    : { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFEF2F2' } });
-                            r.getCell(12).fill = statusFill;
-                            for (let c = 1; c <= 12; c++) r.getCell(c).border = borderThin;
-                            s5Row++;
-                        });
+                    cduSizing.forEach(item => {
+                        const reqKw = item.requiredKw ?? 0;
+                        const derate = (typeof item.derateFactor === 'number' && item.derateFactor > 0) ? item.derateFactor : 1.0;
+                        const unitCapKw = Number(((item.unitCapKw ?? 0) * derate).toFixed(1));
+                        const qty = item.selectedQty ?? 0;
+                        const effectiveCap = Math.max(0, qty - 1) * unitCapKw;
+                        const isConfigured = qty > 0;
+                        const isPass = isConfigured && effectiveCap >= reqKw;
+                        const r = s5.addRow([
+                            u.hallName,
+                            u.unitName,
+                            'CDU液冷系統',
+                            item.label,
+                            item.selectedModel || '（尚未選型）',
+                            reqKw,
+                            unitCapKw,
+                            qty,
+                            { formula: `G${s5Row}*H${s5Row}` },
+                            { formula: `MAX(0,(H${s5Row}-1))*G${s5Row}` },
+                            { formula: `IF(F${s5Row}>0, (J${s5Row}/F${s5Row}-1)*100, 0)` },
+                            { formula: `IF(H${s5Row}=0, "⬜ 尚未選型", IF(J${s5Row}>=F${s5Row}, "✅ 滿足 N+1", "❌ 容量不足"))` }
+                        ]);
+                        r.getCell(8).alignment = { horizontal: 'center' };
+                        r.getCell(9).font = fontFormula;
+                        r.getCell(10).font = fontFormula;
+                        r.getCell(11).font = fontFormula;
+                        r.getCell(12).font = fontBold;
+                        r.getCell(6).numFmt = '#,##0.0';
+                        r.getCell(7).numFmt = '#,##0.0';
+                        r.getCell(9).numFmt = '#,##0.0';
+                        r.getCell(10).numFmt = '#,##0.0';
+                        r.getCell(11).numFmt = '+0.0%;-0.0%;0.0%';
+                        const statusFill = !isConfigured
+                            ? { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF1F5F9' } }
+                            : (isPass
+                                ? { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFECFDF5' } }
+                                : { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFEF2F2' } });
+                        r.getCell(12).fill = statusFill;
+                        for (let c = 1; c <= 12; c++) r.getCell(c).border = borderThin;
+                        s5Row++;
+                    });
+
+                    fwSizing.forEach(item => {
+                        const reqKw = item.requiredKw ?? 0;
+                        const derate = (typeof item.derateFactor === 'number' && item.derateFactor > 0) ? item.derateFactor : 1.0;
+                        const unitCapKw = Number(((item.unitCapKw ?? 0) * derate).toFixed(1));
+                        const qty = item.selectedQty ?? 0;
+                        const effectiveCap = Math.max(0, qty - 1) * unitCapKw;
+                        const isConfigured = qty > 0;
+                        const isPass = isConfigured && effectiveCap >= reqKw;
+                        const r = s5.addRow([
+                            u.hallName,
+                            u.unitName,
+                            '氣冷排熱系統',
+                            item.label,
+                            item.selectedModel || '（尚未選型）',
+                            reqKw,
+                            unitCapKw,
+                            qty,
+                            { formula: `G${s5Row}*H${s5Row}` },
+                            { formula: `MAX(0,(H${s5Row}-1))*G${s5Row}` },
+                            { formula: `IF(F${s5Row}>0, (J${s5Row}/F${s5Row}-1)*100, 0)` },
+                            { formula: `IF(H${s5Row}=0, "⬜ 尚未選型", IF(J${s5Row}>=F${s5Row}, "✅ 滿足 N+1", "❌ 容量不足"))` }
+                        ]);
+                        r.getCell(8).alignment = { horizontal: 'center' };
+                        r.getCell(9).font = fontFormula;
+                        r.getCell(10).font = fontFormula;
+                        r.getCell(11).font = fontFormula;
+                        r.getCell(12).font = fontBold;
+                        r.getCell(6).numFmt = '#,##0.0';
+                        r.getCell(7).numFmt = '#,##0.0';
+                        r.getCell(9).numFmt = '#,##0.0';
+                        r.getCell(10).numFmt = '#,##0.0';
+                        r.getCell(11).numFmt = '+0.0%;-0.0%;0.0%';
+                        const statusFill = !isConfigured
+                            ? { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF1F5F9' } }
+                            : (isPass
+                                ? { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFECFDF5' } }
+                                : { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFEF2F2' } });
+                        r.getCell(12).fill = statusFill;
+                        for (let c = 1; c <= 12; c++) r.getCell(c).border = borderThin;
+                        s5Row++;
                     });
                 });
 

@@ -4,7 +4,7 @@
  * 用途：當頁面以 file:// 協議開啟（直接雙擊 index.html）時，CatalogManager
  * 無法用 fetch() 讀取 device_catalog/ 底下的 JSON 檔案（瀏覽器 CORS 限制），
  * 此檔案把相同內容內嵌為 JS 物件，改用 <script> 標籤載入即可繞過限制。
- * 產生時間：2026-09-01T00:46:42.043Z
+ * 產生時間：2026-10-17T04:27:44.025Z
  * 若修改了 device_catalog/*.json，請重新執行：node device_catalog/build_builtin.js
  */
 window.DEVICE_CATALOG_BUILTIN_RAW = {
@@ -126,7 +126,8 @@ window.DEVICE_CATALOG_BUILTIN_RAW = {
         "t_chws_c": 7,
         "t_cewt_design_c": null,
         "cop_curve": {
-          "type": "fixed"
+          "type": "ahri_biquadratic",
+          "preset": "air_cooled_screw"
         },
         "weight_kg": 6800,
         "notes": "氣冷螺旋，不需冷卻水塔，快速部署，COP 隨環境溫度下降",
@@ -204,7 +205,8 @@ window.DEVICE_CATALOG_BUILTIN_RAW = {
         "t_chws_c": 7,
         "t_cewt_design_c": null,
         "cop_curve": {
-          "type": "fixed"
+          "type": "ahri_biquadratic",
+          "preset": "air_cooled_screw"
         },
         "weight_kg": 8200,
         "notes": "氣冷變頻螺旋，VSD 壓縮機，快速部署，WUE=0",
@@ -225,7 +227,8 @@ window.DEVICE_CATALOG_BUILTIN_RAW = {
         "t_chws_c": 7,
         "t_cewt_design_c": null,
         "cop_curve": {
-          "type": "fixed"
+          "type": "ahri_biquadratic",
+          "preset": "air_cooled_screw"
         },
         "weight_kg": 5100,
         "notes": "中型氣冷變頻螺旋，模組化部署",
@@ -302,7 +305,8 @@ window.DEVICE_CATALOG_BUILTIN_RAW = {
         "t_chws_c": 7,
         "t_cewt_design_c": null,
         "cop_curve": {
-          "type": "fixed"
+          "type": "ahri_biquadratic",
+          "preset": "air_cooled_screw"
         },
         "weight_kg": 4200,
         "notes": "大型氣冷螺旋，不需冷卻水塔，快速部署首選",
@@ -323,7 +327,8 @@ window.DEVICE_CATALOG_BUILTIN_RAW = {
         "t_chws_c": 7,
         "t_cewt_design_c": null,
         "cop_curve": {
-          "type": "fixed"
+          "type": "ahri_biquadratic",
+          "preset": "air_cooled_screw"
         },
         "weight_kg": 2200,
         "notes": "中型氣冷螺旋，適用邊緣資料中心",
@@ -354,7 +359,8 @@ window.DEVICE_CATALOG_BUILTIN_RAW = {
         "t_chws_c": 9,
         "t_cewt_design_c": null,
         "cop_curve": {
-          "type": "fixed"
+          "type": "ahri_biquadratic",
+          "preset": "air_cooled_vfd_centrifugal"
         },
         "weight_kg": 3886,
         "min_plr": 0.1,
@@ -376,7 +382,8 @@ window.DEVICE_CATALOG_BUILTIN_RAW = {
         "t_chws_c": 9,
         "t_cewt_design_c": null,
         "cop_curve": {
-          "type": "fixed"
+          "type": "ahri_biquadratic",
+          "preset": "air_cooled_vfd_centrifugal"
         },
         "weight_kg": 4534,
         "min_plr": 0.1,
@@ -398,7 +405,8 @@ window.DEVICE_CATALOG_BUILTIN_RAW = {
         "t_chws_c": 9,
         "t_cewt_design_c": null,
         "cop_curve": {
-          "type": "fixed"
+          "type": "ahri_biquadratic",
+          "preset": "air_cooled_vfd_centrifugal"
         },
         "weight_kg": 7170,
         "min_plr": 0.1,
@@ -420,7 +428,8 @@ window.DEVICE_CATALOG_BUILTIN_RAW = {
         "t_chws_c": 9,
         "t_cewt_design_c": null,
         "cop_curve": {
-          "type": "fixed"
+          "type": "ahri_biquadratic",
+          "preset": "air_cooled_vfd_centrifugal"
         },
         "weight_kg": 9733,
         "min_plr": 0.1,
@@ -442,7 +451,8 @@ window.DEVICE_CATALOG_BUILTIN_RAW = {
         "t_chws_c": 9,
         "t_cewt_design_c": null,
         "cop_curve": {
-          "type": "fixed"
+          "type": "ahri_biquadratic",
+          "preset": "air_cooled_vfd_centrifugal"
         },
         "weight_kg": 12436,
         "min_plr": 0.1,
@@ -464,7 +474,8 @@ window.DEVICE_CATALOG_BUILTIN_RAW = {
         "t_chws_c": 9,
         "t_cewt_design_c": null,
         "cop_curve": {
-          "type": "fixed"
+          "type": "ahri_biquadratic",
+          "preset": "air_cooled_vfd_centrifugal"
         },
         "weight_kg": 15861,
         "min_plr": 0.1,
@@ -495,7 +506,8 @@ window.DEVICE_CATALOG_BUILTIN_RAW = {
         "refrigerant": "R1234ze",
         "t_chws_c": 20,
         "cop_curve": {
-          "type": "fixed"
+          "type": "ahri_biquadratic",
+          "preset": "air_cooled_vfd_centrifugal"
         },
         "water_flow_lh": 112070,
         "airflow_m3h": 398704,
@@ -516,7 +528,8 @@ window.DEVICE_CATALOG_BUILTIN_RAW = {
         "refrigerant": "R1234ze",
         "t_chws_c": 20,
         "cop_curve": {
-          "type": "fixed"
+          "type": "ahri_biquadratic",
+          "preset": "air_cooled_vfd_centrifugal"
         },
         "water_flow_lh": 161900,
         "airflow_m3h": 512024,
@@ -537,7 +550,8 @@ window.DEVICE_CATALOG_BUILTIN_RAW = {
         "refrigerant": "R1234ze",
         "t_chws_c": 20,
         "cop_curve": {
-          "type": "fixed"
+          "type": "ahri_biquadratic",
+          "preset": "air_cooled_vfd_centrifugal"
         },
         "water_flow_lh": 214450,
         "airflow_m3h": 625900,
@@ -558,7 +572,8 @@ window.DEVICE_CATALOG_BUILTIN_RAW = {
         "refrigerant": "R1234ze",
         "t_chws_c": 20,
         "cop_curve": {
-          "type": "fixed"
+          "type": "ahri_biquadratic",
+          "preset": "air_cooled_vfd_centrifugal"
         },
         "water_flow_lh": 113540,
         "airflow_m3h": 352455,
@@ -598,7 +613,8 @@ window.DEVICE_CATALOG_BUILTIN_RAW = {
         "refrigerant": "R1234ze",
         "t_chws_c": 20,
         "cop_curve": {
-          "type": "fixed"
+          "type": "ahri_biquadratic",
+          "preset": "air_cooled_vfd_centrifugal"
         },
         "water_flow_lh": 163120,
         "airflow_m3h": 452382,
@@ -619,7 +635,8 @@ window.DEVICE_CATALOG_BUILTIN_RAW = {
         "refrigerant": "R1234ze",
         "t_chws_c": 20,
         "cop_curve": {
-          "type": "fixed"
+          "type": "ahri_biquadratic",
+          "preset": "air_cooled_vfd_centrifugal"
         },
         "water_flow_lh": 218550,
         "airflow_m3h": 553300,
@@ -751,15 +768,16 @@ window.DEVICE_CATALOG_BUILTIN_RAW = {
         "category": "Screw Chiller (Air-Cooled)",
         "model": "Carrier 30XA 1000kW",
         "vendor": "Carrier",
+        "chiller_type": "air_cooled",
         "cooling_capacity_kw": 1000,
         "cop_design": 3.8,
         "iplv": 5.2,
         "power_input_kw": 263.2,
         "t_chws_c": 7,
-        "t_cewt_design_c": 30,
+        "t_cewt_design_c": 35,
         "cop_curve": {
           "type": "ahri_biquadratic",
-          "preset": "screw_standard"
+          "preset": "air_cooled_screw"
         },
         "refrigerant": "R-134a",
         "weight_kg": 4200,

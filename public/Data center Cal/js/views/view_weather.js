@@ -611,8 +611,9 @@
         },
 
         selectCity(cityName) {
-            if (window.BUILTIN_WEATHER_DATA && window.BUILTIN_WEATHER_DATA[cityName]) {
-                const data = window.BUILTIN_WEATHER_DATA[cityName];
+            const globalScope = (typeof window !== 'undefined') ? window : globalThis;
+            if (globalScope.BUILTIN_WEATHER_DATA && globalScope.BUILTIN_WEATHER_DATA[cityName]) {
+                const data = globalScope.BUILTIN_WEATHER_DATA[cityName];
                 const stationId = window.WeatherSource?.REVERSE_BUILTIN_MAP?.[cityName] || cityName;
                 window.AppStore.updateSite({
                     selectedCity: cityName,

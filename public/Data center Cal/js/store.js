@@ -356,8 +356,9 @@
                     const stationId = this.state.site.stationId;
 
                     if (stationSource === 'builtin') {
-                        if (cityName && typeof window !== 'undefined' && window.BUILTIN_WEATHER_DATA && window.BUILTIN_WEATHER_DATA[cityName]) {
-                            const data = window.BUILTIN_WEATHER_DATA[cityName];
+                        const globalScope = (typeof window !== 'undefined') ? window : globalThis;
+                        if (cityName && globalScope.BUILTIN_WEATHER_DATA && globalScope.BUILTIN_WEATHER_DATA[cityName]) {
+                            const data = globalScope.BUILTIN_WEATHER_DATA[cityName];
                             this.state.site.hourly = data.hourlyData;
                             this.state.site.monthlyStats = data.monthlyStats;
                             this.state.site.isRealEpw = true;

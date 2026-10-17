@@ -733,8 +733,11 @@
                 ...(state.corePods ? state.corePods.filter(p => p.enabled !== false).map(p => p.plantDesign.fanwallSystem) : [])
             ];
 
-            const cduArch = allCduSystems[0]?.architecture || 'dry_cooler_trim';
-            const fwArch = allFwSystems[0]?.architecture || 'air_cooled_chiller';
+            const cduSys = allCduSystems[0] || {};
+            const fwSys = allFwSystems[0] || {};
+
+            const cduArch = cduSys.architecture || 'dry_cooler_trim';
+            const fwArch = fwSys.architecture || 'air_cooled_chiller';
 
             const cduArchLabel = (window.CoolingArchRegistry ? window.CoolingArchRegistry.getDashboardLabel(cduArch) : '') || '排熱塔';
             const fwArchLabel = (window.CoolingArchRegistry ? window.CoolingArchRegistry.getDashboardLabel(fwArch) : '') || '冰機';
@@ -816,6 +819,11 @@
 
             // FLH 設備台帳
             const totalItKw = overall.totalItKw || 1;
+            const qLiquidAvgKw = overall.thermalLedger?.qLiquidKwh ? (overall.thermalLedger.qLiquidKwh / 8760) : (totalItKw * 0.9);
+            const dlcSharePct = totalItKw > 0 ? ((qLiquidAvgKw / totalItKw) * 100).toFixed(1) : '90.0';
+            const airHeatKw = Math.max(0, curHour.itKw * (1 - (parseFloat(dlcSharePct) / 100)));
+            const fwsSupply = cduSys.fwsSupplyC || 40.0;
+            const rejApproach = cduSys.dryCoolerApproachC || cduSys.ctApproachC || 5.0;
             const flhTable = [
                 {
                     name: 'CDU 液冷主機 & 板式換熱器群',
@@ -989,13 +997,13 @@
                             <div class="grid grid-cols-2 gap-2 text-xs">
                                 <div class="p-2.5 bg-bg rounded-lg">
                                     <span class="text-[10px] text-tertiary block">二次側 (晶片迴路)</span>
-                                    <span class="font-mono font-bold text-primary text-sm">45°C ⇄ 57°C</span>
-                                    <span class="text-[10px] text-emerald-700 block mt-0.5">ΔT = 12.0°C (DLC 91.2%)</span>
+                                    <span class="font-mono font-bold text-primary text-sm">${cduSys.secSupplyC || 45}°C ⇄ ${cduSys.secReturnC || 57}°C</span>
+                                    <span class="text-[10px] text-emerald-700 block mt-0.5">ΔT = ${((cduSys.secReturnC || 57) - (cduSys.secSupplyC || 45)).toFixed(1)}°C (DLC ${dlcSharePct}%)</span>
                                 </div>
                                 <div class="p-2.5 bg-bg rounded-lg">
                                     <span class="text-[10px] text-tertiary block">一次側 (設施水路)</span>
-                                    <span class="font-mono font-bold text-primary text-sm">40°C ⇄ 55°C</span>
-                                    <span class="text-[10px] text-secondary block mt-0.5">Approach: 3.0°C</span>
+                                    <span class="font-mono font-bold text-primary text-sm">${cduSys.fwsSupplyC || 40}°C ⇄ ${cduSys.fwsReturnC || 55}°C</span>
+                                    <span class="text-[10px] text-secondary block mt-0.5">Approach: ${(cduSys.cduApproachC || 3.0).toFixed(1)}°C</span>
                                 </div>
                                 <div class="p-2.5 bg-bg rounded-lg">
                                     <span class="text-[10px] text-tertiary block">一次側循環泵動力</span>
@@ -1004,7 +1012,7 @@
                                 </div>
                                 <div class="p-2.5 bg-bg rounded-lg">
                                     <span class="text-[10px] text-tertiary block">CDU 機組配置</span>
-                                    <span class="font-mono font-bold text-emerald-700 text-sm">${allCduSystems.length * 4} 台配置</span>
+                                    <span class="font-mono font-bold text-emerald-700 text-sm">${cduStats.qty} 台配置</span>
                                     <span class="text-[10px] text-secondary block mt-0.5">全數運轉 (N+1 備用隔離)</span>
                                 </div>
                             </div>
@@ -1034,13 +1042,13 @@
                                 </div>
                                 <div class="p-2.5 bg-bg rounded-lg">
                                     <span class="text-[10px] text-tertiary block">排熱 Approach</span>
-                                    <span class="font-mono font-bold text-primary text-sm">5.0°C</span>
-                                    <span class="text-[10px] text-secondary block mt-0.5">出水溫: ${(curHour.wb + 5.0).toFixed(1)}°C</span>
+                                    <span class="font-mono font-bold text-primary text-sm">${rejApproach.toFixed(1)}°C</span>
+                                    <span class="text-[10px] text-secondary block mt-0.5">出水溫: ${(curHour.wb + rejApproach).toFixed(1)}°C</span>
                                 </div>
                                 <div class="p-2.5 bg-bg rounded-lg">
                                     <span class="text-[10px] text-tertiary block">自然排熱裕度 (Margin)</span>
-                                    <span class="font-mono font-bold text-emerald-700 text-sm">+${(40.0 - (curHour.wb + 5.0)).toFixed(1)}°C</span>
-                                    <span class="text-[10px] text-emerald-700 block mt-0.5">水溫低於 40°C 設計供水</span>
+                                    <span class="font-mono font-bold text-emerald-700 text-sm">${(fwsSupply - (curHour.wb + rejApproach) >= 0 ? '+' : '')}${(fwsSupply - (curHour.wb + rejApproach)).toFixed(1)}°C</span>
+                                    <span class="text-[10px] text-emerald-700 block mt-0.5">水溫低於 ${fwsSupply}°C 設計供水</span>
                                 </div>
                             </div>
                         </div>
@@ -1053,28 +1061,28 @@
                                     <span class="font-bold text-sm text-primary">💨 風牆 / CRAH / RDHx 氣冷室內機</span>
                                 </div>
                                 <span class="px-2 py-0.5 rounded text-[10px] font-bold ${isFwFree ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-blue-50 text-blue-700 border border-blue-200'}">
-                                    ${isFwFree ? '🟢 氣側自然冷卻 (Economizer ≤18°C)' : '🔵 冰水製冷循環 (>18°C)'}
+                                    ${isFwFree ? `🟢 氣側自然冷卻 (Economizer ≤${fwSys.chwReturnC || 18}°C)` : `🔵 冰水製冷循環 (>${fwSys.chwReturnC || 18}°C)`}
                                 </span>
                             </div>
                             <div class="grid grid-cols-2 gap-2 text-xs">
                                 <div class="p-2.5 bg-bg rounded-lg">
                                     <span class="text-[10px] text-tertiary block">冰水供/回水溫</span>
-                                    <span class="font-mono font-bold text-primary text-sm">20°C ⇄ 30°C</span>
+                                    <span class="font-mono font-bold text-primary text-sm">${fwSys.chwSupplyC || 12}°C ⇄ ${fwSys.chwReturnC || 18}°C</span>
                                     <span class="text-[10px] text-secondary block mt-0.5">高溫冰水無除濕結露損耗</span>
                                 </div>
                                 <div class="p-2.5 bg-bg rounded-lg">
                                     <span class="text-[10px] text-tertiary block">EC 送風風機耗電</span>
-                                    <span class="font-mono font-bold text-primary text-sm">${Math.round((curHour.coolingKw - (curHour.chillerKw||0) - (curHour.cduPumpKw||0)) * 0.4)} kW</span>
+                                    <span class="font-mono font-bold text-primary text-sm">${Math.round((bk.crahFan || 0) / 8760)} kW</span>
                                     <span class="text-[10px] text-secondary block mt-0.5">變頻低壓降送風</span>
                                 </div>
                                 <div class="p-2.5 bg-bg rounded-lg">
                                     <span class="text-[10px] text-tertiary block">白區氣冷負載</span>
-                                    <span class="font-mono font-bold text-primary text-sm">${Math.round(curHour.itKw * 0.088)} kW</span>
+                                    <span class="font-mono font-bold text-primary text-sm">${Math.round(airHeatKw)} kW</span>
                                     <span class="text-[10px] text-secondary block mt-0.5">非晶片/交換機風冷發熱</span>
                                 </div>
                                 <div class="p-2.5 bg-bg rounded-lg">
                                     <span class="text-[10px] text-tertiary block">室內機群配置</span>
-                                    <span class="font-mono font-bold text-emerald-700 text-sm">${allFwSystems.length * 8} 台送風機</span>
+                                    <span class="font-mono font-bold text-emerald-700 text-sm">${fanStats.qty} 台送風機</span>
                                     <span class="text-[10px] text-secondary block mt-0.5">N+2 冗餘度保障</span>
                                 </div>
                             </div>

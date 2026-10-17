@@ -212,13 +212,14 @@
                 // fan_kw_fc,approach_design_c,...}
                 Object.entries(data).forEach(([k, v]) => {
                     if (k === '_meta' || !v.heat_rejection_kw) return;
-                    this.upsertItem('cooling_tower', {
+                    const targetCategory = (v.tower_type === 'dry_cooler') ? 'dry_cooler' : 'cooling_tower';
+                    this.upsertItem(targetCategory, {
                         model: v.model || k,
                         capKw: v.heat_rejection_kw,
                         vendor: v.vendor || 'Vendor',
                         fanKwDx: v.fan_kw_dx,
                         fanKwFc: v.fan_kw_fc,
-                        approachC: v.approach_design_c ?? 5.0,
+                        approachC: v.approach_design_c ?? v.approach_temp_c ?? 5.0,
                         ...v
                     });
                 });
@@ -274,6 +275,10 @@
 
         getCatalog(category) {
             return this.catalogs[category] || BUILTIN_VENDOR_CATALOGS[category] || [];
+        },
+
+        get(category) {
+            return this.getCatalog(category);
         }
     };
 

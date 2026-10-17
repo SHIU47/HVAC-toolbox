@@ -680,6 +680,8 @@
                 monthlyPue: monthlyStats.map((m, idx) => ({
                     month: idx + 1,
                     pue: parseFloat((m.totalKwh / (m.itKwh || 1)).toFixed(3)),
+                    totalMwh: Math.round(m.totalKwh / 1000),
+                    itMwh: Math.round(m.itKwh / 1000),
                     coolingMwh: Math.round(m.coolKwh / 1000)
                 })),
                 hourlyProfile: profileResult.hourlyProfile
