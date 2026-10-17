@@ -121,7 +121,7 @@
             const ecoStroke = isEcoBypass ? '#475569' : '#10b981';
             const ecoHeaderFill = isEcoBypass ? '#1e293b' : '#064e3b';
             const ecoTitleFill = isEcoBypass ? '#94a3b8' : '#d1fae5';
-            const ecoTitle = (nEco.title || 'Free-Cooling 盤管') + (isEcoBypass ? ' — 旁通' : '');
+            const ecoTitle = (nEco?.title || 'Free-Cooling 盤管') + (isEcoBypass ? ' — 旁通' : '');
             const ecoIconStroke = isEcoBypass ? '#64748b' : '#34d399';
             const ecoBasis = op?.thresholds?.basis === 'wb' ? '濕球' : '外氣乾球';
             const ecoTAvail = (op?.tAvail !== undefined && op?.tAvail !== null) ? Number(op.tAvail).toFixed(1) : '—';

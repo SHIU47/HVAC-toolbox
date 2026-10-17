@@ -86,13 +86,40 @@
             { type: 'chiller', role: 'mechanical', chillerType: 'air_cooled', equipKey: 'air_cooled_chiller' }
         ],
 
+        // R6 P0-C1: 只有內建水側自然冷卻盤管的機型（如 Uniflair XCAF）才串聯 fc_coil；
+        // 30XA / YVAA / CGAF / CoolLoop / XCAC 等純氣冷壓縮機型全年走機械製冷。
+        // sys.hasFcCoil 明確設定時優先。
+        hasIntegratedFcCoil(sys, equip) {
+            if (sys?.hasFcCoil === true) return true;
+            if (sys?.hasFcCoil === false) return false;
+            const item = (sys?.sizing || []).find(s => s.key === 'air_cooled_chiller');
+            const catEntry = item ? (item.catalog || []).find(c => c.model === item.selectedModel) : null;
+            const text = [item?.selectedModel, catEntry?.category, equip?.air_cooled_chiller?.[0]?.model, equip?.air_cooled_chiller?.[0]?.category]
+                .filter(Boolean).join(' ');
+            return /XCAF|Free-?Cool|Economizer|自然冷卻/i.test(text);
+        },
+
         operatingPoint(sys, w, equip) {
             const db_c = (typeof w === 'number') ? w : (w?.db ?? 25.0);
             const chwSupplyC = sys?.chwSupplyC ?? 12.0;
             const chwReturnC = sys?.chwReturnC ?? 18.0;
             const fcApproach = (typeof root.A === 'function') ? root.A('air_chiller_fc_coil_approach_c') : 4.0;
             const tAvail = db_c + fcApproach;
-            const eco = (typeof root.FreeCoolingEngine?.calcSeriesEconomizer === 'function')
+            if (!this.hasIntegratedFcCoil(sys, equip)) {
+                return {
+                    fc_fraction: 0.0,
+                    chiller_fraction: 1.0,
+                    mode: 'mechanical',
+                    hasFcCoil: false,
+                    tAvail,
+                    chwSupplyC,
+                    chwReturnC,
+                    chwPre: chwReturnC,
+                    temps: { chwSup: chwSupplyC, chwRet: chwReturnC, chwPre: chwReturnC, coilAvail: tAvail, tAvail },
+                    thresholds: { basis: 'db', full: null, mech: null }
+                };
+            }
+            const eco =(typeof root.FreeCoolingEngine?.calcSeriesEconomizer === 'function')
                 ? root.FreeCoolingEngine.calcSeriesEconomizer(tAvail, chwSupplyC, chwReturnC)
                 : { fc_fraction: (tAvail <= chwSupplyC ? 1.0 : 0.0), chiller_fraction: (tAvail <= chwSupplyC ? 0.0 : 1.0), mode: (tAvail <= chwSupplyC ? 'FULL_FC' : 'MECH') };
             const mode = (typeof root.CoolingArchHelpers !== 'undefined')
@@ -106,6 +133,7 @@
             return {
                 ...eco,
                 mode,
+                hasFcCoil: true,
                 tAvail,
                 chwSupplyC,
                 chwReturnC,
@@ -129,7 +157,7 @@
             const h_partial = modeHours?.partial !== undefined ? `${modeHours.partial} h` : '';
             const h_mech = modeHours?.mechanical !== undefined ? `${modeHours.mechanical} h` : '';
 
-            return {
+            const model = {
                 title: '氣冷式冰水主機 (Air-Cooled Chiller)',
                 referenceLabel: null,
                 banners: [
@@ -217,11 +245,34 @@
                 warnings: [],
                 op
             };
+
+            // R6 P0-C1: 純氣冷機型無自然冷卻盤管 → 單一全機械模式、移除 fc_coil 節點
+            if (op?.hasFcCoil === false) {
+                model.banners = [{
+                    id: 'mode3',
+                    title: '全年機械製冷',
+                    label: `全年機械製冷（機型無自然冷卻盤管）${h_mech ? ` — 全年 ${h_mech}` : ''}`,
+                    sub: `機型無水側自然冷卻盤管 ｜ 全年 ${h_mech || '8760 h'} ｜ 氣冷壓縮製冷`,
+                    detail: `機型無水側自然冷卻盤管 ｜ 全年 ${h_mech || '8760 h'} ｜ 氣冷壓縮製冷`,
+                    tone: 'indigo'
+                }];
+                model.nodes = model.nodes.filter(n => n.id !== 'fc_coil');
+                const rej = model.nodes.find(n => n.id === 'heat_rejection');
+                if (rej) rej.lines = rej.lines.filter(l => !l.includes('自然冷卻盤管'));
+                model.pipes = [
+                    { from: 'crah', to: 'evaporator', label: `${chwRet}°C`, tone: 'hot' },
+                    { from: 'evaporator', to: 'crah', label: `${chwSup}°C`, tone: 'cold' }
+                ];
+            }
+            return model;
         },
 
         simulateHour(ctx) {
+            const activeStages = this.hasIntegratedFcCoil(ctx.sys, ctx.equip)
+                ? this.stages
+                : [{ type: 'chiller', role: 'mechanical', chillerType: 'air_cooled', equipKey: 'air_cooled_chiller' }];
             return (typeof root.runStageChain === 'function')
-                ? root.runStageChain(this.stages, ctx, this)
+                ? root.runStageChain(activeStages, ctx, this)
                 : this._simulateHourFallback(ctx);
         },
 

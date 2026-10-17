@@ -19,13 +19,18 @@ const ChillerEngine = {
   // COP physical ceiling (2nd Law constraint under minimum lift)
   COP_MAX: 20.0,
 
+  // R6 P0-C2: 蒸發溫度受壓縮機吸氣壓力 (MOP) 限制，供水高於 max(額定, chiller_evap_temp_cap_c) 不再獲得增益；
+  // 理想 Carnot 比值再乘阻尼（氣冷含 ~25% 冷凝風扇與固定損耗，不隨揚程等比變化）
   carnotLiftFactor(T_chws, T_cond_in, is_air_cooled, ref) {
+    const t_chws_eff = Math.min(T_chws, Math.max(ref.t_chws, A('chiller_evap_temp_cap_c')));
     const Te  = (x) => x - A('chiller_evap_approach_k') + 273.15;
     const off = is_air_cooled ? A('chiller_cond_offset_air_k') : A('chiller_cond_offset_water_k');
     const Tc  = (x, te) => Math.max(x + off + 273.15, te + A('chiller_min_lift_k'));
     const cop = (tchws, tcond) => { const te = Te(tchws); const tc = Tc(tcond, te); return te / (tc - te); };
-    const f = cop(T_chws, T_cond_in) / cop(ref.t_chws, ref.t_cond);
-    return clamp(f, 0.3, A('chiller_lift_factor_max'));
+    const rawRatio = cop(t_chws_eff, T_cond_in) / cop(ref.t_chws, ref.t_cond);
+    const damp = is_air_cooled ? A('chiller_carnot_damp_air') : A('chiller_carnot_damp_water');
+    const f = 1.0 + (rawRatio - 1.0) * damp;
+    return clamp(f, 0.45, A('chiller_lift_factor_max'));
   },
 
   /**
@@ -76,22 +81,35 @@ const ChillerEngine = {
           message: `氣冷式冰機套用水冷式 AHRI 曲線 (${curve.preset ?? ''})，建議改用 air_cooled_screw, air_cooled_vfd_centrifugal 或 fixed/custom_poly` });
       }
 
+      // R6 P0-C2: 曲線一律以機型自身額定點 (t_chws_design, t_cewt_design) 歸一化，
+      // 保證額定工況、PLR=1 時 COP 精確等於型錄 cop_design（避免 20°C 額定機型重複吃 7→20°C 增益）
+      const t_chws_ref = ch.t_chws_design ?? ch.t_chws_c ?? 7.0;
+      const t_cond_ref = ch.t_cewt_design_c ?? (is_air_cooled ? 35.0 : 30.0);
+      const partLoadFallback = is_air_cooled ? [0.12, 0.68, 0.20] : [0.06, 0.70, 0.24];
+      const evalNormalizedCurve = (coefs, defaultTRange, defaultCRange) => {
+        const [T_lo, T_hi] = coefs.t_chws_range ?? defaultTRange;
+        const [C_lo, C_hi] = coefs.t_cewt_range ?? defaultCRange;
+        const T_c = clamp(T_chws, T_lo, T_hi);
+        const C_c = clamp(T_cond, C_lo, C_hi);
+        const T_ref_c = clamp(t_chws_ref, T_lo, T_hi);
+        const C_ref_c = clamp(t_cond_ref, C_lo, C_hi);
+        const normCap = Math.max(0.2, biQuad(coefs.CapFT,  T_ref_c, C_ref_c));
+        const normEir = Math.max(0.2, biQuad(coefs.EIR_FT, T_ref_c, C_ref_c));
+        CapFT  = clamp(biQuad(coefs.CapFT,  T_c, C_c) / normCap, 0.4, 1.6);
+        EIR_FT = clamp(biQuad(coefs.EIR_FT, T_c, C_c) / normEir, 0.4, 2.0);
+        return { T_c, C_c, T_lo, T_hi, C_lo, C_hi, ref: { t_chws: T_ref_c, t_cond: C_ref_c } };
+      };
+
       if (curve.type === 'ahri_biquadratic') {
         const coefs = AHRI_PRESETS[curve.preset] ?? curve.coef_override;
         if (coefs) {
-          const [T_lo, T_hi] = coefs.t_chws_range ?? [4, 14];
-          const [C_lo, C_hi] = coefs.t_cewt_range ?? [18, 42];
-          const T_c = clamp(T_chws, T_lo, T_hi);
-          const C_c = clamp(T_cond, C_lo, C_hi);
-          CapFT  = clamp(biQuad(coefs.CapFT,  T_c, C_c), 0.4, 1.6);
-          EIR_FT = clamp(biQuad(coefs.EIR_FT, T_c, C_c), 0.4, 2.0);
+          const { T_c, C_c, T_lo, T_hi, C_lo, C_hi, ref } = evalNormalizedCurve(coefs, [4, 14], [18, 42]);
           if (T_chws !== T_c || T_cond !== C_c) {
             warnings.push({ code: 'CHILLER_OUT_OF_RANGE', severity: 'info',
               message: `冰機工況超出曲線範圍：CHWS ${T_chws.toFixed(1)}°C [${T_lo}-${T_hi}], CEWT/DB ${T_cond.toFixed(1)}°C [${C_lo}-${C_hi}]，已截斷至邊界值計算` });
-            const ref = coefs.rating ?? { t_chws: 7, t_cond: is_air_cooled ? 35 : 30 };
             const liftClamped = ChillerEngine.carnotLiftFactor(T_c, C_c, is_air_cooled, ref);
             const liftActual = ChillerEngine.carnotLiftFactor(T_chws, T_cond, is_air_cooled, ref);
-            EIR_FT = clamp(EIR_FT * (liftClamped / liftActual), 0.2, 3.0);
+            EIR_FT = clamp(EIR_FT * (liftClamped / liftActual), 0.4, 3.0);
           }
           current_fplr = coefs.EIR_FPLR;
         }
@@ -99,13 +117,21 @@ const ChillerEngine = {
         const { a, b, c = 0 } = curve.coef;
         const cop_t = Math.max(1.0, a + b * T_cond + c * T_cond * T_cond);
         EIR_FT = cop / cop_t;
-        current_fplr = [0, 1, 0]; // linear PLR for scroll/screw without AHRI data
+        current_fplr = partLoadFallback;
       } else {
-        // type === 'fixed' 或預設：採用 Carnot 揚程比例物理修正
-        const ref = { t_chws: ch.t_chws_design ?? 7.0, t_cond: is_air_cooled ? 35.0 : 30.0 };
-        CapFT  = 1.0;
-        EIR_FT = 1.0 / ChillerEngine.carnotLiftFactor(T_chws, T_cond, is_air_cooled, ref);
-        current_fplr = [0, 1, 0];
+        // type === 'fixed' 或預設：對映至對應壓縮機型式、以機型額定點歸一化之 AHRI 曲線與真實部分負載曲線
+        const presetKey = is_air_cooled
+          ? ((cat.includes('centrifugal') || cat.includes('mag')) ? 'air_cooled_vfd_centrifugal' : 'air_cooled_screw')
+          : ((cat.includes('mag') || cat.includes('higheff')) ? 'centrifugal_higheff' : 'centrifugal_standard');
+        const coefs = AHRI_PRESETS[presetKey];
+        if (coefs) {
+          evalNormalizedCurve(coefs, [4, 22], [15, 48]);
+          current_fplr = is_air_cooled ? partLoadFallback : coefs.EIR_FPLR;
+        } else {
+          CapFT  = 1.0;
+          EIR_FT = 1.0 / ChillerEngine.carnotLiftFactor(T_chws, T_cond, is_air_cooled, { t_chws: t_chws_ref, t_cond: t_cond_ref });
+          current_fplr = partLoadFallback;
+        }
       }
 
       total_available += n * cap * CapFT;

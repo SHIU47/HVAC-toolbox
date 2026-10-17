@@ -61,12 +61,13 @@ function sizeCduToDeratedN1(S) {
   const { ChillerEngine } = ctx;
   test('P0-4 water fixed @7/30 COP == cop_design', () => {
     const chillers = [{ cooling_capacity_kw: 500, cop_design: 6.0, cop_curve: { type: 'fixed' }, t_chws_design: 7.0, qty_running: 1, qty_total: 2, chiller_type: 'water_cooled' }];
-    const r = ChillerEngine.calcPower(400, chillers, 7.0, 30.0, 30.0);
+    // R6 P0-C2: fixed 改用真實部分負載曲線，額定 COP 須在 PLR=1.0 驗證
+    const r = ChillerEngine.calcPower(500, chillers, 7.0, 30.0, 30.0);
     assert(Math.abs(r.cop_actual - 6.0) < 0.05, 'got ' + r.cop_actual);
   });
   test('P0-4 air fixed @7/35 COP == cop_design', () => {
     const chillers = [{ cooling_capacity_kw: 500, cop_design: 3.6, cop_curve: { type: 'fixed' }, t_chws_design: 7.0, qty_running: 1, qty_total: 2, chiller_type: 'air_cooled' }];
-    const r = ChillerEngine.calcPower(400, chillers, 7.0, undefined, 35.0);
+    const r = ChillerEngine.calcPower(500, chillers, 7.0, undefined, 35.0);
     assert(Math.abs(r.cop_actual - 3.6) < 0.05, 'got ' + r.cop_actual);
   });
   test('P0-4 water CHWS30/CEWT45 COP < CHWS30/CEWT35 COP (higher lift -> lower COP)', () => {
@@ -154,7 +155,7 @@ function sizeCduToDeratedN1(S) {
   const S = ctx.AppStore;
   const plant = {
     cduSystem: { architecture: 'dry_cooler_pure', fwsSupplyC: 40, fwsReturnC: 55, dryCoolerApproachC: 5, pheApproachC: 2 },
-    fanwallSystem: { architecture: 'air_cooled_chiller', chwSupplyC: 12.0, chwReturnC: 18.0 }
+    fanwallSystem: { architecture: 'air_cooled_chiller', chwSupplyC: 12.0, chwReturnC: 18.0, hasFcCoil: true } // R6 P0-C1: 測 FC 盤管行為需明確指定含盤管機型
   };
   const summ = { totalItKw: 1000, liquidHeatKw: 0, airHeatKw: 100, lossKw: 0 };
 
@@ -341,6 +342,7 @@ function sizeCduToDeratedN1(S) {
   const pd = JSON.parse(JSON.stringify(du.plantDesign));
   pd.cduSystem.architecture = 'dry_cooler_trim';
   pd.fanwallSystem.architecture = 'air_cooled_chiller';
+  pd.fanwallSystem.hasFcCoil = true; // R6 P0-C1
   const duSumm = S.calcDuSummary(du);
 
   // Case 1: 冬季外氣低溫 (DB 5°C, WB 3°C) -> CDU free, FW free -> isFreeHour is true
@@ -1996,7 +1998,7 @@ function sizeCduToDeratedN1(S) {
 
   test('P4-5 air_air_cooled_chiller topology includes fc_coil node and series pre-cooling banners without continuous mechanical text', () => {
     const arch = CoolingArchRegistry.get('air_cooled_chiller');
-    const sys = { chwSupplyC: 12.0, chwReturnC: 18.0 };
+    const sys = { chwSupplyC: 12.0, chwReturnC: 18.0, hasFcCoil: true };
     const op = arch.operatingPoint(sys, { db: 30, wb: 22 }, {});
     const topo = arch.topology(sys, op, { designDb: 35.0, fwModeHours: { free: 1200, partial: 2800, mechanical: 4760 } });
 
@@ -3270,6 +3272,39 @@ function sizeCduToDeratedN1(S) {
     const crah = CRAHEngine.calcPower([{ cooling_capacity_kw: 60, power_kw: 5, qty_running: 2 }], 73);
     assert(crah.speed === 0.70, 'crah speed ' + crah.speed);
     assert(Math.abs(crah.power_kw - 10 * (0.10 + 0.90 * Math.pow(0.70, 3))) < 1e-9, 'crah power ' + crah.power_kw);
+  });
+})();
+
+// ── Round 6 P0-C1 / P0-C2: 氣冷冰機 FC 盤管判定、額定點歸一化與 Carnot 阻尼 ────────
+(function () {
+  const ctx = freshCtx();
+  const { ChillerEngine, CoolingArchRegistry } = ctx;
+  const xcac = (curve) => [{
+    model: 'Uniflair XCAC2524A', chiller_type: 'air_cooled', category: 'Oil-Free Centrifugal Chiller (Air-Cooled)',
+    cooling_capacity_kw: 2482.2, cop_design: 4.24, t_chws_design: 20.0, cop_curve: curve, qty_running: 1, qty_total: 1
+  }];
+  test('R6 P0-C2 XCAC2524A (rated 20°C CHWS) COP at 20°C/35°C/PLR=1 equals 4.24 with AHRI curve', () => {
+    const r = ChillerEngine.calcPower(2482.2, xcac({ type: 'ahri_biquadratic', preset: 'air_cooled_vfd_centrifugal' }), 20.0, 35.0, 35.0);
+    assert(Math.abs(r.cop_actual - 4.24) < 0.02, 'got ' + r.cop_actual);
+  });
+  test('R6 P0-C2 XCAC2524A fixed curve also returns 4.24 at its own rating point', () => {
+    const r = ChillerEngine.calcPower(2482.2, xcac({ type: 'fixed' }), 20.0, 35.0, 35.0);
+    assert(Math.abs(r.cop_actual - 4.24) < 0.02, 'got ' + r.cop_actual);
+  });
+  test('R6 P0-C2 Carnot lift factor capped at 1.35x (water chiller at 42°C CHWS no longer 2x)', () => {
+    const f = ChillerEngine.carnotLiftFactor(42, 30, false, { t_chws: 7, t_cond: 30 });
+    assert(f <= 1.35 + 1e-9 && f > 1.0, 'got ' + f);
+  });
+  const airArch = CoolingArchRegistry.get('air_cooled_chiller');
+  test('R6 P0-C1 pure air-cooled XCAC1913A never enables FC coil (20/30°C CHW, 20°C DB)', () => {
+    const op = airArch.operatingPoint({ chwSupplyC: 20, chwReturnC: 30, sizing: [{ key: 'air_cooled_chiller', selectedModel: 'Uniflair XCAC1913A' }] }, { db: 20, wb: 16 });
+    assert(op.mode === 'mechanical' && op.fc_fraction === 0, JSON.stringify({ mode: op.mode, fc: op.fc_fraction }));
+    const topo = airArch.topology({ chwSupplyC: 20, chwReturnC: 30 }, op, { designDb: 35 });
+    assert(!topo.nodes.some(n => n.id === 'fc_coil'), 'topology must not draw fc_coil');
+  });
+  test('R6 P0-C1 integrated FC chiller XCAF1913A enables FC coil when DB + approach < CHW return', () => {
+    const op = airArch.operatingPoint({ chwSupplyC: 20, chwReturnC: 30, sizing: [{ key: 'air_cooled_chiller', selectedModel: 'Uniflair XCAF1913A (含自然冷卻盤管)' }] }, { db: 20, wb: 16 });
+    assert(op.mode !== 'mechanical' && op.fc_fraction > 0, JSON.stringify({ mode: op.mode, fc: op.fc_fraction }));
   });
 })();
 

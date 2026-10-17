@@ -64,7 +64,10 @@ const ASSUMPTIONS = {
   chiller_cond_offset_water_k:    { val: 7.0,   unit: 'K',      label: '水冷冰機冷凝溫度 = 冷卻水進水溫 + 此值（含冷卻水溫升 5K + approach 2K）', ref: 'AHRI 550/590 標準工況 30→35°C，冷凝器 approach ≈ 2K' },
   chiller_cond_offset_air_k:      { val: 15.0,  unit: 'K',      label: '氣冷冰機冷凝溫度 = 外氣乾球 + 此值', ref: '氣冷冷凝器典型 TD 12–17 K' },
   chiller_min_lift_k:             { val: 10.0,  unit: 'K',      label: '壓縮機最小揚程（冷凝−蒸發），低於此值以此值計', ref: '離心/螺旋機油壓差與防喘振限制，磁浮機可低至 5–8 K' },
-  chiller_lift_factor_max:        { val: 2.0,   unit: '-',      label: '揚程修正後 COP 最多為設計 COP 的倍數', ref: '保守上限，避免低揚程外推過度樂觀' },
+  chiller_lift_factor_max:        { val: 1.35,  unit: '-',      label: '揚程修正後 COP 最多為設計 COP 的倍數', ref: '受壓縮機吸氣壓力上限 (MOP) 與最小壓比限制，溫水供水最大 COP 增益 1.35x（R6 P0-C2，原 2.0）' },
+  chiller_carnot_damp_air:        { val: 0.40,  unit: 'ratio',  label: '氣冷冰機 Carnot 揚程修正阻尼係數（扣除佔總功耗 ~25% 之冷凝風扇與固定損耗）', ref: 'AHRI 550/590 氣冷冰機 EER 對外氣溫度敏感度 ~1.8%/°C' },
+  chiller_carnot_damp_water:      { val: 0.65,  unit: 'ratio',  label: '水冷冰機 Carnot 揚程修正阻尼係數（反映壓縮機壓比極限與馬達/變頻固定損耗）', ref: 'AHRI 550/590 水冷冰機 EIR-FT 敏感度' },
+  chiller_evap_temp_cap_c:        { val: 20.0,  unit: '°C',     label: '冰機供水溫度增益上限（高於此值不再獲得額外 Carnot 減載增益）', ref: '壓縮機吸氣壓力 / MOP 操作包絡限制' },
   chiller_max_cewt_standard_c:    { val: 45.0,  unit: '°C',     label: '標準氣冷/水冷冰機冷凝進水上限', ref: '標準氣冷/水冷冰機冷凝進水上限，型錄通常為 40～45°C' },
   chiller_max_cewt_hightemp_c:    { val: 60.0,  unit: '°C',     label: '高溫型（heat-pump 級）冰機冷凝進水上限', ref: '高溫型（heat-pump 級）冰機冷凝進水上限' },
 
