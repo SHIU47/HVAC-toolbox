@@ -396,6 +396,8 @@
                     chillerKw: Math.round(chKw),
                     mechLoadKw: Math.round(hourlyFacilityStats[i].mechLoadKw || 0),
                     cduPumpKw: Math.round(hourlyFacilityStats[i].cduPumpKw || 0),
+                    crahFanKw: Math.round(hourlyFacilityStats[i].crahFanKw || 0),
+                    heatRejKw: Math.round(hourlyFacilityStats[i].heatRejKw || 0),
                     coolingKw: Math.round(coolKw),
                     totalKw: Math.round(tot),
                     waterM3: parseFloat(((hourlyFacilityStats[i].waterM3 || 0)).toFixed(4))
@@ -451,12 +453,25 @@
             const overallKwh = { it: 0, cduPump: 0, crahFan: 0, heatRejection: 0, chiller: 0, loss: 0, cduUnitKwh: 0, cduPrimaryPumpKwh: 0 };
             let totalAllCduUnitKwh = 0;
             let totalAllCduPriPumpKwh = 0;
-            const monthlyStats = Array.from({ length: 12 }, () => ({ totalKwh: 0, itKwh: 0, coolKwh: 0 }));
+            const monthlyStats = Array.from({ length: 12 }, () => ({
+                totalKwh: 0,
+                itKwh: 0,
+                coolKwh: 0,
+                cduPumpKwh: 0,
+                crahFanKwh: 0,
+                heatRejKwh: 0,
+                chillerKwh: 0,
+                lossKwh: 0,
+                waterM3: 0,
+                coolNoPumpKwh: 0
+            }));
             const hourlyFacilityStats = Array.from({ length: 8760 }, () => ({
                 itKw: 0,
                 totalKw: 0,
                 coolingNoPumpKw: 0,
                 cduPumpKw: 0,
+                crahFanKw: 0,
+                heatRejKw: 0,
                 chillerKw: 0,
                 mechLoadKw: 0,
                 waterM3: 0,
@@ -473,11 +488,20 @@
                 monthlyStats[mIdx].totalKwh += hourTotal;
                 monthlyStats[mIdx].itKwh += summ.totalItKw;
                 monthlyStats[mIdx].coolKwh += hourCooling;
+                monthlyStats[mIdx].cduPumpKwh += hr.cduPumpKw;
+                monthlyStats[mIdx].crahFanKwh += hr.crahFanKw;
+                monthlyStats[mIdx].heatRejKwh += hr.heatRejKw;
+                monthlyStats[mIdx].chillerKwh += hr.chillerKw;
+                monthlyStats[mIdx].lossKwh += summ.lossKw;
+                monthlyStats[mIdx].waterM3 += (hr.waterM3 || 0);
+                monthlyStats[mIdx].coolNoPumpKwh += hourCoolingNoPump;
 
                 hourlyFacilityStats[i].itKw += summ.totalItKw;
                 hourlyFacilityStats[i].totalKw += hourTotal;
                 hourlyFacilityStats[i].coolingNoPumpKw += hourCoolingNoPump;
                 hourlyFacilityStats[i].cduPumpKw += hr.cduPumpKw;
+                hourlyFacilityStats[i].crahFanKw += hr.crahFanKw;
+                hourlyFacilityStats[i].heatRejKw += hr.heatRejKw;
                 hourlyFacilityStats[i].chillerKw += hr.chillerKw;
                 hourlyFacilityStats[i].mechLoadKw = (hourlyFacilityStats[i].mechLoadKw || 0) + (hr.mechLoadKw || 0);
                 hourlyFacilityStats[i].waterM3 = (hourlyFacilityStats[i].waterM3 || 0) + (hr.waterM3 || 0);
@@ -680,9 +704,17 @@
                 monthlyPue: monthlyStats.map((m, idx) => ({
                     month: idx + 1,
                     pue: parseFloat((m.totalKwh / (m.itKwh || 1)).toFixed(3)),
+                    p_pue: parseFloat(((m.itKwh + m.coolNoPumpKwh) / (m.itKwh || 1)).toFixed(3)),
                     totalMwh: Math.round(m.totalKwh / 1000),
                     itMwh: Math.round(m.itKwh / 1000),
-                    coolingMwh: Math.round(m.coolKwh / 1000)
+                    coolingMwh: Math.round(m.coolKwh / 1000),
+                    cduPumpMwh: parseFloat((m.cduPumpKwh / 1000).toFixed(1)),
+                    crahFanMwh: parseFloat((m.crahFanKwh / 1000).toFixed(1)),
+                    heatRejectionMwh: parseFloat((m.heatRejKwh / 1000).toFixed(1)),
+                    chillerMwh: parseFloat((m.chillerKwh / 1000).toFixed(1)),
+                    lossMwh: parseFloat((m.lossKwh / 1000).toFixed(1)),
+                    waterM3: Math.round(m.waterM3),
+                    wue: parseFloat(((m.waterM3 * 1000) / (m.itKwh || 1)).toFixed(3))
                 })),
                 hourlyProfile: profileResult.hourlyProfile
             };
