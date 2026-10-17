@@ -48,9 +48,14 @@
             const speedRatio = Math.max(fanMinSpeed, Math.min(1.0, loadRatio * ambSpeed));
 
             const fStatic = root.A('ct_vfd_static_fraction');
-            const fanKw = (ctDevices.length > 0 && typeof root.CoolingTowerEngine !== 'undefined')
+            let fanKw = (ctDevices.length > 0 && typeof root.CoolingTowerEngine !== 'undefined')
                 ? root.CoolingTowerEngine.calcFanPower(ctDevices, speedRatio, false, fanMinSpeed)
                 : (((ctx.heatLoadKw ?? Q_reject_kw) / 500) * 14.0 * (fStatic + (1 - fStatic) * Math.pow(speedRatio, 3)));
+
+            if (ctx.isClosedTower) {
+                const sprayRatio = (typeof root.A === 'function') ? root.A('closed_tower_spray_pump_kw_per_kw') : 0.0055;
+                fanKw += Q_reject_kw * sprayRatio;
+            }
 
             const evap = Q_reject_kw * evapFactor;
             const bd = evap / Math.max(1, cycles - 1);

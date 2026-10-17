@@ -97,6 +97,38 @@ const ASSUMPTIONS = {
 
   ct_fan_ref_wb_max_c:           { val: 28.0,  unit: '°C',     label: '冷卻塔風扇 100% 轉速對應之濕球基準上限（冷凝排熱用途之設計濕球）', ref: '台灣主要城市夏季設計濕球 27–29°C' },
   ct_vfd_static_fraction:        { val: 0.10,  unit: 'ratio',  label: '排熱風扇無型錄資料時之固定功率比例（與 CoolingTowerEngine.calcFanPower 一致）', ref: 'P = P_rated × (0.10 + 0.90 × s³)' },
+
+  // ── [Round 6] 水力迴路揚程、冷卻水泵與噴淋水泵 (P1-H1) ───────────────────
+  glycol_cp_kj_kgk: {
+    val: 3.90, unit: 'kJ/(kg·K)',
+    label: '30% 乙二醇/丙二醇水溶液比熱容（乾冷器與閉式塔防凍/防腐迴路）',
+    ref: 'ASHRAE Fundamentals Handbook Chapter 31 — Physical Properties of Secondary Coolants (EG/PG 25-30%)'
+  },
+  phe_secondary_loop_head_m: {
+    val: 16.0, unit: 'm',
+    label: '板式熱交換器 (PHE) 雙迴路隔離或串聯雙熱交換器之附加水頭損失 (含 PHE 壓降 + 二次側管損)',
+    ref: 'Alfa Laval / SWEP Brazed & Gasketed PHE Hydraulic Drop (50-70 kPa) + Secondary Loop Piping (90-100 kPa)'
+  },
+  cw_pump_head_default_m: {
+    val: 22.0, unit: 'm',
+    label: '水冷式冰水主機之冷卻水迴路 (CW Loop: 冷凝器 + 冷卻塔噴嘴 + 管路) 預設揚程',
+    ref: 'ASHRAE HVAC Systems and Equipment Handbook — Condenser Water Pump Sizing'
+  },
+  cw_loop_delta_t_c: {
+    val: 5.5, unit: '°C',
+    label: '水冷式冰機冷凝器冷卻水設計溫差 (AHRI 550/590 標準 30°C 進 / 35.5°C 出)',
+    ref: 'AHRI Standard 550/590 Condenser Water Rating ΔT'
+  },
+  closed_tower_spray_pump_kw_per_kw: {
+    val: 0.0055, unit: 'kW/kW_th',
+    label: '閉式冷卻水塔 (Closed-Circuit Tower) 盤管外部噴淋水泵單位排熱量功耗比 (~5.5 W/kW)',
+    ref: 'BAC FXV3 / Evapcoeco-ATWB Catalog Spray Pump Motor Spec (e.g. 7.5-11 kW per 1500 kW cell)'
+  },
+  adiabatic_spray_pump_kw_per_kw: {
+    val: 0.0020, unit: 'kW/kW_th',
+    label: '絕熱預冷塔 (Adiabatic Cooler) 濕模式增濕循環水泵與水處理電磁閥單位排熱量功耗比 (~2.0 W/kW)',
+    ref: 'BAC TrilliumSeries / Güntner HydroPad Recirculation Pump Spec'
+  },
 };
 
 function A(key, state) {

@@ -60,7 +60,8 @@
             let sprayPumpKw = 0;
 
             if (!isDry) {
-                sprayPumpKw = (Q_reject_kw * 0.0003); // Spray pump power (~0.03% of load)
+                const sprayRatio = (typeof root.A === 'function') ? root.A('adiabatic_spray_pump_kw_per_kw') : 0.0020;
+                sprayPumpKw = Q_reject_kw * sprayRatio;
                 fanKw += sprayPumpKw;
 
                 // Air-side sensible energy balance to calculate adiabatic evaporation

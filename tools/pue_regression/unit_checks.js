@@ -3137,16 +3137,17 @@ function sizeCduToDeratedN1(S) {
     const mockSumm = { liquidHeatKw: 500, airHeatKw: 100, lossKw: 0, dlcPct: 83.3 };
     AppStore.bridgeDuToPlantModel(mockDu, mockSumm);
 
-    assert(mockDu.plantDesign.cduSystem.hydraulics.pump_head_m === 28, 'Default CDU head must be 28m');
+    // R6 P1-H1: dry_cooler_trim 具板換二次迴路，預設總揚程為 28m + 16m = 44m，比熱採乙二醇 3.90
+    assert(mockDu.plantDesign.cduSystem.hydraulics.pump_head_m === 44, 'Default CDU head with PHE must be 44m (28m base + 16m PHE)');
     const pCdu = mockDu.plantDesign.cduSystem.hydraulics.pump_power_kw;
-    assert(pCdu > 3.0 && pCdu < 3.3, `CDU hydraulic power ${pCdu} should be ~3.17 kW`);
+    assert(pCdu > 5.0 && pCdu < 5.6, `CDU hydraulic power ${pCdu} should be ~5.34 kW`);
 
-    // Override head to 56m -> power should double
-    mockDu.plantDesign.cduSystem.pumpHeadM = 56;
+    // Override base head to 72m (72 + 16 = 88m, exactly 2x of 44m) -> power should double
+    mockDu.plantDesign.cduSystem.pumpHeadM = 72;
     AppStore.bridgeDuToPlantModel(mockDu, mockSumm);
-    assert(mockDu.plantDesign.cduSystem.hydraulics.pump_head_m === 56, 'CDU head must update to 56m');
+    assert(mockDu.plantDesign.cduSystem.hydraulics.pump_head_m === 88, 'CDU head must update to 88m');
     const pCduDouble = mockDu.plantDesign.cduSystem.hydraulics.pump_power_kw;
-    assert(Math.abs((pCduDouble / pCdu) - 2.0) < 0.001, 'Doubled head must double hydraulic power');
+    assert(Math.abs((pCduDouble / pCdu) - 2.0) < 0.001, 'Doubled total head must double hydraulic power');
 
     // 3. Sizing Engine evaluates motor adequacy vs P_design
     const cduSysSizing = {
@@ -3187,18 +3188,18 @@ function sizeCduToDeratedN1(S) {
     const duWin = win.AppStore.state.halls[0].dus[0];
     const initialPriKwh = win.AppStore.state.results.overall.breakdownKwh.cduPrimaryPumpKwh;
 
-    // Change pumpHeadM on DU to 56
-    duWin.plantDesign.cduSystem.pumpHeadM = 56;
+    // Change base pumpHeadM on DU to 72m (total head doubles from 44m to 88m)
+    duWin.plantDesign.cduSystem.pumpHeadM = 72;
     win.AppStore.calculate();
     const doubledPriKwh = win.AppStore.state.results.overall.breakdownKwh.cduPrimaryPumpKwh;
     const ratio = doubledPriKwh / initialPriKwh;
-    assert(Math.abs(ratio - 2.0) < 0.02, `Doubling head must double primary pump energy (±2%), got ratio ${ratio}`);
+    assert(Math.abs(ratio - 2.0) < 0.02, `Doubling total head must double primary pump energy (±2%), got ratio ${ratio}`);
 
     // Verify DOM rendering
     win.ViewCooling.render(win.document.getElementById('stepContent'));
     const cduHeadInput = win.document.getElementById(`cduPumpHeadIn_${duWin.id}`);
     assert(cduHeadInput !== null, 'cduPumpHeadIn input must exist in DOM');
-    assert(Number(cduHeadInput.value) === 56, 'cduPumpHeadIn must reflect updated value 56');
+    assert(Number(cduHeadInput.value) === 72, 'cduPumpHeadIn must reflect updated value 72');
   });
 })();
 
@@ -3305,6 +3306,60 @@ function sizeCduToDeratedN1(S) {
   test('R6 P0-C1 integrated FC chiller XCAF1913A enables FC coil when DB + approach < CHW return', () => {
     const op = airArch.operatingPoint({ chwSupplyC: 20, chwReturnC: 30, sizing: [{ key: 'air_cooled_chiller', selectedModel: 'Uniflair XCAF1913A (含自然冷卻盤管)' }] }, { db: 20, wb: 16 });
     assert(op.mode !== 'mechanical' && op.fc_fraction > 0, JSON.stringify({ mode: op.mode, fc: op.fc_fraction }));
+  });
+})();
+
+// ── Round 6 P1-H1: 水力迴路冷卻水泵 (CW Pump)、板交二次迴路附加揚程與乙二醇比熱 ──
+(function () {
+  const ctx = freshCtx();
+  const { AppStore: S, CoolingStages } = ctx;
+
+  test('R6 P1-H1 dry_cooler_pure uses glycol Cp (3.90) and PHE extra head (+16m)', () => {
+    const du = {
+      id: 'du-test',
+      plantDesign: {
+        cduSystem: { architecture: 'dry_cooler_pure', fwsSupplyC: 40, fwsReturnC: 55, hasPhe: true },
+        fanwallSystem: { architecture: 'air_cooled_chiller', chwSupplyC: 12, chwReturnC: 18 }
+      }
+    };
+    const summ = { totalItKw: 1000, liquidHeatKw: 900, airHeatKw: 100, lossKw: 0, dlcPct: 90 };
+    S.bridgeDuToPlantModel(du, summ);
+    // flow = round(900 * 60 / (3.90 * 15)) = round(923.0769) = 923 L/min
+    assert(du.plantDesign.cduSystem.hydraulics.flow_lpm === 923, 'flow got ' + du.plantDesign.cduSystem.hydraulics.flow_lpm);
+    // head = 28 + 16 = 44 m
+    assert(du.plantDesign.cduSystem.hydraulics.pump_head_m === 44, 'head got ' + du.plantDesign.cduSystem.hydraulics.pump_head_m);
+  });
+
+  test('R6 P1-H1 water_chiller adds CW pump power to cduPumpPowerKw', () => {
+    const du = {
+      id: 'du-cw-test',
+      plantDesign: {
+        cduSystem: { architecture: 'water_chiller', fwsSupplyC: 40, fwsReturnC: 55, hasPhe: false },
+        fanwallSystem: { architecture: 'air_cooled_chiller', chwSupplyC: 12, chwReturnC: 18 }
+      }
+    };
+    const summ = { totalItKw: 1000, liquidHeatKw: 900, airHeatKw: 100, lossKw: 0, dlcPct: 90 };
+    S.bridgeDuToPlantModel(du, summ);
+    // Primary pump: flow = 900*60/(4.186*15) = 860 L/min, head = 28m
+    // CW pump: flow = (900 * 1.18 * 60) / (4.186 * 5.5) = 2766.4 L/min, head = 22m
+    // Both pump powers summed into pump_power_kw
+    const pwr = du.plantDesign.cduSystem.hydraulics.pump_power_kw;
+    assert(pwr > 15 && pwr < 25, 'cdu pump power with CW pump got ' + pwr);
+  });
+
+  test('R6 P1-H1 closed_tower includes spray pump power (~0.0055 kW/kW)', () => {
+    const ct = CoolingStages.get('closed_tower');
+    const r = ct.rejectionCost({ w: { db: 25, wb: 20 }, t_supply_c: 35, ctApproachC: 6.0, loadRatio: 1.0 }, 1000, false);
+    // spray pump = 1000 * 0.0055 = 5.5 kW included in fanKw
+    assert(r.fanKw >= 5.5, 'closed tower fanKw including spray pump got ' + r.fanKw);
+  });
+
+  test('R6 P1-H1 adiabatic_tower wet mode includes spray pump (~0.0020 kW/kW)', () => {
+    const at = CoolingStages.get('adiabatic');
+    // High ambient w.db=38, wb=28 -> wet mode
+    const r = at.rejectionCost({ w: { db: 38, wb: 28 }, t_supply_c: 42, dryCoolerApproachC: 5.0, loadRatio: 1.0 }, 1000, true);
+    assert(!r.diag.isDry, 'must be wet mode');
+    assert(Math.abs(r.diag.sprayPumpKw - 2.0) < 1e-6, 'spray pump kw got ' + r.diag.sprayPumpKw);
   });
 })();
 
