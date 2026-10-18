@@ -8,6 +8,7 @@
  */
 (function(window) {
     'use strict';
+    const _t = (k, p, fb) => (window.I18N ? window.I18N.t(k, p) : (fb || k));
 
     let filterMode = 'all'; // 'all' | 'attention'
     const expandedUnitIds = {}; // targetId -> boolean
@@ -43,7 +44,7 @@
                     id: p.id, 
                     name: p.name + ' (CorePOD)', 
                     shortName: p.name,
-                    hallName: 'CorePOD 模組',
+                    hallName: _t('cooling.corePodModule', null, 'CorePOD 模組'), 
                     type: 'pod', 
                     obj: p,
                     summ: summ
@@ -51,7 +52,7 @@
             });
 
             if (targets.length === 0) {
-                container.innerHTML = '<div class="p-8 text-center bg-white rounded-2xl border">無可配置的 DU 或 CorePOD</div>';
+                container.innerHTML = `<div class="p-8 text-center bg-white rounded-2xl border">${_t('cooling.noTargets', null, '無可配置的 DU 或 CorePOD')}</div>`;
                 return;
             }
 
@@ -70,14 +71,14 @@
 
                 if (allPass) {
                     t.status = 'pass';
-                    t.statusBadge = '<span class="px-2 py-0.5 bg-emerald-100 text-emerald-800 text-[10px] font-black rounded-md border border-emerald-200">🟢 滿足 N+1</span>';
+                    t.statusBadge = `<span class="px-2 py-0.5 bg-emerald-100 text-emerald-800 text-[10px] font-black rounded-md border border-emerald-200">🟢 ${_t('cooling.statusPassed', null, '滿足 N+1')}</span>`;
                 } else if (hasFail) {
                     t.status = 'fail';
-                    t.statusBadge = '<span class="px-2 py-0.5 bg-red-100 text-red-800 text-[10px] font-black rounded-md border border-red-200">🔴 容量不足</span>';
+                    t.statusBadge = `<span class="px-2 py-0.5 bg-red-100 text-red-800 text-[10px] font-black rounded-md border border-red-200">🔴 ${_t('cooling.statusDeficit', null, '容量不足')}</span>`;
                     attentionCount++;
                 } else {
                     t.status = 'incomplete';
-                    t.statusBadge = '<span class="px-2 py-0.5 bg-slate-100 text-slate-600 text-[10px] font-black rounded-md border border-slate-300">⚪ 尚未選型</span>';
+                    t.statusBadge = `<span class="px-2 py-0.5 bg-slate-100 text-slate-600 text-[10px] font-black rounded-md border border-slate-300">⚪ ${_t('cooling.statusNoEquip', null, '尚未選型')}</span>`;
                     attentionCount++;
                 }
 
@@ -111,7 +112,7 @@
                         </div>
                         <div class="text-[10px] text-slate-400 mt-1 flex items-center justify-between border-t border-slate-200/60 pt-1">
                             <span class="truncate inline-flex items-center gap-1"><i data-lucide="droplets" class="w-3 h-3 text-purple-500 shrink-0"></i>${cduArchText}<span class="text-slate-300">|</span><i data-lucide="wind" class="w-3 h-3 text-indigo-500 shrink-0"></i>${fwArchText}</span>
-                            <span class="text-purple-700 font-bold ml-1">${expandedUnitIds[t.id] ? '捲動 ↓' : '展開 ↓'}</span>
+                            <span class="text-purple-700 font-bold ml-1">${expandedUnitIds[t.id] ? _t('cooling.scrollDown', null, '捲動 ↓') : _t('cooling.expandDown', null, '展開 ↓')}</span>
                         </div>
                     </div>
                 `;
@@ -132,8 +133,8 @@
                 unitsListHtml = `
                     <div class="p-12 text-center bg-white rounded-2xl border border-emerald-300 shadow-sm space-y-2">
                         <div class="text-4xl">🎉</div>
-                        <div class="text-base font-black text-emerald-800">所有單元冷卻設備選型皆已滿足 N+1 規範！</div>
-                        <div class="text-xs text-slate-500">無任何需注意或未完成之單元。</div>
+                        <div class="text-base font-black text-emerald-800">${_t('cooling.allPassedBanner', null, '所有單元冷卻設備選型皆已滿足 N+1 規範！')}</div>
+                        <div class="text-xs text-slate-500">${_t('cooling.allPassedSub', null, '無任何需注意或未完成之單元。')}</div>
                     </div>
                 `;
             }
@@ -146,19 +147,19 @@
                     const safeTargetName = window.UIKit ? window.UIKit.escapeHTML(fi.targetName) : fi.targetName;
                     const safeSysName = window.UIKit ? window.UIKit.escapeHTML(fi.systemName) : fi.systemName;
                     const safeEquipName = window.UIKit ? window.UIKit.escapeHTML(fi.equipName) : fi.equipName;
-                    errList += `<li><strong>[${safeTargetName}]</strong> ${safeSysName} - ${safeEquipName}：${fi.reqText}（目前僅選 ${fi.selText}） <a href="#unit_${fi.targetId}" onclick="ViewCooling.scrollToUnit('${fi.targetId}')" class="text-red-700 underline font-bold ml-1">前往調整</a></li>`;
+                    errList += `<li><strong>[${safeTargetName}]</strong> ${safeSysName} - ${safeEquipName}：${fi.reqText}${_t('cooling.currentlySelected', { sel: fi.selText }, `（目前僅選 ${fi.selText}）`)} <a href="#unit_${fi.targetId}" onclick="ViewCooling.scrollToUnit('${fi.targetId}')" class="text-red-700 underline font-bold ml-1">${_t('cooling.goToAdjust', null, '前往調整')}</a></li>`;
                 });
 
                 proceedAlert = `
                     <div class="p-4 bg-red-50 border-2 border-red-400 rounded-2xl space-y-2 text-xs">
                         <div class="flex items-center gap-2 font-black text-red-900 text-sm">
-                            <span>⚠️</span> 尚有 ${proceedStatus.failedItems.length} 項設備容量未達 N+1 規範，系統已鎖定無法前往 Step 5：
+                            <span>⚠️</span> ${_t('cooling.lockedBanner', { n: proceedStatus.failedItems.length }, `尚有 ${proceedStatus.failedItems.length} 項設備容量未達 N+1 規範，系統已鎖定無法前往 Step 5：`)}
                         </div>
                         <ul class="list-disc list-inside text-red-800 space-y-1 pl-1 font-medium">
                             ${errList}
                         </ul>
                         <div class="pt-1 text-[11px] text-red-600">
-                            💡 系統已自動為您展開需調整之單元，請增加配置使所有檢核燈號全數轉為綠色即可解鎖。
+                            ${_t('cooling.lockedTip', null, '💡 系統已自動為您展開需調整之單元，請增加配置使所有檢核燈號全數轉為綠色即可解鎖。')}
                         </div>
                     </div>
                 `;
@@ -171,24 +172,24 @@
                         <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
                             <div>
                                 <h2 class="text-xl font-bold text-slate-900 flex items-center gap-2">
-                                    <span>❄️</span> Step 4: 雙冷卻工程選型設計 (智慧收合 & 設備目錄接線)
+                                    <span>❄️</span> ${_t('cooling.stepTitle', null, 'Step 4: 雙冷卻工程選型設計 (智慧收合 & 設備目錄接線)')}
                                 </h2>
                                 <p class="text-sm text-slate-500 mt-1">
-                                    已完成單元智慧收折，未完成單元自動展開。支援 <strong>4 款 CDU 架構</strong>、<strong>4 款氣冷架構 (含 RDHX 背板)</strong> 與真實設備型錄庫。
+                                    ${_t('cooling.stepDesc', null, '已完成單元智慧收折，未完成單元自動展開。支援 <strong>4 款 CDU 架構</strong>、<strong>4 款氣冷架構 (含 RDHX 背板)</strong> 與真實設備型錄庫。')}
                                 </p>
                             </div>
                             <div class="flex items-center gap-2 bg-slate-100 p-1.5 rounded-xl border border-slate-200 flex-wrap">
                                 <button onclick="ViewCooling.smartAccordion()" class="px-3 py-1.5 text-xs font-bold rounded-lg transition bg-white text-slate-900 shadow-2xs hover:bg-slate-50">
-                                    💡 智慧聚焦
+                                    ${_t('cooling.smartFocus', null, '💡 智慧聚焦')}
                                 </button>
                                 <button onclick="ViewCooling.expandAll()" class="px-2.5 py-1.5 text-xs font-bold rounded-lg transition text-slate-700 hover:bg-white hover:text-slate-900">
-                                    📂 全部展開
+                                    ${_t('cooling.expandAll', null, '📂 全部展開')}
                                 </button>
                                 <button onclick="ViewCooling.collapseAll()" class="px-2.5 py-1.5 text-xs font-bold rounded-lg transition text-slate-700 hover:bg-white hover:text-slate-900">
-                                    📁 全部收合
+                                    ${_t('cooling.collapseAll', null, '📁 全部收合')}
                                 </button>
                                 <button onclick="ViewCooling.toggleFilterAttention()" class="px-3 py-1.5 text-xs font-bold rounded-lg transition ${filterMode==='attention' ? 'bg-red-600 text-white' : 'text-red-700 hover:bg-red-50'}">
-                                    ⚠️ 僅看需調整 (${attentionCount})
+                                    ${_t('cooling.attentionOnly', { n: attentionCount }, `⚠️ 僅看需調整 (${attentionCount})`)}
                                 </button>
                             </div>
                         </div>
@@ -197,8 +198,8 @@
                     <!-- 全廠冷卻配置狀態導覽條 (Plant Overview Bar) -->
                     <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 space-y-3">
                         <div class="flex justify-between items-center text-xs font-bold text-slate-600 border-b pb-2">
-                            <span>全廠冷卻單元即時狀態總覽 (點擊可快速展開並定位至該單元)</span>
-                            <span class="text-slate-400 font-normal">已完成: ${targets.length - attentionCount} / ${targets.length}</span>
+                            <span>${_t('cooling.overviewBar', null, '全廠冷卻單元即時狀態總覽 (點擊可快速展開並定位至該單元)')}</span>
+                            <span class="text-slate-400 font-normal">${_t('cooling.overviewCompleted', { done: targets.length - attentionCount, total: targets.length }, `已完成: ${targets.length - attentionCount} / ${targets.length}`)}</span>
                         </div>
                         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
                             ${overviewPillsHtml}
@@ -215,12 +216,12 @@
 
                     <div class="flex justify-between pt-2">
                         <button onclick="window.App.prevStep()" class="px-6 py-3 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-sm rounded-xl transition">
-                            <span>←</span> 上一步: CorePOD 設計
+                            <span>←</span> ${_t('cooling.prevStep', null, '上一步: CorePOD 設計')}
                         </button>
                         
                         <button ${proceedStatus.ok ? 'onclick="window.App.nextStep()"' : 'disabled'} 
                             class="px-6 py-3 ${proceedStatus.ok ? 'bg-emerald-600 hover:bg-emerald-700 text-white cursor-pointer shadow-md' : 'bg-slate-300 text-slate-500 cursor-not-allowed'} font-black text-sm rounded-xl transition flex items-center gap-2">
-                            ${proceedStatus.ok ? '計算並檢視 8,760h PUE / WUE 成果儀表板 📊' : '⚠️ 設備選型未達 N+1 (已鎖定)'}
+                            ${proceedStatus.ok ? _t('cooling.nextStepOk', null, '計算並檢視 8,760h PUE / WUE 成果儀表板 📊') : _t('cooling.nextStepLocked', null, '⚠️ 設備選型未達 N+1 (已鎖定)')}
                         </button>
                     </div>
                 </div>
@@ -262,14 +263,14 @@
                             </div>
                             <div class="text-xs text-slate-500 mt-0.5">
                                 IT: <strong>${t.summ.totalItKw.toFixed(0)} kW</strong> (DLC ${t.summ.dlcPct.toFixed(0)}%) &middot;
-                                液冷: <strong class="text-purple-900">${cduArchLabel}</strong> &middot;
-                                氣冷: <strong class="text-indigo-900">${fwArchLabel}</strong>
+                                ${_t('cooling.liquidLabel', null, '液冷:')} <strong class="text-purple-900">${cduArchLabel}</strong> &middot;
+                                ${_t('cooling.airLabel', null, '氣冷:')} <strong class="text-indigo-900">${fwArchLabel}</strong>
                             </div>
                         </div>
                     </div>
                     <div class="flex items-center gap-2">
                         <button onclick="ViewCooling.toggleExpand('${targetId}')" class="px-3.5 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-xl transition flex items-center gap-1 shadow-2xs">
-                            <span>展開詳細選型 ▾</span>
+                            <span>${_t('cooling.expandDetails', null, '展開詳細選型 ▾')}</span>
                         </button>
                     </div>
                 </div>
@@ -282,7 +283,7 @@
             const customParams = archDesc.params.filter(p => p.archSpecific || p.panel === 'custom');
             if (customParams.length === 0) return '';
 
-            const title = archDesc.paramPanelTitle || (archDesc.paramPanel && archDesc.paramPanel.title) || `${archDesc.cardLabel} 專屬參數:`;
+            const title = archDesc.paramPanelTitle || (archDesc.paramPanel && archDesc.paramPanel.title) || _t('cooling.archParamTitle', { arch: archDesc.cardLabel }, `${archDesc.cardLabel} 專屬參數:`);
             const noteObj = typeof archDesc.paramPanelNote === 'function'
                 ? archDesc.paramPanelNote(sys)
                 : (archDesc.paramPanel && typeof archDesc.paramPanel.note === 'function' ? archDesc.paramPanel.note(sys) : null);
@@ -300,9 +301,9 @@
                             const riskLimit = typeof A === 'function' ? A('freeze_risk_db_c') : 4.0;
                             const pheApp = sys.pheApproachC ?? 2.0;
                             if (freezeDb.value > riskLimit) {
-                                freezeNotice = `<div class="text-[9.5px] text-slate-500 mt-1">本案場 ASHRAE 50 年回歸最低乾球 ${freezeDb.value}°C，無結冰風險。若室外側使用防腐處理純水且不需壓力隔離，可取消 PHE，自然冷卻門檻可提高 ${pheApp}°C。</div>`;
+                                freezeNotice = `<div class="text-[9.5px] text-slate-500 mt-1">${_t('cooling.freezeNoticeSafe', { db: freezeDb.value, app: pheApp }, `本案場 ASHRAE 50 年回歸最低乾球 ${freezeDb.value}°C，無結冰風險。若室外側使用防腐處理純水且不需壓力隔離，可取消 PHE，自然冷卻門檻可提高 ${pheApp}°C。`)}</div>`;
                             } else {
-                                freezeNotice = `<div class="text-[9.5px] text-amber-700 font-medium mt-1">⚠ 本案場 50 年回歸最低乾球 ${freezeDb.value}°C，有結冰風險，室外側需乙二醇並保留 PHE 隔離。</div>`;
+                                freezeNotice = `<div class="text-[9.5px] text-amber-700 font-medium mt-1">${_t('cooling.freezeNoticeRisk', { db: freezeDb.value }, `⚠ 本案場 50 年回歸最低乾球 ${freezeDb.value}°C，有結冰風險，室外側需乙二醇並保留 PHE 隔離。`)}</div>`;
                             }
                         }
                     }
@@ -392,22 +393,22 @@ ${inputsHtml}
                 const marginPct = (item.requiredKw > 0) ? (((effCap / item.requiredKw) - 1) * 100) : 0;
                 let marginBadge = '';
                 if (marginPct < 0) {
-                    marginBadge = `<span class="px-2 py-0.5 bg-red-100 text-red-700 text-[10px] font-black rounded-md border border-red-200">餘度: ${marginPct.toFixed(1)}%</span>`;
+                    marginBadge = `<span class="px-2 py-0.5 bg-red-100 text-red-700 text-[10px] font-black rounded-md border border-red-200">${_t('cooling.margin', { sign: '', pct: marginPct.toFixed(1) }, `餘度: ${marginPct.toFixed(1)}%`)}</span>`;
                 } else if (marginPct < 10) {
-                    marginBadge = `<span class="px-2 py-0.5 bg-amber-100 text-amber-800 text-[10px] font-black rounded-md border border-amber-200">餘度: +${marginPct.toFixed(1)}%</span>`;
+                    marginBadge = `<span class="px-2 py-0.5 bg-amber-100 text-amber-800 text-[10px] font-black rounded-md border border-amber-200">${_t('cooling.margin', { sign: '+', pct: marginPct.toFixed(1) }, `餘度: +${marginPct.toFixed(1)}%`)}</span>`;
                 } else {
-                    marginBadge = `<span class="px-2 py-0.5 bg-emerald-100 text-emerald-800 text-[10px] font-black rounded-md border border-emerald-200">餘度: +${marginPct.toFixed(1)}%</span>`;
+                    marginBadge = `<span class="px-2 py-0.5 bg-emerald-100 text-emerald-800 text-[10px] font-black rounded-md border border-emerald-200">${_t('cooling.margin', { sign: '+', pct: marginPct.toFixed(1) }, `餘度: +${marginPct.toFixed(1)}%`)}</span>`;
                 }
 
                 let badge = '';
                 if (item.selectedQty === 0) {
-                    badge = '<span class="px-2 py-0.5 bg-slate-100 text-slate-500 text-[10px] font-black rounded-md flex items-center gap-1 border border-slate-300">⚪ 尚未選型</span>';
+                    badge = `<span class="px-2 py-0.5 bg-slate-100 text-slate-500 text-[10px] font-black rounded-md flex items-center gap-1 border border-slate-300">⚪ ${_t('cooling.statusNoEquip', null, '尚未選型')}</span>`;
                 } else if (item.passed) {
-                    badge = '<span class="px-2 py-0.5 bg-emerald-100 text-emerald-800 text-[10px] font-black rounded-md flex items-center gap-1 border border-emerald-200">🟢 滿足 N+1</span>';
+                    badge = `<span class="px-2 py-0.5 bg-emerald-100 text-emerald-800 text-[10px] font-black rounded-md flex items-center gap-1 border border-emerald-200">🟢 ${_t('cooling.statusPassed', null, '滿足 N+1')}</span>`;
                 } else if ((item.key === 'cdu_pump' || item.key === 'fw_pump' || item.role === 'pump') && item.selectedQty >= 2 && item.requiredKw > (item.effectiveCapKw ?? 0)) {
-                    badge = '<span class="px-2 py-0.5 bg-red-100 text-red-800 text-[10px] font-black rounded-md flex items-center gap-1 border border-red-200">🔴 泵浦馬達功率不足</span>';
+                    badge = `<span class="px-2 py-0.5 bg-red-100 text-red-800 text-[10px] font-black rounded-md flex items-center gap-1 border border-red-200">🔴 ${_t('cooling.pumpMotorDeficit', null, '泵浦馬達功率不足')}</span>`;
                 } else {
-                    badge = '<span class="px-2 py-0.5 bg-red-100 text-red-800 text-[10px] font-black rounded-md flex items-center gap-1 border border-red-200">🔴 容量不足</span>';
+                    badge = `<span class="px-2 py-0.5 bg-red-100 text-red-800 text-[10px] font-black rounded-md flex items-center gap-1 border border-red-200">🔴 ${_t('cooling.statusDeficit', null, '容量不足')}</span>`;
                 }
 
                 cduSizingHtml += `
@@ -415,7 +416,7 @@ ${inputsHtml}
                         <div class="flex justify-between items-center">
                             <div>
                                 <span class="font-bold text-slate-900 text-sm">${item.label}</span>
-                                <div class="text-xs text-slate-500 mt-1">系統需求: <strong class="text-slate-900 font-bold bg-white px-1.5 py-0.5 rounded border border-slate-200">${item.requiredText}</strong></div>
+                                <div class="text-xs text-slate-500 mt-1">${_t('cooling.sysDemand', null, '系統需求:')} <strong class="text-slate-900 font-bold bg-white px-1.5 py-0.5 rounded border border-slate-200">${item.requiredText}</strong></div>
                             </div>
                             <div class="flex items-center gap-1.5">
                                 ${marginBadge}
@@ -424,26 +425,26 @@ ${inputsHtml}
                         </div>
                         <div class="grid grid-cols-3 gap-2 pt-1">
                             <div class="col-span-2">
-                                <label class="block text-[9px] text-slate-400 font-bold mb-0.5">自選型號 (真實設備型錄庫)</label>
+                                <label class="block text-[9px] text-slate-400 font-bold mb-0.5">${_t('cooling.customModel', null, '自選型號 (真實設備型錄庫)')}</label>
                                 <select onchange="ViewCooling.changeModel('${targetId}', 'cdu', '${item.key}', this.value)" class="w-full text-xs font-bold border rounded-lg p-1.5 bg-white text-slate-800">
                                     ${modelOptions}
                                 </select>
                             </div>
                             <div>
-                                <label class="block text-[9px] text-slate-400 font-bold mb-0.5">選定台數 (含備用)</label>
+                                <label class="block text-[9px] text-slate-400 font-bold mb-0.5">${_t('cooling.selectedQty', null, '選定台數 (含備用)')}</label>
                                 <input type="number" min="1" max="50" id="qty_cdu_${targetId}_${item.key}" value="${item.selectedQty}" onchange="ViewCooling.changeQty('${targetId}', 'cdu', '${item.key}', this.value)" class="w-full text-xs font-black border rounded-lg p-1.5 bg-white text-purple-950 text-center">
                             </div>
                         </div>
                         <div class="text-[10px] flex justify-between text-slate-400 pt-0.5 border-t border-slate-200">
-                            <span>總容量: ${(item.selectedQty * item.unitCapKw).toFixed(1)} kW</span>
-                            <span>有效容量 (N-1): <strong class="${item.passed ? 'text-emerald-700 font-bold' : 'text-red-600 font-bold'}">${effCap.toFixed(1)} kW</strong></span>
+                            <span>${_t('cooling.totalCap', null, '總容量:')} ${(item.selectedQty * item.unitCapKw).toFixed(1)} kW</span>
+                            <span>${_t('cooling.effectiveCap', null, '有效容量 (N-1):')} <strong class="${item.passed ? 'text-emerald-700 font-bold' : 'text-red-600 font-bold'}">${effCap.toFixed(1)} kW</strong></span>
                         </div>
                         ${isTrimChiller && item.maxMechanicalKw !== undefined ? `
                         <div class="text-[10px] flex justify-between items-center pt-1.5 mt-1 border-t border-dashed border-slate-300">
-                            <span class="text-slate-500">⚠ 若進入 Mode 3 全機械製冷，最大需求 <strong class="text-slate-700">${item.maxMechanicalKw.toFixed(0)} kW</strong></span>
-                            <span class="${item.maxMechanicalPassed ? 'text-emerald-700' : 'text-red-600'} font-bold">${item.maxMechanicalPassed ? '✓ N+1可用容量足夠' : '✗ N+1可用容量不足！'}</span>
+                            <span class="text-slate-500">${_t('cooling.mode3MaxDemand', { maxKw: item.maxMechanicalKw.toFixed(0) }, `⚠ 若進入 Mode 3 全機械製冷，最大需求 <strong class="text-slate-700">${item.maxMechanicalKw.toFixed(0)} kW</strong>`)}</span>
+                            <span class="${item.maxMechanicalPassed ? 'text-emerald-700' : 'text-red-600'} font-bold">${item.maxMechanicalPassed ? _t('cooling.mode3AvailOk', null, '✓ N+1可用容量足夠') : _t('cooling.mode3AvailFail', null, '✗ N+1可用容量不足！')}</span>
                         </div>
-                        <div class="text-[9px] text-slate-400">上方「滿足N+1」以年最高乾球修整負載為基準；若進入 Mode 3 全機械製冷（乾冷器完全無法預冷），需求為 100% 液冷負載，此項僅供參考，實際請以 Dashboard 容量缺口小時為準</div>
+                        <div class="text-[9px] text-slate-400">${_t('cooling.mode3Note', null, '上方「滿足N+1」以年最高乾球修整負載為基準；若進入 Mode 3 全機械製冷（乾冷器完全無法預冷），需求為 100% 液冷負載，此項僅供參考，實際請以 Dashboard 容量缺口小時為準')}</div>
                         ` : ''}
                     </div>
                 `;
@@ -472,22 +473,22 @@ ${inputsHtml}
                 const marginPct = (item.requiredKw > 0) ? (((effCap / item.requiredKw) - 1) * 100) : 0;
                 let marginBadge = '';
                 if (marginPct < 0) {
-                    marginBadge = `<span class="px-2 py-0.5 bg-red-100 text-red-700 text-[10px] font-black rounded-md border border-red-200">餘度: ${marginPct.toFixed(1)}%</span>`;
+                    marginBadge = `<span class="px-2 py-0.5 bg-red-100 text-red-700 text-[10px] font-black rounded-md border border-red-200">${_t('cooling.margin', { sign: '', pct: marginPct.toFixed(1) }, `餘度: ${marginPct.toFixed(1)}%`)}</span>`;
                 } else if (marginPct < 10) {
-                    marginBadge = `<span class="px-2 py-0.5 bg-amber-100 text-amber-800 text-[10px] font-black rounded-md border border-amber-200">餘度: +${marginPct.toFixed(1)}%</span>`;
+                    marginBadge = `<span class="px-2 py-0.5 bg-amber-100 text-amber-800 text-[10px] font-black rounded-md border border-amber-200">${_t('cooling.margin', { sign: '+', pct: marginPct.toFixed(1) }, `餘度: +${marginPct.toFixed(1)}%`)}</span>`;
                 } else {
-                    marginBadge = `<span class="px-2 py-0.5 bg-emerald-100 text-emerald-800 text-[10px] font-black rounded-md border border-emerald-200">餘度: +${marginPct.toFixed(1)}%</span>`;
+                    marginBadge = `<span class="px-2 py-0.5 bg-emerald-100 text-emerald-800 text-[10px] font-black rounded-md border border-emerald-200">${_t('cooling.margin', { sign: '+', pct: marginPct.toFixed(1) }, `餘度: +${marginPct.toFixed(1)}%`)}</span>`;
                 }
 
                 let badge = '';
                 if (item.selectedQty === 0) {
-                    badge = '<span class="px-2 py-0.5 bg-slate-100 text-slate-500 text-[10px] font-black rounded-md flex items-center gap-1 border border-slate-300">⚪ 尚未選型</span>';
+                    badge = `<span class="px-2 py-0.5 bg-slate-100 text-slate-500 text-[10px] font-black rounded-md flex items-center gap-1 border border-slate-300">⚪ ${_t('cooling.statusNoEquip', null, '尚未選型')}</span>`;
                 } else if (item.passed) {
-                    badge = '<span class="px-2 py-0.5 bg-emerald-100 text-emerald-800 text-[10px] font-black rounded-md flex items-center gap-1 border border-emerald-200">🟢 滿足 N+1</span>';
+                    badge = `<span class="px-2 py-0.5 bg-emerald-100 text-emerald-800 text-[10px] font-black rounded-md flex items-center gap-1 border border-emerald-200">🟢 ${_t('cooling.statusPassed', null, '滿足 N+1')}</span>`;
                 } else if ((item.key === 'cdu_pump' || item.key === 'fw_pump' || item.role === 'pump') && item.selectedQty >= 2 && item.requiredKw > (item.effectiveCapKw ?? 0)) {
-                    badge = '<span class="px-2 py-0.5 bg-red-100 text-red-800 text-[10px] font-black rounded-md flex items-center gap-1 border border-red-200">🔴 泵浦馬達功率不足</span>';
+                    badge = `<span class="px-2 py-0.5 bg-red-100 text-red-800 text-[10px] font-black rounded-md flex items-center gap-1 border border-red-200">🔴 ${_t('cooling.pumpMotorDeficit', null, '泵浦馬達功率不足')}</span>`;
                 } else {
-                    badge = '<span class="px-2 py-0.5 bg-red-100 text-red-800 text-[10px] font-black rounded-md flex items-center gap-1 border border-red-200">🔴 容量不足</span>';
+                    badge = `<span class="px-2 py-0.5 bg-red-100 text-red-800 text-[10px] font-black rounded-md flex items-center gap-1 border border-red-200">🔴 ${_t('cooling.statusDeficit', null, '容量不足')}</span>`;
                 }
 
                 fwSizingHtml += `
@@ -495,7 +496,7 @@ ${inputsHtml}
                         <div class="flex justify-between items-center">
                             <div>
                                 <span class="font-bold text-slate-900 text-sm">${item.label}</span>
-                                <div class="text-xs text-slate-500 mt-1">系統需求: <strong class="text-slate-900 font-bold bg-white px-1.5 py-0.5 rounded border border-slate-200">${item.requiredText}</strong></div>
+                                <div class="text-xs text-slate-500 mt-1">${_t('cooling.sysDemand', null, '系統需求:')} <strong class="text-slate-900 font-bold bg-white px-1.5 py-0.5 rounded border border-slate-200">${item.requiredText}</strong></div>
                             </div>
                             <div class="flex items-center gap-1.5">
                                 ${marginBadge}
@@ -504,7 +505,7 @@ ${inputsHtml}
                         </div>
                         <div class="grid grid-cols-3 gap-2 pt-1">
                             <div class="col-span-2">
-                                <label class="block text-[9px] text-slate-400 font-bold mb-0.5">自選型號 (真實設備型錄庫)</label>
+                                <label class="block text-[9px] text-slate-400 font-bold mb-0.5">${_t('cooling.customModel', null, '自選型號 (真實設備型錄庫)')}</label>
                                 <select onchange="ViewCooling.changeModel('${targetId}', 'fanwall', '${item.key}', this.value)" class="w-full text-xs font-bold border rounded-lg p-1.5 bg-white text-slate-800">
                                     ${modelOptions}
                                 </select>
@@ -512,13 +513,13 @@ ${inputsHtml}
 
 
                             <div>
-                                <label class="block text-[9px] text-slate-400 font-bold mb-0.5">選定台數 (含備用)</label>
+                                <label class="block text-[9px] text-slate-400 font-bold mb-0.5">${_t('cooling.selectedQty', null, '選定台數 (含備用)')}</label>
                                 <input type="number" min="1" max="50" id="qty_fw_${targetId}_${item.key}" value="${item.selectedQty}" onchange="ViewCooling.changeQty('${targetId}', 'fanwall', '${item.key}', this.value)" class="w-full text-xs font-black border rounded-lg p-1.5 bg-white text-indigo-950 text-center">
                             </div>
                         </div>
                         <div class="text-[10px] flex justify-between text-slate-400 pt-0.5 border-t border-slate-200">
-                            <span>總容量: ${(item.selectedQty * item.unitCapKw).toFixed(1)} kW</span>
-                            <span>有效容量 (N-1): <strong class="${item.passed ? 'text-emerald-700 font-bold' : 'text-red-600 font-bold'}">${effCap.toFixed(1)} kW</strong></span>
+                            <span>${_t('cooling.totalCap', null, '總容量:')} ${(item.selectedQty * item.unitCapKw).toFixed(1)} kW</span>
+                            <span>${_t('cooling.effectiveCap', null, '有效容量 (N-1):')} <strong class="${item.passed ? 'text-emerald-700 font-bold' : 'text-red-600 font-bold'}">${effCap.toFixed(1)} kW</strong></span>
                         </div>
                     </div>
                 `;
@@ -537,13 +538,13 @@ ${inputsHtml}
                             <span class="w-8 h-8 rounded-xl bg-purple-100 text-purple-800 flex items-center justify-center shadow-2xs"><i data-lucide="building-2" class="w-4 h-4"></i></span>
                             <div>
                                 <h3 class="text-base font-black text-slate-900">${safeName}</h3>
-                                <div class="text-xs text-slate-500">IT 容量: <strong>${t.summ.totalItKw.toFixed(1)} kW</strong> &middot; 液冷散熱量: <strong class="text-purple-700">${t.summ.liquidHeatKw.toFixed(1)} kW (${t.summ.dlcPct.toFixed(1)}%)</strong> &middot; 氣冷廢熱: <strong class="text-indigo-700">${t.summ.airHeatKw.toFixed(1)} kW</strong></div>
+                                <div class="text-xs text-slate-500">${_t('cooling.itCapacity', null, 'IT 容量:')} <strong>${t.summ.totalItKw.toFixed(1)} kW</strong> &middot; ${_t('cooling.liquidHeatLoadLabel', null, '液冷散熱量:')} <strong class="text-purple-700">${t.summ.liquidHeatKw.toFixed(1)} kW (${t.summ.dlcPct.toFixed(1)}%)</strong> &middot; ${_t('cooling.airHeatLoadLabel', null, '氣冷廢熱:')} <strong class="text-indigo-700">${t.summ.airHeatKw.toFixed(1)} kW</strong></div>
                             </div>
                         </div>
                         <div class="flex items-center gap-2">
                             ${t.statusBadge}
                             <button onclick="ViewCooling.toggleExpand('${targetId}')" class="px-3 py-1 bg-slate-100 hover:bg-slate-200 text-slate-600 text-xs font-bold rounded-lg transition">
-                                <span>收合 ▴</span>
+                                <span>${_t('cooling.collapseDetails', null, '收合 ▴')}</span>
                             </button>
                         </div>
                     </div>
@@ -557,13 +558,13 @@ ${inputsHtml}
                             <div class="flex flex-col sm:flex-row sm:items-center justify-between border-b border-purple-100 pb-3 gap-2">
                                 <div>
                                     <h4 class="text-sm font-black text-purple-950 flex items-center gap-1.5">
-                                        <i data-lucide="droplets" class="w-4 h-4 text-purple-600"></i> 系統 1: CDU 液冷排熱系統 (白區液冷)
+                                        <i data-lucide="droplets" class="w-4 h-4 text-purple-600"></i> ${_t('cooling.sys1Title', null, '系統 1: CDU 液冷排熱系統 (白區液冷)')}
                                     </h4>
-                                    <div class="text-[11px] text-slate-500">專門處理晶片高溫液冷散熱 (一二次側水路物理完全隔離)</div>
+                                    <div class="text-[11px] text-slate-500">${_t('cooling.sys1Desc', null, '專門處理晶片高溫液冷散熱 (一二次側水路物理完全隔離)')}</div>
                                 </div>
                                 <div class="flex items-center gap-2">
                                     <span class="px-2.5 py-1 bg-purple-100 text-purple-900 text-xs font-black rounded-lg border border-purple-200">
-                                        ${(cduSys.designBasis.liq_load_kw||0).toFixed(1)} kW 液冷負載
+                                        ${_t('cooling.liquidHeatLoad', { kw: (cduSys.designBasis.liq_load_kw||0).toFixed(1) }, `${(cduSys.designBasis.liq_load_kw||0).toFixed(1)} kW 液冷負載`)}
                                     </span>
                                 </div>
                             </div>
@@ -576,15 +577,14 @@ ${inputsHtml}
                                 return `
                             <div class="p-4 bg-amber-500/10 border-2 border-amber-500 rounded-xl space-y-2 text-xs">
                                 <div class="flex items-center gap-2 font-black text-amber-900 text-sm">
-                                    <span>⚠️</span> 氣候超溫與無冰機備援警示 (Pure Dry Cooler Climate Risk)
+                                    <span>⚠️</span> ${_t('cooling.pureDcWarnTitle', null, '氣候超溫與無冰機備援警示 (Pure Dry Cooler Climate Risk)')}
                                 </div>
                                 <div class="text-amber-950 font-medium leading-relaxed">
-                                    當前案場氣候夏季氣溫（最高達 <strong>${maxDb.toFixed(1)}°C</strong>）高於純乾冷器自然冷卻門檻（<strong>${cduFcThresh}°C DB</strong>）。<br>
-                                    由於本架構 <strong>100% 零冰機且無任何補冷設備</strong>，夏季高溫時段設施供水將飆升至 <strong>${(maxDb + dcApproach + pheApproach).toFixed(1)}°C</strong>（超出設計 ${cduSys.fwsSupplyC}°C），可能導致晶片過熱降載！
+                                    ${_t('cooling.pureDcWarnDesc', { maxDb: maxDb.toFixed(1), thresh: cduFcThresh, peakSup: (maxDb + dcApproach + pheApproach).toFixed(1), designSup: cduSys.fwsSupplyC }, `當前案場氣候夏季氣溫（最高達 <strong>${maxDb.toFixed(1)}°C</strong>）高於純乾冷器自然冷卻門檻（<strong>${cduFcThresh}°C DB</strong>）。<br>\n                                    由於本架構 <strong>100% 零冰機且無任何補冷設備</strong>，夏季高溫時段設施供水將飆升至 <strong>${(maxDb + dcApproach + pheApproach).toFixed(1)}°C</strong>（超出設計 ${cduSys.fwsSupplyC}°C），可能導致晶片過熱降載！`)}
                                 </div>
                                 <div class="text-[11px] text-amber-800 flex items-center gap-1.5 font-bold pt-1">
-                                    <span>💡 建議方案：</span>
-                                    <span>切換為 <strong>「乾冷器 + Trim 冰機 (NVIDIA 推薦)」</strong>，或改用 <strong>「絕熱冷卻塔 / 密閉水塔」</strong> 即可確保全年不超溫。</span>
+                                    <span>${_t('cooling.suggestedFix', null, '💡 建議方案：')}</span>
+                                    <span>${_t('cooling.suggestedFixText', null, '切換為 <strong>「乾冷器 + Trim 冰機 (NVIDIA 推薦)」</strong>，或改用 <strong>「絕熱冷卻塔 / 密閉水塔」</strong> 即可確保全年不超溫。')}</span>
                                 </div>
                             </div>
                             `;
@@ -592,7 +592,7 @@ ${inputsHtml}
 
                             <!-- CDU 架構選擇器 (整排清晰可見) -->
                             <div class="max-w-2xl">
-                                <label class="block text-xs font-bold text-slate-700 mb-1">CDU 排熱架構模式 (Architecture)</label>
+                                <label class="block text-xs font-bold text-slate-700 mb-1">${_t('cooling.cduArchMode', null, 'CDU 排熱架構模式 (Architecture)')}</label>
                                 <select onchange="ViewCooling.updateCduArch('${targetId}', this.value)" class="w-full text-xs font-black border-2 border-purple-300 rounded-xl p-2.5 bg-white text-purple-950 shadow-2xs">
                                     ${(window.CoolingArchRegistry ? window.CoolingArchRegistry.list('liquid') : []).map(arch => {
                                         const isSelected = (cduSys.architecture === arch.id) || (arch.aliases && arch.aliases.includes(cduSys.architecture));
@@ -609,30 +609,30 @@ ${inputsHtml}
                                 <!-- 雙迴路供回水溫設定 -->
                                 <div class="p-4 bg-white rounded-xl border border-slate-200 space-y-3 shadow-2xs">
                                     <div class="flex justify-between items-center border-b border-slate-100 pb-2">
-                                        <span class="text-xs font-bold text-slate-800">一二次側雙迴路水溫鏈設定</span>
+                                        <span class="text-xs font-bold text-slate-800">${_t('cooling.tempSettingsTitle', null, '一二次側雙迴路水溫鏈設定')}</span>
                                         <div class="flex items-center gap-1.5">
-                                            <button onclick="ViewCooling.applyCduPreset('${targetId}', 'nvidia')" class="px-2 py-0.5 bg-purple-100 hover:bg-purple-200 text-purple-900 text-[10px] font-extrabold rounded">NVIDIA 基準</button>
-                                            <button onclick="ViewCooling.applyCduPreset('${targetId}', 'site')" class="px-2 py-0.5 bg-emerald-100 hover:bg-emerald-200 text-emerald-900 text-[10px] font-extrabold rounded">案場慣用值</button>
+                                            <button onclick="ViewCooling.applyCduPreset('${targetId}', 'nvidia')" class="px-2 py-0.5 bg-purple-100 hover:bg-purple-200 text-purple-900 text-[10px] font-extrabold rounded">${_t('cooling.presetNvidia', null, 'NVIDIA 基準')}</button>
+                                            <button onclick="ViewCooling.applyCduPreset('${targetId}', 'site')" class="px-2 py-0.5 bg-emerald-100 hover:bg-emerald-200 text-emerald-900 text-[10px] font-extrabold rounded">${_t('cooling.presetSite', null, '案場慣用值')}</button>
                                         </div>
                                     </div>
 
                                     <!-- 二次側 (晶片側) -->
                                     <div class="p-2.5 bg-purple-50/60 rounded-lg border border-purple-200 space-y-1.5">
                                         <div class="flex justify-between items-center">
-                                            <span class="text-[10px] font-extrabold text-purple-900">二次側 (晶片側 / IT ↔ CDU):</span>
-                                            <span class="text-[9px] text-purple-600 font-bold">晶片溫升 ΔT = ${(secReturnC - secSupplyC).toFixed(1)}°C</span>
+                                            <span class="text-[10px] font-extrabold text-purple-900">${_t('cooling.secSideTitle', null, '二次側 (晶片側 / IT ↔ CDU):')}</span>
+                                            <span class="text-[9px] text-purple-600 font-bold">${_t('cooling.chipDeltaT', { dt: (secReturnC - secSupplyC).toFixed(1) }, `晶片溫升 ΔT = ${(secReturnC - secSupplyC).toFixed(1)}°C`)}</span>
                                         </div>
                                         <div class="grid grid-cols-3 gap-2">
                                             <div>
-                                                <label class="block text-[9px] text-slate-500">晶片供水 (°C)</label>
+                                                <label class="block text-[9px] text-slate-500">${_t('cooling.chipSupply', null, '晶片供水 (°C)')}</label>
                                                 <input type="number" id="cduSecSupplyIn_${targetId}" value="${secSupplyC}" step="0.5" onchange="ViewCooling.updateCduParams('${targetId}')" class="w-full text-xs font-bold border rounded p-1 bg-white text-purple-950">
                                             </div>
                                             <div>
-                                                <label class="block text-[9px] text-slate-500">晶片回水 (°C)</label>
+                                                <label class="block text-[9px] text-slate-500">${_t('cooling.chipReturn', null, '晶片回水 (°C)')}</label>
                                                 <input type="number" id="cduSecReturnIn_${targetId}" value="${secReturnC}" step="0.5" onchange="ViewCooling.updateCduParams('${targetId}')" class="w-full text-xs font-bold border rounded p-1 bg-white text-purple-950">
                                             </div>
                                             <div>
-                                                <label class="block text-[9px] text-slate-500">CDU Approach (°C)</label>
+                                                <label class="block text-[9px] text-slate-500">${_t('cooling.cduApproach', null, 'CDU Approach (°C)')}</label>
                                                 <input type="number" id="cduAppIn_${targetId}" value="${cduApproachC}" step="0.5" onchange="ViewCooling.updateCduParams('${targetId}')" class="w-full text-xs font-bold border rounded p-1 bg-white text-slate-800">
                                             </div>
                                         </div>
@@ -641,37 +641,37 @@ ${inputsHtml}
                                     <!-- 一次側 (設施側 / CDU ↔ 排熱端) -->
                                     <div class="p-2.5 bg-teal-50/60 rounded-lg border border-teal-200 space-y-1.5">
                                         <div class="flex justify-between items-center">
-                                            <span class="text-[10px] font-extrabold text-teal-900">一次側 (設施側 / CDU ↔ 排熱端):</span>
-                                            <span class="text-[9px] text-teal-700 font-bold">⚡ FWS 供回水由 CDU Approach 自動連動推算</span>
+                                            <span class="text-[10px] font-extrabold text-teal-900">${_t('cooling.priSideTitle', null, '一次側 (設施側 / CDU ↔ 排熱端):')}</span>
+                                            <span class="text-[9px] text-teal-700 font-bold">${_t('cooling.fwsAutoLinked', null, '⚡ FWS 供回水由 CDU Approach 自動連動推算')}</span>
                                         </div>
                                         <div class="grid grid-cols-2 sm:grid-cols-4 gap-2">
                                             <div>
-                                                <label class="block text-[9px] text-slate-500">設施供水 FWS (°C)</label>
+                                                <label class="block text-[9px] text-slate-500">${_t('cooling.fwsSupply', null, '設施供水 FWS (°C)')}</label>
                                                 <div class="w-full text-xs font-black border border-teal-300 rounded p-1 bg-teal-100/70 text-teal-950 flex items-center justify-between">
                                                     <span>${cduSys.fwsSupplyC}°C</span>
-                                                    <span class="text-[8px] text-teal-700 font-normal">自動</span>
+                                                    <span class="text-[8px] text-teal-700 font-normal">${_t('cooling.auto', null, '自動')}</span>
                                                 </div>
                                             </div>
                                             <div>
-                                                <label class="block text-[9px] text-slate-500">設施回水 FWR (°C)</label>
+                                                <label class="block text-[9px] text-slate-500">${_t('cooling.fwsReturn', null, '設施回水 FWR (°C)')}</label>
                                                 <div class="w-full text-xs font-black border border-teal-300 rounded p-1 bg-teal-100/70 text-teal-950 flex items-center justify-between">
                                                     <span>${cduSys.fwsReturnC}°C</span>
-                                                    <span class="text-[8px] text-teal-700 font-normal">自動</span>
+                                                    <span class="text-[8px] text-teal-700 font-normal">${_t('cooling.auto', null, '自動')}</span>
                                                 </div>
                                             </div>
                                             <div>
-                                                <label class="block text-[9px] text-slate-500">排熱端 Approach (°C)</label>
+                                                <label class="block text-[9px] text-slate-500">${_t('cooling.rejApproach', null, '排熱端 Approach (°C)')}</label>
                                                 <input type="number" id="cduApproachIn_${targetId}" value="${dcApproach}" step="0.5" onchange="ViewCooling.updateCduParams('${targetId}')" class="w-full text-xs font-bold border rounded p-1 bg-white text-slate-800">
                                             </div>
                                             ${hasPhe ? `
                                             <div>
-                                                <label class="block text-[9px] text-slate-500">板換 (PHE) Approach (°C)</label>
+                                                <label class="block text-[9px] text-slate-500">${_t('cooling.pheApproach', null, '板換 (PHE) Approach (°C)')}</label>
                                                 <input type="number" id="cduPheAppIn_${targetId}" value="${cduSys.pheApproachC ?? 2.0}" step="0.5" onchange="ViewCooling.updateCduParams('${targetId}')" class="w-full text-xs font-bold border rounded p-1 bg-white text-slate-800">
                                             </div>` : `
                                             <div>
-                                                <label class="block text-[9px] text-slate-400">板換 (PHE) 隔離</label>
+                                                <label class="block text-[9px] text-slate-400">${_t('cooling.pheIsolation', null, '板換 (PHE) 隔離')}</label>
                                                 <div class="w-full text-xs font-medium border border-slate-200 rounded p-1 bg-slate-100 text-slate-400 flex items-center justify-between">
-                                                    <span>無板換 (直冷)</span>
+                                                    <span>${_t('cooling.noPheDirect', null, '無板換 (直冷)')}</span>
                                                     <span class="text-[8px] text-slate-400 font-normal">0.0°C</span>
                                                 </div>
                                             </div>`}
@@ -682,18 +682,18 @@ ${inputsHtml}
 
                                     <div class="p-2.5 bg-emerald-50 rounded-lg border border-emerald-200 text-xs text-emerald-950 flex justify-between items-center">
                                         <div>
-                                            <span class="font-bold text-[11px]">Free Cooling 門檻 (以本頁水溫與 Approach 物理動態推算):</span>
+                                            <span class="font-bold text-[11px]">${_t('cooling.fcThreshFormula', null, 'Free Cooling 門檻 (以本頁水溫與 Approach 物理動態推算):')}</span>
                                             <div class="text-[10px] text-emerald-700">
-                                                T_fc = ${cduSys.fwsSupplyC}°C (FWS) − ${dcApproach}°C (乾冷器) ${pheApproach > 0 ? ('− ' + pheApproach + '°C (板換)') : ''} = <strong class="text-xs font-black text-emerald-900">${cduFcThresh}°C DB</strong>
+                                                T_fc = ${cduSys.fwsSupplyC}°C (FWS) − ${dcApproach}°C (${_t('cooling.dryCoolerAbbr', null, '乾冷器')}) ${pheApproach > 0 ? ('− ' + pheApproach + '°C (' + _t('cooling.pheAbbr', null, '板換') + ')') : ''} = <strong class="text-xs font-black text-emerald-900">${cduFcThresh}°C DB</strong>
                                             </div>
                                         </div>
-                                        <span class="px-1.5 py-0.5 bg-white text-emerald-900 border border-emerald-300 rounded font-black text-[9px]">物理連動</span>
+                                        <span class="px-1.5 py-0.5 bg-white text-emerald-900 border border-emerald-300 rounded font-black text-[9px]">${_t('cooling.physicsLinked', null, '物理連動')}</span>
                                     </div>
 
                                     <div class="p-2.5 bg-slate-50 rounded-lg border border-slate-200 space-y-1">
                                         <div class="flex justify-between items-center">
-                                            <label class="block text-[10px] font-bold text-slate-700">泵浦系統揚程 (m)</label>
-                                            <span class="text-[9px] text-slate-400">概估值，請依管路壓損計算覆寫</span>
+                                            <label class="block text-[10px] font-bold text-slate-700">${_t('cooling.pumpHeadM', null, '泵浦系統揚程 (m)')}</label>
+                                            <span class="text-[9px] text-slate-400">${_t('cooling.pumpHeadEstimate', null, '概估值，請依管路壓損計算覆寫')}</span>
                                         </div>
                                         <input type="number" id="cduPumpHeadIn_${targetId}" value="${cduSys.pumpHeadM ?? ((typeof A === 'function') ? A('cdu_pump_head_default_m') : 28)}" min="1" max="150" step="1" onchange="ViewCooling.updateCduParams('${targetId}')" class="w-full text-xs font-bold border rounded p-1.5 bg-white text-slate-800">
                                     </div>
@@ -702,7 +702,7 @@ ${inputsHtml}
                                 <!-- Required vs Selected 選型表 -->
                                 <div class="space-y-2.5">
                                     <span class="text-xs font-bold text-slate-700 uppercase flex items-center gap-1.5">
-                                        <i data-lucide="settings-2" class="w-3.5 h-3.5 text-slate-500"></i> CDU 設備自選與 N+1 檢核 (專屬架構型錄庫)
+                                        <i data-lucide="settings-2" class="w-3.5 h-3.5 text-slate-500"></i> ${_t('cooling.cduEquipSizingTitle', null, 'CDU 設備自選與 N+1 檢核 (專屬架構型錄庫)')}
                                     </span>
                                     <div class="space-y-2">
                                         ${cduSizingHtml}
@@ -718,18 +718,18 @@ ${inputsHtml}
                             <div class="flex flex-col sm:flex-row sm:items-center justify-between border-b border-indigo-100 pb-3 gap-2">
                                 <div>
                                     <h4 class="text-sm font-black text-indigo-950 flex items-center gap-1.5">
-                                        <i data-lucide="${isRdhx ? 'door-open' : 'wind'}" class="w-4 h-4 text-indigo-600"></i> 系統 2: Fanwall/RDHX 氣冷排熱系統 (白區氣冷)
+                                        <i data-lucide="${isRdhx ? 'door-open' : 'wind'}" class="w-4 h-4 text-indigo-600"></i> ${_t('cooling.sys2Title', null, '系統 2: Fanwall/RDHX 氣冷排熱系統 (白區氣冷)')}
                                     </h4>
-                                    <div class="text-[11px] text-slate-500">專門處理網通、儲存與機櫃輔助廢熱</div>
+                                    <div class="text-[11px] text-slate-500">${_t('cooling.sys2Desc', null, '專門處理網通、儲存與機櫃輔助廢熱')}</div>
                                 </div>
                                 <span class="px-2.5 py-1 bg-indigo-100 text-indigo-900 text-xs font-black rounded-lg border border-indigo-200">
-                                    ${(fwSys.designBasis.air_load_kw||0).toFixed(1)} kW 氣冷負載
+                                    ${_t('cooling.airHeatLoad', { kw: (fwSys.designBasis.air_load_kw||0).toFixed(1) }, `${(fwSys.designBasis.air_load_kw||0).toFixed(1)} kW 氣冷負載`)}
                                 </span>
                             </div>
 
                             <!-- Fanwall / RDHX 架構選擇器 -->
                             <div class="max-w-2xl">
-                                <label class="block text-xs font-bold text-slate-700 mb-1">氣冷 / 背板排熱架構模式 (Architecture)</label>
+                                <label class="block text-xs font-bold text-slate-700 mb-1">${_t('cooling.fwArchMode', null, '氣冷 / 背板排熱架構模式 (Architecture)')}</label>
                                 <select onchange="ViewCooling.updateFwArch('${targetId}', this.value)" class="w-full text-xs font-black border-2 border-indigo-300 rounded-xl p-2.5 bg-white text-indigo-950 shadow-2xs">
                                     ${(window.CoolingArchRegistry ? window.CoolingArchRegistry.list('air') : []).map(arch => {
                                         const isSelected = (fwSys.architecture === arch.id) || (arch.aliases && arch.aliases.includes(fwSys.architecture));
@@ -746,30 +746,30 @@ ${inputsHtml}
                                 <!-- 供回水溫設定與建議按鈕 -->
                                 <div class="p-4 bg-white rounded-xl border border-slate-200 space-y-3 shadow-2xs">
                                     <div class="flex justify-between items-center border-b border-slate-100 pb-2">
-                                        <span class="text-xs font-bold text-slate-800">冰水供回水溫 (CHW Supply / Return)</span>
+                                        <span class="text-xs font-bold text-slate-800">${_t('cooling.chwTempTitle', null, '冰水供回水溫 (CHW Supply / Return)')}</span>
                                         <div class="flex items-center gap-1.5">
-                                            <button onclick="ViewCooling.applyFwTemps('${targetId}', 22, 32)" class="px-2 py-0.5 bg-indigo-100 hover:bg-indigo-200 text-indigo-900 text-[10px] font-extrabold rounded">NVIDIA 22/32°C</button>
-                                            <button onclick="ViewCooling.applyFwTemps('${targetId}', 12, 18)" class="px-2 py-0.5 bg-teal-100 hover:bg-teal-200 text-teal-900 text-[10px] font-extrabold rounded">案場寬溫 12/18°C</button>
+                                            <button onclick="ViewCooling.applyFwTemps('${targetId}', 22, 32)" class="px-2 py-0.5 bg-indigo-100 hover:bg-indigo-200 text-indigo-900 text-[10px] font-extrabold rounded">${_t('cooling.fwPresetNvidia', null, 'NVIDIA 22/32°C')}</button>
+                                            <button onclick="ViewCooling.applyFwTemps('${targetId}', 12, 18)" class="px-2 py-0.5 bg-teal-100 hover:bg-teal-200 text-teal-900 text-[10px] font-extrabold rounded">${_t('cooling.fwPresetSite', null, '案場寬溫 12/18°C')}</button>
                                         </div>
                                     </div>
                                     <div class="grid grid-cols-2 gap-3 pt-1">
                                         <div>
-                                            <label class="block text-[9px] text-slate-500 mb-0.5">供水溫 CHW Supply (°C)</label>
+                                            <label class="block text-[9px] text-slate-500 mb-0.5">${_t('cooling.chwSupply', null, '供水溫 CHW Supply (°C)')}</label>
                                             <input type="number" id="fwSupplyIn_${targetId}" value="${fwSys.chwSupplyC}" step="0.5" onchange="ViewCooling.updateFwParams('${targetId}')" class="w-full text-xs font-bold border rounded-lg p-2 bg-white text-indigo-950">
                                         </div>
                                         <div>
-                                            <label class="block text-[9px] text-slate-500 mb-0.5">回水溫 CHW Return (°C)</label>
+                                            <label class="block text-[9px] text-slate-500 mb-0.5">${_t('cooling.chwReturn', null, '回水溫 CHW Return (°C)')}</label>
                                             <input type="number" id="fwReturnIn_${targetId}" value="${fwSys.chwReturnC}" step="0.5" onchange="ViewCooling.updateFwParams('${targetId}')" class="w-full text-xs font-bold border rounded-lg p-2 bg-white text-indigo-950">
                                         </div>
                                     </div>
                                     <div class="p-2.5 bg-indigo-50 rounded-lg border border-indigo-100 text-[11px] text-indigo-900">
-                                        💡 冰水主機溫差: <strong class="font-bold">${Math.max(1, fwSys.chwReturnC - fwSys.chwSupplyC)}°C</strong>，供水溫越高對冰機 COP 越有利。
+                                        ${_t('cooling.chillerDeltaTNote', { dt: Math.max(1, fwSys.chwReturnC - fwSys.chwSupplyC) }, `💡 冰水主機溫差: <strong class="font-bold">${Math.max(1, fwSys.chwReturnC - fwSys.chwSupplyC)}°C</strong>，供水溫越高對冰機 COP 越有利。`)}
                                     </div>
                                     ${this.renderArchParamPanel(fwArchDesc, fwSys, targetId, 'fw')}
                                     <div class="p-2.5 bg-slate-50 rounded-lg border border-slate-200 space-y-1">
                                         <div class="flex justify-between items-center">
-                                            <label class="block text-[10px] font-bold text-slate-700">泵浦系統揚程 (m)</label>
-                                            <span class="text-[9px] text-slate-400">概估值，請依管路壓損計算覆寫</span>
+                                            <label class="block text-[10px] font-bold text-slate-700">${_t('cooling.pumpHeadM', null, '泵浦系統揚程 (m)')}</label>
+                                            <span class="text-[9px] text-slate-400">${_t('cooling.pumpHeadEstimate', null, '概估值，請依管路壓損計算覆寫')}</span>
                                         </div>
                                         <input type="number" id="fwPumpHeadIn_${targetId}" value="${fwSys.pumpHeadM ?? ((typeof A === 'function') ? A('fw_pump_head_default_m') : 22)}" min="1" max="150" step="1" onchange="ViewCooling.updateFwParams('${targetId}')" class="w-full text-xs font-bold border rounded p-1.5 bg-white text-slate-800">
                                     </div>
@@ -778,7 +778,7 @@ ${inputsHtml}
                                 <!-- Required vs Selected 選型表 -->
                                 <div class="space-y-2.5">
                                     <span class="text-xs font-bold text-slate-700 uppercase flex items-center gap-1.5">
-                                        <span>⚙️</span> ${isRdhx ? 'RDHX 設備自選與 N+1 檢核' : 'Fanwall 設備自選與 N+1 檢核'}
+                                        <span>⚙️</span> ${isRdhx ? _t('cooling.rdhxEquipSizing', null, 'RDHX 設備自選與 N+1 檢核') : _t('cooling.fwEquipSizing', null, 'Fanwall 設備自選與 N+1 檢核')}
                                     </span>
                                     <div class="space-y-2">
                                         ${fwSizingHtml}

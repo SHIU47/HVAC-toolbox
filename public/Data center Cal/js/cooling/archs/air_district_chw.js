@@ -8,15 +8,16 @@
     if (!CoolingArchRegistry || !CoolingStages) {
         throw new Error('CoolingArchRegistry and CoolingStages must be loaded before air_district_chw.js');
     }
+    const t = (k, p, fb) => (root.I18N ? root.I18N.t(k, p) : (fb || k));
 
     CoolingArchRegistry.register({
         id: 'chilled_water_plant',
         aliases: ['campus_chilled_water'],
         loop: 'air',
-        optionLabel: '🏢 廠區集中冰水管網 (Central Chilled Water Plant)',
-        cardLabel: '廠區集中冰水',
-        pillLabel: '廠區冰水',
-        dashboardLabel: '廠區集中冷站 (Chilled Water Plant)',
+        get optionLabel() { return t('arch.chilled_water_plant.option', null, '🏢 廠區集中冰水管網 (Central Chilled Water Plant)'); },
+        get cardLabel() { return t('arch.chilled_water_plant.card', null, '廠區集中冰水'); },
+        get pillLabel() { return t('arch.chilled_water_plant.pill', null, '廠區冰水'); },
+        get dashboardLabel() { return t('arch.chilled_water_plant.dashboard', null, '廠區集中冷站 (Chilled Water Plant)'); },
         flags: { hasMechanical: true, consumesWater: false, isDistrict: true },
         terminal: 'crah',
         schematic: 'air_plant',
@@ -24,7 +25,7 @@
         equipment: [
             {
                 key: 'crah_unit',
-                label: 'CRAH / Fanwall 機房空調',
+                get label() { return t('equip.crah_unit', null, 'CRAH / Fanwall 機房空調'); },
                 category: 'CRAH',
                 catalog: 'crah',
                 role: 'terminal',
@@ -39,7 +40,7 @@
             },
             {
                 key: 'plant_decoupler_hx',
-                label: 'Central Plant Decoupler / 廠務冰水介面',
+                get label() { return t('equip.plant_decoupler_hx', null, 'Central Plant Decoupler / 廠務冰水介面'); },
                 category: 'Decoupler',
                 catalog: 'heat_exchanger',
                 role: 'decoupler',
@@ -50,7 +51,7 @@
             },
             {
                 key: 'fw_pump',
-                label: 'Secondary CHW Pump 二次側冰水循環水泵',
+                get label() { return t('equip.fw_pump', null, 'Secondary CHW Pump 二次側冰水循環水泵'); },
                 category: 'Pump',
                 catalog: 'pump',
                 role: 'pump',
@@ -87,10 +88,10 @@
             const A = (k) => root.AppStore?.getAssumption ? root.AppStore.getAssumption(k) : (root.ASSUMPTIONS?.[k]?.val ?? 5.5);
             const distCop = A('district_chw_cop') || 5.5;
             return {
-                title: '市政區域冰水排熱拓樸',
+                title: t('topo.districtCooling', null, '市政區域冰水排熱拓樸'),
                 referenceLabel: null,
                 banners: [
-                    { id: 'mode1', label: '區域市政冷源供應 (District Cooling)', detail: '全時連續供應穩定冰水', tone: 'teal' }
+                    { id: 'mode1', label: t('topo.districtSupply', null, '區域市政冷源供應 (District Cooling)'), detail: t('topo.districtSupplyDetail', null, '全時連續供應穩定冰水'), tone: 'teal' }
                 ],
                 nodes: [
                     {
@@ -98,38 +99,38 @@
                         kind: 'crah',
                         title: 'Compute Data Hall (CRAH)',
                         lines: [
-                            'CRAH 氣冷機組',
-                            `供回水: ${chwSup} ⇄ ${chwRet}°C`
+                            t('topo.crahAirUnit', null, 'CRAH 氣冷機組'),
+                            t('topo.crahSupplyReturn', { sup: chwSup, ret: chwRet }, `供回水: ${chwSup} ⇄ ${chwRet}°C`)
                         ]
                     },
                     {
                         id: 'evaporator',
                         kind: 'hx',
-                        title: '板式熱交換器 (District PHE)',
+                        title: t('topo.districtPhe', null, '板式熱交換器 (District PHE)'),
                         lines: [
-                            '一二次側物理水質隔離',
-                            `供水 ${chwSup}°C ⇄ 回水 ${chwRet}°C`,
-                            '廠內無需建置冷卻水塔與冰機',
-                            '合約保證供水水溫與流量'
+                            t('topo.districtPheLine1', null, '一二次側物理水質隔離'),
+                            t('topo.evapSupplyReturn', { sup: chwSup, ret: chwRet }, `供水 ${chwSup}°C ⇄ 回水 ${chwRet}°C`),
+                            t('topo.districtPheLine3', null, '廠內無需建置冷卻水塔與冰機'),
+                            t('topo.districtPheLine4', null, '合約保證供水水溫與流量')
                         ]
                     },
                     {
                         id: 'heat_rejection',
                         kind: 'district',
-                        title: '市政/園區中央冷源站 (District Plant)',
+                        title: t('topo.districtPlant', null, '市政/園區中央冷源站 (District Plant)'),
                         lines: [
-                            '大型中央冷能集中製造與配送',
-                            `市政供水 ${distSup}°C ⇄ 回水 ${chwRet}°C`,
-                            `合約等效 COP: ${distCop.toFixed(1)} (園區基準)`,
-                            '超大型離心機組與深層水源熱泵',
-                            '園區級能源調度與蓄冷槽削峰'
+                            t('topo.districtPlantLine1', null, '大型中央冷能集中製造與配送'),
+                            t('topo.districtPlantLine2', { sup: distSup, ret: chwRet }, `市政供水 ${distSup}°C ⇄ 回水 ${chwRet}°C`),
+                            t('topo.districtPlantLine3', { cop: distCop.toFixed(1) }, `合約等效 COP: ${distCop.toFixed(1)} (園區基準)`),
+                            t('topo.districtPlantLine4', null, '超大型離心機組與深層水源熱泵'),
+                            t('topo.districtPlantLine5', null, '園區級能源調度與蓄冷槽削峰')
                         ]
                     },
                     {
                         id: 'pump',
                         kind: 'pump',
                         title: 'Secondary CHW Pump',
-                        lines: ['二次側冰水循環泵']
+                        lines: [t('topo.secChwPump', null, '二次側冰水循環泵')]
                     }
                 ],
                 pipes: [

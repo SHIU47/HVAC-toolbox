@@ -3682,6 +3682,66 @@ function sizeCduToDeratedN1(S) {
     win.App.renderStep(3);
     assert(win.document.getElementById('stepContent').innerHTML.includes('核心網通/集中儲存機房'), 'Step 3 in zh-TW must contain original title');
   });
+
+  test('I-4: Step 4 view and cooling architectures render 0 CJK characters in English mode', async () => {
+    const { buildWindow } = require('./dom_harness.js');
+    const win = buildWindow();
+    if (win.App && typeof win.App.init === 'function') {
+      await win.App.init();
+    }
+    win.I18N.setLang('en');
+
+    // Dynamic user entities from store
+    const userNames = [];
+    (win.AppStore.state.halls || []).forEach(h => {
+      userNames.push(h.name);
+      (h.dus || []).forEach(d => {
+        userNames.push(d.name);
+        (d.sus || []).forEach(s => userNames.push(s.name));
+      });
+    });
+    (win.AppStore.state.corePods || []).forEach(c => userNames.push(c.name));
+
+    // Dynamic catalog model names
+    const catalogNames = (win.DEVICE_CATALOG || []).map(d => d.model);
+
+    const whitelist = [
+      ...userNames,
+      ...catalogNames
+    ];
+
+    const cjkRegex = /[\u3400-\u9fff]/g;
+
+    win.App.currentStep = 4;
+    win.App.renderStep(4);
+    const container = win.document.getElementById('stepContent');
+    assert(container, '#stepContent must exist');
+    let html = container.innerHTML.replace(/<!--[\s\S]*?-->/g, '');
+    for (const token of whitelist) {
+      if (token) html = html.split(token).join('');
+    }
+    const matches = html.match(cjkRegex) || [];
+    assert.strictEqual(matches.length, 0, `Step 4 has unexpected CJK in English mode: ${matches.slice(0, 30).join('')}`);
+
+    // Verify all 9 architectures and their topologies in English mode
+    const archs = win.CoolingArchRegistry ? win.CoolingArchRegistry.list() : [];
+    assert(archs.length >= 9, 'All cooling architectures must be registered');
+    for (const arch of archs) {
+      const card = arch.cardLabel;
+      const option = arch.optionLabel;
+      const pill = arch.pillLabel;
+      const dash = arch.dashboardLabel;
+      const archText = `${card} ${option} ${pill} ${dash}`;
+      const archCjk = archText.match(cjkRegex) || [];
+      assert.strictEqual(archCjk.length, 0, `Architecture ${arch.id} labels have CJK in English mode: ${archCjk.join('')}`);
+    }
+
+    // Switch back to zh-TW and verify Step 4 in zh-TW
+    win.I18N.setLang('zh-TW');
+    win.App.renderStep(4);
+    const zhHtml = win.document.getElementById('stepContent').innerHTML;
+    assert(zhHtml.includes('雙冷卻工程選型設計'), 'Step 4 in zh-TW must contain original title');
+  });
 })();
 
 console.log(`\n${passCount} passed, ${failCount} failed, ${skipCount} skipped`);

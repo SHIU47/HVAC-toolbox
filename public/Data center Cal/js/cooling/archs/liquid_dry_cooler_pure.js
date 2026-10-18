@@ -8,15 +8,16 @@
     if (!CoolingArchRegistry || !CoolingStages) {
         throw new Error('CoolingArchRegistry and CoolingStages must be loaded before liquid_dry_cooler_pure.js');
     }
+    const t = (k, p, fb) => (root.I18N ? root.I18N.t(k, p) : (fb || k));
 
     CoolingArchRegistry.register({
         id: 'dry_cooler_pure',
         aliases: [],
         loop: 'liquid',
-        optionLabel: '🟢 純乾冷器節能直冷 (Dry Cooler Pure FC / 100% 自然風冷・零冰機・零耗水)',
-        cardLabel: '純乾冷器 (零冰機)',
-        pillLabel: '純乾冷器',
-        dashboardLabel: '純乾冷器自然排熱 (Dry Cooler)',
+        get optionLabel() { return t('arch.dry_cooler_pure.option', null, '🟢 純乾冷器節能直冷 (Dry Cooler Pure FC / 100% 自然風冷・零冰機・零耗水)'); },
+        get cardLabel() { return t('arch.dry_cooler_pure.card', null, '純乾冷器 (零冰機)'); },
+        get pillLabel() { return t('arch.dry_cooler_pure.pill', null, '純乾冷器'); },
+        get dashboardLabel() { return t('arch.dry_cooler_pure.dashboard', null, '純乾冷器自然排熱 (Dry Cooler)'); },
         flags: { hasMechanical: false, consumesWater: false },
         terminal: 'cdu',
         schematic: 'single_loop',
@@ -26,17 +27,17 @@
                 key: 'hasPhe',
                 panel: 'custom',
                 type: 'boolean',
-                label: '配置板式熱交換器 (PHE)',
+                get label() { return t('arch.param.pheConfig', null, '配置板式熱交換器 (PHE)'); },
                 idPrefix: 'cduHasPheIn_',
                 default: true
             },
             { key: 'pheApproachC', default: 2.0, min: 0, max: 10, step: 0.5, unit: '°C' }
         ],
-        paramPanelTitle: '純乾冷器 (Dry Cooler Pure) 專屬參數:',
+        get paramPanelTitle() { return t('arch.param.dryCoolerPureTitle', null, '純乾冷器 (Dry Cooler Pure) 專屬參數:'); },
         equipment: [
             {
                 key: 'cdu_unit',
-                label: 'CDU 液冷分配主機 (Cooling Distribution Unit)',
+                get label() { return t('equip.cdu_unit', null, 'CDU 液冷分配主機 (Cooling Distribution Unit)'); },
                 category: 'CDU',
                 catalog: 'cdu',
                 role: 'terminal',
@@ -54,7 +55,7 @@
             },
             {
                 key: 'dry_cooler',
-                label: 'Dry Cooler 乾式冷卻器 (純直冷・零冰機)',
+                get label() { return t('equip.dry_cooler_pure', null, 'Dry Cooler 乾式冷卻器 (純直冷・零冰機)'); },
                 category: 'DryCooler',
                 catalog: 'dry_cooler',
                 role: 'heat_rejection',
@@ -69,7 +70,7 @@
             },
             {
                 key: 'cdu_pump',
-                label: 'CDU Primary Pump 一次側設施循環水泵',
+                get label() { return t('equip.cdu_pump', null, 'CDU Primary Pump 一次側設施循環水泵'); },
                 category: 'Pump',
                 catalog: 'pump',
                 role: 'pump',
@@ -126,8 +127,8 @@
                     kind: 'it',
                     title: 'Compute Data Hall',
                     lines: [
-                        'Cold Plate 晶片液冷',
-                        `晶片水溫: ${sys?.secSupplyC ?? 45} ⇄ ${sys?.secReturnC ?? 57}°C`
+                        t('topo.coldPlateLiq', null, 'Cold Plate 晶片液冷'),
+                        t('topo.chipWaterTemp', { sup: sys?.secSupplyC ?? 45, ret: sys?.secReturnC ?? 57 }, `晶片水溫: ${sys?.secSupplyC ?? 45} ⇄ ${sys?.secReturnC ?? 57}°C`)
                     ]
                 },
                 {
@@ -143,35 +144,35 @@
                 nodes.push({
                     id: 'hx',
                     kind: 'hx',
-                    title: 'PHE-1 乾冷器板換 (Dry Cooler PHE)',
+                    title: t('topo.dcPheTitle', null, 'PHE-1 乾冷器板換 (Dry Cooler PHE)'),
                     lines: [
-                        '自然風冷換熱核心 (PHE)',
-                        `冷卻至設計供水 ${op?.temps?.fwsSup ?? 40}°C`,
-                        '零耗水全時自然散熱',
-                        '水質完全隔離保護 CDU'
+                        t('topo.pheDcCore', null, '自然風冷換熱核心 (PHE)'),
+                        t('topo.pheCoolToSup', { tSup: op?.temps?.fwsSup ?? 40 }, `冷卻至設計供水 ${op?.temps?.fwsSup ?? 40}°C`),
+                        t('topo.pheZeroWaterAllYear', null, '零耗水全時自然散熱'),
+                        t('topo.pheProtectCdu', null, '水質完全隔離保護 CDU')
                     ]
                 });
                 nodes.push({
                     id: 'pump_sec',
                     kind: 'pump',
                     title: 'Secondary Pump',
-                    lines: ['CDU 設施循環泵']
+                    lines: [t('topo.cduFacilityPump', null, 'CDU 設施循環泵')]
                 });
                 nodes.push({
                     id: 'pump_outdoor',
                     kind: 'pump',
                     title: 'Glycol Pump',
-                    lines: ['乙二醇循環泵']
+                    lines: [t('topo.glycolPump', null, '乙二醇循環泵')]
                 });
                 nodes.push({
                     id: 'heat_rejection',
                     kind: 'dry_cooler',
-                    title: '乾冷器 (Dry Cooler)',
+                    title: t('topo.dryCoolerTitle', null, '乾冷器 (Dry Cooler)'),
                     lines: [
-                        '零耗水自然風冷',
-                        `Approach: ${dcApp}°C ｜ 門檻: ≤${fullThresh}°C DB`,
-                        '自然風冷，全年零冰機',
-                        `Approach: ${dcApp}°C ｜ 無機械備援 (需高於門檻時降載)`
+                        t('topo.dcZeroWater', null, '零耗水自然風冷'),
+                        t('topo.dcApproachThresh', { app: dcApp, thresh: fullThresh }, `Approach: ${dcApp}°C ｜ 門檻: ≤${fullThresh}°C DB`),
+                        t('topo.pureDcZeroChiller', null, '自然風冷，全年零冰機'),
+                        t('topo.pureDcNoBackup', { app: dcApp }, `Approach: ${dcApp}°C ｜ 無機械備援 (需高於門檻時降載)`)
                     ]
                 });
 
@@ -186,17 +187,17 @@
                     id: 'pump_sec',
                     kind: 'pump',
                     title: 'Dry Cooler Pump',
-                    lines: ['乾冷器循環泵']
+                    lines: [t('topo.cduFacilityPump', null, 'CDU 設施循環泵')]
                 });
                 nodes.push({
                     id: 'heat_rejection',
                     kind: 'dry_cooler',
-                    title: '乾冷器 (Dry Cooler - 直冷式)',
+                    title: t('topo.dryCoolerDirectTitle', null, '乾冷器 (Dry Cooler - 直冷式)'),
                     lines: [
-                        '零耗水自然風冷 (無板換直冷)',
-                        `Approach: ${dcApp}°C ｜ 門檻: ≤${fullThresh}°C DB`,
-                        '一次側直接連接乾冷器',
-                        '自然風冷，全年零冰機'
+                        t('topo.pureDcDirect', null, '零耗水自然風冷 (無板換直冷)'),
+                        t('topo.dcApproachThresh', { app: dcApp, thresh: fullThresh }, `Approach: ${dcApp}°C ｜ 門檻: ≤${fullThresh}°C DB`),
+                        t('topo.pureDcPriConnect', null, '一次側直接連接乾冷器'),
+                        t('topo.pureDcZeroChiller', null, '自然風冷，全年零冰機')
                     ]
                 });
 
@@ -208,13 +209,15 @@
 
             const deficitHours = design?.deficitHours ?? extra?.deficitHours ?? 0;
             return {
-                title: '設施排熱拓樸 (Facility Heat Rejection)',
+                title: t('topo.facilityHeatRej', null, '設施排熱拓樸 (Facility Heat Rejection)'),
                 referenceLabel: null,
                 banners: [
                     {
                         id: 'mode1',
-                        label: `自然冷卻門檻 DB ≤ ${fullThresh}°C`,
-                        detail: deficitHours > 0 ? `全年 ${deficitHours} h 超出冷卻能力（供水溫上升）` : '乾式自然風冷・全年零冰機・零水耗',
+                        label: t('topo.pureDcThresh', { fullThresh }, `自然冷卻門檻 DB ≤ ${fullThresh}°C`),
+                        detail: deficitHours > 0
+                            ? t('topo.pureDcDetailDeficit', { hours: deficitHours }, `全年 ${deficitHours} h 超出冷卻能力（供水溫上升）`)
+                            : t('topo.pureDcDetailOk', null, '乾式自然風冷・全年零冰機・零水耗'),
                         tone: deficitHours > 0 ? 'amber' : 'emerald'
                     }
                 ],

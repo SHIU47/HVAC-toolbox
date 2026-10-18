@@ -8,15 +8,16 @@
     if (!CoolingArchRegistry || !CoolingStages) {
         throw new Error('CoolingArchRegistry and CoolingStages must be loaded before air_air_cooled_chiller.js');
     }
+    const t = (k, p, fb) => (root.I18N ? root.I18N.t(k, p) : (fb || k));
 
     CoolingArchRegistry.register({
         id: 'air_cooled_chiller',
         aliases: [],
         loop: 'air',
-        optionLabel: '💨 氣冷式冰水主機 (Air-Cooled Chiller / 零耗水)',
-        cardLabel: '氣冷式冰機',
-        pillLabel: '氣冷冰機',
-        dashboardLabel: '氣冷式冰水主機 (Air-Cooled Chiller)',
+        get optionLabel() { return t('arch.air_cooled_chiller.option', null, '💨 氣冷式冰水主機 (Air-Cooled Chiller / 零耗水)'); },
+        get cardLabel() { return t('arch.air_cooled_chiller.card', null, '氣冷式冰機'); },
+        get pillLabel() { return t('arch.air_cooled_chiller.pill', null, '氣冷冰機'); },
+        get dashboardLabel() { return t('arch.air_cooled_chiller.dashboard', null, '氣冷式冰水主機 (Air-Cooled Chiller)'); },
         flags: { hasMechanical: true, consumesWater: false },
         terminal: 'crah',
         schematic: 'air_plant',
@@ -27,7 +28,7 @@
         equipment: [
             {
                 key: 'crah_unit',
-                label: 'CRAH / Fanwall 機房空調',
+                get label() { return t('equip.crah_unit', null, 'CRAH / Fanwall 機房空調'); },
                 category: 'CRAH',
                 catalog: 'crah',
                 role: 'terminal',
@@ -42,7 +43,7 @@
             },
             {
                 key: 'air_cooled_chiller',
-                label: 'Air-Cooled Chiller 氣冷式冰水主機',
+                get label() { return t('equip.air_cooled_chiller', null, 'Air-Cooled Chiller 氣冷式冰水主機'); },
                 category: 'Chiller',
                 catalog: 'chiller_air',
                 role: 'chiller',
@@ -66,7 +67,7 @@
             },
             {
                 key: 'fw_pump',
-                label: 'Secondary CHW Pump 二次側冰水循環水泵',
+                get label() { return t('equip.fw_pump', null, 'Secondary CHW Pump 二次側冰水循環水泵'); },
                 category: 'Pump',
                 catalog: 'pump',
                 role: 'pump',
@@ -158,31 +159,31 @@
             const h_mech = modeHours?.mechanical !== undefined ? `${modeHours.mechanical} h` : '';
 
             const model = {
-                title: '氣冷式冰水主機 (Air-Cooled Chiller)',
+                title: t('topo.airCooledChiller', null, '氣冷式冰水主機 (Air-Cooled Chiller)'),
                 referenceLabel: null,
                 banners: [
                     {
                         id: 'mode1',
-                        title: 'Mode 1 全自然冷卻',
-                        label: `Mode 1 全自然冷卻 (DB ≤ ${fullThresh}°C)${h_free ? ` — 全年 ${h_free}` : ''}`,
-                        sub: `DB ≤ ${fullThresh}°C ｜ 全年 ${h_free || '0 h'} ｜ 100% 走 Economizer 盤管`,
-                        detail: `DB ≤ ${fullThresh}°C ｜ 全年 ${h_free || '0 h'} ｜ 100% 走 Economizer 盤管`,
+                        title: t('topo.rdhxM1', null, 'Mode 1 全自然冷卻'),
+                        label: t('topo.m1FullFcLabel', { fullThresh, hours: h_free ? ` — 全年 ${h_free}` : '' }, `Mode 1 全自然冷卻 (DB ≤ ${fullThresh}°C)${h_free ? ` — 全年 ${h_free}` : ''}`),
+                        sub: t('topo.fullFcEconomizerCoil', null, `DB ≤ ${fullThresh}°C ｜ 全年 ${h_free || '0 h'} ｜ 100% 走 Economizer 盤管`),
+                        detail: t('topo.fullFcEconomizerCoil', null, `DB ≤ ${fullThresh}°C ｜ 全年 ${h_free || '0 h'} ｜ 100% 走 Economizer 盤管`),
                         tone: 'emerald'
                     },
                     {
                         id: 'mode2',
-                        title: 'Mode 2 部分預冷',
-                        label: `Mode 2 部分預冷 (${fullThresh} < DB < ${mechThresh}°C)${h_partial ? ` — 全年 ${h_partial}` : ''}`,
-                        sub: `${fullThresh} < DB < ${mechThresh}°C ｜ 全年 ${h_partial || '0 h'} ｜ FC 盤管預冷 + 冰機接力`,
-                        detail: `${fullThresh} < DB < ${mechThresh}°C ｜ 全年 ${h_partial || '0 h'} ｜ FC 盤管預冷 + 冰機接力`,
+                        title: t('topo.rdhxM2', null, 'Mode 2 部分預冷'),
+                        label: t('topo.rdhxM2Label', { fullThresh, mechThresh, hours: h_partial ? ` — 全年 ${h_partial}` : '' }, `Mode 2 部分預冷 (${fullThresh} < DB < ${mechThresh}°C)${h_partial ? ` — 全年 ${h_partial}` : ''}`),
+                        sub: t('topo.fcCoilPrecoolChiller', null, `${fullThresh} < DB < ${mechThresh}°C ｜ 全年 ${h_partial || '0 h'} ｜ FC 盤管預冷 + 冰機接力`),
+                        detail: t('topo.fcCoilPrecoolChiller', null, `${fullThresh} < DB < ${mechThresh}°C ｜ 全年 ${h_partial || '0 h'} ｜ FC 盤管預冷 + 冰機接力`),
                         tone: 'amber'
                     },
                     {
                         id: 'mode3',
-                        title: 'Mode 3 全機械製冷',
-                        label: `Mode 3 全機械製冷 (DB ≥ ${mechThresh}°C)${h_mech ? ` — 全年 ${h_mech}` : ''}`,
-                        sub: `DB ≥ ${mechThresh}°C ｜ 全年 ${h_mech || '0 h'} ｜ 氣冷壓縮製冷`,
-                        detail: `DB ≥ ${mechThresh}°C ｜ 全年 ${h_mech || '0 h'} ｜ 氣冷壓縮製冷`,
+                        title: t('topo.rdhxM3', null, 'Mode 3 全機械製冷'),
+                        label: t('topo.rdhxM3Label', { mechThresh, hours: h_mech ? ` — 全年 ${h_mech}` : '' }, `Mode 3 全機械製冷 (DB ≥ ${mechThresh}°C)${h_mech ? ` — 全年 ${h_mech}` : ''}`),
+                        sub: t('topo.airCompressionCooling', null, `DB ≥ ${mechThresh}°C ｜ 全年 ${h_mech || '0 h'} ｜ 氣冷壓縮製冷`),
+                        detail: t('topo.airCompressionCooling', null, `DB ≥ ${mechThresh}°C ｜ 全年 ${h_mech || '0 h'} ｜ 氣冷壓縮製冷`),
                         tone: 'indigo'
                     }
                 ],
@@ -192,48 +193,48 @@
                         kind: 'crah',
                         title: 'Compute Data Hall (CRAH)',
                         lines: [
-                            'CRAH 氣冷機組',
-                            `供回水: ${chwSup} ⇄ ${chwRet}°C`
+                            t('topo.crahAirUnit', null, 'CRAH 氣冷機組'),
+                            t('topo.crahSupplyReturn', { sup: chwSup, ret: chwRet }, `供回水: ${chwSup} ⇄ ${chwRet}°C`)
                         ]
                     },
                     {
                         id: 'fc_coil',
                         kind: 'hx',
-                        title: 'Free-Cooling 盤管 (串聯預冷)',
+                        title: t('topo.fcCoilTitle', null, 'Free-Cooling 盤管 (串聯預冷)'),
                         lines: [
-                            `全自然冷卻 DB ≤ ${fullThresh}°C`,
-                            `部分預冷 DB < ${mechThresh}°C${(h_free || h_partial) ? ` — 全年 ${h_free || '0 h'}/${h_partial || '0 h'}` : ''}`,
-                            '室外低溫乾球直接預冷冰水回水',
-                            '串聯於蒸發器前段，節省壓縮機功耗'
+                            t('topo.fcCoilFull', { thresh: fullThresh }, `全自然冷卻 DB ≤ ${fullThresh}°C`),
+                            t('topo.fcCoilPartial', { thresh: mechThresh }, `部分預冷 DB < ${mechThresh}°C${(h_free || h_partial) ? ` — 全年 ${h_free || '0 h'}/${h_partial || '0 h'}` : ''}`),
+                            t('topo.fcCoilDirect', null, '室外低溫乾球直接預冷冰水回水'),
+                            t('topo.fcCoilSeries', null, '串聯於蒸發器前段，節省壓縮機功耗')
                         ]
                     },
                     {
                         id: 'evaporator',
                         kind: 'hx',
-                        title: '冰水蒸發器 (CHW Evaporator)',
+                        title: t('schematic.chwEvaporator', null, '冰水蒸發器 (CHW Evaporator)'),
                         lines: [
-                            '機械壓縮製冷核心',
-                            `供水 ${chwSup}°C ⇄ 回水 ${chwRet}°C`,
-                            '氣冷散熱・無冷卻水塔耗水',
-                            '接力修整供水溫度'
+                            t('topo.evapCore', null, '機械壓縮製冷核心'),
+                            t('topo.evapSupplyReturn', { sup: chwSup, ret: chwRet }, `供水 ${chwSup}°C ⇄ 回水 ${chwRet}°C`),
+                            t('topo.evapAirRejNoTower', null, '氣冷散熱・無冷卻水塔耗水'),
+                            t('topo.evapTrimSupply', null, '接力修整供水溫度')
                         ]
                     },
                     {
                         id: 'heat_rejection',
                         kind: 'chiller',
-                        title: '室外氣冷冷凝機組 (Air-Cooled Plant)',
+                        title: t('topo.airCooledPlantTitle', null, '室外氣冷冷凝機組 (Air-Cooled Plant)'),
                         lines: [
-                            'V-Bank 氣冷冷凝盤管 + 變頻 EC 風扇',
-                            '以室外乾球溫度 (DB) 直接風冷散熱',
-                            '全封閉冷媒迴路 ｜ 零水耗 (WUE = 0)',
-                            '整合式冷媒/水側自然冷卻盤管'
+                            t('topo.vbankCondenserCoil', null, 'V-Bank 氣冷冷凝盤管 + 變頻 EC 風扇'),
+                            t('topo.dbAirRejection', null, '以室外乾球溫度 (DB) 直接風冷散熱'),
+                            t('topo.sealedRefrigZeroWater', null, '全封閉冷媒迴路 ｜ 零水耗 (WUE = 0)'),
+                            t('topo.integratedFcCoil', null, '整合式冷媒/水側自然冷卻盤管')
                         ]
                     },
                     {
                         id: 'pump',
                         kind: 'pump',
                         title: 'Secondary CHW Pump',
-                        lines: ['二次側冰水循環泵']
+                        lines: [t('topo.secChwPump', null, '二次側冰水循環泵')]
                     }
                 ],
                 pipes: [
@@ -250,15 +251,15 @@
             if (op?.hasFcCoil === false) {
                 model.banners = [{
                     id: 'mode3',
-                    title: '全年機械製冷',
-                    label: `全年機械製冷（機型無自然冷卻盤管）${h_mech ? ` — 全年 ${h_mech}` : ''}`,
-                    sub: `機型無水側自然冷卻盤管 ｜ 全年 ${h_mech || '8760 h'} ｜ 氣冷壓縮製冷`,
-                    detail: `機型無水側自然冷卻盤管 ｜ 全年 ${h_mech || '8760 h'} ｜ 氣冷壓縮製冷`,
+                    title: t('topo.airChillerAllYearMech', null, '全年機械製冷'),
+                    label: t('topo.airChillerNoFcCoil', null, `全年機械製冷（機型無自然冷卻盤管）${h_mech ? ` — 全年 ${h_mech}` : ''}`),
+                    sub: t('topo.noFcCoilAllYearMech', { hours: h_mech || '8760 h' }, `機型無水側自然冷卻盤管 ｜ 全年 ${h_mech || '8760 h'} ｜ 氣冷壓縮製冷`),
+                    detail: t('topo.noFcCoilAllYearMech', { hours: h_mech || '8760 h' }, `機型無水側自然冷卻盤管 ｜ 全年 ${h_mech || '8760 h'} ｜ 氣冷壓縮製冷`),
                     tone: 'indigo'
                 }];
                 model.nodes = model.nodes.filter(n => n.id !== 'fc_coil');
                 const rej = model.nodes.find(n => n.id === 'heat_rejection');
-                if (rej) rej.lines = rej.lines.filter(l => !l.includes('自然冷卻盤管'));
+                if (rej) rej.lines = rej.lines.filter(l => !l.includes('自然冷卻盤管') && !l.includes('FC coil'));
                 model.pipes = [
                     { from: 'crah', to: 'evaporator', label: `${chwRet}°C`, tone: 'hot' },
                     { from: 'evaporator', to: 'crah', label: `${chwSup}°C`, tone: 'cold' }

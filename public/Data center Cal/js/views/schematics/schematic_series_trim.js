@@ -19,6 +19,8 @@
         }
     };
 
+    const _t = (k, p, fb) => (root.I18N ? root.I18N.t(k, p) : (fb || k));
+
     root.CoolingSchematics.register('series_trim', {
         render(ctx) {
             const t = ctx.t || {};
@@ -90,7 +92,7 @@
 
             // 尖峰工況 (ASHRAE n=20 或年最高 DB)
             const peakDbVal = peak?.db ?? designCond?.peakDb?.value ?? designCond?.maxDb ?? ((designCond?.designDb ?? 35.0) + 3.0);
-            const peakBasis = peak?.basis ?? designCond?.peakDb?.basis ?? '年最高 DB';
+            const peakBasis = peak?.basis ?? designCond?.peakDb?.basis ?? _t('schematic.peakBasisMaxDb', null, '年最高 DB');
             const fwsPre_peak = (peak?.temps?.fwsPre !== undefined && peak?.temps?.fwsPre !== null) ? peak.temps.fwsPre.toFixed(1) : (fwsSupplyC !== undefined ? fwsSupplyC.toFixed(1) : '—');
             const trimKw_peak = peak?.chillerKw !== undefined ? Math.round(peak.chillerKw) : 0;
             const condIn_peak = (peak?.temps?.condIn !== undefined && peak?.temps?.condIn !== null) ? peak.temps.condIn.toFixed(1) : condWaterEnterExact;
@@ -132,36 +134,38 @@
             const peakBorderColor = isEnvelopeExceeded ? '#ef4444' : '#f59e0b';
             const peakBgColor = isEnvelopeExceeded ? '#450a0a' : '#0f172a';
             const peakTextColor = isEnvelopeExceeded ? '#fca5a5' : '#fef3c7';
-            const condInLabel = isEnvelopeExceeded ? `冷凝器 ⚠ ${condIn_peak}→${condOut_peak}°C` : `冷凝器 ${condIn_peak}→${condOut_peak}°C`;
+            const condInLabel = isEnvelopeExceeded ? `${_t('schematic.condenser', null, '冷凝器')} ⚠ ${condIn_peak}→${condOut_peak}°C` : `${_t('schematic.condenser', null, '冷凝器')} ${condIn_peak}→${condOut_peak}°C`;
 
             // 樣式變數 (設計工況 Mode 1 停機 vs Active)
             const secHxStroke = isDesignMode1 ? '#475569' : '#818cf8';
             const secHxHeaderFill = isDesignMode1 ? '#1e293b' : '#312e81';
             const secHxIconStroke = isDesignMode1 ? '#64748b' : '#a5b4fc';
-            const secHxLine1 = isDesignMode1 ? '待機停用 (Standby)' : (nSecondary.lines?.[0] || '接力修整 (Trim Cooling)');
-            const secHxLine2 = isDesignMode1 ? '設計點全自然冷卻，無需修整' : (nSecondary.lines?.[1] || `精確修整至 ${fwsSupplyC}°C`);
-            const secHxLine3 = isDesignMode1 ? '零冰機運轉・零壓縮機耗電' : (nSecondary.lines?.[2] || `由 Trim Chiller ${chwSupplyTemp}°C 冰水冷卻`);
+            const secHxLine1 = isDesignMode1 ? _t('schematic.standby', null, '待機停用 (Standby)') : (nSecondary.lines?.[0] || _t('topo.secTrimCooling', null, '接力修整 (Trim Cooling)'));
+            const secHxLine2 = isDesignMode1 ? _t('schematic.secHxDesignMode1', null, '設計點全自然冷卻，無需修整') : (nSecondary.lines?.[1] || _t('topo.trimToSup', { tSup: fwsSupplyC }, `精確修整至 ${fwsSupplyC}°C`));
+            const secHxLine3 = isDesignMode1 ? _t('schematic.zeroChillerZeroPower', null, '零冰機運轉・零壓縮機耗電') : (nSecondary.lines?.[2] || _t('topo.chilledByTrim', { tChws: chwSupplyTemp }, `由 Trim Chiller ${chwSupplyTemp}°C 冰水冷卻`));
 
             const chillerStroke = isDesignMode1 ? '#475569' : '#818cf8';
             const chillerHeaderFill = isDesignMode1 ? '#1e293b' : '#312e81';
             const chillerIconStroke = isDesignMode1 ? '#64748b' : '#a5b4fc';
-            const chillerTitle = (nChiller.title || 'Water Cooled Chillers') + (isDesignMode1 ? ' — 待機' : '');
+            const chillerTitle = (nChiller.title || 'Water Cooled Chillers') + (isDesignMode1 ? _t('schematic.standbySuffix', null, ' — 待機') : '');
             const chillerLine1 = nChiller.lines?.[0] || 'Trim';
-            const chillerLine2 = isDesignMode1 ? '設計工況無修整需求 (停機)' : (nChiller.lines?.[1] || '冷凝熱串聯排放至 Dry Coolers');
-            const chillerLine3 = isDesignMode1 ? '年尖峰或高溫時自動啟動' : (nChiller.lines?.[2] || '高效離心/螺桿式機械壓縮製冷');
+            const chillerLine2 = isDesignMode1 ? _t('schematic.noTrimReqOff', null, '設計工況無修整需求 (停機)') : (nChiller.lines?.[1] || _t('topo.condenserSeriesDc', null, '冷凝熱串聯排放至 Dry Coolers'));
+            const chillerLine3 = isDesignMode1 ? _t('schematic.autoStartPeak', null, '年尖峰或高溫時自動啟動') : (nChiller.lines?.[2] || _t('schematic.autoStartPeakEff', null, '高效離心/螺桿式機械壓縮製冷'));
 
             const chwPipeColor = isDesignMode1 ? '#475569' : '#0284c7';
             const chwPipeDash = isDesignMode1 ? '4,4' : 'none';
-            const chwSupBadge = isDesignMode1 ? '待機 (Standby)' : getPipe('chiller', 'hx_secondary', `${chwSupplyTemp}°C`);
-            const chwRetBadge = isDesignMode1 ? '待機 (Standby)' : getPipe('hx_secondary', 'chiller', `${chwReturnTemp}°C`);
+            const chwSupBadge = isDesignMode1 ? _t('schematic.standby', null, '待機 (Standby)') : getPipe('chiller', 'hx_secondary', `${chwSupplyTemp}°C`);
+            const chwRetBadge = isDesignMode1 ? _t('schematic.standby', null, '待機 (Standby)') : getPipe('hx_secondary', 'chiller', `${chwReturnTemp}°C`);
 
             // =========================================================================
             // 雙迴路混合架構 (dry_cooler_trim 專屬: NVIDIA DSX 官方標準 Trim/Hybrid Cooling)
             // =========================================================================
+            const peakTableLineText = _t('schematic.peakTableLine', { peakDb: peakDbVal.toFixed(1), basis: peakBasis, fwsPre: fwsPre_peak, trimKw: trimKw_peak, condInLabel, cop: cop_peak }, `尖峰設計 DB ${peakDbVal.toFixed(1)}°C（${peakBasis}）工況：預冷至 ${fwsPre_peak}°C ｜ Trim 負擔 ${trimKw_peak} kW ｜ ${condInLabel} ｜ 冰機 COP ${cop_peak}`);
+
             const facilitySchematicSvg = `
                 <!-- 尖峰工況小表格 -->
                 <rect x="740" y="8" width="510" height="26" rx="6" fill="${peakBgColor}" stroke="${peakBorderColor}" stroke-width="${isEnvelopeExceeded ? 2 : 1}" />
-                <text x="995" y="25" fill="${peakTextColor}" font-size="9.5" font-weight="bold" text-anchor="middle" ${fitTextAttr(`尖峰設計 DB ${peakDbVal.toFixed(1)}°C（${peakBasis}）工況：預冷至 ${fwsPre_peak}°C ｜ Trim 負擔 ${trimKw_peak} kW ｜ ${condInLabel} ｜ 冰機 COP ${cop_peak}`, 495, 9.5)}>尖峰設計 DB ${peakDbVal.toFixed(1)}°C（${peakBasis}）工況：預冷至 ${fwsPre_peak}°C ｜ Trim 負擔 ${trimKw_peak} kW ｜ ${condInLabel} ｜ 冰機 COP ${cop_peak}</text>
+                <text x="995" y="25" fill="${peakTextColor}" font-size="9.5" font-weight="bold" text-anchor="middle" ${fitTextAttr(peakTableLineText, 495, 9.5)}>${peakTableLineText}</text>
 
                 <!-- ======================================================= -->
                 <!-- 1. PRIMARY FWS LOOP (廠務側串聯換熱鏈) -->
@@ -197,9 +201,9 @@
 
                 <rect x="442" y="68" width="22" height="55" rx="4" fill="#1e293b" stroke="#34d399" stroke-width="1" />
                 <path d="M 447 75 L 455 85 L 447 95 M 453 75 L 461 85 L 453 95 M 447 95 L 455 105 L 447 115" stroke="#34d399" stroke-width="1.3" fill="none" stroke-linecap="round" />
-                <text x="540" y="82" fill="#34d399" font-size="11" font-weight="bold" text-anchor="middle" ${fitTextAttr(nPrimary.lines?.[0] || '自然預冷 (Free Pre-Cool)', 150, 11)}>${nPrimary.lines?.[0] || '自然預冷 (Free Pre-Cool)'}</text>
-                <text x="540" y="100" fill="#a7f3d0" font-size="9.5" text-anchor="middle" ${fitTextAttr(nPrimary.lines?.[1] || `回水預冷至 ${precoolTemp}°C`, 150, 9.5)}>${nPrimary.lines?.[1] || `回水預冷至 ${precoolTemp}°C`}</text>
-                <text x="540" y="118" fill="#cbd5e1" font-size="9" text-anchor="middle" ${fitTextAttr(nPrimary.lines?.[2] || '以乾冷器出水為冷源', 150, 9)}>${nPrimary.lines?.[2] || '以乾冷器出水為冷源'}</text>
+                <text x="540" y="82" fill="#34d399" font-size="11" font-weight="bold" text-anchor="middle" ${fitTextAttr(nPrimary.lines?.[0] || _t('topo.priFreePreCool', null, '自然預冷 (Free Pre-Cool)'), 150, 11)}>${nPrimary.lines?.[0] || _t('topo.priFreePreCool', null, '自然預冷 (Free Pre-Cool)')}</text>
+                <text x="540" y="100" fill="#a7f3d0" font-size="9.5" text-anchor="middle" ${fitTextAttr(nPrimary.lines?.[1] || _t('topo.retPrecooled', { tPre: precoolTemp }, `回水預冷至 ${precoolTemp}°C`), 150, 9.5)}>${nPrimary.lines?.[1] || _t('topo.retPrecooled', { tPre: precoolTemp }, `回水預冷至 ${precoolTemp}°C`)}</text>
+                <text x="540" y="118" fill="#cbd5e1" font-size="9" text-anchor="middle" ${fitTextAttr(nPrimary.lines?.[2] || _t('topo.dcAsColdSource', null, '以乾冷器出水為冷源'), 150, 9)}>${nPrimary.lines?.[2] || _t('topo.dcAsColdSource', null, '以乾冷器出水為冷源')}</text>
 
                 <!-- ======================================================= -->
                 <!-- 3. SECONDARY HEAT EXCHANGER (Secondary 板換 / Trim 修整) -->
@@ -262,7 +266,7 @@
                 <!-- 7. DRY COOLERS (室外乾式冷卻器模組) -->
                 <!-- ======================================================= -->
                 <!-- 頂部氣流箭頭 (進風外氣設計乾球溫) -->
-                <text x="1160" y="55" fill="#38bdf8" font-size="10" font-weight="bold" text-anchor="middle">設計乾球 (0.4%): ${outdoorDb}°C</text>
+                <text x="1160" y="55" fill="#38bdf8" font-size="10" font-weight="bold" text-anchor="middle">${_t('schematic.designDb04', { db: outdoorDb }, `設計乾球 (0.4%): ${outdoorDb}°C`)}</text>
                 <polygon points="1110,60 1120,60 1115,70" fill="#38bdf8" />
                 <polygon points="1160,60 1170,60 1165,70" fill="#38bdf8" />
                 <polygon points="1210,60 1220,60 1215,70" fill="#38bdf8" />
@@ -271,10 +275,10 @@
                 <rect x="1060" y="75" width="200" height="28" rx="10" fill="#0f172a" />
                 <text x="1160" y="94" fill="#f8fafc" font-size="12" font-weight="bold" text-anchor="middle" ${fitTextAttr(nDryCooler.title || 'Dry Coolers', 180, 12)}>${nDryCooler.title || 'Dry Coolers'}</text>
                 
-                <text x="1075" y="122" fill="#f1f5f9" font-size="11" font-weight="bold" ${fitTextAttr(nDryCooler.lines?.[0] || '零耗水自然風冷', 170, 11)}>${nDryCooler.lines?.[0] || '零耗水自然風冷'}</text>
-                <text x="1075" y="142" fill="#a7f3d0" font-size="10" ${fitTextAttr(nDryCooler.lines?.[1] || `Approach: ${dcApproach}°C ｜ 門檻: ≤${cduFcThresh}°C`, 170, 10)}>${nDryCooler.lines?.[1] || `Approach: ${dcApproach}°C ｜ 門檻: ≤${cduFcThresh}°C`}</text>
-                <text x="1075" y="162" fill="#cbd5e1" font-size="9.5" ${fitTextAttr(nDryCooler.lines?.[2] || 'Mode 1: 滿載自然風冷', 170, 9.5)}>${nDryCooler.lines?.[2] || 'Mode 1: 滿載自然風冷'}</text>
-                <text x="1075" y="178" fill="#cbd5e1" font-size="9.5" ${fitTextAttr(nDryCooler.lines?.[3] || 'Mode 2: 串聯預冷與主機冷凝排熱', 170, 9.5)}>${nDryCooler.lines?.[3] || 'Mode 2: 串聯預冷與主機冷凝排熱'}</text>
+                <text x="1075" y="122" fill="#f1f5f9" font-size="11" font-weight="bold" ${fitTextAttr(nDryCooler.lines?.[0] || _t('topo.dcZeroWater', null, '零耗水自然風冷'), 170, 11)}>${nDryCooler.lines?.[0] || _t('topo.dcZeroWater', null, '零耗水自然風冷')}</text>
+                <text x="1075" y="142" fill="#a7f3d0" font-size="10" ${fitTextAttr(nDryCooler.lines?.[1] || _t('topo.dcApproachThresh', { app: dcApproach, thresh: cduFcThresh }, `Approach: ${dcApproach}°C ｜ 門檻: ≤${cduFcThresh}°C`), 170, 10)}>${nDryCooler.lines?.[1] || _t('topo.dcApproachThresh', { app: dcApproach, thresh: cduFcThresh }, `Approach: ${dcApproach}°C ｜ 門檻: ≤${cduFcThresh}°C`)}</text>
+                <text x="1075" y="162" fill="#cbd5e1" font-size="9.5" ${fitTextAttr(nDryCooler.lines?.[2] || _t('topo.dcM1FullAir', null, 'Mode 1: 滿載自然風冷'), 170, 9.5)}>${nDryCooler.lines?.[2] || _t('topo.dcM1FullAir', null, 'Mode 1: 滿載自然風冷')}</text>
+                <text x="1075" y="178" fill="#cbd5e1" font-size="9.5" ${fitTextAttr(nDryCooler.lines?.[3] || _t('topo.dcM2PrecoolRej', null, 'Mode 2: 串聯預冷與主機冷凝排熱'), 170, 9.5)}>${nDryCooler.lines?.[3] || _t('topo.dcM2PrecoolRej', null, 'Mode 2: 串聯預冷與主機冷凝排熱')}</text>
 
                 <!-- 底部排熱箭頭 -->
                 <polygon points="1110,230 1120,230 1115,240" fill="#ef4444" />
@@ -292,12 +296,12 @@
                     <div class="flex flex-col sm:flex-row sm:items-center justify-between text-xs pb-3 border-b border-slate-800/80 gap-2">
                         <div class="flex items-center gap-2">
                             ${model?.referenceLabel ? `<span class="inline-flex items-center justify-center px-3 py-1 rounded-md bg-emerald-950 text-emerald-300 font-black text-xs border border-emerald-700">${model.referenceLabel}</span>` : ''}
-                            <span class="font-bold text-slate-100 text-sm">${model?.title || 'NVIDIA DSX 參考拓樸'}</span>
+                            <span class="font-bold text-slate-100 text-sm">${model?.title || _t('topo.dsxRefTitle', null, 'NVIDIA DSX 參考拓樸')}</span>
                         </div>
                         <div class="flex items-center gap-2">
                             <span class="px-3 py-1 rounded-md bg-purple-950/80 text-purple-300 text-xs font-bold border border-purple-800 flex items-center gap-1.5">
                                 <span class="w-2 h-2 rounded-full bg-purple-400"></span>
-                                排熱架構: ${nDryCooler.title || '乾冷器 (Dry Cooler)'}
+                                ${_t('schematic.heatRejArch', null, '排熱架構')}: ${nDryCooler.title || _t('topo.dryCoolerTitle', null, '乾冷器 (Dry Cooler)')}
                             </span>
                         </div>
                     </div>
@@ -314,12 +318,12 @@
                             <text x="85" y="54" fill="#f8fafc" font-size="11" font-weight="bold" text-anchor="middle" ${fitTextAttr(nIt.title || 'Compute Data Hall', 120, 11)}>${nIt.title || 'Compute Data Hall'}</text>
                             
                             <rect x="28" y="72" width="114" height="60" rx="8" fill="#1e293b" stroke="#334155" stroke-width="1.5" />
-                            <text x="85" y="92" fill="#f1f5f9" font-size="9.5" font-weight="bold" text-anchor="middle" ${fitTextAttr(nIt.lines?.[0] || 'Cold Plate 晶片液冷', 110, 9.5)}>${nIt.lines?.[0] || 'Cold Plate 晶片液冷'}</text>
+                            <text x="85" y="92" fill="#f1f5f9" font-size="9.5" font-weight="bold" text-anchor="middle" ${fitTextAttr(nIt.lines?.[0] || _t('topo.coldPlateLiq', null, 'Cold Plate 晶片液冷'), 110, 9.5)}>${nIt.lines?.[0] || _t('topo.coldPlateLiq', null, 'Cold Plate 晶片液冷')}</text>
                             <text x="85" y="118" fill="#ec4899" font-size="14" font-weight="900" text-anchor="middle">${liqLoadKw.toFixed(0)} kW</text>
 
-                            <text x="85" y="160" fill="#38bdf8" font-size="10.5" font-weight="bold" text-anchor="middle" ${fitTextAttr(nIt.lines?.[1] || `晶片水溫: ${secSupplyC} ⇄ ${secReturnC}°C`, 110, 10.5)}>${nIt.lines?.[1] || `晶片水溫: ${secSupplyC} ⇄ ${secReturnC}°C`}</text>
-                            <text x="85" y="185" fill="#a5b4fc" font-size="10" text-anchor="middle" ${fitTextAttr(`二次側流量: ${flowSecLpm.toLocaleString()} LPM`, 110, 10)}>二次側流量: ${flowSecLpm.toLocaleString()} LPM</text>
-                            <text x="85" y="208" fill="#94a3b8" font-size="9" text-anchor="middle" ${fitTextAttr(`ΔT = ${dtSec}°C (晶片溫升)`, 110, 9)}>ΔT = ${dtSec}°C (晶片溫升)</text>
+                            <text x="85" y="160" fill="#38bdf8" font-size="10.5" font-weight="bold" text-anchor="middle" ${fitTextAttr(nIt.lines?.[1] || _t('topo.chipWaterTemp', { sup: secSupplyC, ret: secReturnC }, `晶片水溫: ${secSupplyC} ⇄ ${secReturnC}°C`), 110, 10.5)}>${nIt.lines?.[1] || _t('topo.chipWaterTemp', { sup: secSupplyC, ret: secReturnC }, `晶片水溫: ${secSupplyC} ⇄ ${secReturnC}°C`)}</text>
+                            <text x="85" y="185" fill="#a5b4fc" font-size="10" text-anchor="middle" ${fitTextAttr(_t('schematic.secFlowLpm', { flow: flowSecLpm.toLocaleString() }, `二次側流量: ${flowSecLpm.toLocaleString()} LPM`), 110, 10)}>${_t('schematic.secFlowLpm', { flow: flowSecLpm.toLocaleString() }, `二次側流量: ${flowSecLpm.toLocaleString()} LPM`)}</text>
+                            <text x="85" y="208" fill="#94a3b8" font-size="9" text-anchor="middle" ${fitTextAttr(_t('schematic.deltaTChip', { dt: dtSec }, `ΔT = ${dtSec}°C (晶片溫升)`), 110, 9)}>${_t('schematic.deltaTChip', { dt: dtSec }, `ΔT = ${dtSec}°C (晶片溫升)`)}</text>
 
                             <!-- 2. SECONDARY TCS PIPING (機櫃 ⇄ CDU 二次側水路) -->
                             <!-- Hot Secondary Return -->
@@ -343,9 +347,9 @@
                             <rect x="215" y="110" width="80" height="20" rx="4" fill="#2e1065" stroke="#c084fc" stroke-width="1" />
                             <text x="255" y="124" fill="#f5d0fe" font-size="9" font-weight="bold" text-anchor="middle">Approach ${cduApproachC}°C</text>
 
-                            <text x="255" y="195" fill="#e9d5ff" font-size="11" font-weight="bold" text-anchor="middle">${cduUnitQty} 台 (N+1)</text>
-                            <text x="255" y="215" fill="#a78bfa" font-size="9.5" text-anchor="middle" ${fitTextAttr('一二次側 100% 隔離', 110, 9.5)}>一二次側 100% 隔離</text>
-                            <text x="255" y="235" fill="#34d399" font-size="10" font-weight="bold" text-anchor="middle" ${fitTextAttr(`設施流量: ${flowPrimLpm.toLocaleString()} LPM`, 110, 10)}>設施流量: ${flowPrimLpm.toLocaleString()} LPM</text>
+                            <text x="255" y="195" fill="#e9d5ff" font-size="11" font-weight="bold" text-anchor="middle">${_t('schematic.unitsN1', { qty: cduUnitQty }, `${cduUnitQty} 台 (N+1)`)}</text>
+                            <text x="255" y="215" fill="#a78bfa" font-size="9.5" text-anchor="middle" ${fitTextAttr(_t('schematic.priSecIsolated', null, '一二次側 100% 隔離'), 110, 9.5)}>${_t('schematic.priSecIsolated', null, '一二次側 100% 隔離')}</text>
+                            <text x="255" y="235" fill="#34d399" font-size="10" font-weight="bold" text-anchor="middle" ${fitTextAttr(_t('schematic.facilityFlowLpm', { flow: flowPrimLpm.toLocaleString() }, `設施流量: ${flowPrimLpm.toLocaleString()} LPM`), 110, 10)}>${_t('schematic.facilityFlowLpm', { flow: flowPrimLpm.toLocaleString() }, `設施流量: ${flowPrimLpm.toLocaleString()} LPM`)}</text>
 
                             <!-- 4. FACILITY HEAT REJECTION SCHEMATIC (一次側廠務拓樸) -->
                             ${facilitySchematicSvg}
@@ -356,15 +360,15 @@
                     <div class="grid grid-cols-1 sm:grid-cols-3 gap-2 mt-3 pt-3 border-t border-slate-800 text-[11px]">
                         <div class="flex items-center gap-1.5 text-slate-300">
                             <span class="w-2 h-2 rounded-full bg-pink-500"></span>
-                            <span>二次側水流: <strong class="text-pink-300">${flowSecLpm.toLocaleString()} LPM</strong> (ΔT=${dtSec}°C)</span>
+                            <span>${_t('schematic.secFlow', null, '二次側水流')}: <strong class="text-pink-300">${flowSecLpm.toLocaleString()} LPM</strong> (ΔT=${dtSec}°C)</span>
                         </div>
                         <div class="flex items-center gap-1.5 text-slate-300">
                             <span class="w-2 h-2 rounded-full bg-teal-400"></span>
-                            <span>一次側水流: <strong class="text-teal-300">${flowPrimLpm.toLocaleString()} LPM</strong> (ΔT=${dtPrim}°C)</span>
+                            <span>${_t('schematic.priFlow', null, '一次側水流')}: <strong class="text-teal-300">${flowPrimLpm.toLocaleString()} LPM</strong> (ΔT=${dtPrim}°C)</span>
                         </div>
                         <div class="flex items-center gap-1.5 text-slate-300">
                             <span class="w-2 h-2 rounded-full bg-emerald-400"></span>
-                            <span>自然冷卻門檻: <strong class="text-emerald-300">DB ≤ ${cduFcThresh}°C (Mode 1 滿載風冷)</strong></span>
+                            <span>${_t('schematic.fcThreshold', null, '自然冷卻門檻')}: <strong class="text-emerald-300">${_t('schematic.mode1FullAirRej', { thresh: cduFcThresh }, `DB ≤ ${cduFcThresh}°C (Mode 1 滿載風冷)`)}</strong></span>
                         </div>
                     </div>
                 </div>

@@ -5,6 +5,8 @@
  * capacity checks, and validation messages for CDU and Fanwall systems.
  */
 (function (root) {
+    const t = (k, p, fb) => (root.I18N ? root.I18N.t(k, p) : (fb || k));
+
     function getCatalog(category) {
         if (typeof root.CatalogManager !== 'undefined' && typeof root.CatalogManager.getCatalog === 'function') {
             return root.CatalogManager.getCatalog(category) || [];
@@ -65,7 +67,6 @@
             const item = {
                 key: eq.key,
                 role: eq.role,
-                label: eq.label,
                 category: eq.category,
                 catalog: cat,
                 selectedModel,
@@ -75,6 +76,13 @@
                 requiredUnitsN1: n1,
                 userEdited: false
             };
+
+            Object.defineProperty(item, 'label', {
+                get() { return this._customLabel || (typeof eq.label === 'function' ? eq.label() : eq.label); },
+                set(v) { this._customLabel = v; },
+                enumerable: true,
+                configurable: true
+            });
 
             if (typeof eq.extraProps === 'function') {
                 Object.assign(item, eq.extraProps(ctx, cat, reqKw));
@@ -188,20 +196,21 @@
                 if (!s.userEdited && s.selectedQty < s.requiredUnitsN1) s.selectedQty = s.requiredUnitsN1;
                 s.effectiveCapKw = Math.round(Math.max(0, s.selectedQty - 1) * s.unitCapKw * s.derateFactor);
                 s.passed = (s.effectiveCapKw >= s.requiredKw) && (s.selectedQty >= 2);
-                const derateNote = (s.derateFactor < 0.999) ? `（已依設計工況降額 ×${s.derateFactor.toFixed(2)}）` : '';
-                s.requiredText = '需求 ≥ ' + s.requiredKw.toFixed(1) + ' kW (N+1 最少 ' + s.requiredUnitsN1 + ' 台)' + derateNote;
+                const derateNote = (s.derateFactor < 0.999) ? t('sizing.derateNote', { factor: s.derateFactor.toFixed(2) }) : '';
+                s.requiredText = t('sizing.requiredN1', { reqKw: s.requiredKw.toFixed(1), n1: s.requiredUnitsN1, derateNote });
                 if (s.key === 'cdu_pump' || s.key === 'cw_pump') {
                     s.effectiveCapKw = Math.round(Math.max(0, s.selectedQty - 1) * s.unitCapKw * s.derateFactor);
                     const isMotorDeficit = s.requiredKw > s.effectiveCapKw;
                     s.passed = (s.selectedQty >= 2) && !isMotorDeficit;
-                    const pfx = (s.key === 'cw_pump') ? '冷卻水泵水力電功率需求 ' : '水力電功率需求 ';
-                    s.requiredText = pfx + s.requiredKw.toFixed(1) + ' kW (N+1 最少 ' + s.requiredUnitsN1 + ' 台)' + (isMotorDeficit ? ' ⚠ 泵浦馬達功率不足' : '');
+                    const pfx = (s.key === 'cw_pump') ? t('sizing.cwPumpHydDemand') : t('sizing.pumpHydDemand');
+                    const minUnitsStr = (root.I18N && root.I18N.lang === 'en') ? ` (N+1 Min ${s.requiredUnitsN1} units)` : ` (N+1 最少 ${s.requiredUnitsN1} 台)`;
+                    s.requiredText = pfx + s.requiredKw.toFixed(1) + ' kW' + minUnitsStr + (isMotorDeficit ? t('sizing.motorDeficit') : '');
                 }
                 if (s.key === 'trim_chiller') {
                     s.maxMechanicalPassed = s.effectiveCapKw >= s.maxMechanicalKw;
                     const peak = designCond?.peakDb;
                     if (peak && Number.isFinite(peak.value)) {
-                        let basisNote = `（選型基準 DB ${peak.value}°C，${peak.basis}）`;
+                        let basisNote = t('sizing.basisNote', { db: peak.value, basis: peak.basis });
                         if (designCond.dataQualityWarning) {
                             basisNote += ' ⚠ ' + designCond.dataQualityWarning;
                         }
@@ -253,14 +262,15 @@
                 if (!s.userEdited && s.selectedQty < s.requiredUnitsN1) s.selectedQty = s.requiredUnitsN1;
                 s.effectiveCapKw = Math.round(Math.max(0, s.selectedQty - 1) * s.unitCapKw * s.derateFactor);
                 s.passed = (s.effectiveCapKw >= s.requiredKw) && (s.selectedQty >= 2);
-                const derateNote = (s.derateFactor < 0.999) ? `（已依設計工況降額 ×${s.derateFactor.toFixed(2)}）` : '';
-                s.requiredText = '需求 ≥ ' + s.requiredKw.toFixed(1) + ' kW (N+1 最少 ' + s.requiredUnitsN1 + ' 台)' + derateNote;
+                const derateNote = (s.derateFactor < 0.999) ? t('sizing.derateNote', { factor: s.derateFactor.toFixed(2) }) : '';
+                s.requiredText = t('sizing.requiredN1', { reqKw: s.requiredKw.toFixed(1), n1: s.requiredUnitsN1, derateNote });
                 if (s.key === 'fw_pump' || s.key === 'cw_pump') {
                     s.effectiveCapKw = Math.round(Math.max(0, s.selectedQty - 1) * s.unitCapKw * s.derateFactor);
                     const isMotorDeficit = s.requiredKw > s.effectiveCapKw;
                     s.passed = (s.selectedQty >= 2) && !isMotorDeficit;
-                    const pfx = (s.key === 'cw_pump') ? '冷卻水泵水力電功率需求 ' : '二次側水力電功率需求 ';
-                    s.requiredText = pfx + s.requiredKw.toFixed(1) + ' kW (N+1 最少 ' + s.requiredUnitsN1 + ' 台)' + (isMotorDeficit ? ' ⚠ 泵浦馬達功率不足' : '');
+                    const pfx = (s.key === 'cw_pump') ? t('sizing.cwPumpHydDemand') : t('sizing.fwPumpHydDemand');
+                    const minUnitsStr = (root.I18N && root.I18N.lang === 'en') ? ` (N+1 Min ${s.requiredUnitsN1} units)` : ` (N+1 最少 ${s.requiredUnitsN1} 台)`;
+                    s.requiredText = pfx + s.requiredKw.toFixed(1) + ' kW' + minUnitsStr + (isMotorDeficit ? t('sizing.motorDeficit') : '');
                 }
             });
         },
@@ -273,10 +283,28 @@
 
             const trimChillerForCheck = cduSys.sizing?.find(s => s.key === 'trim_chiller');
             const checks = [
-                (cduSys.sizing?.[0]?.passed ? '✓' : '✗') + ' CDU 總有效容量 ' + cduSys.sizing?.[0]?.effectiveCapKw + ' kW (N-1) ' + (cduSys.sizing?.[0]?.passed ? '滿足' : '不足！'),
-                (cduSys.sizing?.[1] ? ((cduSys.sizing[1].passed ? '✓' : '✗') + ' ' + cduSys.sizing[1].label + ' 有效容量 ' + cduSys.sizing[1].effectiveCapKw + ' kW (N-1) ' + (cduSys.sizing[1].passed ? '滿足' : '不足！')) : ''),
-                (cduVelOk ? '✓' : '⚠') + ' 一次側管路流速 (計算值) ' + pipeCduVelocityMps + ' m/s，建議範圍 1.0~3.0 m/s' + (cduVelOk ? '' : '，建議調整管徑'),
-                trimChillerForCheck ? ((trimChillerForCheck.maxMechanicalPassed ? '✓' : '⚠') + ' Trim Chiller 全機械製冷(Mode 3)最大需求 ' + trimChillerForCheck.maxMechanicalKw + ' kW，N+1可用 ' + trimChillerForCheck.effectiveCapKw + ' kW' + (trimChillerForCheck.maxMechanicalPassed ? '（足夠）' : '（不足！極端高溫時可能超載，實際是否發生請以Dashboard的容量缺口小時數為準）')) : ''
+                t('sizing.checkCduCap', {
+                    mark: cduSys.sizing?.[0]?.passed ? '✓' : '✗',
+                    cap: cduSys.sizing?.[0]?.effectiveCapKw,
+                    status: cduSys.sizing?.[0]?.passed ? t('sizing.statusOk') : t('sizing.statusFail')
+                }),
+                cduSys.sizing?.[1] ? t('sizing.checkItemCap', {
+                    mark: cduSys.sizing[1].passed ? '✓' : '✗',
+                    label: cduSys.sizing[1].label,
+                    cap: cduSys.sizing[1].effectiveCapKw,
+                    status: cduSys.sizing[1].passed ? t('sizing.statusOk') : t('sizing.statusFail')
+                }) : '',
+                t('sizing.checkCduVelocity', {
+                    mark: cduVelOk ? '✓' : '⚠',
+                    vel: pipeCduVelocityMps,
+                    advice: cduVelOk ? '' : t('sizing.adjustPipeDia')
+                }),
+                trimChillerForCheck ? t('sizing.checkTrimMode3', {
+                    mark: trimChillerForCheck.maxMechanicalPassed ? '✓' : '⚠',
+                    req: trimChillerForCheck.maxMechanicalKw,
+                    avail: trimChillerForCheck.effectiveCapKw,
+                    note: trimChillerForCheck.maxMechanicalPassed ? t('sizing.trimAdequate') : t('sizing.trimInadequate')
+                }) : ''
             ];
 
             // Q-1: Trim chiller CEWT envelope check at extreme/peak heat conditions
@@ -296,7 +324,7 @@
                         }
                     }
                     if (opPeak.tCewt > limit) {
-                        checks.push(`⚠ 極端熱工況冷凝進水 ${opPeak.tCewt.toFixed(1)}°C 超過所選冰機運轉上限 ${limit.toFixed(1)}°C，需選用高溫型冰機`);
+                        checks.push(t('sizing.warnTrimCewt', { cewt: opPeak.tCewt.toFixed(1), limit: limit.toFixed(1) }));
                     }
                 }
             }
@@ -309,7 +337,7 @@
                 const pheApp = cduSys?.pheApproachC ?? 2.0;
                 const fwsSupplyC = cduSys?.fwsSupplyC ?? 40.0;
                 if ((designWb + towerApp + (hasPhe ? pheApp : 0)) < fwsSupplyC) {
-                    checks.push('⚠ 設計濕球 + 塔 approach 已低於 FWS 供水溫，冷卻水塔可直接供冷；建議改用閉式塔或加裝水側經濟器');
+                    checks.push(t('sizing.warnTowerApproach'));
                 }
             }
 
@@ -325,7 +353,7 @@
                     const fwsSupplyC = cduSys?.fwsSupplyC ?? 40.0;
                     const tSupplyPeak = peakVal + dcApproach + pheApproach;
                     if (tSupplyPeak > fwsSupplyC) {
-                        checks.push(`⚠ ASHRAE 尖峰乾球 ${peakVal}°C 時 FWS 供水將升至 ${tSupplyPeak.toFixed(1)}°C（超出設計 ${fwsSupplyC}°C），純乾冷器無機械備援`);
+                        checks.push(t('sizing.warnPureDcPeak', { peak: peakVal, tSupply: tSupplyPeak.toFixed(1), design: fwsSupplyC }));
                     }
                 }
             }
@@ -341,10 +369,29 @@
             const fwArchDesc = archDesc || ((typeof root.CoolingArchRegistry !== 'undefined') ? root.CoolingArchRegistry.get(fwSys?.architecture) : null);
             const sizing = fwSys?.sizing || [];
             const checks = [
-                (sizing[0] ? ((sizing[0].passed ? '✓' : '✗') + ' ' + sizing[0].label + ' 有效容量 ' + sizing[0].effectiveCapKw + ' kW (N-1) ' + (sizing[0].passed ? '滿足' : '不足！')) : ''),
-                (sizing[1] ? ((sizing[1].passed ? '✓' : '✗') + ' ' + sizing[1].label + ' 有效容量 ' + sizing[1].effectiveCapKw + ' kW (N-1) ' + (sizing[1].passed ? '滿足' : '不足！')) : ''),
-                (sizing[2] ? ((sizing[2].passed ? '✓' : '✗') + ' ' + sizing[2].label + ' 有效容量 ' + sizing[2].effectiveCapKw + ' kW (N-1) ' + (sizing[2].passed ? '滿足' : '不足！')) : ''),
-                (fwVelOk ? '✓' : '⚠') + ' 二次側管路流速 (計算值) ' + pipeFwVelocityMps + ' m/s，建議範圍 1.0~3.0 m/s' + (fwVelOk ? '' : '，建議調整管徑')
+                sizing[0] ? t('sizing.checkItemCap', {
+                    mark: sizing[0].passed ? '✓' : '✗',
+                    label: sizing[0].label,
+                    cap: sizing[0].effectiveCapKw,
+                    status: sizing[0].passed ? t('sizing.statusOk') : t('sizing.statusFail')
+                }) : '',
+                sizing[1] ? t('sizing.checkItemCap', {
+                    mark: sizing[1].passed ? '✓' : '✗',
+                    label: sizing[1].label,
+                    cap: sizing[1].effectiveCapKw,
+                    status: sizing[1].passed ? t('sizing.statusOk') : t('sizing.statusFail')
+                }) : '',
+                sizing[2] ? t('sizing.checkItemCap', {
+                    mark: sizing[2].passed ? '✓' : '✗',
+                    label: sizing[2].label,
+                    cap: sizing[2].effectiveCapKw,
+                    status: sizing[2].passed ? t('sizing.statusOk') : t('sizing.statusFail')
+                }) : '',
+                t('sizing.checkFwVelocity', {
+                    mark: fwVelOk ? '✓' : '⚠',
+                    vel: pipeFwVelocityMps,
+                    advice: fwVelOk ? '' : t('sizing.adjustPipeDia')
+                })
             ];
             if (fwArchDesc?.flags?.isRdhx) {
                 const roomDb = fwSys?.roomDbC;
@@ -354,15 +401,15 @@
                 if (roomDb !== null && roomDb !== undefined && roomRh !== null && roomRh !== undefined && Number.isFinite(Number(roomDb)) && Number.isFinite(Number(roomRh))) {
                     const calcDp = (typeof root.calcDewPointC === 'function') ? root.calcDewPointC : (typeof calcDewPointC === 'function' ? calcDewPointC : null);
                     dp = calcDp ? calcDp(Number(roomDb), Number(roomRh)) : 15.0;
-                    source = `機房 ${Number(roomDb)}°C / ${Number(roomRh)}%`;
+                    source = t('sizing.rdhxRoomCond', { db: Number(roomDb), rh: Number(roomRh) });
                 } else {
                     dp = (typeof root.A === 'function') ? root.A('rdhx_default_room_dp_c') : 15.0;
-                    source = 'ASHRAE TC9.9 預設';
+                    source = t('sizing.rdhxAshraeDefault');
                 }
                 const limit = dp + marginK;
                 const chwSup = fwSys?.chwSupplyC ?? 12.0;
                 if (chwSup < limit) {
-                    checks.push(`⚠ RDHX 供水 ${chwSup.toFixed(1)}°C 低於結露保護溫度 ${limit.toFixed(1)}°C（機房露點 ${dp.toFixed(1)}°C，${source}），有結露風險`);
+                    checks.push(t('sizing.warnRdhxCondensation', { sup: chwSup.toFixed(1), limit: limit.toFixed(1), dp: dp.toFixed(1), source }));
                 }
             }
             return {

@@ -8,15 +8,16 @@
     if (!CoolingArchRegistry || !CoolingStages) {
         throw new Error('CoolingArchRegistry and CoolingStages must be loaded before air_rdhx.js');
     }
+    const t = (k, p, fb) => (root.I18N ? root.I18N.t(k, p) : (fb || k));
 
     CoolingArchRegistry.register({
         id: 'rdhx',
         aliases: [],
         loop: 'air',
-        optionLabel: '🚪 背板式熱交換器 (Rear Door Heat Exchanger, RDHX)',
-        cardLabel: 'RDHX 背板',
-        pillLabel: 'RDHX 背板',
-        dashboardLabel: '背板熱交換器 (RDHx Neutral Loop)',
+        get optionLabel() { return t('arch.rdhx.option', null, '🚪 背板式熱交換器 (Rear Door Heat Exchanger, RDHX)'); },
+        get cardLabel() { return t('arch.rdhx.card', null, 'RDHX 背板'); },
+        get pillLabel() { return t('arch.rdhx.pill', null, 'RDHX 背板'); },
+        get dashboardLabel() { return t('arch.rdhx.dashboard', null, '背板熱交換器 (RDHx Neutral Loop)'); },
         flags: { hasMechanical: true, consumesWater: false, isRdhx: true },
         terminal: 'rdhx',
         schematic: 'air_plant',
@@ -27,34 +28,34 @@
                 key: 'roomDbC',
                 archSpecific: true,
                 nullable: true,
-                label: '機房冷通道乾球溫度 (°C，留空=15°C基準)',
+                get label() { return t('rdhx.roomDb', null, '機房冷通道乾球溫度 (°C，留空=15°C基準)'); },
                 idPrefix: 'rdhxRoomDbIn_',
                 default: null,
                 min: 10,
                 max: 40,
                 step: 0.5,
                 unit: '°C',
-                placeholder: '預設 24°C'
+                get placeholder() { return t('rdhx.roomDbPlaceholder', null, '預設 24°C'); }
             },
             {
                 key: 'roomRhPct',
                 archSpecific: true,
                 nullable: true,
-                label: '機房相對濕度 (%，留空=15°C基準)',
+                get label() { return t('rdhx.roomRh', null, '機房相對濕度 (%，留空=15°C基準)'); },
                 idPrefix: 'rdhxRoomRhIn_',
                 default: null,
                 min: 10,
                 max: 95,
                 step: 1,
                 unit: '%',
-                placeholder: '預設 50%'
+                get placeholder() { return t('rdhx.roomRhPlaceholder', null, '預設 50%'); }
             }
         ],
-        paramPanelTitle: 'RDHX 背板 (Neutral Loop) 專屬參數:',
+        get paramPanelTitle() { return t('rdhx.paramPanelTitle', null, 'RDHX 背板 (Neutral Loop) 專屬參數:'); },
         equipment: [
             {
                 key: 'rdhx_unit',
-                label: 'RDHX 背板式熱交換器 (Rear Door HX)',
+                get label() { return t('equip.rdhx_unit', null, 'RDHX 背板式熱交換器 (Rear Door HX)'); },
                 category: 'RDHX',
                 catalog: 'rdhx',
                 role: 'terminal',
@@ -69,7 +70,7 @@
             },
             {
                 key: 'air_cooled_chiller',
-                label: 'Air-Cooled Chiller 氣冷式冰水主機',
+                get label() { return t('equip.air_cooled_chiller', null, 'Air-Cooled Chiller 氣冷式冰水主機'); },
                 category: 'Chiller',
                 catalog: 'chiller_air',
                 role: 'chiller',
@@ -93,7 +94,7 @@
             },
             {
                 key: 'fw_pump',
-                label: 'Secondary CHW Pump 二次側冰水循環水泵',
+                get label() { return t('equip.fw_pump', null, 'Secondary CHW Pump 二次側冰水循環水泵'); },
                 category: 'Pump',
                 catalog: 'pump',
                 role: 'pump',
@@ -152,10 +153,10 @@
             if (roomDb !== null && roomDb !== undefined && roomRh !== null && roomRh !== undefined && Number.isFinite(Number(roomDb)) && Number.isFinite(Number(roomRh))) {
                 const calcDp = (typeof root.calcDewPointC === 'function') ? root.calcDewPointC : (typeof calcDewPointC === 'function' ? calcDewPointC : null);
                 dp = calcDp ? calcDp(Number(roomDb), Number(roomRh)) : 15.0;
-                source = `機房 ${Number(roomDb)}°C / ${Number(roomRh)}%`;
+                source = t('sizing.rdhxRoomCond', { db: Number(roomDb), rh: Number(roomRh) }, `機房 ${Number(roomDb)}°C / ${Number(roomRh)}%`);
             } else {
                 dp = (typeof root.A === 'function') ? root.A('rdhx_default_room_dp_c') : 15.0;
-                source = 'ASHRAE TC9.9 預設';
+                source = t('sizing.rdhxAshraeDefault', null, 'ASHRAE TC9.9 預設');
             }
             const minChws = dp + marginK;
 
@@ -166,35 +167,35 @@
 
             const warnings = [];
             if (chwSup < minChws) {
-                warnings.push(`RDHX 供水 ${chwSup.toFixed(1)}°C 低於結露保護溫度 ${minChws.toFixed(1)}°C（機房露點 ${dp.toFixed(1)}°C，${source}），有結露風險`);
+                warnings.push(t('sizing.warnRdhxCondensation', { sup: chwSup.toFixed(1), limit: minChws.toFixed(1), dp: dp.toFixed(1), source }, `RDHX 供水 ${chwSup.toFixed(1)}°C 低於結露保護溫度 ${minChws.toFixed(1)}°C（機房露點 ${dp.toFixed(1)}°C，${source}），有結露風險`));
             }
 
             return {
-                title: 'RDHX 背板水冷散熱拓樸',
+                title: t('topo.rdhxTopo', null, 'RDHX 背板水冷散熱拓樸'),
                 referenceLabel: null,
                 banners: [
                     {
                         id: 'mode1',
-                        title: 'Mode 1 全自然冷卻',
-                        label: `Mode 1 全自然冷卻 (DB ≤ ${fullThresh}°C)${h_free ? ` — 全年 ${h_free}` : ''}`,
-                        sub: `DB ≤ ${fullThresh}°C ｜ 全年 ${h_free || '0 h'} ｜ 氣冷 FC 盤管自然供冷`,
-                        detail: `DB ≤ ${fullThresh}°C ｜ 全年 ${h_free || '0 h'} ｜ 氣冷 FC 盤管自然供冷`,
+                        title: t('topo.rdhxM1', null, 'Mode 1 全自然冷卻'),
+                        label: t('topo.rdhxM1Label', { fullThresh, hours: h_free ? ` — 全年 ${h_free}` : '' }, `Mode 1 全自然冷卻 (DB ≤ ${fullThresh}°C)${h_free ? ` — 全年 ${h_free}` : ''}`),
+                        sub: t('topo.rdhxM1Sub', { thresh: fullThresh, hours: h_free || '0 h' }, `DB ≤ ${fullThresh}°C ｜ 全年 ${h_free || '0 h'} ｜ 氣冷 FC 盤管自然供冷`),
+                        detail: t('topo.rdhxM1Sub', { thresh: fullThresh, hours: h_free || '0 h' }, `DB ≤ ${fullThresh}°C ｜ 全年 ${h_free || '0 h'} ｜ 氣冷 FC 盤管自然供冷`),
                         tone: 'emerald'
                     },
                     {
                         id: 'mode2',
-                        title: 'Mode 2 部分預冷',
-                        label: `Mode 2 部分預冷 (${fullThresh} < DB < ${mechThresh}°C)${h_partial ? ` — 全年 ${h_partial}` : ''}`,
-                        sub: `${fullThresh} < DB < ${mechThresh}°C ｜ 全年 ${h_partial || '0 h'} ｜ FC 盤管預冷 + 氣冷冰機接力`,
-                        detail: `${fullThresh} < DB < ${mechThresh}°C ｜ 全年 ${h_partial || '0 h'} ｜ FC 盤管預冷 + 氣冷冰機接力`,
+                        title: t('topo.rdhxM2', null, 'Mode 2 部分預冷'),
+                        label: t('topo.rdhxM2Label', { fullThresh, mechThresh, hours: h_partial ? ` — 全年 ${h_partial}` : '' }, `Mode 2 部分預冷 (${fullThresh} < DB < ${mechThresh}°C)${h_partial ? ` — 全年 ${h_partial}` : ''}`),
+                        sub: t('topo.rdhxM2Sub', { fullThresh, mechThresh, hours: h_partial || '0 h' }, `${fullThresh} < DB < ${mechThresh}°C ｜ 全年 ${h_partial || '0 h'} ｜ FC 盤管預冷 + 氣冷冰機接力`),
+                        detail: t('topo.rdhxM2Sub', { fullThresh, mechThresh, hours: h_partial || '0 h' }, `${fullThresh} < DB < ${mechThresh}°C ｜ 全年 ${h_partial || '0 h'} ｜ FC 盤管預冷 + 氣冷冰機接力`),
                         tone: 'amber'
                     },
                     {
                         id: 'mode3',
-                        title: 'Mode 3 全機械製冷',
-                        label: `Mode 3 全機械製冷 (DB ≥ ${mechThresh}°C)${h_mech ? ` — 全年 ${h_mech}` : ''}`,
-                        sub: `DB ≥ ${mechThresh}°C ｜ 全年 ${h_mech || '0 h'} ｜ 氣冷冰水主機供冷`,
-                        detail: `DB ≥ ${mechThresh}°C ｜ 全年 ${h_mech || '0 h'} ｜ 氣冷冰水主機供冷`,
+                        title: t('topo.rdhxM3', null, 'Mode 3 全機械製冷'),
+                        label: t('topo.rdhxM3Label', { mechThresh, hours: h_mech ? ` — 全年 ${h_mech}` : '' }, `Mode 3 全機械製冷 (DB ≥ ${mechThresh}°C)${h_mech ? ` — 全年 ${h_mech}` : ''}`),
+                        sub: t('topo.rdhxM3Sub', { thresh: mechThresh, hours: h_mech || '0 h' }, `DB ≥ ${mechThresh}°C ｜ 全年 ${h_mech || '0 h'} ｜ 氣冷冰水主機供冷`),
+                        detail: t('topo.rdhxM3Sub', { thresh: mechThresh, hours: h_mech || '0 h' }, `DB ≥ ${mechThresh}°C ｜ 全年 ${h_mech || '0 h'} ｜ 氣冷冰水主機供冷`),
                         tone: 'indigo'
                     }
                 ],
@@ -204,48 +205,48 @@
                         kind: 'rdhx',
                         title: 'Compute Data Hall (RDHX)',
                         lines: [
-                            'RDHX 伺服器水冷背板',
-                            `供回水: ${chwSup} ⇄ ${chwRet}°C`
+                            t('topo.rdhxRearDoor', null, 'RDHX 伺服器水冷背板'),
+                            t('topo.crahSupplyReturn', { sup: chwSup, ret: chwRet }, `供回水: ${chwSup} ⇄ ${chwRet}°C`)
                         ]
                     },
                     {
                         id: 'fc_coil',
                         kind: 'hx',
-                        title: 'Free-Cooling 盤管 (串聯預冷)',
+                        title: t('topo.fcCoilTitle', null, 'Free-Cooling 盤管 (串聯預冷)'),
                         lines: [
-                            `全自然冷卻 DB ≤ ${fullThresh}°C`,
-                            `部分預冷 DB < ${mechThresh}°C${(h_free || h_partial) ? ` — 全年 ${h_free || '0 h'}/${h_partial || '0 h'}` : ''}`,
-                            '室外低溫乾球直接預冷冰水回水',
-                            '串聯於蒸發器前段，節省壓縮機功耗'
+                            t('topo.fcCoilFull', { thresh: fullThresh }, `全自然冷卻 DB ≤ ${fullThresh}°C`),
+                            t('topo.fcCoilPartial', { thresh: mechThresh }, `部分預冷 DB < ${mechThresh}°C${(h_free || h_partial) ? ` — 全年 ${h_free || '0 h'}/${h_partial || '0 h'}` : ''}`),
+                            t('topo.fcCoilDirect', null, '室外低溫乾球直接預冷冰水回水'),
+                            t('topo.fcCoilSeries', null, '串聯於蒸發器前段，節省壓縮機功耗')
                         ]
                     },
                     {
                         id: 'evaporator',
                         kind: 'hx',
-                        title: '氣冷冰水主機 (Air-Cooled Chiller)',
+                        title: t('topo.airChillerEvapTitle', null, '氣冷冰水主機 (Air-Cooled Chiller)'),
                         lines: [
-                            '氣冷壓縮製冷 + FC 盤管整合',
-                            `供水 ${chwSup}°C ⇄ 回水 ${chwRet}°C`,
-                            '高溫時接力修整至目標供水溫',
-                            '全封閉冷媒迴路・零水耗 (WUE = 0)'
+                            t('topo.airChillerFcIntegrate', null, '氣冷壓縮製冷 + FC 盤管整合'),
+                            t('topo.evapSupplyReturn', { sup: chwSup, ret: chwRet }, `供水 ${chwSup}°C ⇄ 回水 ${chwRet}°C`),
+                            t('topo.airChillerTrimHigh', null, '高溫時接力修整至目標供水溫'),
+                            t('topo.sealedRefrigZeroWater2', null, '全封閉冷媒迴路・零水耗 (WUE = 0)')
                         ]
                     },
                     {
                         id: 'heat_rejection',
                         kind: 'chiller',
-                        title: '室外氣冷排熱機組 (Air-Cooled Plant)',
+                        title: t('topo.airCooledPlantTitle', null, '室外氣冷排熱機組 (Air-Cooled Plant)'),
                         lines: [
-                            'V-Bank 氣冷冷凝盤管 + 變頻風扇',
-                            '以室外乾球溫度 (DB) 直接風冷散熱',
-                            '全封閉冷媒迴路 ｜ 零水耗 (WUE = 0)',
-                            (chwSup < minChws ? `⚠ 供水低於結露保護溫度 ${minChws.toFixed(1)}°C，有結露風險` : '無結露風險 (高於結露保護溫度)')
+                            t('topo.vbankCondenserCoilFan', null, 'V-Bank 氣冷冷凝盤管 + 變頻風扇'),
+                            t('topo.dbAirRejection', null, '以室外乾球溫度 (DB) 直接風冷散熱'),
+                            t('topo.sealedRefrigZeroWater', null, '全封閉冷媒迴路 ｜ 零水耗 (WUE = 0)'),
+                            (chwSup < minChws ? t('topo.warnRdhxCondensation', { limit: minChws.toFixed(1) }, `⚠ 供水低於結露保護溫度 ${minChws.toFixed(1)}°C，有結露風險`) : t('topo.rdhxCondSafe', null, '無結露風險 (高於結露保護溫度)'))
                         ]
                     },
                     {
                         id: 'pump',
                         kind: 'pump',
                         title: 'Secondary CHW Pump',
-                        lines: ['二次側冰水循環泵']
+                        lines: [t('topo.secChwPump', null, '二次側冰水循環泵')]
                     }
                 ],
                 pipes: [
