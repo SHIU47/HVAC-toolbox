@@ -3742,6 +3742,75 @@ function sizeCduToDeratedN1(S) {
     const zhHtml = win.document.getElementById('stepContent').innerHTML;
     assert(zhHtml.includes('雙冷卻工程選型設計'), 'Step 4 in zh-TW must contain original title');
   });
+
+  test('I-5: Step 5 view, charts, exhibition, and heatmap render 0 CJK characters in English mode', async () => {
+    const { buildWindow } = require('./dom_harness.js');
+    const win = buildWindow();
+    if (win.App && typeof win.App.init === 'function') {
+      await win.App.init();
+    }
+    win.I18N.setLang('en');
+
+    // Dynamic user entities from store
+    const userNames = [];
+    (win.AppStore.state.halls || []).forEach(h => {
+      userNames.push(h.name);
+      (h.dus || []).forEach(d => {
+        userNames.push(d.name);
+        (d.sus || []).forEach(s => userNames.push(s.name));
+      });
+    });
+    (win.AppStore.state.corePods || []).forEach(c => userNames.push(c.name));
+
+    // Dynamic catalog model names & site name
+    const catalogNames = (win.DEVICE_CATALOG || []).map(d => d.model);
+    const siteName = win.AppStore.state.site?.selectedCity;
+
+    const whitelist = [
+      ...userNames,
+      ...catalogNames,
+      siteName
+    ];
+
+    const cjkRegex = /[\u3400-\u9fff]/g;
+
+    win.App.currentStep = 5;
+    win.App.renderStep(5);
+    const container = win.document.getElementById('stepContent');
+    assert(container, '#stepContent must exist');
+
+    const checkCjk = (html, label) => {
+      let clean = html.replace(/<!--[\s\S]*?-->/g, '');
+      for (const token of whitelist) {
+        if (token) clean = clean.split(token).join('');
+      }
+      const matches = clean.match(cjkRegex) || [];
+      assert.strictEqual(matches.length, 0, `${label} has unexpected CJK in English mode: ${matches.slice(0, 30).join('')}`);
+    };
+
+    // Check base Step 5 view
+    checkCjk(container.innerHTML, 'Step 5 base view');
+
+    // Check all heatmap modes
+    const modes = ['cdu', 'fw', 'combined', 'pue', 'db'];
+    for (const m of modes) {
+      win.ViewDashboard.setHeatmapMode(m);
+      checkCjk(container.innerHTML, `Heatmap mode '${m}'`);
+    }
+
+    // Check all exhibition presets
+    const presets = ['summer_peak', 'winter_free', 'spring_mild', 'summer_night'];
+    for (const p of presets) {
+      win.ViewDashboard.setExhibitionPreset(p);
+      checkCjk(container.innerHTML, `Exhibition preset '${p}'`);
+    }
+
+    // Switch back to zh-TW and verify Step 5 in zh-TW
+    win.I18N.setLang('zh-TW');
+    win.App.renderStep(5);
+    const zhHtml = win.document.getElementById('stepContent').innerHTML;
+    assert(zhHtml.includes('物理守恆'), 'Step 5 in zh-TW must contain original title');
+  });
 })();
 
 console.log(`\n${passCount} passed, ${failCount} failed, ${skipCount} skipped`);
