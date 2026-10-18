@@ -17,7 +17,7 @@
         cardLabel: '全額水冷式冰機',
         pillLabel: '水冷冰機',
         dashboardLabel: '水冷冰機製冷 (Water-Cooled Chiller)',
-        flags: { hasMechanical: true, consumesWater: true, isWaterChiller: true },
+        flags: { hasMechanical: true, consumesWater: true, isWaterChiller: true, needsCwPump: true },
         terminal: 'cdu',
         schematic: 'single_loop',
         params: [
@@ -108,6 +108,23 @@
                 defaultUnitCapKw: 5.5,
                 requiredKw: (ctx) => ctx.hydKw || 5.5,
                 calcQty: () => ({ qty: 3, n1: 3 })
+            },
+            {
+                key: 'cw_pump',
+                label: 'Condenser Water Pump 冷卻水循環泵',
+                category: 'Pump',
+                catalog: 'pump',
+                role: 'pump',
+                defaultModel: 'Grundfos TPE 5.5kW Inverter Pump (標準)',
+                defaultUnitCapKw: 5.5,
+                requiredKw: (ctx) => ctx.cwPumpKw || 5.5,
+                selectModel: (cat, ctx) => {
+                    const pumpKw = ctx.cwPumpKw || 5.5;
+                    const model = pumpKw <= 3.5 ? 'Grundfos TPE 3.0kW Inverter Pump' : (pumpKw <= 6.0 ? 'Grundfos TPE 5.5kW Inverter Pump (標準)' : 'Armstrong Design Envelope 11.0kW');
+                    const capKw = pumpKw <= 3.5 ? 3.0 : (pumpKw <= 6.0 ? 5.5 : 11.0);
+                    return { model, capKw };
+                },
+                calcQty: () => ({ qty: 2, n1: 2 })
             }
         ],
 

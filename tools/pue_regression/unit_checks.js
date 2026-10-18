@@ -3333,7 +3333,7 @@ function sizeCduToDeratedN1(S) {
     assert(du.plantDesign.cduSystem.hydraulics.pump_head_m === 44, 'head got ' + du.plantDesign.cduSystem.hydraulics.pump_head_m);
   });
 
-  test('R6 P1-H1 water_chiller adds CW pump power to cduPumpPowerKw', () => {
+  test('R7-0b water_chiller separates CW pump power and adds cw_pump sizing item', () => {
     const du = {
       id: 'du-cw-test',
       plantDesign: {
@@ -3343,11 +3343,14 @@ function sizeCduToDeratedN1(S) {
     };
     const summ = { totalItKw: 1000, liquidHeatKw: 900, airHeatKw: 100, lossKw: 0, dlcPct: 90 };
     S.bridgeDuToPlantModel(du, summ);
-    // Primary pump: flow = 900*60/(4.186*15) = 860 L/min, head = 28m
-    // CW pump: flow = (900 * 1.18 * 60) / (4.186 * 5.5) = 2766.4 L/min, head = 22m
-    // Both pump powers summed into pump_power_kw
+    // Primary pump: flow = 900*60/(4.186*15) = 860 L/min, head = 28m -> ~5.7 kW
+    // CW pump: flow = (900 * 1.18 * 60) / (4.186 * 5.5) = 2766.4 L/min, head = 22m -> ~14.6 kW
     const pwr = du.plantDesign.cduSystem.hydraulics.pump_power_kw;
-    assert(pwr > 15 && pwr < 25, 'cdu pump power with CW pump got ' + pwr);
+    const cwPwr = du.plantDesign.cduSystem.hydraulics.cw_pump_power_kw;
+    assert(pwr > 4 && pwr < 10, 'cdu primary pump power got ' + pwr);
+    assert(cwPwr > 10 && cwPwr < 20, 'cdu CW pump power got ' + cwPwr);
+    const hasCwPumpSizing = (du.plantDesign.cduSystem.sizing || []).some(s => s.key === 'cw_pump');
+    assert(hasCwPumpSizing, 'water_chiller cduSystem sizing must contain cw_pump item');
   });
 
   test('R6 P1-H1 closed_tower includes spray pump power (~0.0055 kW/kW)', () => {

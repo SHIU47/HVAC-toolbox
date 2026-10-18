@@ -261,6 +261,23 @@
                     sys.sizingArch = sys.architecture;
                 }
 
+                // 若架構有新設備 (例如 cw_pump)，補齊缺少的 sizing 項目
+                if (sys.architecture && typeof CoolingArchRegistry !== 'undefined' && CoolingArchRegistry.has(sys.architecture)) {
+                    const archDesc = CoolingArchRegistry.get(sys.architecture);
+                    if (Array.isArray(archDesc.equipment) && Array.isArray(sys.sizing)) {
+                        for (const eq of archDesc.equipment) {
+                            if (!sys.sizing.some(s => s.key === eq.key)) {
+                                if (typeof SizingEngine !== 'undefined') {
+                                    const dummyCtx = { reqKw: 0, hydKw: 0, cwPumpKw: 0, getTowerRejectionFactor: () => 1.2 };
+                                    const newItem = SizingEngine._createSizingItem(eq, dummyCtx);
+                                    newItem.userEdited = false;
+                                    sys.sizing.push(newItem);
+                                }
+                            }
+                        }
+                    }
+                }
+
                 // Sizing 項目補齊 redundancy = 'N+1' (為 Phase E 預留) 與 userEdited = true
                 if (Array.isArray(sys.sizing)) {
                     sys.sizing.forEach(s => {
@@ -981,20 +998,21 @@
         },
 
         // V21 依架構生成專屬的 sizing 清單 (透過 SizingEngine)
-        generateCduSizing(arch, reqKw, hydKw) {
+        generateCduSizing(arch, reqKw, hydKw, helpers = {}) {
             if (typeof SizingEngine !== 'undefined') {
                 return SizingEngine.generateCduSizing(arch, reqKw, hydKw, {
                     designConditions: () => this.designConditions(),
-                    trimOperatingPoint: (sys, db) => this.trimOperatingPoint(sys, db)
+                    trimOperatingPoint: (sys, db) => this.trimOperatingPoint(sys, db),
+                    ...helpers
                 });
             }
             return [];
         },
 
         // V24 & V27: 依 Fanwall / RDHX 架構動態生成選型清單 (透過 SizingEngine)
-        generateFwSizing(arch, reqKw, pumpPowerKw) {
+        generateFwSizing(arch, reqKw, pumpPowerKw, helpers = {}) {
             if (typeof SizingEngine !== 'undefined') {
-                return SizingEngine.generateFwSizing(arch, reqKw, pumpPowerKw);
+                return SizingEngine.generateFwSizing(arch, reqKw, pumpPowerKw, helpers);
             }
             return [];
         },
@@ -1029,6 +1047,7 @@
             const KEY_TO_CATEGORY = {
                 cdu_unit: 'cdu',
                 cdu_pump: 'pump',
+                cw_pump: 'pump',
                 fw_pump: 'pump',
                 dry_cooler: 'dry_cooler',
                 adiabatic_tower: 'cooling_tower',
@@ -1160,7 +1179,9 @@
             if (!item || !item.selectedQty) return [];
             const catEntry = (item.catalog || []).find(c => c.model === item.selectedModel);
             const nRunning = this.runningQtyFromSelected(item.selectedQty);
-            const pDesign = sys?.hydraulics?.pump_power_kw ?? item?.requiredKw;
+            const pDesign = (item.key === 'cw_pump')
+                ? (sys?.hydraulics?.cw_pump_power_kw ?? item?.requiredKw)
+                : (sys?.hydraulics?.pump_power_kw ?? item?.requiredKw);
             const motorCapKw = catEntry?.capKw ?? item.unitCapKw ?? 0;
             const powerKw = (typeof pDesign === 'number' && pDesign > 0 && nRunning > 0)
                 ? (pDesign / nRunning)
@@ -1317,9 +1338,18 @@
             })();
 
             const cduPumps = pre ? pre.cduPumps : (cduEquip.cdu_pump || []);
-            const cduPrimaryPumpKw = pt ? pt.cduPrimaryPumpKw : ((cduPumps.length > 0 && typeof PlantPumpEngine !== 'undefined' && summ.liquidHeatKw > 0)
+            const cduCwPumps = pre ? pre.cduCwPumps : (cduEquip.cw_pump || []);
+            let cduPrimaryPumpKw = pt ? pt.cduPrimaryPumpKw : ((cduPumps.length > 0 && typeof PlantPumpEngine !== 'undefined' && summ.liquidHeatKw > 0)
                 ? PlantPumpEngine.calcPower(cduPumps, cduPumpSpeed)
-                : (summ.liquidHeatKw / 500) * (cduSys.hydraulics?.pump_power_kw || 11.0));
+                : (summ.liquidHeatKw > 0 ? (summ.liquidHeatKw / 500) * (cduSys.hydraulics?.pump_power_kw || 11.0) : 0));
+            if (!pt && summ.liquidHeatKw > 0) {
+                if (cduCwPumps.length > 0 && typeof PlantPumpEngine !== 'undefined') {
+                    cduPrimaryPumpKw += PlantPumpEngine.calcPower(cduCwPumps, cduPumpSpeed);
+                } else if (cduSys.hydraulics?.cw_pump_power_kw) {
+                    const baseFrac = 0.15;
+                    cduPrimaryPumpKw += cduSys.hydraulics.cw_pump_power_kw * (baseFrac + (1 - baseFrac) * Math.pow(cduPumpSpeed, 3));
+                }
+            }
 
             const cduPumpKw = pt ? pt.cduPumpKw : (cduUnitKw + cduPrimaryPumpKw);
 
@@ -1349,6 +1379,7 @@
             })();
 
             const fwPumps = pre ? pre.fwPumps : (fwEquip.fw_pump || []);
+            const fwCwPumps = pre ? pre.fwCwPumps : (fwEquip.cw_pump || []);
             const fwPumpSpeed = pt ? pt.fwPumpSpeed : (() => {
                 const fwOperatingMode = (typeof FreeCoolingEngine !== 'undefined') ? FreeCoolingEngine.getOperatingMode(w.wb) : null;
                 const fwPumpMinSpeed = (typeof FreeCoolingEngine !== 'undefined')
@@ -1364,9 +1395,17 @@
                     : 0.20;
             })();
 
-            const fwPumpKw = pt ? pt.fwPumpKw : ((fwPumps.length > 0 && typeof PlantPumpEngine !== 'undefined' && airHeatTotal > 0)
+            let fwPumpKw = pt ? pt.fwPumpKw : ((fwPumps.length > 0 && typeof PlantPumpEngine !== 'undefined' && airHeatTotal > 0)
                 ? PlantPumpEngine.calcPower(fwPumps, fwPumpSpeed)
                 : 0);
+            if (!pt && airHeatTotal > 0) {
+                if (fwCwPumps.length > 0 && typeof PlantPumpEngine !== 'undefined') {
+                    fwPumpKw += PlantPumpEngine.calcPower(fwCwPumps, fwPumpSpeed);
+                } else if (fwSys.hydraulics?.cw_pump_power_kw) {
+                    const baseFrac = 0.15;
+                    fwPumpKw += fwSys.hydraulics.cw_pump_power_kw * (baseFrac + (1 - baseFrac) * Math.pow(fwPumpSpeed, 3));
+                }
+            }
 
             const trimCop = pre ? pre.trimCop : (() => {
                 const trimItem = (cduSys.sizing || []).find(s => s.key === 'trim_chiller');
@@ -1598,13 +1637,20 @@
                 ? (flowLpm_cdu * cduHeadM * 9.80665) / (60000 * etaPumpCdu * etaMotorCdu)
                 : 0;
 
-            // P1-H1: 若液冷採用水冷式冰機 (water_chiller)，加計冷凝器側冷卻水泵 (CW Pump) 水力功耗
-            if ((cduArchDesc?.flags?.isWaterChiller || cduSys.architecture === 'water_chiller') && duSumm.liquidHeatKw > 0) {
+            // P1-H1 / R7-0b: 分離冷凝器側冷卻水泵 (CW Pump) 水力功耗
+            let cwPumpPowerKwCdu = 0;
+            if ((cduArchDesc?.flags?.needsCwPump || cduArchDesc?.flags?.isWaterChiller || cduSys.architecture === 'water_chiller') && duSumm.liquidHeatKw > 0) {
                 const cwDt = (typeof A === 'function') ? A('cw_loop_delta_t_c') : 5.5;
                 const cwHeadM = (typeof A === 'function') ? A('cw_pump_head_default_m') : 22.0;
-                const qRejCdu = duSumm.liquidHeatKw * 1.18;
+                const chillerItem = (cduSys.sizing || []).find(s => s.key === 'water_cooled_chiller' || s.key === 'trim_chiller');
+                const catChiller = chillerItem ? (chillerItem.catalog || []).find(c => c.model === chillerItem.selectedModel) : null;
+                const copDesign = catChiller?.cop ?? catChiller?.cop_design;
+                const rejFactor = (typeof copDesign === 'number' && copDesign > 0)
+                    ? (1 + 1 / copDesign)
+                    : ((typeof A === 'function') ? A('tower_heat_rejection_factor') : 1.2);
+                const qRejCdu = duSumm.liquidHeatKw * rejFactor;
                 const flowLpmCw = (qRejCdu * 60) / (4.186 * cwDt);
-                cduPumpPowerKw += (flowLpmCw * cwHeadM * 9.80665) / (60000 * etaPumpCdu * etaMotorCdu);
+                cwPumpPowerKwCdu = (flowLpmCw * cwHeadM * 9.80665) / (60000 * etaPumpCdu * etaMotorCdu);
             }
 
             cduSys.hydraulics = {
@@ -1612,14 +1658,15 @@
                 pipe_dn: pipeCdu.pipe_dn,
                 velocity_mps: pipeCdu.velocity_mps,
                 pump_head_m: cduHeadM,
-                pump_power_kw: cduPumpPowerKw
+                pump_power_kw: cduPumpPowerKw,
+                cw_pump_power_kw: cwPumpPowerKwCdu
             };
 
             const reqCduKw = duSumm.liquidHeatKw;
 
             // V21 依架構生成專屬 sizing 清單 (若品項不符則重置)
             if (!cduSys.sizing || cduSys.sizing.length === 0 || cduSys.sizingArch !== arch) {
-                cduSys.sizing = this.generateCduSizing(arch, reqCduKw, cduSys.hydraulics.pump_power_kw);
+                cduSys.sizing = this.generateCduSizing(arch, reqCduKw, cduSys.hydraulics.pump_power_kw, { cwPumpKw: cduSys.hydraulics.cw_pump_power_kw });
                 cduSys.sizingArch = arch;
             }
 
@@ -1654,12 +1701,20 @@
                 ? (flowLpm_fw * fwHeadM * 9.80665) / (60000 * etaPumpFw * etaMotorFw)
                 : 0;
 
-            if ((fwArchDesc?.flags?.consumesWater || fwSys.architecture === 'water_cooled_chiller') && airHeatTotal > 0) {
+            // R7-0b: 分離冷凝器側冷卻水泵 (CW Pump) 水力功耗
+            let cwPumpPowerKwFw = 0;
+            if ((fwArchDesc?.flags?.needsCwPump || fwSys.architecture === 'water_cooled_chiller') && airHeatTotal > 0) {
                 const cwDt = (typeof A === 'function') ? A('cw_loop_delta_t_c') : 5.5;
                 const cwHeadM = (typeof A === 'function') ? A('cw_pump_head_default_m') : 22.0;
-                const qRejFw = airHeatTotal * 1.20;
+                const chillerItem = (fwSys.sizing || []).find(s => s.key === 'water_cooled_chiller');
+                const catChiller = chillerItem ? (chillerItem.catalog || []).find(c => c.model === chillerItem.selectedModel) : null;
+                const copDesign = catChiller?.cop ?? catChiller?.cop_design;
+                const rejFactor = (typeof copDesign === 'number' && copDesign > 0)
+                    ? (1 + 1 / copDesign)
+                    : ((typeof A === 'function') ? A('tower_heat_rejection_factor') : 1.2);
+                const qRejFw = airHeatTotal * rejFactor;
                 const flowLpmCwFw = (qRejFw * 60) / (4.186 * cwDt);
-                fwPumpPowerKw += (flowLpmCwFw * cwHeadM * 9.80665) / (60000 * etaPumpFw * etaMotorFw);
+                cwPumpPowerKwFw = (flowLpmCwFw * cwHeadM * 9.80665) / (60000 * etaPumpFw * etaMotorFw);
             }
 
             fwSys.hydraulics = {
@@ -1667,14 +1722,15 @@
                 pipe_dn: pipeFw.pipe_dn,
                 velocity_mps: pipeFw.velocity_mps,
                 pump_head_m: fwHeadM,
-                pump_power_kw: fwPumpPowerKw
+                pump_power_kw: fwPumpPowerKw,
+                cw_pump_power_kw: cwPumpPowerKwFw
             };
 
             const reqAirKw = airHeatTotal;
 
             // V24 Phase 2: 若架構變更或尚未初始化，依新架構動態生成選型清單
             if (!fwSys.sizing || fwSys.sizing.length === 0 || fwSys.sizingArch !== fwArch) {
-                fwSys.sizing = this.generateFwSizing(fwArch, reqAirKw, fwSys.hydraulics.pump_power_kw);
+                fwSys.sizing = this.generateFwSizing(fwArch, reqAirKw, fwSys.hydraulics.pump_power_kw, { cwPumpKw: fwSys.hydraulics.cw_pump_power_kw });
                 fwSys.sizingArch = fwArch;
             }
 

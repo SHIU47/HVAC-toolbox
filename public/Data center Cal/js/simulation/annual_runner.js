@@ -124,7 +124,9 @@
             }
 
             const cduPumps = cduEquip.cdu_pump || [];
+            const cduCwPumps = cduEquip.cw_pump || [];
             const fwPumps = fwEquip.fw_pump || [];
+            const fwCwPumps = fwEquip.cw_pump || [];
 
             // Precompute pump operating mode table for 3 seasonal conditions:
             // 0: SUMMER (wb >= 24), 1: SHOULDER (16 <= wb < 24), 2: WINTER (wb < 16)
@@ -137,16 +139,32 @@
                 const cduPumpMin = (typeof root.FreeCoolingEngine !== 'undefined') ? root.FreeCoolingEngine.getPumpMinSpeed(mode) : 0.45;
                 const cduPumpSpd = Math.max(cduPumpMin, cduLoadRatio);
                 const cduFanMin  = (typeof root.FreeCoolingEngine !== 'undefined') ? root.FreeCoolingEngine.getCtFanMinSpeed(mode) : 0.20;
-                const cduPriKw   = (cduPumps.length > 0 && typeof root.PlantPumpEngine !== 'undefined' && loadSumm.liquidHeatKw > 0)
+                let cduPriKw   = (cduPumps.length > 0 && typeof root.PlantPumpEngine !== 'undefined' && loadSumm.liquidHeatKw > 0)
                     ? root.PlantPumpEngine.calcPower(cduPumps, cduPumpSpd)
                     : (loadSumm.liquidHeatKw > 0 ? (loadSumm.liquidHeatKw / 500) * (cduSys.hydraulics?.pump_power_kw || 11.0) : 0);
+                if (loadSumm.liquidHeatKw > 0) {
+                    if (cduCwPumps.length > 0 && typeof root.PlantPumpEngine !== 'undefined') {
+                        cduPriKw += root.PlantPumpEngine.calcPower(cduCwPumps, cduPumpSpd);
+                    } else if (cduSys.hydraulics?.cw_pump_power_kw) {
+                        const baseFrac = 0.15;
+                        cduPriKw += cduSys.hydraulics.cw_pump_power_kw * (baseFrac + (1 - baseFrac) * Math.pow(cduPumpSpd, 3));
+                    }
+                }
 
                 const fwPumpMin = (typeof root.FreeCoolingEngine !== 'undefined') ? root.FreeCoolingEngine.getPumpMinSpeed(mode) : 0.45;
                 const fwPumpSpd = Math.max(fwPumpMin, fwLoadRatio);
                 const fwFanMin  = (typeof root.FreeCoolingEngine !== 'undefined') ? root.FreeCoolingEngine.getCtFanMinSpeed(mode) : 0.20;
-                const fwPmpKw   = (fwPumps.length > 0 && typeof root.PlantPumpEngine !== 'undefined' && airHeatTotal > 0)
+                let fwPmpKw   = (fwPumps.length > 0 && typeof root.PlantPumpEngine !== 'undefined' && airHeatTotal > 0)
                     ? root.PlantPumpEngine.calcPower(fwPumps, fwPumpSpd)
                     : 0;
+                if (airHeatTotal > 0) {
+                    if (fwCwPumps.length > 0 && typeof root.PlantPumpEngine !== 'undefined') {
+                        fwPmpKw += root.PlantPumpEngine.calcPower(fwCwPumps, fwPumpSpd);
+                    } else if (fwSys.hydraulics?.cw_pump_power_kw) {
+                        const baseFrac = 0.15;
+                        fwPmpKw += fwSys.hydraulics.cw_pump_power_kw * (baseFrac + (1 - baseFrac) * Math.pow(fwPumpSpd, 3));
+                    }
+                }
 
                 return {
                     cduPumpSpeed: cduPumpSpd,
@@ -180,7 +198,9 @@
                 crahFanKw,
                 crahDeficitKw,
                 cduPumps,
+                cduCwPumps,
                 fwPumps,
+                fwCwPumps,
                 pumpTable
             };
 

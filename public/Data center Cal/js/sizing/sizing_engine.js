@@ -12,7 +12,17 @@
         return [];
     }
 
-    function getTowerRejectionFactor() {
+    function getTowerRejectionFactor(sys) {
+        if (sys && Array.isArray(sys.sizing)) {
+            const chillerItem = sys.sizing.find(s => s.key === 'water_cooled_chiller' || s.key === 'trim_chiller');
+            if (chillerItem) {
+                const catChiller = (chillerItem.catalog || []).find(c => c.model === chillerItem.selectedModel);
+                const cop = catChiller?.cop ?? catChiller?.cop_design;
+                if (typeof cop === 'number' && cop > 0) {
+                    return 1 + (1 / cop);
+                }
+            }
+        }
         if (typeof root.A === 'function' && root.ASSUMPTIONS && root.ASSUMPTIONS.tower_heat_rejection_factor) {
             return root.A('tower_heat_rejection_factor');
         }
@@ -83,14 +93,15 @@
             const ctx = {
                 reqKw,
                 hydKw,
+                cwPumpKw: helpers?.cwPumpKw || 0,
                 helpers,
-                getTowerRejectionFactor,
+                getTowerRejectionFactor: (s) => getTowerRejectionFactor(s),
                 isCdu: true
             };
             return archDesc.equipment.map(eq => this._createSizingItem(eq, ctx));
         },
 
-        generateFwSizing(arch, reqKw, pumpPowerKw) {
+        generateFwSizing(arch, reqKw, pumpPowerKw, helpers = {}) {
             const archDesc = (arch && arch.equipment)
                 ? arch
                 : ((typeof root.CoolingArchRegistry !== 'undefined') ? root.CoolingArchRegistry.get(arch) : null);
@@ -100,7 +111,9 @@
             const ctx = {
                 reqKw,
                 pumpPowerKw,
-                getTowerRejectionFactor,
+                cwPumpKw: helpers?.cwPumpKw || 0,
+                helpers,
+                getTowerRejectionFactor: (s) => getTowerRejectionFactor(s),
                 isFw: true
             };
             return archDesc.equipment.map(eq => this._createSizingItem(eq, ctx));
@@ -109,8 +122,9 @@
         evaluateCduSizing(cduSys, reqCduKw, designCond, helpers = {}) {
             cduSys.sizing.forEach(s => {
                 s.requiredKw = reqCduKw;
-                if (s.key === 'cooling_tower' || s.key === 'heat_exchanger') s.requiredKw = reqCduKw * getTowerRejectionFactor();
-                if (s.key === 'cdu_pump') s.requiredKw = cduSys.hydraulics.pump_power_kw;
+                if (s.key === 'cooling_tower' || s.key === 'heat_exchanger') s.requiredKw = reqCduKw * getTowerRejectionFactor(cduSys);
+                if (s.key === 'cdu_pump') s.requiredKw = cduSys.hydraulics?.pump_power_kw || 0;
+                if (s.key === 'cw_pump') s.requiredKw = cduSys.hydraulics?.cw_pump_power_kw || 0;
 
                 if (s.key === 'trim_chiller') {
                     const peakDb = designCond?.peakDb?.value ?? designCond?.maxDb ?? ((designCond?.designDb ?? 34.0) + 3.0);
@@ -176,11 +190,12 @@
                 s.passed = (s.effectiveCapKw >= s.requiredKw) && (s.selectedQty >= 2);
                 const derateNote = (s.derateFactor < 0.999) ? `（已依設計工況降額 ×${s.derateFactor.toFixed(2)}）` : '';
                 s.requiredText = '需求 ≥ ' + s.requiredKw.toFixed(1) + ' kW (N+1 最少 ' + s.requiredUnitsN1 + ' 台)' + derateNote;
-                if (s.key === 'cdu_pump') {
+                if (s.key === 'cdu_pump' || s.key === 'cw_pump') {
                     s.effectiveCapKw = Math.round(Math.max(0, s.selectedQty - 1) * s.unitCapKw * s.derateFactor);
                     const isMotorDeficit = s.requiredKw > s.effectiveCapKw;
                     s.passed = (s.selectedQty >= 2) && !isMotorDeficit;
-                    s.requiredText = '水力電功率需求 ' + s.requiredKw.toFixed(1) + ' kW (N+1 最少 ' + s.requiredUnitsN1 + ' 台)' + (isMotorDeficit ? ' ⚠ 泵浦馬達功率不足' : '');
+                    const pfx = (s.key === 'cw_pump') ? '冷卻水泵水力電功率需求 ' : '水力電功率需求 ';
+                    s.requiredText = pfx + s.requiredKw.toFixed(1) + ' kW (N+1 最少 ' + s.requiredUnitsN1 + ' 台)' + (isMotorDeficit ? ' ⚠ 泵浦馬達功率不足' : '');
                 }
                 if (s.key === 'trim_chiller') {
                     s.maxMechanicalPassed = s.effectiveCapKw >= s.maxMechanicalKw;
@@ -199,8 +214,9 @@
         evaluateFwSizing(fwSys, reqAirKw, designCond) {
             fwSys.sizing.forEach(s => {
                 s.requiredKw = reqAirKw;
-                if (s.key === 'cooling_tower') s.requiredKw = reqAirKw * getTowerRejectionFactor();
-                if (s.key === 'fw_pump') s.requiredKw = fwSys.hydraulics.pump_power_kw;
+                if (s.key === 'cooling_tower') s.requiredKw = reqAirKw * getTowerRejectionFactor(fwSys);
+                if (s.key === 'fw_pump') s.requiredKw = fwSys.hydraulics?.pump_power_kw || 0;
+                if (s.key === 'cw_pump') s.requiredKw = fwSys.hydraulics?.cw_pump_power_kw || 0;
 
                 const curItem = (s.catalog && Array.isArray(s.catalog))
                     ? (s.catalog.find(c => c.model === s.selectedModel) || s.catalog[0] || { capKw: s.unitCapKw || 100 })
@@ -239,11 +255,12 @@
                 s.passed = (s.effectiveCapKw >= s.requiredKw) && (s.selectedQty >= 2);
                 const derateNote = (s.derateFactor < 0.999) ? `（已依設計工況降額 ×${s.derateFactor.toFixed(2)}）` : '';
                 s.requiredText = '需求 ≥ ' + s.requiredKw.toFixed(1) + ' kW (N+1 最少 ' + s.requiredUnitsN1 + ' 台)' + derateNote;
-                if (s.key === 'fw_pump') {
+                if (s.key === 'fw_pump' || s.key === 'cw_pump') {
                     s.effectiveCapKw = Math.round(Math.max(0, s.selectedQty - 1) * s.unitCapKw * s.derateFactor);
                     const isMotorDeficit = s.requiredKw > s.effectiveCapKw;
                     s.passed = (s.selectedQty >= 2) && !isMotorDeficit;
-                    s.requiredText = '二次側水力電功率需求 ' + s.requiredKw.toFixed(1) + ' kW (N+1 最少 ' + s.requiredUnitsN1 + ' 台)' + (isMotorDeficit ? ' ⚠ 泵浦馬達功率不足' : '');
+                    const pfx = (s.key === 'cw_pump') ? '冷卻水泵水力電功率需求 ' : '二次側水力電功率需求 ';
+                    s.requiredText = pfx + s.requiredKw.toFixed(1) + ' kW (N+1 最少 ' + s.requiredUnitsN1 + ' 台)' + (isMotorDeficit ? ' ⚠ 泵浦馬達功率不足' : '');
                 }
             });
         },
