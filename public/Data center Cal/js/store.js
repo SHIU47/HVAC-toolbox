@@ -298,6 +298,7 @@
                 if (Array.isArray(sys.sizing)) {
                     sys.sizing.forEach(s => {
                         if (!s.redundancy) s.redundancy = 'N+1';
+                        if (!s.runMode) s.runMode = 'standby';
                         if (s.userEdited === undefined) s.userEdited = true;
                     });
                 }
@@ -1304,7 +1305,7 @@
             return [];
         },
 
-        updateSelectedEquipment(targetId, sysType, equipKey, model, qty) {
+        updateSelectedEquipment(targetId, sysType, equipKey, model, qty, redundancy, runMode) {
             let targetObj = null;
             this.state.halls.forEach(h => {
                 const d = h.dus.find(du => du.id === targetId);
@@ -1313,16 +1314,48 @@
             if (!targetObj) {
                 targetObj = this.state.corePods.find(p => p.id === targetId);
             }
+            if (!targetObj) {
+                targetObj = (this.state.coolingPlants || []).find(p => p.id === targetId);
+                if (targetObj) {
+                    const sys = targetObj.system;
+                    const item = (sys?.sizing || []).find(s => s.key === equipKey);
+                    if (item) {
+                        if (model !== undefined) item.selectedModel = model;
+                        if (qty !== undefined) item.selectedQty = parseInt(qty, 10);
+                        if (redundancy !== undefined) {
+                            item.redundancy = redundancy;
+                            item.userRedundancyEdited = true;
+                        }
+                        if (runMode !== undefined) item.runMode = runMode;
+                        item.userEdited = true;
+                        this.notify();
+                    }
+                    return;
+                }
+            }
             if (!targetObj) return;
 
-            const sys = (sysType === 'cdu') ? targetObj.plantDesign.cduSystem : targetObj.plantDesign.fanwallSystem;
+            const sys = (sysType === 'cdu' || sysType === 'liquid') ? targetObj.plantDesign.cduSystem : targetObj.plantDesign.fanwallSystem;
             const item = (sys.sizing || []).find(s => s.key === equipKey);
             if (item) {
                 if (model !== undefined) item.selectedModel = model;
                 if (qty !== undefined) item.selectedQty = parseInt(qty, 10);
+                if (redundancy !== undefined) {
+                    item.redundancy = redundancy;
+                    item.userRedundancyEdited = true;
+                }
+                if (runMode !== undefined) item.runMode = runMode;
                 item.userEdited = true;
                 this.notify();
             }
+        },
+
+        changeSizingRedundancy(targetId, sysType, equipKey, redundancy) {
+            this.updateSelectedEquipment(targetId, sysType, equipKey, undefined, undefined, redundancy, undefined);
+        },
+
+        changeSizingRunMode(targetId, sysType, equipKey, runMode) {
+            this.updateSelectedEquipment(targetId, sysType, equipKey, undefined, undefined, undefined, runMode);
         },
 
         // v31 修正：localStorage 還原的舊專案裡，sizing[].catalog 是產生當下的靜態快照，
@@ -1381,13 +1414,17 @@
                 (sys.sizing || []).forEach(item => {
                     if (!item.passed) {
                         allPassed = false;
+                        const red = item.redundancy || 'N+1';
+                        const standbyLbl = (typeof SizingEngine !== 'undefined' && typeof SizingEngine.standbyLabel === 'function')
+                            ? SizingEngine.standbyLabel(red)
+                            : (red === 'N' ? 'N' : (red === 'N+2' ? 'N-2' : (red === '2N' ? '2N' : 'N-1')));
                         failedItems.push({
                             targetId: targetId,
                             targetName: name,
                             systemName: isCdu ? _t('store.cduLiquidSys', null, '💧 CDU 液冷') : _t('store.fwAirSys', null, '💨 Fanwall 氣冷'),
                             equipName: item.label,
                             reqText: item.requiredText,
-                            selText: item.selectedQty + _t('store.units', null, '台') + ' (' + _t('store.effectiveCap', null, '有效 ') + (item.effectiveCapKw !== undefined ? item.effectiveCapKw : (item.selectedQty * item.unitCapKw)) + ' kW / N-1)'
+                            selText: item.selectedQty + _t('store.units', null, '台') + ' (' + _t('store.effectiveCap', null, '有效 ') + (item.effectiveCapKw !== undefined ? item.effectiveCapKw : (item.selectedQty * item.unitCapKw)) + ' kW / ' + standbyLbl + ')'
                         });
                     }
                 });
@@ -1427,7 +1464,24 @@
         // 既有的 effectiveCapKw = (selectedQty - 1) * unitCapKw 這個 N+1 慣例
         // (1台備援)，qty_running 用同一個公式，讓「容量夠不夠判定」跟「實際
         // 耗電量計算」用同一套備援假設，不再各算各的。
-        runningQtyFromSelected(selectedQty) {
+        runningQtyFromItem(item, allowShare = true) {
+            if (!item) return 1;
+            const qty = item.selectedQty || 1;
+            const redundancy = item.redundancy || 'N+1';
+            const runMode = item.runMode || 'standby';
+            if (allowShare && runMode === 'share') {
+                return Math.max(1, qty);
+            }
+            if (typeof SizingEngine !== 'undefined' && typeof SizingEngine.runningQty === 'function') {
+                return SizingEngine.runningQty(qty, redundancy);
+            }
+            return Math.max(1, qty - 1);
+        },
+
+        runningQtyFromSelected(selectedQty, redundancy = 'N+1') {
+            if (typeof SizingEngine !== 'undefined' && typeof SizingEngine.runningQty === 'function') {
+                return SizingEngine.runningQty(selectedQty, redundancy);
+            }
             return Math.max(1, (selectedQty || 1) - 1);
         },
 
@@ -1456,14 +1510,18 @@
             const capKw = catEntry?.capKw ?? item.unitCapKw;
             const cop = catEntry?.cop;
             if (!capKw || !cop) return [];
+            // 冰機一律 'standby'，不提供 share
+            const nRunning = this.runningQtyFromItem(item, false);
             return [{
                 model: item.selectedModel,
                 cooling_capacity_kw: capKw,
                 cop_design: cop,
                 t_chws_design: catEntry?.t_chws_c ?? 7.0,
                 cop_curve: catEntry?.cop_curve, // 有真實 AHRI 曲線資料時 ChillerEngine 會自動採用，否則退回 flat COP
-                qty_running: this.runningQtyFromSelected(item.selectedQty),
+                qty_running: nRunning,
                 qty_total: item.selectedQty,
+                redundancy: item.redundancy || 'N+1',
+                run_mode: 'standby',
                 category: catEntry?.category,
                 chiller_type: catEntry?.chiller_type ?? chillerType
             }];
@@ -1474,7 +1532,7 @@
         resolvePumpFromSizing(item, sys) {
             if (!item || !item.selectedQty) return [];
             const catEntry = (item.catalog || []).find(c => c.model === item.selectedModel);
-            const nRunning = this.runningQtyFromSelected(item.selectedQty);
+            const nRunning = this.runningQtyFromItem(item, true);
             const pDesign = (item.key === 'cw_pump')
                 ? (sys?.hydraulics?.cw_pump_power_kw ?? item?.requiredKw)
                 : (sys?.hydraulics?.pump_power_kw ?? item?.requiredKw);
@@ -1489,7 +1547,9 @@
                 p_design: pDesign,
                 motor_cap_kw: motorCapKw,
                 qty_running: nRunning,
-                qty_total: item.selectedQty
+                qty_total: item.selectedQty,
+                redundancy: item.redundancy || 'N+1',
+                run_mode: item.runMode || 'standby'
             }];
         },
 
@@ -1502,14 +1562,17 @@
             const powerKw = catEntry?.powerKw;
             if (!capKw || !powerKw) return [];
             const derateFactor = (typeof item.derateFactor === 'number' && item.derateFactor > 0) ? item.derateFactor : 1.0;
+            const nRunning = this.runningQtyFromItem(item, true);
             return [{
                 model: item.selectedModel,
                 nominal_capacity_kw: capKw,
                 capacity_kw: capKw * derateFactor,
                 derate_factor: derateFactor,
                 power_kw: powerKw,
-                qty_running: this.runningQtyFromSelected(item.selectedQty),
-                qty_total: item.selectedQty
+                qty_running: nRunning,
+                qty_total: item.selectedQty,
+                redundancy: item.redundancy || 'N+1',
+                run_mode: item.runMode || 'standby'
             }];
         },
 
@@ -1520,7 +1583,16 @@
             const capKw = catEntry?.capKw ?? item.unitCapKw;
             const fanPowerKw = catEntry?.fanPowerKw;
             if (!capKw || !fanPowerKw) return [];
-            return [{ model: item.selectedModel, cooling_capacity_kw: capKw, power_kw: fanPowerKw, qty_running: this.runningQtyFromSelected(item.selectedQty), qty_total: item.selectedQty }];
+            const nRunning = this.runningQtyFromItem(item, true);
+            return [{
+                model: item.selectedModel,
+                cooling_capacity_kw: capKw,
+                power_kw: fanPowerKw,
+                qty_running: nRunning,
+                qty_total: item.selectedQty,
+                redundancy: item.redundancy || 'N+1',
+                run_mode: item.runMode || 'standby'
+            }];
         },
 
         // v31 Phase 2/3: 冷卻塔/乾冷器風扇 → CoolingTowerEngine.calcFanPower() 要的陣列格式（型錄需有 fanKwDx）。
@@ -1531,12 +1603,15 @@
             const catEntry = (item.catalog || []).find(c => c.model === item.selectedModel);
             const fanKwDx = catEntry?.fanKwDx;
             if (!fanKwDx) return [];
+            const nRunning = this.runningQtyFromItem(item, true);
             return [{
                 model: item.selectedModel,
                 fan_kw_dx: fanKwDx,
                 fan_kw_fc: catEntry?.fanKwFc ?? fanKwDx,
-                qty_running: this.runningQtyFromSelected(item.selectedQty),
+                qty_running: nRunning,
                 qty_total: item.selectedQty,
+                redundancy: item.redundancy || 'N+1',
+                run_mode: item.runMode || 'standby',
                 fan_control: 'vfd'
             }];
         },

@@ -32,6 +32,47 @@
     }
 
     const SizingEngine = {
+        standbyUnits(qty, redundancy) {
+            const r = redundancy || 'N+1';
+            if (r === 'N') return 0;
+            if (r === 'N+1') return 1;
+            if (r === 'N+2') return 2;
+            if (r === '2N') return Math.ceil((Number(qty) || 0) / 2);
+            return 1;
+        },
+
+        runningQty(qty, redundancy) {
+            const q = Number(qty) || 0;
+            return Math.max(1, q - this.standbyUnits(q, redundancy));
+        },
+
+        requiredQty(reqKw, unitCapKw, derate, redundancy) {
+            const r = redundancy || 'N+1';
+            const effUnitCap = (unitCapKw || 100) * (derate || 1.0);
+            const baseN = Math.max(1, Math.ceil((reqKw || 0) / effUnitCap));
+            if (r === 'N') return baseN;
+            if (r === 'N+1') return baseN + 1;
+            if (r === 'N+2') return baseN + 2;
+            if (r === '2N') return 2 * baseN;
+            return baseN + 1;
+        },
+
+        minAllowedQty(redundancy) {
+            const r = redundancy || 'N+1';
+            if (r === 'N') return 1;
+            if (r === 'N+2') return 3;
+            return 2; // 'N+1' and '2N'
+        },
+
+        standbyLabel(redundancy) {
+            const r = redundancy || 'N+1';
+            if (r === 'N') return 'N';
+            if (r === 'N+1') return 'N-1';
+            if (r === 'N+2') return 'N-2';
+            if (r === '2N') return '2N';
+            return 'N-1';
+        },
+
         _createSizingItem(eq, ctx) {
             const cat = getCatalog(eq.catalog);
             const reqKw = (typeof eq.requiredKw === 'function') ? eq.requiredKw(ctx) : ctx.reqKw;
@@ -74,7 +115,9 @@
                 selectedQty: qty,
                 requiredKw: reqKw,
                 requiredUnitsN1: n1,
-                userEdited: false
+                userEdited: false,
+                redundancy: ctx?.defaultRedundancy || 'N+1',
+                runMode: 'standby'
             };
 
             Object.defineProperty(item, 'label', {
@@ -192,18 +235,29 @@
                     derateFactor = d.derate_factor;
                 }
                 s.derateFactor = Math.round(derateFactor * 1000) / 1000;
-                s.requiredUnitsN1 = Math.max(2, Math.ceil(s.requiredKw / (s.unitCapKw * s.derateFactor)) + 1);
-                if (!s.userEdited && s.selectedQty < s.requiredUnitsN1) s.selectedQty = s.requiredUnitsN1;
-                s.effectiveCapKw = Math.round(Math.max(0, s.selectedQty - 1) * s.unitCapKw * s.derateFactor);
-                s.passed = (s.effectiveCapKw >= s.requiredKw) && (s.selectedQty >= 2);
+                const red = s.redundancy || 'N+1';
+                s.redundancy = red;
+                if (!s.runMode) s.runMode = 'standby';
+                s.requiredUnits = SizingEngine.requiredQty(s.requiredKw, s.unitCapKw, s.derateFactor, red);
+                s.requiredUnitsN1 = s.requiredUnits;
+                if (!s.userEdited && s.selectedQty < s.requiredUnits) s.selectedQty = s.requiredUnits;
+                const standby = SizingEngine.standbyUnits(s.selectedQty, red);
+                const activeUnits = Math.max(0, (s.selectedQty || 0) - standby);
+                s.effectiveCapKw = Math.round(activeUnits * s.unitCapKw * s.derateFactor);
+                const minUnits = SizingEngine.minAllowedQty(red);
+                s.passed = (s.effectiveCapKw >= s.requiredKw) && (s.selectedQty >= minUnits);
                 const derateNote = (s.derateFactor < 0.999) ? t('sizing.derateNote', { factor: s.derateFactor.toFixed(2) }) : '';
-                s.requiredText = t('sizing.requiredN1', { reqKw: s.requiredKw.toFixed(1), n1: s.requiredUnitsN1, derateNote });
+                s.requiredText = (red === 'N+1')
+                    ? t('sizing.requiredN1', { reqKw: s.requiredKw.toFixed(1), n1: s.requiredUnits, derateNote })
+                    : t('sizing.requiredWithRedundancy', { reqKw: s.requiredKw.toFixed(1), redundancy: red, minUnits: s.requiredUnits, derateNote });
                 if (s.key === 'cdu_pump' || s.key === 'cw_pump') {
-                    s.effectiveCapKw = Math.round(Math.max(0, s.selectedQty - 1) * s.unitCapKw * s.derateFactor);
+                    s.effectiveCapKw = Math.round(activeUnits * s.unitCapKw * s.derateFactor);
                     const isMotorDeficit = s.requiredKw > s.effectiveCapKw;
-                    s.passed = (s.selectedQty >= 2) && !isMotorDeficit;
+                    s.passed = (s.selectedQty >= minUnits) && !isMotorDeficit;
                     const pfx = (s.key === 'cw_pump') ? t('sizing.cwPumpHydDemand') : t('sizing.pumpHydDemand');
-                    const minUnitsStr = (root.I18N && root.I18N.lang === 'en') ? ` (N+1 Min ${s.requiredUnitsN1} units)` : ` (N+1 最少 ${s.requiredUnitsN1} 台)`;
+                    const minUnitsStr = (red === 'N+1')
+                        ? ((root.I18N && root.I18N.lang === 'en') ? ` (N+1 Min ${s.requiredUnits} units)` : ` (N+1 最少 ${s.requiredUnits} 台)`)
+                        : t('sizing.minUnitsWithRedundancy', { redundancy: red, minUnits: s.requiredUnits });
                     s.requiredText = pfx + s.requiredKw.toFixed(1) + ' kW' + minUnitsStr + (isMotorDeficit ? t('sizing.motorDeficit') : '');
                 }
                 if (s.key === 'trim_chiller') {
@@ -258,18 +312,29 @@
                     derateFactor = d.derate_factor;
                 }
                 s.derateFactor = Math.round(derateFactor * 1000) / 1000;
-                s.requiredUnitsN1 = Math.max(2, Math.ceil(s.requiredKw / (s.unitCapKw * s.derateFactor)) + 1);
-                if (!s.userEdited && s.selectedQty < s.requiredUnitsN1) s.selectedQty = s.requiredUnitsN1;
-                s.effectiveCapKw = Math.round(Math.max(0, s.selectedQty - 1) * s.unitCapKw * s.derateFactor);
-                s.passed = (s.effectiveCapKw >= s.requiredKw) && (s.selectedQty >= 2);
+                const red = s.redundancy || 'N+1';
+                s.redundancy = red;
+                if (!s.runMode) s.runMode = 'standby';
+                s.requiredUnits = SizingEngine.requiredQty(s.requiredKw, s.unitCapKw, s.derateFactor, red);
+                s.requiredUnitsN1 = s.requiredUnits;
+                if (!s.userEdited && s.selectedQty < s.requiredUnits) s.selectedQty = s.requiredUnits;
+                const standby = SizingEngine.standbyUnits(s.selectedQty, red);
+                const activeUnits = Math.max(0, (s.selectedQty || 0) - standby);
+                s.effectiveCapKw = Math.round(activeUnits * s.unitCapKw * s.derateFactor);
+                const minUnits = SizingEngine.minAllowedQty(red);
+                s.passed = (s.effectiveCapKw >= s.requiredKw) && (s.selectedQty >= minUnits);
                 const derateNote = (s.derateFactor < 0.999) ? t('sizing.derateNote', { factor: s.derateFactor.toFixed(2) }) : '';
-                s.requiredText = t('sizing.requiredN1', { reqKw: s.requiredKw.toFixed(1), n1: s.requiredUnitsN1, derateNote });
+                s.requiredText = (red === 'N+1')
+                    ? t('sizing.requiredN1', { reqKw: s.requiredKw.toFixed(1), n1: s.requiredUnits, derateNote })
+                    : t('sizing.requiredWithRedundancy', { reqKw: s.requiredKw.toFixed(1), redundancy: red, minUnits: s.requiredUnits, derateNote });
                 if (s.key === 'fw_pump' || s.key === 'cw_pump') {
-                    s.effectiveCapKw = Math.round(Math.max(0, s.selectedQty - 1) * s.unitCapKw * s.derateFactor);
+                    s.effectiveCapKw = Math.round(activeUnits * s.unitCapKw * s.derateFactor);
                     const isMotorDeficit = s.requiredKw > s.effectiveCapKw;
-                    s.passed = (s.selectedQty >= 2) && !isMotorDeficit;
+                    s.passed = (s.selectedQty >= minUnits) && !isMotorDeficit;
                     const pfx = (s.key === 'cw_pump') ? t('sizing.cwPumpHydDemand') : t('sizing.fwPumpHydDemand');
-                    const minUnitsStr = (root.I18N && root.I18N.lang === 'en') ? ` (N+1 Min ${s.requiredUnitsN1} units)` : ` (N+1 最少 ${s.requiredUnitsN1} 台)`;
+                    const minUnitsStr = (red === 'N+1')
+                        ? ((root.I18N && root.I18N.lang === 'en') ? ` (N+1 Min ${s.requiredUnits} units)` : ` (N+1 最少 ${s.requiredUnits} 台)`)
+                        : t('sizing.minUnitsWithRedundancy', { redundancy: red, minUnits: s.requiredUnits });
                     s.requiredText = pfx + s.requiredKw.toFixed(1) + ' kW' + minUnitsStr + (isMotorDeficit ? t('sizing.motorDeficit') : '');
                 }
             });

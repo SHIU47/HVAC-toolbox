@@ -59,12 +59,22 @@ const CoolingTowerEngine = {
    */
   calcFanPower(devices, plr_ct, is_fc, min_speed = 0.20) {
     const fan_key = is_fc ? 'fan_kw_fc' : 'fan_kw_dx';
-    const speed   = Math.max(min_speed, Math.min(1.0, plr_ct));
 
     return (devices ?? []).reduce((sum, d) => {
       const n  = d.qty_running ?? d.qty_total ?? 1;
       const fw = d[fan_key] ?? 0;
       const ctrl = d.fan_control ?? 'vfd';
+
+      let effPlr = plr_ct;
+      if (d.run_mode === 'share' && d.qty_total && d.qty_running && d.qty_running === d.qty_total) {
+        const sizingEng = (typeof window !== 'undefined' && window.SizingEngine) || (typeof global !== 'undefined' && global.SizingEngine) || (typeof SizingEngine !== 'undefined' ? SizingEngine : null);
+        const designRunning = sizingEng ? sizingEng.runningQty(d.qty_total, d.redundancy || 'N+1') : Math.max(1, d.qty_total - 1);
+        if (designRunning < d.qty_running) {
+          effPlr = plr_ct * (designRunning / d.qty_running);
+        }
+      }
+      const speed = Math.max(min_speed, Math.min(1.0, effPlr));
+
       if (ctrl === 'single_speed') return sum + n * fw;
       if (ctrl === 'two_speed')    return sum + n * fw * (speed >= 0.6 ? 1.0 : 0.125);
       return sum + n * fw * (0.10 + 0.90 * Math.pow(speed, 3));

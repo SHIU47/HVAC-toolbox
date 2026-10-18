@@ -4238,6 +4238,197 @@ function sizeCduToDeratedN1(S) {
     assert(!plant.memberIds.includes(newDu.id));
     S.deleteCoolingPlant(plant.id);
   });
+
+  test('P-2: SizingEngine helper functions (standbyUnits, runningQty, requiredQty, minAllowedQty, standbyLabel) for N, N+1, N+2, 2N', () => {
+    const SE = ctx.SizingEngine;
+    assert(SE, 'SizingEngine must exist');
+
+    // N
+    assert.strictEqual(SE.standbyUnits(5, 'N'), 0);
+    assert.strictEqual(SE.runningQty(5, 'N'), 5);
+    assert.strictEqual(SE.minAllowedQty('N'), 1);
+    assert.strictEqual(SE.standbyLabel('N'), 'N');
+    assert.strictEqual(SE.requiredQty(800, 300, 1.0, 'N'), 3);
+
+    // N+1
+    assert.strictEqual(SE.standbyUnits(5, 'N+1'), 1);
+    assert.strictEqual(SE.runningQty(5, 'N+1'), 4);
+    assert.strictEqual(SE.minAllowedQty('N+1'), 2);
+    assert.strictEqual(SE.standbyLabel('N+1'), 'N-1');
+    assert.strictEqual(SE.requiredQty(800, 300, 1.0, 'N+1'), 4);
+
+    // N+2
+    assert.strictEqual(SE.standbyUnits(5, 'N+2'), 2);
+    assert.strictEqual(SE.runningQty(5, 'N+2'), 3);
+    assert.strictEqual(SE.minAllowedQty('N+2'), 3);
+    assert.strictEqual(SE.standbyLabel('N+2'), 'N-2');
+    assert.strictEqual(SE.requiredQty(800, 300, 1.0, 'N+2'), 5);
+
+    // 2N
+    assert.strictEqual(SE.standbyUnits(4, '2N'), 2);
+    assert.strictEqual(SE.runningQty(4, '2N'), 2);
+    assert.strictEqual(SE.standbyUnits(5, '2N'), 3);
+    assert.strictEqual(SE.runningQty(5, '2N'), 2);
+    assert.strictEqual(SE.minAllowedQty('2N'), 2);
+    assert.strictEqual(SE.standbyLabel('2N'), '2N');
+    assert.strictEqual(SE.requiredQty(800, 300, 1.0, '2N'), 6);
+  });
+
+  test('P-2: Sizing effective capacity: N+2 with 5 units of 300 kW yields 900 kW; 2N with 4 units yields 600 kW', () => {
+    const SE = ctx.SizingEngine;
+
+    // N+2: 5 units x 300 kW (standby = 2, active = 3) -> 900 kW
+    const mockCduSysN2 = {
+      fwsSupplyC: 40.0,
+      sizing: [{
+        key: 'dry_cooler_hx',
+        role: 'hx',
+        selectedModel: 'HX-300',
+        unitCapKw: 300,
+        selectedQty: 5,
+        requiredKw: 800,
+        redundancy: 'N+2',
+        userEdited: true,
+        catalog: [{ model: 'HX-300', capKw: 300 }]
+      }]
+    };
+    SE.evaluateCduSizing(mockCduSysN2, 800, { designDb: 35.0, designWb: 28.0 });
+    assert.strictEqual(mockCduSysN2.sizing[0].effectiveCapKw, 900, 'N+2 with 5 x 300 kW must have 900 kW effective capacity');
+    assert.strictEqual(mockCduSysN2.sizing[0].passed, true);
+    assert(mockCduSysN2.sizing[0].requiredText.includes('N+2'), 'requiredText must show N+2 redundancy');
+
+    // 2N: 4 units x 300 kW (standby = 2, active = 2) -> 600 kW
+    const mockFwSys2N = {
+      chwSupplyC: 12.0,
+      sizing: [{
+        key: 'air_cooled_chiller',
+        role: 'chiller',
+        selectedModel: 'ACC-300',
+        unitCapKw: 300,
+        selectedQty: 4,
+        requiredKw: 500,
+        redundancy: '2N',
+        userEdited: true,
+        catalog: [{ model: 'ACC-300', capKw: 300 }]
+      }]
+    };
+    SE.evaluateFwSizing(mockFwSys2N, 500, { designDb: 35.0, designWb: 28.0 });
+    assert.strictEqual(mockFwSys2N.sizing[0].effectiveCapKw, 600, '2N with 4 x 300 kW must have 600 kW effective capacity');
+    assert.strictEqual(mockFwSys2N.sizing[0].passed, true);
+    assert(mockFwSys2N.sizing[0].requiredText.includes('2N'), 'requiredText must show 2N redundancy');
+  });
+
+  test('P-2: CRAH fan power in share mode with 3 units is less than standby mode with 2 running units', () => {
+    const CRAH = ctx.CRAHEngine;
+    assert(CRAH, 'CRAHEngine must exist');
+
+    // 3 CRAH units installed (each 100 kW cooling capacity, 4.8 kW fan power)
+    // IT air heat load = 180 kW
+    const standbyList = [{
+      model: 'CR-100',
+      cooling_capacity_kw: 100,
+      power_kw: 4.8,
+      qty_running: 2, // N+1: 1 standby, 2 running
+      qty_total: 3,
+      run_mode: 'standby'
+    }];
+
+    const shareList = [{
+      model: 'CR-100',
+      cooling_capacity_kw: 100,
+      power_kw: 4.8,
+      qty_running: 3, // share: all 3 running
+      qty_total: 3,
+      run_mode: 'share'
+    }];
+
+    const resStandby = CRAH.calcPower(standbyList, 180);
+    const resShare = CRAH.calcPower(shareList, 180);
+
+    assert(resStandby.power_kw > 0, 'Standby power must be > 0');
+    assert(resShare.power_kw > 0, 'Share power must be > 0');
+    assert(resShare.power_kw < resStandby.power_kw, `Share power (${resShare.power_kw.toFixed(2)} kW) must be < Standby power (${resStandby.power_kw.toFixed(2)} kW)`);
+  });
+
+  test('P-2: AppStore resolve methods respect item.redundancy and item.runMode', () => {
+    // 1. Chiller always uses standby (run_mode: 'standby') even if share is passed
+    const chillerItem = {
+      selectedModel: 'CH-100',
+      unitCapKw: 500,
+      selectedQty: 4,
+      redundancy: 'N+2',
+      runMode: 'share',
+      catalog: [{ model: 'CH-100', capKw: 500, cop: 6.0 }]
+    };
+    const chillers = S.resolveChillerFromSizing(chillerItem, 'water_cooled');
+    assert.strictEqual(chillers[0].run_mode, 'standby', 'Chiller must always be standby mode');
+    assert.strictEqual(chillers[0].qty_running, 2, '4 units with N+2 must have 2 running units');
+
+    // 2. CRAH respects share runMode
+    const crahItem = {
+      selectedModel: 'CR-100',
+      unitCapKw: 100,
+      selectedQty: 4,
+      redundancy: 'N+1',
+      runMode: 'share',
+      catalog: [{ model: 'CR-100', capKw: 100, fanPowerKw: 4.5 }]
+    };
+    const crahs = S.resolveCrahFromSizing(crahItem);
+    assert.strictEqual(crahs[0].run_mode, 'share');
+    assert.strictEqual(crahs[0].qty_running, 4, 'Share mode must have all 4 running units');
+
+    // 3. CDU respects N+2 standby
+    const cduItem = {
+      selectedModel: 'CDU-300',
+      unitCapKw: 300,
+      selectedQty: 5,
+      redundancy: 'N+2',
+      runMode: 'standby',
+      derateFactor: 1.0,
+      catalog: [{ model: 'CDU-300', capKw: 300, powerKw: 2.0 }]
+    };
+    const cdus = S.resolveCduFromSizing(cduItem);
+    assert.strictEqual(cdus[0].run_mode, 'standby');
+    assert.strictEqual(cdus[0].qty_running, 3, '5 units with N+2 standby must have 3 running units');
+
+    // 4. Tower respects share runMode
+    const towerItem = {
+      selectedModel: 'CT-500',
+      selectedQty: 3,
+      redundancy: 'N+1',
+      runMode: 'share',
+      catalog: [{ model: 'CT-500', fanKwDx: 15.0 }]
+    };
+    const towers = S.resolveTowerFromSizing(towerItem);
+    assert.strictEqual(towers[0].run_mode, 'share');
+    assert.strictEqual(towers[0].qty_running, 3, 'Share mode tower must have 3 running units');
+  });
+
+  test('P-2: canProceedStep4 and ViewCooling correctly handle redundancy levels and labels', () => {
+    const du = S.state.halls[0].dus[0];
+    const item = du.plantDesign.cduSystem.sizing[0];
+    assert(item, 'DU CDU must have sizing item');
+
+    // Update to N+2
+    S.changeSizingRedundancy(du.id, 'cdu', item.key, 'N+2');
+    assert.strictEqual(item.redundancy, 'N+2');
+
+    // Temporarily set qty to 1 so it fails
+    const originalQty = item.selectedQty;
+    item.selectedQty = 1;
+    item.passed = false;
+
+    const proceedStatus = S.canProceedStep4();
+    assert.strictEqual(proceedStatus.ok, false);
+    const failed = proceedStatus.failedItems.find(f => f.equipName === item.label);
+    assert(failed, 'Failed item must be in failedItems list');
+    assert(failed.selText.includes('N-2'), 'selText must show N-2 label for N+2 redundancy');
+
+    // Restore
+    item.selectedQty = originalQty;
+    S.changeSizingRedundancy(du.id, 'cdu', item.key, 'N+1');
+    S.calculate();
+  });
 })();
 
 console.log(`\n${passCount} passed, ${failCount} failed, ${skipCount} skipped`);

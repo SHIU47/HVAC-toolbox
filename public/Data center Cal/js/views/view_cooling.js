@@ -71,7 +71,13 @@
 
                 if (allPass) {
                     t.status = 'pass';
-                    t.statusBadge = `<span class="px-2 py-0.5 bg-emerald-100 text-emerald-800 text-[10px] font-black rounded-md border border-emerald-200">🟢 ${_t('cooling.statusPassed', null, '滿足 N+1')}</span>`;
+                    const dominantRed = (allSizing.every(s => (s.redundancy || 'N+1') === (allSizing[0]?.redundancy || 'N+1')))
+                        ? (allSizing[0]?.redundancy || 'N+1')
+                        : 'N+1';
+                    const passText = (dominantRed === 'N+1')
+                        ? _t('cooling.statusPassed', null, '滿足 N+1')
+                        : _t('cooling.statusPassedRedundancy', { redundancy: dominantRed }, `滿足 ${dominantRed}`);
+                    t.statusBadge = `<span class="px-2 py-0.5 bg-emerald-100 text-emerald-800 text-[10px] font-black rounded-md border border-emerald-200">🟢 ${passText}</span>`;
                 } else if (hasFail) {
                     t.status = 'fail';
                     t.statusBadge = `<span class="px-2 py-0.5 bg-red-100 text-red-800 text-[10px] font-black rounded-md border border-red-200">🔴 ${_t('cooling.statusDeficit', null, '容量不足')}</span>`;
@@ -423,12 +429,24 @@ ${inputsHtml}
                 if (item.selectedQty === 0) {
                     badge = `<span class="px-2 py-0.5 bg-slate-100 text-slate-500 text-[10px] font-black rounded-md flex items-center gap-1 border border-slate-300">⚪ ${_t('cooling.statusNoEquip', null, '尚未選型')}</span>`;
                 } else if (item.passed) {
-                    badge = `<span class="px-2 py-0.5 bg-emerald-100 text-emerald-800 text-[10px] font-black rounded-md flex items-center gap-1 border border-emerald-200">🟢 ${_t('cooling.statusPassed', null, '滿足 N+1')}</span>`;
+                    const red = item.redundancy || 'N+1';
+                    const passText = (red === 'N+1')
+                        ? _t('cooling.statusPassed', null, '滿足 N+1')
+                        : _t('cooling.statusPassedRedundancy', { redundancy: red }, `滿足 ${red}`);
+                    badge = `<span class="px-2 py-0.5 bg-emerald-100 text-emerald-800 text-[10px] font-black rounded-md flex items-center gap-1 border border-emerald-200">🟢 ${passText}</span>`;
                 } else if ((item.key === 'cdu_pump' || item.key === 'fw_pump' || item.role === 'pump') && item.selectedQty >= 2 && item.requiredKw > (item.effectiveCapKw ?? 0)) {
                     badge = `<span class="px-2 py-0.5 bg-red-100 text-red-800 text-[10px] font-black rounded-md flex items-center gap-1 border border-red-200">🔴 ${_t('cooling.pumpMotorDeficit', null, '泵浦馬達功率不足')}</span>`;
                 } else {
                     badge = `<span class="px-2 py-0.5 bg-red-100 text-red-800 text-[10px] font-black rounded-md flex items-center gap-1 border border-red-200">🔴 ${_t('cooling.statusDeficit', null, '容量不足')}</span>`;
                 }
+
+                const red = item.redundancy || 'N+1';
+                const standbyLbl = (typeof SizingEngine !== 'undefined' && typeof SizingEngine.standbyLabel === 'function')
+                    ? SizingEngine.standbyLabel(red)
+                    : (red === 'N' ? 'N' : (red === 'N+2' ? 'N-2' : (red === '2N' ? '2N' : 'N-1')));
+                const effCapLabel = (standbyLbl === 'N-1')
+                    ? _t('cooling.effectiveCap', null, '有效容量 (N-1):')
+                    : _t('cooling.effectiveCapRedundancy', { label: standbyLbl }, `有效容量 (${standbyLbl}):`);
 
                 cduSizingHtml += `
                     <div class="p-3 bg-slate-50 rounded-xl border ${item.passed ? 'border-slate-200' : 'border-red-300 bg-red-50/40'} space-y-2 text-xs">
@@ -456,7 +474,7 @@ ${inputsHtml}
                         </div>
                         <div class="text-[10px] flex justify-between text-slate-400 pt-0.5 border-t border-slate-200">
                             <span>${_t('cooling.totalCap', null, '總容量:')} ${(item.selectedQty * item.unitCapKw).toFixed(1)} kW</span>
-                            <span>${_t('cooling.effectiveCap', null, '有效容量 (N-1):')} <strong class="${item.passed ? 'text-emerald-700 font-bold' : 'text-red-600 font-bold'}">${effCap.toFixed(1)} kW</strong></span>
+                            <span>${effCapLabel} <strong class="${item.passed ? 'text-emerald-700 font-bold' : 'text-red-600 font-bold'}">${effCap.toFixed(1)} kW</strong></span>
                         </div>
                         ${isTrimChiller && item.maxMechanicalKw !== undefined ? `
                         <div class="text-[10px] flex justify-between items-center pt-1.5 mt-1 border-t border-dashed border-slate-300">
@@ -503,12 +521,24 @@ ${inputsHtml}
                 if (item.selectedQty === 0) {
                     badge = `<span class="px-2 py-0.5 bg-slate-100 text-slate-500 text-[10px] font-black rounded-md flex items-center gap-1 border border-slate-300">⚪ ${_t('cooling.statusNoEquip', null, '尚未選型')}</span>`;
                 } else if (item.passed) {
-                    badge = `<span class="px-2 py-0.5 bg-emerald-100 text-emerald-800 text-[10px] font-black rounded-md flex items-center gap-1 border border-emerald-200">🟢 ${_t('cooling.statusPassed', null, '滿足 N+1')}</span>`;
+                    const red = item.redundancy || 'N+1';
+                    const passText = (red === 'N+1')
+                        ? _t('cooling.statusPassed', null, '滿足 N+1')
+                        : _t('cooling.statusPassedRedundancy', { redundancy: red }, `滿足 ${red}`);
+                    badge = `<span class="px-2 py-0.5 bg-emerald-100 text-emerald-800 text-[10px] font-black rounded-md flex items-center gap-1 border border-emerald-200">🟢 ${passText}</span>`;
                 } else if ((item.key === 'cdu_pump' || item.key === 'fw_pump' || item.role === 'pump') && item.selectedQty >= 2 && item.requiredKw > (item.effectiveCapKw ?? 0)) {
                     badge = `<span class="px-2 py-0.5 bg-red-100 text-red-800 text-[10px] font-black rounded-md flex items-center gap-1 border border-red-200">🔴 ${_t('cooling.pumpMotorDeficit', null, '泵浦馬達功率不足')}</span>`;
                 } else {
                     badge = `<span class="px-2 py-0.5 bg-red-100 text-red-800 text-[10px] font-black rounded-md flex items-center gap-1 border border-red-200">🔴 ${_t('cooling.statusDeficit', null, '容量不足')}</span>`;
                 }
+
+                const red = item.redundancy || 'N+1';
+                const standbyLbl = (typeof SizingEngine !== 'undefined' && typeof SizingEngine.standbyLabel === 'function')
+                    ? SizingEngine.standbyLabel(red)
+                    : (red === 'N' ? 'N' : (red === 'N+2' ? 'N-2' : (red === '2N' ? '2N' : 'N-1')));
+                const effCapLabel = (standbyLbl === 'N-1')
+                    ? _t('cooling.effectiveCap', null, '有效容量 (N-1):')
+                    : _t('cooling.effectiveCapRedundancy', { label: standbyLbl }, `有效容量 (${standbyLbl}):`);
 
                 fwSizingHtml += `
                     <div class="p-3 bg-slate-50 rounded-xl border ${item.passed ? 'border-slate-200' : 'border-red-300 bg-red-50/40'} space-y-2 text-xs">
@@ -538,7 +568,7 @@ ${inputsHtml}
                         </div>
                         <div class="text-[10px] flex justify-between text-slate-400 pt-0.5 border-t border-slate-200">
                             <span>${_t('cooling.totalCap', null, '總容量:')} ${(item.selectedQty * item.unitCapKw).toFixed(1)} kW</span>
-                            <span>${_t('cooling.effectiveCap', null, '有效容量 (N-1):')} <strong class="${item.passed ? 'text-emerald-700 font-bold' : 'text-red-600 font-bold'}">${effCap.toFixed(1)} kW</strong></span>
+                            <span>${effCapLabel} <strong class="${item.passed ? 'text-emerald-700 font-bold' : 'text-red-600 font-bold'}">${effCap.toFixed(1)} kW</strong></span>
                         </div>
                     </div>
                 `;
@@ -901,6 +931,16 @@ ${inputsHtml}
 
         changeQty(targetId, sysType, equipKey, qty) {
             window.AppStore.updateSelectedEquipment(targetId, sysType, equipKey, undefined, qty);
+            this.render(document.getElementById('stepContent'));
+        },
+
+        changeRedundancy(targetId, sysType, equipKey, redundancy) {
+            window.AppStore.changeSizingRedundancy(targetId, sysType, equipKey, redundancy);
+            this.render(document.getElementById('stepContent'));
+        },
+
+        changeRunMode(targetId, sysType, equipKey, runMode) {
+            window.AppStore.changeSizingRunMode(targetId, sysType, equipKey, runMode);
             this.render(document.getElementById('stepContent'));
         },
 
