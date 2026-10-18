@@ -1653,28 +1653,18 @@
         // ═══════════════════════════════════════════════════════════════
         // V22 / C-2: 共用逐時能耗計算函式 — 透過 CoolingArchRegistry 分派
         // ═══════════════════════════════════════════════════════════════
-        calcHourlyEnergy(plantDesign, summ, w, pre = null) {
-            const cduSys = plantDesign.cduSystem;
-            const fwSys  = plantDesign.fanwallSystem;
+        calcLiquidLoopHour(cduSys, summ, w, pre = null) {
+            const liquidHeatKw = (typeof summ === 'number') ? summ : (summ?.liquidHeatKw || 0);
             const cduArch = cduSys.architecture || 'dry_cooler_hx';
-            const fwArch  = fwSys.architecture || 'air_cooled_chiller';
-
             const cduArchDesc = pre ? pre.cduArchDesc : ((typeof CoolingArchRegistry !== 'undefined') ? CoolingArchRegistry.get(cduArch) : null);
-            const fwArchDesc  = pre ? pre.fwArchDesc  : ((typeof CoolingArchRegistry !== 'undefined') ? CoolingArchRegistry.get(fwArch) : null);
-
             if (!cduArchDesc) throw new Error(`Unknown CDU cooling architecture: "${cduArch}"`);
-            if (!fwArchDesc)  throw new Error(`Unknown Fanwall cooling architecture: "${fwArch}"`);
 
             const evapFactor = (typeof A === 'function') ? A('ct_evap_m3h_per_kw') : 0.00124;
             const cycles = cduSys.cyclesOfConcentration || 5;
-
-            // P2-1 / P2-2: 解析設備清單 (支援外部預計算傳入)
             const cduEquip = pre ? pre.cduEquip : this.resolveEquipment(cduArchDesc, cduSys);
-            const fwEquip  = pre ? pre.fwEquip  : this.resolveEquipment(fwArchDesc, fwSys);
 
-            // --- CDU terminal and primary pump ---
-            const designLiqKw = pre ? pre.designLiqKw : (cduSys.designBasis?.liq_load_kw || summ.liquidHeatKw);
-            const cduLoadRatio = pre ? pre.cduLoadRatio : (designLiqKw > 0 ? Math.min(1.0, summ.liquidHeatKw / designLiqKw) : 1.0);
+            const designLiqKw = pre ? pre.designLiqKw : (cduSys.designBasis?.liq_load_kw || liquidHeatKw);
+            const cduLoadRatio = pre ? pre.cduLoadRatio : (designLiqKw > 0 ? Math.min(1.0, liquidHeatKw / designLiqKw) : 1.0);
             const pt = pre?.pumpTable ? pre.pumpTable[w.wb >= 24 ? 0 : (w.wb >= 16 ? 1 : 2)] : null;
             const cduPumpSpeed = pt ? pt.cduPumpSpeed : (() => {
                 const cduOperatingMode = (typeof FreeCoolingEngine !== 'undefined') ? FreeCoolingEngine.getOperatingMode(w.wb) : null;
@@ -1692,28 +1682,28 @@
 
             const cduUnitKw = pre ? pre.cduUnitKw : (() => {
                 const cduUnits = cduEquip.cdu_unit || [];
-                if (cduUnits.length > 0 && typeof CDUEngine !== 'undefined' && summ.liquidHeatKw > 0) {
-                    return CDUEngine.calcPower(cduUnits, summ.liquidHeatKw).power_kw;
-                } else if (summ.liquidHeatKw > 0) {
-                    return (summ.liquidHeatKw / 400) * 2.0;
+                if (cduUnits.length > 0 && typeof CDUEngine !== 'undefined' && liquidHeatKw > 0) {
+                    return CDUEngine.calcPower(cduUnits, liquidHeatKw).power_kw;
+                } else if (liquidHeatKw > 0) {
+                    return (liquidHeatKw / 400) * 2.0;
                 }
                 return 0;
             })();
 
             const cduDeficitKw = pre ? pre.cduDeficitKw : (() => {
                 const cduUnits = cduEquip.cdu_unit || [];
-                if (cduUnits.length > 0 && typeof CDUEngine !== 'undefined' && summ.liquidHeatKw > 0) {
-                    return CDUEngine.calcPower(cduUnits, summ.liquidHeatKw).deficit_kw || 0;
+                if (cduUnits.length > 0 && typeof CDUEngine !== 'undefined' && liquidHeatKw > 0) {
+                    return CDUEngine.calcPower(cduUnits, liquidHeatKw).deficit_kw || 0;
                 }
                 return 0;
             })();
 
             const cduPumps = pre ? pre.cduPumps : (cduEquip.cdu_pump || []);
             const cduCwPumps = pre ? pre.cduCwPumps : (cduEquip.cw_pump || []);
-            let cduPrimaryPumpKw = pt ? pt.cduPrimaryPumpKw : ((cduPumps.length > 0 && typeof PlantPumpEngine !== 'undefined' && summ.liquidHeatKw > 0)
+            let cduPrimaryPumpKw = pt ? pt.cduPrimaryPumpKw : ((cduPumps.length > 0 && typeof PlantPumpEngine !== 'undefined' && liquidHeatKw > 0)
                 ? PlantPumpEngine.calcPower(cduPumps, cduPumpSpeed)
-                : (summ.liquidHeatKw > 0 ? (summ.liquidHeatKw / 500) * (cduSys.hydraulics?.pump_power_kw || 11.0) : 0));
-            if (!pt && summ.liquidHeatKw > 0) {
+                : (liquidHeatKw > 0 ? (liquidHeatKw / 500) * (cduSys.hydraulics?.pump_power_kw || 11.0) : 0));
+            if (!pt && liquidHeatKw > 0) {
                 if (cduCwPumps.length > 0 && typeof PlantPumpEngine !== 'undefined') {
                     cduPrimaryPumpKw += PlantPumpEngine.calcPower(cduCwPumps, cduPumpSpeed);
                 } else if (cduSys.hydraulics?.cw_pump_power_kw) {
@@ -1724,11 +1714,68 @@
 
             const cduPumpKw = pt ? pt.cduPumpKw : (cduUnitKw + cduPrimaryPumpKw);
 
-            // --- Fanwall / CRAH terminal and secondary pump ---
+            const trimCop = pre ? pre.trimCop : (() => {
+                const trimItem = (cduSys.sizing || []).find(s => s.key === 'trim_chiller');
+                return trimItem?.catalog?.find(c => c.model === trimItem.selectedModel)?.cop || 6.2;
+            })();
+
+            const cduSim = (liquidHeatKw > 0) ? cduArchDesc.simulateHour({
+                Q_kw: liquidHeatKw,
+                t_supply_c: cduSys.fwsSupplyC,
+                t_return_c: cduSys.fwsReturnC,
+                w,
+                sys: cduSys,
+                equip: cduEquip,
+                loadRatio: cduLoadRatio,
+                fanMinSpeed: cduFanMinSpeed,
+                evapFactor,
+                cycles,
+                trimCop,
+                terminalKw: cduUnitKw,
+                pumpKw: cduPrimaryPumpKw
+            }) : {
+                terminalKw: 0,
+                pumpKw: 0,
+                fanKw: 0,
+                compressorKw: 0,
+                waterM3: 0,
+                mode: 'free',
+                deficitKw: 0,
+                heatRemovedKw: 0,
+                mechLoadKw: 0
+            };
+
+            const deficitKw = cduDeficitKw + (cduSim.deficitKw || 0);
+            const heatRemovedKw = Math.max(0, liquidHeatKw - deficitKw);
+
+            return {
+                pumpKw: cduPumpKw,
+                unitKw: cduUnitKw,
+                primaryPumpKw: cduPrimaryPumpKw,
+                fanKw: cduSim.fanKw || 0,
+                compressorKw: cduSim.compressorKw || 0,
+                waterM3: cduSim.waterM3 || 0,
+                mode: cduSim.mode || 'free',
+                deficitKw,
+                heatRemovedKw,
+                mechLoadKw: cduSim.mechLoadKw || 0,
+                chillerEnvelopeExceeded: !!cduSim.chillerEnvelopeExceeded
+            };
+        },
+
+        calcAirLoopHour(fwSys, summ, w, pre = null) {
+            const airHeatTotal = (typeof summ === 'number') ? summ : ((summ?.airHeatKw || 0) + (summ?.lossKw || 0));
+            const fwArch = fwSys.architecture || 'air_cooled_chiller';
+            const fwArchDesc = pre ? pre.fwArchDesc : ((typeof CoolingArchRegistry !== 'undefined') ? CoolingArchRegistry.get(fwArch) : null);
+            if (!fwArchDesc) throw new Error(`Unknown Fanwall cooling architecture: "${fwArch}"`);
+
+            const evapFactor = (typeof A === 'function') ? A('ct_evap_m3h_per_kw') : 0.00124;
+            const cycles = fwSys.cyclesOfConcentration || 5;
+            const fwEquip = pre ? pre.fwEquip : this.resolveEquipment(fwArchDesc, fwSys);
+
             const chwSupplyC = pre ? pre.chwSupplyC : (fwSys.chwSupplyC || 12.0);
             const chwReturnC = pre ? pre.chwReturnC : (fwSys.chwReturnC || 18.0);
             const fwBaseCop = pre ? pre.fwBaseCop : (chwSupplyC >= 20 ? 5.8 : (chwSupplyC >= 12 ? 4.2 : 3.0));
-            const airHeatTotal = pre ? pre.airHeatTotal : (summ.airHeatKw + summ.lossKw);
 
             const designAirKw = pre ? pre.designAirKw : (fwSys.designBasis?.air_load_kw || airHeatTotal);
             const fwLoadRatio = pre ? pre.fwLoadRatio : (designAirKw > 0 ? Math.min(1.0, airHeatTotal / designAirKw) : 1.0);
@@ -1751,6 +1798,7 @@
 
             const fwPumps = pre ? pre.fwPumps : (fwEquip.fw_pump || []);
             const fwCwPumps = pre ? pre.fwCwPumps : (fwEquip.cw_pump || []);
+            const pt = pre?.pumpTable ? pre.pumpTable[w.wb >= 24 ? 0 : (w.wb >= 16 ? 1 : 2)] : null;
             const fwPumpSpeed = pt ? pt.fwPumpSpeed : (() => {
                 const fwOperatingMode = (typeof FreeCoolingEngine !== 'undefined') ? FreeCoolingEngine.getOperatingMode(w.wb) : null;
                 const fwPumpMinSpeed = (typeof FreeCoolingEngine !== 'undefined')
@@ -1778,39 +1826,6 @@
                 }
             }
 
-            const trimCop = pre ? pre.trimCop : (() => {
-                const trimItem = (cduSys.sizing || []).find(s => s.key === 'trim_chiller');
-                return trimItem?.catalog?.find(c => c.model === trimItem.selectedModel)?.cop || 6.2;
-            })();
-
-            // --- Dispatch CDU Simulation ---
-            const cduSim = (summ.liquidHeatKw > 0) ? cduArchDesc.simulateHour({
-                Q_kw: summ.liquidHeatKw,
-                t_supply_c: cduSys.fwsSupplyC,
-                t_return_c: cduSys.fwsReturnC,
-                w,
-                sys: cduSys,
-                equip: cduEquip,
-                loadRatio: cduLoadRatio,
-                fanMinSpeed: cduFanMinSpeed,
-                evapFactor,
-                cycles,
-                trimCop,
-                terminalKw: cduUnitKw,
-                pumpKw: cduPrimaryPumpKw
-            }) : {
-                terminalKw: 0,
-                pumpKw: 0,
-                fanKw: 0,
-                compressorKw: 0,
-                waterM3: 0,
-                mode: 'free',
-                deficitKw: 0,
-                heatRemovedKw: 0,
-                mechLoadKw: 0
-            };
-
-            // --- Dispatch Fanwall Simulation ---
             const fwSim = (airHeatTotal > 0) ? fwArchDesc.simulateHour({
                 Q_kw: airHeatTotal,
                 t_supply_c: chwSupplyC,
@@ -1837,42 +1852,65 @@
                 mechLoadKw: 0
             };
 
-            const totalDeficitKw = cduDeficitKw + crahDeficitKw + (cduSim.deficitKw || 0) + (fwSim.deficitKw || 0);
-            const combinedMode = (cduSim.mode === 'free' && fwSim.mode === 'free')
-                ? 'free'
-                : ((cduSim.mode === 'mechanical' && fwSim.mode === 'mechanical') ? 'mechanical' : 'partial');
-            const isFreeHour = (summ.liquidHeatKw === 0 || cduSim.mode === 'free') && (airHeatTotal === 0 || fwSim.mode === 'free');
-            const heatRemovedKw = Math.max(0, summ.liquidHeatKw + airHeatTotal - totalDeficitKw);
-            const mechLoadKw = (cduSim.mechLoadKw || 0) + (fwSim.mechLoadKw || 0);
+            const deficitKw = crahDeficitKw + (fwSim.deficitKw || 0);
+            const heatRemovedKw = Math.max(0, airHeatTotal - deficitKw);
 
             return {
-                cduPumpKw: cduPumpKw + fwPumpKw,
+                pumpKw: fwPumpKw,
                 crahFanKw,
-                heatRejKw: cduSim.fanKw + fwSim.fanKw,
-                chillerKw: cduSim.compressorKw + fwSim.compressorKw,
-                lossKw: summ.lossKw,
-                waterM3: cduSim.waterM3 + fwSim.waterM3,
+                fanKw: fwSim.fanKw || 0,
+                compressorKw: fwSim.compressorKw || 0,
+                waterM3: fwSim.waterM3 || 0,
+                mode: fwSim.mode || 'free',
+                deficitKw,
+                heatRemovedKw,
+                mechLoadKw: fwSim.mechLoadKw || 0,
+                chillerEnvelopeExceeded: !!fwSim.chillerEnvelopeExceeded
+            };
+        },
+
+        calcHourlyEnergy(plantDesign, summ, w, pre = null) {
+            const cduRes = this.calcLiquidLoopHour(plantDesign.cduSystem, summ, w, pre);
+            const fwRes  = this.calcAirLoopHour(plantDesign.fanwallSystem, summ, w, pre);
+
+            const totalDeficitKw = cduRes.deficitKw + fwRes.deficitKw;
+            const combinedMode = (cduRes.mode === 'free' && fwRes.mode === 'free')
+                ? 'free'
+                : ((cduRes.mode === 'mechanical' && fwRes.mode === 'mechanical') ? 'mechanical' : 'partial');
+            const airHeatTotal = (typeof summ === 'number') ? summ : ((summ?.airHeatKw || 0) + (summ?.lossKw || 0));
+            const liquidHeatKw = (typeof summ === 'number') ? summ : (summ?.liquidHeatKw || 0);
+            const isFreeHour = (liquidHeatKw === 0 || cduRes.mode === 'free') && (airHeatTotal === 0 || fwRes.mode === 'free');
+            const heatRemovedKw = Math.max(0, liquidHeatKw + airHeatTotal - totalDeficitKw);
+            const mechLoadKw = (cduRes.mechLoadKw || 0) + (fwRes.mechLoadKw || 0);
+
+            return {
+                cduPumpKw: cduRes.pumpKw + fwRes.pumpKw,
+                crahFanKw: fwRes.crahFanKw,
+                heatRejKw: cduRes.fanKw + fwRes.fanKw,
+                chillerKw: cduRes.compressorKw + fwRes.compressorKw,
+                lossKw: summ?.lossKw || 0,
+                waterM3: cduRes.waterM3 + fwRes.waterM3,
                 isFreeHour,
                 capacityDeficitKw: totalDeficitKw,
                 heatRemovedKw,
-                cduMode: cduSim.mode,
-                fwMode: fwSim.mode,
+                cduMode: cduRes.mode,
+                fwMode: fwRes.mode,
                 combinedMode,
                 mechLoadKw,
-                chillerEnvelopeExceeded: !!(cduSim.chillerEnvelopeExceeded || fwSim.chillerEnvelopeExceeded),
+                chillerEnvelopeExceeded: !!(cduRes.chillerEnvelopeExceeded || fwRes.chillerEnvelopeExceeded),
                 cduKwh: {
-                    unit: cduUnitKw,
-                    pump: cduPrimaryPumpKw,
-                    heatRej: cduSim.fanKw,
-                    chiller: cduSim.compressorKw,
-                    trimLoadKw: cduSim.mechLoadKw || 0
+                    unit: cduRes.unitKw,
+                    pump: cduRes.primaryPumpKw,
+                    heatRej: cduRes.fanKw,
+                    chiller: cduRes.compressorKw,
+                    trimLoadKw: cduRes.mechLoadKw || 0
                 },
                 fwKwh: {
-                    pump: fwPumpKw,
-                    crahFan: crahFanKw,
-                    heatRej: fwSim.fanKw,
-                    chiller: fwSim.compressorKw,
-                    chillerLoadKw: fwSim.mechLoadKw || 0
+                    pump: fwRes.pumpKw,
+                    crahFan: fwRes.crahFanKw,
+                    heatRej: fwRes.fanKw,
+                    chiller: fwRes.compressorKw,
+                    chillerLoadKw: fwRes.mechLoadKw || 0
                 }
             };
         },
@@ -1960,7 +1998,11 @@
                     calcDuSummary: (du) => this.calcDuSummary(du),
                     calcCorePodSummary: (pod) => this.calcCorePodSummary(pod),
                     bridgeDuToPlantModel: (unit, summ) => this.bridgeDuToPlantModel(unit, summ),
-                    calcHourlyEnergy: (plant, summ, w, pre) => this.calcHourlyEnergy(plant, summ, w, pre)
+                    bridgePlantModel: (plant) => this.bridgePlantModel(plant),
+                    calcHourlyEnergy: (plant, summ, w, pre) => this.calcHourlyEnergy(plant, summ, w, pre),
+                    calcLiquidLoopHour: (sys, summ, w, pre) => this.calcLiquidLoopHour(sys, summ, w, pre),
+                    calcAirLoopHour: (sys, summ, w, pre) => this.calcAirLoopHour(sys, summ, w, pre),
+                    resolveEquipment: (arch, sys) => this.resolveEquipment(arch, sys)
                 });
             }
         },
@@ -2038,10 +2080,18 @@
 
             const reqCduKw = duSumm.liquidHeatKw;
 
-            // V21 依架構生成專屬 sizing 清單 (若品項不符則重置)
-            if (!cduSys.sizing || cduSys.sizing.length === 0 || cduSys.sizingArch !== arch) {
-                cduSys.sizing = this.generateCduSizing(arch, reqCduKw, cduSys.hydraulics.pump_power_kw, { cwPumpKw: cduSys.hydraulics.cw_pump_power_kw });
-                cduSys.sizingArch = arch;
+            // V21 依架構生成專屬 sizing 清單 (若品項不符則重置)；若加入共用群組則單元端只保留 terminal 終端設備
+            if (cduSys.plantId) {
+                if (!cduSys.sizing || cduSys.sizing.length === 0 || cduSys.sizingArch !== arch || cduSys.sizing.some(s => s.role !== 'terminal')) {
+                    const fullSizing = this.generateCduSizing(arch, reqCduKw, cduSys.hydraulics.pump_power_kw, { cwPumpKw: cduSys.hydraulics.cw_pump_power_kw });
+                    cduSys.sizing = fullSizing.filter(s => s.role === 'terminal');
+                    cduSys.sizingArch = arch;
+                }
+            } else {
+                if (!cduSys.sizing || cduSys.sizing.length === 0 || cduSys.sizingArch !== arch || cduSys.sizing.every(s => s.role === 'terminal')) {
+                    cduSys.sizing = this.generateCduSizing(arch, reqCduKw, cduSys.hydraulics.pump_power_kw, { cwPumpKw: cduSys.hydraulics.cw_pump_power_kw });
+                    cduSys.sizingArch = arch;
+                }
             }
 
             if (typeof SizingEngine !== 'undefined') {
@@ -2102,15 +2152,206 @@
 
             const reqAirKw = airHeatTotal;
 
-            // V24 Phase 2: 若架構變更或尚未初始化，依新架構動態生成選型清單
-            if (!fwSys.sizing || fwSys.sizing.length === 0 || fwSys.sizingArch !== fwArch) {
-                fwSys.sizing = this.generateFwSizing(fwArch, reqAirKw, fwSys.hydraulics.pump_power_kw, { cwPumpKw: fwSys.hydraulics.cw_pump_power_kw });
-                fwSys.sizingArch = fwArch;
+            // V24 Phase 2: 若架構變更或尚未初始化，依新架構動態生成選型清單；若加入共用群組則單元端只保留 terminal 終端設備
+            if (fwSys.plantId) {
+                if (!fwSys.sizing || fwSys.sizing.length === 0 || fwSys.sizingArch !== fwArch || fwSys.sizing.some(s => s.role !== 'terminal')) {
+                    const fullSizing = this.generateFwSizing(fwArch, reqAirKw, fwSys.hydraulics.pump_power_kw, { cwPumpKw: fwSys.hydraulics.cw_pump_power_kw });
+                    fwSys.sizing = fullSizing.filter(s => s.role === 'terminal');
+                    fwSys.sizingArch = fwArch;
+                }
+            } else {
+                if (!fwSys.sizing || fwSys.sizing.length === 0 || fwSys.sizingArch !== fwArch || fwSys.sizing.every(s => s.role === 'terminal')) {
+                    fwSys.sizing = this.generateFwSizing(fwArch, reqAirKw, fwSys.hydraulics.pump_power_kw, { cwPumpKw: fwSys.hydraulics.cw_pump_power_kw });
+                    fwSys.sizingArch = fwArch;
+                }
             }
 
             if (typeof SizingEngine !== 'undefined') {
                 SizingEngine.evaluateFwSizing(fwSys, reqAirKw, this.designConditions());
                 fwSys.validation = SizingEngine.validateFw(fwSys, pipeFw.velocity_mps);
+            }
+        },
+
+        // P-3: 共用冷卻系統群組 (Cooling Plant) 橋接、水力計算與設備選型評估
+        bridgePlantModel(plant) {
+            if (!plant || !plant.system) return;
+            if (!Array.isArray(plant.memberIds)) plant.memberIds = [];
+
+            // 建立所有單元快照並清理已被刪除或負載為 0 的成員
+            const allUnitsMap = new Map();
+            (this.state.halls || []).forEach(h => (h.dus || []).forEach(d => allUnitsMap.set(d.id, d)));
+            (this.state.corePods || []).forEach(p => allUnitsMap.set(p.id, p));
+
+            plant.memberIds = plant.memberIds.filter(id => {
+                const u = allUnitsMap.get(id);
+                if (!u) return false;
+                const summ = u.sus ? this.calcDuSummary(u) : this.calcCorePodSummary(u);
+                const load = plant.loop === 'liquid' ? summ.liquidHeatKw : (summ.airHeatKw + (summ.lossKw || 0));
+                return load > 0;
+            });
+
+            if (plant.memberIds.length === 0) {
+                plant.isEmpty = true;
+                return;
+            }
+            plant.isEmpty = false;
+
+            // 計算群組成員負載合計
+            let sumLoadKw = 0;
+            plant.memberIds.forEach(id => {
+                const u = allUnitsMap.get(id);
+                if (u) {
+                    const summ = u.sus ? this.calcDuSummary(u) : this.calcCorePodSummary(u);
+                    const load = plant.loop === 'liquid' ? summ.liquidHeatKw : (summ.airHeatKw + (summ.lossKw || 0));
+                    sumLoadKw += load;
+                }
+            });
+
+            const diversity = (typeof plant.diversityFactor === 'number' && plant.diversityFactor > 0)
+                ? Math.min(1.0, Math.max(0.1, plant.diversityFactor))
+                : 1.0;
+            const requiredKw = sumLoadKw * diversity;
+            const dCond = this.designConditions();
+
+            if (plant.loop === 'liquid') {
+                const cduSys = plant.system;
+                cduSys.designBasis = {
+                    liq_load_kw: requiredKw,
+                    dlc_ratio: 100
+                };
+                const arch = cduSys.architecture || 'dry_cooler_hx';
+                const cduArchDesc = (typeof CoolingArchRegistry !== 'undefined') ? CoolingArchRegistry.get(arch) : null;
+                const hasGlycol = ['dry_cooler_hx', 'dry_cooler_pure', 'dry_cooler_trim', 'cooling_tower_hx'].includes(arch);
+                const cpCdu = hasGlycol ? ((typeof A === 'function') ? A('glycol_cp_kj_kgk') : 3.90) : 4.186;
+                const dT_cdu = Math.max(1.0, (cduSys.fwsReturnC || 55) - (cduSys.fwsSupplyC || 40));
+                const flowLpm_cdu = requiredKw > 0 ? Math.round((requiredKw * 60) / (cpCdu * 1.0 * dT_cdu)) : 0;
+                const pipeCdu = this.selectPipeDnAndVelocity(flowLpm_cdu);
+
+                const baseCduHeadM = cduSys.pumpHeadM ?? ((typeof A === 'function') ? A('cdu_pump_head_default_m') : 28);
+                const extraPheHeadM = (cduSys.hasPhe !== false || cduArchDesc?.flags?.isTrim || cduSys.architecture === 'dry_cooler_trim')
+                    ? ((typeof A === 'function') ? A('phe_secondary_loop_head_m') : 16.0)
+                    : 0.0;
+                const cduHeadM = baseCduHeadM + extraPheHeadM;
+
+                const pumpItemCdu = (cduSys.sizing || []).find(s => s.key === 'cdu_pump');
+                const catEntryCdu = pumpItemCdu ? (pumpItemCdu.catalog || []).find(c => c.model === pumpItemCdu.selectedModel) : null;
+                const etaPumpCdu = catEntryCdu?.pumpEtaDesign ?? catEntryCdu?.pump_eta_design ?? ((typeof A === 'function') ? A('pump_eta_default') : 0.75);
+                const etaMotorCdu = (typeof catEntryCdu?.motor_efficiency_pct === 'number' && catEntryCdu.motor_efficiency_pct > 0)
+                    ? (catEntryCdu.motor_efficiency_pct / 100)
+                    : (catEntryCdu?.motorEtaDesign ?? ((typeof A === 'function') ? A('motor_eta_default') : 0.92));
+                let cduPumpPowerKw = flowLpm_cdu > 0
+                    ? (flowLpm_cdu * cduHeadM * 9.80665) / (60000 * etaPumpCdu * etaMotorCdu)
+                    : 0;
+
+                let cwPumpPowerKwCdu = 0;
+                if ((cduArchDesc?.flags?.needsCwPump || cduArchDesc?.flags?.isWaterChiller || cduSys.architecture === 'water_chiller') && requiredKw > 0) {
+                    const cwDt = (typeof A === 'function') ? A('cw_loop_delta_t_c') : 5.5;
+                    const cwHeadM = (typeof A === 'function') ? A('cw_pump_head_default_m') : 22.0;
+                    const chillerItem = (cduSys.sizing || []).find(s => s.key === 'water_cooled_chiller' || s.key === 'trim_chiller');
+                    const catChiller = chillerItem ? (chillerItem.catalog || []).find(c => c.model === chillerItem.selectedModel) : null;
+                    const copDesign = catChiller?.cop ?? catChiller?.cop_design;
+                    const rejFactor = (typeof copDesign === 'number' && copDesign > 0)
+                        ? (1 + 1 / copDesign)
+                        : ((typeof A === 'function') ? A('tower_heat_rejection_factor') : 1.2);
+                    const qRejCdu = requiredKw * rejFactor;
+                    const flowLpmCw = (qRejCdu * 60) / (4.186 * cwDt);
+                    cwPumpPowerKwCdu = (flowLpmCw * cwHeadM * 9.80665) / (60000 * etaPumpCdu * etaMotorCdu);
+                }
+
+                cduSys.hydraulics = {
+                    flow_lpm: flowLpm_cdu,
+                    pipe_dn: pipeCdu.pipe_dn,
+                    velocity_mps: pipeCdu.velocity_mps,
+                    pump_head_m: cduHeadM,
+                    pump_power_kw: cduPumpPowerKw,
+                    cw_pump_power_kw: cwPumpPowerKwCdu
+                };
+
+                // 群組 sizing 只包含主機房設備 (排除 terminal)
+                if (!cduSys.sizing || cduSys.sizing.length === 0 || cduSys.sizingArch !== arch || cduSys.sizing.some(s => s.role === 'terminal')) {
+                    const fullSizing = this.generateCduSizing(arch, requiredKw, cduSys.hydraulics.pump_power_kw, {
+                        cwPumpKw: cduSys.hydraulics.cw_pump_power_kw,
+                        defaultRedundancy: plant.redundancy || 'N+1'
+                    });
+                    cduSys.sizing = fullSizing.filter(s => s.role !== 'terminal');
+                    cduSys.sizingArch = arch;
+                }
+
+                cduSys.sizing.forEach(s => {
+                    if (!s.redundancy) s.redundancy = plant.redundancy || 'N+1';
+                });
+
+                if (typeof SizingEngine !== 'undefined') {
+                    SizingEngine.evaluateCduSizing(cduSys, requiredKw, dCond, {
+                        trimOperatingPoint: this.trimOperatingPoint.bind(this)
+                    });
+                    cduSys.validation = SizingEngine.validateCdu(cduSys, pipeCdu.velocity_mps, dCond, cduArchDesc);
+                }
+            } else {
+                // Air loop
+                const fwSys = plant.system;
+                fwSys.designBasis = {
+                    air_load_kw: requiredKw
+                };
+                const fwArch = fwSys.architecture || 'air_cooled_chiller';
+                const fwArchDesc = (typeof CoolingArchRegistry !== 'undefined') ? CoolingArchRegistry.get(fwArch) : null;
+                const dT_fw = Math.max(1.0, (fwSys.chwReturnC || 18) - (fwSys.chwSupplyC || 12));
+                const flowLpm_fw = requiredKw > 0 ? Math.round((requiredKw * 60) / (4.186 * 1.0 * dT_fw)) : 0;
+                const pipeFw = this.selectPipeDnAndVelocity(flowLpm_fw);
+
+                const fwHeadM = fwSys.pumpHeadM ?? ((typeof A === 'function') ? A('fw_pump_head_default_m') : 22);
+                const pumpItemFw = (fwSys.sizing || []).find(s => s.key === 'fw_pump');
+                const catEntryFw = pumpItemFw ? (pumpItemFw.catalog || []).find(c => c.model === pumpItemFw.selectedModel) : null;
+                const etaPumpFw = catEntryFw?.pumpEtaDesign ?? catEntryFw?.pump_eta_design ?? ((typeof A === 'function') ? A('pump_eta_default') : 0.75);
+                const etaMotorFw = (typeof catEntryFw?.motor_efficiency_pct === 'number' && catEntryFw.motor_efficiency_pct > 0)
+                    ? (catEntryFw.motor_efficiency_pct / 100)
+                    : (catEntryFw?.motorEtaDesign ?? ((typeof A === 'function') ? A('motor_eta_default') : 0.92));
+                let fwPumpPowerKw = flowLpm_fw > 0
+                    ? (flowLpm_fw * fwHeadM * 9.80665) / (60000 * etaPumpFw * etaMotorFw)
+                    : 0;
+
+                let cwPumpPowerKwFw = 0;
+                if ((fwArchDesc?.flags?.needsCwPump || fwSys.architecture === 'water_cooled_chiller') && requiredKw > 0) {
+                    const cwDt = (typeof A === 'function') ? A('cw_loop_delta_t_c') : 5.5;
+                    const cwHeadM = (typeof A === 'function') ? A('cw_pump_head_default_m') : 22.0;
+                    const chillerItem = (fwSys.sizing || []).find(s => s.key === 'water_cooled_chiller');
+                    const catChiller = chillerItem ? (chillerItem.catalog || []).find(c => c.model === chillerItem.selectedModel) : null;
+                    const copDesign = catChiller?.cop ?? catChiller?.cop_design;
+                    const rejFactor = (typeof copDesign === 'number' && copDesign > 0)
+                        ? (1 + 1 / copDesign)
+                        : ((typeof A === 'function') ? A('tower_heat_rejection_factor') : 1.2);
+                    const qRejFw = requiredKw * rejFactor;
+                    const flowLpmCwFw = (qRejFw * 60) / (4.186 * cwDt);
+                    cwPumpPowerKwFw = (flowLpmCwFw * cwHeadM * 9.80665) / (60000 * etaPumpFw * etaMotorFw);
+                }
+
+                fwSys.hydraulics = {
+                    flow_lpm: flowLpm_fw,
+                    pipe_dn: pipeFw.pipe_dn,
+                    velocity_mps: pipeFw.velocity_mps,
+                    pump_head_m: fwHeadM,
+                    pump_power_kw: fwPumpPowerKw,
+                    cw_pump_power_kw: cwPumpPowerKwFw
+                };
+
+                // 群組 sizing 只包含主機房設備 (排除 terminal)
+                if (!fwSys.sizing || fwSys.sizing.length === 0 || fwSys.sizingArch !== fwArch || fwSys.sizing.some(s => s.role === 'terminal')) {
+                    const fullSizing = this.generateFwSizing(fwArch, requiredKw, fwSys.hydraulics.pump_power_kw, {
+                        cwPumpKw: fwSys.hydraulics.cw_pump_power_kw,
+                        defaultRedundancy: plant.redundancy || 'N+1'
+                    });
+                    fwSys.sizing = fullSizing.filter(s => s.role !== 'terminal');
+                    fwSys.sizingArch = fwArch;
+                }
+
+                fwSys.sizing.forEach(s => {
+                    if (!s.redundancy) s.redundancy = plant.redundancy || 'N+1';
+                });
+
+                if (typeof SizingEngine !== 'undefined') {
+                    SizingEngine.evaluateFwSizing(fwSys, requiredKw, dCond);
+                    fwSys.validation = SizingEngine.validateFw(fwSys, pipeFw.velocity_mps);
+                }
             }
         },
 

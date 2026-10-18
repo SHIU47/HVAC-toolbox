@@ -274,6 +274,241 @@
         },
 
         /**
+         * Simulates a member unit (DU or CorePod) which may be linked to shared cooling plants.
+         * If neither liquid nor air plant is specified, delegates directly to simulateUnit.
+         */
+        simulateMemberUnit(plantDesign, loadSumm, hourlyWeather, helpers = {}, liqPlant = null, airPlant = null) {
+            if (!liqPlant && !airPlant) {
+                return this.simulateUnit(plantDesign, loadSumm, hourlyWeather, helpers);
+            }
+
+            const calcLiquidLoopHour = helpers.calcLiquidLoopHour || (root.AppStore?.calcLiquidLoopHour ? root.AppStore.calcLiquidLoopHour.bind(root.AppStore) : null);
+            const calcAirLoopHour = helpers.calcAirLoopHour || (root.AppStore?.calcAirLoopHour ? root.AppStore.calcAirLoopHour.bind(root.AppStore) : null);
+            const resolveEquip = helpers.resolveEquipment || (root.AppStore?.resolveEquipment ? root.AppStore.resolveEquipment.bind(root.AppStore) : null);
+
+            const onHour = helpers.onHour;
+            const itKw = loadSumm.totalItKw || 0;
+            const lossKw = loadSumm.lossKw || 0;
+
+            const kwh = { it: 0, cduPump: 0, crahFan: 0, heatRejection: 0, chiller: 0, loss: 0 };
+            const cduKwh = { unit: 0, pump: 0, heatRej: 0, chiller: 0 };
+            const fwKwh = { pump: 0, crahFan: 0, heatRej: 0, chiller: 0 };
+            let waterM3 = 0;
+            let fcHours = 0;
+            let deficitHours = 0;
+            let maxDeficitKw = 0;
+            let heatRemovedKwh = 0;
+            let chillerEnvelopeHours = 0;
+            let allocatedLiqKwh = 0;
+            let allocatedAirKwh = 0;
+            const cduModeHours = { free: 0, partial: 0, mechanical: 0 };
+            const fwModeHours = { free: 0, partial: 0, mechanical: 0 };
+
+            const cduSys = plantDesign.cduSystem || {};
+            const fwSys = plantDesign.fanwallSystem || {};
+            const cduArch = cduSys.architecture || 'dry_cooler_hx';
+            const fwArch = fwSys.architecture || 'air_cooled_chiller';
+            const cduArchDesc = (typeof root.CoolingArchRegistry !== 'undefined') ? root.CoolingArchRegistry.get(cduArch) : null;
+            const fwArchDesc  = (typeof root.CoolingArchRegistry !== 'undefined') ? root.CoolingArchRegistry.get(fwArch) : null;
+
+            const cduEquip = resolveEquip ? resolveEquip(cduArchDesc, cduSys) : {};
+            const fwEquip  = resolveEquip ? resolveEquip(fwArchDesc, fwSys) : {};
+
+            const cduUnits = cduEquip.cdu_unit || [];
+            let cduUnitKw = 0;
+            let cduDeficitKw = 0;
+            if (cduUnits.length > 0 && typeof root.CDUEngine !== 'undefined' && loadSumm.liquidHeatKw > 0) {
+                const cduRes = root.CDUEngine.calcPower(cduUnits, loadSumm.liquidHeatKw);
+                cduUnitKw = cduRes.power_kw;
+                cduDeficitKw = cduRes.deficit_kw || 0;
+            } else if (loadSumm.liquidHeatKw > 0) {
+                cduUnitKw = (loadSumm.liquidHeatKw / 400) * 2.0;
+            }
+
+            const airHeatTotal = (loadSumm.airHeatKw || 0) + lossKw;
+            const isFwRdhx = !!fwArchDesc?.flags?.isRdhx;
+            const fwUnits = (isFwRdhx ? fwEquip.rdhx_unit : fwEquip.crah_unit) || [];
+            let crahFanKw = 0;
+            let crahDeficitKw = 0;
+            if (fwUnits.length > 0 && typeof root.CRAHEngine !== 'undefined' && airHeatTotal > 0) {
+                const crahRes = root.CRAHEngine.calcPower(fwUnits, airHeatTotal);
+                crahFanKw = crahRes.power_kw;
+                if (crahRes.deficit_kw > 0) crahDeficitKw = crahRes.deficit_kw;
+            } else if (airHeatTotal > 0) {
+                crahFanKw = isFwRdhx ? (airHeatTotal / 60) * 1.2 : (airHeatTotal / 60) * 4.8;
+            }
+
+            const liqShare = (liqPlant && liqPlant._sim && liqPlant._sim.totalHeatKw > 0)
+                ? (loadSumm.liquidHeatKw / liqPlant._sim.totalHeatKw)
+                : (1.0 / (liqPlant?.memberIds?.length || 1));
+            const airShare = (airPlant && airPlant._sim && airPlant._sim.totalHeatKw > 0)
+                ? (airHeatTotal / airPlant._sim.totalHeatKw)
+                : (1.0 / (airPlant?.memberIds?.length || 1));
+
+            const weatherCache = new Map();
+            for (let i = 0; i < 8760; i++) {
+                const w = hourlyWeather[i] || { db: 25, wb: 20 };
+                const cacheKey = (w.db !== undefined && w.wb !== undefined) ? `${w.db}_${w.wb}` : null;
+                let hr = cacheKey !== null ? weatherCache.get(cacheKey) : undefined;
+                if (hr === undefined) {
+                    let priPumpKw = 0, liqHeatRejKw = 0, liqChillerKw = 0, liqWaterM3 = 0;
+                    let liqDeficit = 0, liqMechLoadKw = 0, liqMode = 'free', liqEnvelope = false;
+                    let secPumpKw = 0, airHeatRejKw = 0, airChillerKw = 0, airWaterM3 = 0;
+                    let airDeficit = 0, airMechLoadKw = 0, airMode = 'free', airEnvelope = false;
+                    let hourAllocatedLiq = 0;
+                    let hourAllocatedAir = 0;
+
+                    if (liqPlant && liqPlant._sim) {
+                        const lHr = liqPlant._sim.hourly[i];
+                        priPumpKw = (lHr.primaryPumpKw || 0) * liqShare;
+                        liqHeatRejKw = (lHr.fanKw || 0) * liqShare;
+                        liqChillerKw = (lHr.compressorKw || 0) * liqShare;
+                        liqWaterM3 = (lHr.waterM3 || 0) * liqShare;
+                        liqDeficit = cduDeficitKw + ((lHr.deficitKw || 0) * liqShare);
+                        liqMechLoadKw = (lHr.mechLoadKw || 0) * liqShare;
+                        liqMode = lHr.mode || 'free';
+                        liqEnvelope = !!lHr.chillerEnvelopeExceeded;
+                        hourAllocatedLiq = priPumpKw + liqHeatRejKw + liqChillerKw;
+                    } else if (calcLiquidLoopHour) {
+                        const lHr = calcLiquidLoopHour(cduSys, loadSumm, w);
+                        priPumpKw = lHr.primaryPumpKw || 0;
+                        liqHeatRejKw = lHr.fanKw || 0;
+                        liqChillerKw = lHr.compressorKw || 0;
+                        liqWaterM3 = lHr.waterM3 || 0;
+                        liqDeficit = lHr.deficitKw || 0;
+                        liqMechLoadKw = lHr.mechLoadKw || 0;
+                        liqMode = lHr.mode || 'free';
+                        liqEnvelope = !!lHr.chillerEnvelopeExceeded;
+                    }
+
+                    if (airPlant && airPlant._sim) {
+                        const aHr = airPlant._sim.hourly[i];
+                        secPumpKw = (aHr.pumpKw || 0) * airShare;
+                        airHeatRejKw = (aHr.fanKw || 0) * airShare;
+                        airChillerKw = (aHr.compressorKw || 0) * airShare;
+                        airWaterM3 = (aHr.waterM3 || 0) * airShare;
+                        airDeficit = crahDeficitKw + ((aHr.deficitKw || 0) * airShare);
+                        airMechLoadKw = (aHr.mechLoadKw || 0) * airShare;
+                        airMode = aHr.mode || 'free';
+                        airEnvelope = !!aHr.chillerEnvelopeExceeded;
+                        hourAllocatedAir = secPumpKw + airHeatRejKw + airChillerKw;
+                    } else if (calcAirLoopHour) {
+                        const aHr = calcAirLoopHour(fwSys, loadSumm, w);
+                        secPumpKw = aHr.pumpKw || 0;
+                        airHeatRejKw = aHr.fanKw || 0;
+                        airChillerKw = aHr.compressorKw || 0;
+                        airWaterM3 = aHr.waterM3 || 0;
+                        airDeficit = aHr.deficitKw || 0;
+                        airMechLoadKw = aHr.mechLoadKw || 0;
+                        airMode = aHr.mode || 'free';
+                        airEnvelope = !!aHr.chillerEnvelopeExceeded;
+                    }
+
+                    const hourCduPumpKw = cduUnitKw + priPumpKw + secPumpKw;
+                    const hourCrahFanKw = crahFanKw;
+                    const hourHeatRejKw = liqHeatRejKw + airHeatRejKw;
+                    const hourChillerKw = liqChillerKw + airChillerKw;
+                    const hourWaterM3   = liqWaterM3 + airWaterM3;
+                    const hourDeficitKw = liqDeficit + airDeficit;
+                    const hourMechLoadKw = liqMechLoadKw + airMechLoadKw;
+                    const hourIsFree = (loadSumm.liquidHeatKw === 0 || liqMode === 'free') && (airHeatTotal === 0 || airMode === 'free');
+                    const hourHeatRemovedKw = Math.max(0, loadSumm.liquidHeatKw + airHeatTotal - hourDeficitKw);
+
+                    hr = {
+                        cduPumpKw: hourCduPumpKw,
+                        crahFanKw: hourCrahFanKw,
+                        heatRejKw: hourHeatRejKw,
+                        chillerKw: hourChillerKw,
+                        lossKw,
+                        waterM3: hourWaterM3,
+                        isFreeHour: hourIsFree,
+                        capacityDeficitKw: hourDeficitKw,
+                        heatRemovedKw: hourHeatRemovedKw,
+                        cduMode: liqMode,
+                        fwMode: airMode,
+                        combinedMode: (liqMode === 'free' && airMode === 'free') ? 'free' : ((liqMode === 'mechanical' && airMode === 'mechanical') ? 'mechanical' : 'partial'),
+                        mechLoadKw: hourMechLoadKw,
+                        chillerEnvelopeExceeded: !!(liqEnvelope || airEnvelope),
+                        hourAllocatedLiq,
+                        hourAllocatedAir,
+                        cduKwh: {
+                            unit: cduUnitKw,
+                            pump: priPumpKw,
+                            heatRej: liqHeatRejKw,
+                            chiller: liqChillerKw,
+                            trimLoadKw: liqMechLoadKw
+                        },
+                        fwKwh: {
+                            pump: secPumpKw,
+                            crahFan: hourCrahFanKw,
+                            heatRej: airHeatRejKw,
+                            chiller: airChillerKw,
+                            chillerLoadKw: airMechLoadKw
+                        }
+                    };
+                    if (cacheKey !== null) weatherCache.set(cacheKey, hr);
+                }
+
+                kwh.it += itKw;
+                kwh.cduPump += hr.cduPumpKw;
+                kwh.crahFan += hr.crahFanKw;
+                kwh.heatRejection += hr.heatRejKw;
+                kwh.chiller += hr.chillerKw;
+                kwh.loss += lossKw;
+                waterM3 += hr.waterM3;
+                heatRemovedKwh += hr.heatRemovedKw;
+                allocatedLiqKwh += (hr.hourAllocatedLiq || 0);
+                allocatedAirKwh += (hr.hourAllocatedAir || 0);
+
+                if (hr.isFreeHour) fcHours++;
+                if (hr.cduMode && cduModeHours[hr.cduMode] !== undefined) cduModeHours[hr.cduMode]++;
+                if (hr.fwMode && fwModeHours[hr.fwMode] !== undefined) fwModeHours[hr.fwMode]++;
+                if (hr.capacityDeficitKw > 0) {
+                    deficitHours++;
+                    if (hr.capacityDeficitKw > maxDeficitKw) maxDeficitKw = hr.capacityDeficitKw;
+                }
+                if (hr.chillerEnvelopeExceeded) chillerEnvelopeHours++;
+
+                cduKwh.unit += hr.cduKwh.unit;
+                cduKwh.pump += hr.cduKwh.pump;
+                cduKwh.heatRej += hr.cduKwh.heatRej;
+                cduKwh.chiller += hr.cduKwh.chiller;
+                fwKwh.pump += hr.fwKwh.pump;
+                fwKwh.crahFan += hr.fwKwh.crahFan;
+                fwKwh.heatRej += hr.fwKwh.heatRej;
+                fwKwh.chiller += hr.fwKwh.chiller;
+
+                if (onHour) {
+                    onHour(i, hr, loadSumm);
+                }
+            }
+
+            const totalFacKwh = kwh.it + kwh.cduPump + kwh.crahFan + kwh.heatRejection + kwh.chiller + kwh.loss;
+            const pue = kwh.it > 0 ? (totalFacKwh / kwh.it).toFixed(3) : '1.000';
+            const wue = kwh.it > 0 ? ((waterM3 * 1000) / kwh.it).toFixed(3) : '0.000';
+
+            return {
+                kwh,
+                cduKwh,
+                fwKwh,
+                waterM3,
+                heatRemovedKwh,
+                fcHours,
+                deficitHours,
+                maxDeficitKw,
+                chillerEnvelopeHours,
+                totalFacKwh,
+                pue: parseFloat(pue),
+                wue: parseFloat(wue),
+                cduModeHours,
+                fwModeHours,
+                allocatedLiqKwh,
+                allocatedAirKwh,
+                allocatedPlantMwh: Math.round((allocatedLiqKwh + allocatedAirKwh) / 1000)
+            };
+        },
+
+        /**
          * Formats the byDu or byCorePod result object from simulation results.
          */
         formatUnitResult(unitMeta, plantDesign, loadSumm, sim) {
@@ -284,6 +519,9 @@
 
             return {
                 ...unitMeta,
+                liquidPlantId: unitMeta.liquidPlantId ?? cduSys?.plantId ?? null,
+                airPlantId: unitMeta.airPlantId ?? fwSys?.plantId ?? null,
+                allocatedPlantMwh: unitMeta.allocatedPlantMwh ?? sim?.allocatedPlantMwh ?? 0,
                 cduArchitecture: cduArch,
                 cduSupplyTemp: cduSys.fwsSupplyC,
                 cduReturnTemp: cduSys.fwsReturnC,
@@ -322,7 +560,7 @@
         /**
          * Calculates energy, thermal, and hydraulic ledgers.
          */
-        calculateLedgers(overallKwh, overallTotalKwh, totalLiquidHeatKwh, totalAirHeatKwh, totalHeatRemovedKwh) {
+        calculateLedgers(overallKwh, overallTotalKwh, totalLiquidHeatKwh, totalAirHeatKwh, totalHeatRemovedKwh, plantAllocations = []) {
             const hvacTotalKwh = overallKwh.cduPump + overallKwh.crahFan + overallKwh.heatRejection + overallKwh.chiller;
             const totalGenHeatKwh = overallKwh.it + overallKwh.loss;
             const thermalImbalanceKwh = totalGenHeatKwh - totalHeatRemovedKwh;
@@ -344,6 +582,10 @@
                 chiller_kwh: overallKwh.chiller,
                 is_balanced: Math.abs(overallTotalKwh - (overallKwh.it + hvacTotalKwh + overallKwh.loss)) < 1e-3
             };
+            if (plantAllocations && plantAllocations.length > 0) {
+                energyLedger.plant_allocations = plantAllocations;
+                energyLedger.plant_allocations_balanced = plantAllocations.every(pa => pa.is_balanced);
+            }
 
             const thermalLedger = {
                 it_heat_kwh: overallKwh.it,
@@ -536,8 +778,88 @@
 
             const simHelpers = {
                 calcHourlyEnergy: helpers.calcHourlyEnergy,
+                calcLiquidLoopHour: helpers.calcLiquidLoopHour,
+                calcAirLoopHour: helpers.calcAirLoopHour,
+                resolveEquipment: helpers.resolveEquipment,
                 onHour
             };
+
+            // P-3: 預先檢查共用冷卻系統群組 (Cooling Plants)
+            if (helpers.bridgePlantModel && Array.isArray(state.coolingPlants)) {
+                state.coolingPlants.forEach(p => helpers.bridgePlantModel(p));
+            }
+            const activePlants = (state.coolingPlants || []).filter(p => !p.isEmpty && Array.isArray(p.memberIds) && p.memberIds.length > 0);
+            const plantById = new Map();
+            activePlants.forEach(p => plantById.set(p.id, p));
+
+            // 建立全部單元查找表與預備負載合計
+            const allUnitsMap = new Map();
+            (state.halls || []).forEach(h => (h.dus || []).forEach(d => allUnitsMap.set(d.id, d)));
+            (state.corePods || []).forEach(p => allUnitsMap.set(p.id, p));
+
+            // 若有啟用中的共用群組，先執行群組 8760 小時主機房設備模擬
+            activePlants.forEach(p => {
+                let qSum = 0;
+                p.memberIds.forEach(id => {
+                    const u = allUnitsMap.get(id);
+                    if (u) {
+                        const s = u.sus ? (helpers.calcDuSummary ? helpers.calcDuSummary(u) : u) : (helpers.calcCorePodSummary ? helpers.calcCorePodSummary(u) : u);
+                        const loss = (s.totalItKw || 0) * (facilityLossPct / 100);
+                        qSum += (p.loop === 'liquid' ? (s.liquidHeatKw || 0) : ((s.airHeatKw || 0) + loss));
+                    }
+                });
+
+                const plantHourly = new Array(8760);
+                const plantAnnualKwh = { chiller: 0, heatRej: 0, pump: 0 };
+                let plantWaterM3 = 0;
+                const plantModeHours = { free: 0, partial: 0, mechanical: 0 };
+                let plantDeficitHours = 0;
+                const pWeatherCache = new Map();
+
+                for (let h = 0; h < 8760; h++) {
+                    const w = hourlyWeather[h] || { db: 25, wb: 20 };
+                    const cacheKey = (w.db !== undefined && w.wb !== undefined) ? `${w.db}_${w.wb}` : null;
+                    let pHr = cacheKey !== null ? pWeatherCache.get(cacheKey) : undefined;
+                    if (pHr === undefined) {
+                        if (p.loop === 'liquid') {
+                            pHr = helpers.calcLiquidLoopHour
+                                ? helpers.calcLiquidLoopHour(p.system, { liquidHeatKw: qSum }, w)
+                                : (root.AppStore?.calcLiquidLoopHour ? root.AppStore.calcLiquidLoopHour(p.system, { liquidHeatKw: qSum }, w) : null);
+                        } else {
+                            pHr = helpers.calcAirLoopHour
+                                ? helpers.calcAirLoopHour(p.system, { airHeatKw: qSum, lossKw: 0 }, w)
+                                : (root.AppStore?.calcAirLoopHour ? root.AppStore.calcAirLoopHour(p.system, { airHeatKw: qSum, lossKw: 0 }, w) : null);
+                        }
+                        if (cacheKey !== null && pHr) pWeatherCache.set(cacheKey, pHr);
+                    }
+                    if (!pHr) {
+                        pHr = { compressorKw: 0, fanKw: 0, pumpKw: 0, primaryPumpKw: 0, waterM3: 0, mode: 'free', deficitKw: 0, mechLoadKw: 0, chillerEnvelopeExceeded: false };
+                    }
+                    plantHourly[h] = pHr;
+                    plantAnnualKwh.chiller += (pHr.compressorKw || 0);
+                    plantAnnualKwh.heatRej += (pHr.fanKw || 0);
+                    plantAnnualKwh.pump += (p.loop === 'liquid' ? (pHr.primaryPumpKw || 0) : (pHr.pumpKw || 0));
+                    plantWaterM3 += (pHr.waterM3 || 0);
+                    if (pHr.mode && plantModeHours[pHr.mode] !== undefined) {
+                        plantModeHours[pHr.mode]++;
+                    }
+                    if (pHr.deficitKw > 0) {
+                        plantDeficitHours++;
+                    }
+                }
+
+                p._sim = {
+                    hourly: plantHourly,
+                    annualKwh: plantAnnualKwh,
+                    waterM3: plantWaterM3,
+                    modeHours: plantModeHours,
+                    deficitHours: plantDeficitHours,
+                    peakLoadKw: qSum,
+                    totalHeatKw: qSum,
+                    totalKwh: plantAnnualKwh.chiller + plantAnnualKwh.heatRej + plantAnnualKwh.pump
+                };
+                p._allocatedKwh = 0;
+            });
 
             // 1. Simulate DUs
             (state.halls || []).forEach(hall => {
@@ -551,10 +873,27 @@
                         helpers.bridgeDuToPlantModel(du, duSumm);
                     }
 
-                    const sim = this.simulateUnit(du.plantDesign, duSumm, hourlyWeather, simHelpers);
+                    const liqPlant = du.plantDesign?.cduSystem?.plantId ? plantById.get(du.plantDesign.cduSystem.plantId) : null;
+                    const airPlant = du.plantDesign?.fanwallSystem?.plantId ? plantById.get(du.plantDesign.fanwallSystem.plantId) : null;
+
+                    const sim = this.simulateMemberUnit(du.plantDesign, duSumm, hourlyWeather, simHelpers, liqPlant, airPlant);
+
+                    if (liqPlant && sim.allocatedLiqKwh) {
+                        liqPlant._allocatedKwh = (liqPlant._allocatedKwh || 0) + sim.allocatedLiqKwh;
+                    }
+                    if (airPlant && sim.allocatedAirKwh) {
+                        airPlant._allocatedKwh = (airPlant._allocatedKwh || 0) + sim.allocatedAirKwh;
+                    }
 
                     const unitRes = this.formatUnitResult(
-                        { duId: du.id, duName: du.name, hallName: hall.name },
+                        {
+                            duId: du.id,
+                            duName: du.name,
+                            hallName: hall.name,
+                            liquidPlantId: liqPlant ? liqPlant.id : null,
+                            airPlantId: airPlant ? airPlant.id : null,
+                            allocatedPlantMwh: sim.allocatedPlantMwh || 0
+                        },
                         du.plantDesign,
                         duSumm,
                         sim
@@ -594,10 +933,26 @@
                 totalCorePodItKw += ps.totalItKw;
                 totalAllItKw += ps.totalItKw;
 
-                const sim = this.simulateUnit(pod.plantDesign, ps, hourlyWeather, simHelpers);
+                const liqPlant = pod.plantDesign?.cduSystem?.plantId ? plantById.get(pod.plantDesign.cduSystem.plantId) : null;
+                const airPlant = pod.plantDesign?.fanwallSystem?.plantId ? plantById.get(pod.plantDesign.fanwallSystem.plantId) : null;
+
+                const sim = this.simulateMemberUnit(pod.plantDesign, ps, hourlyWeather, simHelpers, liqPlant, airPlant);
+
+                if (liqPlant && sim.allocatedLiqKwh) {
+                    liqPlant._allocatedKwh = (liqPlant._allocatedKwh || 0) + sim.allocatedLiqKwh;
+                }
+                if (airPlant && sim.allocatedAirKwh) {
+                    airPlant._allocatedKwh = (airPlant._allocatedKwh || 0) + sim.allocatedAirKwh;
+                }
 
                 const podRes = this.formatUnitResult(
-                    { podId: pod.id, podName: pod.name },
+                    {
+                        podId: pod.id,
+                        podName: pod.name,
+                        liquidPlantId: liqPlant ? liqPlant.id : null,
+                        airPlantId: airPlant ? airPlant.id : null,
+                        allocatedPlantMwh: sim.allocatedPlantMwh || 0
+                    },
                     pod.plantDesign,
                     ps,
                     sim
@@ -661,13 +1016,39 @@
             const totalLiquidHeatKwh = byDuResults.reduce((s, d) => s + (d.liquidHeatKw * 8760), 0) + byCorePodResults.reduce((s, p) => s + (p.liquidHeatKw * 8760), 0);
             const totalAirHeatKwh = byDuResults.reduce((s, d) => s + (((d.airHeatKw || 0) + (d.lossKw || 0)) * 8760), 0) + byCorePodResults.reduce((s, p) => s + (((p.airHeatKw || 0) + (p.lossKw || 0)) * 8760), 0);
 
+            const plantAllocations = activePlants.map(p => ({
+                plantId: p.id,
+                plantName: p.name,
+                plantTotalKwh: p._sim?.totalKwh || 0,
+                allocatedKwh: p._allocatedKwh || 0,
+                diffKwh: Math.abs((p._sim?.totalKwh || 0) - (p._allocatedKwh || 0)),
+                is_balanced: Math.abs((p._sim?.totalKwh || 0) - (p._allocatedKwh || 0)) < 1e-4
+            }));
+
             const { energyLedger, thermalLedger, hydraulicLedger } = this.calculateLedgers(
                 overallKwh,
                 overallTotalKwh,
                 totalLiquidHeatKwh,
                 totalAirHeatKwh,
-                totalAllHeatRemovedKwh
+                totalAllHeatRemovedKwh,
+                plantAllocations
             );
+
+            const byPlantResults = activePlants.map(p => ({
+                id: p.id,
+                name: p.name,
+                loop: p.loop,
+                memberIds: [...p.memberIds],
+                annualMwh: {
+                    chiller: Math.round((p._sim?.annualKwh?.chiller || 0) / 1000),
+                    heatRej: Math.round((p._sim?.annualKwh?.heatRej || 0) / 1000),
+                    pump: Math.round((p._sim?.annualKwh?.pump || 0) / 1000)
+                },
+                waterM3: Math.round(p._sim?.waterM3 || 0),
+                modeHours: p._sim?.modeHours || { free: 0, partial: 0, mechanical: 0 },
+                deficitHours: p._sim?.deficitHours || 0,
+                peakLoadKw: Math.round(p._sim?.peakLoadKw || 0)
+            }));
 
             const profileResult = this.buildHourlyProfile(hourlyWeather, hourlyFacilityStats);
             const cduFreeHours = profileResult.cduFreeHours;
@@ -701,8 +1082,10 @@
                     breakdownKwh: overallKwh,
                     energyLedger,
                     thermalLedger,
-                    hydraulicLedger
+                    hydraulicLedger,
+                    byPlant: byPlantResults
                 },
+                byPlant: byPlantResults,
                 byDu: byDuResults,
                 byCorePod: byCorePodResults,
                 corePodGroup: {

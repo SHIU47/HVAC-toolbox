@@ -347,18 +347,33 @@
             const designWb = dCond?.designWb ?? 28.0;
 
             const trimChillerForCheck = cduSys.sizing?.find(s => s.key === 'trim_chiller');
-            const checks = [
-                t('sizing.checkCduCap', {
-                    mark: cduSys.sizing?.[0]?.passed ? '✓' : '✗',
-                    cap: cduSys.sizing?.[0]?.effectiveCapKw,
-                    status: cduSys.sizing?.[0]?.passed ? t('sizing.statusOk') : t('sizing.statusFail')
-                }),
-                cduSys.sizing?.[1] ? t('sizing.checkItemCap', {
-                    mark: cduSys.sizing[1].passed ? '✓' : '✗',
-                    label: cduSys.sizing[1].label,
-                    cap: cduSys.sizing[1].effectiveCapKw,
-                    status: cduSys.sizing[1].passed ? t('sizing.statusOk') : t('sizing.statusFail')
-                }) : '',
+            const hasTerminal = (cduSys.sizing || []).some(s => s.role === 'terminal' || s.key === 'cdu_unit');
+            const checks = [];
+            if (hasTerminal) {
+                checks.push(
+                    t('sizing.checkCduCap', {
+                        mark: cduSys.sizing?.[0]?.passed ? '✓' : '✗',
+                        cap: cduSys.sizing?.[0]?.effectiveCapKw,
+                        status: cduSys.sizing?.[0]?.passed ? t('sizing.statusOk') : t('sizing.statusFail')
+                    }),
+                    cduSys.sizing?.[1] ? t('sizing.checkItemCap', {
+                        mark: cduSys.sizing[1].passed ? '✓' : '✗',
+                        label: cduSys.sizing[1].label,
+                        cap: cduSys.sizing[1].effectiveCapKw,
+                        status: cduSys.sizing[1].passed ? t('sizing.statusOk') : t('sizing.statusFail')
+                    }) : ''
+                );
+            } else {
+                (cduSys.sizing || []).forEach(item => {
+                    checks.push(t('sizing.checkItemCap', {
+                        mark: item.passed ? '✓' : '✗',
+                        label: item.label,
+                        cap: item.effectiveCapKw,
+                        status: item.passed ? t('sizing.statusOk') : t('sizing.statusFail')
+                    }));
+                });
+            }
+            checks.push(
                 t('sizing.checkCduVelocity', {
                     mark: cduVelOk ? '✓' : '⚠',
                     vel: pipeCduVelocityMps,
@@ -370,7 +385,7 @@
                     avail: trimChillerForCheck.effectiveCapKw,
                     note: trimChillerForCheck.maxMechanicalPassed ? t('sizing.trimAdequate') : t('sizing.trimInadequate')
                 }) : ''
-            ];
+            );
 
             // Q-1: Trim chiller CEWT envelope check at extreme/peak heat conditions
             if (trimChillerForCheck) {
