@@ -3565,6 +3565,35 @@ function sizeCduToDeratedN1(S) {
     const resCent = ChillerEngine.calcPower(1000, [centChiller], 10.0, 32.0, 35.0);
     assert(resScrew.power_kw !== resCent.power_kw, 'screw curve and centrifugal curve must yield different power: screw=' + resScrew.power_kw + ', cent=' + resCent.power_kw);
   });
+
+  test('I-1: i18n dictionaries have identical key sets and no empty strings', () => {
+    const { I18N } = freshCtx();
+    assert(I18N, 'I18N must exist on context');
+    const zhKeys = Object.keys(I18N.dict['zh-TW']).sort();
+    const enKeys = Object.keys(I18N.dict.en).sort();
+    assert(zhKeys.length > 0, 'zh-TW dict should not be empty');
+    assert.deepStrictEqual(zhKeys, enKeys, 'zh-TW and en must have identical keys');
+    zhKeys.forEach(k => {
+      assert(I18N.dict['zh-TW'][k].trim().length > 0, `zh-TW[${k}] must not be empty`);
+      assert(I18N.dict.en[k].trim().length > 0, `en[${k}] must not be empty`);
+    });
+  });
+
+  test('I-1: t() returns key itself when key not found, without throwing', () => {
+    const { I18N } = freshCtx();
+    const missing = 'some.non_existent.key_12345';
+    assert.strictEqual(I18N.t(missing), missing);
+  });
+
+  test('I-1: t() interpolates parameters properly in both languages', () => {
+    const { I18N } = freshCtx();
+    I18N.setLang('zh-TW');
+    const zhMsg = I18N.t('step4.deficitMsg', { n: 3, redundancy: 'N+1' });
+    assert.strictEqual(zhMsg, '尚有 3 項設備容量未達 N+1 規範');
+    I18N.setLang('en');
+    const enMsg = I18N.t('step4.deficitMsg', { n: 3, redundancy: 'N+1' });
+    assert.strictEqual(enMsg, '3 equipment item(s) below N+1 capacity requirement');
+  });
 })();
 
 console.log(`\n${passCount} passed, ${failCount} failed, ${skipCount} skipped`);

@@ -6,7 +6,7 @@ const ctx = { console, Math, JSON, Date, setTimeout, clearTimeout, parseFloat, p
 ctx.window = ctx; ctx.global = ctx; ctx.globalThis = ctx;
 vm.createContext(ctx);
 // ⚠ 順序需與 index.html 一致；Phase C 新增檔案時同步更新此清單
-const FILES = ['assumptions.js','engines_core.js','engines_cdu.js','engines_crah.js','engines_chiller.js',
+const FILES = ['assumptions.js','i18n.js','i18n_zh.js','i18n_en.js','engines_core.js','engines_cdu.js','engines_crah.js','engines_chiller.js',
   'engines_cooling_tower.js','engines_free_cooling.js','engines_hx.js','engines_pump.js',
   'cooling/registry.js',
   'cooling/stages/stage_dry_cooler.js',

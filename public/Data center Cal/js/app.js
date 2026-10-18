@@ -58,6 +58,30 @@
             window.AppStore.subscribe(() => {
                 this.updateStickyBar();
             });
+
+            if (window.I18N) {
+                const updateLangToggleUi = (lang) => {
+                    const btnZh = document.getElementById('langBtnZh');
+                    const btnEn = document.getElementById('langBtnEn');
+                    if (btnZh && btnEn) {
+                        if (lang === 'zh-TW') {
+                            btnZh.className = 'px-2.5 py-1 text-[11px] font-semibold rounded-md transition bg-surface text-primary shadow-sm';
+                            btnEn.className = 'px-2.5 py-1 text-[11px] font-medium rounded-md transition text-secondary hover:text-primary';
+                        } else {
+                            btnZh.className = 'px-2.5 py-1 text-[11px] font-medium rounded-md transition text-secondary hover:text-primary';
+                            btnEn.className = 'px-2.5 py-1 text-[11px] font-semibold rounded-md transition bg-surface text-primary shadow-sm';
+                        }
+                    }
+                };
+                window.I18N.onChange((lang) => {
+                    updateLangToggleUi(lang);
+                    this.renderStep(this.currentStep);
+                    this.updateStickyBar();
+                    window.I18N.applyStatic();
+                });
+                updateLangToggleUi(window.I18N.lang);
+                window.I18N.applyStatic();
+            }
         },
 
         exportProjectFile() {
