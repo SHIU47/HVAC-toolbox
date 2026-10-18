@@ -62,7 +62,8 @@
                 unitCapKw,
                 selectedQty: qty,
                 requiredKw: reqKw,
-                requiredUnitsN1: n1
+                requiredUnitsN1: n1,
+                userEdited: false
             };
 
             if (typeof eq.extraProps === 'function') {
@@ -131,7 +132,9 @@
                     s.requiredKw = Math.round(reqCduKw + trimDesignPowerKw);
                 }
 
-                const curItem = s.catalog.find(c => c.model === s.selectedModel) || s.catalog[0];
+                const curItem = (s.catalog && Array.isArray(s.catalog))
+                    ? (s.catalog.find(c => c.model === s.selectedModel) || s.catalog[0] || { capKw: s.unitCapKw || 100 })
+                    : { capKw: s.unitCapKw || 100 };
                 s.unitCapKw = curItem.capKw;
 
                 let derateFactor = 1.0;
@@ -168,6 +171,7 @@
                 }
                 s.derateFactor = Math.round(derateFactor * 1000) / 1000;
                 s.requiredUnitsN1 = Math.max(2, Math.ceil(s.requiredKw / (s.unitCapKw * s.derateFactor)) + 1);
+                if (!s.userEdited && s.selectedQty < s.requiredUnitsN1) s.selectedQty = s.requiredUnitsN1;
                 s.effectiveCapKw = Math.round(Math.max(0, s.selectedQty - 1) * s.unitCapKw * s.derateFactor);
                 s.passed = (s.effectiveCapKw >= s.requiredKw) && (s.selectedQty >= 2);
                 const derateNote = (s.derateFactor < 0.999) ? `（已依設計工況降額 ×${s.derateFactor.toFixed(2)}）` : '';
@@ -198,7 +202,9 @@
                 if (s.key === 'cooling_tower') s.requiredKw = reqAirKw * getTowerRejectionFactor();
                 if (s.key === 'fw_pump') s.requiredKw = fwSys.hydraulics.pump_power_kw;
 
-                const curItem = s.catalog.find(c => c.model === s.selectedModel) || s.catalog[0];
+                const curItem = (s.catalog && Array.isArray(s.catalog))
+                    ? (s.catalog.find(c => c.model === s.selectedModel) || s.catalog[0] || { capKw: s.unitCapKw || 100 })
+                    : { capKw: s.unitCapKw || 100 };
                 s.unitCapKw = curItem.capKw;
 
                 let derateFactor = 1.0;
@@ -228,6 +234,7 @@
                 }
                 s.derateFactor = Math.round(derateFactor * 1000) / 1000;
                 s.requiredUnitsN1 = Math.max(2, Math.ceil(s.requiredKw / (s.unitCapKw * s.derateFactor)) + 1);
+                if (!s.userEdited && s.selectedQty < s.requiredUnitsN1) s.selectedQty = s.requiredUnitsN1;
                 s.effectiveCapKw = Math.round(Math.max(0, s.selectedQty - 1) * s.unitCapKw * s.derateFactor);
                 s.passed = (s.effectiveCapKw >= s.requiredKw) && (s.selectedQty >= 2);
                 const derateNote = (s.derateFactor < 0.999) ? `（已依設計工況降額 ×${s.derateFactor.toFixed(2)}）` : '';

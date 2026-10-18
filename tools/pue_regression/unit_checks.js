@@ -237,8 +237,9 @@ function sizeCduToDeratedN1(S) {
   test('P1-1 CDU sizing applies derateFactor at 40C FWS', () => {
     assert(cduSizing, 'cdu_unit sizing must exist');
     assert.strictEqual(cduSizing.derateFactor, 0.8);
-    // 10 台選用，N+1 可用台數 9，標稱 100 kW -> 9 * 100 * 0.8 = 720 kW
-    assert.strictEqual(cduSizing.effectiveCapKw, 720);
+    // 12 台選用 (N+1 含降額自動選型)，N+1 可用台數 11，標稱 100 kW -> 11 * 100 * 0.8 = 880 kW
+    assert.strictEqual(cduSizing.selectedQty, 12);
+    assert.strictEqual(cduSizing.effectiveCapKw, 880);
     assert.strictEqual(cduSizing.unitCapKw, 100);
     assert(cduSizing.requiredText.includes('（已依設計工況降額 ×0.80）'), 'requiredText should note derating');
   });
@@ -3162,7 +3163,8 @@ function sizeCduToDeratedN1(S) {
           ],
           selectedModel: 'Pump-Small',
           unitCapKw: 3.0,
-          selectedQty: 3 // (3 - 1) * 3 = 6 kW motor capacity < 10 kW required
+          selectedQty: 3, // (3 - 1) * 3 = 6 kW motor capacity < 10 kW required
+          userEdited: true
         }
       ]
     };
@@ -3197,6 +3199,7 @@ function sizeCduToDeratedN1(S) {
 
     // Verify DOM rendering
     win.ViewCooling.render(win.document.getElementById('stepContent'));
+    win.ViewCooling.expandAll();
     const cduHeadInput = win.document.getElementById(`cduPumpHeadIn_${duWin.id}`);
     assert(cduHeadInput !== null, 'cduPumpHeadIn input must exist in DOM');
     assert(Number(cduHeadInput.value) === 72, 'cduPumpHeadIn must reflect updated value 72');
@@ -3426,7 +3429,7 @@ function sizeCduToDeratedN1(S) {
   const ctx = freshCtx();
   const { AppStore: S } = ctx;
 
-  test('R6 Benchmark: Default project Kaohsiung 4.5% loss PUE is 1.183 ± 0.005', () => {
+  test('R7 Benchmark: Default project Kaohsiung 4.5% loss PUE is 1.188 ± 0.005', () => {
     S.state.site.selectedCity = '高雄 (Kaohsiung)';
     const data = ctx.BUILTIN_WEATHER_DATA['高雄 (Kaohsiung)'];
     S.state.site.hourly = data.hourlyData;
@@ -3436,14 +3439,14 @@ function sizeCduToDeratedN1(S) {
     S.state.facilityElectricalLossPct = 4.5;
     S.calculate();
     const pue = S.state.results.overall.annualPue;
-    assert(Math.abs(pue - 1.183) < 0.005, `Default Kaohsiung 4.5% loss PUE must be ~1.183, got ${pue}`);
+    assert(Math.abs(pue - 1.188) < 0.005, `Default Kaohsiung 4.5% loss PUE must be ~1.188, got ${pue}`);
   });
 
-  test('R6 Benchmark: Default project Kaohsiung 0.0% loss PUE is 1.124 ± 0.005', () => {
+  test('R7 Benchmark: Default project Kaohsiung 0.0% loss PUE is 1.130 ± 0.005', () => {
     S.state.facilityElectricalLossPct = 0.0;
     S.calculate();
     const pue = S.state.results.overall.annualPue;
-    assert(Math.abs(pue - 1.124) < 0.005, `Default Kaohsiung 0% loss PUE must be ~1.124, got ${pue}`);
+    assert(Math.abs(pue - 1.130) < 0.005, `Default Kaohsiung 0% loss PUE must be ~1.130, got ${pue}`);
   });
 
   const projPath = path.resolve(__dirname, '../../public/Data center Cal/projects/PUE_Project_高雄 (Kaohsiung)_20260901.json');
@@ -3459,6 +3462,87 @@ function sizeCduToDeratedN1(S) {
       assert(Math.abs(du1Pue - 1.128) < 0.005, `DU-01 PUE must be ~1.128, got ${du1Pue}`);
     });
   }
+})();
+
+// ── Round 7 R7-0a: 預設 CDU 台數計入降額與 userEdited 保護 ────────────────
+(function () {
+  const ctx = freshCtx();
+  const S = ctx.AppStore;
+
+  test('R7-0a: 全新預設專案 calculate() 後 capacityDeficitHours === 0', () => {
+    S.calculate();
+    const deficitHours = S.state.results.overall.capacityDeficitHours;
+    const cduItem = S.state.halls[0].dus[0].plantDesign.cduSystem.sizing.find(s => s.key === 'cdu_unit');
+    assert.strictEqual(deficitHours, 0, `Expected 0 deficit hours, got ${deficitHours}`);
+    assert(cduItem.selectedQty >= cduItem.requiredUnitsN1, `selectedQty ${cduItem.selectedQty} should be >= requiredUnitsN1 ${cduItem.requiredUnitsN1}`);
+    assert.strictEqual(cduItem.userEdited, false, 'default item userEdited should be false');
+  });
+
+  test('R7-0a: 使用者手動把 cdu_unit 改成 2 台 (userEdited=true) 後，重新 calculate() 不會被改回', () => {
+    const du = S.state.halls[0].dus[0];
+    S.updateSelectedEquipment(du.id, 'cdu', 'cdu_unit', undefined, 2);
+    const cduItem = du.plantDesign.cduSystem.sizing.find(s => s.key === 'cdu_unit');
+    assert.strictEqual(cduItem.userEdited, true, 'userEdited should be true after updateSelectedEquipment');
+    assert.strictEqual(cduItem.selectedQty, 2, 'selectedQty should be 2');
+    S.calculate();
+    const cduItemAfter = du.plantDesign.cduSystem.sizing.find(s => s.key === 'cdu_unit');
+    assert.strictEqual(cduItemAfter.selectedQty, 2, 'selectedQty must remain 2 after calculate() when userEdited=true');
+    assert.strictEqual(cduItemAfter.passed, false, 'cduItem with 2 units should fail passed check');
+  });
+
+  test('R7-0a: 載入舊專案（無 userEdited）時台數不被改動', () => {
+    const legacyProject = {
+      schemaVersion: 'v6',
+      facilityElectricalLossPct: 4.5,
+      site: { selectedCity: '高雄 (Kaohsiung)' },
+      halls: [
+        {
+          id: 'hall_legacy',
+          name: 'Legacy Hall',
+          dus: [
+            {
+              id: 'du_legacy',
+              name: 'DU Legacy',
+              sus: [
+                { id: 'su_1', equipment: [{ id: 'eq_1', itLoadKw: 800, liquidPct: 100, airPct: 0 }] }
+              ],
+              plantDesign: {
+                cduSystem: {
+                  architecture: 'dry_cooler_hx',
+                  secSupplyC: 45, secReturnC: 57, cduApproachC: 3,
+                  fwsSupplyC: 42, fwsReturnC: 54, dryCoolerApproachC: 5, pheApproachC: 2,
+                  sizing: [
+                    {
+                      key: 'cdu_unit',
+                      catalog: [{ model: 'CDU-100', capKw: 100 }],
+                      selectedModel: 'CDU-100',
+                      unitCapKw: 100,
+                      selectedQty: 10,
+                      requiredKw: 800,
+                      requiredUnitsN1: 12
+                    }
+                  ]
+                },
+                fanwallSystem: {
+                  architecture: 'air_cooled_chiller',
+                  sizing: []
+                }
+              }
+            }
+          ]
+        }
+      ],
+      corePods: []
+    };
+    const ctxLegacy = freshCtx();
+    const SL = ctxLegacy.AppStore;
+    SL.deserializeProject(JSON.stringify(legacyProject));
+    const cdu = SL.state.halls[0].dus[0].plantDesign.cduSystem.sizing.find(s => s.key === 'cdu_unit');
+    assert.strictEqual(cdu.userEdited, true, 'legacy item userEdited must be migrated to true');
+    assert.strictEqual(cdu.selectedQty, 10, 'legacy item selectedQty must NOT be changed on load');
+    SL.calculate();
+    assert.strictEqual(cdu.selectedQty, 10, 'legacy item selectedQty must NOT be changed after calculate()');
+  });
 })();
 
 console.log(`\n${passCount} passed, ${failCount} failed, ${skipCount} skipped`);

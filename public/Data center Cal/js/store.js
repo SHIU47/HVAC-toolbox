@@ -257,10 +257,15 @@
                     }
                 }
 
-                // Sizing 項目補齊 redundancy = 'N+1' (為 Phase E 預留)
+                if (!sys.sizingArch && sys.architecture) {
+                    sys.sizingArch = sys.architecture;
+                }
+
+                // Sizing 項目補齊 redundancy = 'N+1' (為 Phase E 預留) 與 userEdited = true
                 if (Array.isArray(sys.sizing)) {
                     sys.sizing.forEach(s => {
                         if (!s.redundancy) s.redundancy = 'N+1';
+                        if (s.userEdited === undefined) s.userEdited = true;
                     });
                 }
             };
@@ -1010,6 +1015,7 @@
             if (item) {
                 if (model !== undefined) item.selectedModel = model;
                 if (qty !== undefined) item.selectedQty = parseInt(qty, 10);
+                item.userEdited = true;
                 this.notify();
             }
         },
