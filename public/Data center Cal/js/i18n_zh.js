@@ -753,6 +753,12 @@
     'cooling.memberChipSupply': '晶片進水要求: {c}°C',
     'cooling.secSupply': '晶片供水溫度',
     'cooling.tempIncompatibleBrief': '群組FWS+CDU趨近超出要求',
+    'cooling.plantGroupingSubtitle': '可為多個 DU / CorePOD 建立共用主機房設備群組，或個別採用獨立系統',
+    'cooling.noPlantsInLoop': '目前無共用系統（所有單元獨立）',
+    'cooling.plantName': '系統名稱',
+    'cooling.redundancyLevel': '冗餘等級',
+    'cooling.statusMeetsN1': '符合',
+    'common.delete': '刪除',
 
     // ==========================================
     // Step 5: Dashboard & Analytics (dash.*)

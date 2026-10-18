@@ -753,6 +753,12 @@
     'cooling.memberChipSupply': 'Chip supply required: {c}°C',
     'cooling.secSupply': 'Chip Supply Temp',
     'cooling.tempIncompatibleBrief': 'Plant FWS + CDU approach exceeds requirement',
+    'cooling.plantGroupingSubtitle': 'Group multiple DUs / CorePODs into shared central plants, or keep dedicated systems',
+    'cooling.noPlantsInLoop': 'No shared plants currently (all units dedicated)',
+    'cooling.plantName': 'Plant Name',
+    'cooling.redundancyLevel': 'Redundancy Level',
+    'cooling.statusMeetsN1': 'Meets',
+    'common.delete': 'Delete',
 
     // ==========================================
     // Step 5: Dashboard & Analytics (dash.*)

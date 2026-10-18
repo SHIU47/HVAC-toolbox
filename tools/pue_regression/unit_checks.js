@@ -4531,6 +4531,89 @@ function sizeCduToDeratedN1(S) {
   });
 })();
 
+// ── P-4: Step 4 分組 UI 與快速配置 ─────────────────────────────────────
+(function () {
+  const ctx = freshCtx();
+  const S = ctx.AppStore;
+
+  test('P-4: applySiteSharedConfig creates 1 liquid and 1 air plant linking all loaded units', () => {
+    S.applySiteSharedConfig();
+    assert.strictEqual(S.state.coolingPlants.length, 2, 'Should create 2 plants (1 liquid, 1 air)');
+    const liqPlant = S.state.coolingPlants.find(p => p.loop === 'liquid');
+    const airPlant = S.state.coolingPlants.find(p => p.loop === 'air');
+    assert(liqPlant, 'Liquid plant must exist');
+    assert(airPlant, 'Air plant must exist');
+
+    const allDus = S.state.halls.flatMap(h => h.dus);
+    allDus.forEach(du => {
+      assert.strictEqual(du.plantDesign.cduSystem.plantId, liqPlant.id, 'DU liquid loop must link to liquid plant');
+      assert.strictEqual(du.plantDesign.fanwallSystem.plantId, airPlant.id, 'DU air loop must link to air plant');
+    });
+
+    const pod = S.state.corePods[0];
+    if (pod && pod.enabled !== false) {
+      assert.strictEqual(pod.plantDesign.fanwallSystem.plantId, airPlant.id, 'CorePOD must link to air plant');
+    }
+  });
+
+  test('P-4: applyDedicatedConfig resets coolingPlants and clears all plantIds', () => {
+    S.applyDedicatedConfig();
+    assert.strictEqual(S.state.coolingPlants.length, 0, 'coolingPlants must be empty');
+    const allDus = S.state.halls.flatMap(h => h.dus);
+    allDus.forEach(du => {
+      assert(!du.plantDesign.cduSystem.plantId, 'CDU plantId must be cleared');
+      assert(!du.plantDesign.fanwallSystem.plantId, 'Fanwall plantId must be cleared');
+    });
+  });
+
+  test('P-4: applyHallGroupedConfig groups units by Hall and associates CorePOD', () => {
+    S.applyHallGroupedConfig();
+    assert(S.state.coolingPlants.length >= 1, 'Should create at least 1 plant');
+    const liqPlant = S.state.coolingPlants.find(p => p.loop === 'liquid');
+    assert(liqPlant, 'Liquid plant for Hall 1 must exist');
+    assert(liqPlant.name.includes(S.state.halls[0].name), 'Plant name should include Hall name');
+  });
+
+  test('P-4: Temperature compatibility check flags incompatible chip supply requirement', () => {
+    const c2 = freshCtx();
+    const store2 = c2.AppStore;
+    store2.calculate();
+
+    // Create a plant with FWS = 43°C, CDU Approach = 3°C -> achievable min is 46°C
+    const plant = store2.addCoolingPlant({
+      loop: 'liquid',
+      memberIds: [store2.state.halls[0].dus[0].id],
+      redundancy: 'N+1',
+      system: { fwsSupplyC: 43.0, cduApproachC: 3.0, sizing: [] }
+    });
+    // Set member DU chip supply req to 45°C, but achievable is 43 + 3 = 46°C > 45°C
+    store2.state.halls[0].dus[0].plantDesign.cduSystem.secSupplyC = 45.0;
+    store2.state.halls[0].dus[0].plantDesign.cduSystem.cduApproachC = 3.0;
+
+    const res = store2.canProceedStep4();
+    assert.strictEqual(res.ok, false, 'canProceedStep4 must fail when chip supply requirement cannot be met');
+    assert(res.failedItems.some(fi => fi.equipName.includes('晶片供水溫度') || fi.selText.includes('超出要求')), 'Failed item must mention temperature incompatibility');
+  });
+
+  test('P-4: ViewCooling DOM harness renders grouping panel and shared plants', () => {
+    const { buildWindow } = require('./dom_harness.js');
+    const win = buildWindow();
+    win.AppStore.applySiteSharedConfig();
+    win.AppStore.calculate();
+
+    win.ViewCooling.render(win.document.getElementById('stepContent'));
+
+    const content = win.document.getElementById('stepContent').innerHTML;
+    assert(content.includes('冷卻系統分組') || content.includes('Cooling Plant Grouping'), 'Must contain grouping panel');
+    assert(content.includes('每個單元獨立') || content.includes('Dedicated'), 'Must contain quick config button');
+
+    const liqPlant = win.AppStore.state.coolingPlants.find(p => p.loop === 'liquid');
+    assert(liqPlant, 'Liquid plant must exist');
+    const plantEl = win.document.getElementById(`plant_${liqPlant.id}`);
+    assert(plantEl !== null, 'Shared plant element must be rendered in DOM');
+  });
+})();
+
 console.log(`\n${passCount} passed, ${failCount} failed, ${skipCount} skipped`);
 process.exit(failCount > 0 ? 1 : 0);
 
