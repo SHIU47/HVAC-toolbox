@@ -32,7 +32,7 @@ const APP_FILES = [
   'sizing/sizing_engine.js',
   'simulation/annual_runner.js',
   'weather_builtin.js', 'weather_source.js', 'ashrae_design_conditions.js', 'epw_parser.js', 'components/equipment_designer.js',
-  'device_catalog_builtin.js', 'catalog_manager.js', 'ui_kit.js', 'store.js', 'excel_export.js',
+  'device_catalog_builtin.js', 'catalog_manager.js', 'ui_kit.js', 'store.js', 'vendor/exceljs.min.js', 'excel_export.js',
   'views/view_weather.js', 'views/view_hall_su.js', 'views/view_corepod.js',
   'views/schematics/schematic_common.js',
   'views/schematics/schematic_single_loop.js',

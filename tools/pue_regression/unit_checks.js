@@ -2231,6 +2231,10 @@ function sizeCduToDeratedN1(S) {
     assert(win.App, 'win.App must exist');
     await win.App.init();
     win.App.renderStep(4);
+    const firstDu = win.AppStore.state.halls[0].dus[0];
+    if (win.ViewCooling && win.ViewCooling.toggleExpand) {
+      win.ViewCooling.toggleExpand(firstDu.id);
+    }
     const container = win.document.getElementById('stepContent');
     assert(container, '#stepContent must exist');
     assert(container.innerHTML.length > 500, 'Step 4 innerHTML must not be empty');
@@ -4030,6 +4034,110 @@ function sizeCduToDeratedN1(S) {
     }, err => {
       return cjkRegex.test(err.message);
     });
+  });
+})();
+
+// ═══════════════════════════════════════════════════════════════
+// I-7: Bilingual Excel Calculation Workbook Export
+// ═══════════════════════════════════════════════════════════════
+(function () {
+  const { buildWindow } = require('./dom_harness.js');
+  const win = buildWindow();
+  if (win.App && typeof win.App.init === 'function') {
+    win.App.init();
+  }
+
+  test('I-7: Dictionary contains all xls.* and excel.* keys with 100% parity', () => {
+    const zh = win.I18N.dict['zh-TW'];
+    const en = win.I18N.dict.en;
+    const xlsKeys = Object.keys(zh).filter(k => k.startsWith('xls.') || k.startsWith('excel.'));
+    assert(xlsKeys.length >= 100, `Expected at least 100 xls/excel keys, got ${xlsKeys.length}`);
+    for (const k of xlsKeys) {
+      assert(en[k], `Missing key in EN dictionary: ${k}`);
+      assert(en[k].trim().length > 0, `Empty translation for key in EN: ${k}`);
+    }
+  });
+
+  const wbZh = win.ExcelExport.buildWorkbook('zh-TW');
+  const wbEn = win.ExcelExport.buildWorkbook('en');
+
+  test('I-7: Exported workbooks contain 10 sheets with localized names', () => {
+    assert.strictEqual(wbZh.worksheets.length, 10, 'zh-TW workbook must have 10 sheets');
+    assert.strictEqual(wbEn.worksheets.length, 10, 'en workbook must have 10 sheets');
+    const expectedZh = [
+      '1.封面與專案資訊', '2.設計基準與假設', '3.氣象與自由冷卻分析',
+      '4.IT負載明細', '5.冷卻系統設計', '6.能耗與PUE-WUE計算',
+      '7.月度趨勢', '8.尖峰工況分析', '9.全廠總表與結論', '10.附錄-最熱日24h明細'
+    ];
+    const expectedEn = [
+      '1.Cover & Project Info', '2.Design Basis & Assumptions', '3.Weather & Free Cooling',
+      '4.IT Load Schedule', '5.Cooling System Design', '6.Energy & PUE-WUE',
+      '7.Monthly Trend', '8.Peak Condition Analysis', '9.Site Summary & Conclusion', '10.Appx-Hottest Day 24h'
+    ];
+    for (let i = 0; i < 10; i++) {
+      assert.strictEqual(wbZh.worksheets[i].name, expectedZh[i], `Sheet ${i + 1} name mismatch in zh-TW`);
+      assert.strictEqual(wbEn.worksheets[i].name, expectedEn[i], `Sheet ${i + 1} name mismatch in en`);
+    }
+  });
+
+  test('I-7: English workbook contains 0 residual CJK characters across all sheets', () => {
+    const whitelist = [];
+    (win.AppStore.state.halls || []).forEach(h => {
+      whitelist.push(h.name);
+      (h.dus || []).forEach(d => {
+        whitelist.push(d.name);
+        (d.sus || []).forEach(su => whitelist.push(su.name));
+      });
+    });
+    (win.AppStore.state.corePods || []).forEach(p => whitelist.push(p.name));
+    Object.values(win.CatalogManager?.catalogs || {}).forEach(cat => {
+      if (Array.isArray(cat)) cat.forEach(item => {
+        if (item.model) whitelist.push(item.model);
+      });
+    });
+    whitelist.push('(標準)');
+    if (win.AppStore.state.site?.selectedCity) whitelist.push(win.AppStore.state.site.selectedCity);
+
+    const residualCjk = [];
+    wbEn.eachSheet(sheet => {
+      sheet.eachRow(row => {
+        row.eachCell(cell => {
+          let val = cell.value;
+          if (val && typeof val === 'object' && val.formula) val = val.result || val.formula;
+          let str = String(val ?? '');
+          whitelist.forEach(w => { str = str.split(w).join(''); });
+          if (/[\u4e00-\u9fa5]/.test(str)) {
+            residualCjk.push({ sheet: sheet.name, cell: cell.address, text: str });
+          }
+        });
+      });
+    });
+    assert.strictEqual(residualCjk.length, 0, `English workbook has ${residualCjk.length} residual CJK cells: ` + JSON.stringify(residualCjk.slice(0, 5)));
+  });
+
+  test('I-7: Numerical cells between zh-TW and en workbooks match 100% across all sheets', () => {
+    let numChecked = 0;
+    const diffs = [];
+    for (let i = 0; i < 10; i++) {
+      const sZh = wbZh.worksheets[i];
+      const sEn = wbEn.worksheets[i];
+      sZh.eachRow((rZh, rIdx) => {
+        const rEn = sEn.getRow(rIdx);
+        rZh.eachCell((cZh, cIdx) => {
+          const cEn = rEn.getCell(cIdx);
+          const vZh = cZh.value;
+          const vEn = cEn.value;
+          if (typeof vZh === 'number' || typeof vEn === 'number') {
+            numChecked++;
+            if (vZh !== vEn && Math.abs((vZh || 0) - (vEn || 0)) > 1e-5) {
+              diffs.push({ sheet: i + 1, cell: cZh.address, vZh, vEn });
+            }
+          }
+        });
+      });
+    }
+    assert(numChecked >= 500, `Expected at least 500 numerical cells, checked ${numChecked}`);
+    assert.strictEqual(diffs.length, 0, `Found ${diffs.length} numerical cell differences: ` + JSON.stringify(diffs.slice(0, 5)));
   });
 })();
 

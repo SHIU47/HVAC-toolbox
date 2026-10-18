@@ -110,7 +110,11 @@
                             <button onclick="ViewDashboard.exportFullReportCsv()" class="${U.buttonClass('secondary')}">
                                 ${U.icon('download', 'w-3.5 h-3.5')} ${_t('dash.exportCsv', null, '匯出完整評估報告 (CSV)')}
                             </button>
-                            <button onclick="window.ExcelExport.generate()" class="${U.buttonClass('primary')}">
+                            <select id="excelExportLang" class="text-xs border border-border-default rounded px-2 py-1.5 bg-bg-card text-primary focus:outline-none focus:border-brand-500">
+                                <option value="zh-TW" ${(!window.I18N || window.I18N.lang !== 'en') ? 'selected' : ''}>${_t('excel.langZh', null, '中文計算書')}</option>
+                                <option value="en" ${(window.I18N && window.I18N.lang === 'en') ? 'selected' : ''}>${_t('excel.langEn', null, 'English Workbook')}</option>
+                            </select>
+                            <button onclick="window.ExcelExport.generate(document.getElementById('excelExportLang')?.value)" class="${U.buttonClass('primary')}">
                                 ${U.icon('file-spreadsheet', 'w-3.5 h-3.5')} ${_t('dash.exportExcel', null, '匯出 Excel 空調計算書 (公式連動)')}
                             </button>
                         </div>
