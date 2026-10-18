@@ -3546,6 +3546,25 @@ function sizeCduToDeratedN1(S) {
     SL.calculate();
     assert.strictEqual(cdu.selectedQty, 10, 'legacy item selectedQty must NOT be changed after calculate()');
   });
+
+  test('R7-0c: water-cooled screw chiller uses screw_standard curve under fixed curve', () => {
+    const { ChillerEngine } = freshCtx();
+    const screwChiller = {
+      cooling_capacity_kw: 1000,
+      cop_design: 5.5,
+      chiller_type: 'water_cooled',
+      category: 'water_cooled_screw',
+      cop_curve: { type: 'fixed' },
+      t_chws_design: 7.0,
+      t_cewt_design_c: 30.0
+    };
+    const res = ChillerEngine.calcPower(1000, [screwChiller], 7.0, 30.0, 35.0);
+    assert(Math.abs(res.power_kw - (1000 / 5.5)) < 1.0, 'rated power should equal cap/cop: got ' + res.power_kw);
+    const resScrew = ChillerEngine.calcPower(1000, [screwChiller], 10.0, 32.0, 35.0);
+    const centChiller = { ...screwChiller, category: 'water_cooled_centrifugal' };
+    const resCent = ChillerEngine.calcPower(1000, [centChiller], 10.0, 32.0, 35.0);
+    assert(resScrew.power_kw !== resCent.power_kw, 'screw curve and centrifugal curve must yield different power: screw=' + resScrew.power_kw + ', cent=' + resCent.power_kw);
+  });
 })();
 
 console.log(`\n${passCount} passed, ${failCount} failed, ${skipCount} skipped`);

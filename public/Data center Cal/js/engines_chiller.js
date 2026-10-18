@@ -120,11 +120,13 @@ const ChillerEngine = {
         current_fplr = partLoadFallback;
       } else {
         // type === 'fixed' 或預設：對映至對應壓縮機型式、以機型額定點歸一化之 AHRI 曲線與真實部分負載曲線
+        // R7-0c: 水冷螺旋機 (screw) 應對映至 screw_standard 而非 centrifugal_standard
         const presetKey = is_air_cooled
           ? ((cat.includes('centrifugal') || cat.includes('mag')) ? 'air_cooled_vfd_centrifugal' : 'air_cooled_screw')
-          : ((cat.includes('mag') || cat.includes('higheff')) ? 'centrifugal_higheff' : 'centrifugal_standard');
+          : (cat.includes('screw') ? 'screw_standard' : ((cat.includes('mag') || cat.includes('higheff')) ? 'centrifugal_higheff' : 'centrifugal_standard'));
         const coefs = AHRI_PRESETS[presetKey];
         if (coefs) {
+          // KNOWN: 超出 t_chws_range 時截斷，偏保守
           evalNormalizedCurve(coefs, [4, 22], [15, 48]);
           current_fplr = is_air_cooled ? partLoadFallback : coefs.EIR_FPLR;
         } else {

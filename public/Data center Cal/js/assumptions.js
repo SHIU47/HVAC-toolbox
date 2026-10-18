@@ -70,6 +70,7 @@ const ASSUMPTIONS = {
   chiller_evap_temp_cap_c:        { val: 20.0,  unit: '°C',     label: '冰機供水溫度增益上限（高於此值不再獲得額外 Carnot 減載增益）', ref: '壓縮機吸氣壓力 / MOP 操作包絡限制' },
   chiller_max_cewt_standard_c:    { val: 45.0,  unit: '°C',     label: '標準氣冷/水冷冰機冷凝進水上限', ref: '標準氣冷/水冷冰機冷凝進水上限，型錄通常為 40～45°C' },
   chiller_max_cewt_hightemp_c:    { val: 60.0,  unit: '°C',     label: '高溫型（heat-pump 級）冰機冷凝進水上限', ref: '高溫型（heat-pump 級）冰機冷凝進水上限' },
+  // Note [R7-0c]: engines_chiller.js fixed 分支在 CHWS 超出曲線範圍（水冷 preset 上限 14 °C，Trim 冰機實際 30 °C）時直接截斷、沒有 Carnot 外推修正，偏保守。
 
   // ── Fanwall 氣冷系統自然冷卻常數 (P0-7) ───────────────────────────────
   air_chiller_fc_coil_approach_c: { val: 4.0,   unit: '°C',     label: '氣冷冰機 free-cooling 盤管 approach（外氣 DB → 預冷後回水）', ref: '廠商型錄典型 3–5°C' },
