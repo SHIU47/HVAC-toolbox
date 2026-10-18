@@ -802,10 +802,10 @@ function sizeCduToDeratedN1(S) {
   const path = require('path');
   const { AppStore: S } = ctx;
 
-  test('C-5 serializeProject produces schemaVersion v6', () => {
+  test('C-5 serializeProject produces schemaVersion v7', () => {
     const json = S.serializeProject();
     const parsed = JSON.parse(json);
-    assert.strictEqual(parsed.schemaVersion, 'v6');
+    assert.strictEqual(parsed.schemaVersion, 'v7');
   });
 
   test('C-5 migrateProject resolves legacy aliases, adds redundancy and enabled', () => {
@@ -831,7 +831,7 @@ function sizeCduToDeratedN1(S) {
     };
 
     const migrated = S.migrateProject(v4State);
-    assert.strictEqual(migrated.schemaVersion, 'v6');
+    assert.strictEqual(migrated.schemaVersion, 'v7');
     assert.strictEqual(migrated.corePods[0].enabled, true);
     assert.strictEqual(migrated.halls[0].dus[0].plantDesign.cduSystem.architecture, 'dry_cooler_trim');
     assert.strictEqual(migrated.halls[0].dus[0].plantDesign.fanwallSystem.architecture, 'water_cooled_chiller');
@@ -852,11 +852,11 @@ function sizeCduToDeratedN1(S) {
     const pue1 = S.state.results.overall.annualPue;
     const water1 = S.state.results.overall.annualWaterM3;
 
-    const savedV6 = S.serializeProject();
-    const parsedV6 = JSON.parse(savedV6);
-    assert.strictEqual(parsedV6.schemaVersion, 'v6');
+    const savedV7 = S.serializeProject();
+    const parsedV7 = JSON.parse(savedV7);
+    assert.strictEqual(parsedV7.schemaVersion, 'v7');
 
-    const ok2 = S.deserializeProject(savedV6);
+    const ok2 = S.deserializeProject(savedV7);
     assert.strictEqual(ok2, true);
     const pue2 = S.state.results.overall.annualPue;
     const water2 = S.state.results.overall.annualWaterM3;
@@ -2991,7 +2991,7 @@ function sizeCduToDeratedN1(S) {
     // 1. Serialize project
     const jsonStr = win.AppStore.serializeProject();
     const parsed = JSON.parse(jsonStr);
-    assert.strictEqual(parsed.schemaVersion, 'v6');
+    assert.strictEqual(parsed.schemaVersion, 'v7');
     assert.strictEqual(parsed.site.stationId, 'JPN_TK_Tokyo-Chiyoda.476620_TMYx.2011-2025');
     assert.strictEqual(parsed.site.stationSource, 'catalog');
 
@@ -3013,7 +3013,7 @@ function sizeCduToDeratedN1(S) {
     assert.strictEqual(win2.AppStore.designConditions().peakDb.value, 38.6);
     assert(win2.AppStore.state.results && win2.AppStore.state.results.overall, 'calculate() must have run after loading');
 
-    // 3. Schema migration from v5 to v6
+    // 3. Schema migration from v5 to v7
     const v5Data = {
       schemaVersion: 'v5',
       site: {
@@ -3022,7 +3022,7 @@ function sizeCduToDeratedN1(S) {
       }
     };
     const migrated = win2.AppStore.migrateProject(v5Data);
-    assert.strictEqual(migrated.schemaVersion, 'v6');
+    assert.strictEqual(migrated.schemaVersion, 'v7');
     assert.strictEqual(migrated.site.stationSource, 'builtin');
     assert.strictEqual(migrated.site.stationId, 'TWN_NOR_Taoyuan.589650_TMYx.2011-2025');
   });
@@ -4138,6 +4138,105 @@ function sizeCduToDeratedN1(S) {
     }
     assert(numChecked >= 500, `Expected at least 500 numerical cells, checked ${numChecked}`);
     assert.strictEqual(diffs.length, 0, `Found ${diffs.length} numerical cell differences: ` + JSON.stringify(diffs.slice(0, 5)));
+  });
+})();
+
+// ═══════════════════════════════════════════════════════════════
+// P-1: Data Model and Schema v7 Migration for Shared Cooling Plants
+// ═══════════════════════════════════════════════════════════════
+(function () {
+  const ctx = freshCtx();
+  const { AppStore: S } = ctx;
+
+  test('P-1: Default state initializes with empty coolingPlants array', () => {
+    assert(Array.isArray(S.state.coolingPlants), 'coolingPlants must be an array');
+    assert.strictEqual(S.state.coolingPlants.length, 0, 'coolingPlants must default to empty');
+  });
+
+  test('P-1: serializeProject and deserializeProject preserve coolingPlants in schema v7', () => {
+    const jsonStr = S.serializeProject();
+    const parsed = JSON.parse(jsonStr);
+    assert.strictEqual(parsed.schemaVersion, 'v7');
+    assert(Array.isArray(parsed.coolingPlants), 'serialized coolingPlants must be an array');
+
+    const ok = S.deserializeProject(jsonStr);
+    assert.strictEqual(ok, true);
+    assert.strictEqual(S.state.coolingPlants.length, 0);
+  });
+
+  test('P-1: addCoolingPlant, updateCoolingPlant, and deleteCoolingPlant correctly sync member plantIds', () => {
+    const du1 = S.state.halls[0].dus[0];
+    const du1Id = du1.id;
+    assert.strictEqual(du1.plantDesign.cduSystem.plantId, undefined);
+
+    // 1. Add cooling plant
+    const plant = S.addCoolingPlant({
+      name: 'Central Liquid Loop Plant 1',
+      loop: 'liquid',
+      memberIds: [du1Id],
+      redundancy: 'N+2',
+      diversityFactor: 0.95
+    });
+
+    assert(plant.id.startsWith('plant_'));
+    assert.strictEqual(plant.name, 'Central Liquid Loop Plant 1');
+    assert.strictEqual(plant.loop, 'liquid');
+    assert.strictEqual(plant.redundancy, 'N+2');
+    assert.strictEqual(plant.diversityFactor, 0.95);
+    assert.strictEqual(du1.plantDesign.cduSystem.plantId, plant.id);
+
+    // 2. Query helper
+    const found = S.getCoolingPlant(plant.id);
+    assert.strictEqual(found.id, plant.id);
+    const foundForUnit = S.getPlantForUnit(du1Id, 'liquid');
+    assert.strictEqual(foundForUnit.id, plant.id);
+
+    // 3. Update cooling plant
+    S.updateCoolingPlant(plant.id, { name: 'Renamed Plant', memberIds: [] });
+    assert.strictEqual(plant.name, 'Renamed Plant');
+    assert.strictEqual(du1.plantDesign.cduSystem.plantId, undefined);
+
+    // 4. Add member back
+    S.addPlantMember(plant.id, du1Id);
+    assert.strictEqual(du1.plantDesign.cduSystem.plantId, plant.id);
+
+    // 5. Delete cooling plant
+    S.deleteCoolingPlant(plant.id);
+    assert.strictEqual(S.state.coolingPlants.length, 0);
+    assert.strictEqual(du1.plantDesign.cduSystem.plantId, undefined);
+  });
+
+  test('P-1: migrateProject migrates v6 to v7 and flags _showSharedPlantNotice for unlinked shared_plant CorePOD', () => {
+    const v6Data = {
+      schemaVersion: 'v6',
+      corePods: [
+        { id: 'cp_1', name: 'CorePOD 1', topologyMode: 'shared_plant' },
+        { id: 'cp_2', name: 'CorePOD 2', topologyMode: 'dedicated' }
+      ],
+      halls: []
+    };
+
+    const migrated = S.migrateProject(v6Data);
+    assert.strictEqual(migrated.schemaVersion, 'v7');
+    assert(Array.isArray(migrated.coolingPlants), 'coolingPlants must be initialized');
+    assert.strictEqual(migrated.coolingPlants.length, 0);
+    assert.strictEqual(migrated.corePods[0]._showSharedPlantNotice, true, 'cp_1 must have _showSharedPlantNotice');
+    assert.strictEqual(migrated.corePods[1]._showSharedPlantNotice, undefined, 'cp_2 must not have notice');
+  });
+
+  test('P-1: deleteDU cleans up memberIds in coolingPlants', () => {
+    const hall = S.state.halls[0];
+    const newDu = S.addDU(hall.id, 'DU-P1-Test');
+    const plant = S.addCoolingPlant({
+      name: 'Temp Plant',
+      loop: 'liquid',
+      memberIds: [newDu.id]
+    });
+    assert(plant.memberIds.includes(newDu.id));
+
+    S.deleteDU(hall.id, newDu.id);
+    assert(!plant.memberIds.includes(newDu.id));
+    S.deleteCoolingPlant(plant.id);
   });
 })();
 

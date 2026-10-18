@@ -179,6 +179,8 @@
                 }
             ],
 
+            coolingPlants: [],
+
             assumptions_override: {},
 
             results: {
@@ -222,7 +224,7 @@
         serializeProject() {
             const s = this.state;
             const exportData = {
-                schemaVersion: 'v6',
+                schemaVersion: 'v7',
                 savedAt: new Date().toISOString(),
                 facilityElectricalLossPct: s.facilityElectricalLossPct ?? A('electrical_loss_default_pct'),
                 site: {
@@ -235,6 +237,7 @@
                 },
                 halls: s.halls,
                 corePods: s.corePods,
+                coolingPlants: s.coolingPlants || [],
                 assumptions_override: s.assumptions_override || {}
             };
             return JSON.stringify(exportData, null, 2);
@@ -350,7 +353,56 @@
                 }
             }
 
-            stateData.schemaVersion = 'v6';
+            // P-1: 冷卻系統分組 (coolingPlants) 遷移至 schema v7
+            if (!Array.isArray(stateData.coolingPlants)) {
+                stateData.coolingPlants = [];
+            } else {
+                stateData.coolingPlants.forEach(p => {
+                    if (!p.redundancy) p.redundancy = 'N+1';
+                    if (p.diversityFactor === undefined) p.diversityFactor = 1.0;
+                    if (!Array.isArray(p.memberIds)) p.memberIds = [];
+                    if (p.system) {
+                        migrateSystem(p.system);
+                        if (p.loop === 'liquid') backfillCdu(p.system);
+                    }
+                });
+            }
+
+            // 確保所有單元與 coolingPlants 雙向一致
+            const allUnits = [];
+            (stateData.halls || []).forEach(h => (h.dus || []).forEach(d => allUnits.push(d)));
+            (stateData.corePods || []).forEach(p => allUnits.push(p));
+
+            allUnits.forEach(u => {
+                if (u.plantDesign) {
+                    ['cduSystem', 'fanwallSystem'].forEach(sysKey => {
+                        const loop = sysKey === 'cduSystem' ? 'liquid' : 'air';
+                        const plantId = u.plantDesign[sysKey]?.plantId;
+                        if (plantId) {
+                            const plant = stateData.coolingPlants.find(cp => cp.id === plantId && cp.loop === loop);
+                            if (plant) {
+                                if (!plant.memberIds.includes(u.id)) plant.memberIds.push(u.id);
+                            } else {
+                                delete u.plantDesign[sysKey].plantId;
+                            }
+                        }
+                    });
+                }
+            });
+
+            // CorePOD topologyMode === 'shared_plant' 的舊專案：不自動建群組，改在載入後提示
+            if (Array.isArray(stateData.corePods)) {
+                stateData.corePods.forEach(p => {
+                    if (p.topologyMode === 'shared_plant') {
+                        const hasPlant = stateData.coolingPlants.some(cp => cp.loop === 'air' && cp.memberIds.includes(p.id));
+                        if (!hasPlant) {
+                            p._showSharedPlantNotice = true;
+                        }
+                    }
+                });
+            }
+
+            stateData.schemaVersion = 'v7';
             return stateData;
         },
 
@@ -364,6 +416,11 @@
                 }
                 if (stateData.corePods && Array.isArray(stateData.corePods)) {
                     this.state.corePods = stateData.corePods;
+                }
+                if (stateData.coolingPlants && Array.isArray(stateData.coolingPlants)) {
+                    this.state.coolingPlants = stateData.coolingPlants;
+                } else {
+                    this.state.coolingPlants = [];
                 }
                 if (stateData.assumptions_override) {
                     this.state.assumptions_override = stateData.assumptions_override;
@@ -724,8 +781,14 @@
                 eq.id = makeId('eq');
             });
             if (clonedPod.plantDesign) {
-                if (clonedPod.plantDesign.cduSystem) clonedPod.plantDesign.cduSystem.sizing = [];
-                if (clonedPod.plantDesign.fanwallSystem) clonedPod.plantDesign.fanwallSystem.sizing = [];
+                if (clonedPod.plantDesign.cduSystem) {
+                    clonedPod.plantDesign.cduSystem.sizing = [];
+                    delete clonedPod.plantDesign.cduSystem.plantId;
+                }
+                if (clonedPod.plantDesign.fanwallSystem) {
+                    clonedPod.plantDesign.fanwallSystem.sizing = [];
+                    delete clonedPod.plantDesign.fanwallSystem.plantId;
+                }
             }
             this.state.corePods.push(clonedPod);
             this.notify();
@@ -739,6 +802,11 @@
             }
             const idx = this.state.corePods.findIndex(p => p.id === podId);
             if (idx !== -1) {
+                if (Array.isArray(this.state.coolingPlants)) {
+                    this.state.coolingPlants.forEach(plant => {
+                        plant.memberIds = plant.memberIds.filter(id => id !== podId);
+                    });
+                }
                 this.state.corePods.splice(idx, 1);
                 this.notify();
                 return true;
@@ -780,6 +848,13 @@
             }
             const idx = this.state.halls.findIndex(h => h.id === hallId);
             if (idx !== -1) {
+                const deletedHall = this.state.halls[idx];
+                const duIds = (deletedHall.dus || []).map(d => d.id);
+                if (Array.isArray(this.state.coolingPlants)) {
+                    this.state.coolingPlants.forEach(plant => {
+                        plant.memberIds = plant.memberIds.filter(id => !duIds.includes(id));
+                    });
+                }
                 this.state.halls.splice(idx, 1);
                 this.notify();
                 return true;
@@ -865,8 +940,14 @@
                 });
             });
             if (clonedDu.plantDesign) {
-                if (clonedDu.plantDesign.cduSystem) clonedDu.plantDesign.cduSystem.sizing = [];
-                if (clonedDu.plantDesign.fanwallSystem) clonedDu.plantDesign.fanwallSystem.sizing = [];
+                if (clonedDu.plantDesign.cduSystem) {
+                    clonedDu.plantDesign.cduSystem.sizing = [];
+                    delete clonedDu.plantDesign.cduSystem.plantId;
+                }
+                if (clonedDu.plantDesign.fanwallSystem) {
+                    clonedDu.plantDesign.fanwallSystem.sizing = [];
+                    delete clonedDu.plantDesign.fanwallSystem.plantId;
+                }
             }
             hall.dus.push(clonedDu);
             this.notify();
@@ -882,6 +963,11 @@
             }
             const idx = hall.dus.findIndex(d => d.id === duId);
             if (idx !== -1) {
+                if (Array.isArray(this.state.coolingPlants)) {
+                    this.state.coolingPlants.forEach(plant => {
+                        plant.memberIds = plant.memberIds.filter(id => id !== duId);
+                    });
+                }
                 hall.dus.splice(idx, 1);
                 this.notify();
                 return true;
@@ -926,6 +1012,193 @@
                 return true;
             }
             return false;
+        },
+
+        // ═══════════════════════════════════════════════════════════════
+        // Phase P: 冷卻系統分組 (Cooling Plants / Shared Plants)
+        // ═══════════════════════════════════════════════════════════════
+        _findUnit(unitId) {
+            for (const h of (this.state.halls || [])) {
+                const du = (h.dus || []).find(d => d.id === unitId);
+                if (du) return du;
+            }
+            return (this.state.corePods || []).find(p => p.id === unitId) || null;
+        },
+
+        _setUnitPlantId(unitId, loop, plantId) {
+            const unit = this._findUnit(unitId);
+            if (!unit || !unit.plantDesign) return;
+            const sysKey = loop === 'liquid' ? 'cduSystem' : 'fanwallSystem';
+            if (unit.plantDesign[sysKey]) {
+                if (plantId) {
+                    unit.plantDesign[sysKey].plantId = plantId;
+                } else {
+                    delete unit.plantDesign[sysKey].plantId;
+                }
+            }
+        },
+
+        getCoolingPlant(plantId) {
+            return (this.state.coolingPlants || []).find(p => p.id === plantId) || null;
+        },
+
+        getPlantForUnit(unitId, loop) {
+            return (this.state.coolingPlants || []).find(p => p.loop === loop && (p.memberIds || []).includes(unitId)) || null;
+        },
+
+        addCoolingPlant(options = {}) {
+            if (!Array.isArray(this.state.coolingPlants)) {
+                this.state.coolingPlants = [];
+            }
+            const id = options.id || makeId('plant');
+            const loop = options.loop === 'air' ? 'air' : 'liquid';
+            const num = this.state.coolingPlants.filter(p => p.loop === loop).length + 1;
+            const defName = loop === 'liquid' ? `液冷系統 ${num}` : `氣冷系統 ${num}`;
+            const name = options.name || defName;
+            const redundancy = options.redundancy || 'N+1';
+            const diversityFactor = typeof options.diversityFactor === 'number' ? options.diversityFactor : 1.0;
+            const memberIds = Array.isArray(options.memberIds) ? [...options.memberIds] : [];
+
+            let system;
+            if (options.system) {
+                system = JSON.parse(JSON.stringify(options.system));
+            } else if (loop === 'liquid') {
+                system = {
+                    architecture: options.architecture || 'dry_cooler_trim',
+                    secSupplyC: 45.0, secReturnC: 57.0, cduApproachC: 3.0,
+                    fwsSupplyC: 42.0, fwsReturnC: 54.0, dryCoolerApproachC: 5.0, pheApproachC: 2.0,
+                    adiabaticSaturationEfficiencyPct: 85.0, blowdownLossPct: 15.0, cyclesOfConcentration: 5,
+                    designBasis: {}, sizing: [], hydraulics: {}, validation: { ok: true, checks: [] }
+                };
+            } else {
+                system = {
+                    architecture: options.architecture || 'water_cooled_chiller',
+                    chwSupplyC: 12.0, chwReturnC: 18.0, airSideEconomizerThresholdC: 18.0,
+                    designBasis: {}, sizing: [], hydraulics: {}, validation: { ok: true, checks: [] }
+                };
+            }
+
+            const plant = {
+                id,
+                name,
+                loop,
+                memberIds,
+                system,
+                redundancy,
+                diversityFactor
+            };
+
+            this.state.coolingPlants.push(plant);
+
+            // 更新成員單元的 plantId
+            memberIds.forEach(mId => {
+                this._setUnitPlantId(mId, loop, id);
+            });
+
+            this.notify();
+            return plant;
+        },
+
+        updateCoolingPlant(plantId, patch) {
+            if (!Array.isArray(this.state.coolingPlants)) return false;
+            const plant = this.state.coolingPlants.find(p => p.id === plantId);
+            if (!plant) return false;
+
+            if (patch.memberIds && Array.isArray(patch.memberIds)) {
+                const oldMembers = plant.memberIds || [];
+                oldMembers.forEach(mId => {
+                    if (!patch.memberIds.includes(mId)) {
+                        this._setUnitPlantId(mId, plant.loop, null);
+                    }
+                });
+                patch.memberIds.forEach(mId => {
+                    this.state.coolingPlants.forEach(other => {
+                        if (other.id !== plantId && other.loop === plant.loop) {
+                            other.memberIds = other.memberIds.filter(id => id !== mId);
+                        }
+                    });
+                    this._setUnitPlantId(mId, plant.loop, plantId);
+                });
+            }
+
+            Object.assign(plant, patch);
+            this.notify();
+            return true;
+        },
+
+        deleteCoolingPlant(plantId) {
+            if (!Array.isArray(this.state.coolingPlants)) return false;
+            const idx = this.state.coolingPlants.findIndex(p => p.id === plantId);
+            if (idx === -1) return false;
+            const plant = this.state.coolingPlants[idx];
+            (plant.memberIds || []).forEach(mId => {
+                this._setUnitPlantId(mId, plant.loop, null);
+            });
+            this.state.coolingPlants.splice(idx, 1);
+            this.notify();
+            return true;
+        },
+
+        addPlantMember(plantId, unitId) {
+            const plant = (this.state.coolingPlants || []).find(p => p.id === plantId);
+            if (!plant) return false;
+            if (!plant.memberIds.includes(unitId)) {
+                this.state.coolingPlants.forEach(other => {
+                    if (other.id !== plantId && other.loop === plant.loop) {
+                        other.memberIds = other.memberIds.filter(id => id !== unitId);
+                    }
+                });
+                plant.memberIds.push(unitId);
+                this._setUnitPlantId(unitId, plant.loop, plantId);
+                this.notify();
+            }
+            return true;
+        },
+
+        removePlantMember(plantId, unitId) {
+            const plant = (this.state.coolingPlants || []).find(p => p.id === plantId);
+            if (!plant) return false;
+            plant.memberIds = plant.memberIds.filter(id => id !== unitId);
+            this._setUnitPlantId(unitId, plant.loop, null);
+            this.notify();
+            return true;
+        },
+
+        syncUnitFromPlant(unit, loop) {
+            const sysKey = loop === 'liquid' ? 'cduSystem' : 'fanwallSystem';
+            const sys = unit?.plantDesign?.[sysKey];
+            if (!sys || !sys.plantId) return;
+            const plant = this.getCoolingPlant(sys.plantId);
+            if (!plant || plant.loop !== loop || !plant.system) return;
+
+            const pSys = plant.system;
+            if (pSys.architecture) sys.architecture = pSys.architecture;
+            if (loop === 'liquid') {
+                if (pSys.secSupplyC !== undefined) sys.secSupplyC = pSys.secSupplyC;
+                if (pSys.secReturnC !== undefined) sys.secReturnC = pSys.secReturnC;
+                if (pSys.cduApproachC !== undefined) sys.cduApproachC = pSys.cduApproachC;
+                if (pSys.fwsSupplyC !== undefined) sys.fwsSupplyC = pSys.fwsSupplyC;
+                if (pSys.fwsReturnC !== undefined) sys.fwsReturnC = pSys.fwsReturnC;
+                if (pSys.dryCoolerApproachC !== undefined) sys.dryCoolerApproachC = pSys.dryCoolerApproachC;
+                if (pSys.pheApproachC !== undefined) sys.pheApproachC = pSys.pheApproachC;
+                if (pSys.hasPhe !== undefined) sys.hasPhe = pSys.hasPhe;
+                if (pSys.freezeDbC !== undefined) sys.freezeDbC = pSys.freezeDbC;
+            } else {
+                if (pSys.chwSupplyC !== undefined) sys.chwSupplyC = pSys.chwSupplyC;
+                if (pSys.chwReturnC !== undefined) sys.chwReturnC = pSys.chwReturnC;
+                if (pSys.airSideEconomizerThresholdC !== undefined) sys.airSideEconomizerThresholdC = pSys.airSideEconomizerThresholdC;
+            }
+        },
+
+        syncAllUnitsFromPlants() {
+            if (!Array.isArray(this.state.coolingPlants) || this.state.coolingPlants.length === 0) return;
+            const allUnits = [];
+            (this.state.halls || []).forEach(h => (h.dus || []).forEach(d => allUnits.push(d)));
+            (this.state.corePods || []).forEach(p => allUnits.push(p));
+            allUnits.forEach(u => {
+                this.syncUnitFromPlant(u, 'liquid');
+                this.syncUnitFromPlant(u, 'air');
+            });
         },
 
         designConditions() {
@@ -1095,6 +1368,9 @@
                 refreshSys(pod.plantDesign?.cduSystem);
                 refreshSys(pod.plantDesign?.fanwallSystem);
             });
+            (this.state.coolingPlants || []).forEach(plant => {
+                refreshSys(plant.system);
+            });
         },
 
         canProceedStep4() {
@@ -1129,6 +1405,12 @@
             this.state.corePods.filter(p => p.enabled !== false).forEach(pod => {
                 checkSys(pod.name, pod.id, pod.plantDesign.cduSystem, true);
                 checkSys(pod.name, pod.id, pod.plantDesign.fanwallSystem, false);
+            });
+
+            (this.state.coolingPlants || []).forEach(plant => {
+                if (plant.system) {
+                    checkSys(plant.name, plant.id, plant.system, plant.loop === 'liquid');
+                }
             });
 
             return { ok: allPassed, failedItems };
@@ -1591,6 +1873,7 @@
             if (this.state.site && this.state.site.isWeatherLoading) {
                 return;
             }
+            this.syncAllUnitsFromPlants();
             this.recalculateBinAnalysis();
             this.state.results = this.state.results || {};
             const hourlyWeather = (this.state.site.hourly && this.state.site.hourly.length >= 8760) 
@@ -1618,6 +1901,8 @@
         },
 
         bridgeDuToPlantModel(du, duSumm) {
+            this.syncUnitFromPlant(du, 'liquid');
+            this.syncUnitFromPlant(du, 'air');
             const cduSys = du.plantDesign.cduSystem;
             const fwSys = du.plantDesign.fanwallSystem;
 

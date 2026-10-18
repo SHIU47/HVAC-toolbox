@@ -159,7 +159,11 @@
         },
         setMode(mode) {
             window.AppStore.updateCorePod(selectedPodId, { topologyMode: mode });
-            this.render(document.getElementById('stepContent'));
+            if (mode === 'shared_plant' && window.App && typeof window.App.renderStep === 'function') {
+                window.App.renderStep(4);
+            } else {
+                this.render(document.getElementById('stepContent'));
+            }
         }
     };
 

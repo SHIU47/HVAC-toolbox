@@ -713,6 +713,9 @@
     'schematic.dbBasis': 'Outdoor DB',
     'cooling.margin': 'Margin: {sign}{pct}%',
     'cooling.goToAdjust': 'Adjust',
+    'cooling.sharedPlantNotice': 'This CorePOD ({name}) was configured to share plant chilled water; please designate in cooling plant grouping',
+    'cooling.dismissNotice': 'Dismiss',
+    'cooling.plantUnifiedConfig': 'Unified by {name} system',
 
     // ==========================================
     // Step 5: Dashboard & Analytics (dash.*)

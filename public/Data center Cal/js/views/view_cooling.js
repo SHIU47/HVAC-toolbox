@@ -165,6 +165,25 @@
                 `;
             }
 
+            // 舊專案 CorePOD 共用全廠冷水提示
+            let sharedPlantNoticesHtml = '';
+            (window.AppStore.state.corePods || []).forEach(p => {
+                if (p._showSharedPlantNotice) {
+                    const podName = window.UIKit ? window.UIKit.escapeHTML(p.name) : p.name;
+                    sharedPlantNoticesHtml += `
+                        <div class="p-4 rounded-xl bg-amber-50 border border-amber-300 text-amber-900 text-xs flex items-center justify-between gap-3 shadow-2xs">
+                            <div class="flex items-center gap-2">
+                                <span class="text-base">⚠️</span>
+                                <span>${_t('cooling.sharedPlantNotice', { name: podName }, `此 CorePOD (${podName}) 原設定為共用全廠冷水，請在冷卻系統分組中指定`)}</span>
+                            </div>
+                            <button onclick="const pod = window.AppStore.state.corePods.find(x => x.id === '${p.id}'); if (pod) delete pod._showSharedPlantNotice; ViewCooling.render(document.getElementById('stepContent'));" class="px-2.5 py-1 bg-amber-200/80 hover:bg-amber-300 text-amber-950 font-bold rounded-lg text-[11px] transition">
+                                ${_t('cooling.dismissNotice', null, '知道了')}
+                            </button>
+                        </div>
+                    `;
+                }
+            });
+
             container.innerHTML = `
                 <div class="space-y-6">
                     <!-- 頂部: 標題與智慧收合控制 -->
@@ -193,7 +212,7 @@
                                 </button>
                             </div>
                         </div>
-                    </div>
+                    </div>${sharedPlantNoticesHtml ? `\n\n                    ${sharedPlantNoticesHtml}` : ''}
 
                     <!-- 全廠冷卻配置狀態導覽條 (Plant Overview Bar) -->
                     <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 space-y-3">

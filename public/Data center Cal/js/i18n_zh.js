@@ -713,6 +713,9 @@
     'schematic.dbBasis': '外氣乾球',
     'cooling.margin': '餘度: {sign}{pct}%',
     'cooling.goToAdjust': '前往調整',
+    'cooling.sharedPlantNotice': '此 CorePOD ({name}) 原設定為共用全廠冷水，請在冷卻系統分組中指定',
+    'cooling.dismissNotice': '知道了',
+    'cooling.plantUnifiedConfig': '由 {name} 系統統一設定',
 
     // ==========================================
     // Step 5: Dashboard & Analytics (dash.*)
