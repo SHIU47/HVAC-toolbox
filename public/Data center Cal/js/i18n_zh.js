@@ -1006,7 +1006,74 @@
     'dash.fwModeMech': '🔵 氣冷冰機運轉製冷',
     'dash.backToStep1': '返回 Step 1 調整案場',
     'dash.heatRejTower': '排熱塔',
-    'dash.chiller': '冰機'
+    'dash.chiller': '冰機',
+
+    // Warnings (I-6)
+    'warn.CDU_CAPACITY_DEFICIT': 'CDU 容量不足：負載 {load} kW > 可用 {cap} kW',
+    'warn.CDU_OVERSIZED': 'CDU 負載率 {plr}% 偏低，建議停用部分台數以提升 ΔT 與效率',
+    'warn.CDU_DT_LOW': 'CDU ΔT={dt}°C 過低 (設計 {designDt}°C)，流量過大，應降低泵速',
+    'warn.CDU_DT_HIGH': 'CDU ΔT={dt}°C 超出設計 {designDt}°C 的 15%，流量不足或台數不夠',
+
+    'warn.AIR_COOLED_CURVE_MISMATCH': '氣冷式冰機套用水冷式 AHRI 曲線 ({preset})，建議改用 air_cooled_screw, air_cooled_vfd_centrifugal 或 fixed/custom_poly',
+    'warn.CHILLER_OUT_OF_RANGE': '冰機工況超出曲線範圍：CHWS {chws}°C [{tLo}-{tHi}], CEWT/DB {cond}°C [{cLo}-{cHi}]，已截斷至邊界值計算',
+    'warn.CHILLER_CAPACITY_DEFICIT': '冰機容量不足：需求 {req} kW，可用 {avail} kW，缺口 {deficit} kW',
+    'warn.CHILLER_BELOW_MIN_PLR': '冰機 PLR={plr}% 低於最低穩定負載 {minPlr}%，進入 ON/OFF 循環模式',
+    'warn.CHILLER_COP_HIGH': '冰機 COP={cop} 高於典型最大值 10，請確認設備曲線設定',
+    'warn.CHILLER_COP_LOW': '冰機 COP={cop} 偏低，確認冷凝水溫與設備型號是否符合',
+    'warn.CHILLER_PLR_OVER_1': '冰機 PLR={plr}% 超過 100%，容量嚴重不足',
+    'warn.CHILLER_PLR_VERY_LOW': '冰機 PLR={plr}% 極低，建議停機一台或使用旁路',
+    'warn.CHILLER_DT_TOO_SMALL': '冰機 CEWT({cewt}°C) - CHWS({chws}°C) = {dt}°C 過小，COP 可能不準確',
+
+    'warn.CT_APPROACH_PHYSICALLY_IMPOSSIBLE': '冷卻水塔接近溫差 {approach}°C < 1.5°C，違反物理限制 (T_cws 不能接近 WB)',
+    'warn.CT_APPROACH_LOW': '冷卻水塔接近溫差 {approach}°C 偏低，需要超大散熱面積，建議 ≥ 3.5°C',
+    'warn.CT_APPROACH_HIGH': '冷卻水塔接近溫差 {approach}°C 偏高，顯示冷卻塔面積過小或風機轉速不足',
+    'warn.CT_RANGE_LOW': '冷卻水塔溫差 (Range) {range}°C 過低，散熱水流量可能過大或冷卻負載過輕',
+    'warn.CT_RANGE_HIGH': '冷卻水塔溫差 (Range) {range}°C 過高，冷卻塔散熱容量嚴重不足',
+
+    'warn.CRAH_CAPACITY_DEFICIT': 'CRAH 容量不足：氣冷 IT {itAir} kW > CRAH 可用 {cap} kW',
+    'warn.CRAH_OVERSIZED': 'CRAH 負載率 {plr}% 過低，可考慮停用部分台數以節省風機電力',
+
+    'warn.HX_2ND_LAW_VIOLATION_HOT': '板式換熱器熱端接近溫差 {approach}°C 為負，違反熱力學第二定律',
+    'warn.HX_HOT_APPROACH_VERY_SMALL': '板式換熱器熱端接近溫差 {approach}°C 過小，需要極大換熱面積',
+    'warn.HX_2ND_LAW_VIOLATION_COLD': '板式換熱器冷端接近溫差 {approach}°C 為負，違反熱力學第二定律',
+    'warn.HX_COLD_APPROACH_VERY_SMALL': '板式換熱器冷端接近溫差 {approach}°C 過小 (設計建議 ≥ 1.5°C)',
+
+    'warn.PUMP_DT_LOW': '{loop} ΔT={dt}°C 過低（< {lo}°C），流量可能過大，建議降低泵速',
+    'warn.PUMP_DT_HIGH': '{loop} ΔT={dt}°C 過高（> {hi}°C），流量可能不足，建議提高泵速',
+    'warn.CHW_DT_LOW': 'CHW ΔT={dt}°C 過低（< {lo}°C），流量可能過大，建議降低泵速',
+    'warn.CHW_DT_HIGH': 'CHW ΔT={dt}°C 過高（> {hi}°C），流量可能不足，建議提高泵速',
+    'warn.CDW_DT_LOW': 'CDW ΔT={dt}°C 過低（< {lo}°C），流量可能過大，建議降低泵速',
+    'warn.CDW_DT_HIGH': 'CDW ΔT={dt}°C 過高（> {hi}°C），流量可能不足，建議提高泵速',
+    'warn.CW_DT_LOW': 'CW ΔT={dt}°C 過低（< {lo}°C），流量可能過大，建議降低泵速',
+    'warn.CW_DT_HIGH': 'CW ΔT={dt}°C 過高（> {hi}°C），流量可能不足，建議提高泵速',
+    'warn.FWS_DT_LOW': 'FWS ΔT={dt}°C 過低（< {lo}°C），流量可能過大，建議降低泵速',
+    'warn.FWS_DT_HIGH': 'FWS ΔT={dt}°C 過高（> {hi}°C），流量可能不足，建議提高泵速',
+
+    'warn.CHILLER_CEWT_EXCEEDS_ENVELOPE': '冰機冷凝進水溫 {cewt}°C 超過運轉上限 {maxCewt}°C，需選用高溫型冰機',
+    'warn.ashraeTmyGap': '本站 ASHRAE 極值與 TMY 最高溫相差 {gap}°C，建議核對測站資料',
+
+    // Store messages (I-6)
+    'store.minCorePod': '⚠️ 系統中至少需保留 1 組 CorePOD 核心機房！',
+    'store.minHall': '⚠️ 系統中至少需保留 1 間 Data Hall 機房！',
+    'store.minDu': '⚠️ 每個機房至少需保留 1 組 DU 冷卻單元！',
+    'store.minSu': '⚠️ 每個 DU 至少需保留 1 組 SU 算力單元！',
+    'store.copy': '複製',
+    'store.tmyRank004': 'TMY 排序 0.4%',
+    'store.ashraeRegression': 'ASHRAE n={n} 年回歸',
+    'store.tmyMaxMargin': 'TMY 最高 + 餘裕（無 ASHRAE 極值）',
+    'store.ashrae50Regression': 'ASHRAE n=50 年回歸',
+    'store.cduLiquidSys': '💧 CDU 液冷',
+    'store.fwAirSys': '💨 Fanwall 氣冷',
+    'store.units': '台',
+    'store.effectiveCap': '有效 ',
+    'store.defaultPodDesc': '核心網通/集中儲存',
+    'store.defaultSuDesc': '預設配置',
+
+    // EPW parser messages (I-6)
+    'epw.customStation': '自定義測站',
+    'epw.customCountry': '自定義',
+    'epw.invalidContent': '無效的 EPW 內容',
+    'epw.invalid8760': '無法解析到有效的 8760 小時氣候資料。'
   };
 
   const target = (typeof window !== 'undefined' ? window.I18N : (typeof global !== 'undefined' ? global.I18N : null));

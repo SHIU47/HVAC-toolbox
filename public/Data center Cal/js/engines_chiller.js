@@ -5,6 +5,16 @@
 // Depends on: engines_core.js (AHRI_PRESETS, biQuad, quadPoly, clamp)
 // ASHRAE 90.1 / AHRI 550/590 reference
 // ============================================================
+function _t(key, params, fallback) {
+  if (typeof I18N !== 'undefined' && typeof I18N.t === 'function') {
+    return I18N.t(key, params);
+  }
+  if (fallback && params) {
+    return fallback.replace(/\{(\w+)\}/g, (_, k) => (k in params ? params[k] : `{${k}}`));
+  }
+  return fallback || key;
+}
+
 const ChillerEngine = {
 
   // Compressor type → minimum stable PLR (ASHRAE 90.1 Table G3.1.3.2)
@@ -78,7 +88,8 @@ const ChillerEngine = {
       const is_air_curve = curve.preset?.startsWith('air_cooled_');
       if (is_air_cooled && curve.type === 'ahri_biquadratic' && !is_air_curve) {
         warnings.push({ code: 'AIR_COOLED_CURVE_MISMATCH', severity: 'warning',
-          message: `氣冷式冰機套用水冷式 AHRI 曲線 (${curve.preset ?? ''})，建議改用 air_cooled_screw, air_cooled_vfd_centrifugal 或 fixed/custom_poly` });
+          message: _t('warn.AIR_COOLED_CURVE_MISMATCH', { preset: curve.preset ?? '' },
+            `氣冷式冰機套用水冷式 AHRI 曲線 (${curve.preset ?? ''})，建議改用 air_cooled_screw, air_cooled_vfd_centrifugal 或 fixed/custom_poly`) });
       }
 
       // R6 P0-C2: 曲線一律以機型自身額定點 (t_chws_design, t_cewt_design) 歸一化，
@@ -106,7 +117,8 @@ const ChillerEngine = {
           const { T_c, C_c, T_lo, T_hi, C_lo, C_hi, ref } = evalNormalizedCurve(coefs, [4, 14], [18, 42]);
           if (T_chws !== T_c || T_cond !== C_c) {
             warnings.push({ code: 'CHILLER_OUT_OF_RANGE', severity: 'info',
-              message: `冰機工況超出曲線範圍：CHWS ${T_chws.toFixed(1)}°C [${T_lo}-${T_hi}], CEWT/DB ${T_cond.toFixed(1)}°C [${C_lo}-${C_hi}]，已截斷至邊界值計算` });
+              message: _t('warn.CHILLER_OUT_OF_RANGE', { chws: T_chws.toFixed(1), tLo: T_lo, tHi: T_hi, cond: T_cond.toFixed(1), cLo: C_lo, cHi: C_hi },
+                `冰機工況超出曲線範圍：CHWS ${T_chws.toFixed(1)}°C [${T_lo}-${T_hi}], CEWT/DB ${T_cond.toFixed(1)}°C [${C_lo}-${C_hi}]，已截斷至邊界值計算`) });
             const liftClamped = ChillerEngine.carnotLiftFactor(T_c, C_c, is_air_cooled, ref);
             const liftActual = ChillerEngine.carnotLiftFactor(T_chws, T_cond, is_air_cooled, ref);
             EIR_FT = clamp(EIR_FT * (liftClamped / liftActual), 0.4, 3.0);
@@ -155,7 +167,8 @@ const ChillerEngine = {
       warnings.push({ code: 'CHILLER_CAPACITY_DEFICIT', severity: 'critical',
         required_kw: Q_load, available_kw: total_available,
         deficit_kw: Q_load - total_available,
-        message: `冰機容量不足：需求 ${Q_load.toFixed(0)} kW，可用 ${total_available.toFixed(0)} kW，缺口 ${(Q_load - total_available).toFixed(0)} kW` });
+        message: _t('warn.CHILLER_CAPACITY_DEFICIT', { req: Q_load.toFixed(0), avail: total_available.toFixed(0), deficit: (Q_load - total_available).toFixed(0) },
+          `冰機容量不足：需求 ${Q_load.toFixed(0)} kW，可用 ${total_available.toFixed(0)} kW，缺口 ${(Q_load - total_available).toFixed(0)} kW`) });
     }
 
     let c1 = 0, c2 = 1, c3 = 0;
@@ -174,7 +187,8 @@ const ChillerEngine = {
       power_kw = total_rated_eir * eir_at_min * (PLR / min_plr_effective);
       warnings.push({ code: 'CHILLER_BELOW_MIN_PLR', severity: 'info',
         PLR: PLR.toFixed(3), min_PLR: min_plr_effective,
-        message: `冰機 PLR=${(PLR*100).toFixed(1)}% 低於最低穩定負載 ${(min_plr_effective*100).toFixed(0)}%，進入 ON/OFF 循環模式` });
+        message: _t('warn.CHILLER_BELOW_MIN_PLR', { plr: (PLR*100).toFixed(1), minPlr: (min_plr_effective*100).toFixed(0) },
+          `冰機 PLR=${(PLR*100).toFixed(1)}% 低於最低穩定負載 ${(min_plr_effective*100).toFixed(0)}%，進入 ON/OFF 循環模式`) });
     } else {
       const EIR_FPLR = clamp(quadPoly([c1, c2, c3], PLR), 0.1, 1.3);
       power_kw = total_rated_eir * EIR_FPLR;
@@ -189,12 +203,14 @@ const ChillerEngine = {
     if (cop_actual > 10.0 && Q_load > 10) {
       warnings.push({ code: 'CHILLER_COP_HIGH', severity: 'info',
         cop: cop_actual.toFixed(2),
-        message: `冰機 COP=${cop_actual.toFixed(2)} 高於典型最大值 10，請確認設備曲線設定` });
+        message: _t('warn.CHILLER_COP_HIGH', { cop: cop_actual.toFixed(2) },
+          `冰機 COP=${cop_actual.toFixed(2)} 高於典型最大值 10，請確認設備曲線設定`) });
     }
     if (cop_actual < 2.5 && Q_load > 10 && power_final > 0) {
       warnings.push({ code: 'CHILLER_COP_LOW', severity: 'warning',
         cop: cop_actual.toFixed(2),
-        message: `冰機 COP=${cop_actual.toFixed(2)} 偏低，確認冷凝水溫與設備型號是否符合` });
+        message: _t('warn.CHILLER_COP_LOW', { cop: cop_actual.toFixed(2) },
+          `冰機 COP=${cop_actual.toFixed(2)} 偏低，確認冷凝水溫與設備型號是否符合`) });
     }
 
     return { power_kw: power_final, PLR, cop_actual, available_kw: total_available, warnings };
@@ -318,11 +334,14 @@ const ChillerEngine = {
   validate(PLR, cop_actual, T_chws, T_cewt) {
     const warnings = [];
     if (PLR > 1.01) warnings.push({ code: 'CHILLER_PLR_OVER_1', severity: 'critical',
-      message: `冰機 PLR=${(PLR*100).toFixed(1)}% 超過 100%，容量嚴重不足` });
-    if (PLR < 0.10 && PLR > 0)  warnings.push({ code: 'CHILLER_PLR_VERY_LOW', severity: 'warning',
-      message: `冰機 PLR=${(PLR*100).toFixed(1)}% 極低，建議停機一台或使用旁路` });
+      message: _t('warn.CHILLER_PLR_OVER_1', { plr: (PLR*100).toFixed(1) },
+        `冰機 PLR=${(PLR*100).toFixed(1)}% 超過 100%，容量嚴重不足`) });
+    if (PLR < 0.10 && PLR > 0) warnings.push({ code: 'CHILLER_PLR_VERY_LOW', severity: 'warning',
+      message: _t('warn.CHILLER_PLR_VERY_LOW', { plr: (PLR*100).toFixed(1) },
+        `冰機 PLR=${(PLR*100).toFixed(1)}% 極低，建議停機一台或使用旁路`) });
     if (T_cewt - T_chws < 5) warnings.push({ code: 'CHILLER_DT_TOO_SMALL', severity: 'warning',
-      message: `冰機 CEWT(${T_cewt.toFixed(1)}°C) - CHWS(${T_chws.toFixed(1)}°C) = ${(T_cewt-T_chws).toFixed(1)}°C 過小，COP 可能不準確` });
+      message: _t('warn.CHILLER_DT_TOO_SMALL', { cewt: T_cewt.toFixed(1), chws: T_chws.toFixed(1), dt: (T_cewt-T_chws).toFixed(1) },
+        `冰機 CEWT(${T_cewt.toFixed(1)}°C) - CHWS(${T_chws.toFixed(1)}°C) = ${(T_cewt-T_chws).toFixed(1)}°C 過小，COP 可能不準確`) });
     return warnings;
   }
 };

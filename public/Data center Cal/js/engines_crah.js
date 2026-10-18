@@ -6,6 +6,16 @@
 // Reference: ASHRAE 90.1 / ASHRAE TC9.9 / AHRI 1360
 // ============================================================
 
+function _t(key, params, fallback) {
+  if (typeof I18N !== 'undefined' && typeof I18N.t === 'function') {
+    return I18N.t(key, params);
+  }
+  if (fallback && params) {
+    return fallback.replace(/\{(\w+)\}/g, (_, k) => (k in params ? params[k] : `{${k}}`));
+  }
+  return fallback || key;
+}
+
 const CRAHEngine = {
   /**
    * CRAH fan power using cubic VFD affinity law.
@@ -36,12 +46,14 @@ const CRAHEngine = {
     if (it_air_kw > 0 && cap_total > 0 && plr > 1.02) {
       warnings.push({ code: 'CRAH_CAPACITY_DEFICIT', severity: 'critical',
         value: (plr * 100).toFixed(1),
-        message: `CRAH 容量不足：氣冷 IT ${it_air_kw.toFixed(0)} kW > CRAH 可用 ${cap_total.toFixed(0)} kW` });
+        message: _t('warn.CRAH_CAPACITY_DEFICIT', { itAir: it_air_kw.toFixed(0), cap: cap_total.toFixed(0) },
+          `CRAH 容量不足：氣冷 IT ${it_air_kw.toFixed(0)} kW > CRAH 可用 ${cap_total.toFixed(0)} kW`) });
     }
     if (plr < 0.25 && it_air_kw > 0) {
       warnings.push({ code: 'CRAH_OVERSIZED', severity: 'info',
         value: (plr * 100).toFixed(1),
-        message: `CRAH 負載率 ${(plr*100).toFixed(0)}% 過低，可考慮停用部分台數以節省風機電力` });
+        message: _t('warn.CRAH_OVERSIZED', { plr: (plr*100).toFixed(0) },
+          `CRAH 負載率 ${(plr*100).toFixed(0)}% 過低，可考慮停用部分台數以節省風機電力`) });
     }
     return warnings;
   }

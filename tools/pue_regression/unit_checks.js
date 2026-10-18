@@ -3813,6 +3813,226 @@ function sizeCduToDeratedN1(S) {
   });
 })();
 
+// ── Task I-6: 引擎警告與假設表雙語驗收 ─────────────────────────────────
+(function () {
+  const ctx = freshCtx();
+  const {
+    I18N,
+    ASSUMPTIONS,
+    ALabel,
+    AHRI_PRESETS,
+    LOAD_PROFILE_PRESETS,
+    CDUEngine,
+    ChillerEngine,
+    CoolingTowerEngine,
+    CRAHEngine,
+    HeatExchangerEngine,
+    PlantPumpEngine,
+    CoolingStages,
+    EpwParser
+  } = ctx;
+
+  const cjkRegex = /[\u3400-\u9fff]/;
+
+  test('I-6: All ASSUMPTIONS have non-empty label and label_en with no CJK in label_en', () => {
+    const keys = Object.keys(ASSUMPTIONS);
+    assert(keys.length >= 70, `Expected at least 70 assumptions, got ${keys.length}`);
+    for (const k of keys) {
+      const a = ASSUMPTIONS[k];
+      assert(typeof a.label === 'string' && a.label.length > 0, `Assumption ${k} missing label`);
+      assert(typeof a.label_en === 'string' && a.label_en.length > 0, `Assumption ${k} missing label_en`);
+      assert(!cjkRegex.test(a.label_en), `Assumption ${k} label_en contains CJK: ${a.label_en}`);
+    }
+  });
+
+  test('I-6: ALabel(key) returns label_en in English mode and label in zh-TW mode', () => {
+    I18N.setLang('en');
+    assert.strictEqual(ALabel('tower_approach_c'), ASSUMPTIONS.tower_approach_c.label_en);
+    assert(!cjkRegex.test(ALabel('tower_approach_c')), 'ALabel in EN mode returned CJK');
+
+    I18N.setLang('zh-TW');
+    assert.strictEqual(ALabel('tower_approach_c'), ASSUMPTIONS.tower_approach_c.label);
+    assert(cjkRegex.test(ALabel('tower_approach_c')), 'ALabel in zh-TW mode should return Chinese');
+  });
+
+  test('I-6: AHRI_PRESETS and LOAD_PROFILE_PRESETS have valid name_en with no CJK', () => {
+    for (const [k, p] of Object.entries(AHRI_PRESETS)) {
+      assert(typeof p.name_en === 'string' && p.name_en.length > 0, `AHRI preset ${k} missing name_en`);
+      assert(!cjkRegex.test(p.name_en), `AHRI preset ${k} name_en has CJK: ${p.name_en}`);
+    }
+    for (const [k, p] of Object.entries(LOAD_PROFILE_PRESETS)) {
+      assert(typeof p.name_en === 'string' && p.name_en.length > 0, `Load profile preset ${k} missing name_en`);
+      assert(!cjkRegex.test(p.name_en), `Load profile preset ${k} name_en has CJK: ${p.name_en}`);
+    }
+  });
+
+  test('I-6: CDUEngine.validate generates localized warnings with 0 CJK in English mode', () => {
+    const testCases = [
+      { args: [1.2, 5.0, 5.0, 120, 100], code: 'CDU_CAPACITY_DEFICIT' },
+      { args: [0.2, 5.0, 5.0, 20, 100], code: 'CDU_OVERSIZED' },
+      { args: [0.8, 3.0, 5.0, 80, 100], code: 'CDU_DT_LOW' },
+      { args: [0.8, 7.0, 5.0, 80, 100], code: 'CDU_DT_HIGH' }
+    ];
+
+    // EN mode
+    I18N.setLang('en');
+    for (const tc of testCases) {
+      const warnings = CDUEngine.validate(...tc.args);
+      const w = warnings.find(x => x.code === tc.code);
+      assert(w, `CDUEngine should emit ${tc.code}`);
+      assert(!cjkRegex.test(w.message), `CDUEngine ${tc.code} message in EN mode has CJK: ${w.message}`);
+    }
+
+    // zh-TW mode
+    I18N.setLang('zh-TW');
+    for (const tc of testCases) {
+      const warnings = CDUEngine.validate(...tc.args);
+      const w = warnings.find(x => x.code === tc.code);
+      assert(w, `CDUEngine should emit ${tc.code}`);
+      assert(cjkRegex.test(w.message), `CDUEngine ${tc.code} message in zh-TW mode should have CJK`);
+    }
+  });
+
+  test('I-6: ChillerEngine.calcPower & validate generate localized warnings with 0 CJK in English mode', () => {
+    const chillers = [{
+      cooling_capacity_kw: 500,
+      cop_design: 5.5,
+      cop_curve: { type: 'fixed' },
+      t_chws_design: 7.0,
+      qty_running: 1,
+      qty_total: 2,
+      chiller_type: 'water_cooled'
+    }];
+
+    // EN mode
+    I18N.setLang('en');
+    const rMinPlr = ChillerEngine.calcPower(20, chillers, 7.0, 30.0, 30.0);
+    assert(rMinPlr.warnings.some(w => w.code === 'CHILLER_BELOW_MIN_PLR'), 'Expected CHILLER_BELOW_MIN_PLR');
+    for (const w of rMinPlr.warnings) {
+      assert(!cjkRegex.test(w.message), `Chiller calcPower warning has CJK in EN: ${w.message}`);
+    }
+
+    const rDeficit = ChillerEngine.calcPower(600, chillers, 7.0, 30.0, 30.0);
+    assert(rDeficit.warnings.some(w => w.code === 'CHILLER_CAPACITY_DEFICIT'), 'Expected CHILLER_CAPACITY_DEFICIT');
+    for (const w of rDeficit.warnings) {
+      assert(!cjkRegex.test(w.message), `Chiller deficit warning has CJK in EN: ${w.message}`);
+    }
+
+    const vCases = [
+      { args: [1.1, 5.0, 7.0, 30.0], code: 'CHILLER_PLR_OVER_1' },
+      { args: [0.05, 5.0, 7.0, 30.0], code: 'CHILLER_PLR_VERY_LOW' },
+      { args: [0.8, 5.0, 7.0, 9.0], code: 'CHILLER_DT_TOO_SMALL' }
+    ];
+    for (const tc of vCases) {
+      const warnings = ChillerEngine.validate(...tc.args);
+      const w = warnings.find(x => x.code === tc.code);
+      assert(w, `Chiller validate should emit ${tc.code}`);
+      assert(!cjkRegex.test(w.message), `Chiller ${tc.code} message has CJK in EN: ${w.message}`);
+    }
+
+    // zh-TW mode
+    I18N.setLang('zh-TW');
+    const rZh = ChillerEngine.calcPower(20, chillers, 7.0, 30.0, 30.0);
+    for (const w of rZh.warnings) {
+      assert(cjkRegex.test(w.message), `Chiller warning in zh-TW should have CJK: ${w.message}`);
+    }
+  });
+
+  test('I-6: CoolingTowerEngine, CRAHEngine, HeatExchangerEngine validate generate 0 CJK in English mode', () => {
+    I18N.setLang('en');
+
+    // Tower: validate(t_cws_c, t_cwr_c, wb_c)
+    const towerCases = [
+      { args: [28.0, 33.0, 27.0], code: 'CT_APPROACH_PHYSICALLY_IMPOSSIBLE' },
+      { args: [29.0, 34.0, 27.0], code: 'CT_APPROACH_LOW' },
+      { args: [38.0, 43.0, 27.0], code: 'CT_APPROACH_HIGH' },
+      { args: [30.0, 31.0, 25.0], code: 'CT_RANGE_LOW' },
+      { args: [30.0, 46.0, 25.0], code: 'CT_RANGE_HIGH' }
+    ];
+    for (const tc of towerCases) {
+      const warnings = CoolingTowerEngine.validate(...tc.args);
+      const w = warnings.find(x => x.code === tc.code);
+      assert(w, `Tower validate should emit ${tc.code}`);
+      assert(!cjkRegex.test(w.message), `Tower ${tc.code} message has CJK in EN: ${w.message}`);
+    }
+
+    // CRAH: validate(plr, cap_total, it_air_kw)
+    const crahCases = [
+      { args: [1.1, 100, 110], code: 'CRAH_CAPACITY_DEFICIT' },
+      { args: [0.15, 100, 15], code: 'CRAH_OVERSIZED' }
+    ];
+    for (const tc of crahCases) {
+      const warnings = CRAHEngine.validate(...tc.args);
+      const w = warnings.find(x => x.code === tc.code);
+      assert(w, `CRAH validate should emit ${tc.code}`);
+      assert(!cjkRegex.test(w.message), `CRAH ${tc.code} message has CJK in EN: ${w.message}`);
+    }
+
+    // HX: validate(t_hot_in, t_hot_out, t_cold_in, t_cold_out)
+    const hxCases = [
+      { args: [10.0, 15.0, 12.0, 14.0], code: 'HX_2ND_LAW_VIOLATION_HOT' },
+      { args: [14.5, 12.0, 10.0, 14.0], code: 'HX_HOT_APPROACH_VERY_SMALL' },
+      { args: [20.0, 8.0, 10.0, 14.0], code: 'HX_2ND_LAW_VIOLATION_COLD' },
+      { args: [20.0, 10.5, 10.0, 14.0], code: 'HX_COLD_APPROACH_VERY_SMALL' }
+    ];
+    for (const tc of hxCases) {
+      const warnings = HeatExchangerEngine.validate(...tc.args);
+      const w = warnings.find(x => x.code === tc.code);
+      assert(w, `HX validate should emit ${tc.code}`);
+      assert(!cjkRegex.test(w.message), `HX ${tc.code} message has CJK in EN: ${w.message}`);
+    }
+
+    // Pump validateChwDt
+    const pumpLow = PlantPumpEngine.validateChwDt(2.0, 'chw');
+    assert(pumpLow.some(w => w.code === 'CHW_DT_LOW' && !cjkRegex.test(w.message)));
+    const pumpHigh = PlantPumpEngine.validateChwDt(12.0, 'cdw');
+    assert(pumpHigh.some(w => w.code === 'CDW_DT_HIGH' && !cjkRegex.test(w.message)));
+
+    // Chiller stage envelope warning
+    const stage = CoolingStages.get('chiller');
+    if (stage) {
+      const simRes = stage.simulate({
+        stageParams: {
+          chiller: {
+            cooling_capacity_kw: 500,
+            cop_design: 5.5,
+            cop_curve: { type: 'fixed' },
+            t_chws_design: 7.0,
+            qty_running: 1,
+            qty_total: 2,
+            chiller_type: 'water_cooled'
+          }
+        },
+        t_chws_target: 7.0,
+        t_cewt: 45.0,
+        t_amb_db: 35.0,
+        t_amb_wb: 28.0,
+        load_kw: 300
+      });
+      if (simRes && simRes.warnings && simRes.warnings.length > 0) {
+        for (const w of simRes.warnings) {
+          assert(!cjkRegex.test(w.message), `Chiller stage warning has CJK in EN: ${w.message}`);
+        }
+      }
+    }
+
+    // EpwParser parse error
+    assert.throws(() => {
+      EpwParser.parse('INVALID EPW HEADER DATA');
+    }, err => {
+      return !cjkRegex.test(err.message);
+    });
+
+    // Switch back to zh-TW
+    I18N.setLang('zh-TW');
+    assert.throws(() => {
+      EpwParser.parse('INVALID EPW HEADER DATA');
+    }, err => {
+      return cjkRegex.test(err.message);
+    });
+  });
+})();
+
 console.log(`\n${passCount} passed, ${failCount} failed, ${skipCount} skipped`);
 process.exit(failCount > 0 ? 1 : 0);
 

@@ -4,7 +4,16 @@
 // CDUEngine — Coolant Distribution Unit / XDU thermodynamics
 // Depends on: engines_core.js
 // Reference: ASHRAE TC9.9 / Vertiv XDU/CDU specs
-// ============================================================
+function _t(key, params, fallback) {
+  if (typeof I18N !== 'undefined' && typeof I18N.t === 'function') {
+    return I18N.t(key, params);
+  }
+  if (fallback && params) {
+    return fallback.replace(/\{(\w+)\}/g, (_, k) => (k in params ? params[k] : `{${k}}`));
+  }
+  return fallback || key;
+}
+
 const CDUEngine = {
 
   CP_WATER: 4.186,
@@ -66,22 +75,26 @@ const CDUEngine = {
       if (plr > 1.0) {
         warnings.push({ code: 'CDU_CAPACITY_DEFICIT', severity: 'critical',
           value: (plr * 100).toFixed(1),
-          message: `CDU 容量不足：負載 ${it_liquid_kw.toFixed(0)} kW > 可用 ${cap_total.toFixed(0)} kW` });
+          message: _t('warn.CDU_CAPACITY_DEFICIT', { load: it_liquid_kw.toFixed(0), cap: cap_total.toFixed(0) },
+            `CDU 容量不足：負載 ${it_liquid_kw.toFixed(0)} kW > 可用 ${cap_total.toFixed(0)} kW`) });
       } else if (plr < 0.30) {
         warnings.push({ code: 'CDU_OVERSIZED', severity: 'info',
           value: (plr * 100).toFixed(1),
-          message: `CDU 負載率 ${(plr*100).toFixed(0)}% 偏低，建議停用部分台數以提升 ΔT 與效率` });
+          message: _t('warn.CDU_OVERSIZED', { plr: (plr*100).toFixed(0) },
+            `CDU 負載率 ${(plr*100).toFixed(0)}% 偏低，建議停用部分台數以提升 ΔT 與效率`) });
       }
     }
 
     if (delta_t_actual !== null && delta_t_actual < 5.0) {
       warnings.push({ code: 'CDU_DT_LOW', severity: 'warning',
         value: delta_t_actual.toFixed(1),
-        message: `CDU ΔT=${delta_t_actual.toFixed(1)}°C 過低 (設計 ${delta_t_design}°C)，流量過大，應降低泵速` });
+        message: _t('warn.CDU_DT_LOW', { dt: delta_t_actual.toFixed(1), designDt: delta_t_design },
+          `CDU ΔT=${delta_t_actual.toFixed(1)}°C 過低 (設計 ${delta_t_design}°C)，流量過大，應降低泵速`) });
     } else if (delta_t_actual !== null && delta_t_actual > delta_t_design * 1.15) {
       warnings.push({ code: 'CDU_DT_HIGH', severity: 'warning',
         value: delta_t_actual.toFixed(1),
-        message: `CDU ΔT=${delta_t_actual.toFixed(1)}°C 超出設計 ${delta_t_design}°C 的 15%，流量不足或台數不夠` });
+        message: _t('warn.CDU_DT_HIGH', { dt: delta_t_actual.toFixed(1), designDt: delta_t_design },
+          `CDU ΔT=${delta_t_actual.toFixed(1)}°C 超出設計 ${delta_t_design}°C 的 15%，流量不足或台數不夠`) });
     }
 
     return warnings;

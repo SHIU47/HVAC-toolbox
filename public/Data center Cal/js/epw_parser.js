@@ -4,6 +4,19 @@
 (function(window) {
     'use strict';
 
+    function _t(key, params, fallback) {
+        if (typeof window !== 'undefined' && window.I18N && typeof window.I18N.t === 'function') {
+            return window.I18N.t(key, params);
+        }
+        if (typeof I18N !== 'undefined' && typeof I18N.t === 'function') {
+            return I18N.t(key, params);
+        }
+        if (fallback && params) {
+            return fallback.replace(/\{(\w+)\}/g, (_, k) => (k in params ? params[k] : `{${k}}`));
+        }
+        return fallback || key;
+    }
+
     const EpwParser = {
         calculateWetBulb(t, rh) {
             const rhVal = Math.max(0, Math.min(100, rh));
@@ -17,20 +30,22 @@
 
         parse(epwText) {
             if (!epwText || typeof epwText !== 'string') {
-                throw new Error('無效的 EPW 內容');
+                throw new Error(_t('epw.invalidContent', null, '無效的 EPW 內容'));
             }
 
             const lines = epwText.split(/\r?\n/);
+            const defStation = _t('epw.customStation', null, '自定義測站');
+            const defCountry = _t('epw.customCountry', null, '自定義');
             let stationInfo = {
-                location: '自定義測站',
-                country: '自定義',
+                location: defStation,
+                country: defCountry,
                 lat: 25.0, lon: 121.2, elev: 35
             };
 
             if (lines.length > 0 && lines[0].startsWith('LOCATION')) {
                 const cols = lines[0].split(',');
                 stationInfo = {
-                    location: (cols[1] || '自定義測站').trim(),
+                    location: (cols[1] || defStation).trim(),
                     country: (cols[3] || 'N/A').trim(),
                     lat: parseFloat(cols[6]) || 0,
                     lon: parseFloat(cols[7]) || 0,
@@ -78,7 +93,7 @@
             }
 
             if (hourlyData.length === 0) {
-                throw new Error('無法解析到有效的 8760 小時氣候資料。');
+                throw new Error(_t('epw.invalid8760', null, '無法解析到有效的 8760 小時氣候資料。'));
             }
 
             const dbList = hourlyData.map(d => d.db);

@@ -4,6 +4,19 @@
 (function(window) {
     'use strict';
 
+    function _t(key, params, fallback) {
+        if (typeof window !== 'undefined' && window.I18N && typeof window.I18N.t === 'function') {
+            return window.I18N.t(key, params);
+        }
+        if (typeof I18N !== 'undefined' && typeof I18N.t === 'function') {
+            return I18N.t(key, params);
+        }
+        if (fallback && params) {
+            return fallback.replace(/\{(\w+)\}/g, (_, k) => (k in params ? params[k] : `{${k}}`));
+        }
+        return fallback || key;
+    }
+
     // A-5 fix: 正確月份時數對照表（非閏年）
     const MONTH_HOURS = [744, 672, 744, 720, 744, 720, 744, 744, 720, 744, 720, 744]; // 合計 8760
     const MONTH_START = [];
@@ -671,9 +684,10 @@
             const podNum = this.state.corePods.length + 1;
             const letter = String.fromCharCode(65 + (podNum - 1) % 26);
             const podId = makeId('corepod');
+            const defPodLabel = _t('store.defaultPodDesc', null, '核心網通/集中儲存');
             const newPod = {
                 id: podId,
-                name: data.name || `CorePOD-${letter} (核心網通/集中儲存)`,
+                name: data.name || `CorePOD-${letter} (${defPodLabel})`,
                 // P0-1 fix: 沒有這個欄位時，calculate()/canProceedStep4() 用的
                 // `p.enabled` 過濾（嚴格真值）會把新增的 CorePOD 整組排除在 PUE
                 // 計算與 N+1 檢核之外，即使它明明出現在 Step4 畫面和 Excel 匯出。
@@ -705,7 +719,7 @@
             if (!pod) return null;
             const clonedPod = JSON.parse(JSON.stringify(pod));
             clonedPod.id = makeId('corepod');
-            clonedPod.name = `${pod.name} (複製)`;
+            clonedPod.name = `${pod.name} (${_t('store.copy', null, '複製')})`;
             clonedPod.equipment.forEach((eq) => {
                 eq.id = makeId('eq');
             });
@@ -720,7 +734,7 @@
 
         deleteCorePod(podId) {
             if (this.state.corePods.length <= 1) {
-                alert('⚠️ 系統中至少需保留 1 組 CorePOD 核心機房！');
+                alert(_t('store.minCorePod', null, '⚠️ 系統中至少需保留 1 組 CorePOD 核心機房！'));
                 return false;
             }
             const idx = this.state.corePods.findIndex(p => p.id === podId);
@@ -761,7 +775,7 @@
 
         deleteHall(hallId) {
             if (this.state.halls.length <= 1) {
-                alert('⚠️ 系統中至少需保留 1 間 Data Hall 機房！');
+                alert(_t('store.minHall', null, '⚠️ 系統中至少需保留 1 間 Data Hall 機房！'));
                 return false;
             }
             const idx = this.state.halls.findIndex(h => h.id === hallId);
@@ -794,7 +808,7 @@
                 sus: [
                     {
                         id: makeId('su'),
-                        name: 'SU-01 (預設配置)',
+                        name: 'SU-01 (' + _t('store.defaultSuDesc', null, '預設配置') + ')',
                         electricalLossFactorPct: 0.0,
                         equipment: [
                             { id: makeId('eq'), category: 'GPU', model: 'NVIDIA Vera Rubin VR200 NVL72', qty: 2, itLoadKw: 227.0, liquidPct: 95.0, airPct: 5.0 },
@@ -843,7 +857,7 @@
             if (!du) return null;
             const clonedDu = JSON.parse(JSON.stringify(du));
             clonedDu.id = makeId('du');
-            clonedDu.name = `${du.name} (複製)`;
+            clonedDu.name = `${du.name} (${_t('store.copy', null, '複製')})`;
             clonedDu.sus.forEach((su) => {
                 su.id = makeId('su');
                 su.equipment.forEach((eq) => {
@@ -863,7 +877,7 @@
             const hall = this.state.halls.find(h => h.id === hallId);
             if (!hall) return false;
             if (hall.dus.length <= 1) {
-                alert('⚠️ 每個機房至少需保留 1 組 DU 冷卻單元！');
+                alert(_t('store.minDu', null, '⚠️ 每個機房至少需保留 1 組 DU 冷卻單元！'));
                 return false;
             }
             const idx = hall.dus.findIndex(d => d.id === duId);
@@ -902,7 +916,7 @@
             const du = hall.dus.find(d => d.id === duId);
             if (!du) return false;
             if (du.sus.length <= 1) {
-                alert('⚠️ 每個 DU 至少需保留 1 組 SU 算力單元！');
+                alert(_t('store.minSu', null, '⚠️ 每個 DU 至少需保留 1 組 SU 算力單元！'));
                 return false;
             }
             const idx = du.sus.findIndex(s => s.id === suId);
@@ -937,7 +951,7 @@
             const dc = site.designConditions || null;
             const designDb = dc?.cooling?.db004 ?? tmy.designDb;
             const designWb = dc?.cooling?.evapWb004 ?? tmy.designWb;
-            const designBasis = dc?.cooling?.db004 != null ? 'ASHRAE 0.4%' : 'TMY 排序 0.4%';
+            const designBasis = dc?.cooling?.db004 != null ? 'ASHRAE 0.4%' : _t('store.tmyRank004', null, 'TMY 排序 0.4%');
             const maxDb = tmy.maxDb;
             const extremes = dc?.extremes ?? null;
 
@@ -945,15 +959,15 @@
                 const n = (typeof A === 'function') ? A('design_extreme_return_years') : 20;
                 const v = extremes?.dbMax?.[n];
                 if (Number.isFinite(v)) {
-                    return { value: Math.max(v, tmy.maxDb), basis: `ASHRAE n=${n} 年回歸` };
+                    return { value: Math.max(v, tmy.maxDb), basis: _t('store.ashraeRegression', { n }, `ASHRAE n=${n} 年回歸`) };
                 }
                 const fallbackMargin = (typeof A === 'function') ? A('design_extreme_fallback_margin_c') : 2.0;
-                return { value: tmy.maxDb + fallbackMargin, basis: 'TMY 最高 + 餘裕（無 ASHRAE 極值）' };
+                return { value: tmy.maxDb + fallbackMargin, basis: _t('store.tmyMaxMargin', null, 'TMY 最高 + 餘裕（無 ASHRAE 極值）') };
             })();
 
             const freezeDb = (() => {
                 const v = extremes?.dbMin?.[50];
-                return Number.isFinite(v) ? { value: v, basis: 'ASHRAE n=50 年回歸' } : null;
+                return Number.isFinite(v) ? { value: v, basis: _t('store.ashrae50Regression', null, 'ASHRAE n=50 年回歸') } : null;
             })();
 
             let dataQualityWarning = null;
@@ -962,7 +976,7 @@
             const gapWarnThreshold = (typeof A === 'function') ? A('design_extreme_tmy_gap_warn_c') : 5.0;
             if (Number.isFinite(vMax) && (peakDb.value - tmy.maxDb > gapWarnThreshold)) {
                 const gap = (peakDb.value - tmy.maxDb).toFixed(1);
-                dataQualityWarning = `本站 ASHRAE 極值與 TMY 最高溫相差 ${gap}°C，建議核對測站資料`;
+                dataQualityWarning = _t('warn.ashraeTmyGap', { gap }, `本站 ASHRAE 極值與 TMY 最高溫相差 ${gap}°C，建議核對測站資料`);
             }
 
             this.state.site.design = {
@@ -1094,10 +1108,10 @@
                         failedItems.push({
                             targetId: targetId,
                             targetName: name,
-                            systemName: isCdu ? '💧 CDU 液冷' : '💨 Fanwall 氣冷',
+                            systemName: isCdu ? _t('store.cduLiquidSys', null, '💧 CDU 液冷') : _t('store.fwAirSys', null, '💨 Fanwall 氣冷'),
                             equipName: item.label,
                             reqText: item.requiredText,
-                            selText: item.selectedQty + '台 (有效 ' + (item.effectiveCapKw !== undefined ? item.effectiveCapKw : (item.selectedQty * item.unitCapKw)) + ' kW / N-1)'
+                            selText: item.selectedQty + _t('store.units', null, '台') + ' (' + _t('store.effectiveCap', null, '有效 ') + (item.effectiveCapKw !== undefined ? item.effectiveCapKw : (item.selectedQty * item.unitCapKw)) + ' kW / N-1)'
                         });
                     }
                 });

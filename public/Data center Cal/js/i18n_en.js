@@ -1006,7 +1006,74 @@
     'dash.fwModeMech': '🔵 Air Chiller Active',
     'dash.backToStep1': 'Back to Step 1 Site',
     'dash.heatRejTower': 'Rejection Tower',
-    'dash.chiller': 'Chiller'
+    'dash.chiller': 'Chiller',
+
+    // Warnings (I-6)
+    'warn.CDU_CAPACITY_DEFICIT': 'CDU capacity deficit: Load {load} kW > Available {cap} kW',
+    'warn.CDU_OVERSIZED': 'CDU PLR {plr}% is low; consider staging off units to improve ΔT and efficiency',
+    'warn.CDU_DT_LOW': 'CDU ΔT={dt}°C is too low (design {designDt}°C); excessive flow, reduce pump speed',
+    'warn.CDU_DT_HIGH': 'CDU ΔT={dt}°C exceeds design {designDt}°C by 15%; insufficient flow or capacity',
+
+    'warn.AIR_COOLED_CURVE_MISMATCH': 'Air-cooled chiller using water-cooled AHRI curve ({preset}); consider air_cooled_screw, air_cooled_vfd_centrifugal or fixed/custom_poly',
+    'warn.CHILLER_OUT_OF_RANGE': 'Chiller condition out of curve bounds: CHWS {chws}°C [{tLo}-{tHi}], CEWT/DB {cond}°C [{cLo}-{cHi}], clamped to boundary',
+    'warn.CHILLER_CAPACITY_DEFICIT': 'Chiller capacity deficit: Demand {req} kW, available {avail} kW, deficit {deficit} kW',
+    'warn.CHILLER_BELOW_MIN_PLR': 'Chiller PLR={plr}% below minimum stable load {minPlr}%, cycling ON/OFF',
+    'warn.CHILLER_COP_HIGH': 'Chiller COP={cop} exceeds typical maximum 10; please check equipment curve settings',
+    'warn.CHILLER_COP_LOW': 'Chiller COP={cop} is low; verify condenser water temp and equipment model match',
+    'warn.CHILLER_PLR_OVER_1': 'Chiller PLR={plr}% exceeds 100%; capacity severely deficient',
+    'warn.CHILLER_PLR_VERY_LOW': 'Chiller PLR={plr}% is very low; consider staging off one unit or using bypass',
+    'warn.CHILLER_DT_TOO_SMALL': 'Chiller CEWT({cewt}°C) - CHWS({chws}°C) = {dt}°C is too small; COP may be inaccurate',
+
+    'warn.CT_APPROACH_PHYSICALLY_IMPOSSIBLE': 'Cooling tower approach {approach}°C < 1.5°C; violates physical constraints (T_cws cannot approach WB)',
+    'warn.CT_APPROACH_LOW': 'Cooling tower approach {approach}°C is low; requires excessive heat transfer area (recommended ≥ 3.5°C)',
+    'warn.CT_APPROACH_HIGH': 'Cooling tower approach {approach}°C is high; indicates undersized tower area or insufficient fan speed',
+    'warn.CT_RANGE_LOW': 'Cooling tower range {range}°C is too low; flow may be excessive or cooling load too light',
+    'warn.CT_RANGE_HIGH': 'Cooling tower range {range}°C is too high; heat rejection capacity severely deficient',
+
+    'warn.CRAH_CAPACITY_DEFICIT': 'CRAH capacity deficit: Air-cooled IT {itAir} kW > CRAH available {cap} kW',
+    'warn.CRAH_OVERSIZED': 'CRAH PLR {plr}% is low; consider staging off units to save fan power',
+
+    'warn.HX_2ND_LAW_VIOLATION_HOT': 'Plate HX hot-end approach {approach}°C is negative; violates Second Law of Thermodynamics',
+    'warn.HX_HOT_APPROACH_VERY_SMALL': 'Plate HX hot-end approach {approach}°C is very small; requires excessive heat transfer area',
+    'warn.HX_2ND_LAW_VIOLATION_COLD': 'Plate HX cold-end approach {approach}°C is negative; violates Second Law of Thermodynamics',
+    'warn.HX_COLD_APPROACH_VERY_SMALL': 'Plate HX cold-end approach {approach}°C is very small (design recommendation ≥ 1.5°C)',
+
+    'warn.PUMP_DT_LOW': '{loop} ΔT={dt}°C is too low (< {lo}°C); excessive flow, consider reducing pump speed',
+    'warn.PUMP_DT_HIGH': '{loop} ΔT={dt}°C is too high (> {hi}°C); insufficient flow, consider increasing pump speed',
+    'warn.CHW_DT_LOW': 'CHW ΔT={dt}°C is too low (< {lo}°C); excessive flow, consider reducing pump speed',
+    'warn.CHW_DT_HIGH': 'CHW ΔT={dt}°C is too high (> {hi}°C); insufficient flow, consider increasing pump speed',
+    'warn.CDW_DT_LOW': 'CDW ΔT={dt}°C is too low (< {lo}°C); excessive flow, consider reducing pump speed',
+    'warn.CDW_DT_HIGH': 'CDW ΔT={dt}°C is too high (> {hi}°C); insufficient flow, consider increasing pump speed',
+    'warn.CW_DT_LOW': 'CW ΔT={dt}°C is too low (< {lo}°C); excessive flow, consider reducing pump speed',
+    'warn.CW_DT_HIGH': 'CW ΔT={dt}°C is too high (> {hi}°C); insufficient flow, consider increasing pump speed',
+    'warn.FWS_DT_LOW': 'FWS ΔT={dt}°C is too low (< {lo}°C); excessive flow, consider reducing pump speed',
+    'warn.FWS_DT_HIGH': 'FWS ΔT={dt}°C is too high (> {hi}°C); insufficient flow, consider increasing pump speed',
+
+    'warn.CHILLER_CEWT_EXCEEDS_ENVELOPE': 'Chiller entering condenser water temp {cewt}°C exceeds operating limit {maxCewt}°C; high-temperature chiller required',
+    'warn.ashraeTmyGap': 'Station ASHRAE extreme differs from TMY max DB by {gap}°C; verify weather data quality',
+
+    // Store messages (I-6)
+    'store.minCorePod': '⚠️ At least 1 CorePOD data room must be retained!',
+    'store.minHall': '⚠️ At least 1 Data Hall room must be retained!',
+    'store.minDu': '⚠️ Each room must retain at least 1 DU cooling unit!',
+    'store.minSu': '⚠️ Each DU must retain at least 1 SU compute unit!',
+    'store.copy': 'Copy',
+    'store.tmyRank004': 'TMY Rank 0.4%',
+    'store.ashraeRegression': 'ASHRAE n={n}-year return',
+    'store.tmyMaxMargin': 'TMY Max + Margin (No ASHRAE extreme)',
+    'store.ashrae50Regression': 'ASHRAE n=50-year return',
+    'store.cduLiquidSys': '💧 CDU Liquid',
+    'store.fwAirSys': '💨 Fanwall Air',
+    'store.units': ' units',
+    'store.effectiveCap': 'Effective ',
+    'store.defaultPodDesc': 'Core Network & Storage',
+    'store.defaultSuDesc': 'Default Config',
+
+    // EPW parser messages (I-6)
+    'epw.customStation': 'Custom Station',
+    'epw.customCountry': 'Custom',
+    'epw.invalidContent': 'Invalid EPW content',
+    'epw.invalid8760': 'Failed to parse valid 8760-hour weather data.'
   };
 
   const target = (typeof window !== 'undefined' ? window.I18N : (typeof global !== 'undefined' ? global.I18N : null));

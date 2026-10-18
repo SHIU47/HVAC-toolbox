@@ -5,6 +5,16 @@
 // Depends on: engines_core.js
 // Reference: ASHRAE 90.1 Section 6.5 / pump affinity law
 // ============================================================
+function _t(key, params, fallback) {
+  if (typeof I18N !== 'undefined' && typeof I18N.t === 'function') {
+    return I18N.t(key, params);
+  }
+  if (fallback && params) {
+    return fallback.replace(/\{(\w+)\}/g, (_, k) => (k in params ? params[k] : `{${k}}`));
+  }
+  return fallback || key;
+}
+
 const PlantPumpEngine = {
 
   CP_WATER: 4.184,  // kJ/(kg·°C)
@@ -64,12 +74,17 @@ const PlantPumpEngine = {
   validateChwDt(dt_c, loop_type = 'chw') {
     const warnings = [];
     const [lo, hi] = loop_type === 'cdw' ? [4, 10] : [3, 15];
-    if (dt_c < lo) warnings.push({ code: `${loop_type.toUpperCase()}_DT_LOW`, severity: 'warning',
+    const loopUpper = loop_type.toUpperCase();
+    if (dt_c < lo) warnings.push({ code: `${loopUpper}_DT_LOW`, severity: 'warning',
       value: dt_c.toFixed(1),
-      message: `${loop_type.toUpperCase()} ΔT=${dt_c.toFixed(1)}°C 過低（< ${lo}°C），流量可能過大，建議降低泵速` });
-    if (dt_c > hi) warnings.push({ code: `${loop_type.toUpperCase()}_DT_HIGH`, severity: 'warning',
+      message: _t(`warn.${loopUpper}_DT_LOW`, { loop: loopUpper, dt: dt_c.toFixed(1), lo },
+        _t('warn.PUMP_DT_LOW', { loop: loopUpper, dt: dt_c.toFixed(1), lo },
+          `${loopUpper} ΔT=${dt_c.toFixed(1)}°C 過低（< ${lo}°C），流量可能過大，建議降低泵速`)) });
+    if (dt_c > hi) warnings.push({ code: `${loopUpper}_DT_HIGH`, severity: 'warning',
       value: dt_c.toFixed(1),
-      message: `${loop_type.toUpperCase()} ΔT=${dt_c.toFixed(1)}°C 過高（> ${hi}°C），流量可能不足，建議提高泵速` });
+      message: _t(`warn.${loopUpper}_DT_HIGH`, { loop: loopUpper, dt: dt_c.toFixed(1), hi },
+        _t('warn.PUMP_DT_HIGH', { loop: loopUpper, dt: dt_c.toFixed(1), hi },
+          `${loopUpper} ΔT=${dt_c.toFixed(1)}°C 過高（> ${hi}°C），流量可能不足，建議提高泵速`)) });
     return warnings;
   }
 };
