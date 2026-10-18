@@ -89,6 +89,7 @@ const SKELETON_HTML = `<!doctype html>
 function buildWindow(options = {}) {
   const dom = new JSDOM(SKELETON_HTML, { url: 'http://localhost/', runScripts: 'dangerously', pretendToBeVisual: true });
   const win = dom.window;
+  try { win.localStorage.setItem('pue_lang', 'zh-TW'); } catch (_) {}
   win.__nodeRequire = require;
   win.__nodeProcess = process;
 

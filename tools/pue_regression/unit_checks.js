@@ -3617,6 +3617,71 @@ function sizeCduToDeratedN1(S) {
     assert(header.innerHTML.includes('PUE 計算系統'), 'zh-TW header must contain original title');
     assert(footer.innerHTML.includes('專業 AI 資料中心全生命週期能耗與耗水動力學評估工具'), 'zh-TW footer must contain original description');
   });
+
+  test('I-3: Step 1, Step 2, and Step 3 views render 0 CJK characters in English mode', () => {
+    const { buildWindow } = require('./dom_harness.js');
+    const win = buildWindow();
+    if (win.App && typeof win.App.init === 'function') {
+      win.App.init();
+    }
+    win.I18N.setLang('en');
+
+    // Dynamic user entities from store
+    const userNames = [];
+    (win.AppStore.state.halls || []).forEach(h => {
+      userNames.push(h.name);
+      (h.dus || []).forEach(d => {
+        userNames.push(d.name);
+        (d.sus || []).forEach(s => userNames.push(s.name));
+      });
+    });
+    (win.AppStore.state.corePods || []).forEach(c => userNames.push(c.name));
+
+    // Dynamic catalog model names
+    const catalogNames = (win.DEVICE_CATALOG || []).map(d => d.model);
+
+    // Weather station keys and countries
+    const weatherKeys = Object.keys(win.BUILTIN_WEATHER_DATA || {});
+    const countries = ['台灣', '新加坡', '菲律賓', '美國'];
+
+    // Arch labels from registry (translated in Task I-4)
+    const archLabels = (win.CoolingArchRegistry ? win.CoolingArchRegistry.list() : [])
+      .flatMap(a => [a.cardLabel, a.optionLabel, a.pillLabel, a.dashboardLabel])
+      .filter(Boolean);
+
+    const whitelist = [
+      ...userNames,
+      ...catalogNames,
+      ...weatherKeys,
+      ...countries,
+      ...archLabels,
+      '自訂高密度液冷機架', '自訂標準氣冷機架', '自訂高密度氣冷機架'
+    ];
+
+    const cjkRegex = /[\u3400-\u9fff]/g;
+
+    for (const step of [1, 2, 3]) {
+      win.App.currentStep = step;
+      win.App.renderStep(step);
+      const container = win.document.getElementById('stepContent');
+      assert(container, '#stepContent must exist');
+      let html = container.innerHTML.replace(/<!--[\s\S]*?-->/g, '');
+      for (const token of whitelist) {
+        if (token) html = html.split(token).join('');
+      }
+      const matches = html.match(cjkRegex) || [];
+      assert.strictEqual(matches.length, 0, `Step ${step} has unexpected CJK in English mode: ${matches.slice(0, 15).join('')}`);
+    }
+
+    // Switch back to zh-TW and verify key Chinese phrases in Step 1, 2, 3
+    win.I18N.setLang('zh-TW');
+    win.App.renderStep(1);
+    assert(win.document.getElementById('stepContent').innerHTML.includes('氣象動力學分析'), 'Step 1 in zh-TW must contain original title');
+    win.App.renderStep(2);
+    assert(win.document.getElementById('stepContent').innerHTML.includes('模組與設備設計'), 'Step 2 in zh-TW must contain original title');
+    win.App.renderStep(3);
+    assert(win.document.getElementById('stepContent').innerHTML.includes('核心網通/集中儲存機房'), 'Step 3 in zh-TW must contain original title');
+  });
 })();
 
 console.log(`\n${passCount} passed, ${failCount} failed, ${skipCount} skipped`);
