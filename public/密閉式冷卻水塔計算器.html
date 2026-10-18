@@ -1,0 +1,2087 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>密閉式冷卻水塔計算器</title>
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+  <style>
+    :root {
+      --bg: #F3F5F8; --card: #FFFFFF; --line: #E4E8EE; --line-strong: #CFD6DF;
+      --ink: #0F172A; --ink-2: #334155; --muted: #64748B; --faint: #94A3B8;
+      --accent: #2563EB; --accent-soft: #EEF4FF;
+      --pass: #15803D; --pass-soft: #ECFDF3; --warn: #B45309; --warn-soft: #FFF7E6; --fail: #DC2626; --fail-soft: #FEF2F2;
+      --radius: 12px;
+      --font: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang TC", "Microsoft JhengHei", "Noto Sans TC", sans-serif;
+      --mono: "JetBrains Mono", "SFMono-Regular", Consolas, monospace;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    [hidden] { display: none !important; }
+    button, input, select { font: inherit; color: inherit; }
+    body { background: var(--bg); color: var(--ink); font-family: var(--font); font-size: 14px; line-height: 1.5; -webkit-font-smoothing: antialiased; }
+    .num, .kpi-v, code, .iw input { font-variant-numeric: tabular-nums; }
+
+    /* 頂部列 */
+    .topbar { position: sticky; top: 0; z-index: 50; background: rgba(255,255,255,0.92); backdrop-filter: blur(8px); border-bottom: 1px solid var(--line);
+      display: flex; align-items: center; gap: 20px; padding: 10px 24px; flex-wrap: wrap; }
+    .brand { display: flex; align-items: center; gap: 10px; }
+    .logo { width: 34px; height: 34px; border-radius: 9px; background: var(--accent); color: #fff; display: grid; place-items: center; }
+    .app-title { font-size: 15px; font-weight: 700; }
+    .app-sub { font-size: 12px; color: var(--muted); }
+    .project { display: flex; gap: 8px; flex: 1; min-width: 260px; }
+    .project input { border: 1px solid transparent; background: #F1F4F8; border-radius: 8px; padding: 7px 10px; font-size: 13px; outline: none; }
+    .project input:focus { border-color: var(--accent); background: #fff; }
+    .project .pn { flex: 1.2; font-weight: 600; }
+    .project .ps { flex: 1; color: var(--ink-2); }
+    .actions { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+    .autosave { font-size: 12px; color: var(--faint); margin-right: 4px; }
+    .btn { border: 1px solid var(--line-strong); background: #fff; color: var(--ink-2); border-radius: 8px; padding: 7px 12px; font-size: 13px; font-weight: 600; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; }
+    .btn:hover { background: #F8FAFC; border-color: #B8C2CE; }
+    .btn.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+    .btn.primary:hover { background: #1D4ED8; }
+    .btn:disabled { opacity: 0.4; cursor: not-allowed; }
+    .btn.quiet { border-color: transparent; background: transparent; color: var(--muted); }
+    .btn.quiet:hover { background: #EEF1F5; color: var(--ink); }
+
+    /* 版面 */
+    .layout { display: grid; grid-template-columns: minmax(380px, 460px) 1fr; gap: 20px; padding: 20px 24px 60px; max-width: 1480px; margin: 0 auto; align-items: start; }
+    @media (max-width: 1080px) { .layout { grid-template-columns: 1fr; } }
+    .card { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); }
+    .inputs { display: flex; flex-direction: column; gap: 14px; }
+    .results { display: flex; flex-direction: column; gap: 14px; }
+    @media (min-width: 1081px) { .results { position: sticky; top: 74px; max-height: calc(100vh - 90px); overflow-y: auto; padding-right: 4px; scrollbar-width: thin; } }
+
+    /* 輸入區塊 */
+    .sec { padding: 16px 18px 18px; }
+    .sec-h { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; }
+    .sec-h .no { width: 24px; height: 24px; border-radius: 50%; background: var(--accent-soft); color: var(--accent); font-size: 12px; font-weight: 700; display: grid; place-items: center; flex: none; }
+    .sec-h h2 { font-size: 15px; font-weight: 700; }
+    .sec-h p { font-size: 12px; color: var(--muted); }
+    .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px 14px; }
+    .grid.g3 { grid-template-columns: repeat(3, 1fr); }
+    .field.full { grid-column: 1 / -1; }
+    .grid > *, .layout > *, .two > * { min-width: 0; }
+    .iw input { width: 100%; }
+    .field label { display: block; font-size: 13px; font-weight: 600; color: var(--ink-2); margin-bottom: 5px; }
+    .req { color: var(--fail); font-style: normal; }
+    .iw { display: flex; align-items: center; height: 40px; border: 1px solid var(--line-strong); border-radius: 8px; background: #fff; transition: border-color .15s, box-shadow .15s; }
+    .iw:focus-within { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15); }
+    .iw input { flex: 1; min-width: 0; height: 100%; border: none; background: transparent; padding: 0 10px 0 12px; font-size: 15px; font-weight: 600; outline: none; }
+    .iw .u { flex: none; padding-right: 10px; font-size: 12px; color: var(--muted); white-space: nowrap; }
+    .iw:has(input.is-invalid) { border-color: var(--fail); background: var(--fail-soft); }
+    .hint { font-size: 12px; color: var(--muted); margin-top: 4px; line-height: 1.45; }
+    .input-error-msg { display: none; font-size: 12px; color: var(--fail); font-weight: 600; margin-top: 4px; }
+    .note { margin-top: 10px; font-size: 12.5px; color: var(--ink-2); background: #F6F8FB; border-radius: 8px; padding: 9px 11px; line-height: 1.5; }
+    .note b { font-family: var(--mono); color: var(--ink); }
+    .note.warn { background: var(--warn-soft); color: #7C4A03; }
+    .mini-btn { margin-top: 6px; border: none; background: none; color: var(--accent); font-size: 12px; font-weight: 600; cursor: pointer; padding: 0; }
+    .mini-btn:hover { text-decoration: underline; }
+    .tag-est { font-size: 11px; color: var(--warn); font-weight: 700; margin-left: 6px; }
+
+    .seg { display: inline-flex; background: #EEF1F5; border-radius: 9px; padding: 3px; margin-bottom: 14px; }
+    .seg button { border: none; background: transparent; padding: 6px 14px; border-radius: 7px; font-size: 13px; font-weight: 600; color: var(--muted); cursor: pointer; }
+    .seg button.on { background: #fff; color: var(--ink); box-shadow: 0 1px 2px rgba(15, 23, 42, 0.12); }
+
+    /* 溫度刻度 */
+    .tscale { position: relative; height: 64px; margin: 14px 18px 4px; }
+    .ts-line { position: absolute; left: 0; right: 0; top: 29px; height: 2px; background: var(--line); }
+    .ts-span { position: absolute; top: 24px; height: 12px; border-radius: 6px; }
+    .ts-span em { position: absolute; top: 16px; left: 50%; transform: translateX(-50%); font-style: normal; font-size: 11.5px; font-weight: 600; white-space: nowrap; }
+    .ts-span.approach { background: rgba(37, 99, 235, 0.18); } .ts-span.approach em { color: var(--accent); }
+    .ts-span.range { background: rgba(234, 88, 12, 0.18); } .ts-span.range em { color: #C2410C; }
+    .ts-span.bad { background: rgba(220, 38, 38, 0.2); } .ts-span.bad em { color: var(--fail); }
+    .ts-pt { position: absolute; top: 4px; transform: translateX(-50%); text-align: center; font-size: 11.5px; color: var(--muted); white-space: nowrap; }
+    .ts-pt b { font-size: 12.5px; color: var(--ink); }
+    .ts-pt::after { content: ''; position: absolute; left: 50%; top: 25px; width: 10px; height: 10px; margin-left: -5px; border-radius: 50%; background: #fff; border: 2px solid var(--ink-2); }
+    .ts-pt.wb { top: 44px; } .ts-pt.wb::after { top: -15px; } .ts-pt.wb b { color: var(--accent); }
+    .ts-legend { display: flex; gap: 16px; font-size: 12px; font-weight: 600; margin-top: 2px; }
+    .ts-legend .a { color: var(--accent); } .ts-legend .r { color: #C2410C; } .ts-legend .bad { color: var(--fail); }
+    .ts-pt.in b { color: #C2410C; }
+
+    details.adv > summary { list-style: none; cursor: pointer; padding: 14px 18px; display: flex; align-items: center; justify-content: space-between; font-weight: 700; font-size: 14px; }
+    details.adv > summary::-webkit-details-marker { display: none; }
+    details.adv > summary .sum { font-weight: 400; font-size: 12px; color: var(--muted); }
+    details.adv > summary::after { content: '▸'; color: var(--faint); margin-left: 10px; }
+    details.adv[open] > summary::after { content: '▾'; }
+    details.adv .adv-body { padding: 0 18px 18px; display: flex; flex-direction: column; gap: 14px; }
+    .radios { display: flex; gap: 16px; font-size: 13px; }
+    .radios label { display: flex; align-items: center; gap: 6px; cursor: pointer; }
+    select.sel { width: 100%; height: 40px; border: 1px solid var(--line-strong); border-radius: 8px; padding: 0 10px; background: #fff; font-size: 14px; }
+
+    /* 結論 */
+    .verdict { padding: 18px 20px; border-left-width: 5px; }
+    .verdict.pass { border-left-color: var(--pass); } .verdict.warn { border-left-color: var(--warn); } .verdict.fail { border-left-color: var(--fail); }
+    .v-head { display: flex; align-items: center; gap: 12px; }
+    .v-icon { width: 34px; height: 34px; border-radius: 50%; display: grid; place-items: center; font-weight: 800; font-size: 16px; color: #fff; flex: none; }
+    .verdict.pass .v-icon { background: var(--pass); } .verdict.warn .v-icon { background: var(--warn); } .verdict.fail .v-icon { background: var(--fail); }
+    .v-title { font-size: 18px; font-weight: 800; }
+    .v-sub { font-size: 13px; color: var(--muted); }
+    .v-meta { margin-left: auto; font-size: 12px; color: var(--faint); text-align: right; }
+    .v-list { margin: 12px 0 0 46px; font-size: 13px; color: var(--ink-2); display: flex; flex-direction: column; gap: 4px; }
+    .v-list a { color: var(--ink); font-weight: 700; cursor: pointer; text-decoration: underline; text-decoration-color: var(--line-strong); }
+
+    /* 關鍵數字 */
+    .kpis { display: grid; grid-template-columns: repeat(3, 1fr); }
+    .kpi { padding: 16px 20px; }
+    .kpi + .kpi { border-left: 1px solid var(--line); }
+    .kpi-l { font-size: 12.5px; color: var(--muted); font-weight: 600; }
+    .kpi-v { font-size: 30px; font-weight: 800; letter-spacing: -0.5px; line-height: 1.2; margin-top: 2px; }
+    .kpi-v small { font-size: 14px; font-weight: 600; color: var(--muted); margin-left: 4px; letter-spacing: 0; }
+    .kpi-s { font-size: 12px; color: var(--muted); margin-top: 2px; }
+    @media (max-width: 640px) { .kpis { grid-template-columns: 1fr; } .kpi + .kpi { border-left: none; border-top: 1px solid var(--line); } }
+
+    .panel { padding: 16px 20px; }
+    .panel-h { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 12px; }
+    .panel-h h3 { font-size: 14px; font-weight: 700; }
+    .panel-h span { font-size: 12px; color: var(--muted); }
+    .two { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+    @media (max-width: 1280px) { .two { grid-template-columns: 1fr; } }
+
+    /* 容量圖 */
+    .cap-track { position: relative; height: 40px; margin-top: 26px; }
+    .cap-tower { position: absolute; top: 0; height: 40px; border: 2px solid #fff; border-radius: 7px; background: #3B82F6; display: grid; place-items: center; }
+    .cap-tower span { font-size: 11px; color: #fff; font-weight: 700; }
+    .cap-tower.standby { background: repeating-linear-gradient(45deg, #CBD5E1, #CBD5E1 6px, #E2E8F0 6px, #E2E8F0 12px); }
+    .cap-tower.standby span { color: var(--ink-2); }
+    .cap-q { position: absolute; top: -26px; bottom: -6px; width: 2px; background: var(--ink); }
+    .cap-q label { position: absolute; top: 0; left: 6px; font-size: 11.5px; font-weight: 700; white-space: nowrap; background: #fff; padding: 0 4px; border-radius: 4px; }
+    .cap-q.over { background: var(--fail); } .cap-q.over label { color: var(--fail); }
+    .caption { font-size: 12px; color: var(--muted); margin-top: 12px; }
+    .empty { font-size: 12.5px; color: var(--faint); padding: 10px 0; }
+
+    /* 儲水圖 */
+    .storage-bar-track { position: relative; height: 40px; background: #EEF1F5; border-radius: 8px; overflow: hidden; margin-top: 4px; }
+    .storage-bar-segment { position: absolute; top: 0; height: 100%; transition: width .3s ease; }
+    .storage-bar-segment.basic { left: 0; background: #0EA5E9; }
+    .storage-bar-segment.backup { background: #7DD3FC; }
+    .storage-bar-marker { position: absolute; top: 0; bottom: 0; width: 2px; }
+    .storage-bar-marker.economic { background: var(--ink); }
+    .storage-bar-marker.conservative { background: var(--warn); }
+    .legend { display: flex; flex-wrap: wrap; gap: 6px 14px; font-size: 12px; color: var(--muted); margin-top: 10px; }
+    .legend i { display: inline-block; width: 10px; height: 10px; border-radius: 3px; margin-right: 5px; vertical-align: -1px; }
+    .legend b { color: var(--ink); font-family: var(--mono); font-weight: 600; }
+
+    /* 檢核清單 */
+    .checks { list-style: none; display: flex; flex-direction: column; }
+    .chk { display: flex; gap: 12px; padding: 10px 0; border-top: 1px solid var(--line); transition: background .3s; }
+    .chk:first-child { border-top: none; }
+    .chk.flash { background: var(--accent-soft); }
+    .chk .dot { width: 22px; height: 22px; border-radius: 50%; display: grid; place-items: center; font-size: 12px; font-weight: 800; color: #fff; flex: none; margin-top: 1px; }
+    .chk.pass .dot { background: var(--pass); } .chk.warn .dot { background: var(--warn); } .chk.fail .dot { background: var(--fail); } .chk.info .dot { background: var(--faint); }
+    .chk-t { font-weight: 700; font-size: 13.5px; }
+    .chk-v { font-size: 13px; color: var(--ink-2); }
+    .chk-d { font-size: 12px; color: var(--muted); }
+
+    details.more > summary { list-style: none; cursor: pointer; padding: 14px 20px; font-weight: 700; display: flex; justify-content: space-between; }
+    details.more > summary::-webkit-details-marker { display: none; }
+    details.more > summary::after { content: '展開 ▸'; font-weight: 500; font-size: 12px; color: var(--muted); }
+    details.more[open] > summary::after { content: '收合 ▾'; }
+    .steps { list-style: none; padding: 0 20px 16px; display: flex; flex-direction: column; gap: 10px; }
+    .steps li { display: flex; gap: 10px; }
+    .steps .n { width: 20px; height: 20px; border-radius: 50%; background: #EEF1F5; font-size: 11px; font-weight: 700; display: grid; place-items: center; flex: none; margin-top: 2px; }
+    .steps .st-t { font-size: 12.5px; color: var(--muted); }
+    .steps code { font-family: var(--mono); font-size: 13px; color: var(--ink); }
+    .notes { padding: 0 20px 18px; font-size: 12.5px; color: var(--ink-2); display: flex; flex-direction: column; gap: 6px; line-height: 1.6; }
+
+    .is-stale .kpis, .is-stale .viz, .is-stale .checks-card { opacity: 0.4; filter: grayscale(70%); pointer-events: none; }
+
+    .to-results { display: none; }
+    @media (max-width: 1080px) {
+      .to-results { display: block; position: fixed; right: 16px; bottom: 16px; z-index: 60; border: none; background: var(--ink); color: #fff; border-radius: 999px; padding: 10px 18px; font-weight: 700; box-shadow: 0 6px 20px rgba(15,23,42,.25); }
+      .topbar { position: static; }
+      .grid.g3 { grid-template-columns: 1fr 1fr 1fr; }
+    }
+
+    .toast { position: fixed; bottom: 24px; left: 50%; transform: translate(-50%, 10px); background: var(--ink); color: #fff; padding: 10px 18px; border-radius: 10px; font-size: 13px; font-weight: 600; opacity: 0; pointer-events: none; transition: opacity .2s, transform .2s; z-index: 1000; max-width: 90vw; }
+    .toast.show { opacity: 1; transform: translate(-50%, 0); }
+    #printReportRoot { position: fixed; left: -99999px; top: 0; width: 794px; background: #FFFFFF; color: #0F172A; font-family: "PingFang TC", "Microsoft JhengHei", "Noto Sans TC", sans-serif; }
+  </style>
+</head>
+<body>
+  <div class="toast" id="toastMsg"></div>
+
+  <header class="topbar">
+    <div class="brand">
+      <div class="logo"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M5 21h14"/><path d="M7 21 9 7h6l2 14"/><path d="M9 7c0-2 1.5-4 3-4s3 2 3 4"/><path d="M8 14h8"/></svg></div>
+      <div><div class="app-title">密閉式冷卻水塔計算器</div><div class="app-sub">容量 · 循環水量 · 補水 · 儲水槽</div></div>
+    </div>
+    <div class="project">
+      <input id="conditionName" class="pn" placeholder="案名／工況，例如 DC Hall A 尖峰" value="DC Hall A — Peak Cooling" oninput="calculate()">
+      <input id="dataSource" class="ps" placeholder="資料來源，例如 BAC 選型表 Rev.3" value="BAC Datasheet Rev.3" oninput="calculate()">
+    </div>
+    <div class="actions">
+      <span class="autosave" id="autosaveHint"></span>
+      <button type="button" class="btn quiet" onclick="loadTestCase()">載入範例</button>
+      <button type="button" class="btn quiet" onclick="resetToDefaults()">清空</button>
+      <button type="button" class="btn" id="btnCopySummary" onclick="copyDesignSummary()">複製摘要</button>
+      <button type="button" class="btn" id="btnExportPDF" onclick="exportToPDF()">PDF</button>
+      <button type="button" class="btn primary" id="btnExportExcel" onclick="exportToExcel()">匯出 Excel</button>
+    </div>
+  </header>
+
+  <div class="layout">
+    <section class="inputs">
+
+      <div class="card sec">
+        <div class="sec-h"><span class="no">1</span><div><h2>散熱需求與設備</h2><p>要排掉多少熱、用幾台塔</p></div></div>
+        <div class="grid">
+          <div class="field full">
+            <label for="designHeat">設計尖峰散熱量 <i class="req">*</i></label>
+            <div class="iw"><input type="number" id="designHeat" step="any"  value="6000"  oninput="calculate()"><span class="u">kW</span></div>
+            <div class="hint">IT 負載＋冰機壓縮機功＋泵熱等，冷卻水塔要排出的最大熱量</div>
+            <div class="input-error-msg" id="err-designHeat"></div>
+          </div>
+
+          <div class="field">
+            <label for="capUnit">單台額定散熱量 <i class="req">*</i></label>
+            <div class="iw"><input type="number" id="capUnit" step="any"  value="1650"  oninput="calculate()"><span class="u">kW/台</span></div>
+            <div class="hint">原廠在下方溫度條件下的值</div>
+            <div class="input-error-msg" id="err-capUnit"></div>
+          </div>
+
+          <div class="field">
+            <label for="numOperating">運轉台數 <i class="req">*</i></label>
+            <div class="iw"><input type="number" id="numOperating" step="1" min="1" value="4"  oninput="calculate()"><span class="u">台</span></div>
+            
+            <div class="input-error-msg" id="err-numOperating"></div>
+          </div>
+
+          <div class="field">
+            <label for="numStandby">備援台數 <i class="req">*</i></label>
+            <div class="iw"><input type="number" id="numStandby" step="1" min="0" value="1"  oninput="calculate()"><span class="u">台</span></div>
+            
+            <div class="input-error-msg" id="err-numStandby"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card sec">
+        <div class="sec-h"><span class="no">2</span><div><h2>溫度條件</h2><p>決定循環水量與能否冷得下來</p></div></div>
+        <div class="grid g3">
+          <div class="field">
+            <label for="tempEntering">入水溫 <i class="req">*</i></label>
+            <div class="iw"><input type="number" id="tempEntering" step="any"  value="35.0"  oninput="calculate()"><span class="u">°C</span></div>
+            
+            <div class="input-error-msg" id="err-tempEntering"></div>
+          </div>
+
+          <div class="field">
+            <label for="tempLeaving">出水溫 <i class="req">*</i></label>
+            <div class="iw"><input type="number" id="tempLeaving" step="any"  value="30.0"  oninput="calculate()"><span class="u">°C</span></div>
+            
+            <div class="input-error-msg" id="err-tempLeaving"></div>
+          </div>
+
+          <div class="field">
+            <label for="tempWetBulb">設計濕球溫 <i class="req">*</i></label>
+            <div class="iw"><input type="number" id="tempWetBulb" step="any"  value="27.0"  oninput="calculate()"><span class="u">°C</span></div>
+            
+            
+          </div>
+        </div>
+        <div class="tscale" id="tempScale"></div>
+        <div class="ts-legend" id="tempLegend"></div>
+        <div class="hint">濕球溫度建議採 ASHRAE 0.4%。密閉式的趨近溫差（出水 − 濕球）通常 3～8°C。</div>
+      </div>
+
+      <div class="card sec">
+        <div class="sec-h"><span class="no">3</span><div><h2>補水量</h2><p>蒸發、漂水、排污要補回的水</p></div></div>
+        <input type="hidden" id="waterBalanceMode" value="vendor">
+        <div class="seg"><button type="button" id="segVendor" class="on" onclick="setWaterMode('vendor')">用原廠補水率</button><button type="button" id="segDetailed" onclick="setWaterMode('detailed')">自行拆解計算</button></div>
+        <div id="modeABox">
+          <div class="grid">
+          <div class="field full">
+            <label for="vendorMakeupRate">原廠每台補水率 <i class="req">*</i></label>
+            <div class="iw"><input type="number" id="vendorMakeupRate" step="any"  value="2.2" placeholder="例如 2.8" oninput="calculate()"><span class="u">t/h/台</span></div>
+            <div class="hint">原廠在額定散熱量下的總補水量（已含蒸發、漂水、排污），會依設計散熱量比例換算</div>
+            <div class="input-error-msg" id="err-vendorMakeupRate"></div>
+          </div>
+          </div>
+          <div class="note" id="theoryEvapNote"></div>
+        </div>
+        <div id="modeBBox" hidden>
+          <div class="grid">
+          <div class="field">
+            <label for="inputEvapRate">每台蒸發量 <i class="req">*</i></label>
+            <div class="iw"><input type="number" step="any" id="inputEvapRate" placeholder="設計工況" oninput="calculate()"><span class="u">t/h/台</span></div>
+            <button type="button" class="mini-btn" onclick="quickFillEvap()">由設計散熱量估算</button>
+            <div class="input-error-msg" id="err-inputEvapRate"></div>
+          </div>
+
+          <div class="field">
+            <label for="cocValue">濃縮倍率 (COC)</label>
+            <div class="iw"><input type="number" id="cocValue" step="any"   placeholder="一般 3～6" oninput="calculate()"><span class="u">倍</span></div>
+            <div class="hint">排污量 = 蒸發 ÷ (COC − 1)</div>
+            <div class="input-error-msg" id="err-cocValue"></div>
+          </div>
+
+          <div class="field">
+            <label for="inputBlowdownRate">直接指定排污量</label>
+            <div class="iw"><input type="number" id="inputBlowdownRate" step="any"   placeholder="選填，會取代 COC" oninput="calculate()"><span class="u">t/h/台</span></div>
+            
+            
+          </div>
+          <div class="field">
+            <label for="inputDriftRate">每台漂水量<span class="tag-est" id="driftEstimatedTag" style="display:none">估算值</span></label>
+            <div class="iw"><input type="number" step="any" id="inputDriftRate" placeholder="未填視為 0" oninput="onDriftManualEdit()"><span class="u">t/h/台</span></div>
+            <button type="button" class="mini-btn" onclick="quickFillDrift()">用噴淋水量 × 0.005% 估算</button>
+          </div>
+
+          <div class="field">
+            <label for="inputOtherLoss">其他損失</label>
+            <div class="iw"><input type="number" id="inputOtherLoss" step="any"  value="0" placeholder="0" oninput="calculate()"><span class="u">t/h/台</span></div>
+            
+            
+          </div>
+          </div>
+          <div class="note" id="modeBBlowdownNote"></div>
+        </div>
+      </div>
+
+      <div class="card sec">
+        <div class="sec-h"><span class="no">4</span><div><h2>用水與儲水槽</h2><p>平均用水量與停水時要撐幾天</p></div></div>
+        <div class="grid">
+          <div class="field">
+            <label for="loadFactor">年平均負載率 <i class="req">*</i></label>
+            <div class="iw"><input type="number" id="loadFactor" step="any"  value="70"  oninput="calculate()"><span class="u">%</span></div>
+            <div class="hint">相對設計散熱量；用於日用水與儲水量</div>
+            <div class="input-error-msg" id="err-loadFactor"></div>
+          </div>
+
+          <div class="field">
+            <label for="operatingHours">每日運轉時數 <i class="req">*</i></label>
+            <div class="iw"><input type="number" id="operatingHours" step="any"  value="24"  oninput="calculate()"><span class="u">hr</span></div>
+            
+            <div class="input-error-msg" id="err-operatingHours"></div>
+          </div>
+
+          <div class="field">
+            <label for="storageDays">儲水天數 <i class="req">*</i></label>
+            <div class="iw"><input type="number" id="storageDays" step="any"  value="3"  oninput="calculate()"><span class="u">天</span></div>
+            
+            <div class="input-error-msg" id="err-storageDays"></div>
+          </div>
+
+          <div class="field">
+            <label for="tankUnitCap">單槽容量 <i class="req">*</i></label>
+            <div class="iw"><input type="number" id="tankUnitCap" step="any"  value="50"  oninput="calculate()"><span class="u">t/槽</span></div>
+            
+            <div class="input-error-msg" id="err-tankUnitCap"></div>
+          </div>
+
+          <div class="field">
+            <label for="backupTanks">備援水槽數 <i class="req">*</i></label>
+            <div class="iw"><input type="number" id="backupTanks" step="1" min="0" value="2"  oninput="calculate()"><span class="u">槽</span></div>
+            <div class="hint">維修時可停用的水槽數</div>
+            <div class="input-error-msg" id="err-backupTanks"></div>
+          </div>
+        </div>
+      </div>
+
+      <details class="card adv">
+        <summary><span>進階設定 <span class="sum" id="fluidSummary"></span></span></summary>
+        <div class="adv-body">
+          <div class="field">
+            <label>循環流體</label>
+            <div class="radios">
+              <label><input type="radio" name="fluidType" value="water" checked onchange="toggleFluidPreset()"> 清水（Cp 4.186、ρ 1000）</label>
+              <label><input type="radio" name="fluidType" value="custom" onchange="toggleFluidPreset()"> 自訂（如乙二醇）</label>
+            </div>
+          </div>
+          <div id="customFluidBox" style="display:none;"><div class="grid">
+          <div class="field">
+            <label for="fluidCp">比熱 Cp</label>
+            <div class="iw"><input type="number" id="fluidCp" step="any"  value="4.186"  oninput="calculate()"><span class="u">kJ/kg·K</span></div>
+            
+            <div class="input-error-msg" id="err-fluidCp"></div>
+          </div>
+
+          <div class="field">
+            <label for="fluidDensity">密度 ρ</label>
+            <div class="iw"><input type="number" id="fluidDensity" step="any"  value="1000"  oninput="calculate()"><span class="u">kg/m³</span></div>
+            
+            <div class="input-error-msg" id="err-fluidDensity"></div>
+          </div>
+          </div></div>
+          <div class="field">
+            <label for="flowModel">循環水量計算基準</label>
+            <select class="sel" id="flowModel" onchange="calculate()">
+              <option value="variable" selected>依設計散熱量（建議）</option>
+              <option value="constant">依運轉台數額定容量（定流量、保守）</option>
+            </select>
+          </div>
+
+          <div class="field">
+            <label for="vendorSprayFlow">原廠噴淋水量（選填）</label>
+            <div class="iw"><input type="number" id="vendorSprayFlow" step="any"   placeholder="用於估算漂水量" oninput="calculate()"><span class="u">m³/h/台</span></div>
+            <div class="hint">殼側噴淋水，與管內循環水分開</div>
+            
+          </div>
+        </div>
+      </details>
+    </section>
+
+    <aside class="results" id="resultsMain">
+      <div class="card verdict pass" id="verdict">
+        <div class="v-head">
+          <div class="v-icon" id="verdictIcon">✓</div>
+          <div><div class="v-title" id="verdictTitle">--</div><div class="v-sub" id="verdictSub"></div></div>
+          <div class="v-meta" id="verdictMeta"></div>
+        </div>
+        <ul class="v-list" id="verdictList" hidden></ul>
+      </div>
+
+      <div class="card kpis">
+        <div class="kpi"><div class="kpi-l">循環水量</div><div class="kpi-v"><span id="kpiFlow">--</span><small>m³/h</small></div><div class="kpi-s" id="kpiFlowSub"></div></div>
+        <div class="kpi"><div class="kpi-l">尖峰補水量</div><div class="kpi-v"><span id="kpiMakeup">--</span><small>t/h</small></div><div class="kpi-s" id="kpiMakeupSub"></div></div>
+        <div class="kpi"><div class="kpi-l">儲水槽</div><div class="kpi-v"><span id="kpiTanks">--</span><small>槽</small></div><div class="kpi-s" id="kpiTanksSub"></div></div>
+      </div>
+
+      <div class="two viz">
+        <div class="card panel">
+          <div class="panel-h"><h3>冷卻水塔容量</h3><span>每格 = 1 台</span></div>
+          <div id="capBar"></div>
+          <div class="caption" id="capCaption"></div>
+        </div>
+        <div class="card panel">
+          <div class="panel-h"><h3>儲水量</h3><span id="storageBarCaption"></span></div>
+          <div class="storage-bar-track" id="storageBarTrack">
+            <div class="storage-bar-segment basic" id="storageBarBasic" style="width:0%"></div>
+            <div class="storage-bar-segment backup" id="storageBarBackup" style="width:0%"></div>
+            <div class="storage-bar-marker economic" id="storageBarMarkerEconomic" title="年均用水需求"></div>
+            <div class="storage-bar-marker conservative" id="storageBarMarkerConservative" title="滿載用水需求"></div>
+          </div>
+          <div class="legend">
+            <span><i style="background:#0EA5E9"></i>基本槽</span><span><i style="background:#7DD3FC"></i>備援槽</span>
+            <span><i style="background:var(--ink); width:3px"></i>年均需求 <b id="sbEcoVal">--</b></span>
+            <span><i style="background:var(--warn); width:3px"></i>滿載需求 <b id="sbConVal">--</b></span>
+            <span>安裝 <b id="sbInstVal">--</b></span>
+          </div>
+        </div>
+      </div>
+
+      <div class="card panel checks-card">
+        <div class="panel-h"><h3>檢核項目</h3><span id="checkSummary"></span></div>
+        <ul class="checks" id="checkList"></ul>
+      </div>
+
+      <details class="card more">
+        <summary>計算過程</summary>
+        <ol class="steps" id="calcSteps"></ol>
+      </details>
+
+      <details class="card more">
+        <summary>計算假設與說明</summary>
+        <div class="notes">
+          <div>• 循環水量 = Q × 3600 ÷ (ρ × Cp × ΔT)，Q 為設計尖峰散熱量。</div>
+          <div>• 原廠補水率是「額定散熱量」下的值，會乘上 Q ÷ 運轉容量換算到設計工況；自行拆解模式的數值視為設計工況值。</div>
+          <div>• 理論蒸發量 ≈ Q × 85%（夏季濕式運轉潛熱比例）÷ 2,430 kJ/kg，用來檢查補水量是否合理；冬季或乾式運轉時實際較低。</div>
+          <div>• 儲水需求以「尖峰補水 × 每日時數 × 年平均負載率 × 天數」計算；「滿載需求」不乘年平均負載率。</div>
+          <div>• 管內循環水與殼側噴淋水是兩個獨立水路，噴淋水量僅用於估算漂水。</div>
+          <div>• 本工具為規劃階段估算，最終以原廠選型資料、水處理設計與技師審查為準。</div>
+        </div>
+      </details>
+    </aside>
+  </div>
+
+  <button type="button" class="to-results" onclick="scrollToResults()">看結果 ↓</button>
+
+  <div id="printReportRoot"><div id="printReportContent"></div></div>
+
+  <script>
+
+    // ==================================================================
+    // 0. CALCULATION ENGINE (calc-engine.js - v9 Single Source of Truth)
+    // ==================================================================
+
+    const CROSS_VERIFY_TOLERANCE = 10; // Unified threshold: 10%
+    const H_FG_KJ_PER_KG = 2430;   // 水的蒸發潛熱 (約 30°C)
+    const LATENT_FRACTION = 0.85;  // 濕式運轉時散熱量中以蒸發 (潛熱) 帶走的比例，夏季典型值
+
+    (function (root, factory) {
+      const engine = factory();
+      if (typeof module === 'object' && module.exports) {
+        module.exports = engine;
+      }
+      if (typeof root !== 'undefined') {
+        root.CoolingTowerEngine = engine;
+      }
+      if (typeof window !== 'undefined') {
+        window.CoolingTowerEngine = engine;
+      }
+      if (typeof globalThis !== 'undefined') {
+        globalThis.CoolingTowerEngine = engine;
+      }
+    })(typeof self !== 'undefined' ? self : (typeof window !== 'undefined' ? window : this), function () {
+      'use strict';
+
+      function isNum(v) { return typeof v === 'number' && !isNaN(v) && isFinite(v); }
+      function n(val) {
+        if (val === '' || val === undefined || val === null) return null;
+        const f = Number(val);
+        return isNaN(f) ? null : f;
+      }
+
+      function validateInputs(raw) {
+        const errors = [];
+        const fieldErrors = {};
+
+        const capUnit = n(raw.capUnit);
+        const numOp = n(raw.numOp);
+        const numSb = n(raw.numSb) === null ? 0 : n(raw.numSb);
+        const loadFactor = n(raw.loadFactor);
+        const opHours = n(raw.opHours);
+        const Tin = n(raw.Tin);
+        const Tout = n(raw.Tout);
+        const Twb = n(raw.Twb);
+        const Cp = n(raw.Cp);
+        const rho = n(raw.rho);
+        const storageDays = n(raw.storageDays);
+        const tankUnitCap = n(raw.tankUnitCap);
+        const backupTanks = n(raw.backupTanks) === null ? 0 : n(raw.backupTanks);
+        const coc = n(raw.coc);
+        const wbMode = raw.wbMode === 'detailed' ? 'detailed' : 'vendor';
+        const vendorMakeupRate = n(raw.vendorMakeupRate);
+        const evapRateUnit = n(raw.evapRateUnit);
+        const designHeat = n(raw.designHeat);
+
+        if (raw.designHeat !== undefined && (designHeat === null || designHeat <= 0)) {
+          errors.push('設計尖峰散熱量必須大於 0 kW');
+          fieldErrors.designHeat = '設計散熱量必須 > 0 kW';
+        }
+        if (capUnit === null || capUnit <= 0) {
+          errors.push('單台額定容量必須大於 0 kW');
+          fieldErrors.capUnit = '額定容量必須 > 0 kW';
+        }
+        if (numOp === null || numOp < 1 || !Number.isInteger(numOp)) {
+          errors.push('運轉台數必須為 ≥ 1 之整數');
+          fieldErrors.numOperating = '運轉台數必須 ≥ 1';
+        }
+        if (numSb !== null && (numSb < 0 || !Number.isInteger(numSb))) {
+          errors.push('備援台數必須為 ≥ 0 之整數');
+          fieldErrors.numStandby = '備援台數必須 ≥ 0';
+        }
+        if (loadFactor === null || loadFactor <= 0 || loadFactor > 100) {
+          errors.push('年平均負載率必須介於 0% 至 100% 之間');
+          fieldErrors.loadFactor = '年平均負載率 0~100%';
+        }
+        if (opHours === null || opHours <= 0 || opHours > 24) {
+          errors.push('每日運轉時數必須介於 0 至 24 hr/day');
+          fieldErrors.operatingHours = '運轉時數 0~24 hr/d';
+        }
+
+        let deltaT = null;
+        if (Tin === null || Tout === null) {
+          errors.push('入水與出水溫度皆為必要輸入');
+        } else {
+          deltaT = Tin - Tout;
+          if (deltaT <= 0) {
+            errors.push('入水溫度必須高於出水溫度 (Tin > Tout)');
+            fieldErrors.tempEntering = '入水溫必須 > 出水溫';
+          }
+        }
+
+        let approach = null;
+        if (Tout !== null && Twb === null) {
+          errors.push('室外濕球溫度為必要輸入');
+        } else if (Tout !== null && Twb !== null) {
+          approach = Tout - Twb;
+          if (approach < 0) {
+            errors.push('出水溫度不可低於設計濕球溫度 (Tout ≥ Twb)');
+            fieldErrors.tempLeaving = '出水溫不可低於濕球溫';
+          }
+        }
+
+        if (Cp === null || Cp <= 0) {
+          errors.push('比熱 Cp 必須大於 0');
+          fieldErrors.fluidCp = 'Cp 必須 > 0';
+        }
+        if (rho === null || rho <= 0) {
+          errors.push('水密度 ρ 必須大於 0');
+          fieldErrors.fluidDensity = 'ρ 必須 > 0';
+        }
+
+        if (storageDays === null || storageDays <= 0) {
+          errors.push('儲水天數必須大於 0');
+          fieldErrors.storageDays = '儲水天數必須 > 0';
+        }
+        if (tankUnitCap === null || tankUnitCap <= 0) {
+          errors.push('單槽容量必須大於 0');
+          fieldErrors.tankUnitCap = '單槽容量必須 > 0';
+        }
+        if (backupTanks !== null && (backupTanks < 0 || !Number.isInteger(backupTanks))) {
+          errors.push('備援水槽數必須為 ≥ 0 之整數');
+          fieldErrors.backupTanks = '備援水槽數為 ≥ 0 整數';
+        }
+
+        if (coc !== null && coc <= 1) {
+          errors.push('濃縮倍率 COC 必須大於 1');
+          fieldErrors.cocValue = 'COC 必須 > 1';
+        }
+
+        if (wbMode === 'vendor') {
+          if (vendorMakeupRate === null || vendorMakeupRate <= 0) {
+            errors.push('Mode A 原廠補給水率必須大於 0');
+            fieldErrors.vendorMakeupRate = '原廠補給水率必須 > 0';
+          }
+        } else {
+          if (evapRateUnit === null || evapRateUnit < 0) {
+            errors.push('Mode B 蒸發水率為必要輸入');
+            fieldErrors.inputEvapRate = '蒸發水率為必要輸入';
+          }
+        }
+
+        return {
+          isValid: errors.length === 0,
+          errors: errors,
+          fieldErrors: fieldErrors
+        };
+      }
+
+      function calculateEngine(raw) {
+        const validation = validateInputs(raw);
+
+        const capUnit = n(raw.capUnit);
+        const numOp = n(raw.numOp);
+        const numSb = n(raw.numSb) === null ? 0 : n(raw.numSb);
+        const loadFactor = n(raw.loadFactor);
+        const opHours = n(raw.opHours);
+        const Tin = n(raw.Tin);
+        const Tout = n(raw.Tout);
+        const Twb = n(raw.Twb);
+        const Cp = n(raw.Cp) !== null ? n(raw.Cp) : 4.186;
+        const rho = n(raw.rho) !== null ? n(raw.rho) : 1000;
+        const sprayFlowUnit = n(raw.sprayFlowUnit);
+
+        const wbMode = raw.wbMode === 'detailed' ? 'detailed' : 'vendor';
+        const vendorMakeupRate = n(raw.vendorMakeupRate);
+
+        const evapRateUnit = n(raw.evapRateUnit);
+        const driftRateUnit = n(raw.driftRateUnit);
+        const coc = n(raw.coc);
+        const blowdownUnitIn = n(raw.blowdownUnitIn);
+        const otherLossUnit = n(raw.otherLossUnit) === null ? 0 : n(raw.otherLossUnit);
+
+        const storageDays = n(raw.storageDays);
+        const tankUnitCap = n(raw.tankUnitCap);
+        const backupTanks = n(raw.backupTanks) === null ? 0 : n(raw.backupTanks);
+
+        const rawCondName = (raw.condName || '').trim();
+        const rawDataSrc = (raw.dataSrc || '').trim();
+        const condName = rawCondName || '未指定工況';
+        const dataSrc = rawDataSrc || '未指定來源';
+        const flowModel = raw.flowModel === 'constant' ? 'constant' : 'variable';
+        const driftEstimated = raw.driftEstimated === true;
+
+        // 1. Equipment Capacity
+        const totalInstalledTowers = (numOp !== null ? numOp : 0) + (numSb !== null ? numSb : 0);
+        let operatingCapkW = null, operatingCapMW = null;
+        let totalInstalledCapacityKW = null, totalInstalledCapacityMW = null;
+        let standbyCapKW = null, standbyCapMW = null;
+        let designHeatkW = null, designHeatMW = null;
+
+        if (capUnit !== null && numOp !== null) {
+          operatingCapkW = capUnit * numOp;
+          operatingCapMW = operatingCapkW / 1000;
+        }
+
+        if (capUnit !== null && totalInstalledTowers > 0) {
+          totalInstalledCapacityKW = capUnit * totalInstalledTowers;
+          totalInstalledCapacityMW = totalInstalledCapacityKW / 1000;
+        }
+
+        if (capUnit !== null && numSb !== null) {
+          standbyCapKW = capUnit * numSb;
+          standbyCapMW = standbyCapKW / 1000;
+        }
+
+        // 設計尖峰散熱量：由使用者直接輸入（v10）。舊版呼叫未提供時，退回「運轉容量 × 負載係數」並標記來源。
+        const designHeatIn = n(raw.designHeat);
+        let heatSource = 'input';
+        if (designHeatIn !== null && designHeatIn > 0) {
+          designHeatkW = designHeatIn;
+        } else if (raw.designHeat === undefined && operatingCapkW !== null && loadFactor !== null) {
+          designHeatkW = operatingCapkW * (loadFactor / 100);
+          heatSource = 'derived';
+        }
+        if (designHeatkW !== null) designHeatMW = designHeatkW / 1000;
+        const capUtilization = (designHeatkW !== null && operatingCapkW) ? designHeatkW / operatingCapkW * 100 : null;
+
+        // 2. Thermal Delta T & Approach Screening
+        let deltaT = null;
+        if (Tin !== null && Tout !== null) deltaT = Tin - Tout;
+
+        let approach = null;
+        if (Tout !== null && Twb !== null) approach = Tout - Twb;
+
+        const thermalOk = deltaT !== null && deltaT > 0 && approach !== null && approach >= 0;
+
+        let approachStatus = 'good';
+        let approachCode = 'normal';
+        let approachComment = '';
+
+        if (approach === null) {
+          approachStatus = 'incomplete';
+          approachCode = 'incomplete';
+          approachComment = '尚未提供完整溫度數據';
+        } else if (approach < 0) {
+          approachStatus = 'error';
+          approachCode = 'boundary_error';
+          approachComment = '出水溫度低於濕球溫度 (Tout < Twb)';
+        } else if (approach < 3.0) {
+          approachStatus = 'warn';
+          approachCode = 'very_low';
+          approachComment = '趨近溫差 < 3°C：密閉式（間接換熱）很難達到，需原廠選型確認盤管面積';
+        } else if (approach <= 8.0) {
+          approachStatus = 'good';
+          approachCode = 'normal';
+          approachComment = '密閉式常見範圍 (3°C ~ 8°C)';
+        } else {
+          approachStatus = 'warn';
+          approachCode = 'high';
+          approachComment = '趨近溫差 > 8°C：設備可能偏小或出水溫設定偏高，建議檢視選型';
+        }
+
+        // 3. N+1 Post-Failure Redundancy Calculation (P0 Fix)
+        let postFailureAvailableKW = null;
+        let postFailureMarginKW = null;
+        const hasStandbyRedundancy = (numSb !== null && numSb >= 1);
+        let nPlusOneStatus = 'not_provided'; // 'pass' | 'fail' | 'not_provided'
+
+        if (capUnit !== null && numOp !== null && designHeatkW !== null) {
+          // 任 1 台故障 (含備援機在內共 numOp + numSb 台) 後剩餘容量須 ≥ 設計尖峰散熱量
+          postFailureAvailableKW = Math.max(0, numOp + numSb - 1) * capUnit;
+          postFailureMarginKW = postFailureAvailableKW - designHeatkW;
+          nPlusOneStatus = (postFailureMarginKW >= 0) ? 'pass' : 'fail';
+        }
+
+        // 4. Process Flow Calculation
+        let processMassFlowKgs = null, processVolFlowM3hUnit = null, processVolFlowM3hTotal = null;
+        let processVolFlowLsUnit = null, processVolFlowLsTotal = null;
+        const flowBasisHeatkW = (flowModel === 'constant') ? operatingCapkW : designHeatkW;
+
+        if (flowBasisHeatkW !== null && deltaT !== null && deltaT > 0 && Cp > 0 && rho > 0 && numOp !== null && numOp > 0) {
+          processMassFlowKgs = flowBasisHeatkW / (Cp * deltaT);
+          processVolFlowM3hTotal = (flowBasisHeatkW * 3600) / (rho * Cp * deltaT);
+          processVolFlowM3hUnit = processVolFlowM3hTotal / numOp;
+          processVolFlowLsTotal = processVolFlowM3hTotal / 3.6;
+          processVolFlowLsUnit = processVolFlowM3hUnit / 3.6;
+        }
+
+        // 5. Spray Circulation Flow
+        let sprayFlowTotal = null;
+        const sprayProvided = sprayFlowUnit !== null && sprayFlowUnit > 0;
+        if (sprayProvided && numOp !== null) {
+          sprayFlowTotal = sprayFlowUnit * numOp;
+        }
+
+        // 6. Water Balance & Cross Verification
+        let calcBlowdownUnit = null;
+        let blowdownSource = 'unspecified';
+        if (blowdownUnitIn !== null && blowdownUnitIn >= 0) {
+          calcBlowdownUnit = blowdownUnitIn;
+          blowdownSource = 'direct';
+        } else if (evapRateUnit !== null && coc !== null && coc > 1) {
+          calcBlowdownUnit = evapRateUnit / (coc - 1);
+          blowdownSource = 'coc';
+        }
+
+        const driftProvided = driftRateUnit !== null && driftRateUnit >= 0;
+        let modeBMakeupUnit = null;
+        if (evapRateUnit !== null && evapRateUnit >= 0) {
+          const dVal = driftProvided ? driftRateUnit : 0;
+          const bVal = calcBlowdownUnit !== null ? calcBlowdownUnit : 0;
+          modeBMakeupUnit = evapRateUnit + dVal + bVal + otherLossUnit;
+        }
+        const modeBTotal = (modeBMakeupUnit !== null && numOp !== null) ? modeBMakeupUnit * numOp : null;
+        // Mode A：原廠補水率為「額定容量」下的值，依設計散熱量 / 運轉容量比例換算到設計工況
+        const heatRatio = (designHeatkW !== null && operatingCapkW) ? designHeatkW / operatingCapkW : 1;
+        const modeATotal = (vendorMakeupRate !== null && numOp !== null) ? vendorMakeupRate * numOp * heatRatio : null;
+
+        let peakMakeupUnit = null, peakMakeupTotal = null;
+        if (wbMode === 'vendor') {
+          if (vendorMakeupRate !== null && vendorMakeupRate > 0) {
+            peakMakeupUnit = vendorMakeupRate * heatRatio;
+            peakMakeupTotal = modeATotal;
+          }
+        } else {
+          if (modeBMakeupUnit !== null && modeBMakeupUnit > 0) {
+            peakMakeupUnit = modeBMakeupUnit;
+            peakMakeupTotal = modeBTotal;
+          }
+        }
+
+        // Unified 10% Cross Verification
+        let crossVerifyDiffPercent = null;
+        let crossVerifyStatus = 'not_compared'; // 'good' | 'review' | 'significant' | 'not_compared'
+        let crossVerifyText = '';
+
+        if (modeATotal !== null && modeBTotal !== null && modeATotal > 0 && modeBTotal > 0) {
+          const rawDiff = Math.abs(modeATotal - modeBTotal) / modeATotal * 100;
+          crossVerifyDiffPercent = Math.round(rawDiff * 10000) / 10000;
+          if (crossVerifyDiffPercent <= 5.0) {
+            crossVerifyStatus = 'good';
+            crossVerifyText = '🟢 Good Agreement (差異 ≤ 5%)';
+          } else if (crossVerifyDiffPercent <= 10.0) {
+            crossVerifyStatus = 'review';
+            crossVerifyText = '🟡 Review Required (差異 5% ~ 10%)';
+          } else {
+            crossVerifyStatus = 'significant';
+            crossVerifyText = '🔴 Significant Difference (差異 > 10%)';
+          }
+        }
+
+        // 6b. 理論蒸發量與補水合理性 (E ≈ Q × 潛熱比例 / h_fg)
+        let evapTheoryTotal = null, evapTheoryUnit = null, impliedCoc = null, impliedBlowdownTotal = null;
+        let evapCheckStatus = 'not_compared', evapCheckText = '';
+        if (designHeatkW !== null && designHeatkW > 0 && numOp) {
+          evapTheoryTotal = designHeatkW * LATENT_FRACTION * 3600 / H_FG_KJ_PER_KG / 1000; // t/h
+          evapTheoryUnit = evapTheoryTotal / numOp;
+        }
+        if (evapTheoryTotal !== null && peakMakeupTotal !== null && peakMakeupTotal > 0) {
+          impliedBlowdownTotal = peakMakeupTotal - evapTheoryTotal;
+          if (peakMakeupTotal < evapTheoryTotal) {
+            evapCheckStatus = 'low';
+            evapCheckText = '補水量低於理論蒸發量，可能未含排污或為部分負載值，請向原廠確認';
+          } else {
+            impliedCoc = peakMakeupTotal / impliedBlowdownTotal;
+            if (impliedCoc > 10) {
+              evapCheckStatus = 'review';
+              evapCheckText = '隱含濃縮倍率約 ' + impliedCoc.toFixed(1) + '，高於一般水處理 3~6，補水量可能偏低';
+            } else if (impliedCoc < 2) {
+              evapCheckStatus = 'review';
+              evapCheckText = '隱含濃縮倍率約 ' + impliedCoc.toFixed(1) + '，排污偏多，補水量可能偏高';
+            } else {
+              evapCheckStatus = 'good';
+              evapCheckText = '隱含濃縮倍率約 ' + impliedCoc.toFixed(1) + '，與一般水處理相符';
+            }
+          }
+        }
+
+        // 7. Makeup Demand
+        let dailyMaxMakeup = null, designDailyMakeup = null;
+        if (peakMakeupTotal !== null && peakMakeupTotal > 0 && opHours !== null) {
+          dailyMaxMakeup = peakMakeupTotal * opHours;
+          if (loadFactor !== null) {
+            designDailyMakeup = dailyMaxMakeup * (loadFactor / 100);
+          }
+        }
+
+        // 8. Storage Sizing & Failure Redundancy
+        let storageReqEconomic = null, storageReqConservative = null;
+        let basicTanks = null, finalTanks = null, installedStorage = null;
+        let marginEconomic = null, marginConservative = null;
+        let storageMinus1 = null, storageMinus2 = null;
+        let passMinus1 = null, passMinus2 = null;
+        let marginMinus1 = null, marginMinus2 = null;
+
+        if (designDailyMakeup !== null && storageDays !== null) {
+          storageReqEconomic = designDailyMakeup * storageDays;
+        }
+        if (dailyMaxMakeup !== null && storageDays !== null) {
+          storageReqConservative = dailyMaxMakeup * storageDays;
+        }
+
+        if (storageReqEconomic !== null && tankUnitCap !== null && tankUnitCap > 0) {
+          basicTanks = Math.ceil(storageReqEconomic / tankUnitCap);
+          finalTanks = basicTanks + backupTanks;
+          installedStorage = finalTanks * tankUnitCap;
+          marginEconomic = installedStorage - storageReqEconomic;
+          if (storageReqConservative !== null) {
+            marginConservative = installedStorage - storageReqConservative;
+          }
+
+          storageMinus1 = Math.max(0, finalTanks - 1) * tankUnitCap;
+          storageMinus2 = Math.max(0, finalTanks - 2) * tankUnitCap;
+          marginMinus1 = storageMinus1 - storageReqEconomic;
+          marginMinus2 = storageMinus2 - storageReqEconomic;
+          passMinus1 = marginMinus1 >= 0;
+          passMinus2 = marginMinus2 >= 0;
+        }
+
+        // 9. Step-by-Step Validation Status (for Guided UI)
+        const stepStatus = {
+          step1: (rawCondName !== '' && rawDataSrc !== '') ? 'complete' : 'action',
+          step2: (capUnit > 0 && numOp >= 1 && numSb >= 0) ? 'complete' : 'action',
+          step3: (Tin !== null && Tout !== null && Twb !== null && deltaT > 0 && approach >= 0) ? 'complete' : 'action',
+          step4: (designHeatkW > 0 && loadFactor > 0 && loadFactor <= 100 && opHours > 0 && opHours <= 24 && Cp > 0 && rho > 0) ? 'complete' : 'action',
+          step5: sprayProvided ? 'complete' : 'optional',
+          step6: (wbMode === 'vendor' ? (vendorMakeupRate > 0) : (evapRateUnit >= 0)) ? 'complete' : 'action',
+          step7: (storageDays > 0 && tankUnitCap > 0 && backupTanks >= 0) ? 'complete' : 'action'
+        };
+
+        return {
+          isValid: validation.isValid,
+          errors: validation.errors,
+          fieldErrors: validation.fieldErrors,
+          stepStatus: stepStatus,
+
+          meta: { condName, dataSrc },
+
+          towers: {
+            numOp, numSb, totalInstalledTowers,
+            operatingCapkW, operatingCapMW,
+            totalInstalledCapacityKW, totalInstalledCapacityMW,
+            standbyCapKW, standbyCapMW
+          },
+
+          thermal: {
+            operatingCapkW, operatingCapMW,
+            totalInstalledCapacityKW, totalInstalledCapacityMW,
+            designHeatkW, designHeatMW, heatSource, capUtilization,
+            deltaT, approach, thermalOk, loadFactor,
+            approachStatus, approachCode, approachComment
+          },
+
+          redundancy: {
+            postFailureAvailableKW,
+            postFailureMarginKW,
+            hasStandby: hasStandbyRedundancy,
+            status: nPlusOneStatus
+          },
+
+          flow: {
+            processMassFlowKgs,
+            processVolFlowM3hUnit, processVolFlowM3hTotal,
+            processVolFlowLsUnit, processVolFlowLsTotal,
+            sprayFlowUnit, sprayFlowTotal, sprayProvided,
+            flowModel
+          },
+
+          waterBalance: {
+            mode: wbMode,
+            modeA: { unit: vendorMakeupRate, total: modeATotal },
+            modeB: {
+              evapUnit: evapRateUnit, driftUnit: driftRateUnit, driftProvided,
+              blowdownUnit: calcBlowdownUnit, blowdownSource,
+              otherLossUnit, cocUsed: coc,
+              totalUnit: modeBMakeupUnit, total: modeBTotal
+            },
+            crossVerification: {
+              diffPercent: crossVerifyDiffPercent,
+              status: crossVerifyStatus,
+              text: crossVerifyText
+            },
+            activeUnit: peakMakeupUnit, activeTotal: peakMakeupTotal,
+            heatRatio: heatRatio,
+            evapCheck: {
+              theoryTotal: evapTheoryTotal, theoryUnit: evapTheoryUnit,
+              impliedCoc: impliedCoc, impliedBlowdownTotal: impliedBlowdownTotal,
+              status: evapCheckStatus, text: evapCheckText,
+              latentFraction: LATENT_FRACTION, hfg: H_FG_KJ_PER_KG
+            },
+            blowdownMissing: wbMode === 'detailed' && calcBlowdownUnit === null
+          },
+
+          demand: {
+            peakMakeupTotal, dailyMaxMakeup, designDailyMakeup
+          },
+
+          storage: {
+            storageReqEconomic, storageReqConservative,
+            basicTanks, backupTanks, finalTanks, installedStorage,
+            marginEconomic, marginConservative,
+            storageMinus1, storageMinus2,
+            marginMinus1, marginMinus2,
+            passMinus1, passMinus2
+          },
+
+          assumptions: {
+            density: rho,
+            specificHeat: Cp,
+            flowModel: flowModel,
+            driftEstimated: driftProvided ? driftEstimated : null
+          }
+        };
+      }
+
+      return {
+        validateInputs: validateInputs,
+        calculateEngine: calculateEngine
+      };
+    });
+
+    // ==================================================================
+    // 1. UI HELPERS & STATE MANAGEMENT
+    // ==================================================================
+    function fmt(val, decimals) {
+      if (decimals === undefined) decimals = 2;
+      if (val === null || val === undefined) return '--';
+      if (typeof val === 'string' && val.trim() === '') return '--';
+      if (isNaN(val) || !isFinite(val)) return '--';
+      return Number(val).toLocaleString('en-US', {
+        minimumFractionDigits: decimals,
+        maximumFractionDigits: decimals
+      });
+    }
+
+    // 帶正負號的數值 (裕度用)，避免出現「+-50」
+    function fmtSigned(v, decimals) {
+      if (v === null || v === undefined || isNaN(v)) return '--';
+      return (v >= 0 ? '+' : '−') + fmt(Math.abs(v), decimals);
+    }
+
+    function val(id) {
+      const el = document.getElementById(id);
+      return el ? el.value : '';
+    }
+
+    let driftIsEstimated = false;
+
+    function onDriftManualEdit() {
+      driftIsEstimated = false;
+      const tag = document.getElementById('driftEstimatedTag');
+      if (tag) tag.style.display = 'none';
+      calculate();
+    }
+
+    function quickFillDrift() {
+      const sprayVal = document.getElementById('vendorSprayFlow').value;
+      const spray = parseFloat(sprayVal);
+      if (sprayVal === '' || isNaN(spray) || spray <= 0) {
+        showToastMsg('⚠️ 請先於「05 散熱噴淋」填入原廠散熱噴淋水量，才能推估漂水率');
+        return;
+      }
+      const estimatedDrift = spray * 0.00005;
+      document.getElementById('inputDriftRate').value = estimatedDrift.toFixed(5);
+      driftIsEstimated = true;
+      const tag = document.getElementById('driftEstimatedTag');
+      if (tag) tag.style.display = 'inline';
+      calculate();
+      showToastMsg('✓ 已代入快速估算 Drift (0.005% × Spray Flow)');
+    }
+
+    function quickFillEvap() {
+      const r = lastResult;
+      if (!r || !r.waterBalance.evapCheck.theoryUnit) {
+        showToastMsg('⚠️ 請先填好「設計尖峰散熱量」與「運轉台數」');
+        return;
+      }
+      document.getElementById('inputEvapRate').value = r.waterBalance.evapCheck.theoryUnit.toFixed(3);
+      calculate();
+      showToastMsg('✓ 已代入理論蒸發量 (Q × 85% ÷ 2,430 kJ/kg)');
+    }
+
+    function toggleAccordion(cardId) {
+      const card = document.getElementById(cardId);
+      if (card) card.classList.toggle('collapsed');
+    }
+
+    function toggleDetailsSection() {
+      const el = document.getElementById('detailsWrapper');
+      if (!el) return;
+      const willShow = el.style.display === 'none';
+      el.style.display = willShow ? 'flex' : 'none';
+      document.getElementById('detailsToggleText').textContent = willShow ? '收合檢核明細 ▲' : '展開檢核明細 ▼';
+    }
+
+    function toggleFluidPreset() {
+      const isCustom = document.querySelector('input[name="fluidType"]:checked').value === 'custom';
+      document.getElementById('customFluidBox').style.display = isCustom ? 'block' : 'none';
+      if (!isCustom) {
+        document.getElementById('fluidCp').value = '4.186';
+        document.getElementById('fluidDensity').value = '1000';
+      }
+      calculate();
+    }
+
+    let lastResult = null;
+    let activeFormula = null;
+
+    function showFormulaTip(type) {
+      activeFormula = type;
+      document.querySelectorAll('.flow-box').forEach(function (b) { b.classList.toggle('active', b.getAttribute('onclick') === "showFormulaTip('" + type + "')"); });
+      renderFormulaPanel();
+    }
+
+    function renderFormulaPanel() {
+      const panel = document.getElementById('formulaPanel');
+      const r = lastResult;
+      if (!panel || !activeFormula || !r) return;
+      const t = r.thermal, f = r.flow, d = r.demand, s = r.storage, tw = r.towers, wb = r.waterBalance, a = r.assumptions;
+      const raw = gatherInputs();
+      let title = '', expr = '';
+      if (activeFormula === 'heat') {
+        title = '設計尖峰散熱量 Q（使用者輸入）';
+        expr = 'Q = ' + fmt(t.designHeatkW, 0) + ' kW；運轉容量 = ' + fmt(tw.numOp, 0) + ' × ' + fmt(Number(raw.capUnit), 0) + ' = ' + fmt(tw.operatingCapkW, 0) + ' kW → 使用率 ' + fmt(t.capUtilization, 1) + '%';
+      } else if (activeFormula === 'flow') {
+        const basis = f.flowModel === 'constant' ? tw.operatingCapkW : t.designHeatkW;
+        title = '循環水量 = Q × 3600 ÷ (ρ × Cp × ΔT)';
+        expr = fmt(basis, 0) + ' × 3600 ÷ (' + fmt(a.density, 0) + ' × ' + fmt(a.specificHeat, 3) + ' × ' + fmt(t.deltaT, 2) + ') = ' + fmt(f.processVolFlowM3hTotal, 1) + ' m³/h' + (f.flowModel === 'constant' ? '（定流量：以運轉容量計）' : '');
+      } else if (activeFormula === 'peak') {
+        if (wb.mode === 'vendor') {
+          title = '尖峰補水量 = 原廠補水率 × 運轉台數 × (Q ÷ 運轉容量)';
+          expr = fmt(wb.modeA.unit, 2) + ' × ' + fmt(tw.numOp, 0) + ' × (' + fmt(t.designHeatkW, 0) + ' ÷ ' + fmt(tw.operatingCapkW, 0) + ') = ' + fmt(d.peakMakeupTotal, 2) + ' t/h';
+        } else {
+          title = '尖峰補水量 = (E + D + B + O) × 運轉台數';
+          expr = '(' + fmt(wb.modeB.evapUnit, 3) + ' + ' + fmt(wb.modeB.driftUnit || 0, 4) + ' + ' + fmt(wb.modeB.blowdownUnit || 0, 3) + ' + ' + fmt(wb.modeB.otherLossUnit, 3) + ') × ' + fmt(tw.numOp, 0) + ' = ' + fmt(d.peakMakeupTotal, 2) + ' t/h';
+        }
+      } else if (activeFormula === 'daily') {
+        title = '平均日補水量 = 尖峰補水量 × 每日運轉時數 × 年平均負載率';
+        expr = fmt(d.peakMakeupTotal, 2) + ' × ' + fmt(Number(raw.opHours), 1) + ' × ' + fmt(t.loadFactor, 0) + '% = ' + fmt(d.designDailyMakeup, 1) + ' t/day（不乘負載率的尖峰日用量 ' + fmt(d.dailyMaxMakeup, 1) + ' t/day）';
+      } else if (activeFormula === 'storage') {
+        title = '經濟儲水需求 = 平均日補水量 × 儲水天數';
+        expr = fmt(d.designDailyMakeup, 1) + ' × ' + fmt(Number(raw.storageDays), 1) + ' = ' + fmt(s.storageReqEconomic, 1) + ' t；保守需求 = ' + fmt(d.dailyMaxMakeup, 1) + ' × ' + fmt(Number(raw.storageDays), 1) + ' = ' + fmt(s.storageReqConservative, 1) + ' t';
+      } else if (activeFormula === 'tanks') {
+        title = '水槽數 = ⌈經濟需求 ÷ 單槽容量⌉ + 備援槽數';
+        expr = '⌈' + fmt(s.storageReqEconomic, 1) + ' ÷ ' + fmt(Number(raw.tankUnitCap), 0) + '⌉ + ' + fmt(s.backupTanks, 0) + ' = ' + fmt(s.basicTanks, 0) + ' + ' + fmt(s.backupTanks, 0) + ' = ' + fmt(s.finalTanks, 0) + ' 槽（' + fmt(s.installedStorage, 0) + ' t）';
+      }
+      if (!r.isValid) expr = '輸入尚未完整，數值可能不正確。' + expr;
+      panel.innerHTML = '<div class="f-title">' + escapeHtml(title) + '</div><code>' + escapeHtml(expr) + '</code>';
+    }
+
+    function gatherInputs() {
+      const isCustom = document.querySelector('input[name="fluidType"]:checked')
+        ? document.querySelector('input[name="fluidType"]:checked').value === 'custom'
+        : false;
+
+      return {
+        condName: val('conditionName'),
+        dataSrc: val('dataSource'),
+
+        designHeat: val('designHeat'),
+        capUnit: val('capUnit'),
+        numOp: val('numOperating'),
+        numSb: val('numStandby'),
+        loadFactor: val('loadFactor'),
+        opHours: val('operatingHours'),
+
+        Tin: val('tempEntering'),
+        Tout: val('tempLeaving'),
+        Twb: val('tempWetBulb'),
+        Cp: isCustom ? val('fluidCp') : '4.186',
+        rho: isCustom ? val('fluidDensity') : '1000',
+        sprayFlowUnit: val('vendorSprayFlow'),
+        flowModel: val('flowModel'),
+
+        wbMode: val('waterBalanceMode'),
+        vendorMakeupRate: val('vendorMakeupRate'),
+
+        evapRateUnit: val('inputEvapRate'),
+        driftRateUnit: val('inputDriftRate'),
+        driftEstimated: driftIsEstimated,
+        coc: val('cocValue'),
+        blowdownUnitIn: val('inputBlowdownRate'),
+        otherLossUnit: val('inputOtherLoss'),
+
+        storageDays: val('storageDays'),
+        tankUnitCap: val('tankUnitCap'),
+        backupTanks: val('backupTanks')
+      };
+    }
+
+    const ALL_VALIDATABLE_FIELDS = [
+      'designHeat', 'capUnit', 'numOperating', 'numStandby', 'loadFactor', 'operatingHours',
+      'tempEntering', 'tempLeaving', 'fluidCp', 'fluidDensity',
+      'vendorMakeupRate', 'inputEvapRate', 'cocValue',
+      'storageDays', 'tankUnitCap', 'backupTanks'
+    ];
+
+    function applyFieldErrors(fieldErrors) {
+      ALL_VALIDATABLE_FIELDS.forEach(function (fid) {
+        const input = document.getElementById(fid);
+        const errEl = document.getElementById('err-' + fid);
+        if (input) input.classList.remove('is-invalid');
+        if (errEl) errEl.style.display = 'none';
+      });
+      Object.keys(fieldErrors).forEach(function (fid) {
+        const input = document.getElementById(fid);
+        const errEl = document.getElementById('err-' + fid);
+        if (input) input.classList.add('is-invalid');
+        if (errEl) {
+          errEl.textContent = fieldErrors[fid];
+          errEl.style.display = 'block';
+        }
+      });
+    }
+
+    function updateStepTag(tagId, status) {
+      const el = document.getElementById(tagId);
+      if (!el) return;
+      el.className = 'step-status-tag ' + status;
+      if (status === 'complete') el.textContent = '✓ 完成';
+      else if (status === 'action') el.textContent = '● 待補';
+      else if (status === 'optional') el.textContent = '○ 選填';
+      else el.textContent = '● 進行中';
+    }
+
+    function renderStorageBar(s) {
+      const basicEl = document.getElementById('storageBarBasic');
+      const backupEl = document.getElementById('storageBarBackup');
+      const markerEcoEl = document.getElementById('storageBarMarkerEconomic');
+      const markerConEl = document.getElementById('storageBarMarkerConservative');
+      const captionEl = document.getElementById('storageBarCaption');
+      if (!basicEl) return;
+
+      if (s.installedStorage === null || s.basicTanks === null || s.installedStorage <= 0) {
+        basicEl.style.width = '0%';
+        backupEl.style.width = '0%';
+        markerEcoEl.style.left = '0%';
+        markerConEl.style.left = '0%';
+        captionEl.textContent = '安裝總量: --';
+        return;
+      }
+
+      const basicCapacity = s.basicTanks * (s.installedStorage / (s.basicTanks + s.backupTanks));
+      const backupCapacity = s.installedStorage - basicCapacity;
+      const scaleMax = Math.max(
+        s.installedStorage,
+        s.storageReqConservative !== null ? s.storageReqConservative : 0,
+        s.storageReqEconomic !== null ? s.storageReqEconomic : 0,
+        1
+      ) * 1.05;
+
+      const basicPct = (basicCapacity / scaleMax) * 100;
+      const backupPct = (backupCapacity / scaleMax) * 100;
+      const ecoPct = s.storageReqEconomic !== null ? (s.storageReqEconomic / scaleMax) * 100 : 0;
+      const conPct = s.storageReqConservative !== null ? (s.storageReqConservative / scaleMax) * 100 : 0;
+
+      basicEl.style.width = basicPct + '%';
+      backupEl.style.left = basicPct + '%';
+      backupEl.style.width = backupPct + '%';
+      markerEcoEl.style.left = ecoPct + '%';
+      markerConEl.style.left = conPct + '%';
+
+      captionEl.textContent = '安裝總量: ' + fmt(s.installedStorage, 0) + ' Ton (基本 ' + fmt(basicCapacity, 0) + ' + 備援 ' + fmt(backupCapacity, 0) + ')';
+    }
+
+    // ==================================================================
+    // 2. RENDER ENGINE RESULTS (LEVEL 1, 2, 3)
+    // ==================================================================
+    // ==================================================================
+    // 2. RENDER (v11 介面)
+    // ==================================================================
+    const STATUS_ICON = { pass: '✓', warn: '!', fail: '✕', info: 'i' };
+
+    function setText(id, text) { const el = document.getElementById(id); if (el) el.textContent = text; }
+
+    function setWaterMode(mode) {
+      document.getElementById('waterBalanceMode').value = mode === 'detailed' ? 'detailed' : 'vendor';
+      calculate();
+    }
+
+    function scrollToResults() {
+      const el = document.getElementById('resultsMain');
+      if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+
+    function focusCheck(key) {
+      const el = document.querySelector('[data-check="' + key + '"]');
+      if (!el) return;
+      el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      el.classList.add('flash');
+      setTimeout(function () { el.classList.remove('flash'); }, 1200);
+    }
+
+    function buildChecks(result) {
+      const t = result.thermal, wb = result.waterBalance, d = result.demand, s = result.storage, tw = result.towers, red = result.redundancy;
+      const ec = wb.evapCheck;
+      const checks = [];
+      // 溫度
+      if (!t.thermalOk) {
+        checks.push({ key: 'thermal', status: 'fail', title: '溫度條件', value: '入水溫須 > 出水溫，出水溫須 ≥ 濕球溫', detail: 'ΔT ' + fmt(t.deltaT, 1) + '°C，趨近溫差 ' + fmt(t.approach, 1) + '°C' });
+      } else {
+        checks.push({ key: 'thermal', status: t.approachStatus === 'good' ? 'pass' : 'warn', title: '溫度條件', value: 'ΔT ' + fmt(t.deltaT, 1) + '°C，趨近溫差 ' + fmt(t.approach, 1) + '°C', detail: t.approachComment });
+      }
+      // 容量
+      const capMargin = (tw.operatingCapkW !== null && t.designHeatkW !== null) ? tw.operatingCapkW - t.designHeatkW : null;
+      checks.push({ key: 'capacity', status: capMargin === null ? 'info' : (capMargin >= 0 ? 'pass' : 'fail'), title: '運轉容量',
+        value: fmt(tw.operatingCapkW, 0) + ' kW 對 ' + fmt(t.designHeatkW, 0) + ' kW（裕度 ' + fmtSigned(capMargin, 0) + ' kW）',
+        detail: capMargin !== null && capMargin < 0 ? '設計散熱量超過運轉容量 ' + fmt(-capMargin, 0) + ' kW（使用率 ' + fmt(t.capUtilization, 0) + '%），需增加台數或單台容量' : '運轉中的塔可排掉設計散熱量，使用率 ' + fmt(t.capUtilization, 0) + '%' });
+      // N+1
+      checks.push({ key: 'n1', status: red.status === 'pass' ? 'pass' : (red.status === 'fail' ? 'fail' : 'info'), title: 'N+1 備援',
+        value: '任 1 台故障後剩 ' + fmt(red.postFailureAvailableKW, 0) + ' kW（裕度 ' + fmtSigned(red.postFailureMarginKW, 0) + ' kW）',
+        detail: red.status === 'fail' ? (tw.numSb ? '備援容量不足，需加大單台容量或台數' : '沒有備援台；建議增設 1 台') : '共 ' + fmt(tw.totalInstalledTowers, 0) + ' 台，少 1 台仍可排掉設計散熱量' });
+      // 補水合理性
+      if (ec.status !== 'not_compared') {
+        checks.push({ key: 'evap', status: ec.status === 'good' ? 'pass' : 'warn', title: '補水量合理性',
+          value: '補水 ' + fmt(d.peakMakeupTotal, 2) + ' t/h，理論蒸發 ' + fmt(ec.theoryTotal, 2) + ' t/h' + (ec.impliedCoc !== null ? '，隱含濃縮倍率 ' + fmt(ec.impliedCoc, 1) : ''),
+          detail: ec.text });
+      }
+      if (wb.blowdownMissing) {
+        checks.push({ key: 'blowdown', status: 'warn', title: '排污量未提供', value: '詳細拆解模式下未填濃縮倍率或排污量', detail: '補水量會被低估，請填濃縮倍率 (COC) 或直接指定排污量' });
+      }
+      if (wb.crossVerification.status !== 'not_compared') {
+        const cv = wb.crossVerification.status;
+        checks.push({ key: 'cross', status: cv === 'good' ? 'pass' : 'warn', title: '兩種補水算法比對',
+          value: '原廠 ' + fmt(wb.modeA.total, 2) + ' t/h 對 拆解 ' + fmt(wb.modeB.total, 2) + ' t/h，差 ' + fmt(wb.crossVerification.diffPercent, 1) + '%', detail: '差異 5% 以內視為一致' });
+      }
+      // 儲水
+      if (s.marginEconomic !== null) {
+        checks.push({ key: 'storage', status: s.marginEconomic >= 0 ? 'pass' : 'fail', title: '儲水量（年均用水）',
+          value: '安裝 ' + fmt(s.installedStorage, 0) + ' t 對 需求 ' + fmt(s.storageReqEconomic, 1) + ' t', detail: '裕度 ' + fmtSigned(s.marginEconomic, 1) + ' t' });
+        checks.push({ key: 'storageFull', status: s.marginConservative >= 0 ? 'pass' : 'warn', title: '儲水量（滿載用水）',
+          value: '安裝 ' + fmt(s.installedStorage, 0) + ' t 對 滿載需求 ' + fmt(s.storageReqConservative, 1) + ' t',
+          detail: s.marginConservative >= 0 ? '連續滿載也撐得過設定天數' : '連續滿載時約可撐 ' + fmt(s.installedStorage / (d.dailyMaxMakeup || 1), 1) + ' 天（目標 ' + fmt(Number(val('storageDays')), 1) + ' 天）' });
+        checks.push({ key: 'tankN1', status: s.passMinus1 ? 'pass' : 'warn', title: '1 個水槽維修時',
+          value: '剩 ' + fmt(s.storageMinus1, 0) + ' t 對 需求 ' + fmt(s.storageReqEconomic, 1) + ' t', detail: '裕度 ' + fmtSigned(s.marginMinus1, 1) + ' t' });
+      }
+      return checks;
+    }
+
+    function buildSteps(result, raw) {
+      const t = result.thermal, f = result.flow, d = result.demand, s = result.storage, tw = result.towers, wb = result.waterBalance, a = result.assumptions, red = result.redundancy;
+      const steps = [];
+      steps.push({ title: '運轉容量', expr: fmt(tw.numOp, 0) + ' 台 × ' + fmt(Number(raw.capUnit), 0) + ' kW = ' + fmt(tw.operatingCapkW, 0) + ' kW' });
+      steps.push({ title: 'N+1：任 1 台故障後容量', expr: '(' + fmt(tw.numOp, 0) + ' + ' + fmt(tw.numSb, 0) + ' − 1) × ' + fmt(Number(raw.capUnit), 0) + ' = ' + fmt(red.postFailureAvailableKW, 0) + ' kW' });
+      const basis = f.flowModel === 'constant' ? tw.operatingCapkW : t.designHeatkW;
+      steps.push({ title: '循環水量 = Q × 3600 ÷ (ρ × Cp × ΔT)', expr: fmt(basis, 0) + ' × 3600 ÷ (' + fmt(a.density, 0) + ' × ' + fmt(a.specificHeat, 3) + ' × ' + fmt(t.deltaT, 2) + ') = ' + fmt(f.processVolFlowM3hTotal, 1) + ' m³/h' + (f.flowModel === 'constant' ? '（以運轉容量計）' : '') });
+      if (wb.mode === 'vendor') {
+        steps.push({ title: '尖峰補水量 = 原廠補水率 × 台數 × (Q ÷ 運轉容量)', expr: fmt(wb.modeA.unit, 2) + ' × ' + fmt(tw.numOp, 0) + ' × (' + fmt(t.designHeatkW, 0) + ' ÷ ' + fmt(tw.operatingCapkW, 0) + ') = ' + fmt(d.peakMakeupTotal, 2) + ' t/h' });
+      } else {
+        steps.push({ title: '尖峰補水量 = (蒸發 + 漂水 + 排污 + 其他) × 台數', expr: '(' + fmt(wb.modeB.evapUnit, 3) + ' + ' + fmt(wb.modeB.driftUnit || 0, 4) + ' + ' + fmt(wb.modeB.blowdownUnit || 0, 3) + ' + ' + fmt(wb.modeB.otherLossUnit, 3) + ') × ' + fmt(tw.numOp, 0) + ' = ' + fmt(d.peakMakeupTotal, 2) + ' t/h' });
+      }
+      steps.push({ title: '理論蒸發量 = Q × 85% × 3600 ÷ 2,430 kJ/kg', expr: fmt(t.designHeatkW, 0) + ' × 0.85 × 3600 ÷ 2430 ÷ 1000 = ' + fmt(wb.evapCheck.theoryTotal, 2) + ' t/h' });
+      steps.push({ title: '年均日補水量 = 尖峰補水 × 時數 × 年平均負載率', expr: fmt(d.peakMakeupTotal, 2) + ' × ' + fmt(Number(raw.opHours), 1) + ' × ' + fmt(t.loadFactor, 0) + '% = ' + fmt(d.designDailyMakeup, 1) + ' t/日' });
+      steps.push({ title: '儲水需求 = 年均日補水 × 天數', expr: fmt(d.designDailyMakeup, 1) + ' × ' + fmt(Number(raw.storageDays), 1) + ' = ' + fmt(s.storageReqEconomic, 1) + ' t（滿載：' + fmt(d.dailyMaxMakeup, 1) + ' × ' + fmt(Number(raw.storageDays), 1) + ' = ' + fmt(s.storageReqConservative, 1) + ' t）' });
+      steps.push({ title: '水槽數 = ⌈需求 ÷ 單槽容量⌉ + 備援槽', expr: '⌈' + fmt(s.storageReqEconomic, 1) + ' ÷ ' + fmt(Number(raw.tankUnitCap), 0) + '⌉ + ' + fmt(s.backupTanks, 0) + ' = ' + fmt(s.finalTanks, 0) + ' 槽，共 ' + fmt(s.installedStorage, 0) + ' t' });
+      return steps;
+    }
+
+    function renderCapacityBar(result) {
+      const host = document.getElementById('capBar');
+      const t = result.thermal, tw = result.towers, red = result.redundancy;
+      const cap = tw.numOp ? tw.operatingCapkW / tw.numOp : null;
+      if (!host) return;
+      if (!cap || !t.designHeatkW || !tw.totalInstalledTowers) { host.innerHTML = '<div class="empty">填入設計散熱量與台數後顯示</div>'; setText('capCaption', ''); return; }
+      const scaleMax = Math.max(tw.totalInstalledCapacityKW, t.designHeatkW) * 1.06;
+      let html = '<div class="cap-track">';
+      for (let i = 0; i < tw.totalInstalledTowers; i++) {
+        const standby = i >= tw.numOp;
+        html += '<div class="cap-tower' + (standby ? ' standby' : '') + '" style="left:' + (i * cap / scaleMax * 100) + '%; width:' + (cap / scaleMax * 100) + '%"><span>' + (standby ? '備援' : '#' + (i + 1)) + '</span></div>';
+      }
+      const qPct = Math.min(100, t.designHeatkW / scaleMax * 100);
+      const ok = t.designHeatkW <= tw.operatingCapkW;
+      html += '<div class="cap-q' + (ok ? '' : ' over') + '" style="left:' + qPct + '%"><label>設計 Q ' + fmt(t.designHeatkW, 0) + ' kW</label></div>';
+      html += '</div>';
+      host.innerHTML = html;
+      setText('capCaption', '運轉 ' + tw.numOp + ' 台 = ' + fmt(tw.operatingCapkW, 0) + ' kW' + (tw.numSb ? '，另有 ' + tw.numSb + ' 台備援' : '，無備援') + '；任 1 台故障後剩 ' + fmt(red.postFailureAvailableKW, 0) + ' kW');
+    }
+
+    function renderTempScale(result) {
+      const host = document.getElementById('tempScale');
+      const t = result.thermal;
+      const Tin = n2(val('tempEntering')), Tout = n2(val('tempLeaving')), Twb = n2(val('tempWetBulb'));
+      if (!host) return;
+      if (Tin === null || Tout === null || Twb === null) { host.innerHTML = ''; document.getElementById('tempLegend').innerHTML = ''; return; }
+      const lo = Math.min(Twb, Tout, Tin) - 1.5, hi = Math.max(Twb, Tout, Tin) + 1.5;
+      const pos = function (v) { return ((v - lo) / (hi - lo) * 100).toFixed(2) + '%'; };
+      const bad = !t.thermalOk;
+      host.innerHTML =
+        '<div class="ts-line"></div>' +
+        '<div class="ts-span approach' + (bad ? ' bad' : '') + '" style="left:' + pos(Math.min(Twb, Tout)) + '; width:calc(' + pos(Math.max(Twb, Tout)) + ' - ' + pos(Math.min(Twb, Tout)) + ')"></div>' +
+        '<div class="ts-span range' + (bad ? ' bad' : '') + '" style="left:' + pos(Math.min(Tout, Tin)) + '; width:calc(' + pos(Math.max(Tout, Tin)) + ' - ' + pos(Math.min(Tout, Tin)) + ')"></div>' +
+        '<div class="ts-pt wb" style="left:' + pos(Twb) + '"><span>濕球</span> <b>' + fmt(Twb, 1) + '°</b></div>' +
+        '<div class="ts-pt out" style="left:' + pos(Tout) + '"><span>出水</span> <b>' + fmt(Tout, 1) + '°</b></div>' +
+        '<div class="ts-pt in" style="left:' + pos(Tin) + '"><span>入水</span> <b>' + fmt(Tin, 1) + '°</b></div>';
+      document.getElementById('tempLegend').innerHTML =
+        '<span class="' + (Tout - Twb < 0 ? 'bad' : 'a') + '">■ 趨近溫差 ' + fmt(Tout - Twb, 1) + '°C</span>' +
+        '<span class="' + (Tin - Tout <= 0 ? 'bad' : 'r') + '">■ 進出水溫差 ' + fmt(Tin - Tout, 1) + '°C</span>';
+    }
+
+    function n2(v) { if (v === '' || v === null || v === undefined) return null; const x = Number(v); return isFinite(x) ? x : null; }
+
+    function render(result) {
+      const raw = gatherInputs();
+      const t = result.thermal, f = result.flow, wb = result.waterBalance,
+            d = result.demand, s = result.storage, tw = result.towers, ec = result.waterBalance.evapCheck;
+
+      applyFieldErrors(result.fieldErrors);
+      ['btnExportExcel', 'btnExportPDF', 'btnCopySummary'].forEach(function (id) {
+        const btn = document.getElementById(id);
+        if (btn) btn.disabled = !result.isValid;
+      });
+      document.getElementById('resultsMain').classList.toggle('is-stale', !result.isValid);
+
+      // 補水模式切換
+      const isVendor = wb.mode === 'vendor';
+      document.getElementById('modeABox').hidden = !isVendor;
+      document.getElementById('modeBBox').hidden = isVendor;
+      document.getElementById('segVendor').classList.toggle('on', isVendor);
+      document.getElementById('segDetailed').classList.toggle('on', !isVendor);
+
+      // ---- 結論 ----
+      const checks = buildChecks(result);
+      const fails = checks.filter(function (c) { return c.status === 'fail'; });
+      const warns = checks.filter(function (c) { return c.status === 'warn'; });
+      const verdict = document.getElementById('verdict');
+      let vCls, vTitle, vSub, vItems;
+      if (!result.isValid) {
+        vCls = 'fail'; vTitle = '請先修正輸入'; vSub = '有 ' + result.errors.length + ' 個欄位需要處理，結果暫不可用';
+        vItems = result.errors.map(function (e) { return '<li>' + escapeHtml(e) + '</li>'; }).join('');
+      } else if (fails.length) {
+        vCls = 'fail'; vTitle = '設計不成立'; vSub = fails.length + ' 項不通過' + (warns.length ? '，另有 ' + warns.length + ' 項需確認' : '');
+        vItems = fails.concat(warns).map(function (c) { return '<li><a onclick="focusCheck(\'' + c.key + '\')">' + escapeHtml(c.title) + '</a>：' + escapeHtml(c.detail || c.value) + '</li>'; }).join('');
+      } else if (warns.length) {
+        vCls = 'warn'; vTitle = '設計可行，有 ' + warns.length + ' 項需確認'; vSub = '容量與備援都足夠';
+        vItems = warns.map(function (c) { return '<li><a onclick="focusCheck(\'' + c.key + '\')">' + escapeHtml(c.title) + '</a>：' + escapeHtml(c.detail || c.value) + '</li>'; }).join('');
+      } else {
+        vCls = 'pass'; vTitle = '設計可行'; vSub = '所有檢核項目都通過'; vItems = '';
+      }
+      verdict.className = 'card verdict ' + vCls;
+      setText('verdictIcon', STATUS_ICON[vCls]);
+      setText('verdictTitle', vTitle);
+      setText('verdictSub', vSub);
+      document.getElementById('verdictList').innerHTML = vItems;
+      document.getElementById('verdictList').hidden = !vItems;
+      setText('verdictMeta', (result.meta.condName || '') + (result.meta.dataSrc && result.meta.dataSrc !== '未指定來源' ? ' · ' + result.meta.dataSrc : ''));
+
+      // ---- 關鍵數字 ----
+      setText('kpiFlow', fmt(f.processVolFlowM3hTotal, 1));
+      setText('kpiFlowSub', '每台 ' + fmt(f.processVolFlowM3hUnit, 1) + ' m³/h · ' + fmt(f.processVolFlowLsTotal, 1) + ' L/s');
+      setText('kpiMakeup', fmt(d.peakMakeupTotal, 2));
+      setText('kpiMakeupSub', '年均每日 ' + fmt(d.designDailyMakeup, 1) + ' t');
+      setText('kpiTanks', s.finalTanks !== null ? String(s.finalTanks) : '--');
+      setText('kpiTanksSub', '× ' + fmt(Number(raw.tankUnitCap), 0) + ' t = ' + fmt(s.installedStorage, 0) + ' t（含備援 ' + fmt(s.backupTanks, 0) + ' 槽）');
+
+      // ---- 圖 ----
+      renderCapacityBar(result);
+      renderTempScale(result);
+      renderStorageBar(s);
+      setText('sbEcoVal', fmt(s.storageReqEconomic, 0) + ' t');
+      setText('sbConVal', fmt(s.storageReqConservative, 0) + ' t');
+      setText('sbInstVal', fmt(s.installedStorage, 0) + ' t');
+      setText('storageBarCaption', '目標儲水 ' + fmt(Number(raw.storageDays), 1) + ' 天');
+
+      // ---- 檢核清單 ----
+      document.getElementById('checkList').innerHTML = checks.map(function (c) {
+        return '<li class="chk ' + c.status + '" data-check="' + c.key + '"><span class="dot">' + STATUS_ICON[c.status] + '</span>' +
+          '<div><div class="chk-t">' + escapeHtml(c.title) + '</div><div class="chk-v">' + escapeHtml(c.value) + '</div>' +
+          (c.detail ? '<div class="chk-d">' + escapeHtml(c.detail) + '</div>' : '') + '</div></li>';
+      }).join('');
+      setText('checkSummary', checks.filter(function (c) { return c.status === 'pass'; }).length + ' / ' + checks.length + ' 通過');
+
+      // ---- 計算過程 ----
+      document.getElementById('calcSteps').innerHTML = buildSteps(result, raw).map(function (st, i) {
+        return '<li><span class="n">' + (i + 1) + '</span><div><div class="st-t">' + escapeHtml(st.title) + '</div><code>' + escapeHtml(st.expr) + '</code></div></li>';
+      }).join('');
+
+      // ---- 欄位旁說明 ----
+      const evNote = document.getElementById('theoryEvapNote');
+      if (ec.theoryUnit !== null) {
+        evNote.className = 'note' + (ec.status === 'low' || ec.status === 'review' ? ' warn' : '');
+        evNote.innerHTML = '設計工況每台補水約 <b>' + fmt(wb.activeUnit, 2) + '</b> t/h；理論蒸發量約 <b>' + fmt(ec.theoryUnit, 2) + '</b> t/h。' + (ec.text ? escapeHtml(ec.text) + '。' : '');
+      } else {
+        evNote.className = 'note'; evNote.textContent = '填入設計散熱量後，會在這裡顯示理論蒸發量供比對。';
+      }
+      const bdNote = document.getElementById('modeBBlowdownNote');
+      if (!isVendor) {
+        if (wb.blowdownMissing) {
+          bdNote.className = 'note warn'; bdNote.textContent = '尚未提供排污量：請填濃縮倍率或直接指定排污量，否則補水量會被低估。';
+        } else {
+          bdNote.className = 'note';
+          bdNote.innerHTML = '排污量 <b>' + fmt(wb.modeB.blowdownUnit, 3) + '</b> t/h' + (wb.modeB.blowdownSource === 'coc' ? '（蒸發 ÷ (濃縮倍率 − 1)）' : '（直接指定）') + '，每台補水合計 <b>' + fmt(wb.modeB.totalUnit, 3) + '</b> t/h';
+        }
+      }
+      setText('fluidSummary', document.querySelector('input[name="fluidType"]:checked').value === 'custom'
+        ? '自訂流體 Cp ' + val('fluidCp') + '、ρ ' + val('fluidDensity')
+        : '清水 · ' + (f.flowModel === 'constant' ? '定流量' : '依設計散熱量') + (f.sprayProvided ? ' · 噴淋 ' + fmt(f.sprayFlowUnit, 0) + ' m³/h/台' : ''));
+    }
+
+    const AUTOSAVE_KEY = 'ccct_calc_v10_inputs';
+    const SAVED_FIELDS = ['conditionName', 'dataSource', 'designHeat', 'capUnit', 'numOperating', 'numStandby', 'loadFactor', 'operatingHours',
+      'tempEntering', 'tempLeaving', 'tempWetBulb', 'fluidCp', 'fluidDensity', 'flowModel', 'vendorSprayFlow', 'waterBalanceMode',
+      'vendorMakeupRate', 'inputEvapRate', 'inputDriftRate', 'cocValue', 'inputBlowdownRate', 'inputOtherLoss', 'storageDays', 'tankUnitCap', 'backupTanks'];
+    let restoring = false;
+
+    function saveInputs() {
+      if (restoring) return;
+      try {
+        const data = {};
+        SAVED_FIELDS.forEach(function (id) { const el = document.getElementById(id); if (el) data[id] = el.value; });
+        const fluid = document.querySelector('input[name="fluidType"]:checked');
+        data.__fluidType = fluid ? fluid.value : 'water';
+        data.__driftEstimated = driftIsEstimated;
+        localStorage.setItem(AUTOSAVE_KEY, JSON.stringify(data));
+        const hint = document.getElementById('autosaveHint');
+        if (hint) hint.textContent = '已自動保存 ' + new Date().toLocaleTimeString('zh-TW', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+      } catch (e) { /* 瀏覽器不允許 localStorage 時略過 */ }
+    }
+
+    function restoreInputs() {
+      let data = null;
+      try { data = JSON.parse(localStorage.getItem(AUTOSAVE_KEY) || 'null'); } catch (e) { data = null; }
+      if (!data) return false;
+      restoring = true;
+      SAVED_FIELDS.forEach(function (id) { const el = document.getElementById(id); if (el && data[id] !== undefined) el.value = data[id]; });
+      const radio = document.querySelector('input[name="fluidType"][value="' + (data.__fluidType === 'custom' ? 'custom' : 'water') + '"]');
+      if (radio) radio.checked = true;
+      document.getElementById('customFluidBox').style.display = data.__fluidType === 'custom' ? 'block' : 'none';
+      driftIsEstimated = data.__driftEstimated === true;
+      document.getElementById('driftEstimatedTag').style.display = driftIsEstimated ? 'inline' : 'none';
+      restoring = false;
+      return true;
+    }
+
+    function calculate() {
+      const raw = gatherInputs();
+      const result = CoolingTowerEngine.calculateEngine(raw);
+      lastResult = result;
+      render(result);
+      renderFormulaPanel();
+      saveInputs();
+      return result;
+    }
+
+    // ==================================================================
+    // 3. LOAD STANDARD EXAMPLE & RESET
+    // ==================================================================
+    function loadTestCase() {
+      document.getElementById('conditionName').value = 'DC Hall A — Peak Cooling';
+      document.getElementById('dataSource').value = 'BAC Datasheet Rev.3';
+      document.getElementById('designHeat').value = '6000';
+      document.getElementById('capUnit').value = '1650';
+      document.getElementById('numOperating').value = '4';
+      document.getElementById('numStandby').value = '1';
+      document.getElementById('loadFactor').value = '70';
+      document.getElementById('operatingHours').value = '24';
+      document.getElementById('tempEntering').value = '35.0';
+      document.getElementById('tempLeaving').value = '30.0';
+      document.getElementById('tempWetBulb').value = '27.0';
+      document.getElementById('vendorSprayFlow').value = '';
+      document.getElementById('flowModel').value = 'variable';
+
+      document.querySelector('input[name="fluidType"][value="water"]').checked = true;
+      document.getElementById('customFluidBox').style.display = 'none';
+      document.getElementById('fluidCp').value = '4.186';
+      document.getElementById('fluidDensity').value = '1000';
+
+      document.getElementById('waterBalanceMode').value = 'vendor';
+      document.getElementById('vendorMakeupRate').value = '2.2';
+
+      document.getElementById('inputEvapRate').value = '';
+      document.getElementById('inputDriftRate').value = '';
+      driftIsEstimated = false;
+      document.getElementById('driftEstimatedTag').style.display = 'none';
+      document.getElementById('cocValue').value = '';
+      document.getElementById('inputBlowdownRate').value = '';
+      document.getElementById('inputOtherLoss').value = '0';
+
+      document.getElementById('storageDays').value = '3';
+      document.getElementById('tankUnitCap').value = '50';
+      document.getElementById('backupTanks').value = '2';
+
+      calculate();
+      showToastMsg('✓ 已載入範例：4 運轉 + 1 備援，設計散熱量 6,000 kW');
+    }
+
+    function resetToDefaults() {
+      if (!window.confirm('確定要清空所有輸入嗎？（已自動保存的內容也會被清除）')) return;
+      try { localStorage.removeItem(AUTOSAVE_KEY); } catch (e) { /* ignore */ }
+      document.getElementById('designHeat').value = '';
+      document.getElementById('conditionName').value = '';
+      document.getElementById('dataSource').value = '';
+      document.getElementById('capUnit').value = '';
+      document.getElementById('numOperating').value = '1';
+      document.getElementById('numStandby').value = '0';
+      document.getElementById('loadFactor').value = '70';
+      document.getElementById('operatingHours').value = '24';
+      document.getElementById('tempEntering').value = '';
+      document.getElementById('tempLeaving').value = '';
+      document.getElementById('tempWetBulb').value = '';
+      document.getElementById('vendorSprayFlow').value = '';
+      document.getElementById('flowModel').value = 'variable';
+
+      document.querySelector('input[name="fluidType"][value="water"]').checked = true;
+      document.getElementById('customFluidBox').style.display = 'none';
+      document.getElementById('fluidCp').value = '4.186';
+      document.getElementById('fluidDensity').value = '1000';
+
+      document.getElementById('waterBalanceMode').value = 'vendor';
+      document.getElementById('vendorMakeupRate').value = '';
+      document.getElementById('inputEvapRate').value = '';
+      document.getElementById('inputDriftRate').value = '';
+      driftIsEstimated = false;
+      document.getElementById('driftEstimatedTag').style.display = 'none';
+      document.getElementById('cocValue').value = '';
+      document.getElementById('inputBlowdownRate').value = '';
+      document.getElementById('inputOtherLoss').value = '0';
+
+      document.getElementById('storageDays').value = '3';
+      document.getElementById('tankUnitCap').value = '50';
+      document.getElementById('backupTanks').value = '1';
+
+      calculate();
+      showToastMsg('✓ 已清空輸入，請從「02 設備配置」開始填寫');
+    }
+
+    function showToastMsg(msg) {
+      const toast = document.getElementById('toastMsg');
+      toast.textContent = msg;
+      toast.classList.add('show');
+      setTimeout(function () { toast.classList.remove('show'); }, 3000);
+    }
+
+    function blockIfInvalid(result) {
+      if (!result.isValid) {
+        showToastMsg('⛔ 輸入尚未通過驗證，無法匯出：' + result.errors[0]);
+        return true;
+      }
+      return false;
+    }
+
+    // ==================================================================
+    // 4. EXCEL EXPORT (Sheets 01 to 08 - Single Source of Truth)
+    // ==================================================================
+    function exportToExcel() {
+      const raw = gatherInputs();
+      const result = CoolingTowerEngine.calculateEngine(raw);
+      if (blockIfInvalid(result)) return;
+
+      const t = result.thermal, f = result.flow, wb = result.waterBalance,
+            d = result.demand, s = result.storage, tw = result.towers,
+            red = result.redundancy, meta = result.meta, asum = result.assumptions;
+
+      const wbk = XLSX.utils.book_new();
+
+      function setColWidths(ws, widths) { ws['!cols'] = widths.map(w => ({ wch: w })); }
+      function freezeHeader(ws, rows) { ws['!views'] = [{ state: 'frozen', ySplit: rows || 2 }]; }
+
+      // 01_Design_Input
+      const wsInputData = [
+        ['Project Metadata & Engineering Inputs', '', 'Type'],
+        ['Design Condition', meta.condName, 'INPUT'],
+        ['Data Source', meta.dataSrc, 'INPUT'],
+        ['Rated Capacity per Unit (kW)', Number(raw.capUnit), 'INPUT'],
+        ['Operating Towers (N)', tw.numOp, 'INPUT'],
+        ['Standby Towers (N+1)', tw.numSb, 'INPUT'],
+        ['Average Annual Load (fraction of Q)', Number(raw.loadFactor) / 100, 'INPUT'],
+        ['Operating Hours (hr/day)', Number(raw.opHours), 'INPUT'],
+        ['Entering Water Temp (degC)', Number(raw.Tin), 'INPUT'],
+        ['Leaving Water Temp (degC)', Number(raw.Tout), 'INPUT'],
+        ['Wet-Bulb Temp (degC)', Number(raw.Twb), 'INPUT'],
+        ['Specific Heat Cp (kJ/kg.K)', asum.specificHeat, 'INPUT'],
+        ['Density rho (kg/m3)', asum.density, 'INPUT'],
+        ['Water Balance Mode', wb.mode === 'vendor' ? 'A - Vendor Makeup Rate' : 'B - Detailed Water Balance', 'INPUT'],
+        ['Vendor Makeup Rate (Ton/hr/tower) [Mode A]', wb.modeA.unit, 'INPUT'],
+        ['Evaporation Rate (Ton/hr/tower) [Mode B]', wb.modeB.evapUnit, 'INPUT'],
+        ['Drift Rate (Ton/hr/tower) [Mode B]', wb.modeB.driftUnit, 'INPUT'],
+        ['COC - Cycles of Concentration [Mode B]', wb.modeB.cocUsed, 'INPUT'],
+        ['Blowdown Direct Input (Ton/hr/tower) [Mode B]', raw.blowdownUnitIn === '' ? null : Number(raw.blowdownUnitIn), 'INPUT'],
+        ['Other Loss (Ton/hr/tower) [Mode B]', wb.modeB.otherLossUnit, 'INPUT'],
+        ['Vendor Spray Flow (m3/hr/tower)', f.sprayFlowUnit, 'INPUT'],
+        ['Storage Days (days)', Number(raw.storageDays), 'INPUT'],
+        ['Tank Unit Capacity (Ton/tank)', Number(raw.tankUnitCap), 'INPUT'],
+        ['Backup Tanks (tanks)', s.backupTanks, 'INPUT'],
+        ['Process Flow Model', f.flowModel === 'constant' ? 'Constant Flow' : 'Variable Flow', 'INPUT'],
+        ['Design Peak Heat Rejection Q (kW)', t.designHeatkW, 'INPUT'],
+        ['Latent Heat Fraction (assumption)', wb.evapCheck.latentFraction, 'ASSUMPTION'],
+        ['Latent Heat of Evaporation h_fg (kJ/kg)', wb.evapCheck.hfg, 'ASSUMPTION']
+      ];
+      const wsInput = XLSX.utils.aoa_to_sheet(wsInputData);
+      setColWidths(wsInput, [44, 26, 12]);
+      freezeHeader(wsInput, 1);
+
+      // 02_Thermal_Calc
+      const flowBasisCellRef = (f.flowModel === 'constant') ? 'B3' : 'B4';
+      const wsThermalData = [
+        ['Thermal & Circulation Analysis', '', 'Type'],
+        ['Parameter', 'Value / Formula', 'Type'],
+        ['Operating Cooling Capacity (kW)', { f: "'01_Design_Input'!B4 * '01_Design_Input'!B5" }, 'FORMULA'],
+        ['Design Heat Rejection Q (kW)', { f: "'01_Design_Input'!B26" }, 'INPUT'],
+        ['Delta T (degC)', { f: "'01_Design_Input'!B9 - '01_Design_Input'!B10" }, 'FORMULA'],
+        ['Approach (degC)', { f: "'01_Design_Input'!B10 - '01_Design_Input'!B11" }, 'FORMULA'],
+        ['Process Water Flow Total (m3/hr)', { f: flowBasisCellRef + " * 3600 / ('01_Design_Input'!B13 * '01_Design_Input'!B12 * B5)" }, 'FORMULA'],
+        ['Process Water Flow per Tower (m3/hr)', { f: "B7 / '01_Design_Input'!B5" }, 'FORMULA'],
+        ['Spray Flow Total (m3/hr)', f.sprayProvided ? { f: "'01_Design_Input'!B21 * '01_Design_Input'!B5" } : null, 'FORMULA'],
+        ['Theoretical Evaporation Total (t/hr)', { f: "B4 * '01_Design_Input'!B27 * 3600 / '01_Design_Input'!B28 / 1000" }, 'FORMULA'],
+        ['Capacity Utilization (Q / Operating Cap)', { f: "B4 / B3" }, 'FORMULA'],
+        ['N+1 Available after 1 Tower Out (kW)', { f: "MAX(0, '01_Design_Input'!B5 + '01_Design_Input'!B6 - 1) * '01_Design_Input'!B4" }, 'FORMULA']
+      ];
+      const wsThermal = XLSX.utils.aoa_to_sheet(wsThermalData);
+      setColWidths(wsThermal, [48, 24, 12]);
+      freezeHeader(wsThermal, 2);
+
+      // 03_Water_Balance
+      let wsWBData;
+      if (wb.mode === 'vendor') {
+        wsWBData = [
+          ['Water Balance Analysis — Mode A (Vendor Makeup Rate)', '', 'Type'],
+          ['Item', 'Value (Ton/hr)', 'Type'],
+          ['Vendor Single Tower Makeup Rate', { f: "'01_Design_Input'!B15" }, 'INPUT'],
+          ['Total Peak Makeup Rate at Design Q (Ton/hr)', { f: "B3 * '01_Design_Input'!B5 * '02_Thermal_Calc'!B4 / '02_Thermal_Calc'!B3" }, 'FORMULA']
+        ];
+      } else {
+        wsWBData = [
+          ['Water Balance Analysis — Mode B (Detailed Water Balance)', '', 'Type'],
+          ['Item', 'Value (Ton/hr)', 'Type'],
+          ['Evaporation (E)', { f: "'01_Design_Input'!B16" }, 'INPUT'],
+          ['Drift (D)', { f: "'01_Design_Input'!B17" }, 'INPUT'],
+          ['COC', { f: "'01_Design_Input'!B18" }, 'INPUT'],
+          ['Blowdown (B)', wb.modeB.blowdownSource === 'direct' ? { f: "'01_Design_Input'!B19" } : (wb.modeB.blowdownSource === 'coc' ? { f: "B3 / (B5 - 1)" } : 0), wb.modeB.blowdownSource === 'direct' ? 'INPUT' : 'FORMULA'],
+          ['Other Loss (O)', { f: "'01_Design_Input'!B20" }, 'INPUT'],
+          ['Per-Tower Makeup Total', { f: "B3 + N(B4) + B6 + N(B7)" }, 'FORMULA'],
+          ['Total Peak Makeup Rate', { f: "B8 * '01_Design_Input'!B5" }, 'FORMULA']
+        ];
+      }
+      const wsWB = XLSX.utils.aoa_to_sheet(wsWBData);
+      setColWidths(wsWB, [48, 26, 12]);
+      freezeHeader(wsWB, 2);
+
+      // 04_Makeup_Demand
+      const peakRefCell = wb.mode === 'vendor' ? "'03_Water_Balance'!B4" : "'03_Water_Balance'!B9";
+      const wsDemandData = [
+        ['Makeup Water Demand Calculations', '', 'Type'],
+        ['Parameter', 'Value / Formula', 'Type'],
+        ['Peak Makeup Rate (Ton/hr)', { f: peakRefCell }, 'FORMULA'],
+        ['Daily Makeup at Peak Load (Ton/day) — conservative', { f: "B3 * '01_Design_Input'!B8" }, 'FORMULA'],
+        ['Average Daily Makeup (Ton/day) — economic', { f: "B4 * '01_Design_Input'!B7" }, 'FORMULA']
+      ];
+      const wsDemand = XLSX.utils.aoa_to_sheet(wsDemandData);
+      setColWidths(wsDemand, [56, 22, 12]);
+      freezeHeader(wsDemand, 2);
+
+      // 05_Storage
+      const wsStorageData = [
+        ['Storage Tank Configuration', '', 'Type'],
+        ['Parameter', 'Value / Formula', 'Type'],
+        ['Required Storage — Economic Basis (Ton)', { f: "'04_Makeup_Demand'!B5 * '01_Design_Input'!B22" }, 'FORMULA'],
+        ['Required Storage — Conservative Basis (Ton)', { f: "'04_Makeup_Demand'!B4 * '01_Design_Input'!B22" }, 'FORMULA'],
+        ['Basic Tank Count (tanks)', { f: "CEILING(B3 / '01_Design_Input'!B23, 1)" }, 'FORMULA'],
+        ['Backup Tank Count (tanks)', { f: "'01_Design_Input'!B24" }, 'INPUT'],
+        ['Final Tank Configuration (tanks)', { f: "B5 + B6" }, 'FORMULA'],
+        ['Total Installed Storage Capacity (Ton)', { f: "B7 * '01_Design_Input'!B23" }, 'FORMULA'],
+        ['Margin vs Economic Basis (Ton)', { f: "B8 - B3" }, 'FORMULA'],
+        ['Margin vs Conservative Basis (Ton)', { f: "B8 - B4" }, 'FORMULA']
+      ];
+      const wsStorage = XLSX.utils.aoa_to_sheet(wsStorageData);
+      setColWidths(wsStorage, [58, 22, 12]);
+      freezeHeader(wsStorage, 2);
+
+      // 06_Design_Report
+      const wsReportData = [
+        ['COOLING TOWER DESIGN SUMMARY REPORT', ''],
+        ['Project', meta.condName],
+        ['Data Source', meta.dataSrc],
+        ['Operating Cooling Capacity (kW)', { f: "'02_Thermal_Calc'!B3" }],
+        ['Total Installed Capacity incl. Standby (kW)', tw.totalInstalledCapacityKW],
+        ['Design Heat Rejection (kW)', { f: "'02_Thermal_Calc'!B4" }],
+        ['Process Water Flow (m3/hr)', { f: "'02_Thermal_Calc'!B7" }],
+        ['Peak Makeup Rate (Ton/hr)', { f: "'04_Makeup_Demand'!B3" }],
+        ['Design Daily Makeup - economic (Ton/day)', { f: "'04_Makeup_Demand'!B5" }],
+        ['Storage Requirement - Economic (Ton)', { f: "'05_Storage'!B3" }],
+        ['Final Tank Configuration (tanks)', { f: "'05_Storage'!B7" }],
+        ['Installed Storage Capacity (Ton)', { f: "'05_Storage'!B8" }]
+      ];
+      const wsReport = XLSX.utils.aoa_to_sheet(wsReportData);
+      setColWidths(wsReport, [50, 26]);
+      freezeHeader(wsReport, 1);
+
+      // 07_Assumptions
+      const wsAssumeData = [
+        ['Engineering Assumptions & Data Provenance', '', ''],
+        ['Item', 'Value', 'Source'],
+        ['Water Density (rho)', asum.density + ' kg/m3', 'User / Default'],
+        ['Specific Heat (Cp)', asum.specificHeat + ' kJ/kg.K', 'User / Default'],
+        ['Storage Sizing Basis', 'Economic basis used for tank count', 'Design Policy'],
+        ['Peak Makeup (Mode A)', 'Vendor rate at rated capacity, scaled by Q / operating capacity', 'Design Policy'],
+        ['Theoretical Evaporation', 'E = Q x ' + wb.evapCheck.latentFraction + ' x 3600 / ' + wb.evapCheck.hfg + ' / 1000 (t/h)', 'Engineering estimate']
+      ];
+      const wsAssume = XLSX.utils.aoa_to_sheet(wsAssumeData);
+      setColWidths(wsAssume, [32, 40, 24]);
+      freezeHeader(wsAssume, 2);
+
+      // 08_Engineering_Validation
+      const wsValData = [
+        ['Engineering Validation & System Redundancy Checks', '', '', '', ''],
+        ['Check Domain', 'Calculated Value', 'Required Condition', 'Status', 'Engineering Note'],
+        ['Thermal Boundary', 'Delta T = ' + fmt(t.deltaT, 2) + ' C, App = ' + fmt(t.approach, 2) + ' C', 'Tin > Tout & Tout >= Twb', t.thermalOk ? 'PASS' : 'FAIL', 'Physical boundary'],
+        ['Approach Screening', 'Approach = ' + fmt(t.approach, 2) + ' C', '3 C <= App <= 8 C (closed-circuit)', t.approachStatus.toUpperCase(), t.approachComment],
+        ['Capacity Sizing', 'Heat = ' + fmt(t.designHeatkW, 0) + ' kW, Op = ' + fmt(tw.operatingCapkW, 0) + ' kW', 'Design Heat <= Operating Cap', tw.operatingCapkW >= t.designHeatkW ? 'PASS' : 'FAIL', 'Margin ' + fmtSigned(tw.operatingCapkW - t.designHeatkW, 0) + ' kW'],
+        ['N+1 Post-Failure Redundancy', 'Available = ' + fmt(red.postFailureAvailableKW, 0) + ' kW', 'Any 1 tower out >= Design Q', red.status.toUpperCase(), 'Margin ' + fmtSigned(red.postFailureMarginKW, 0) + ' kW'],
+        ['Makeup vs Theoretical Evaporation', 'Makeup = ' + fmt(d.peakMakeupTotal, 2) + ' t/h, E = ' + fmt(wb.evapCheck.theoryTotal, 2) + ' t/h', 'Makeup >= E, implied COC 2~10', wb.evapCheck.status.toUpperCase(), wb.evapCheck.impliedCoc !== null ? ('Implied COC ' + fmt(wb.evapCheck.impliedCoc, 1)) : (wb.evapCheck.text || '-')],
+        ['Water Balance Cross-Check', wb.crossVerification.status !== 'not_compared' ? ('Diff = ' + fmt(wb.crossVerification.diffPercent, 1) + '%') : 'Single Mode', 'Mode A vs Mode B Diff <= 10%', wb.crossVerification.status.toUpperCase(), wb.crossVerification.text || 'Single mode active'],
+        ['Storage Economic Sizing', 'Installed = ' + fmt(s.installedStorage, 0) + ' Ton, Req = ' + fmt(s.storageReqEconomic, 2) + ' Ton', 'Installed >= Economic Req', s.marginEconomic >= 0 ? 'PASS' : 'FAIL', 'Primary sizing criterion'],
+        ['Storage Conservative Headroom', 'Installed = ' + fmt(s.installedStorage, 0) + ' Ton, Req = ' + fmt(s.storageReqConservative, 2) + ' Ton', 'Installed >= Conservative Req', s.marginConservative >= 0 ? 'PASS' : 'REVIEW', s.marginConservative >= 0 ? 'Adequate' : ('Shortfall ' + fmt(Math.abs(s.marginConservative), 1) + ' T at full load')],
+        ['Storage N-1 Failure Check', 'Storage (-1) = ' + fmt(s.storageMinus1, 0) + ' Ton', 'Storage (-1) >= Economic Req', s.passMinus1 ? 'PASS' : 'FAIL', s.passMinus1 ? ('N-1 Margin +' + fmt(s.marginMinus1, 1) + ' T') : 'Deficit with 1 tank out'],
+        ['Storage N-2 Failure Check', 'Storage (-2) = ' + fmt(s.storageMinus2, 0) + ' Ton', 'Storage (-2) >= Economic Req', s.passMinus2 ? 'PASS' : 'FAIL', s.passMinus2 ? ('N-2 Margin +' + fmt(s.marginMinus2, 1) + ' T') : 'Deficit with 2 tanks out']
+      ];
+      const wsVal = XLSX.utils.aoa_to_sheet(wsValData);
+      setColWidths(wsVal, [28, 38, 30, 14, 38]);
+      freezeHeader(wsVal, 2);
+
+      XLSX.utils.book_append_sheet(wbk, wsInput, '01_Design_Input');
+      XLSX.utils.book_append_sheet(wbk, wsThermal, '02_Thermal_Calc');
+      XLSX.utils.book_append_sheet(wbk, wsWB, '03_Water_Balance');
+      XLSX.utils.book_append_sheet(wbk, wsDemand, '04_Makeup_Demand');
+      XLSX.utils.book_append_sheet(wbk, wsStorage, '05_Storage');
+      XLSX.utils.book_append_sheet(wbk, wsReport, '06_Design_Report');
+      XLSX.utils.book_append_sheet(wbk, wsAssume, '07_Assumptions_DataSources');
+      XLSX.utils.book_append_sheet(wbk, wsVal, '08_Engineering_Validation');
+
+      XLSX.writeFile(wbk, '密閉式冷卻水塔_' + safeFileName(meta.condName) + '.xlsx');
+      showToastMsg('✓ 已匯出 Excel（含公式連結與工程檢核表）');
+    }
+
+    // ==================================================================
+    // 5. PDF EXPORT (High-Res Chinese Rendered via Canvas)
+    // ==================================================================
+    function safeFileName(name) {
+      return String(name || '未命名').replace(/[\\/:*?"<>|\s]+/g, '_').slice(0, 60);
+    }
+
+    function escapeHtml(str) {
+      if (str === null || str === undefined) return '';
+      return String(str)
+        .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+    }
+
+    function buildPrintReportHTML(result, raw) {
+      const t = result.thermal, f = result.flow, wb = result.waterBalance,
+            d = result.demand, s = result.storage, tw = result.towers,
+            red = result.redundancy, meta = result.meta;
+
+      const tableStyle = 'width:100%; border-collapse:collapse; font-size:11px; margin-bottom:14px;';
+      const thStyle = 'text-align:left; padding:5px 8px; background:#1E293B; color:#FFFFFF; font-weight:700; border:1px solid #334155;';
+      const tdStyle = 'padding:5px 8px; border:1px solid #CBD5E1; color:#0F172A;';
+      const tdNum = tdStyle + 'text-align:right; font-family:monospace; font-weight:600;';
+      const sectionTitle = 'font-size:12.5px; font-weight:700; color:#0F172A; margin:12px 0 5px 0; padding-bottom:3px; border-bottom:2px solid #2563EB;';
+
+      function row(label, value, unit) {
+        return '<tr><td style="' + tdStyle + '">' + escapeHtml(label) + '</td>' +
+          '<td style="' + tdNum + '">' + escapeHtml(value) + '</td>' +
+          '<td style="' + tdStyle + '">' + escapeHtml(unit || '') + '</td></tr>';
+      }
+
+      return '' +
+        '<div style="width:794px; padding:28px 32px; box-sizing:border-box; font-family:\'PingFang TC\',\'Microsoft JhengHei\',\'Noto Sans TC\',sans-serif; color:#0F172A; background:#FFFFFF;">' +
+          '<div style="background:#0F172A; color:#FFFFFF; padding:12px 16px; border-radius:6px; margin-bottom:12px;">' +
+            '<div style="font-size:16px; font-weight:700;">密閉式冷卻水塔熱力與水量設計報告 (v10)</div>' +
+            '<div style="font-size:11px; color:#94A3B8; margin-top:2px;">Closed-Circuit Cooling Tower Thermal, Water Demand &amp; Storage Report</div>' +
+          '</div>' +
+          '<table style="width:100%; font-size:11px; margin-bottom:10px; border-collapse:collapse;">' +
+            '<tr><td style="padding:2px 0; color:#475569; width:130px;">設計工況：</td><td style="padding:2px 0; font-weight:700;">' + escapeHtml(meta.condName) + '</td><td style="padding:2px 0; color:#475569; width:100px;">產出時間：</td><td style="padding:2px 0;">' + new Date().toLocaleDateString('zh-TW') + ' ' + new Date().toLocaleTimeString('zh-TW') + '</td></tr>' +
+            '<tr><td style="padding:2px 0; color:#475569;">資料來源：</td><td style="padding:2px 0; font-weight:700;">' + escapeHtml(meta.dataSrc) + '</td><td style="padding:2px 0; color:#475569;">流量模式：</td><td style="padding:2px 0;">' + (f.flowModel === 'constant' ? '定水量' : '變水量') + '</td></tr>' +
+          '</table>' +
+
+          '<div style="' + sectionTitle + '">1. 核心設計決策結果 (Design Result)</div>' +
+          '<table style="' + tableStyle + '"><thead><tr><th style="' + thStyle + '">項目</th><th style="' + thStyle + '">數值</th><th style="' + thStyle + '">單位</th></tr></thead><tbody>' +
+            row('冷卻設備容量配置', (tw.numOp + ' × ' + fmt(tw.operatingCapkW/tw.numOp, 0) + ' kW' + (tw.numSb ? (' + ' + tw.numSb + ' 備援') : '')), 'kW (全安裝 ' + fmt(tw.totalInstalledCapacityMW, 2) + ' MW)') +
+            row('設計尖峰散熱量 Q', fmt(t.designHeatkW, 0), 'kW (運轉容量使用率 ' + fmt(t.capUtilization, 0) + '%)') +
+            row('冷卻循環水量 (Process Flow)', fmt(f.processVolFlowM3hTotal, 1), 'm³/hr (' + fmt(f.processVolFlowLsTotal, 1) + ' L/s)') +
+            row('尖峰補水量 (設計工況)', fmt(d.peakMakeupTotal, 2), 't/h（理論蒸發 ' + fmt(wb.evapCheck.theoryTotal, 2) + ' t/h）') +
+            row('年均日補水量', fmt(d.designDailyMakeup, 2), 't/day（年平均負載 ' + fmt(t.loadFactor, 0) + '%；尖峰日 ' + fmt(d.dailyMaxMakeup, 2) + ' t/day）') +
+            row('設計儲水需求 (經濟基準)', fmt(s.storageReqEconomic, 2), 'Ton (' + raw.storageDays + ' 天)') +
+            row('選定儲水槽配置', (s.finalTanks + ' 槽 (' + s.basicTanks + ' 基本 + ' + s.backupTanks + ' 備援)'), '槽 (總容量 ' + fmt(s.installedStorage, 0) + ' Ton)') +
+          '</tbody></table>' +
+
+          '<div style="' + sectionTitle + '">2. 工程檢驗與系統冗餘審查 (Engineering Validation)</div>' +
+          '<table style="' + tableStyle + '"><thead><tr><th style="' + thStyle + '">檢驗項目</th><th style="' + thStyle + '">計算結果</th><th style="' + thStyle + '">要求標準</th><th style="' + thStyle + '">判定</th></tr></thead><tbody>' +
+            '<tr><td style="' + tdStyle + '">熱力物理邊界</td><td style="' + tdStyle + '">ΔT = ' + fmt(t.deltaT, 2) + ' °C, Approach = ' + fmt(t.approach, 2) + ' °C</td><td style="' + tdStyle + '">Tin &gt; Tout 且 Tout ≥ Twb</td><td style="' + tdStyle + ' font-weight:700; color:' + (t.thermalOk ? '#059669':'#DC2626') + ';">' + (t.thermalOk ? 'PASS':'FAIL') + '</td></tr>' +
+            '<tr><td style="' + tdStyle + '">運轉容量</td><td style="' + tdStyle + '">' + fmt(tw.operatingCapkW, 0) + ' kW vs 設計 ' + fmt(t.designHeatkW, 0) + ' kW</td><td style="' + tdStyle + '">運轉容量 ≥ 設計散熱量</td><td style="' + tdStyle + ' font-weight:700; color:' + (tw.operatingCapkW >= t.designHeatkW ? '#059669' : '#DC2626') + ';">' + (tw.operatingCapkW >= t.designHeatkW ? 'PASS' : 'FAIL') + '</td></tr>' +
+            '<tr><td style="' + tdStyle + '">N+1 故障後散熱能力</td><td style="' + tdStyle + '">故障 1 台後 ' + fmt(red.postFailureAvailableKW, 0) + ' kW vs 設計 ' + fmt(t.designHeatkW, 0) + ' kW</td><td style="' + tdStyle + '">任 1 台故障後 ≥ 設計散熱量</td><td style="' + tdStyle + ' font-weight:700; color:' + (red.status === 'pass' ? '#059669' : '#DC2626') + ';">' + red.status.toUpperCase() + '</td></tr>' +
+            '<tr><td style="' + tdStyle + '">補水量合理性</td><td style="' + tdStyle + '">補水 ' + fmt(d.peakMakeupTotal, 2) + ' t/h vs 理論蒸發 ' + fmt(wb.evapCheck.theoryTotal, 2) + ' t/h' + (wb.evapCheck.impliedCoc !== null ? '，隱含 COC ' + fmt(wb.evapCheck.impliedCoc, 1) : '') + '</td><td style="' + tdStyle + '">補水 ≥ 蒸發，COC 2~10</td><td style="' + tdStyle + ' font-weight:700; color:' + (wb.evapCheck.status === 'good' ? '#059669' : (wb.evapCheck.status === 'low' ? '#DC2626' : '#D97706')) + ';">' + wb.evapCheck.status.toUpperCase() + '</td></tr>' +
+            '<tr><td style="' + tdStyle + '">水槽 N-1 失效裕度</td><td style="' + tdStyle + '">' + (s.finalTanks - 1) + ' 槽可用 ' + fmt(s.storageMinus1, 0) + ' Ton vs 需求 ' + fmt(s.storageReqEconomic, 2) + ' Ton</td><td style="' + tdStyle + '">Storage (-1) ≥ Economic Req</td><td style="' + tdStyle + ' font-weight:700; color:' + (s.passMinus1 ? '#059669':'#DC2626') + ';">' + (s.passMinus1 ? 'PASS':'FAIL') + '</td></tr>' +
+          '</tbody></table>' +
+
+          '<div style="margin-top:12px; padding-top:6px; border-top:1px solid #CBD5E1; font-size:9px; color:#64748B;">' +
+            '聲明：本文件為方案規劃評估層級之工程分析，不取代製造商最終選型 Datasheet、水處理專案設計與正式 MEP 技師審查。' +
+          '</div>' +
+        '</div>';
+    }
+
+    function renderCanvasToPdfPages(canvas, fileNameBase) {
+      const { jsPDF } = window.jspdf;
+      const doc = new jsPDF('p', 'mm', 'a4');
+      const pageWidthMM = 210, pageHeightMM = 297, marginMM = 10;
+      const contentWidthMM = pageWidthMM - marginMM * 2;
+      const pxPerMM = canvas.width / contentWidthMM;
+      const pageContentHeightPx = Math.floor((pageHeightMM - marginMM * 2) * pxPerMM);
+
+      let renderedPx = 0;
+      let pageIndex = 0;
+      while (renderedPx < canvas.height) {
+        const sliceHeightPx = Math.min(pageContentHeightPx, canvas.height - renderedPx);
+        const pageCanvas = document.createElement('canvas');
+        pageCanvas.width = canvas.width;
+        pageCanvas.height = sliceHeightPx;
+        const ctx = pageCanvas.getContext('2d');
+        ctx.fillStyle = '#FFFFFF';
+        ctx.fillRect(0, 0, pageCanvas.width, pageCanvas.height);
+        ctx.drawImage(canvas, 0, renderedPx, canvas.width, sliceHeightPx, 0, 0, canvas.width, sliceHeightPx);
+
+        const imgData = pageCanvas.toDataURL('image/png');
+        const sliceHeightMM = sliceHeightPx / pxPerMM;
+        if (pageIndex > 0) doc.addPage();
+        doc.addImage(imgData, 'PNG', marginMM, marginMM, contentWidthMM, sliceHeightMM);
+
+        renderedPx += sliceHeightPx;
+        pageIndex++;
+        if (pageIndex > 30) break;
+      }
+
+      doc.save('密閉式冷卻水塔報告_' + safeFileName(fileNameBase) + '.pdf');
+      return pageIndex;
+    }
+
+    async function exportToPDF() {
+      const raw = gatherInputs();
+      const result = CoolingTowerEngine.calculateEngine(raw);
+      if (blockIfInvalid(result)) return;
+
+      showToastMsg('⏳ 正在產生 PDF 工程報告（繁體中文高解析渲染）…');
+      const contentEl = document.getElementById('printReportContent');
+      contentEl.innerHTML = buildPrintReportHTML(result, raw);
+
+      try {
+        const canvas = await html2canvas(contentEl, {
+          scale: 2,
+          backgroundColor: '#FFFFFF',
+          useCORS: true
+        });
+        renderCanvasToPdfPages(canvas, result.meta.condName);
+        showToastMsg('✓ 已成功匯出 PDF 工程報告');
+      } catch (err) {
+        console.error(err);
+        showToastMsg('⛔ PDF 產生失敗：' + (err && err.message ? err.message : '未知錯誤'));
+      } finally {
+        contentEl.innerHTML = '';
+      }
+    }
+
+    // ==================================================================
+    // 6. COPY DESIGN SUMMARY
+    // ==================================================================
+    function copyDesignSummary() {
+      const raw = gatherInputs();
+      const result = CoolingTowerEngine.calculateEngine(raw);
+      if (blockIfInvalid(result)) return;
+
+      const t = result.thermal, f = result.flow, wb = result.waterBalance,
+            d = result.demand, s = result.storage, tw = result.towers,
+            red = result.redundancy, meta = result.meta;
+
+      const summaryText =
+        '【密閉式冷卻水塔設計摘要 (v10)】\n' +
+        '設計工況：' + meta.condName + ' (' + meta.dataSrc + ')\n' +
+        '冷卻容量配置：' + tw.numOp + ' × ' + fmt(tw.operatingCapkW/tw.numOp, 0) + ' kW' + (tw.numSb ? (' + ' + tw.numSb + ' 備援') : '') + ' (全安裝 ' + fmt(tw.totalInstalledCapacityMW, 2) + ' MW)\n' +
+        '設計尖峰散熱量：' + fmt(t.designHeatkW, 0) + ' kW (運轉容量使用率 ' + fmt(t.capUtilization, 0) + '%，年平均負載 ' + fmt(Number(raw.loadFactor), 0) + '%)\n' +
+        '冷卻循環水量：' + fmt(f.processVolFlowM3hTotal, 1) + ' m³/hr (ΔT = ' + fmt(t.deltaT, 1) + '°C, ' + (f.flowModel === 'constant' ? '定水量' : '變水量') + ')\n' +
+        '尖峰補水量：' + fmt(d.peakMakeupTotal, 2) + ' t/h (理論蒸發 ' + fmt(wb.evapCheck.theoryTotal, 2) + ' t/h' + (wb.evapCheck.impliedCoc !== null ? '，隱含 COC ' + fmt(wb.evapCheck.impliedCoc, 1) : '') + ')\n' +
+        '年均日補水量：' + fmt(d.designDailyMakeup, 2) + ' t/day (尖峰日 ' + fmt(d.dailyMaxMakeup, 2) + ' t/day)\n' +
+        '選定水槽配置：' + s.finalTanks + ' 槽 (' + s.basicTanks + ' 基本 + ' + s.backupTanks + ' 備援, 共 ' + fmt(s.installedStorage, 0) + ' Ton)\n' +
+        '儲水需求 (經濟基準)：' + fmt(s.storageReqEconomic, 2) + ' t (' + raw.storageDays + ' 天，裕度 ' + fmtSigned(s.marginEconomic, 2) + ' t)\n' +
+        'N+1 故障 1 台後容量：' + fmt(red.postFailureAvailableKW, 0) + ' kW (' + (red.status === 'pass' ? '通過' : '不足') + '，裕度 ' + fmtSigned(red.postFailureMarginKW, 0) + ' kW)\n' +
+        '水槽少 1 槽：' + (s.passMinus1 ? '通過' : '不足') + ' (裕度 ' + fmtSigned(s.marginMinus1, 2) + ' t)';
+
+      navigator.clipboard.writeText(summaryText).then(function () {
+        showToastMsg('✓ 已複製工程設計決策摘要至剪貼簿');
+      });
+    }
+
+    // ==================================================================
+    // 7. REGRESSION TEST SUITE (17 Exhaustive Cases)
+    // ==================================================================
+    function runRegressionTests() {
+      const results = [];
+      function assertEqual(name, actual, expected, tolerance) {
+        if (tolerance === undefined) tolerance = 0.01;
+        const pass = (actual === null && expected === null) ||
+          (actual !== null && expected !== null && Math.abs(actual - expected) <= tolerance);
+        results.push({ name, actual, expected, pass });
+        if (!pass) console.error('[REGRESSION TEST FAILED]', name, 'Actual:', actual, 'Expected:', expected);
+      }
+      const base = {
+        designHeat: 6000, capUnit: 1650, numOp: 4, numSb: 1, loadFactor: 70, opHours: 24,
+        Tin: 35, Tout: 30, Twb: 27, Cp: 4.186, rho: 1000, flowModel: 'variable',
+        wbMode: 'vendor', vendorMakeupRate: 2.2, storageDays: 3, tankUnitCap: 50, backupTanks: 2
+      };
+      const run = function (over) { return CoolingTowerEngine.calculateEngine(Object.assign({}, base, over || {})); };
+
+      console.log('--- RUNNING COOLING TOWER ENGINE REGRESSION TESTS (v10) ---');
+
+      // Case 1：標準範例 (4 運轉 + 1 備援，設計散熱量 6,000 kW)
+      const c1 = run();
+      assertEqual('C1 運轉容量', c1.towers.operatingCapkW, 6600);
+      assertEqual('C1 全安裝容量', c1.towers.totalInstalledCapacityKW, 8250);
+      assertEqual('C1 設計散熱量', c1.thermal.designHeatkW, 6000);
+      assertEqual('C1 使用率 %', c1.thermal.capUtilization, 90.909, 0.01);
+      assertEqual('C1 循環水量 = 6000×3600/(1000×4.186×5)', c1.flow.processVolFlowM3hTotal, 1031.98, 0.05);
+      assertEqual('C1 尖峰補水 = 2.2×4×6000/6600', c1.demand.peakMakeupTotal, 8.0, 0.0001);
+      assertEqual('C1 尖峰日補水', c1.demand.dailyMaxMakeup, 192.0, 0.001);
+      assertEqual('C1 年均日補水', c1.demand.designDailyMakeup, 134.4, 0.001);
+      assertEqual('C1 經濟儲水', c1.storage.storageReqEconomic, 403.2, 0.001);
+      assertEqual('C1 保守儲水', c1.storage.storageReqConservative, 576.0, 0.001);
+      assertEqual('C1 基本槽數', c1.storage.basicTanks, 9);
+      assertEqual('C1 總槽數', c1.storage.finalTanks, 11);
+      assertEqual('C1 N+1 可用', c1.redundancy.postFailureAvailableKW, 6600);
+      assertEqual('C1 N+1 裕度', c1.redundancy.postFailureMarginKW, 600);
+      assertEqual('C1 N+1 通過', c1.redundancy.status === 'pass' ? 1 : 0, 1);
+      assertEqual('C1 理論蒸發 = 6000×0.85×3600/2430/1000', c1.waterBalance.evapCheck.theoryTotal, 7.5556, 0.001);
+      assertEqual('C1 隱含 COC', c1.waterBalance.evapCheck.impliedCoc, 18.0, 0.05);
+      assertEqual('C1 補水合理性 = review', c1.waterBalance.evapCheck.status === 'review' ? 1 : 0, 1);
+      assertEqual('C1 趨近溫差 3°C 為正常', c1.thermal.approachStatus === 'good' ? 1 : 0, 1);
+
+      // Case 2：設計散熱量超過運轉容量 → 容量與 N+1 皆不足
+      const c2 = run({ designHeat: 7000 });
+      assertEqual('C2 容量不足', c2.towers.operatingCapkW < c2.thermal.designHeatkW ? 1 : 0, 1);
+      assertEqual('C2 N+1 不足', c2.redundancy.status === 'fail' ? 1 : 0, 1);
+
+      // Case 3：無備援但運轉台數已含冗餘 → N+1 仍可通過
+      const c3 = run({ numSb: 0, numOp: 5, designHeat: 6000 });
+      assertEqual('C3 無備援、5 台運轉 N+1 可用', c3.redundancy.postFailureAvailableKW, 6600);
+      assertEqual('C3 N+1 通過', c3.redundancy.status === 'pass' ? 1 : 0, 1);
+
+      // Case 4：無備援且無冗餘 → N+1 不足
+      const c4 = run({ numSb: 0 });
+      assertEqual('C4 無備援 N+1 不足', c4.redundancy.status === 'fail' ? 1 : 0, 1);
+
+      // Case 5：定流量以運轉容量計
+      const c5 = run({ flowModel: 'constant' });
+      assertEqual('C5 定流量', c5.flow.processVolFlowM3hTotal, 1135.18, 0.05);
+
+      // Case 6：Mode B (E 1.8, D 0.01, COC 4)
+      const c6 = run({ wbMode: 'detailed', evapRateUnit: 1.8, driftRateUnit: 0.01, coc: 4, otherLossUnit: 0 });
+      assertEqual('C6 排污 = 1.8/(4-1)', c6.waterBalance.modeB.blowdownUnit, 0.6);
+      assertEqual('C6 單台補水', c6.waterBalance.modeB.totalUnit, 2.41);
+      assertEqual('C6 尖峰補水', c6.demand.peakMakeupTotal, 9.64);
+      assertEqual('C6 隱含 COC 合理', c6.waterBalance.evapCheck.status === 'good' ? 1 : 0, 1);
+
+      // Case 7：Mode B 沒有排污資料 → 標記缺漏
+      const c7 = run({ wbMode: 'detailed', evapRateUnit: 1.8 });
+      assertEqual('C7 排污缺漏', c7.waterBalance.blowdownMissing ? 1 : 0, 1);
+      assertEqual('C7 補水低於理論蒸發', c7.waterBalance.evapCheck.status === 'low' ? 1 : 0, 1);
+
+      // Case 8~11：輸入檢查
+      assertEqual('C8 Tin <= Tout 無效', run({ Tin: 30, Tout: 35 }).isValid ? 1 : 0, 0);
+      assertEqual('C9 Tout < Twb 無效', run({ Tout: 26 }).isValid ? 1 : 0, 0);
+      assertEqual('C10 缺原廠補水率無效', run({ vendorMakeupRate: '' }).isValid ? 1 : 0, 0);
+      assertEqual('C11 COC <= 1 無效', run({ wbMode: 'detailed', evapRateUnit: 1.8, coc: 1.0 }).isValid ? 1 : 0, 0);
+      assertEqual('C12 設計散熱量空白無效', run({ designHeat: '' }).isValid ? 1 : 0, 0);
+      assertEqual('C13 備援槽數非整數無效', run({ backupTanks: 1.5 }).isValid ? 1 : 0, 0);
+
+      // Case 14：交叉驗證門檻 (Mode A 8.0 vs Mode B)
+      const ratio = 6000 / 6600;
+      assertEqual('C14a 差異 5% 一致', run({ vendorMakeupRate: 2.0, evapRateUnit: 2.1 * ratio }).waterBalance.crossVerification.status === 'good' ? 1 : 0, 1);
+      assertEqual('C14b 差異 10% 請確認', run({ vendorMakeupRate: 2.0, evapRateUnit: 2.2 * ratio }).waterBalance.crossVerification.status === 'review' ? 1 : 0, 1);
+      assertEqual('C14c 差異 15% 差異大', run({ vendorMakeupRate: 2.0, evapRateUnit: 2.3 * ratio }).waterBalance.crossVerification.status === 'significant' ? 1 : 0, 1);
+
+      // Case 15：自訂流體
+      assertEqual('C15 自訂流體流量 = 6000×3600/(1050×3.8×5)', run({ Cp: 3.8, rho: 1050 }).flow.processVolFlowM3hTotal, 1082.71, 0.05);
+
+      // Case 16：舊版呼叫 (未提供 designHeat) 仍可計算，並標記來源
+      const legacy = Object.assign({}, base); delete legacy.designHeat;
+      const c16 = CoolingTowerEngine.calculateEngine(legacy);
+      assertEqual('C16 舊版：Q = 容量 × 負載係數', c16.thermal.designHeatkW, 4620);
+      assertEqual('C16 舊版來源標記', c16.thermal.heatSource === 'derived' ? 1 : 0, 1);
+
+      const allPassed = results.every(function (r) { return r.pass; });
+      console.log('Regression Test Result: ' + (allPassed ? 'ALL ' + results.length + ' TESTS PASSED ✓' : 'SOME TESTS FAILED ✗'));
+      return { allPassed, results };
+    }
+
+    // Initialize on DOM load
+    window.addEventListener('DOMContentLoaded', function () {
+      const restored = restoreInputs();
+      calculate();
+      if (restored) showToastMsg('已載入上次的輸入（按「重設」可清空）');
+      runRegressionTests();
+    });
+
+  </script>
+</body>
+</html>

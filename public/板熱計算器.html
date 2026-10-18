@@ -222,9 +222,9 @@
         const c = Math.max(0, Math.min(60, concentrationPercent || 0));
         
         if (type === FLUID_TYPES.PG) {
-          return -0.0051 * Math.pow(c, 2) - 0.211 * c;
+          return -0.01144 * Math.pow(c, 2) - 0.098 * c;   // PG25 ≈ -9.6、PG40 ≈ -22、PG50 ≈ -33.5 °C
         } else if (type === FLUID_TYPES.EG) {
-          return -0.0082 * Math.pow(c, 2) - 0.325 * c;
+          return -0.01113 * Math.pow(c, 2) - 0.179 * c;   // EG30 ≈ -15.4、EG40 ≈ -25、EG50 ≈ -36.8 °C
         }
         return 0;
       }
@@ -257,10 +257,10 @@
 
         if (type === FLUID_TYPES.PG) {
           const density = waterDensity * (1 + 0.10 * conc);
-          const specificHeat = waterCp * (1 - 0.45 * conc);
+          const specificHeat = waterCp * (1 - 0.30 * conc);   // PG25 ≈ 3.87、PG50 ≈ 3.56 kJ/kg·K
           const viscFactor = 1 + 4.5 * conc + 8.0 * Math.pow(conc, 2) * Math.exp(-T / 25);
           const viscosity = waterViscosity * viscFactor;
-          const thermalConductivity = waterConductivity * (1 - 0.32 * conc);
+          const thermalConductivity = waterConductivity * (1 - 0.80 * conc);   // PG25 ≈ 0.48、PG50 ≈ 0.36 W/m·K
 
           return {
             type: FLUID_TYPES.PG,
@@ -276,10 +276,10 @@
           };
         } else {
           const density = waterDensity * (1 + 0.14 * conc);
-          const specificHeat = waterCp * (1 - 0.38 * conc);
+          const specificHeat = waterCp * (1 - 0.42 * conc);   // EG30 ≈ 3.66、EG50 ≈ 3.30 kJ/kg·K
           const viscFactor = 1 + 3.2 * conc + 5.5 * Math.pow(conc, 2) * Math.exp(-T / 25);
           const viscosity = waterViscosity * viscFactor;
-          const thermalConductivity = waterConductivity * (1 - 0.25 * conc);
+          const thermalConductivity = waterConductivity * (1 - 0.67 * conc);   // EG30 ≈ 0.48、EG50 ≈ 0.40 W/m·K
 
           return {
             type: FLUID_TYPES.EG,
@@ -465,8 +465,8 @@
         setCell('D12', 'J/(kg·K)');
 
         setCell('A13', '質量流量 (Mass Flow Rate, m_dot)');
-        setCell('B13', (inputState.primary.flowRate * (result.primaryResult ? result.primaryResult.fluidProperties.density : 998)) / 3600, '=(B10*B11)/3600');
-        setCell('C13', (inputState.secondary.flowRate * (result.secondaryResult ? result.secondaryResult.fluidProperties.density : 998)) / 3600, '=(C10*C11)/3600');
+        setCell('B13', result.primaryResult ? result.primaryResult.massFlowKgS : 0, '=(B10*B11)/3600');
+        setCell('C13', result.secondaryResult ? result.secondaryResult.massFlowKgS : 0, '=(C10*C11)/3600');
         setCell('D13', 'kg/s');
 
         setCell('A14', '計算熱負荷 (Calculated Duty, Q)');
@@ -506,30 +506,42 @@
         setCell('B25', Number(inputState.global.estimatedUValue));
         setCell('D25', 'W/(m²·K)');
 
-        setCell('A26', '污垢熱阻 (Fouling Factor, Rf)');
-        setCell('B26', Number(inputState.global.foulingFactor));
-        setCell('D26', 'm²·K/W');
+        setCell('A26', '物性修正後清潔 U 值 (U_clean)');
+        setCell('B26', result.thermalResult ? result.thermalResult.adjustedUValue : 4000);
+        setCell('D26', 'W/(m²·K)');
+        setCell('E26', '兩側膜係數依導熱/黏度修正後串聯 (程式計算值)');
 
-        setCell('A27', '考慮污垢後總熱傳 U 值 (U_dirty)');
-        setCell('B27', result.thermalResult ? result.thermalResult.adjustedUValue : 4000, '=1/((1/B25)+B26)');
-        setCell('D27', 'W/(m²·K)');
+        setCell('A27', '污垢熱阻 (Fouling Factor, Rf)');
+        setCell('B27', Number(inputState.global.foulingFactor) || 0);
+        setCell('D27', 'm²·K/W');
 
-        setCell('A28', '淨所需換熱面積 (Required Heat Area, A_req)');
-        setCell('B28', result.thermalResult ? result.thermalResult.requiredAreaM2 : 0, '=(B18*1000)/(B27*B22)');
-        setCell('D28', 'm²');
+        const uClean = result.thermalResult ? result.thermalResult.adjustedUValue : 4000;
+        const rf = Number(inputState.global.foulingFactor) || 0;
+        const uDirty = 1 / ((1 / uClean) + rf);
+        setCell('A28', '考慮污垢後總熱傳 U 值 (U_dirty)');
+        setCell('B28', uDirty, '=1/((1/B26)+B27)');
+        setCell('D28', 'W/(m²·K)');
 
-        setCell('A29', '設計安全裕量 (Design Margin)');
-        setCell('B29', Number(inputState.global.designMargin));
-        setCell('D29', '%');
+        setCell('A29', '淨所需換熱面積 (Required Heat Area, A_req)');
+        setCell('B29', result.thermalResult ? result.thermalResult.requiredAreaM2 : 0, '=(B18*1000)/(B28*B22)');
+        setCell('D29', 'm²');
 
-        setCell('A30', '最終設計換熱面積 (Design Heat Area, A_des)');
-        setCell('B30', result.thermalResult ? result.thermalResult.designAreaM2 : 0, '=B28*(1+(B29/100))');
-        setCell('D30', 'm²');
+        setCell('A30', '設計安全裕量 (Design Margin)');
+        setCell('B30', result.thermalResult ? result.thermalResult.designMarginPercent : 0);
+        setCell('D30', '%');
 
-        setCell('A32', '【四、 水力學與接管流速診斷 (Hydraulic & Port Velocity)】');
-        setCell('A33', '選定接管 DN 口徑 (Selected Port Size)');
-        setCell('B33', result.primaryResult ? result.primaryResult.hydraulics.selectedDN.dn : 'DN50');
-        setCell('C33', result.secondaryResult ? result.secondaryResult.hydraulics.selectedDN.dn : 'DN50');
+        setCell('A31', '最終設計換熱面積 (Design Heat Area, A_des)');
+        setCell('B31', result.thermalResult ? result.thermalResult.designAreaM2 : 0, '=B29*(1+(B30/100))');
+        setCell('D31', 'm²');
+
+        setCell('A33', '【四、 水力學與接管流速診斷 (Hydraulic & Port Velocity)】');
+        setCell('A34', '選定接管 DN 口徑 (Selected Port Size)');
+        setCell('B34', result.primaryResult ? result.primaryResult.hydraulics.selectedDN.dn : 'DN50');
+        setCell('C34', result.secondaryResult ? result.secondaryResult.hydraulics.selectedDN.dn : 'DN50');
+        setCell('A35', '接管流速 (Port Velocity)');
+        setCell('B35', result.primaryResult ? result.primaryResult.hydraulics.velocityMS : 0);
+        setCell('C35', result.secondaryResult ? result.secondaryResult.hydraulics.velocityMS : 0);
+        setCell('D35', 'm/s');
 
         ws['!cols'] = [{ wch: 38 }, { wch: 22 }, { wch: 22 }, { wch: 12 }, { wch: 32 }];
         ws['!ref'] = XLSX.utils.encode_range(range);
@@ -737,10 +749,13 @@
         const condFactor_s = Math.pow(prop_s.thermalConductivity / waterProp.thermalConductivity, 0.6);
         const viscFactor_s = Math.pow(waterProp.viscosity / prop_s.viscosity, 0.15);
 
-        const adjustedUValue = baseU * condFactor_p * viscFactor_p * condFactor_s * viscFactor_s;
+        // 兩側膜係數串聯：基準 U 視為兩側相同膜係數 h0 = 2·U0（板壁熱阻併入），各側依物性修正後 1/U = 1/h_p + 1/h_s
+        const h_p = 2 * baseU * condFactor_p * viscFactor_p;
+        const h_s = 2 * baseU * condFactor_s * viscFactor_s;
+        const adjustedUValue = 1 / (1 / h_p + 1 / h_s);
 
         const F_factor = SYSTEM_CONFIG.DEFAULT_LMTD_F_FACTOR;
-        const marginPercent = Number(global.designMargin) || SYSTEM_CONFIG.DEFAULT_DESIGN_MARGIN;
+        const marginPercent = Number.isFinite(Number(global.designMargin)) && global.designMargin !== '' ? Number(global.designMargin) : SYSTEM_CONFIG.DEFAULT_DESIGN_MARGIN;
         const foulingR = Number(global.foulingFactor) || 0;
 
         let requiredAreaM2 = null;
@@ -853,11 +868,11 @@
       {
         id: 3,
         name: 'ASHRAE W45 — 高溫晶片直接液冷 (D2C Direct Liquid Cooling)',
-        description: '高溫二次側迴路 40°C→45°C, 50 m³/h；一次側 32°C→42°C。',
+        description: '高溫二次側（熱側）迴路 45°C→40°C, 50 m³/h；一次側（冷側）32°C→40°C 求解流量。',
         expectedStatus: 'PASS',
         input: {
-          primary: { fluid: FLUID_TYPES.WATER, concentrationPercent: 0, inletTemp: 32, outletTemp: 42, inputType: 'SOLVE', flowRate: 0, flowUnit: 'm3/h', heatDuty: 0, overrideDN: null },
-          secondary: { fluid: FLUID_TYPES.WATER, concentrationPercent: 0, inletTemp: 40, outletTemp: 45, inputType: 'FLOW', flowRate: 50, flowUnit: 'm3/h', heatDuty: 0, overrideDN: null },
+          primary: { fluid: FLUID_TYPES.WATER, concentrationPercent: 0, inletTemp: 32, outletTemp: 40, inputType: 'SOLVE', flowRate: 0, flowUnit: 'm3/h', heatDuty: 0, overrideDN: null },
+          secondary: { fluid: FLUID_TYPES.WATER, concentrationPercent: 0, inletTemp: 45, outletTemp: 40, inputType: 'FLOW', flowRate: 50, flowUnit: 'm3/h', heatDuty: 0, overrideDN: null },
           global: { estimatedUValue: 4200, designMargin: 10, maxAllowableDP: 50, foulingFactor: 0.00003 }
         }
       },
@@ -877,6 +892,87 @@
     // ==========================================
     // 7. THREE.JS 3D PHE VISUALIZER COMPONENT
     // ==========================================
+    // 逆流板換沿板高的溫度分布（精確解）：ΔT 沿換熱面積呈指數變化，ΔT(x) = ΔT1·r^x，r = ΔT2/ΔT1
+    // x = 0 為熱側入口端（頂部），x = 1 為熱側出口端（底部）；q(x) 為累積熱量比例
+    function counterflowProfile(tr) {
+      const ok = tr && tr.deltaT1 > 0 && tr.deltaT2 > 0 && tr.hotIn > tr.hotOut && tr.coldOut > tr.coldIn;
+      const r = ok ? tr.deltaT2 / tr.deltaT1 : 1;
+      const q = x => (!ok || Math.abs(r - 1) < 1e-6) ? x : (Math.pow(r, x) - 1) / (r - 1);
+      const hotIn = tr ? tr.hotIn : 32, hotOut = tr ? tr.hotOut : 27, coldIn = tr ? tr.coldIn : 22, coldOut = tr ? tr.coldOut : 27;
+      return {
+        hotIn, hotOut, coldIn, coldOut, valid: ok,
+        Th: x => hotIn - (hotIn - hotOut) * q(x),
+        Tc: x => coldOut - (coldOut - coldIn) * q(x)
+      };
+    }
+    // 色階：冷側入口（藍）→ 熱側入口（紅）
+    const PHE_STOPS = [[0, [0.15, 0.39, 0.92]], [0.3, [0.02, 0.71, 0.83]], [0.55, [0.06, 0.73, 0.51]], [0.78, [0.96, 0.62, 0.04]], [1, [0.94, 0.27, 0.27]]];
+    function pheRamp(w) {
+      const v = Math.max(0, Math.min(1, w));
+      for (let i = 1; i < PHE_STOPS.length; i++) {
+        if (v <= PHE_STOPS[i][0]) { const [x0, c0] = PHE_STOPS[i - 1], [x1, c1] = PHE_STOPS[i], k = (v - x0) / (x1 - x0); return c0.map((c, j) => c + (c1[j] - c) * k); }
+      }
+      return PHE_STOPS[PHE_STOPS.length - 1][1];
+    }
+    const pheRampCss = w => `rgb(${pheRamp(w).map(v => Math.round(v * 255)).join(',')})`;
+    function pheTextSprite(text, color, h) {
+      const cv = document.createElement('canvas'), ctx = cv.getContext('2d'), fs = 44;
+      ctx.font = `700 ${fs}px Consolas, monospace`;
+      cv.width = Math.ceil(ctx.measureText(text).width) + 24; cv.height = fs + 20;
+      ctx.font = `700 ${fs}px Consolas, monospace`;
+      ctx.fillStyle = 'rgba(15,23,42,0.82)'; ctx.fillRect(0, 0, cv.width, cv.height);
+      ctx.fillStyle = color; ctx.textBaseline = 'middle'; ctx.fillText(text, 12, cv.height / 2 + 2);
+      const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: new THREE.CanvasTexture(cv), depthTest: false, transparent: true }));
+      sp.scale.set(h * cv.width / cv.height, h, 1); sp.renderOrder = 10;
+      return sp;
+    }
+
+    const PLATE_VERT = `
+      varying vec2 vUv;
+      varying vec3 vN;
+      void main() {
+        vUv = uv;
+        vN = normalize(normalMatrix * normal);
+        gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+      }
+    `;
+    // 板片 shader：溫度貼圖（沿板高）+ 人字波紋 + 四角孔 + 周邊墊片
+    const PLATE_FRAG = `
+      uniform sampler2D uTemp;
+      uniform vec2 uSize;
+      uniform vec2 uPort;      // 角孔中心 (±x, ±y)，板片局部座標 m
+      uniform float uPortR;
+      uniform float uFlip;     // 相鄰板片人字方向相反
+      uniform float uDim;
+      varying vec2 vUv;
+      varying vec3 vN;
+      void main() {
+        vec2 p = (vUv - 0.5) * uSize;
+        for (int i = 0; i < 4; i++) {
+          vec2 c = vec2(i < 2 ? -uPort.x : uPort.x, mod(float(i), 2.0) < 0.5 ? uPort.y : -uPort.y);
+          if (length(p - c) < uPortR) discard;
+        }
+        vec3 col = texture2D(uTemp, vec2(0.5, vUv.y)).rgb;
+        // 人字波紋（只在換熱區，上下分配區除外）
+        float inField = step(abs(p.y), uPort.y - uPortR * 1.4);
+        float v = (p.y * uFlip + abs(p.x) * 0.58) / (uSize.x * 0.045);
+        float ridge = smoothstep(0.35, 0.5, abs(fract(v) - 0.5));
+        col *= mix(1.0, 0.72 + 0.28 * (1.0 - ridge), inField);
+        // 角孔墊片環與周邊墊片
+        float ring = 1.0;
+        for (int i = 0; i < 4; i++) {
+          vec2 c = vec2(i < 2 ? -uPort.x : uPort.x, mod(float(i), 2.0) < 0.5 ? uPort.y : -uPort.y);
+          float d = length(p - c) - uPortR;
+          ring = min(ring, smoothstep(0.0, uPortR * 0.25, d));
+        }
+        vec2 e = uSize * 0.5 - abs(p);
+        float edge = smoothstep(0.0, uSize.x * 0.03, min(e.x, e.y));
+        col = mix(vec3(0.08, 0.09, 0.11), col, min(ring, edge));
+        float lit = 0.62 + 0.38 * abs(dot(normalize(vN), normalize(vec3(0.4, 0.6, 0.7))));
+        gl_FragColor = vec4(col * lit * uDim, 1.0);
+      }
+    `;
+
     function PHE3DViewer({ result, isDarkMode }) {
       const containerRef = useRef(null);
       const sceneRef = useRef(null);
@@ -884,425 +980,337 @@
       const rendererRef = useRef(null);
       const controlsRef = useRef(null);
       const pheGroupRef = useRef(null);
-      const [autoRotate, setAutoRotate] = useState(false); // 預設關閉自動旋轉，操作更穩定
+      const flowRef = useRef(null);
+      const [autoRotate, setAutoRotate] = useState(false);
       const autoRotateRef = useRef(false);
+      const [exploded, setExploded] = useState(false);
+      const [showFlow, setShowFlow] = useState(true);
+      const showFlowRef = useRef(true);
+      const [plateInfo, setPlateInfo] = useState({ real: 0, shown: 0, area: 0 });
 
-      // 動態換熱面積與接管直徑
       const designArea = (result && result.thermalResult && result.thermalResult.designAreaM2) || 8.5;
       const primaryDN = (result && result.primaryResult && result.primaryResult.hydraulics.selectedDN) || STANDARD_DN_SIZES[3];
       const secondaryDN = (result && result.secondaryResult && result.secondaryResult.hydraulics.selectedDN) || STANDARD_DN_SIZES[3];
+      const isPrimaryHot = result ? result.isPrimaryHot !== false : true;
+      const prof = useMemo(() => counterflowProfile(result && result.thermalResult), [result]);
+      const thermalKey = `${prof.hotIn}_${prof.hotOut}_${prof.coldIn}_${prof.coldOut}_${isPrimaryHot}`;
+      const Tmin = prof.coldIn, Tspan = Math.max(0.1, prof.hotIn - prof.coldIn);
+      const wOf = T => (T - Tmin) / Tspan;
 
-      // 監聽 autoRotate 變更，同步給 ref 與 controls
       const handleToggleRotate = () => {
-        const nextState = !autoRotate;
-        setAutoRotate(nextState);
-        autoRotateRef.current = nextState;
-        if (controlsRef.current) {
-          controlsRef.current.autoRotate = nextState;
-        }
+        const next = !autoRotate;
+        setAutoRotate(next);
+        autoRotateRef.current = next;
+        if (controlsRef.current) controlsRef.current.autoRotate = next;
       };
+      const toggleFlow = () => { const n = !showFlow; setShowFlow(n); showFlowRef.current = n; if (flowRef.current) flowRef.current.points.visible = n; };
 
-      // 初始化 Three.js 場景
+      // 初始化場景
       useEffect(() => {
         const container = containerRef.current;
         if (!container) return;
-
-        const width = container.clientWidth || 360;
-        const height = container.clientHeight || 340;
-
-        // 1. 場景
+        const width = container.clientWidth || 360, height = container.clientHeight || 420;
         const scene = new THREE.Scene();
         sceneRef.current = scene;
-
-        // 2. 攝影機
-        const camera = new THREE.PerspectiveCamera(40, width / height, 0.1, 100);
+        const camera = new THREE.PerspectiveCamera(38, width / height, 0.05, 200);
         camera.position.set(4.2, 2.6, 5.0);
         cameraRef.current = camera;
-
-        // 3. 渲染器
         const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
         renderer.setSize(width, height);
         renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-        renderer.shadowMap.enabled = true;
-        renderer.shadowMap.type = THREE.PCFSoftShadowMap;
         container.innerHTML = '';
         container.appendChild(renderer.domElement);
         rendererRef.current = renderer;
-
-        // 4. 控制器 (OrbitControls)
-        let controls = null;
         if (window.THREE && window.THREE.OrbitControls) {
-          controls = new THREE.OrbitControls(camera, renderer.domElement);
+          const controls = new THREE.OrbitControls(camera, renderer.domElement);
           controls.enableDamping = true;
           controls.dampingFactor = 0.08;
-          controls.maxDistance = 20;
-          controls.minDistance = 1.5;
           controls.autoRotate = autoRotateRef.current;
-          controls.autoRotateSpeed = 1.8;
-          controls.target.set(0, 0, 0);
+          controls.autoRotateSpeed = 1.6;
           controlsRef.current = controls;
         }
-
-        // 5. 燈光配置
-        const ambientLight = new THREE.AmbientLight(0xffffff, isDarkMode ? 0.75 : 0.95);
-        scene.add(ambientLight);
-
-        const dirLight1 = new THREE.DirectionalLight(0xffffff, 1.2);
-        dirLight1.position.set(6, 9, 7);
-        dirLight1.castShadow = true;
-        scene.add(dirLight1);
-
-        const dirLight2 = new THREE.DirectionalLight(0x94a3b8, 0.6);
-        dirLight2.position.set(-6, -4, -5);
-        scene.add(dirLight2);
-
-        // 主 PHE 實體群組
+        scene.add(new THREE.HemisphereLight(0xe2e8f0, 0x1e293b, 0.75));
+        const key = new THREE.DirectionalLight(0xffffff, 1.0); key.position.set(6, 9, 7); scene.add(key);
+        const rim = new THREE.DirectionalLight(0x38bdf8, 0.45); rim.position.set(-6, -3, -5); scene.add(rim);
         const pheGroup = new THREE.Group();
         scene.add(pheGroup);
         pheGroupRef.current = pheGroup;
 
-        // 動畫渲染迴圈 - 修正 autoRotate 閉包 bug
-        let animationFrameId;
-        const animate = () => {
-          animationFrameId = requestAnimationFrame(animate);
-          if (controlsRef.current) {
-            controlsRef.current.autoRotate = autoRotateRef.current;
-            controlsRef.current.update();
+        let raf, last = performance.now();
+        const animate = now => {
+          raf = requestAnimationFrame(animate);
+          const dt = Math.min(0.05, ((now || performance.now()) - last) / 1000);
+          last = now || performance.now();
+          if (controlsRef.current) { controlsRef.current.autoRotate = autoRotateRef.current; controlsRef.current.update(); }
+          const f = flowRef.current;
+          if (f && showFlowRef.current) {
+            const pos = f.geo.attributes.position.array, col = f.geo.attributes.color.array;
+            for (let i = 0; i < f.n; i++) {
+              f.s[i] = (f.s[i] + dt * f.speed[i]) % 1;
+              const s = f.s[i], hot = f.hot[i];
+              // 熱側：頂部入口角孔 → 擴散 → 底部出口角孔；冷側相反方向
+              const spread = Math.pow(Math.sin(Math.PI * s), 0.6);
+              const x = f.portX[i] + (f.xT[i] - f.portX[i]) * spread;
+              const y = hot ? f.yTop - s * (f.yTop - f.yBot) : f.yBot + s * (f.yTop - f.yBot);
+              pos[i * 3] = x; pos[i * 3 + 1] = y; pos[i * 3 + 2] = f.z[i];
+              const xp = (f.yTop - y) / (f.yTop - f.yBot);         // 自頂部起算的板高比例
+              const c = pheRamp(f.wOf(hot ? f.prof.Th(xp) : f.prof.Tc(xp)));
+              col[i * 3] = c[0]; col[i * 3 + 1] = c[1]; col[i * 3 + 2] = c[2];
+            }
+            f.geo.attributes.position.needsUpdate = true; f.geo.attributes.color.needsUpdate = true;
           }
-          if (rendererRef.current && sceneRef.current && cameraRef.current) {
-            rendererRef.current.render(sceneRef.current, cameraRef.current);
-          }
+          renderer.render(scene, camera);
         };
-        animate();
+        raf = requestAnimationFrame(animate);
 
-        // 響應式調整視窗
         const handleResize = () => {
-          if (!container || !cameraRef.current || !rendererRef.current) return;
-          const w = container.clientWidth;
-          const h = container.clientHeight || 340;
-          cameraRef.current.aspect = w / h;
-          cameraRef.current.updateProjectionMatrix();
-          rendererRef.current.setSize(w, h);
+          const w = container.clientWidth, h = container.clientHeight || 420;
+          if (!w) return;
+          camera.aspect = w / h; camera.updateProjectionMatrix(); renderer.setSize(w, h);
         };
         window.addEventListener('resize', handleResize);
-
+        const ro = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(handleResize) : null;
+        if (ro) ro.observe(container);
         return () => {
-          cancelAnimationFrame(animationFrameId);
+          cancelAnimationFrame(raf);
           window.removeEventListener('resize', handleResize);
-          if (renderer.domElement && renderer.domElement.parentNode) {
-            renderer.domElement.parentNode.removeChild(renderer.domElement);
-          }
+          if (ro) ro.disconnect();
+          if (renderer.domElement && renderer.domElement.parentNode) renderer.domElement.parentNode.removeChild(renderer.domElement);
           renderer.dispose();
         };
       }, []);
 
-      // 當選型計算結果 (換熱面積、管徑口徑、深色模式) 改變時，動態重構 3D 模型
+      // 依選型結果重建幾何
       useEffect(() => {
-        const pheGroup = pheGroupRef.current;
-        if (!pheGroup) return;
-
-        // 清空既有幾何體
-        while (pheGroup.children.length > 0) {
-          const obj = pheGroup.children[0];
-          if (obj.geometry) obj.geometry.dispose();
-          if (obj.material) {
-            if (Array.isArray(obj.material)) obj.material.forEach(m => m.dispose());
-            else obj.material.dispose();
-          }
-          pheGroup.remove(obj);
-        }
-
-        // ==========================================================
-        // 工業級板框動態系列匹配 (消除大口徑/大熱負荷下的接管重疊碰撞)
-        // ==========================================================
-        const maxPortDiameterM = Math.max(primaryDN.diameterM, secondaryDN.diameterM);
-
-        // 依據接管直徑保證管口中心距與法蘭寬度不干涉 (幾何約束):
-        // 最小板寬需求 W_min = 2 * 法蘭直徑 (1.6 * D) + 中間螺桿安全間隙 (0.15m)
-        const flangeEstDia = maxPortDiameterM * 1.55;
-        const minClearanceWidth = flangeEstDia * 2 + 0.18;
-
-        // 依換熱面積需求調整板片基準尺寸 (真實板熱標準單板面積從 0.1 m² 到 1.8 m²)
-        let basePlateArea = 0.25;
-        if (designArea > 60 || maxPortDiameterM >= 0.20) {
-          basePlateArea = 1.3; // 超大型板框 (如 DN200~DN300, 適合 MW 級大熱負荷)
-        } else if (designArea > 25 || maxPortDiameterM >= 0.125) {
-          basePlateArea = 0.8; // 大型板框 (DN125~DN150)
-        } else if (designArea > 10 || maxPortDiameterM >= 0.08) {
-          basePlateArea = 0.45; // 中型板框 (DN80~DN100)
-        }
-
-        // 依單板面積計算板寬 W 與板高 H (標準長寬比約 2.4 : 1)
-        let calcW = Math.sqrt(basePlateArea / 2.4);
-        let calcH = calcW * 2.4;
-
-        // 幾何防干涉強制約束：板寬不得小於兩側法蘭排布的最小安全寬度
-        const W = Math.max(minClearanceWidth, calcW * 1.25);
-        // 板高不得小於法蘭與上下導桿的安全高度
-        const minClearanceHeight = flangeEstDia * 2 + 0.55;
-        const H = Math.max(minClearanceHeight, calcH * 1.15, W * 2.1);
-
-        // 板片總數量預估 (含換熱裕量)
-        const singlePlateNetArea = W * 0.75 * H * 0.75;
-        const rawPlates = Math.round(designArea / Math.max(0.15, singlePlateNetArea) * 1.3);
-        const plateCount = Math.min(75, Math.max(16, rawPlates));
-        
-        // 板片間距與板包厚度 (Plate Pack Length)
-        const platePitch = 0.022;
-        const packLength = plateCount * platePitch;
-        const frameThickness = Math.max(0.08, H * 0.035); // 壓緊端板隨尺寸增厚
-
-        // 動態調整相機距離，確保大尺寸板熱不會跑出視角
-        if (cameraRef.current && controlsRef.current) {
-          const maxDim = Math.max(H, packLength, W);
-          const targetDist = maxDim * 2.1;
-          cameraRef.current.position.set(targetDist * 0.75, targetDist * 0.45, targetDist * 0.95);
-          controlsRef.current.minDistance = maxDim * 0.8;
-          controlsRef.current.maxDistance = maxDim * 4.5;
-          controlsRef.current.update();
-        }
-
-        // 材質定義
-        const framePlateColor = isDarkMode ? 0x1e293b : 0x334155;
-        const frameMat = new THREE.MeshStandardMaterial({
-          color: framePlateColor,
-          metalness: 0.65,
-          roughness: 0.35
-        });
-
-        const tieRodMat = new THREE.MeshStandardMaterial({
-          color: 0x94a3b8,
-          metalness: 0.85,
-          roughness: 0.2
-        });
-
-        const plateHotMat = new THREE.MeshStandardMaterial({
-          color: 0xea580c, // 一次側/熱側 橙紅
-          metalness: 0.4,
-          roughness: 0.5
-        });
-
-        const plateColdMat = new THREE.MeshStandardMaterial({
-          color: 0x0891b2, // 二次側/冷側 冰青
-          metalness: 0.4,
-          roughness: 0.5
-        });
-
-        const steelPlateMat = new THREE.MeshStandardMaterial({
-          color: isDarkMode ? 0x475569 : 0x64748b,
-          metalness: 0.7,
-          roughness: 0.3
-        });
-
-        // 1. 前固定壓緊板 (Front Fixed Head Plate)
-        const frontPlateGeo = new THREE.BoxGeometry(W, H, frameThickness);
-        const frontPlate = new THREE.Mesh(frontPlateGeo, frameMat);
-        frontPlate.position.set(0, 0, packLength / 2 + frameThickness / 2);
-        frontPlate.castShadow = true;
-        frontPlate.receiveShadow = true;
-        pheGroup.add(frontPlate);
-
-        // 2. 後活動壓緊板 (Back Movable Pressure Plate / Follower)
-        const backPlateGeo = new THREE.BoxGeometry(W, H, frameThickness);
-        const backPlate = new THREE.Mesh(backPlateGeo, frameMat);
-        backPlate.position.set(0, 0, -packLength / 2 - frameThickness / 2);
-        backPlate.castShadow = true;
-        backPlate.receiveShadow = true;
-        pheGroup.add(backPlate);
-
-        // 3. 中間板包堆疊 (Plate Pack)
-        const singlePlateGeo = new THREE.BoxGeometry(W * 0.90, H * 0.90, 0.006);
-        for (let i = 0; i < plateCount; i++) {
-          const z = (packLength / 2) - (i * platePitch) - (platePitch / 2);
-          const mat = i % 2 === 0 ? plateHotMat : plateColdMat;
-          const plateMesh = new THREE.Mesh(singlePlateGeo, mat);
-          plateMesh.position.set(0, 0, z);
-          pheGroup.add(plateMesh);
-        }
-
-        // 4. 接管法蘭生成器 (Nozzle & Flange Builder)
-        // 依據各自 DN 口徑真實半徑縮放
-        const pRadius = primaryDN.diameterM * 0.5;
-        const sRadius = secondaryDN.diameterM * 0.5;
-        const nozzleLength = Math.max(0.24, maxPortDiameterM * 1.3);
-
-        const buildNozzle = (radius, colorHex, posX, posY, label) => {
-          const nozzleSubGroup = new THREE.Group();
-          
-          // 管頸 (Neck)
-          const pipeGeo = new THREE.CylinderGeometry(radius, radius, nozzleLength, 28);
-          const pipeMat = new THREE.MeshStandardMaterial({
-            color: colorHex,
-            metalness: 0.65,
-            roughness: 0.3
+        const g = pheGroupRef.current;
+        if (!g) return;
+        g.traverse(o => {
+          if (o.geometry) o.geometry.dispose();
+          if (o.material) (Array.isArray(o.material) ? o.material : [o.material]).forEach(m => {
+            if (m.map) m.map.dispose();
+            if (m.uniforms && m.uniforms.uTemp && m.uniforms.uTemp.value) m.uniforms.uTemp.value.dispose();
+            m.dispose();
           });
-          const pipe = new THREE.Mesh(pipeGeo, pipeMat);
-          pipe.rotation.x = Math.PI / 2;
-          pipe.position.set(0, 0, nozzleLength / 2);
-          pipe.castShadow = true;
-          nozzleSubGroup.add(pipe);
-
-          // 法蘭環 (Flange Disk)
-          const flangeRadius = radius * 1.55;
-          const flangeThick = Math.max(0.035, radius * 0.3);
-          const flangeGeo = new THREE.CylinderGeometry(flangeRadius, flangeRadius, flangeThick, 28);
-          const flangeMat = new THREE.MeshStandardMaterial({
-            color: colorHex,
-            metalness: 0.75,
-            roughness: 0.25
-          });
-          const flange = new THREE.Mesh(flangeGeo, flangeMat);
-          flange.rotation.x = Math.PI / 2;
-          flange.position.set(0, 0, nozzleLength);
-          flange.castShadow = true;
-          nozzleSubGroup.add(flange);
-
-          // 法蘭孔螺孔示意環 (Inner Bore)
-          const boreGeo = new THREE.CylinderGeometry(radius * 0.85, radius * 0.85, flangeThick + 0.005, 24);
-          const boreMat = new THREE.MeshBasicMaterial({ color: 0x0f172a });
-          const bore = new THREE.Mesh(boreGeo, boreMat);
-          bore.rotation.x = Math.PI / 2;
-          bore.position.set(0, 0, nozzleLength + 0.002);
-          nozzleSubGroup.add(bore);
-
-          nozzleSubGroup.position.set(posX, posY, packLength / 2 + frameThickness);
-          return nozzleSubGroup;
-        };
-
-        // 關鍵計算：精確且充足的管口中心間距，絕對不碰撞
-        const maxR = Math.max(pRadius, sRadius);
-        const portOffsetX = Math.max(maxR * 1.6 + 0.05, W * 0.26);
-        const portOffsetY = Math.max(maxR * 1.6 + 0.08, H * 0.35);
-
-        // P1 一次側入口 (左上 - 橙色高溫)
-        pheGroup.add(buildNozzle(pRadius, 0xea580c, -portOffsetX, portOffsetY, 'P1'));
-        // P2 一次側出口 (左下 - 橙紅降溫)
-        pheGroup.add(buildNozzle(pRadius, 0xc2410c, -portOffsetX, -portOffsetY, 'P2'));
-        // S2 二次側出口 (右上 - 青色升溫)
-        pheGroup.add(buildNozzle(sRadius, 0x0891b2, portOffsetX, portOffsetY, 'S2'));
-        // S1 二次側入口 (右下 - 冰青低溫)
-        pheGroup.add(buildNozzle(sRadius, 0x0e7490, portOffsetX, -portOffsetY, 'S1'));
-
-        // 5. 上下導向承載桿 (Top Carrying Bar & Bottom Guide Bar)
-        const totalSpanZ = packLength + frameThickness * 2 + 0.6;
-        const barRadius = Math.max(0.035, H * 0.018);
-        const barGeo = new THREE.CylinderGeometry(barRadius, barRadius, totalSpanZ, 16);
-        
-        const topBar = new THREE.Mesh(barGeo, steelPlateMat);
-        topBar.rotation.x = Math.PI / 2;
-        topBar.position.set(0, H / 2 + barRadius + 0.03, 0);
-        pheGroup.add(topBar);
-
-        const bottomBar = new THREE.Mesh(barGeo, steelPlateMat);
-        bottomBar.rotation.x = Math.PI / 2;
-        bottomBar.position.set(0, -H / 2 - barRadius - 0.03, 0);
-        pheGroup.add(bottomBar);
-
-        // 6. 支撐立柱與腳座 (End Support Column & Feet)
-        const colH = H + 0.35;
-        const colGeo = new THREE.BoxGeometry(0.09, colH, 0.09);
-        const backCol = new THREE.Mesh(colGeo, frameMat);
-        backCol.position.set(0, 0, -packLength / 2 - frameThickness - 0.22);
-        pheGroup.add(backCol);
-
-        // 前後支撐底座 (Foot Pads)
-        const footGeo = new THREE.BoxGeometry(W * 1.18, 0.06, 0.22);
-        const frontFoot = new THREE.Mesh(footGeo, frameMat);
-        frontFoot.position.set(0, -H / 2 - 0.12, packLength / 2 + frameThickness / 2);
-        pheGroup.add(frontFoot);
-
-        const backFoot = new THREE.Mesh(footGeo, frameMat);
-        backFoot.position.set(0, -H / 2 - 0.12, -packLength / 2 - frameThickness - 0.22);
-        pheGroup.add(backFoot);
-
-        // 7. 兩側夾緊側拉桿 (Side Tightening Tie Bolts)
-        const tieBoltRadius = Math.max(0.016, H * 0.009);
-        const boltSpanZ = packLength + frameThickness * 2 + 0.24;
-        const boltGeo = new THREE.CylinderGeometry(tieBoltRadius, tieBoltRadius, boltSpanZ, 12);
-        
-        const boltX = W / 2 + 0.045;
-        const boltYs = [H * 0.38, H * 0.13, -H * 0.13, -H * 0.38];
-
-        boltYs.forEach(y => {
-          // 左側螺桿
-          const leftBolt = new THREE.Mesh(boltGeo, tieRodMat);
-          leftBolt.rotation.x = Math.PI / 2;
-          leftBolt.position.set(-boltX, y, 0);
-          pheGroup.add(leftBolt);
-
-          // 右側螺桿
-          const rightBolt = new THREE.Mesh(boltGeo, tieRodMat);
-          rightBolt.rotation.x = Math.PI / 2;
-          rightBolt.position.set(boltX, y, 0);
-          pheGroup.add(rightBolt);
         });
+        while (g.children.length) g.remove(g.children[0]);
+        flowRef.current = null;
 
-      }, [designArea, primaryDN, secondaryDN, isDarkMode]);
+        // ---- 板框系列：依面積與接管口徑選單板換熱面積（真實系列 0.25 ~ 1.3 m²/片） ----
+        const maxPortD = Math.max(primaryDN.diameterM, secondaryDN.diameterM);
+        let plateArea = 0.25;
+        if (designArea > 60 || maxPortD >= 0.20) plateArea = 1.3;
+        else if (designArea > 25 || maxPortD >= 0.125) plateArea = 0.8;
+        else if (designArea > 10 || maxPortD >= 0.08) plateArea = 0.45;
+        const flangeDia = maxPortD * 1.55;
+        const W = Math.max(flangeDia * 2 + 0.18, Math.sqrt(plateArea / 2.4) * 1.25);
+        const H = Math.max(flangeDia * 2 + 0.55, Math.sqrt(plateArea / 2.4) * 2.4 * 1.15, W * 2.1);
+        // 板片數：熱傳板片 = 面積 ÷ 單板面積，另加前後兩片端板
+        const realPlates = Math.ceil(designArea / plateArea - 1e-9) + 2;
+        const shownPlates = Math.min(realPlates, exploded ? 26 : 90);
+        const pitch = exploded ? Math.max(0.07, H * 0.05) : 0.022;
+        const pack = shownPlates * pitch;
+        const frameT = Math.max(0.08, H * 0.035);
+        setPlateInfo({ real: realPlates, shown: shownPlates, area: plateArea });
 
-      // 重設視角控制器
-      const resetCameraView = () => {
+        const Wp = W * 0.9, Hp = H * 0.9;
+        const portR = Math.max(primaryDN.diameterM, secondaryDN.diameterM) * 0.55;
+        const portX = Math.max(portR * 1.6 + 0.05, W * 0.26), portY = Math.max(portR * 1.6 + 0.08, H * 0.35);
+        const yTop = portY, yBot = -portY;
+
         if (cameraRef.current && controlsRef.current) {
-          const maxDim = Math.max(2.0, Math.sqrt(designArea) * 0.4);
-          const targetDist = maxDim * 2.2;
-          cameraRef.current.position.set(targetDist * 0.75, targetDist * 0.45, targetDist * 0.95);
+          const maxDim = Math.max(H, pack + frameT * 2, W);
+          const d = maxDim * 2.0;
+          cameraRef.current.position.set(d * 0.8, d * 0.42, d * 0.9);
           controlsRef.current.target.set(0, 0, 0);
+          controlsRef.current.minDistance = maxDim * 0.6;
+          controlsRef.current.maxDistance = maxDim * 5;
           controlsRef.current.update();
         }
+
+        const std = o => new THREE.MeshStandardMaterial(o);
+        const frameMat = std({ color: isDarkMode ? 0x1e3a5f : 0x1e40af, metalness: 0.45, roughness: 0.45 });   // 框架常見烤漆藍
+        const steelMat = std({ color: 0xcbd5e1, metalness: 0.88, roughness: 0.2 });
+        const darkMat = std({ color: 0x334155, metalness: 0.7, roughness: 0.35 });
+
+        // 溫度貼圖：熱側 Th(x)、冷側 Tc(x) 沿板高（uv.y = 1 為頂部）
+        const makeTempTex = fn => {
+          const N = 64, d = new Uint8Array(N * 4);
+          for (let i = 0; i < N; i++) {
+            const xp = 1 - i / (N - 1);
+            const c = pheRamp(wOf(fn(xp)));
+            d[i * 4] = c[0] * 255; d[i * 4 + 1] = c[1] * 255; d[i * 4 + 2] = c[2] * 255; d[i * 4 + 3] = 255;
+          }
+          const t = new THREE.DataTexture(d, 1, N, THREE.RGBAFormat);
+          t.magFilter = THREE.LinearFilter; t.minFilter = THREE.LinearFilter; t.needsUpdate = true;
+          return t;
+        };
+        const plateMat = (fn, flip) => new THREE.ShaderMaterial({
+          vertexShader: PLATE_VERT, fragmentShader: PLATE_FRAG, side: THREE.DoubleSide,
+          uniforms: { uTemp: { value: makeTempTex(fn) }, uSize: { value: new THREE.Vector2(Wp, Hp) }, uPort: { value: new THREE.Vector2(portX, portY) }, uPortR: { value: portR }, uFlip: { value: flip }, uDim: { value: 1 } }
+        });
+        const matHot = [plateMat(prof.Th, 1), plateMat(prof.Th, -1)];
+        const matCold = [plateMat(prof.Tc, 1), plateMat(prof.Tc, -1)];
+
+        // 1. 固定端板（前）、活動壓緊板（後）
+        const front = new THREE.Mesh(new THREE.BoxGeometry(W, H, frameT), frameMat);
+        front.position.z = pack / 2 + frameT / 2; g.add(front);
+        const back = new THREE.Mesh(new THREE.BoxGeometry(W, H, frameT), frameMat);
+        back.position.z = -pack / 2 - frameT / 2; g.add(back);
+
+        // 2. 板片包：板片以其「後方流道」的流體著色，熱／冷交錯，人字方向交替
+        const plateGeo = new THREE.BoxGeometry(Wp, Hp, 0.004);
+        for (let i = 0; i < shownPlates; i++) {
+          const hotCh = i % 2 === 0;
+          const m = new THREE.Mesh(plateGeo, (hotCh ? matHot : matCold)[Math.floor(i / 2) % 2]);
+          m.position.z = pack / 2 - i * pitch - pitch / 2;
+          g.add(m);
+        }
+
+        // 3. 角孔集管（貫穿板包）：一次側在左、二次側在右；熱側入口在上、冷側入口在下（逆流）
+        const pIn = { x: -portX, y: isPrimaryHot ? yTop : yBot }, pOut = { x: -portX, y: isPrimaryHot ? yBot : yTop };
+        const sIn = { x: portX, y: isPrimaryHot ? yBot : yTop }, sOut = { x: portX, y: isPrimaryHot ? yTop : yBot };
+        const pr = result && result.primaryResult, sr = result && result.secondaryResult;
+        const ports = [
+          { id: 'P1', name: '一次側入口', at: pIn, T: pr ? pr.inletTemp : prof.hotIn, r: primaryDN.diameterM / 2, dir: 'in' },
+          { id: 'P2', name: '一次側出口', at: pOut, T: pr ? pr.outletTemp : prof.hotOut, r: primaryDN.diameterM / 2, dir: 'out' },
+          { id: 'S1', name: '二次側入口', at: sIn, T: sr ? sr.inletTemp : prof.coldIn, r: secondaryDN.diameterM / 2, dir: 'in' },
+          { id: 'S2', name: '二次側出口', at: sOut, T: sr ? sr.outletTemp : prof.coldOut, r: secondaryDN.diameterM / 2, dir: 'out' }
+        ];
+        const nozL = Math.max(0.24, maxPortD * 1.3), lblH = Math.max(0.055, H * 0.034);
+        ports.forEach(pt => {
+          const c = pheRamp(wOf(pt.T));
+          const tcol = new THREE.Color(c[0], c[1], c[2]);
+          // 集管（半透明）
+          const hdr = new THREE.Mesh(new THREE.CylinderGeometry(pt.r * 0.92, pt.r * 0.92, pack, 24, 1, true),
+            new THREE.MeshBasicMaterial({ color: tcol, transparent: true, opacity: 0.35, side: THREE.DoubleSide, depthWrite: false }));
+          hdr.rotation.x = Math.PI / 2; hdr.position.set(pt.at.x, pt.at.y, 0); g.add(hdr);
+          // 接管 + 焊頸 + 法蘭 + 8 螺栓
+          const ng = new THREE.Group();
+          const pipe = new THREE.Mesh(new THREE.CylinderGeometry(pt.r, pt.r, nozL, 28), std({ color: tcol, metalness: 0.55, roughness: 0.3, emissive: tcol, emissiveIntensity: 0.15 }));
+          pipe.rotation.x = Math.PI / 2; pipe.position.z = nozL / 2; ng.add(pipe);
+          const neck = new THREE.Mesh(new THREE.CylinderGeometry(pt.r * 1.18, pt.r * 1.5, nozL * 0.2, 28), steelMat);
+          neck.rotation.x = Math.PI / 2; neck.position.z = nozL * 0.86; ng.add(neck);
+          const fl = new THREE.Mesh(new THREE.CylinderGeometry(pt.r * 1.9, pt.r * 1.9, Math.max(0.03, pt.r * 0.3), 32), steelMat);
+          fl.rotation.x = Math.PI / 2; fl.position.z = nozL; ng.add(fl);
+          for (let k = 0; k < 8; k++) {
+            const a = k / 8 * Math.PI * 2;
+            const b = new THREE.Mesh(new THREE.CylinderGeometry(pt.r * 0.12, pt.r * 0.12, pt.r * 0.6, 6), darkMat);
+            b.rotation.x = Math.PI / 2; b.position.set(Math.cos(a) * pt.r * 1.55, Math.sin(a) * pt.r * 1.55, nozL); ng.add(b);
+          }
+          const bore = new THREE.Mesh(new THREE.CircleGeometry(pt.r * 0.85, 24), new THREE.MeshBasicMaterial({ color: 0x0f172a }));
+          bore.position.z = nozL + Math.max(0.03, pt.r * 0.3) / 2 + 0.002; ng.add(bore);
+          // 流向箭頭
+          const ar = new THREE.Mesh(new THREE.ConeGeometry(pt.r * 0.7, pt.r * 1.4, 18), std({ color: tcol, emissive: tcol, emissiveIntensity: 0.6 }));
+          ar.rotation.x = pt.dir === 'in' ? -Math.PI / 2 : Math.PI / 2;
+          ar.position.z = nozL + pt.r * (pt.dir === 'in' ? 2.4 : 1.6); ng.add(ar);
+          ng.position.set(pt.at.x, pt.at.y, pack / 2 + frameT); g.add(ng);
+          const lb = pheTextSprite(`${pt.id} ${pt.name} ${Number(pt.T).toFixed(1)}°C`, pheRampCss(wOf(pt.T)), lblH);
+          lb.position.set(pt.at.x + Math.sign(pt.at.x) * (pt.r * 2.2 + lblH * 4), pt.at.y + (pt.at.y > 0 ? 1 : -1) * (pt.r * 2.2 + lblH * 0.8), pack / 2 + frameT + nozL * 1.8);
+          g.add(lb);
+        });
+
+        // 4. 上承載桿、下導桿、後支柱、腳座
+        const span = pack + frameT * 2 + Math.max(0.5, H * 0.25);
+        const barR = Math.max(0.03, H * 0.016);
+        [H / 2 + barR + 0.02, -H / 2 - barR - 0.02].forEach(y => {
+          const bar = new THREE.Mesh(new THREE.CylinderGeometry(barR, barR, span, 16), steelMat);
+          bar.rotation.x = Math.PI / 2; bar.position.set(0, y, -(span - pack - frameT * 2) / 2 + 0.0); g.add(bar);
+        });
+        const colZ = -pack / 2 - frameT - Math.max(0.35, H * 0.2);
+        const col = new THREE.Mesh(new THREE.BoxGeometry(W * 0.35, H + barR * 4 + 0.12, Math.max(0.08, H * 0.04)), frameMat);
+        col.position.set(0, 0, colZ); g.add(col);
+        const footGeo = new THREE.BoxGeometry(W * 1.2, Math.max(0.04, H * 0.025), Math.max(0.16, H * 0.09));
+        [pack / 2 + frameT / 2, colZ].forEach(z => { const f = new THREE.Mesh(footGeo, frameMat); f.position.set(0, -H / 2 - 0.1, z); g.add(f); });
+
+        // 5. 夾緊螺桿 + 兩端六角螺帽
+        const boltR = Math.max(0.014, H * 0.008), boltSpan = pack + frameT * 2 + Math.max(0.2, H * 0.12), bx = W / 2 + boltR * 2.6;
+        [H * 0.38, H * 0.13, -H * 0.13, -H * 0.38].forEach(y => [-bx, bx].forEach(x => {
+          const b = new THREE.Mesh(new THREE.CylinderGeometry(boltR, boltR, boltSpan, 12), steelMat);
+          b.rotation.x = Math.PI / 2; b.position.set(x, y, 0); g.add(b);
+          [pack / 2 + frameT + boltR * 1.2, -pack / 2 - frameT - boltR * 1.2].forEach(z => {
+            const n = new THREE.Mesh(new THREE.CylinderGeometry(boltR * 2.2, boltR * 2.2, boltR * 2.2, 6), darkMat);
+            n.rotation.x = Math.PI / 2; n.position.set(x, y, z); g.add(n);
+          });
+        }));
+
+        // 6. 流道示蹤粒子：熱側流道自頂部入口角孔流下、冷側流道自底部入口角孔流上（逆流），顏色依當地溫度
+        const gaps = Math.max(1, shownPlates - 1);
+        const perGap = Math.max(4, Math.min(24, Math.floor(900 / gaps)));
+        const n = gaps * perGap;
+        const geo = new THREE.BufferGeometry();
+        geo.setAttribute('position', new THREE.BufferAttribute(new Float32Array(n * 3), 3));
+        geo.setAttribute('color', new THREE.BufferAttribute(new Float32Array(n * 3), 3));
+        const f = { geo, n, s: new Float32Array(n), speed: new Float32Array(n), hot: new Uint8Array(n), portX: new Float32Array(n), xT: new Float32Array(n), z: new Float32Array(n), yTop, yBot, prof, wOf };
+        for (let i = 0; i < n; i++) {
+          const gi = Math.floor(i / perGap), hot = gi % 2 === 0;
+          f.hot[i] = hot ? 1 : 0;
+          f.s[i] = Math.random();
+          f.speed[i] = 0.16 + Math.random() * 0.08;
+          const hotOnPrimary = isPrimaryHot === hot;   // 該流道是一次側（左）還是二次側（右）
+          f.portX[i] = hotOnPrimary ? -portX : portX;
+          f.xT[i] = (Math.random() - 0.5) * Wp * 0.85;
+          f.z[i] = pack / 2 - (gi + 1) * pitch;
+        }
+        const pts = new THREE.Points(geo, new THREE.PointsMaterial({ size: Math.max(0.018, H * 0.012), vertexColors: true, transparent: true, opacity: 0.95, depthWrite: false }));
+        pts.visible = showFlowRef.current;
+        g.add(pts);
+        f.points = pts;
+        flowRef.current = f;
+      }, [designArea, primaryDN, secondaryDN, isDarkMode, exploded, thermalKey]);
+
+      const resetCameraView = () => {
+        const g = pheGroupRef.current;
+        if (!g || !cameraRef.current || !controlsRef.current) return;
+        const box = new THREE.Box3().setFromObject(g), size = box.getSize(new THREE.Vector3());
+        const d = Math.max(size.x, size.y, size.z) * 1.6;
+        cameraRef.current.position.set(d * 0.8, d * 0.42, d * 0.9);
+        controlsRef.current.target.set(0, 0, 0);
+        controlsRef.current.update();
       };
 
+      const btn = active => `text-[10px] font-mono px-2.5 py-1 rounded border font-bold transition-all shadow-xs ${active
+        ? 'bg-amber-500 text-white border-amber-600 dark:bg-amber-600 dark:border-amber-500'
+        : 'bg-white/90 text-slate-700 border-slate-300 dark:bg-slate-800/90 dark:text-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-700'}`;
+      const legendStops = PHE_STOPS.map(([x, c]) => `rgb(${c.map(v => Math.round(v * 255)).join(',')}) ${(x * 100).toFixed(0)}%`).join(',');
+
       return (
-        <div className="relative w-full h-[340px] bg-slate-900/5 dark:bg-slate-950/90 rounded-xl overflow-hidden border border-slate-200 dark:border-slate-800 shadow-inner flex flex-col justify-between">
-          
-          {/* 3D 畫布頂端 HUD 狀態列 */}
-          <div className="absolute top-2 left-2 right-2 z-10 flex items-center justify-between pointer-events-none">
-            <div className="flex items-center gap-1.5 bg-white/90 dark:bg-slate-900/90 backdrop-blur-md px-2.5 py-1 rounded-md border border-slate-200 dark:border-slate-800 shadow-xs pointer-events-auto">
-              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-              <span className="text-[10px] font-mono font-bold text-slate-700 dark:text-slate-200">
-                PHE 3D 工業幾何連動引擎
-              </span>
+        <div className="relative w-full h-[540px] bg-slate-900/5 dark:bg-slate-950/90 rounded-xl overflow-hidden border border-slate-200 dark:border-slate-800 shadow-inner">
+          <div className="absolute top-2 left-2 right-2 z-10 flex items-start justify-between gap-2 pointer-events-none">
+            <div className="bg-white/90 dark:bg-slate-900/90 backdrop-blur-md px-2.5 py-1 rounded-md border border-slate-200 dark:border-slate-800 shadow-xs pointer-events-auto text-[10px] font-mono text-slate-700 dark:text-slate-200 leading-relaxed">
+              <div className="font-bold flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>PHE 3D 逆流溫度場</div>
+              <div>熱側 {prof.hotIn.toFixed(1)}→{prof.hotOut.toFixed(1)}°C（上進下出）</div>
+              <div>冷側 {prof.coldIn.toFixed(1)}→{prof.coldOut.toFixed(1)}°C（下進上出）</div>
+              {!prof.valid && <div className="text-red-500 font-bold">溫度條件不成立，以線性示意</div>}
             </div>
-
-            {/* 操作控制按鈕 - 可即時暫停/開始旋轉 */}
-            <div className="flex items-center gap-1.5 pointer-events-auto">
-              <button
-                type="button"
-                onClick={handleToggleRotate}
-                className={`text-[10px] font-mono px-2.5 py-1 rounded border font-bold transition-all shadow-xs ${
-                  autoRotate 
-                    ? 'bg-amber-500 text-white border-amber-600 dark:bg-amber-600 dark:border-amber-500' 
-                    : 'bg-white/90 text-slate-700 border-slate-300 dark:bg-slate-800/90 dark:text-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-700'
-                }`}
-                title={autoRotate ? '點擊暫停自動旋轉' : '點擊開始自動旋轉'}
-              >
-                {autoRotate ? '⏸ 暫停旋轉' : '▶ 開始旋轉'}
-              </button>
-
-              <button
-                type="button"
-                onClick={resetCameraView}
-                className="text-[10px] font-mono px-2 py-1 rounded bg-white/90 dark:bg-slate-800/90 hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 border border-slate-300 dark:border-slate-700 transition-all shadow-xs"
-                title="重置視角"
-              >
-                ↺ 重設視角
-              </button>
+            <div className="flex flex-wrap justify-end items-center gap-1.5 pointer-events-auto">
+              <button type="button" onClick={() => setExploded(v => !v)} className={btn(exploded)} title="拉開板片間距，觀察熱／冷流道交錯">{exploded ? '收合板片' : '展開板片'}</button>
+              <button type="button" onClick={toggleFlow} className={btn(showFlow)} title="顯示流道示蹤粒子">流動示蹤</button>
+              <button type="button" onClick={handleToggleRotate} className={btn(autoRotate)}>{autoRotate ? '暫停旋轉' : '自動旋轉'}</button>
+              <button type="button" onClick={resetCameraView} className={btn(false)}>重設視角</button>
             </div>
           </div>
 
-          {/* Three.js Canvas 掛載節點 */}
+          <div className="absolute left-2 top-[86px] bottom-12 z-10 flex gap-1.5 pointer-events-none">
+            <div className="w-2.5 rounded-full border border-slate-400/40" style={{ background: `linear-gradient(to top, ${legendStops})` }}></div>
+            <div className="flex flex-col justify-between text-[9.5px] font-mono text-slate-600 dark:text-slate-300">
+              <span>{prof.hotIn.toFixed(1)}°C</span>
+              <span>{((prof.hotIn + prof.coldIn) / 2).toFixed(1)}°C</span>
+              <span>{prof.coldIn.toFixed(1)}°C</span>
+            </div>
+          </div>
+
           <div ref={containerRef} className="w-full h-full cursor-grab active:cursor-grabbing" />
 
-          {/* 3D 底部幾何資訊面板 */}
           <div className="absolute bottom-2 left-2 right-2 z-10 flex flex-wrap items-center justify-between gap-1.5 pointer-events-none">
-            <div className="flex items-center gap-2 bg-white/90 dark:bg-slate-900/90 backdrop-blur-md px-2.5 py-1 rounded-md border border-slate-200 dark:border-slate-800 text-[10px] font-mono text-slate-600 dark:text-slate-300 shadow-xs pointer-events-auto">
-              <span>換熱面積: <strong className="text-emerald-600 dark:text-emerald-400">{designArea.toFixed(2)} m²</strong></span>
+            <div className="flex flex-wrap items-center gap-2 bg-white/90 dark:bg-slate-900/90 backdrop-blur-md px-2.5 py-1 rounded-md border border-slate-200 dark:border-slate-800 text-[10px] font-mono text-slate-600 dark:text-slate-300 shadow-xs pointer-events-auto">
+              <span>換熱面積 <strong className="text-emerald-600 dark:text-emerald-400">{designArea.toFixed(2)} m²</strong></span>
               <span className="text-slate-300 dark:text-slate-700">|</span>
-              <span className="text-hot-600 dark:text-hot-400">P1/P2: <strong>{primaryDN.dn}</strong></span>
+              <span>板片 ≈ <strong>{plateInfo.real}</strong> 片 × {plateInfo.area} m²{plateInfo.shown < plateInfo.real ? `（圖示 ${plateInfo.shown} 片）` : ''}</span>
               <span className="text-slate-300 dark:text-slate-700">|</span>
-              <span className="text-cold-600 dark:text-cold-400">S1/S2: <strong>{secondaryDN.dn}</strong></span>
+              <span>P1/P2 <strong>{primaryDN.dn}</strong> · S1/S2 <strong>{secondaryDN.dn}</strong></span>
             </div>
-
-            <div className="text-[9px] font-mono text-slate-500 dark:text-slate-400 bg-white/70 dark:bg-slate-900/70 backdrop-blur-xs px-2 py-0.5 rounded border border-slate-200/60 dark:border-slate-800/60 hidden sm:block">
-              🖱️ 左鍵旋轉 | 右鍵平移 | 滾輪縮放
+            <div className="text-[9px] font-mono text-slate-500 dark:text-slate-400 bg-white/70 dark:bg-slate-900/70 px-2 py-0.5 rounded border border-slate-200/60 dark:border-slate-800/60 hidden sm:block">
+              左鍵旋轉 | 右鍵平移 | 滾輪縮放
             </div>
           </div>
         </div>
@@ -1470,6 +1478,9 @@
       const res = result.primaryResult ? result : null;
 
       const pHydro = res ? res.primaryResult.hydraulics : null;
+      // 逆流配置：熱側入口在上、冷側入口在下；一次側為冷側時，P1/P2 與 S1/S2 卡片上下對調，與 3D 接管位置一致
+      const hotP = res ? res.isPrimaryHot !== false : true;
+      const topFirst = isTop => ({ order: isTop ? 0 : 1 });
       const sHydro = res ? res.secondaryResult.hydraulics : null;
 
       return (
@@ -1513,9 +1524,9 @@
           <div className="p-3.5 bg-slate-50 dark:bg-slate-950 rounded-xl border border-slate-200 dark:border-slate-800 grid grid-cols-1 md:grid-cols-12 gap-3 items-stretch">
             
             {/* 左側：一次側 (Primary Side: P1 Top Inlet, P2 Bottom Outlet) - 佔 3.5 欄 */}
-            <div className="md:col-span-3 flex flex-col justify-between gap-3">
+            <div className={viewMode === '3D' ? 'md:col-span-6 grid grid-cols-2 gap-3' : 'md:col-span-3 flex flex-col justify-between gap-3'}>
               {/* Primary Inlet Port (P1 Top Inlet) */}
-              <div className="p-3 rounded-lg bg-white dark:bg-slate-900 border border-hot-500/40 shadow-xs flex flex-col gap-2">
+              <div style={topFirst(hotP)} className="p-3 rounded-lg bg-white dark:bg-slate-900 border border-hot-500/40 shadow-xs flex flex-col gap-2">
                 <div className="flex items-center justify-between gap-1">
                   <span className="text-[10px] font-bold text-hot-600 dark:text-hot-400 uppercase flex items-center gap-1 truncate">
                     <span className="w-2 h-2 rounded-full bg-hot-500 shrink-0"></span> P1 一次側入口
@@ -1556,7 +1567,7 @@
               </div>
 
               {/* Primary Outlet Port (P2 Bottom Outlet) */}
-              <div className="p-3 rounded-lg bg-white dark:bg-slate-900 border border-hot-500/20 shadow-xs flex flex-col gap-2">
+              <div style={topFirst(!hotP)} className="p-3 rounded-lg bg-white dark:bg-slate-900 border border-hot-500/20 shadow-xs flex flex-col gap-2">
                 <div className="flex items-center justify-between gap-1">
                   <span className="text-[10px] font-bold text-hot-600/80 dark:text-hot-500 uppercase flex items-center gap-1 truncate">
                     <span className="w-2 h-2 rounded-full bg-hot-500/60 shrink-0"></span> P2 一次側出口
@@ -1579,7 +1590,7 @@
             </div>
 
             {/* 中央：3D 實體模型 或 2D 流程向量圖 - 佔 6 欄 */}
-            <div className="md:col-span-6 flex flex-col items-center justify-center min-w-0">
+            <div className={viewMode === '3D' ? 'md:col-span-12 md:order-last flex flex-col min-w-0' : 'md:col-span-6 flex flex-col items-center justify-center min-w-0'}>
               {viewMode === '3D' ? (
                 <div className="w-full flex flex-col">
                   <PHE3DViewer result={result} isDarkMode={isDarkMode} />
@@ -1621,9 +1632,9 @@
             </div>
 
             {/* 右側：二次側 (Secondary Side: S2 Top Outlet, S1 Bottom Inlet) - 佔 3 欄 */}
-            <div className="md:col-span-3 flex flex-col justify-between gap-3">
+            <div className={viewMode === '3D' ? 'md:col-span-6 grid grid-cols-2 gap-3' : 'md:col-span-3 flex flex-col justify-between gap-3'}>
               {/* Secondary Outlet Port (S2 Top Outlet) */}
-              <div className="p-3 rounded-lg bg-white dark:bg-slate-900 border border-cold-500/40 shadow-xs flex flex-col gap-2">
+              <div style={topFirst(hotP)} className="p-3 rounded-lg bg-white dark:bg-slate-900 border border-cold-500/40 shadow-xs flex flex-col gap-2">
                 <div className="flex items-center justify-between gap-1">
                   <span className="text-[10px] font-bold text-cold-600 dark:text-cold-400 uppercase flex items-center gap-1 truncate">
                     <span className="w-2 h-2 rounded-full bg-cold-500 shrink-0"></span> S2 二次側出口
@@ -1664,7 +1675,7 @@
               </div>
 
               {/* Secondary Inlet Port (S1 Bottom Inlet) */}
-              <div className="p-3 rounded-lg bg-white dark:bg-slate-900 border border-cold-500/20 shadow-xs flex flex-col gap-2">
+              <div style={topFirst(!hotP)} className="p-3 rounded-lg bg-white dark:bg-slate-900 border border-cold-500/20 shadow-xs flex flex-col gap-2">
                 <div className="flex items-center justify-between gap-1">
                   <span className="text-[10px] font-bold text-cold-600/80 dark:text-cold-500 uppercase flex items-center gap-1 truncate">
                     <span className="w-2 h-2 rounded-full bg-cold-500/60 shrink-0"></span> S1 二次側入口
