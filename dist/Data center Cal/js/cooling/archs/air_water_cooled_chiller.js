@@ -8,16 +8,17 @@
     if (!CoolingArchRegistry || !CoolingStages) {
         throw new Error('CoolingArchRegistry and CoolingStages must be loaded before air_water_cooled_chiller.js');
     }
+    const t = (k, p, fb) => (root.I18N ? root.I18N.t(k, p) : (fb || k));
 
     CoolingArchRegistry.register({
         id: 'water_cooled_chiller',
         aliases: ['water_cooled_chiller_tower'],
         loop: 'air',
-        optionLabel: '💧 水冷式冰水主機 + 濕式冷卻塔 (Water-Cooled Chiller)',
-        cardLabel: '水冷式冰機',
-        pillLabel: '水冷冰機',
-        dashboardLabel: '水冷式冰水主機 (Water-Cooled Chiller)',
-        flags: { hasMechanical: true, consumesWater: true },
+        get optionLabel() { return t('arch.water_cooled_chiller.option', null, '💧 水冷式冰水主機 + 濕式冷卻塔 (Water-Cooled Chiller)'); },
+        get cardLabel() { return t('arch.water_cooled_chiller.card', null, '水冷式冰機'); },
+        get pillLabel() { return t('arch.water_cooled_chiller.pill', null, '水冷冰機'); },
+        get dashboardLabel() { return t('arch.water_cooled_chiller.dashboard', null, '水冷式冰水主機 (Water-Cooled Chiller)'); },
+        flags: { hasMechanical: true, consumesWater: true, needsCwPump: true },
         terminal: 'crah',
         schematic: 'air_plant',
         params: [
@@ -27,7 +28,7 @@
         equipment: [
             {
                 key: 'crah_unit',
-                label: 'CRAH / Fanwall 機房空調',
+                get label() { return t('equip.crah_unit', null, 'CRAH / Fanwall 機房空調'); },
                 category: 'CRAH',
                 catalog: 'crah',
                 role: 'terminal',
@@ -42,7 +43,7 @@
             },
             {
                 key: 'water_cooled_chiller',
-                label: 'Water-Cooled Chiller 水冷式冰水主機',
+                get label() { return t('equip.water_cooled_chiller', null, 'Water-Cooled Chiller 水冷式冰水主機'); },
                 category: 'Chiller',
                 catalog: 'chiller_water',
                 role: 'chiller',
@@ -69,7 +70,7 @@
             },
             {
                 key: 'cooling_tower',
-                label: 'Cooling Tower 冰機散熱冷卻水塔',
+                get label() { return t('equip.cooling_tower', null, 'Cooling Tower 冰機散熱冷卻水塔'); },
                 category: 'CoolingTower',
                 catalog: 'cooling_tower',
                 role: 'heat_rejection',
@@ -90,13 +91,30 @@
             },
             {
                 key: 'fw_pump',
-                label: 'Secondary CHW Pump 二次側冰水循環水泵',
+                get label() { return t('equip.fw_pump', null, 'Secondary CHW Pump 二次側冰水循環水泵'); },
                 category: 'Pump',
                 catalog: 'pump',
                 role: 'pump',
                 requiredKw: (ctx) => ctx.pumpPowerKw || 5.0,
                 selectModel: (cat, ctx) => {
                     const pumpKw = ctx.pumpPowerKw || 5.0;
+                    const model = pumpKw <= 3.5 ? 'Grundfos TPE 3.0kW Inverter Pump' : (pumpKw <= 6.0 ? 'Grundfos TPE 5.5kW Inverter Pump (標準)' : 'Armstrong Design Envelope 11.0kW');
+                    const capKw = pumpKw <= 3.5 ? 3.0 : (pumpKw <= 6.0 ? 5.5 : 11.0);
+                    return { model, capKw };
+                },
+                calcQty: () => ({ qty: 2, n1: 2 })
+            },
+            {
+                key: 'cw_pump',
+                get label() { return t('equip.cw_pump', null, 'Condenser Water Pump 冷卻水循環泵'); },
+                category: 'Pump',
+                catalog: 'pump',
+                role: 'pump',
+                defaultModel: 'Grundfos TPE 5.5kW Inverter Pump (標準)',
+                defaultUnitCapKw: 5.5,
+                requiredKw: (ctx) => ctx.cwPumpKw || 5.5,
+                selectModel: (cat, ctx) => {
+                    const pumpKw = ctx.cwPumpKw || 5.5;
                     const model = pumpKw <= 3.5 ? 'Grundfos TPE 3.0kW Inverter Pump' : (pumpKw <= 6.0 ? 'Grundfos TPE 5.5kW Inverter Pump (標準)' : 'Armstrong Design Envelope 11.0kW');
                     const capKw = pumpKw <= 3.5 ? 3.0 : (pumpKw <= 6.0 ? 5.5 : 11.0);
                     return { model, capKw };
@@ -186,7 +204,7 @@
             const tAvail = op?.tAvail ?? (designWb + towerApp + hxApp);
 
             const copDesign = op?.chillerCop ?? 5.8;
-            const copLabel = op?.isFallbackCop ? `${copDesign.toFixed(1)} (後備值)` : `${copDesign.toFixed(2)} (設計工況模擬)`;
+            const copLabel = op?.isFallbackCop ? `${copDesign.toFixed(1)} ${t('topo.copFallback', null, '(後備值)')}` : `${copDesign.toFixed(2)} ${t('topo.copSimulated', null, '(設計工況模擬)')}`;
 
             const modeHours = design?.fwModeHours || op?.fwModeHours || extra?.fwModeHours;
             const h_free = modeHours?.free !== undefined ? `${modeHours.free} h` : '';
@@ -196,31 +214,31 @@
             const isBypass = (op?.fc_fraction === 0) || (tAvail >= chwRet);
 
             return {
-                title: '水冷式冰水主機 + 濕式冷卻塔',
+                title: t('topo.waterCooledChillerTower', null, '水冷式冰水主機 + 濕式冷卻塔'),
                 referenceLabel: null,
                 banners: [
                     {
                         id: 'mode1',
-                        title: 'Mode 1 全板換自然冷卻',
-                        label: `Mode 1 全板換自然冷卻 (WB ≤ ${fullThresh}°C)${h_free ? ` — 全年 ${h_free}` : ''}`,
-                        sub: `WB ≤ ${fullThresh}°C ｜ 全年 ${h_free || '0 h'} ｜ 100% 水側省能器 (WSE)`,
-                        detail: `WB ≤ ${fullThresh}°C ｜ 全年 ${h_free || '0 h'} ｜ 100% 水側省能器 (WSE)`,
+                        title: t('topo.waterChillerM1', null, 'Mode 1 全板換自然冷卻'),
+                        label: t('topo.waterChillerM1Label', { fullThresh, hours: h_free ? ` — 全年 ${h_free}` : '' }, `Mode 1 全板換自然冷卻 (WB ≤ ${fullThresh}°C)${h_free ? ` — 全年 ${h_free}` : ''}`),
+                        sub: t('topo.waterChillerM1Sub', { fullThresh, hours: h_free || '0 h' }, `WB ≤ ${fullThresh}°C ｜ 全年 ${h_free || '0 h'} ｜ 100% 水側省能器 (WSE)`),
+                        detail: t('topo.waterChillerM1Sub', { fullThresh, hours: h_free || '0 h' }, `WB ≤ ${fullThresh}°C ｜ 全年 ${h_free || '0 h'} ｜ 100% 水側省能器 (WSE)`),
                         tone: 'emerald'
                     },
                     {
                         id: 'mode2',
-                        title: 'Mode 2 部分板換預冷',
-                        label: `Mode 2 部分板換預冷 (${fullThresh} < WB < ${mechThresh}°C)${h_partial ? ` — 全年 ${h_partial}` : ''}`,
-                        sub: `${fullThresh} < WB < ${mechThresh}°C ｜ 全年 ${h_partial || '0 h'} ｜ WSE 預冷 + 冰機修整`,
-                        detail: `${fullThresh} < WB < ${mechThresh}°C ｜ 全年 ${h_partial || '0 h'} ｜ WSE 預冷 + 冰機修整`,
+                        title: t('topo.waterChillerM2', null, 'Mode 2 部分板換預冷'),
+                        label: t('topo.waterChillerM2Label', { fullThresh, mechThresh, hours: h_partial ? ` — 全年 ${h_partial}` : '' }, `Mode 2 部分板換預冷 (${fullThresh} < WB < ${mechThresh}°C)${h_partial ? ` — 全年 ${h_partial}` : ''}`),
+                        sub: t('topo.waterChillerM2Sub', { fullThresh, mechThresh, hours: h_partial || '0 h' }, `${fullThresh} < WB < ${mechThresh}°C ｜ 全年 ${h_partial || '0 h'} ｜ WSE 預冷 + 冰機修整`),
+                        detail: t('topo.waterChillerM2Sub', { fullThresh, mechThresh, hours: h_partial || '0 h' }, `${fullThresh} < WB < ${mechThresh}°C ｜ 全年 ${h_partial || '0 h'} ｜ WSE 預冷 + 冰機修整`),
                         tone: 'amber'
                     },
                     {
                         id: 'mode3',
-                        title: 'Mode 3 全機械製冷',
-                        label: `Mode 3 全機械製冷 (WB ≥ ${mechThresh}°C)${h_mech ? ` — 全年 ${h_mech}` : ''}`,
-                        sub: `WB ≥ ${mechThresh}°C ｜ 全年 ${h_mech || '0 h'} ｜ 全額冰機壓縮製冷`,
-                        detail: `WB ≥ ${mechThresh}°C ｜ 全年 ${h_mech || '0 h'} ｜ 全額冰機壓縮製冷`,
+                        title: t('topo.waterChillerM3', null, 'Mode 3 全機械製冷'),
+                        label: t('topo.waterChillerM3Label', { mechThresh, hours: h_mech ? ` — 全年 ${h_mech}` : '' }, `Mode 3 全機械製冷 (WB ≥ ${mechThresh}°C)${h_mech ? ` — 全年 ${h_mech}` : ''}`),
+                        sub: t('topo.waterChillerM3Sub', { mechThresh, hours: h_mech || '0 h' }, `WB ≥ ${mechThresh}°C ｜ 全年 ${h_mech || '0 h'} ｜ 全額冰機壓縮製冷`),
+                        detail: t('topo.waterChillerM3Sub', { mechThresh, hours: h_mech || '0 h' }, `WB ≥ ${mechThresh}°C ｜ 全年 ${h_mech || '0 h'} ｜ 全額冰機壓縮製冷`),
                         tone: 'blue'
                     }
                 ],
@@ -230,54 +248,54 @@
                         kind: 'crah',
                         title: 'Compute Data Hall (CRAH)',
                         lines: [
-                            'CRAH 氣冷機組',
-                            `供回水: ${chwSup} ⇄ ${chwRet}°C`
+                            t('topo.crahAirUnit', null, 'CRAH 氣冷機組'),
+                            t('topo.crahSupplyReturn', { sup: chwSup, ret: chwRet }, `供回水: ${chwSup} ⇄ ${chwRet}°C`)
                         ]
                     },
                     {
                         id: 'wse',
                         kind: 'hx',
-                        title: '水側經濟器 (WSE 板式熱交換器)',
+                        title: t('topo.wsePheTitle', null, '水側經濟器 (WSE 板式熱交換器)'),
                         lines: [
-                            '板式熱交換器自然預冷',
-                            `門檻: WB ≤ ${fullThresh}°C 滿載自冷`,
-                            `冷卻水供水 ${tCw}°C 預冷冰水回水`,
-                            '冷卻塔出水直接供冷'
+                            t('topo.wsePrecool', null, '板式熱交換器自然預冷'),
+                            t('topo.wseThresh', { thresh: fullThresh }, `門檻: WB ≤ ${fullThresh}°C 滿載自冷`),
+                            t('topo.wsePrecoolReturn', { cw: tCw }, `冷卻水供水 ${tCw}°C 預冷冰水回水`),
+                            t('topo.wseTowerDirect', null, '冷卻塔出水直接供冷')
                         ]
                     },
                     {
                         id: 'evaporator',
                         kind: 'chiller',
-                        title: '水冷式冰機 (Centrifugal/Screw)',
+                        title: t('topo.waterChillerCentScrew', null, '水冷式冰機 (Centrifugal/Screw)'),
                         lines: [
-                            '高效率水冷壓縮製冷',
-                            `供水 ${chwSup}°C ⇄ 回水 ${chwRet}°C`,
-                            `設計 COP: ${copDesign.toFixed(1)} (設計工況)`,
-                            '冷凝熱經冷卻水路排放至水塔'
+                            t('topo.effWaterChiller', null, '高效率水冷壓縮製冷'),
+                            t('topo.evapSupplyReturn', { sup: chwSup, ret: chwRet }, `供水 ${chwSup}°C ⇄ 回水 ${chwRet}°C`),
+                            t('topo.designCop', { cop: copDesign.toFixed(1) }, `設計 COP: ${copDesign.toFixed(1)} (設計工況)`),
+                            t('topo.condenserRejToTower', null, '冷凝熱經冷卻水路排放至水塔')
                         ]
                     },
                     {
                         id: 'heat_rejection',
                         kind: 'tower',
-                        title: '濕式冷卻水塔 (Cooling Tower)',
+                        title: t('topo.openTowerWetTitle', null, '濕式冷卻水塔 (Cooling Tower)'),
                         lines: [
-                            '高效開放式冷卻水塔',
-                            `出水 ${tCw}°C (設計 WB ${Number(designWb).toFixed(1)}°C + ${towerApp}°C) ⇄ 進水 ${tCwOut}°C`,
-                            '冷卻塔出水同時供給 WSE 板換與冰機冷凝器',
-                            '連續排污與自動補水控制'
+                            t('topo.openTowerWetLine1', null, '高效開放式冷卻水塔'),
+                            t('topo.openTowerWetLine2', { cwIn: tCw, wb: Number(designWb).toFixed(1), app: towerApp, cwOut: tCwOut }, `出水 ${tCw}°C (設計 WB ${Number(designWb).toFixed(1)}°C + ${towerApp}°C) ⇄ 進水 ${tCwOut}°C`),
+                            t('topo.openTowerWetLine3', null, '冷卻塔出水同時供給 WSE 板換與冰機冷凝器'),
+                            t('topo.openTowerWetLine4', null, '連續排污與自動補水控制')
                         ]
                     },
                     {
                         id: 'pump',
                         kind: 'pump',
                         title: 'Secondary CHW Pump',
-                        lines: ['二次側冰水循環泵']
+                        lines: [t('topo.secChwPump', null, '二次側冰水循環泵')]
                     },
                     {
                         id: 'pump_cw',
                         kind: 'pump',
                         title: 'CW Pump',
-                        lines: ['冷卻水循環泵']
+                        lines: [t('topo.cwPump', null, '冷卻水循環泵')]
                     }
                 ],
                 pipes: [

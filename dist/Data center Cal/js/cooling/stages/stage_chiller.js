@@ -10,6 +10,19 @@
         throw new Error('CoolingStages must be loaded before stage_chiller.js');
     }
 
+    function _t(key, params, fallback) {
+        if (typeof root !== 'undefined' && root.I18N && typeof root.I18N.t === 'function') {
+            return root.I18N.t(key, params);
+        }
+        if (typeof I18N !== 'undefined' && typeof I18N.t === 'function') {
+            return I18N.t(key, params);
+        }
+        if (fallback && params) {
+            return fallback.replace(/\{(\w+)\}/g, (_, k) => (k in params ? params[k] : `{${k}}`));
+        }
+        return fallback || key;
+    }
+
     CoolingStages.register('chiller', {
         availableTemp(ctx) {
             return null; // Mechanical chiller is not an ambient-driven economizer
@@ -70,7 +83,8 @@
                     severity: 'warning',
                     t_cewt_c,
                     maxCewt,
-                    message: `冰機冷凝進水溫 ${t_cewt_c.toFixed(1)}°C 超過運轉上限 ${maxCewt.toFixed(1)}°C，需選用高溫型冰機`
+                    message: _t('warn.CHILLER_CEWT_EXCEEDS_ENVELOPE', { cewt: t_cewt_c.toFixed(1), maxCewt: maxCewt.toFixed(1) },
+                        `冰機冷凝進水溫 ${t_cewt_c.toFixed(1)}°C 超過運轉上限 ${maxCewt.toFixed(1)}°C，需選用高溫型冰機`)
                 });
             }
 

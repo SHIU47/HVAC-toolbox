@@ -6,6 +6,16 @@
 // Used for Waterside Free Cooling via CT → Plate HX → CHW
 // Reference: ASHRAE 2020 Handbook, Brazed Plate HX design
 // ============================================================
+function _t(key, params, fallback) {
+  if (typeof I18N !== 'undefined' && typeof I18N.t === 'function') {
+    return I18N.t(key, params);
+  }
+  if (fallback && params) {
+    return fallback.replace(/\{(\w+)\}/g, (_, k) => (k in params ? params[k] : `{${k}}`));
+  }
+  return fallback || key;
+}
+
 const HeatExchangerEngine = {
 
   /**
@@ -45,21 +55,25 @@ const HeatExchangerEngine = {
     if (approach_hot < 0) {
       warnings.push({ code: 'HX_2ND_LAW_VIOLATION_HOT', severity: 'critical',
         value: approach_hot.toFixed(1),
-        message: `板式換熱器熱端接近溫差 ${approach_hot.toFixed(1)}°C 為負，違反熱力學第二定律` });
+        message: _t('warn.HX_2ND_LAW_VIOLATION_HOT', { approach: approach_hot.toFixed(1) },
+          `板式換熱器熱端接近溫差 ${approach_hot.toFixed(1)}°C 為負，違反熱力學第二定律`) });
     } else if (approach_hot < 1.0) {
       warnings.push({ code: 'HX_HOT_APPROACH_VERY_SMALL', severity: 'warning',
         value: approach_hot.toFixed(1),
-        message: `板式換熱器熱端接近溫差 ${approach_hot.toFixed(1)}°C 過小，需要極大換熱面積` });
+        message: _t('warn.HX_HOT_APPROACH_VERY_SMALL', { approach: approach_hot.toFixed(1) },
+          `板式換熱器熱端接近溫差 ${approach_hot.toFixed(1)}°C 過小，需要極大換熱面積`) });
     }
 
     if (approach_cold < 0) {
       warnings.push({ code: 'HX_2ND_LAW_VIOLATION_COLD', severity: 'critical',
         value: approach_cold.toFixed(1),
-        message: `板式換熱器冷端接近溫差 ${approach_cold.toFixed(1)}°C 為負，違反熱力學第二定律` });
+        message: _t('warn.HX_2ND_LAW_VIOLATION_COLD', { approach: approach_cold.toFixed(1) },
+          `板式換熱器冷端接近溫差 ${approach_cold.toFixed(1)}°C 為負，違反熱力學第二定律`) });
     } else if (approach_cold < 1.0) {
       warnings.push({ code: 'HX_COLD_APPROACH_VERY_SMALL', severity: 'warning',
         value: approach_cold.toFixed(1),
-        message: `板式換熱器冷端接近溫差 ${approach_cold.toFixed(1)}°C 過小 (設計建議 ≥ 1.5°C)` });
+        message: _t('warn.HX_COLD_APPROACH_VERY_SMALL', { approach: approach_cold.toFixed(1) },
+          `板式換熱器冷端接近溫差 ${approach_cold.toFixed(1)}°C 過小 (設計建議 ≥ 1.5°C)`) });
     }
 
     return warnings;

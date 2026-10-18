@@ -4,6 +4,19 @@
 (function(window) {
     'use strict';
 
+    function _t(key, params, fallback) {
+        if (typeof window !== 'undefined' && window.I18N && typeof window.I18N.t === 'function') {
+            return window.I18N.t(key, params);
+        }
+        if (typeof I18N !== 'undefined' && typeof I18N.t === 'function') {
+            return I18N.t(key, params);
+        }
+        if (fallback && params) {
+            return fallback.replace(/\{(\w+)\}/g, (_, k) => (k in params ? params[k] : `{${k}}`));
+        }
+        return fallback || key;
+    }
+
     // A-5 fix: 正確月份時數對照表（非閏年）
     const MONTH_HOURS = [744, 672, 744, 720, 744, 720, 744, 744, 720, 744, 720, 744]; // 合計 8760
     const MONTH_START = [];
@@ -166,6 +179,8 @@
                 }
             ],
 
+            coolingPlants: [],
+
             assumptions_override: {},
 
             results: {
@@ -209,7 +224,7 @@
         serializeProject() {
             const s = this.state;
             const exportData = {
-                schemaVersion: 'v6',
+                schemaVersion: 'v7',
                 savedAt: new Date().toISOString(),
                 facilityElectricalLossPct: s.facilityElectricalLossPct ?? A('electrical_loss_default_pct'),
                 site: {
@@ -222,6 +237,7 @@
                 },
                 halls: s.halls,
                 corePods: s.corePods,
+                coolingPlants: s.coolingPlants || [],
                 assumptions_override: s.assumptions_override || {}
             };
             return JSON.stringify(exportData, null, 2);
@@ -257,10 +273,33 @@
                     }
                 }
 
-                // Sizing 項目補齊 redundancy = 'N+1' (為 Phase E 預留)
+                if (!sys.sizingArch && sys.architecture) {
+                    sys.sizingArch = sys.architecture;
+                }
+
+                // 若架構有新設備 (例如 cw_pump)，補齊缺少的 sizing 項目
+                if (sys.architecture && typeof CoolingArchRegistry !== 'undefined' && CoolingArchRegistry.has(sys.architecture)) {
+                    const archDesc = CoolingArchRegistry.get(sys.architecture);
+                    if (Array.isArray(archDesc.equipment) && Array.isArray(sys.sizing)) {
+                        for (const eq of archDesc.equipment) {
+                            if (!sys.sizing.some(s => s.key === eq.key)) {
+                                if (typeof SizingEngine !== 'undefined') {
+                                    const dummyCtx = { reqKw: 0, hydKw: 0, cwPumpKw: 0, getTowerRejectionFactor: () => 1.2 };
+                                    const newItem = SizingEngine._createSizingItem(eq, dummyCtx);
+                                    newItem.userEdited = false;
+                                    sys.sizing.push(newItem);
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // Sizing 項目補齊 redundancy = 'N+1' (為 Phase E 預留) 與 userEdited = true
                 if (Array.isArray(sys.sizing)) {
                     sys.sizing.forEach(s => {
                         if (!s.redundancy) s.redundancy = 'N+1';
+                        if (!s.runMode) s.runMode = 'standby';
+                        if (s.userEdited === undefined) s.userEdited = true;
                     });
                 }
             };
@@ -315,7 +354,56 @@
                 }
             }
 
-            stateData.schemaVersion = 'v6';
+            // P-1: 冷卻系統分組 (coolingPlants) 遷移至 schema v7
+            if (!Array.isArray(stateData.coolingPlants)) {
+                stateData.coolingPlants = [];
+            } else {
+                stateData.coolingPlants.forEach(p => {
+                    if (!p.redundancy) p.redundancy = 'N+1';
+                    if (p.diversityFactor === undefined) p.diversityFactor = 1.0;
+                    if (!Array.isArray(p.memberIds)) p.memberIds = [];
+                    if (p.system) {
+                        migrateSystem(p.system);
+                        if (p.loop === 'liquid') backfillCdu(p.system);
+                    }
+                });
+            }
+
+            // 確保所有單元與 coolingPlants 雙向一致
+            const allUnits = [];
+            (stateData.halls || []).forEach(h => (h.dus || []).forEach(d => allUnits.push(d)));
+            (stateData.corePods || []).forEach(p => allUnits.push(p));
+
+            allUnits.forEach(u => {
+                if (u.plantDesign) {
+                    ['cduSystem', 'fanwallSystem'].forEach(sysKey => {
+                        const loop = sysKey === 'cduSystem' ? 'liquid' : 'air';
+                        const plantId = u.plantDesign[sysKey]?.plantId;
+                        if (plantId) {
+                            const plant = stateData.coolingPlants.find(cp => cp.id === plantId && cp.loop === loop);
+                            if (plant) {
+                                if (!plant.memberIds.includes(u.id)) plant.memberIds.push(u.id);
+                            } else {
+                                delete u.plantDesign[sysKey].plantId;
+                            }
+                        }
+                    });
+                }
+            });
+
+            // CorePOD topologyMode === 'shared_plant' 的舊專案：不自動建群組，改在載入後提示
+            if (Array.isArray(stateData.corePods)) {
+                stateData.corePods.forEach(p => {
+                    if (p.topologyMode === 'shared_plant') {
+                        const hasPlant = stateData.coolingPlants.some(cp => cp.loop === 'air' && cp.memberIds.includes(p.id));
+                        if (!hasPlant) {
+                            p._showSharedPlantNotice = true;
+                        }
+                    }
+                });
+            }
+
+            stateData.schemaVersion = 'v7';
             return stateData;
         },
 
@@ -329,6 +417,11 @@
                 }
                 if (stateData.corePods && Array.isArray(stateData.corePods)) {
                     this.state.corePods = stateData.corePods;
+                }
+                if (stateData.coolingPlants && Array.isArray(stateData.coolingPlants)) {
+                    this.state.coolingPlants = stateData.coolingPlants;
+                } else {
+                    this.state.coolingPlants = [];
                 }
                 if (stateData.assumptions_override) {
                     this.state.assumptions_override = stateData.assumptions_override;
@@ -649,9 +742,10 @@
             const podNum = this.state.corePods.length + 1;
             const letter = String.fromCharCode(65 + (podNum - 1) % 26);
             const podId = makeId('corepod');
+            const defPodLabel = _t('store.defaultPodDesc', null, '核心網通/集中儲存');
             const newPod = {
                 id: podId,
-                name: data.name || `CorePOD-${letter} (核心網通/集中儲存)`,
+                name: data.name || `CorePOD-${letter} (${defPodLabel})`,
                 // P0-1 fix: 沒有這個欄位時，calculate()/canProceedStep4() 用的
                 // `p.enabled` 過濾（嚴格真值）會把新增的 CorePOD 整組排除在 PUE
                 // 計算與 N+1 檢核之外，即使它明明出現在 Step4 畫面和 Excel 匯出。
@@ -683,13 +777,19 @@
             if (!pod) return null;
             const clonedPod = JSON.parse(JSON.stringify(pod));
             clonedPod.id = makeId('corepod');
-            clonedPod.name = `${pod.name} (複製)`;
+            clonedPod.name = `${pod.name} (${_t('store.copy', null, '複製')})`;
             clonedPod.equipment.forEach((eq) => {
                 eq.id = makeId('eq');
             });
             if (clonedPod.plantDesign) {
-                if (clonedPod.plantDesign.cduSystem) clonedPod.plantDesign.cduSystem.sizing = [];
-                if (clonedPod.plantDesign.fanwallSystem) clonedPod.plantDesign.fanwallSystem.sizing = [];
+                if (clonedPod.plantDesign.cduSystem) {
+                    clonedPod.plantDesign.cduSystem.sizing = [];
+                    delete clonedPod.plantDesign.cduSystem.plantId;
+                }
+                if (clonedPod.plantDesign.fanwallSystem) {
+                    clonedPod.plantDesign.fanwallSystem.sizing = [];
+                    delete clonedPod.plantDesign.fanwallSystem.plantId;
+                }
             }
             this.state.corePods.push(clonedPod);
             this.notify();
@@ -698,11 +798,16 @@
 
         deleteCorePod(podId) {
             if (this.state.corePods.length <= 1) {
-                alert('⚠️ 系統中至少需保留 1 組 CorePOD 核心機房！');
+                alert(_t('store.minCorePod', null, '⚠️ 系統中至少需保留 1 組 CorePOD 核心機房！'));
                 return false;
             }
             const idx = this.state.corePods.findIndex(p => p.id === podId);
             if (idx !== -1) {
+                if (Array.isArray(this.state.coolingPlants)) {
+                    this.state.coolingPlants.forEach(plant => {
+                        plant.memberIds = plant.memberIds.filter(id => id !== podId);
+                    });
+                }
                 this.state.corePods.splice(idx, 1);
                 this.notify();
                 return true;
@@ -739,11 +844,18 @@
 
         deleteHall(hallId) {
             if (this.state.halls.length <= 1) {
-                alert('⚠️ 系統中至少需保留 1 間 Data Hall 機房！');
+                alert(_t('store.minHall', null, '⚠️ 系統中至少需保留 1 間 Data Hall 機房！'));
                 return false;
             }
             const idx = this.state.halls.findIndex(h => h.id === hallId);
             if (idx !== -1) {
+                const deletedHall = this.state.halls[idx];
+                const duIds = (deletedHall.dus || []).map(d => d.id);
+                if (Array.isArray(this.state.coolingPlants)) {
+                    this.state.coolingPlants.forEach(plant => {
+                        plant.memberIds = plant.memberIds.filter(id => !duIds.includes(id));
+                    });
+                }
                 this.state.halls.splice(idx, 1);
                 this.notify();
                 return true;
@@ -772,7 +884,7 @@
                 sus: [
                     {
                         id: makeId('su'),
-                        name: 'SU-01 (預設配置)',
+                        name: 'SU-01 (' + _t('store.defaultSuDesc', null, '預設配置') + ')',
                         electricalLossFactorPct: 0.0,
                         equipment: [
                             { id: makeId('eq'), category: 'GPU', model: 'NVIDIA Vera Rubin VR200 NVL72', qty: 2, itLoadKw: 227.0, liquidPct: 95.0, airPct: 5.0 },
@@ -821,7 +933,7 @@
             if (!du) return null;
             const clonedDu = JSON.parse(JSON.stringify(du));
             clonedDu.id = makeId('du');
-            clonedDu.name = `${du.name} (複製)`;
+            clonedDu.name = `${du.name} (${_t('store.copy', null, '複製')})`;
             clonedDu.sus.forEach((su) => {
                 su.id = makeId('su');
                 su.equipment.forEach((eq) => {
@@ -829,8 +941,14 @@
                 });
             });
             if (clonedDu.plantDesign) {
-                if (clonedDu.plantDesign.cduSystem) clonedDu.plantDesign.cduSystem.sizing = [];
-                if (clonedDu.plantDesign.fanwallSystem) clonedDu.plantDesign.fanwallSystem.sizing = [];
+                if (clonedDu.plantDesign.cduSystem) {
+                    clonedDu.plantDesign.cduSystem.sizing = [];
+                    delete clonedDu.plantDesign.cduSystem.plantId;
+                }
+                if (clonedDu.plantDesign.fanwallSystem) {
+                    clonedDu.plantDesign.fanwallSystem.sizing = [];
+                    delete clonedDu.plantDesign.fanwallSystem.plantId;
+                }
             }
             hall.dus.push(clonedDu);
             this.notify();
@@ -841,11 +959,16 @@
             const hall = this.state.halls.find(h => h.id === hallId);
             if (!hall) return false;
             if (hall.dus.length <= 1) {
-                alert('⚠️ 每個機房至少需保留 1 組 DU 冷卻單元！');
+                alert(_t('store.minDu', null, '⚠️ 每個機房至少需保留 1 組 DU 冷卻單元！'));
                 return false;
             }
             const idx = hall.dus.findIndex(d => d.id === duId);
             if (idx !== -1) {
+                if (Array.isArray(this.state.coolingPlants)) {
+                    this.state.coolingPlants.forEach(plant => {
+                        plant.memberIds = plant.memberIds.filter(id => id !== duId);
+                    });
+                }
                 hall.dus.splice(idx, 1);
                 this.notify();
                 return true;
@@ -880,7 +1003,7 @@
             const du = hall.dus.find(d => d.id === duId);
             if (!du) return false;
             if (du.sus.length <= 1) {
-                alert('⚠️ 每個 DU 至少需保留 1 組 SU 算力單元！');
+                alert(_t('store.minSu', null, '⚠️ 每個 DU 至少需保留 1 組 SU 算力單元！'));
                 return false;
             }
             const idx = du.sus.findIndex(s => s.id === suId);
@@ -890,6 +1013,195 @@
                 return true;
             }
             return false;
+        },
+
+        // ═══════════════════════════════════════════════════════════════
+        // Phase P: 冷卻系統分組 (Cooling Plants / Shared Plants)
+        // ═══════════════════════════════════════════════════════════════
+        _findUnit(unitId) {
+            for (const h of (this.state.halls || [])) {
+                const du = (h.dus || []).find(d => d.id === unitId);
+                if (du) return du;
+            }
+            return (this.state.corePods || []).find(p => p.id === unitId) || null;
+        },
+
+        _setUnitPlantId(unitId, loop, plantId) {
+            const unit = this._findUnit(unitId);
+            if (!unit || !unit.plantDesign) return;
+            const sysKey = loop === 'liquid' ? 'cduSystem' : 'fanwallSystem';
+            if (unit.plantDesign[sysKey]) {
+                if (plantId) {
+                    unit.plantDesign[sysKey].plantId = plantId;
+                } else {
+                    delete unit.plantDesign[sysKey].plantId;
+                }
+            }
+        },
+
+        getCoolingPlant(plantId) {
+            return (this.state.coolingPlants || []).find(p => p.id === plantId) || null;
+        },
+
+        getPlantForUnit(unitId, loop) {
+            return (this.state.coolingPlants || []).find(p => p.loop === loop && (p.memberIds || []).includes(unitId)) || null;
+        },
+
+        addCoolingPlant(options = {}) {
+            if (!Array.isArray(this.state.coolingPlants)) {
+                this.state.coolingPlants = [];
+            }
+            const id = options.id || makeId('plant');
+            const loop = options.loop === 'air' ? 'air' : 'liquid';
+            const num = this.state.coolingPlants.filter(p => p.loop === loop).length + 1;
+            const defName = loop === 'liquid'
+                ? _t('cooling.defaultLiquidPlantName', { n: num }, `液冷系統 ${num}`)
+                : _t('cooling.defaultAirPlantName', { n: num }, `氣冷系統 ${num}`);
+            const name = options.name || defName;
+            const redundancy = options.redundancy || 'N+1';
+            const diversityFactor = typeof options.diversityFactor === 'number' ? options.diversityFactor : 1.0;
+            const memberIds = Array.isArray(options.memberIds) ? [...options.memberIds] : [];
+
+            let system;
+            if (options.system) {
+                system = JSON.parse(JSON.stringify(options.system));
+            } else if (loop === 'liquid') {
+                system = {
+                    architecture: options.architecture || 'dry_cooler_trim',
+                    secSupplyC: 45.0, secReturnC: 57.0, cduApproachC: 3.0,
+                    fwsSupplyC: 42.0, fwsReturnC: 54.0, dryCoolerApproachC: 5.0, pheApproachC: 2.0,
+                    adiabaticSaturationEfficiencyPct: 85.0, blowdownLossPct: 15.0, cyclesOfConcentration: 5,
+                    designBasis: {}, sizing: [], hydraulics: {}, validation: { ok: true, checks: [] }
+                };
+            } else {
+                system = {
+                    architecture: options.architecture || 'water_cooled_chiller',
+                    chwSupplyC: 12.0, chwReturnC: 18.0, airSideEconomizerThresholdC: 18.0,
+                    designBasis: {}, sizing: [], hydraulics: {}, validation: { ok: true, checks: [] }
+                };
+            }
+
+            const plant = {
+                id,
+                name,
+                loop,
+                memberIds,
+                system,
+                redundancy,
+                diversityFactor
+            };
+
+            this.state.coolingPlants.push(plant);
+
+            // 更新成員單元的 plantId
+            memberIds.forEach(mId => {
+                this._setUnitPlantId(mId, loop, id);
+            });
+
+            this.notify();
+            return plant;
+        },
+
+        updateCoolingPlant(plantId, patch) {
+            if (!Array.isArray(this.state.coolingPlants)) return false;
+            const plant = this.state.coolingPlants.find(p => p.id === plantId);
+            if (!plant) return false;
+
+            if (patch.memberIds && Array.isArray(patch.memberIds)) {
+                const oldMembers = plant.memberIds || [];
+                oldMembers.forEach(mId => {
+                    if (!patch.memberIds.includes(mId)) {
+                        this._setUnitPlantId(mId, plant.loop, null);
+                    }
+                });
+                patch.memberIds.forEach(mId => {
+                    this.state.coolingPlants.forEach(other => {
+                        if (other.id !== plantId && other.loop === plant.loop) {
+                            other.memberIds = other.memberIds.filter(id => id !== mId);
+                        }
+                    });
+                    this._setUnitPlantId(mId, plant.loop, plantId);
+                });
+            }
+
+            Object.assign(plant, patch);
+            this.notify();
+            return true;
+        },
+
+        deleteCoolingPlant(plantId) {
+            if (!Array.isArray(this.state.coolingPlants)) return false;
+            const idx = this.state.coolingPlants.findIndex(p => p.id === plantId);
+            if (idx === -1) return false;
+            const plant = this.state.coolingPlants[idx];
+            (plant.memberIds || []).forEach(mId => {
+                this._setUnitPlantId(mId, plant.loop, null);
+            });
+            this.state.coolingPlants.splice(idx, 1);
+            this.notify();
+            return true;
+        },
+
+        addPlantMember(plantId, unitId) {
+            const plant = (this.state.coolingPlants || []).find(p => p.id === plantId);
+            if (!plant) return false;
+            if (!plant.memberIds.includes(unitId)) {
+                this.state.coolingPlants.forEach(other => {
+                    if (other.id !== plantId && other.loop === plant.loop) {
+                        other.memberIds = other.memberIds.filter(id => id !== unitId);
+                    }
+                });
+                plant.memberIds.push(unitId);
+                this._setUnitPlantId(unitId, plant.loop, plantId);
+                this.notify();
+            }
+            return true;
+        },
+
+        removePlantMember(plantId, unitId) {
+            const plant = (this.state.coolingPlants || []).find(p => p.id === plantId);
+            if (!plant) return false;
+            plant.memberIds = plant.memberIds.filter(id => id !== unitId);
+            this._setUnitPlantId(unitId, plant.loop, null);
+            this.notify();
+            return true;
+        },
+
+        syncUnitFromPlant(unit, loop) {
+            const sysKey = loop === 'liquid' ? 'cduSystem' : 'fanwallSystem';
+            const sys = unit?.plantDesign?.[sysKey];
+            if (!sys || !sys.plantId) return;
+            const plant = this.getCoolingPlant(sys.plantId);
+            if (!plant || plant.loop !== loop || !plant.system) return;
+
+            const pSys = plant.system;
+            if (pSys.architecture) sys.architecture = pSys.architecture;
+            if (loop === 'liquid') {
+                if (pSys.secSupplyC !== undefined) sys.secSupplyC = pSys.secSupplyC;
+                if (pSys.secReturnC !== undefined) sys.secReturnC = pSys.secReturnC;
+                if (pSys.cduApproachC !== undefined) sys.cduApproachC = pSys.cduApproachC;
+                if (pSys.fwsSupplyC !== undefined) sys.fwsSupplyC = pSys.fwsSupplyC;
+                if (pSys.fwsReturnC !== undefined) sys.fwsReturnC = pSys.fwsReturnC;
+                if (pSys.dryCoolerApproachC !== undefined) sys.dryCoolerApproachC = pSys.dryCoolerApproachC;
+                if (pSys.pheApproachC !== undefined) sys.pheApproachC = pSys.pheApproachC;
+                if (pSys.hasPhe !== undefined) sys.hasPhe = pSys.hasPhe;
+                if (pSys.freezeDbC !== undefined) sys.freezeDbC = pSys.freezeDbC;
+            } else {
+                if (pSys.chwSupplyC !== undefined) sys.chwSupplyC = pSys.chwSupplyC;
+                if (pSys.chwReturnC !== undefined) sys.chwReturnC = pSys.chwReturnC;
+                if (pSys.airSideEconomizerThresholdC !== undefined) sys.airSideEconomizerThresholdC = pSys.airSideEconomizerThresholdC;
+            }
+        },
+
+        syncAllUnitsFromPlants() {
+            if (!Array.isArray(this.state.coolingPlants) || this.state.coolingPlants.length === 0) return;
+            const allUnits = [];
+            (this.state.halls || []).forEach(h => (h.dus || []).forEach(d => allUnits.push(d)));
+            (this.state.corePods || []).forEach(p => allUnits.push(p));
+            allUnits.forEach(u => {
+                this.syncUnitFromPlant(u, 'liquid');
+                this.syncUnitFromPlant(u, 'air');
+            });
         },
 
         designConditions() {
@@ -915,7 +1227,7 @@
             const dc = site.designConditions || null;
             const designDb = dc?.cooling?.db004 ?? tmy.designDb;
             const designWb = dc?.cooling?.evapWb004 ?? tmy.designWb;
-            const designBasis = dc?.cooling?.db004 != null ? 'ASHRAE 0.4%' : 'TMY 排序 0.4%';
+            const designBasis = dc?.cooling?.db004 != null ? 'ASHRAE 0.4%' : _t('store.tmyRank004', null, 'TMY 排序 0.4%');
             const maxDb = tmy.maxDb;
             const extremes = dc?.extremes ?? null;
 
@@ -923,15 +1235,15 @@
                 const n = (typeof A === 'function') ? A('design_extreme_return_years') : 20;
                 const v = extremes?.dbMax?.[n];
                 if (Number.isFinite(v)) {
-                    return { value: Math.max(v, tmy.maxDb), basis: `ASHRAE n=${n} 年回歸` };
+                    return { value: Math.max(v, tmy.maxDb), basis: _t('store.ashraeRegression', { n }, `ASHRAE n=${n} 年回歸`) };
                 }
                 const fallbackMargin = (typeof A === 'function') ? A('design_extreme_fallback_margin_c') : 2.0;
-                return { value: tmy.maxDb + fallbackMargin, basis: 'TMY 最高 + 餘裕（無 ASHRAE 極值）' };
+                return { value: tmy.maxDb + fallbackMargin, basis: _t('store.tmyMaxMargin', null, 'TMY 最高 + 餘裕（無 ASHRAE 極值）') };
             })();
 
             const freezeDb = (() => {
                 const v = extremes?.dbMin?.[50];
-                return Number.isFinite(v) ? { value: v, basis: 'ASHRAE n=50 年回歸' } : null;
+                return Number.isFinite(v) ? { value: v, basis: _t('store.ashrae50Regression', null, 'ASHRAE n=50 年回歸') } : null;
             })();
 
             let dataQualityWarning = null;
@@ -940,7 +1252,7 @@
             const gapWarnThreshold = (typeof A === 'function') ? A('design_extreme_tmy_gap_warn_c') : 5.0;
             if (Number.isFinite(vMax) && (peakDb.value - tmy.maxDb > gapWarnThreshold)) {
                 const gap = (peakDb.value - tmy.maxDb).toFixed(1);
-                dataQualityWarning = `本站 ASHRAE 極值與 TMY 最高溫相差 ${gap}°C，建議核對測站資料`;
+                dataQualityWarning = _t('warn.ashraeTmyGap', { gap }, `本站 ASHRAE 極值與 TMY 最高溫相差 ${gap}°C，建議核對測站資料`);
             }
 
             this.state.site.design = {
@@ -976,25 +1288,26 @@
         },
 
         // V21 依架構生成專屬的 sizing 清單 (透過 SizingEngine)
-        generateCduSizing(arch, reqKw, hydKw) {
+        generateCduSizing(arch, reqKw, hydKw, helpers = {}) {
             if (typeof SizingEngine !== 'undefined') {
                 return SizingEngine.generateCduSizing(arch, reqKw, hydKw, {
                     designConditions: () => this.designConditions(),
-                    trimOperatingPoint: (sys, db) => this.trimOperatingPoint(sys, db)
+                    trimOperatingPoint: (sys, db) => this.trimOperatingPoint(sys, db),
+                    ...helpers
                 });
             }
             return [];
         },
 
         // V24 & V27: 依 Fanwall / RDHX 架構動態生成選型清單 (透過 SizingEngine)
-        generateFwSizing(arch, reqKw, pumpPowerKw) {
+        generateFwSizing(arch, reqKw, pumpPowerKw, helpers = {}) {
             if (typeof SizingEngine !== 'undefined') {
-                return SizingEngine.generateFwSizing(arch, reqKw, pumpPowerKw);
+                return SizingEngine.generateFwSizing(arch, reqKw, pumpPowerKw, helpers);
             }
             return [];
         },
 
-        updateSelectedEquipment(targetId, sysType, equipKey, model, qty) {
+        updateSelectedEquipment(targetId, sysType, equipKey, model, qty, redundancy, runMode) {
             let targetObj = null;
             this.state.halls.forEach(h => {
                 const d = h.dus.find(du => du.id === targetId);
@@ -1003,15 +1316,48 @@
             if (!targetObj) {
                 targetObj = this.state.corePods.find(p => p.id === targetId);
             }
+            if (!targetObj) {
+                targetObj = (this.state.coolingPlants || []).find(p => p.id === targetId);
+                if (targetObj) {
+                    const sys = targetObj.system;
+                    const item = (sys?.sizing || []).find(s => s.key === equipKey);
+                    if (item) {
+                        if (model !== undefined) item.selectedModel = model;
+                        if (qty !== undefined) item.selectedQty = parseInt(qty, 10);
+                        if (redundancy !== undefined) {
+                            item.redundancy = redundancy;
+                            item.userRedundancyEdited = true;
+                        }
+                        if (runMode !== undefined) item.runMode = runMode;
+                        item.userEdited = true;
+                        this.notify();
+                    }
+                    return;
+                }
+            }
             if (!targetObj) return;
 
-            const sys = (sysType === 'cdu') ? targetObj.plantDesign.cduSystem : targetObj.plantDesign.fanwallSystem;
+            const sys = (sysType === 'cdu' || sysType === 'liquid') ? targetObj.plantDesign.cduSystem : targetObj.plantDesign.fanwallSystem;
             const item = (sys.sizing || []).find(s => s.key === equipKey);
             if (item) {
                 if (model !== undefined) item.selectedModel = model;
                 if (qty !== undefined) item.selectedQty = parseInt(qty, 10);
+                if (redundancy !== undefined) {
+                    item.redundancy = redundancy;
+                    item.userRedundancyEdited = true;
+                }
+                if (runMode !== undefined) item.runMode = runMode;
+                item.userEdited = true;
                 this.notify();
             }
+        },
+
+        changeSizingRedundancy(targetId, sysType, equipKey, redundancy) {
+            this.updateSelectedEquipment(targetId, sysType, equipKey, undefined, undefined, redundancy, undefined);
+        },
+
+        changeSizingRunMode(targetId, sysType, equipKey, runMode) {
+            this.updateSelectedEquipment(targetId, sysType, equipKey, undefined, undefined, undefined, runMode);
         },
 
         // v31 修正：localStorage 還原的舊專案裡，sizing[].catalog 是產生當下的靜態快照，
@@ -1023,6 +1369,7 @@
             const KEY_TO_CATEGORY = {
                 cdu_unit: 'cdu',
                 cdu_pump: 'pump',
+                cw_pump: 'pump',
                 fw_pump: 'pump',
                 dry_cooler: 'dry_cooler',
                 adiabatic_tower: 'cooling_tower',
@@ -1056,6 +1403,9 @@
                 refreshSys(pod.plantDesign?.cduSystem);
                 refreshSys(pod.plantDesign?.fanwallSystem);
             });
+            (this.state.coolingPlants || []).forEach(plant => {
+                refreshSys(plant.system);
+            });
         },
 
         canProceedStep4() {
@@ -1066,13 +1416,17 @@
                 (sys.sizing || []).forEach(item => {
                     if (!item.passed) {
                         allPassed = false;
+                        const red = item.redundancy || 'N+1';
+                        const standbyLbl = (typeof SizingEngine !== 'undefined' && typeof SizingEngine.standbyLabel === 'function')
+                            ? SizingEngine.standbyLabel(red)
+                            : (red === 'N' ? 'N' : (red === 'N+2' ? 'N-2' : (red === '2N' ? '2N' : 'N-1')));
                         failedItems.push({
                             targetId: targetId,
                             targetName: name,
-                            systemName: isCdu ? '💧 CDU 液冷' : '💨 Fanwall 氣冷',
+                            systemName: isCdu ? _t('store.cduLiquidSys', null, '💧 CDU 液冷') : _t('store.fwAirSys', null, '💨 Fanwall 氣冷'),
                             equipName: item.label,
                             reqText: item.requiredText,
-                            selText: item.selectedQty + '台 (有效 ' + (item.effectiveCapKw !== undefined ? item.effectiveCapKw : (item.selectedQty * item.unitCapKw)) + ' kW / N-1)'
+                            selText: item.selectedQty + _t('store.units', null, '台') + ' (' + _t('store.effectiveCap', null, '有效 ') + (item.effectiveCapKw !== undefined ? item.effectiveCapKw : (item.selectedQty * item.unitCapKw)) + ' kW / ' + standbyLbl + ')'
                         });
                     }
                 });
@@ -1092,6 +1446,12 @@
                 checkSys(pod.name, pod.id, pod.plantDesign.fanwallSystem, false);
             });
 
+            (this.state.coolingPlants || []).forEach(plant => {
+                if (plant.system) {
+                    checkSys(plant.name, plant.id, plant.system, plant.loop === 'liquid');
+                }
+            });
+
             return { ok: allPassed, failedItems };
         },
 
@@ -1106,7 +1466,24 @@
         // 既有的 effectiveCapKw = (selectedQty - 1) * unitCapKw 這個 N+1 慣例
         // (1台備援)，qty_running 用同一個公式，讓「容量夠不夠判定」跟「實際
         // 耗電量計算」用同一套備援假設，不再各算各的。
-        runningQtyFromSelected(selectedQty) {
+        runningQtyFromItem(item, allowShare = true) {
+            if (!item) return 1;
+            const qty = item.selectedQty || 1;
+            const redundancy = item.redundancy || 'N+1';
+            const runMode = item.runMode || 'standby';
+            if (allowShare && runMode === 'share') {
+                return Math.max(1, qty);
+            }
+            if (typeof SizingEngine !== 'undefined' && typeof SizingEngine.runningQty === 'function') {
+                return SizingEngine.runningQty(qty, redundancy);
+            }
+            return Math.max(1, qty - 1);
+        },
+
+        runningQtyFromSelected(selectedQty, redundancy = 'N+1') {
+            if (typeof SizingEngine !== 'undefined' && typeof SizingEngine.runningQty === 'function') {
+                return SizingEngine.runningQty(selectedQty, redundancy);
+            }
             return Math.max(1, (selectedQty || 1) - 1);
         },
 
@@ -1135,14 +1512,18 @@
             const capKw = catEntry?.capKw ?? item.unitCapKw;
             const cop = catEntry?.cop;
             if (!capKw || !cop) return [];
+            // 冰機一律 'standby'，不提供 share
+            const nRunning = this.runningQtyFromItem(item, false);
             return [{
                 model: item.selectedModel,
                 cooling_capacity_kw: capKw,
                 cop_design: cop,
                 t_chws_design: catEntry?.t_chws_c ?? 7.0,
                 cop_curve: catEntry?.cop_curve, // 有真實 AHRI 曲線資料時 ChillerEngine 會自動採用，否則退回 flat COP
-                qty_running: this.runningQtyFromSelected(item.selectedQty),
+                qty_running: nRunning,
                 qty_total: item.selectedQty,
+                redundancy: item.redundancy || 'N+1',
+                run_mode: 'standby',
                 category: catEntry?.category,
                 chiller_type: catEntry?.chiller_type ?? chillerType
             }];
@@ -1153,8 +1534,10 @@
         resolvePumpFromSizing(item, sys) {
             if (!item || !item.selectedQty) return [];
             const catEntry = (item.catalog || []).find(c => c.model === item.selectedModel);
-            const nRunning = this.runningQtyFromSelected(item.selectedQty);
-            const pDesign = sys?.hydraulics?.pump_power_kw ?? item?.requiredKw;
+            const nRunning = this.runningQtyFromItem(item, true);
+            const pDesign = (item.key === 'cw_pump')
+                ? (sys?.hydraulics?.cw_pump_power_kw ?? item?.requiredKw)
+                : (sys?.hydraulics?.pump_power_kw ?? item?.requiredKw);
             const motorCapKw = catEntry?.capKw ?? item.unitCapKw ?? 0;
             const powerKw = (typeof pDesign === 'number' && pDesign > 0 && nRunning > 0)
                 ? (pDesign / nRunning)
@@ -1166,7 +1549,9 @@
                 p_design: pDesign,
                 motor_cap_kw: motorCapKw,
                 qty_running: nRunning,
-                qty_total: item.selectedQty
+                qty_total: item.selectedQty,
+                redundancy: item.redundancy || 'N+1',
+                run_mode: item.runMode || 'standby'
             }];
         },
 
@@ -1179,14 +1564,17 @@
             const powerKw = catEntry?.powerKw;
             if (!capKw || !powerKw) return [];
             const derateFactor = (typeof item.derateFactor === 'number' && item.derateFactor > 0) ? item.derateFactor : 1.0;
+            const nRunning = this.runningQtyFromItem(item, true);
             return [{
                 model: item.selectedModel,
                 nominal_capacity_kw: capKw,
                 capacity_kw: capKw * derateFactor,
                 derate_factor: derateFactor,
                 power_kw: powerKw,
-                qty_running: this.runningQtyFromSelected(item.selectedQty),
-                qty_total: item.selectedQty
+                qty_running: nRunning,
+                qty_total: item.selectedQty,
+                redundancy: item.redundancy || 'N+1',
+                run_mode: item.runMode || 'standby'
             }];
         },
 
@@ -1197,7 +1585,16 @@
             const capKw = catEntry?.capKw ?? item.unitCapKw;
             const fanPowerKw = catEntry?.fanPowerKw;
             if (!capKw || !fanPowerKw) return [];
-            return [{ model: item.selectedModel, cooling_capacity_kw: capKw, power_kw: fanPowerKw, qty_running: this.runningQtyFromSelected(item.selectedQty), qty_total: item.selectedQty }];
+            const nRunning = this.runningQtyFromItem(item, true);
+            return [{
+                model: item.selectedModel,
+                cooling_capacity_kw: capKw,
+                power_kw: fanPowerKw,
+                qty_running: nRunning,
+                qty_total: item.selectedQty,
+                redundancy: item.redundancy || 'N+1',
+                run_mode: item.runMode || 'standby'
+            }];
         },
 
         // v31 Phase 2/3: 冷卻塔/乾冷器風扇 → CoolingTowerEngine.calcFanPower() 要的陣列格式（型錄需有 fanKwDx）。
@@ -1208,12 +1605,15 @@
             const catEntry = (item.catalog || []).find(c => c.model === item.selectedModel);
             const fanKwDx = catEntry?.fanKwDx;
             if (!fanKwDx) return [];
+            const nRunning = this.runningQtyFromItem(item, true);
             return [{
                 model: item.selectedModel,
                 fan_kw_dx: fanKwDx,
                 fan_kw_fc: catEntry?.fanKwFc ?? fanKwDx,
-                qty_running: this.runningQtyFromSelected(item.selectedQty),
+                qty_running: nRunning,
                 qty_total: item.selectedQty,
+                redundancy: item.redundancy || 'N+1',
+                run_mode: item.runMode || 'standby',
                 fan_control: 'vfd'
             }];
         },
@@ -1255,28 +1655,18 @@
         // ═══════════════════════════════════════════════════════════════
         // V22 / C-2: 共用逐時能耗計算函式 — 透過 CoolingArchRegistry 分派
         // ═══════════════════════════════════════════════════════════════
-        calcHourlyEnergy(plantDesign, summ, w, pre = null) {
-            const cduSys = plantDesign.cduSystem;
-            const fwSys  = plantDesign.fanwallSystem;
+        calcLiquidLoopHour(cduSys, summ, w, pre = null) {
+            const liquidHeatKw = (typeof summ === 'number') ? summ : (summ?.liquidHeatKw || 0);
             const cduArch = cduSys.architecture || 'dry_cooler_hx';
-            const fwArch  = fwSys.architecture || 'air_cooled_chiller';
-
             const cduArchDesc = pre ? pre.cduArchDesc : ((typeof CoolingArchRegistry !== 'undefined') ? CoolingArchRegistry.get(cduArch) : null);
-            const fwArchDesc  = pre ? pre.fwArchDesc  : ((typeof CoolingArchRegistry !== 'undefined') ? CoolingArchRegistry.get(fwArch) : null);
-
             if (!cduArchDesc) throw new Error(`Unknown CDU cooling architecture: "${cduArch}"`);
-            if (!fwArchDesc)  throw new Error(`Unknown Fanwall cooling architecture: "${fwArch}"`);
 
             const evapFactor = (typeof A === 'function') ? A('ct_evap_m3h_per_kw') : 0.00124;
             const cycles = cduSys.cyclesOfConcentration || 5;
-
-            // P2-1 / P2-2: 解析設備清單 (支援外部預計算傳入)
             const cduEquip = pre ? pre.cduEquip : this.resolveEquipment(cduArchDesc, cduSys);
-            const fwEquip  = pre ? pre.fwEquip  : this.resolveEquipment(fwArchDesc, fwSys);
 
-            // --- CDU terminal and primary pump ---
-            const designLiqKw = pre ? pre.designLiqKw : (cduSys.designBasis?.liq_load_kw || summ.liquidHeatKw);
-            const cduLoadRatio = pre ? pre.cduLoadRatio : (designLiqKw > 0 ? Math.min(1.0, summ.liquidHeatKw / designLiqKw) : 1.0);
+            const designLiqKw = pre ? pre.designLiqKw : (cduSys.designBasis?.liq_load_kw || liquidHeatKw);
+            const cduLoadRatio = pre ? pre.cduLoadRatio : (designLiqKw > 0 ? Math.min(1.0, liquidHeatKw / designLiqKw) : 1.0);
             const pt = pre?.pumpTable ? pre.pumpTable[w.wb >= 24 ? 0 : (w.wb >= 16 ? 1 : 2)] : null;
             const cduPumpSpeed = pt ? pt.cduPumpSpeed : (() => {
                 const cduOperatingMode = (typeof FreeCoolingEngine !== 'undefined') ? FreeCoolingEngine.getOperatingMode(w.wb) : null;
@@ -1294,82 +1684,45 @@
 
             const cduUnitKw = pre ? pre.cduUnitKw : (() => {
                 const cduUnits = cduEquip.cdu_unit || [];
-                if (cduUnits.length > 0 && typeof CDUEngine !== 'undefined' && summ.liquidHeatKw > 0) {
-                    return CDUEngine.calcPower(cduUnits, summ.liquidHeatKw).power_kw;
-                } else if (summ.liquidHeatKw > 0) {
-                    return (summ.liquidHeatKw / 400) * 2.0;
+                if (cduUnits.length > 0 && typeof CDUEngine !== 'undefined' && liquidHeatKw > 0) {
+                    return CDUEngine.calcPower(cduUnits, liquidHeatKw).power_kw;
+                } else if (liquidHeatKw > 0) {
+                    return (liquidHeatKw / 400) * 2.0;
                 }
                 return 0;
             })();
 
             const cduDeficitKw = pre ? pre.cduDeficitKw : (() => {
                 const cduUnits = cduEquip.cdu_unit || [];
-                if (cduUnits.length > 0 && typeof CDUEngine !== 'undefined' && summ.liquidHeatKw > 0) {
-                    return CDUEngine.calcPower(cduUnits, summ.liquidHeatKw).deficit_kw || 0;
+                if (cduUnits.length > 0 && typeof CDUEngine !== 'undefined' && liquidHeatKw > 0) {
+                    return CDUEngine.calcPower(cduUnits, liquidHeatKw).deficit_kw || 0;
                 }
                 return 0;
             })();
 
             const cduPumps = pre ? pre.cduPumps : (cduEquip.cdu_pump || []);
-            const cduPrimaryPumpKw = pt ? pt.cduPrimaryPumpKw : ((cduPumps.length > 0 && typeof PlantPumpEngine !== 'undefined' && summ.liquidHeatKw > 0)
+            const cduCwPumps = pre ? pre.cduCwPumps : (cduEquip.cw_pump || []);
+            let cduPrimaryPumpKw = pt ? pt.cduPrimaryPumpKw : ((cduPumps.length > 0 && typeof PlantPumpEngine !== 'undefined' && liquidHeatKw > 0)
                 ? PlantPumpEngine.calcPower(cduPumps, cduPumpSpeed)
-                : (summ.liquidHeatKw / 500) * (cduSys.hydraulics?.pump_power_kw || 11.0));
+                : (liquidHeatKw > 0 ? (liquidHeatKw / 500) * (cduSys.hydraulics?.pump_power_kw || 11.0) : 0));
+            if (!pt && liquidHeatKw > 0) {
+                if (cduCwPumps.length > 0 && typeof PlantPumpEngine !== 'undefined') {
+                    cduPrimaryPumpKw += PlantPumpEngine.calcPower(cduCwPumps, cduPumpSpeed);
+                } else if (cduSys.hydraulics?.cw_pump_power_kw) {
+                    const baseFrac = 0.15;
+                    cduPrimaryPumpKw += cduSys.hydraulics.cw_pump_power_kw * (baseFrac + (1 - baseFrac) * Math.pow(cduPumpSpeed, 3));
+                }
+            }
 
             const cduPumpKw = pt ? pt.cduPumpKw : (cduUnitKw + cduPrimaryPumpKw);
-
-            // --- Fanwall / CRAH terminal and secondary pump ---
-            const chwSupplyC = pre ? pre.chwSupplyC : (fwSys.chwSupplyC || 12.0);
-            const chwReturnC = pre ? pre.chwReturnC : (fwSys.chwReturnC || 18.0);
-            const fwBaseCop = pre ? pre.fwBaseCop : (chwSupplyC >= 20 ? 5.8 : (chwSupplyC >= 12 ? 4.2 : 3.0));
-            const airHeatTotal = pre ? pre.airHeatTotal : (summ.airHeatKw + summ.lossKw);
-
-            const designAirKw = pre ? pre.designAirKw : (fwSys.designBasis?.air_load_kw || airHeatTotal);
-            const fwLoadRatio = pre ? pre.fwLoadRatio : (designAirKw > 0 ? Math.min(1.0, airHeatTotal / designAirKw) : 1.0);
-
-            const isFwRdhx = !!fwArchDesc?.flags?.isRdhx;
-            const fwUnits = (isFwRdhx ? fwEquip.rdhx_unit : fwEquip.crah_unit) || [];
-            const crahFanKw = pre ? pre.crahFanKw : (() => {
-                if (fwUnits.length > 0 && typeof CRAHEngine !== 'undefined' && airHeatTotal > 0) {
-                    return CRAHEngine.calcPower(fwUnits, airHeatTotal).power_kw;
-                }
-                return isFwRdhx ? (airHeatTotal / 60) * 1.2 : (airHeatTotal / 60) * 4.8;
-            })();
-
-            const crahDeficitKw = pre ? pre.crahDeficitKw : (() => {
-                if (fwUnits.length > 0 && typeof CRAHEngine !== 'undefined' && airHeatTotal > 0) {
-                    return CRAHEngine.calcPower(fwUnits, airHeatTotal).deficit_kw || 0;
-                }
-                return 0;
-            })();
-
-            const fwPumps = pre ? pre.fwPumps : (fwEquip.fw_pump || []);
-            const fwPumpSpeed = pt ? pt.fwPumpSpeed : (() => {
-                const fwOperatingMode = (typeof FreeCoolingEngine !== 'undefined') ? FreeCoolingEngine.getOperatingMode(w.wb) : null;
-                const fwPumpMinSpeed = (typeof FreeCoolingEngine !== 'undefined')
-                    ? FreeCoolingEngine.getPumpMinSpeed(fwOperatingMode)
-                    : 0.45;
-                return Math.max(fwPumpMinSpeed, fwLoadRatio);
-            })();
-
-            const fwFanMinSpeed = pt ? pt.fwFanMinSpeed : (() => {
-                const fwOperatingMode = (typeof FreeCoolingEngine !== 'undefined') ? FreeCoolingEngine.getOperatingMode(w.wb) : null;
-                return (typeof FreeCoolingEngine !== 'undefined')
-                    ? FreeCoolingEngine.getCtFanMinSpeed(fwOperatingMode)
-                    : 0.20;
-            })();
-
-            const fwPumpKw = pt ? pt.fwPumpKw : ((fwPumps.length > 0 && typeof PlantPumpEngine !== 'undefined' && airHeatTotal > 0)
-                ? PlantPumpEngine.calcPower(fwPumps, fwPumpSpeed)
-                : 0);
 
             const trimCop = pre ? pre.trimCop : (() => {
                 const trimItem = (cduSys.sizing || []).find(s => s.key === 'trim_chiller');
                 return trimItem?.catalog?.find(c => c.model === trimItem.selectedModel)?.cop || 6.2;
             })();
 
-            // --- Dispatch CDU Simulation ---
-            const cduSim = (summ.liquidHeatKw > 0) ? cduArchDesc.simulateHour({
-                Q_kw: summ.liquidHeatKw,
+            const cduSim = (liquidHeatKw > 0) ? cduArchDesc.simulateHour({
+                Q_kw: liquidHeatKw,
                 t_supply_c: cduSys.fwsSupplyC,
                 t_return_c: cduSys.fwsReturnC,
                 w,
@@ -1394,7 +1747,87 @@
                 mechLoadKw: 0
             };
 
-            // --- Dispatch Fanwall Simulation ---
+            const deficitKw = cduDeficitKw + (cduSim.deficitKw || 0);
+            const heatRemovedKw = Math.max(0, liquidHeatKw - deficitKw);
+
+            return {
+                pumpKw: cduPumpKw,
+                unitKw: cduUnitKw,
+                primaryPumpKw: cduPrimaryPumpKw,
+                fanKw: cduSim.fanKw || 0,
+                compressorKw: cduSim.compressorKw || 0,
+                waterM3: cduSim.waterM3 || 0,
+                mode: cduSim.mode || 'free',
+                deficitKw,
+                heatRemovedKw,
+                mechLoadKw: cduSim.mechLoadKw || 0,
+                chillerEnvelopeExceeded: !!cduSim.chillerEnvelopeExceeded
+            };
+        },
+
+        calcAirLoopHour(fwSys, summ, w, pre = null) {
+            const airHeatTotal = (typeof summ === 'number') ? summ : ((summ?.airHeatKw || 0) + (summ?.lossKw || 0));
+            const fwArch = fwSys.architecture || 'air_cooled_chiller';
+            const fwArchDesc = pre ? pre.fwArchDesc : ((typeof CoolingArchRegistry !== 'undefined') ? CoolingArchRegistry.get(fwArch) : null);
+            if (!fwArchDesc) throw new Error(`Unknown Fanwall cooling architecture: "${fwArch}"`);
+
+            const evapFactor = (typeof A === 'function') ? A('ct_evap_m3h_per_kw') : 0.00124;
+            const cycles = fwSys.cyclesOfConcentration || 5;
+            const fwEquip = pre ? pre.fwEquip : this.resolveEquipment(fwArchDesc, fwSys);
+
+            const chwSupplyC = pre ? pre.chwSupplyC : (fwSys.chwSupplyC || 12.0);
+            const chwReturnC = pre ? pre.chwReturnC : (fwSys.chwReturnC || 18.0);
+            const fwBaseCop = pre ? pre.fwBaseCop : (chwSupplyC >= 20 ? 5.8 : (chwSupplyC >= 12 ? 4.2 : 3.0));
+
+            const designAirKw = pre ? pre.designAirKw : (fwSys.designBasis?.air_load_kw || airHeatTotal);
+            const fwLoadRatio = pre ? pre.fwLoadRatio : (designAirKw > 0 ? Math.min(1.0, airHeatTotal / designAirKw) : 1.0);
+
+            const isFwRdhx = !!fwArchDesc?.flags?.isRdhx;
+            const fwUnits = (isFwRdhx ? fwEquip.rdhx_unit : fwEquip.crah_unit) || [];
+            const crahFanKw = pre ? pre.crahFanKw : (() => {
+                if (fwUnits.length > 0 && typeof CRAHEngine !== 'undefined' && airHeatTotal > 0) {
+                    return CRAHEngine.calcPower(fwUnits, airHeatTotal).power_kw;
+                }
+                return isFwRdhx ? (airHeatTotal / 60) * 1.2 : (airHeatTotal / 60) * 4.8;
+            })();
+
+            const crahDeficitKw = pre ? pre.crahDeficitKw : (() => {
+                if (fwUnits.length > 0 && typeof CRAHEngine !== 'undefined' && airHeatTotal > 0) {
+                    return CRAHEngine.calcPower(fwUnits, airHeatTotal).deficit_kw || 0;
+                }
+                return 0;
+            })();
+
+            const fwPumps = pre ? pre.fwPumps : (fwEquip.fw_pump || []);
+            const fwCwPumps = pre ? pre.fwCwPumps : (fwEquip.cw_pump || []);
+            const pt = pre?.pumpTable ? pre.pumpTable[w.wb >= 24 ? 0 : (w.wb >= 16 ? 1 : 2)] : null;
+            const fwPumpSpeed = pt ? pt.fwPumpSpeed : (() => {
+                const fwOperatingMode = (typeof FreeCoolingEngine !== 'undefined') ? FreeCoolingEngine.getOperatingMode(w.wb) : null;
+                const fwPumpMinSpeed = (typeof FreeCoolingEngine !== 'undefined')
+                    ? FreeCoolingEngine.getPumpMinSpeed(fwOperatingMode)
+                    : 0.45;
+                return Math.max(fwPumpMinSpeed, fwLoadRatio);
+            })();
+
+            const fwFanMinSpeed = pt ? pt.fwFanMinSpeed : (() => {
+                const fwOperatingMode = (typeof FreeCoolingEngine !== 'undefined') ? FreeCoolingEngine.getOperatingMode(w.wb) : null;
+                return (typeof FreeCoolingEngine !== 'undefined')
+                    ? FreeCoolingEngine.getCtFanMinSpeed(fwOperatingMode)
+                    : 0.20;
+            })();
+
+            let fwPumpKw = pt ? pt.fwPumpKw : ((fwPumps.length > 0 && typeof PlantPumpEngine !== 'undefined' && airHeatTotal > 0)
+                ? PlantPumpEngine.calcPower(fwPumps, fwPumpSpeed)
+                : 0);
+            if (!pt && airHeatTotal > 0) {
+                if (fwCwPumps.length > 0 && typeof PlantPumpEngine !== 'undefined') {
+                    fwPumpKw += PlantPumpEngine.calcPower(fwCwPumps, fwPumpSpeed);
+                } else if (fwSys.hydraulics?.cw_pump_power_kw) {
+                    const baseFrac = 0.15;
+                    fwPumpKw += fwSys.hydraulics.cw_pump_power_kw * (baseFrac + (1 - baseFrac) * Math.pow(fwPumpSpeed, 3));
+                }
+            }
+
             const fwSim = (airHeatTotal > 0) ? fwArchDesc.simulateHour({
                 Q_kw: airHeatTotal,
                 t_supply_c: chwSupplyC,
@@ -1421,42 +1854,65 @@
                 mechLoadKw: 0
             };
 
-            const totalDeficitKw = cduDeficitKw + crahDeficitKw + (cduSim.deficitKw || 0) + (fwSim.deficitKw || 0);
-            const combinedMode = (cduSim.mode === 'free' && fwSim.mode === 'free')
-                ? 'free'
-                : ((cduSim.mode === 'mechanical' && fwSim.mode === 'mechanical') ? 'mechanical' : 'partial');
-            const isFreeHour = (summ.liquidHeatKw === 0 || cduSim.mode === 'free') && (airHeatTotal === 0 || fwSim.mode === 'free');
-            const heatRemovedKw = Math.max(0, summ.liquidHeatKw + airHeatTotal - totalDeficitKw);
-            const mechLoadKw = (cduSim.mechLoadKw || 0) + (fwSim.mechLoadKw || 0);
+            const deficitKw = crahDeficitKw + (fwSim.deficitKw || 0);
+            const heatRemovedKw = Math.max(0, airHeatTotal - deficitKw);
 
             return {
-                cduPumpKw: cduPumpKw + fwPumpKw,
+                pumpKw: fwPumpKw,
                 crahFanKw,
-                heatRejKw: cduSim.fanKw + fwSim.fanKw,
-                chillerKw: cduSim.compressorKw + fwSim.compressorKw,
-                lossKw: summ.lossKw,
-                waterM3: cduSim.waterM3 + fwSim.waterM3,
+                fanKw: fwSim.fanKw || 0,
+                compressorKw: fwSim.compressorKw || 0,
+                waterM3: fwSim.waterM3 || 0,
+                mode: fwSim.mode || 'free',
+                deficitKw,
+                heatRemovedKw,
+                mechLoadKw: fwSim.mechLoadKw || 0,
+                chillerEnvelopeExceeded: !!fwSim.chillerEnvelopeExceeded
+            };
+        },
+
+        calcHourlyEnergy(plantDesign, summ, w, pre = null) {
+            const cduRes = this.calcLiquidLoopHour(plantDesign.cduSystem, summ, w, pre);
+            const fwRes  = this.calcAirLoopHour(plantDesign.fanwallSystem, summ, w, pre);
+
+            const totalDeficitKw = cduRes.deficitKw + fwRes.deficitKw;
+            const combinedMode = (cduRes.mode === 'free' && fwRes.mode === 'free')
+                ? 'free'
+                : ((cduRes.mode === 'mechanical' && fwRes.mode === 'mechanical') ? 'mechanical' : 'partial');
+            const airHeatTotal = (typeof summ === 'number') ? summ : ((summ?.airHeatKw || 0) + (summ?.lossKw || 0));
+            const liquidHeatKw = (typeof summ === 'number') ? summ : (summ?.liquidHeatKw || 0);
+            const isFreeHour = (liquidHeatKw === 0 || cduRes.mode === 'free') && (airHeatTotal === 0 || fwRes.mode === 'free');
+            const heatRemovedKw = Math.max(0, liquidHeatKw + airHeatTotal - totalDeficitKw);
+            const mechLoadKw = (cduRes.mechLoadKw || 0) + (fwRes.mechLoadKw || 0);
+
+            return {
+                cduPumpKw: cduRes.pumpKw + fwRes.pumpKw,
+                crahFanKw: fwRes.crahFanKw,
+                heatRejKw: cduRes.fanKw + fwRes.fanKw,
+                chillerKw: cduRes.compressorKw + fwRes.compressorKw,
+                lossKw: summ?.lossKw || 0,
+                waterM3: cduRes.waterM3 + fwRes.waterM3,
                 isFreeHour,
                 capacityDeficitKw: totalDeficitKw,
                 heatRemovedKw,
-                cduMode: cduSim.mode,
-                fwMode: fwSim.mode,
+                cduMode: cduRes.mode,
+                fwMode: fwRes.mode,
                 combinedMode,
                 mechLoadKw,
-                chillerEnvelopeExceeded: !!(cduSim.chillerEnvelopeExceeded || fwSim.chillerEnvelopeExceeded),
+                chillerEnvelopeExceeded: !!(cduRes.chillerEnvelopeExceeded || fwRes.chillerEnvelopeExceeded),
                 cduKwh: {
-                    unit: cduUnitKw,
-                    pump: cduPrimaryPumpKw,
-                    heatRej: cduSim.fanKw,
-                    chiller: cduSim.compressorKw,
-                    trimLoadKw: cduSim.mechLoadKw || 0
+                    unit: cduRes.unitKw,
+                    pump: cduRes.primaryPumpKw,
+                    heatRej: cduRes.fanKw,
+                    chiller: cduRes.compressorKw,
+                    trimLoadKw: cduRes.mechLoadKw || 0
                 },
                 fwKwh: {
-                    pump: fwPumpKw,
-                    crahFan: crahFanKw,
-                    heatRej: fwSim.fanKw,
-                    chiller: fwSim.compressorKw,
-                    chillerLoadKw: fwSim.mechLoadKw || 0
+                    pump: fwRes.pumpKw,
+                    crahFan: fwRes.crahFanKw,
+                    heatRej: fwRes.fanKw,
+                    chiller: fwRes.compressorKw,
+                    chillerLoadKw: fwRes.mechLoadKw || 0
                 }
             };
         },
@@ -1532,6 +1988,7 @@
             if (this.state.site && this.state.site.isWeatherLoading) {
                 return;
             }
+            this.syncAllUnitsFromPlants();
             this.recalculateBinAnalysis();
             this.state.results = this.state.results || {};
             const hourlyWeather = (this.state.site.hourly && this.state.site.hourly.length >= 8760) 
@@ -1543,7 +2000,11 @@
                     calcDuSummary: (du) => this.calcDuSummary(du),
                     calcCorePodSummary: (pod) => this.calcCorePodSummary(pod),
                     bridgeDuToPlantModel: (unit, summ) => this.bridgeDuToPlantModel(unit, summ),
-                    calcHourlyEnergy: (plant, summ, w, pre) => this.calcHourlyEnergy(plant, summ, w, pre)
+                    bridgePlantModel: (plant) => this.bridgePlantModel(plant),
+                    calcHourlyEnergy: (plant, summ, w, pre) => this.calcHourlyEnergy(plant, summ, w, pre),
+                    calcLiquidLoopHour: (sys, summ, w, pre) => this.calcLiquidLoopHour(sys, summ, w, pre),
+                    calcAirLoopHour: (sys, summ, w, pre) => this.calcAirLoopHour(sys, summ, w, pre),
+                    resolveEquipment: (arch, sys) => this.resolveEquipment(arch, sys)
                 });
             }
         },
@@ -1559,6 +2020,8 @@
         },
 
         bridgeDuToPlantModel(du, duSumm) {
+            this.syncUnitFromPlant(du, 'liquid');
+            this.syncUnitFromPlant(du, 'air');
             const cduSys = du.plantDesign.cduSystem;
             const fwSys = du.plantDesign.fanwallSystem;
 
@@ -1592,13 +2055,20 @@
                 ? (flowLpm_cdu * cduHeadM * 9.80665) / (60000 * etaPumpCdu * etaMotorCdu)
                 : 0;
 
-            // P1-H1: 若液冷採用水冷式冰機 (water_chiller)，加計冷凝器側冷卻水泵 (CW Pump) 水力功耗
-            if ((cduArchDesc?.flags?.isWaterChiller || cduSys.architecture === 'water_chiller') && duSumm.liquidHeatKw > 0) {
+            // P1-H1 / R7-0b: 分離冷凝器側冷卻水泵 (CW Pump) 水力功耗
+            let cwPumpPowerKwCdu = 0;
+            if ((cduArchDesc?.flags?.needsCwPump || cduArchDesc?.flags?.isWaterChiller || cduSys.architecture === 'water_chiller') && duSumm.liquidHeatKw > 0) {
                 const cwDt = (typeof A === 'function') ? A('cw_loop_delta_t_c') : 5.5;
                 const cwHeadM = (typeof A === 'function') ? A('cw_pump_head_default_m') : 22.0;
-                const qRejCdu = duSumm.liquidHeatKw * 1.18;
+                const chillerItem = (cduSys.sizing || []).find(s => s.key === 'water_cooled_chiller' || s.key === 'trim_chiller');
+                const catChiller = chillerItem ? (chillerItem.catalog || []).find(c => c.model === chillerItem.selectedModel) : null;
+                const copDesign = catChiller?.cop ?? catChiller?.cop_design;
+                const rejFactor = (typeof copDesign === 'number' && copDesign > 0)
+                    ? (1 + 1 / copDesign)
+                    : ((typeof A === 'function') ? A('tower_heat_rejection_factor') : 1.2);
+                const qRejCdu = duSumm.liquidHeatKw * rejFactor;
                 const flowLpmCw = (qRejCdu * 60) / (4.186 * cwDt);
-                cduPumpPowerKw += (flowLpmCw * cwHeadM * 9.80665) / (60000 * etaPumpCdu * etaMotorCdu);
+                cwPumpPowerKwCdu = (flowLpmCw * cwHeadM * 9.80665) / (60000 * etaPumpCdu * etaMotorCdu);
             }
 
             cduSys.hydraulics = {
@@ -1606,15 +2076,24 @@
                 pipe_dn: pipeCdu.pipe_dn,
                 velocity_mps: pipeCdu.velocity_mps,
                 pump_head_m: cduHeadM,
-                pump_power_kw: cduPumpPowerKw
+                pump_power_kw: cduPumpPowerKw,
+                cw_pump_power_kw: cwPumpPowerKwCdu
             };
 
             const reqCduKw = duSumm.liquidHeatKw;
 
-            // V21 依架構生成專屬 sizing 清單 (若品項不符則重置)
-            if (!cduSys.sizing || cduSys.sizing.length === 0 || cduSys.sizingArch !== arch) {
-                cduSys.sizing = this.generateCduSizing(arch, reqCduKw, cduSys.hydraulics.pump_power_kw);
-                cduSys.sizingArch = arch;
+            // V21 依架構生成專屬 sizing 清單 (若品項不符則重置)；若加入共用群組則單元端只保留 terminal 終端設備
+            if (cduSys.plantId) {
+                if (!cduSys.sizing || cduSys.sizing.length === 0 || cduSys.sizingArch !== arch || cduSys.sizing.some(s => s.role !== 'terminal')) {
+                    const fullSizing = this.generateCduSizing(arch, reqCduKw, cduSys.hydraulics.pump_power_kw, { cwPumpKw: cduSys.hydraulics.cw_pump_power_kw });
+                    cduSys.sizing = fullSizing.filter(s => s.role === 'terminal');
+                    cduSys.sizingArch = arch;
+                }
+            } else {
+                if (!cduSys.sizing || cduSys.sizing.length === 0 || cduSys.sizingArch !== arch || cduSys.sizing.every(s => s.role === 'terminal')) {
+                    cduSys.sizing = this.generateCduSizing(arch, reqCduKw, cduSys.hydraulics.pump_power_kw, { cwPumpKw: cduSys.hydraulics.cw_pump_power_kw });
+                    cduSys.sizingArch = arch;
+                }
             }
 
             if (typeof SizingEngine !== 'undefined') {
@@ -1648,12 +2127,20 @@
                 ? (flowLpm_fw * fwHeadM * 9.80665) / (60000 * etaPumpFw * etaMotorFw)
                 : 0;
 
-            if ((fwArchDesc?.flags?.consumesWater || fwSys.architecture === 'water_cooled_chiller') && airHeatTotal > 0) {
+            // R7-0b: 分離冷凝器側冷卻水泵 (CW Pump) 水力功耗
+            let cwPumpPowerKwFw = 0;
+            if ((fwArchDesc?.flags?.needsCwPump || fwSys.architecture === 'water_cooled_chiller') && airHeatTotal > 0) {
                 const cwDt = (typeof A === 'function') ? A('cw_loop_delta_t_c') : 5.5;
                 const cwHeadM = (typeof A === 'function') ? A('cw_pump_head_default_m') : 22.0;
-                const qRejFw = airHeatTotal * 1.20;
+                const chillerItem = (fwSys.sizing || []).find(s => s.key === 'water_cooled_chiller');
+                const catChiller = chillerItem ? (chillerItem.catalog || []).find(c => c.model === chillerItem.selectedModel) : null;
+                const copDesign = catChiller?.cop ?? catChiller?.cop_design;
+                const rejFactor = (typeof copDesign === 'number' && copDesign > 0)
+                    ? (1 + 1 / copDesign)
+                    : ((typeof A === 'function') ? A('tower_heat_rejection_factor') : 1.2);
+                const qRejFw = airHeatTotal * rejFactor;
                 const flowLpmCwFw = (qRejFw * 60) / (4.186 * cwDt);
-                fwPumpPowerKw += (flowLpmCwFw * cwHeadM * 9.80665) / (60000 * etaPumpFw * etaMotorFw);
+                cwPumpPowerKwFw = (flowLpmCwFw * cwHeadM * 9.80665) / (60000 * etaPumpFw * etaMotorFw);
             }
 
             fwSys.hydraulics = {
@@ -1661,20 +2148,212 @@
                 pipe_dn: pipeFw.pipe_dn,
                 velocity_mps: pipeFw.velocity_mps,
                 pump_head_m: fwHeadM,
-                pump_power_kw: fwPumpPowerKw
+                pump_power_kw: fwPumpPowerKw,
+                cw_pump_power_kw: cwPumpPowerKwFw
             };
 
             const reqAirKw = airHeatTotal;
 
-            // V24 Phase 2: 若架構變更或尚未初始化，依新架構動態生成選型清單
-            if (!fwSys.sizing || fwSys.sizing.length === 0 || fwSys.sizingArch !== fwArch) {
-                fwSys.sizing = this.generateFwSizing(fwArch, reqAirKw, fwSys.hydraulics.pump_power_kw);
-                fwSys.sizingArch = fwArch;
+            // V24 Phase 2: 若架構變更或尚未初始化，依新架構動態生成選型清單；若加入共用群組則單元端只保留 terminal 終端設備
+            if (fwSys.plantId) {
+                if (!fwSys.sizing || fwSys.sizing.length === 0 || fwSys.sizingArch !== fwArch || fwSys.sizing.some(s => s.role !== 'terminal')) {
+                    const fullSizing = this.generateFwSizing(fwArch, reqAirKw, fwSys.hydraulics.pump_power_kw, { cwPumpKw: fwSys.hydraulics.cw_pump_power_kw });
+                    fwSys.sizing = fullSizing.filter(s => s.role === 'terminal');
+                    fwSys.sizingArch = fwArch;
+                }
+            } else {
+                if (!fwSys.sizing || fwSys.sizing.length === 0 || fwSys.sizingArch !== fwArch || fwSys.sizing.every(s => s.role === 'terminal')) {
+                    fwSys.sizing = this.generateFwSizing(fwArch, reqAirKw, fwSys.hydraulics.pump_power_kw, { cwPumpKw: fwSys.hydraulics.cw_pump_power_kw });
+                    fwSys.sizingArch = fwArch;
+                }
             }
 
             if (typeof SizingEngine !== 'undefined') {
                 SizingEngine.evaluateFwSizing(fwSys, reqAirKw, this.designConditions());
                 fwSys.validation = SizingEngine.validateFw(fwSys, pipeFw.velocity_mps);
+            }
+        },
+
+        // P-3: 共用冷卻系統群組 (Cooling Plant) 橋接、水力計算與設備選型評估
+        bridgePlantModel(plant) {
+            if (!plant || !plant.system) return;
+            if (!Array.isArray(plant.memberIds)) plant.memberIds = [];
+
+            // 建立所有單元快照並清理已被刪除或負載為 0 的成員
+            const allUnitsMap = new Map();
+            (this.state.halls || []).forEach(h => (h.dus || []).forEach(d => allUnitsMap.set(d.id, d)));
+            (this.state.corePods || []).forEach(p => allUnitsMap.set(p.id, p));
+
+            plant.memberIds = plant.memberIds.filter(id => {
+                const u = allUnitsMap.get(id);
+                if (!u) return false;
+                const summ = u.sus ? this.calcDuSummary(u) : this.calcCorePodSummary(u);
+                const load = plant.loop === 'liquid' ? summ.liquidHeatKw : (summ.airHeatKw + (summ.lossKw || 0));
+                return load > 0;
+            });
+
+            if (plant.memberIds.length === 0) {
+                plant.isEmpty = true;
+                return;
+            }
+            plant.isEmpty = false;
+
+            // 計算群組成員負載合計
+            let sumLoadKw = 0;
+            plant.memberIds.forEach(id => {
+                const u = allUnitsMap.get(id);
+                if (u) {
+                    const summ = u.sus ? this.calcDuSummary(u) : this.calcCorePodSummary(u);
+                    const load = plant.loop === 'liquid' ? summ.liquidHeatKw : (summ.airHeatKw + (summ.lossKw || 0));
+                    sumLoadKw += load;
+                }
+            });
+
+            const diversity = (typeof plant.diversityFactor === 'number' && plant.diversityFactor > 0)
+                ? Math.min(1.0, Math.max(0.1, plant.diversityFactor))
+                : 1.0;
+            const requiredKw = sumLoadKw * diversity;
+            const dCond = this.designConditions();
+
+            if (plant.loop === 'liquid') {
+                const cduSys = plant.system;
+                cduSys.designBasis = {
+                    liq_load_kw: requiredKw,
+                    dlc_ratio: 100
+                };
+                const arch = cduSys.architecture || 'dry_cooler_hx';
+                const cduArchDesc = (typeof CoolingArchRegistry !== 'undefined') ? CoolingArchRegistry.get(arch) : null;
+                const hasGlycol = ['dry_cooler_hx', 'dry_cooler_pure', 'dry_cooler_trim', 'cooling_tower_hx'].includes(arch);
+                const cpCdu = hasGlycol ? ((typeof A === 'function') ? A('glycol_cp_kj_kgk') : 3.90) : 4.186;
+                const dT_cdu = Math.max(1.0, (cduSys.fwsReturnC || 55) - (cduSys.fwsSupplyC || 40));
+                const flowLpm_cdu = requiredKw > 0 ? Math.round((requiredKw * 60) / (cpCdu * 1.0 * dT_cdu)) : 0;
+                const pipeCdu = this.selectPipeDnAndVelocity(flowLpm_cdu);
+
+                const baseCduHeadM = cduSys.pumpHeadM ?? ((typeof A === 'function') ? A('cdu_pump_head_default_m') : 28);
+                const extraPheHeadM = (cduSys.hasPhe !== false || cduArchDesc?.flags?.isTrim || cduSys.architecture === 'dry_cooler_trim')
+                    ? ((typeof A === 'function') ? A('phe_secondary_loop_head_m') : 16.0)
+                    : 0.0;
+                const cduHeadM = baseCduHeadM + extraPheHeadM;
+
+                const pumpItemCdu = (cduSys.sizing || []).find(s => s.key === 'cdu_pump');
+                const catEntryCdu = pumpItemCdu ? (pumpItemCdu.catalog || []).find(c => c.model === pumpItemCdu.selectedModel) : null;
+                const etaPumpCdu = catEntryCdu?.pumpEtaDesign ?? catEntryCdu?.pump_eta_design ?? ((typeof A === 'function') ? A('pump_eta_default') : 0.75);
+                const etaMotorCdu = (typeof catEntryCdu?.motor_efficiency_pct === 'number' && catEntryCdu.motor_efficiency_pct > 0)
+                    ? (catEntryCdu.motor_efficiency_pct / 100)
+                    : (catEntryCdu?.motorEtaDesign ?? ((typeof A === 'function') ? A('motor_eta_default') : 0.92));
+                let cduPumpPowerKw = flowLpm_cdu > 0
+                    ? (flowLpm_cdu * cduHeadM * 9.80665) / (60000 * etaPumpCdu * etaMotorCdu)
+                    : 0;
+
+                let cwPumpPowerKwCdu = 0;
+                if ((cduArchDesc?.flags?.needsCwPump || cduArchDesc?.flags?.isWaterChiller || cduSys.architecture === 'water_chiller') && requiredKw > 0) {
+                    const cwDt = (typeof A === 'function') ? A('cw_loop_delta_t_c') : 5.5;
+                    const cwHeadM = (typeof A === 'function') ? A('cw_pump_head_default_m') : 22.0;
+                    const chillerItem = (cduSys.sizing || []).find(s => s.key === 'water_cooled_chiller' || s.key === 'trim_chiller');
+                    const catChiller = chillerItem ? (chillerItem.catalog || []).find(c => c.model === chillerItem.selectedModel) : null;
+                    const copDesign = catChiller?.cop ?? catChiller?.cop_design;
+                    const rejFactor = (typeof copDesign === 'number' && copDesign > 0)
+                        ? (1 + 1 / copDesign)
+                        : ((typeof A === 'function') ? A('tower_heat_rejection_factor') : 1.2);
+                    const qRejCdu = requiredKw * rejFactor;
+                    const flowLpmCw = (qRejCdu * 60) / (4.186 * cwDt);
+                    cwPumpPowerKwCdu = (flowLpmCw * cwHeadM * 9.80665) / (60000 * etaPumpCdu * etaMotorCdu);
+                }
+
+                cduSys.hydraulics = {
+                    flow_lpm: flowLpm_cdu,
+                    pipe_dn: pipeCdu.pipe_dn,
+                    velocity_mps: pipeCdu.velocity_mps,
+                    pump_head_m: cduHeadM,
+                    pump_power_kw: cduPumpPowerKw,
+                    cw_pump_power_kw: cwPumpPowerKwCdu
+                };
+
+                // 群組 sizing 只包含主機房設備 (排除 terminal)
+                if (!cduSys.sizing || cduSys.sizing.length === 0 || cduSys.sizingArch !== arch || cduSys.sizing.some(s => s.role === 'terminal')) {
+                    const fullSizing = this.generateCduSizing(arch, requiredKw, cduSys.hydraulics.pump_power_kw, {
+                        cwPumpKw: cduSys.hydraulics.cw_pump_power_kw,
+                        defaultRedundancy: plant.redundancy || 'N+1'
+                    });
+                    cduSys.sizing = fullSizing.filter(s => s.role !== 'terminal');
+                    cduSys.sizingArch = arch;
+                }
+
+                cduSys.sizing.forEach(s => {
+                    if (!s.redundancy) s.redundancy = plant.redundancy || 'N+1';
+                });
+
+                if (typeof SizingEngine !== 'undefined') {
+                    SizingEngine.evaluateCduSizing(cduSys, requiredKw, dCond, {
+                        trimOperatingPoint: this.trimOperatingPoint.bind(this)
+                    });
+                    cduSys.validation = SizingEngine.validateCdu(cduSys, pipeCdu.velocity_mps, dCond, cduArchDesc);
+                }
+            } else {
+                // Air loop
+                const fwSys = plant.system;
+                fwSys.designBasis = {
+                    air_load_kw: requiredKw
+                };
+                const fwArch = fwSys.architecture || 'air_cooled_chiller';
+                const fwArchDesc = (typeof CoolingArchRegistry !== 'undefined') ? CoolingArchRegistry.get(fwArch) : null;
+                const dT_fw = Math.max(1.0, (fwSys.chwReturnC || 18) - (fwSys.chwSupplyC || 12));
+                const flowLpm_fw = requiredKw > 0 ? Math.round((requiredKw * 60) / (4.186 * 1.0 * dT_fw)) : 0;
+                const pipeFw = this.selectPipeDnAndVelocity(flowLpm_fw);
+
+                const fwHeadM = fwSys.pumpHeadM ?? ((typeof A === 'function') ? A('fw_pump_head_default_m') : 22);
+                const pumpItemFw = (fwSys.sizing || []).find(s => s.key === 'fw_pump');
+                const catEntryFw = pumpItemFw ? (pumpItemFw.catalog || []).find(c => c.model === pumpItemFw.selectedModel) : null;
+                const etaPumpFw = catEntryFw?.pumpEtaDesign ?? catEntryFw?.pump_eta_design ?? ((typeof A === 'function') ? A('pump_eta_default') : 0.75);
+                const etaMotorFw = (typeof catEntryFw?.motor_efficiency_pct === 'number' && catEntryFw.motor_efficiency_pct > 0)
+                    ? (catEntryFw.motor_efficiency_pct / 100)
+                    : (catEntryFw?.motorEtaDesign ?? ((typeof A === 'function') ? A('motor_eta_default') : 0.92));
+                let fwPumpPowerKw = flowLpm_fw > 0
+                    ? (flowLpm_fw * fwHeadM * 9.80665) / (60000 * etaPumpFw * etaMotorFw)
+                    : 0;
+
+                let cwPumpPowerKwFw = 0;
+                if ((fwArchDesc?.flags?.needsCwPump || fwSys.architecture === 'water_cooled_chiller') && requiredKw > 0) {
+                    const cwDt = (typeof A === 'function') ? A('cw_loop_delta_t_c') : 5.5;
+                    const cwHeadM = (typeof A === 'function') ? A('cw_pump_head_default_m') : 22.0;
+                    const chillerItem = (fwSys.sizing || []).find(s => s.key === 'water_cooled_chiller');
+                    const catChiller = chillerItem ? (chillerItem.catalog || []).find(c => c.model === chillerItem.selectedModel) : null;
+                    const copDesign = catChiller?.cop ?? catChiller?.cop_design;
+                    const rejFactor = (typeof copDesign === 'number' && copDesign > 0)
+                        ? (1 + 1 / copDesign)
+                        : ((typeof A === 'function') ? A('tower_heat_rejection_factor') : 1.2);
+                    const qRejFw = requiredKw * rejFactor;
+                    const flowLpmCwFw = (qRejFw * 60) / (4.186 * cwDt);
+                    cwPumpPowerKwFw = (flowLpmCwFw * cwHeadM * 9.80665) / (60000 * etaPumpFw * etaMotorFw);
+                }
+
+                fwSys.hydraulics = {
+                    flow_lpm: flowLpm_fw,
+                    pipe_dn: pipeFw.pipe_dn,
+                    velocity_mps: pipeFw.velocity_mps,
+                    pump_head_m: fwHeadM,
+                    pump_power_kw: fwPumpPowerKw,
+                    cw_pump_power_kw: cwPumpPowerKwFw
+                };
+
+                // 群組 sizing 只包含主機房設備 (排除 terminal)
+                if (!fwSys.sizing || fwSys.sizing.length === 0 || fwSys.sizingArch !== fwArch || fwSys.sizing.some(s => s.role === 'terminal')) {
+                    const fullSizing = this.generateFwSizing(fwArch, requiredKw, fwSys.hydraulics.pump_power_kw, {
+                        cwPumpKw: fwSys.hydraulics.cw_pump_power_kw,
+                        defaultRedundancy: plant.redundancy || 'N+1'
+                    });
+                    fwSys.sizing = fullSizing.filter(s => s.role !== 'terminal');
+                    fwSys.sizingArch = fwArch;
+                }
+
+                fwSys.sizing.forEach(s => {
+                    if (!s.redundancy) s.redundancy = plant.redundancy || 'N+1';
+                });
+
+                if (typeof SizingEngine !== 'undefined') {
+                    SizingEngine.evaluateFwSizing(fwSys, requiredKw, dCond);
+                    fwSys.validation = SizingEngine.validateFw(fwSys, pipeFw.velocity_mps);
+                }
             }
         },
 

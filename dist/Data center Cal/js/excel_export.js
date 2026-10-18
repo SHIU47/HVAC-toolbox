@@ -1,29 +1,111 @@
 /**
- * excel_export.js - Owner-Grade Linked Excel Cooling Calculation Book Export (v33)
+ * excel_export.js - Owner-Grade Linked Excel Cooling Calculation Book Export (v33 Bilingual)
  * Professional HVAC Engineering Calculation Workbook with complete multi-sheet linkages,
  * full subsystem energy balance sheets, ASHRAE 0.4% meteorological criteria,
  * transparent N+1 redundancy verification, and executive KPI scorecards.
+ * Supports bilingual (zh-TW and en) export.
  */
 (function(window) {
     'use strict';
 
+    const _t = (key, params, fallback) => {
+        const i18n = (typeof window !== 'undefined' && window.I18N) ? window.I18N : (typeof I18N !== 'undefined' ? I18N : (typeof global !== 'undefined' && global.I18N ? global.I18N : null));
+        if (i18n && typeof i18n.t === 'function') {
+            const val = i18n.t(key, params);
+            if (val && val !== key) return val;
+        }
+        return fallback !== undefined ? fallback : key;
+    };
+
+    function getRefText(def, targetLang) {
+        if (targetLang !== 'en') return def.ref || 'ASHRAE / NVIDIA DSX / AHRI';
+        if (def.ref_en) return def.ref_en;
+        const r = def.ref || 'ASHRAE / NVIDIA DSX / AHRI';
+        return r
+            .replace(/水冷離心典型值|水冷冰機 EIR-FT 敏感度|氣冷冰機 EER 對外氣溫度敏感度 ~1\.8%\/°C/g, 'Water-cooled centrifugal typical')
+            .replace(/台灣夏季設計常用/g, 'Typical summer design')
+            .replace(/廠商型錄典型/g, 'Manufacturer catalog typical')
+            .replace(/台灣氣候統計近似/g, 'Climate statistical approximation')
+            .replace(/ASHRAE 手冊；影響排放水量/g, 'ASHRAE Handbook; affects blowdown water')
+            .replace(/保守懲罰假設/g, 'Conservative penalty assumption')
+            .replace(/HI 標準中型端吸泵/g, 'HI Standard End-Suction Pump')
+            .replace(/概估值，正式設計需依管路壓損計算（可用本站「水管風管壓損計算」工具）/g, 'Estimated baseline; detailed design per hydraulic calculation')
+            .replace(/公司內規（可調）/g, 'Internal guidelines (adjustable)')
+            .replace(/ASHRAE 典型冰機排熱 = 冷凍噸/g, 'ASHRAE typical chiller heat rejection = RT')
+            .replace(/園區集中冷站合約典型/g, 'District cooling contract typical')
+            .replace(/蒸發量 = Q × 潛熱比 \/ h_fg；h_fg≈2430 kJ\/kg、潛熱比≈0\.84 → 0\.00124 m³\/h\/kW/g, 'Evaporation = Q x latent ratio / h_fg')
+            .replace(/典型離心\/螺旋式冰機油壓與潤滑限制常見下限/g, 'Typical centrifugal/screw chiller oil pressure lower limit')
+            .replace(/液冷白皮書 CDU approach 典型/g, 'Liquid cooling whitepaper CDU approach typical')
+            .replace(/廠商型錄常見趨勢（板式換熱器 UA 固定、驅動溫差縮小），概估非實測曲線/g, 'Manufacturer catalog trend (fixed PHE UA, reduced driving temp diff)')
+            .replace(/本系統 CDU 型錄建置慣例（_cduEntry），非廠商公告基準溫/g, 'System CDU catalog default baseline')
+            .replace(/氣冷冰機廠商型錄常見趨勢，35°C 以上容量衰減，概估值/g, 'Air-cooled chiller catalog trend, derate above 35°C')
+            .replace(/標準額定條件下型錄值，實際設計 WB 偏高時容量下降，概估值/g, 'Standard rating conditions, derates at high WB')
+            .replace(/標準額定條件/g, 'Standard rating conditions')
+            .replace(/台灣主要城市夏季 p99 濕球溫度概估區間/g, 'Summer p99 WB range in key cities')
+            .replace(/極端年 n 年回歸期；關鍵設施常用/g, 'Extreme year n-year return period; critical facilities often use')
+            .replace(/保守推估裕度/g, 'Conservative margin')
+            .replace(/差距過大提示核對測站品質/g, 'Discrepancy flag to verify weather station data')
+            .replace(/乾冷器盤管靜止水在夜間輻射冷卻下可能於外氣 0～3°C 結冰，取 4°C 安全餘裕/g, 'Dry cooler coil water freeze margin 4°C')
+            .replace(/乾冷器／絕熱盤管空氣側溫升典型/g, 'Dry cooler / adiabatic coil air-side temp rise typical')
+            .replace(/外氣乾球高於 \(FWS - approach - 此值\) 時啟動絕熱噴淋預冷（歷史參考值，現行模型改為依需求切換）/g, 'Adiabatic pre-cooling staging trigger')
+            .replace(/標準工況冷卻水/g, 'Standard rating condition condenser water')
+            .replace(/標準工況/g, 'Standard rating conditions')
+            .replace(/殼管\/板式蒸發器典型/g, 'Shell-and-tube / PHE evaporator typical')
+            .replace(/冷凝器 approach/g, 'Condenser approach')
+            .replace(/氣冷冷凝器典型/g, 'Air-cooled condenser typical')
+            .replace(/離心\/螺旋機油壓差與防喘振限制，磁浮機可低至/g, 'Oil pressure differential & surge limit; mag-bearing can be as low as')
+            .replace(/受壓縮機吸氣壓力上限 \(MOP\) 與最小壓比限制，溫水供水最大 COP 增益 1\.35x（R6 P0-C2，原 2\.0）/g, 'Max COP gain 1.35x under compressor suction pressure limit (MOP)')
+            .replace(/壓縮機吸氣壓力 \/ MOP 操作包絡限制/g, 'Compressor suction pressure / MOP operating envelope limit')
+            .replace(/標準氣冷\/水冷冰機冷凝進水上限，型錄通常為 40～45°C/g, 'Standard chiller max entering condenser water temp (40-45°C)')
+            .replace(/高溫型（heat-pump 級）冰機冷凝進水上限/g, 'High-temp heat-pump chiller max entering condenser water temp')
+            .replace(/沿用原程式 5% 概估，待型錄風扇功率資料取代/g, 'Estimated 5% baseline, subject to catalog fan data')
+            .replace(/沿用原程式 3% 概估/g, 'Estimated 3% baseline')
+            .replace(/建議露點上限 15°C \+ 2K 安全餘裕|建議露點上限/g, 'Recommended dew point limit + 2K margin')
+            .replace(/露點 \+ 2K 安全裕度/g, 'Dew point + 2K safety margin')
+            .replace(/典型高溫水冷\/氣冷冰機滿載能效/g, 'Typical high-temp chiller full load efficiency')
+            .replace(/標準工況典型值/g, 'Standard rating condition typical value')
+            .replace(/低溫供水\/高揚程典型保守值/g, 'Low-temp CHW / high-lift typical conservative value')
+            .replace(/變壓器 ~1\.0% \+ 雙轉換 UPS ~2\.5% \+ PDU\/線路 ~0\.5% \+ 照明\/BMS ~0\.5%/g, 'Transformer ~1.0% + Double-Conversion UPS ~2.5% + PDU/Line ~0.5% + Light/BMS ~0.5%')
+            .replace(/變速乾冷器 approach 控制模型/g, 'Variable-speed dry cooler approach control model')
+            .replace(/變速冷卻塔控制/g, 'Variable-speed cooling tower control')
+            .replace(/風扇\/VFD 馬達散熱與盤管迎面風速下限（45% 轉速 ≈ 13\.7% 功率）/g, 'Fan/VFD motor cooling and coil face velocity floor (45% speed ≈ 13.7% power)')
+            .replace(/液冷白皮書|Liquid Cooling Guidelines \/ NVIDIA 歧管 ΔP 控制/g, 'Liquid Cooling Guidelines / NVIDIA manifold dP control')
+            .replace(/通道氣流與 ΔT 封閉控制/g, 'Aisle airflow and delta-T containment control')
+            .replace(/台灣主要城市夏季設計濕球/g, 'Key cities summer design wet bulb')
+            .replace(/[\u4e00-\u9fa5]/g, '')
+            .trim();
+    }
+
     const ExcelExport = {
         async ensureExcelJS() {
             if (typeof window !== 'undefined' && window.ExcelJS) return window.ExcelJS;
-            if (typeof require === 'function') {
+            const req = (typeof require === 'function') ? require : (typeof window !== 'undefined' && typeof window.__nodeRequire === 'function' ? window.__nodeRequire : (typeof global !== 'undefined' && typeof global.__nodeRequire === 'function' ? global.__nodeRequire : null));
+            if (req) {
                 try {
-                    const ej = require('exceljs');
+                    const ej = req('exceljs');
                     if (typeof window !== 'undefined') window.ExcelJS = ej;
                     return ej;
                 } catch (_) {}
                 try {
-                    const path = require('path');
-                    const ej = require(path.resolve(__dirname, 'vendor/exceljs.min.js'));
-                    if (typeof window !== 'undefined') window.ExcelJS = ej;
-                    return ej;
+                    const path = req('path');
+                    const basePath = typeof __dirname !== 'undefined' ? __dirname : (typeof process !== 'undefined' ? process.cwd() : '.');
+                    const candidates = [
+                        path.resolve(basePath, 'vendor/exceljs.min.js'),
+                        path.resolve(basePath, 'public/Data center Cal/js/vendor/exceljs.min.js'),
+                        path.resolve(basePath, '../vendor/exceljs.min.js'),
+                        path.resolve(process.cwd ? process.cwd() : '.', 'public/Data center Cal/js/vendor/exceljs.min.js')
+                    ];
+                    for (const cand of candidates) {
+                        try {
+                            const ej = req(cand);
+                            if (typeof window !== 'undefined') window.ExcelJS = ej;
+                            return ej;
+                        } catch (_) {}
+                    }
                 } catch (_) {}
             }
             return new Promise((resolve, reject) => {
+                if (typeof document === 'undefined') return reject(new Error('Document is undefined in Node without require'));
                 const script = document.createElement('script');
                 script.src = 'js/vendor/exceljs.min.js';
                 script.onload = () => resolve(window.ExcelJS);
@@ -38,11 +120,16 @@
             });
         },
 
-        async generate() {
-            try {
-                const ExcelJS = await this.ensureExcelJS();
-                if (!ExcelJS) throw new Error('ExcelJS 載入失敗');
+        buildWorkbook(exportLang) {
+            const ExcelJS = (typeof window !== 'undefined' && window.ExcelJS) ? window.ExcelJS : ((typeof require === 'function') ? require('exceljs') : null);
+            if (!ExcelJS) throw new Error('ExcelJS 載入失敗');
 
+            const i18n = (typeof window !== 'undefined' && window.I18N) ? window.I18N : (typeof I18N !== 'undefined' ? I18N : (typeof global !== 'undefined' && global.I18N ? global.I18N : null));
+            const prevLang = i18n ? i18n.lang : 'zh-TW';
+            const targetLang = exportLang || (typeof document !== 'undefined' && document.getElementById('excelExportLang')?.value) || prevLang;
+            if (i18n) i18n.lang = targetLang;
+
+            try {
                 const appStore = (typeof window !== 'undefined' && window.AppStore) ? window.AppStore : (typeof AppStore !== 'undefined' ? AppStore : {});
                 const state = appStore.state || {};
                 const res = state.results || {};
@@ -60,7 +147,7 @@
                 // ─────────────────────────────────────────────────────────────
                 // 全站統一樣式規範 (Corporate Engineering Design System)
                 // ─────────────────────────────────────────────────────────────
-                const FONT_FAMILY = 'Microsoft JhengHei';
+                const FONT_FAMILY = (targetLang === 'en') ? 'Segoe UI' : 'Microsoft JhengHei';
 
                 const fontTitle = { name: FONT_FAMILY, size: 15, bold: true, color: { argb: 'FFFFFFFF' } };
                 const fontSubtitle = { name: FONT_FAMILY, size: 9.5, italic: true, color: { argb: 'FFCBD5E1' } };
@@ -163,7 +250,7 @@
                     }
                 };
 
-                const genDateStr = new Date().toLocaleString('zh-TW', {
+                const genDateStr = new Date().toLocaleString(targetLang === 'en' ? 'en-US' : 'zh-TW', {
                     year: 'numeric', month: '2-digit', day: '2-digit',
                     hour: '2-digit', minute: '2-digit', hour12: false
                 });
@@ -171,7 +258,7 @@
                 // ═══════════════════════════════════════════════════════════════
                 // Sheet 1: 封面與專案資訊 (Executive Cover & Project Charter)
                 // ═══════════════════════════════════════════════════════════════
-                const s1 = wb.addWorksheet('1.封面與專案資訊', { views: [{ showGridLines: true }] });
+                const s1 = wb.addWorksheet(_t('xls.s1Name', {}, '1.封面與專案資訊'), { views: [{ showGridLines: true }] });
                 s1.properties.tabColor = { argb: 'FF1E3A8A' };
                 s1.pageSetup = { orientation: 'landscape', fitToPage: true, fitToWidth: 1, fitToHeight: 0 };
                 s1.columns = [{ width: 28 }, { width: 38 }, { width: 26 }, { width: 34 }];
@@ -179,7 +266,7 @@
                 // Banner Title (A1:D2)
                 s1.mergeCells('A1:D1');
                 const t1 = s1.getCell('A1');
-                t1.value = '專業 AI 高密度資料中心空調動力能效計算書';
+                t1.value = _t('xls.title', {}, '專業 AI 高密度資料中心空調動力能效計算書');
                 t1.font = fontTitle;
                 t1.fill = fillNavy;
                 t1.alignment = { vertical: 'middle', horizontal: 'center' };
@@ -187,7 +274,7 @@
 
                 s1.mergeCells('A2:D2');
                 const t2 = s1.getCell('A2');
-                t2.value = 'Owner-Grade Engineering Calculation & Lifecycle PUE Verification Book (ASHRAE TC 9.9 / NVIDIA DSX 規範)';
+                t2.value = _t('xls.subtitle', {}, 'Owner-Grade Engineering Calculation & Lifecycle PUE Verification Book (ASHRAE TC 9.9 / NVIDIA DSX 規範)');
                 t2.font = fontSubtitle;
                 t2.fill = fillNavy;
                 t2.alignment = { vertical: 'middle', horizontal: 'center' };
@@ -197,11 +284,37 @@
                 s1.getRow(3).height = 10;
 
                 // Section 1: 專案基本工程資訊
-                styleSectionRow(s1, 4, 4, '【一、專案工程基本資訊 / Project Engineering Metadata】');
-                s1.addRow(['專案名稱 (Project Name)', 'AI 高密度液冷算力中心示範案場', '報告產製時間 (Date)', genDateStr]);
-                s1.addRow(['氣象測站 (Weather Station)', `${site.selectedCity || '桃園 (Taoyuan Pilot)'} (測站代碼: ${site.stationId || '467050'})`, '計算版本 (Engine Version)', 'v33 Final (公式連動與動力學版)']);
-                s1.addRow(['國家 / 地區 (Location)', `${site.country || 'Taiwan'}`, '測站座標 / 海拔', `${site.lat || 25.0}°N / ${site.lon || 121.2}°E / 海拔 ${site.elev || 35} m`]);
-                s1.addRow(['分析週期 (Simulation Scope)', '8,760 小時全年動態負載與逐時動力學', '評估規範 (Standards)', 'ASHRAE TC 9.9 / NVIDIA DSX / AHRI 550/590']);
+                styleSectionRow(s1, 4, 4, _t('xls.sec1', {}, '【一、專案工程基本資訊 / Project Engineering Metadata】'));
+                s1.addRow([
+                    _t('xls.projectName', {}, '專案名稱 (Project Name)'),
+                    state.project_name || _t('xls.demoProject', {}, 'AI 高密度液冷算力中心示範案場'),
+                    _t('xls.reportDate', {}, '報告產製時間 (Date)'),
+                    genDateStr
+                ]);
+                let stCity = site.selectedCity || (targetLang === 'en' ? 'Taoyuan Pilot' : '桃園 (Taoyuan Pilot)');
+                if (targetLang === 'en' && site.selectedCity) {
+                    const m = site.selectedCity.match(/\(([^)]+)\)/);
+                    if (m) stCity = m[1];
+                }
+                const stCodeText = _t('xls.stationCode', { id: site.stationId || '467050' }, ` (測站代碼: ${site.stationId || '467050'})`);
+                s1.addRow([
+                    _t('xls.station', {}, '氣象測站 (Weather Station)'),
+                    `${stCity}${stCodeText}`,
+                    _t('xls.engineVer', {}, '計算版本 (Engine Version)'),
+                    _t('xls.engineVerVal', {}, 'v33 Final (公式連動與動力學版)')
+                ]);
+                s1.addRow([
+                    _t('xls.country', {}, '國家 / 地區 (Location)'),
+                    `${site.country || 'Taiwan'}`,
+                    _t('xls.coordsElev', {}, '測站座標 / 海拔'),
+                    _t('xls.coordsElevVal', { lat: site.lat || 25.0, lon: site.lon || 121.2, elev: site.elev || 35 }, `${site.lat || 25.0}°N / ${site.lon || 121.2}°E / 海拔 ${site.elev || 35} m`)
+                ]);
+                s1.addRow([
+                    _t('xls.simScope', {}, '分析週期 (Simulation Scope)'),
+                    _t('xls.simScopeVal', {}, '8,760 小時全年動態負載與逐時動力學'),
+                    _t('xls.standards', {}, '評估規範 (Standards)'),
+                    _t('xls.standardsVal', {}, 'ASHRAE TC 9.9 / NVIDIA DSX / AHRI 550/590')
+                ]);
 
                 for (let r = 5; r <= 8; r++) {
                     const row = s1.getRow(r);
@@ -216,11 +329,31 @@
                 s1.getRow(9).height = 10;
 
                 // Section 2: 全廠核心指標總覽 (Executive Scorecard)
-                styleSectionRow(s1, 10, 4, '【二、全廠核心指標總覽 / Executive KPI Scorecard】');
-                s1.addRow(['全廠設計 PUE (Annual Avg)', overall.annualPue ?? 0, '全廠 IT 總負載容量', `${((overall.totalItKw || 0) / 1000).toFixed(2)} MW (${(overall.totalItKw || 0).toLocaleString()} kW)`]);
-                s1.addRow(['全廠尖峰 PUE (Worst Hour)', overall.peakPue ?? '（未計算）', '全廠年耗水指標 WUE', `${overall.annualWue ?? 0} L/kWh (乾冷器閉路冷卻零水耗)`]);
-                s1.addRow(['局部冷卻 pPUE (Cooling pPUE)', overall.annualP_Pue ?? 0, '全廠年總耗電量', `${(overall.annualTotalMwh || 0).toLocaleString()} MWh/yr`]);
-                s1.addRow(['全直冷時數 (Free Cooling)', `${(res.fcPotential?.freeHours ?? 0).toLocaleString()} 小時 (${res.fcPotential?.freeHoursPct ?? 0}%)`, '節能模式覆蓋率 (Mode 1+2)', `${((res.fcPotential?.freeHoursPct || 0) + (res.fcPotential?.trimHoursPct || 0)).toFixed(1)}%`]);
+                styleSectionRow(s1, 10, 4, _t('xls.sec2', {}, '【二、全廠核心指標總覽 / Executive KPI Scorecard】'));
+                s1.addRow([
+                    _t('xls.annualPue', {}, '全廠設計 PUE (Annual Avg)'),
+                    overall.annualPue ?? 0,
+                    _t('xls.itCapacity', {}, '全廠 IT 總負載容量'),
+                    `${((overall.totalItKw || 0) / 1000).toFixed(2)} MW (${(overall.totalItKw || 0).toLocaleString()} kW)`
+                ]);
+                s1.addRow([
+                    _t('xls.peakPue', {}, '全廠尖峰 PUE (Worst Hour)'),
+                    overall.peakPue ?? _t('xls.notCalculated', {}, '（未計算）'),
+                    _t('xls.annualWue', {}, '全廠年耗水指標 WUE'),
+                    _t('xls.wueDryCoolerZero', { wue: overall.annualWue ?? 0 }, `${overall.annualWue ?? 0} L/kWh (乾冷器閉路冷卻零水耗)`)
+                ]);
+                s1.addRow([
+                    _t('xls.coolingPpue', {}, '局部冷卻 pPUE (Cooling pPUE)'),
+                    overall.annualP_Pue ?? 0,
+                    _t('xls.annualEnergy', {}, '全廠年總耗電量'),
+                    `${(overall.annualTotalMwh || 0).toLocaleString()} MWh/yr`
+                ]);
+                s1.addRow([
+                    _t('xls.fcHours', {}, '全直冷時數 (Free Cooling)'),
+                    _t('xls.hoursUnit', { h: (res.fcPotential?.freeHours ?? 0).toLocaleString(), pct: res.fcPotential?.freeHoursPct ?? 0 }, `${(res.fcPotential?.freeHours ?? 0).toLocaleString()} 小時 (${res.fcPotential?.freeHoursPct ?? 0}%)`),
+                    _t('xls.mode12Coverage', {}, '節能模式覆蓋率 (Mode 1+2)'),
+                    `${((res.fcPotential?.freeHoursPct || 0) + (res.fcPotential?.trimHoursPct || 0)).toFixed(1)}%`
+                ]);
 
                 for (let r = 11; r <= 14; r++) {
                     const row = s1.getRow(r);
@@ -243,11 +376,31 @@
                 s1.getRow(15).height = 10;
 
                 // Section 3: 空調系統架構與運轉基準
-                styleSectionRow(s1, 16, 4, '【三、空調與冷卻系統工程基準 / Technical Baseline Summary】');
-                s1.addRow(['液冷散熱架構 (Liquid Cooling)', '晶片直接液冷 (DLC) + 集中式二次水力 CDU 系統', '設計供回水溫差', '設計供水 40°C ~ 45°C / 回水 55°C ~ 60°C']);
-                s1.addRow(['氣冷補冷架構 (Secondary Air)', '高效 EC 風牆機 (Fanwall) / CRAH 系統 + 冰水盤管', '設備備援等級', 'N+1 冗餘設計 (單元停機具備在線維護能力)']);
-                s1.addRow(['散熱排熱設備 (Heat Rejection)', '閉式乾冷器 (Dry Cooler) + 冰水主機補冷 (Trim Chiller)', '乙二醇防凍保護', '30% 丙二醇水溶液 (防凍保護溫度 -13.5°C)']);
-                s1.addRow(['自由冷卻控制邏輯 (Economizer)', 'Mode 1 (DB ≤ 門檻) 全直冷；Mode 2 預冷+補冷；Mode 3 全製冷', '冷卻水水質控制', '封閉式水迴路 (電導度 < 50 μS/cm，防腐防垢)']);
+                styleSectionRow(s1, 16, 4, _t('xls.sec3', {}, '【三、空調與冷卻系統工程基準 / Technical Baseline Summary】'));
+                s1.addRow([
+                    _t('xls.liquidArch', {}, '液冷散熱架構 (Liquid Cooling)'),
+                    _t('xls.liquidArchVal', {}, '晶片直接液冷 (DLC) + 集中式二次水力 CDU 系統'),
+                    _t('xls.designDt', {}, '設計供回水溫差'),
+                    _t('xls.designDtVal', {}, '設計供水 40°C ~ 45°C / 回水 55°C ~ 60°C')
+                ]);
+                s1.addRow([
+                    _t('xls.airArch', {}, '氣冷補冷架構 (Secondary Air)'),
+                    _t('xls.airArchVal', {}, '高效 EC 風牆機 (Fanwall) / CRAH 系統 + 冰水盤管'),
+                    _t('xls.redundancyLvl', {}, '設備備援等級'),
+                    _t('xls.redundancyVal', {}, 'N+1 冗餘設計 (單元停機具備在線維護能力)')
+                ]);
+                s1.addRow([
+                    _t('xls.heatRej', {}, '散熱排熱設備 (Heat Rejection)'),
+                    _t('xls.heatRejVal', {}, '閉式乾冷器 (Dry Cooler) + 冰水主機補冷 (Trim Chiller)'),
+                    _t('xls.glycolProt', {}, '乙二醇防凍保護'),
+                    _t('xls.glycolVal', {}, '30% 丙二醇水溶液 (防凍保護溫度 -13.5°C)')
+                ]);
+                s1.addRow([
+                    _t('xls.fcControl', {}, '自由冷卻控制邏輯 (Economizer)'),
+                    _t('xls.fcControlVal', {}, 'Mode 1 (DB ≤ 門檻) 全直冷；Mode 2 預冷+補冷；Mode 3 全製冷'),
+                    _t('xls.waterQuality', {}, '冷卻水水質控制'),
+                    _t('xls.waterQualityVal', {}, '封閉式水迴路 (電導度 < 50 μS/cm，防腐防垢)')
+                ]);
 
                 for (let r = 17; r <= 20; r++) {
                     const row = s1.getRow(r);
@@ -262,14 +415,14 @@
                 if ((overall.capacityDeficitHours || 0) > 0) {
                     s1.addRow([]);
                     const warnHeaderRowIdx = s1.rowCount + 1;
-                    styleSectionRow(s1, warnHeaderRowIdx, 4, '⚠ 設備容量不足警示 (Capacity Deficit Warning)');
+                    styleSectionRow(s1, warnHeaderRowIdx, 4, _t('xls.deficitWarnSec', {}, '⚠ 設備容量不足警示 (Capacity Deficit Warning)'));
                     s1.getCell(warnHeaderRowIdx, 1).fill = fillDanger;
                     s1.getCell(warnHeaderRowIdx, 1).font = fontDanger;
 
                     const warnRow = s1.addRow([
-                        '全年容量不足偵測時數',
-                        `${overall.capacityDeficitHours.toLocaleString()} 小時`,
-                        '最大尖峰容量缺口',
+                        _t('xls.deficitHours', {}, '全年容量不足偵測時數'),
+                        `${overall.capacityDeficitHours.toLocaleString()} ${targetLang === 'en' ? 'hrs' : '小時'}`,
+                        _t('xls.deficitPeakKw', {}, '最大尖峰容量缺口'),
                         `${(overall.maxCapacityDeficitKw || 0).toLocaleString()} kW`
                     ]);
                     warnRow.height = 22;
@@ -278,7 +431,7 @@
 
                     const noteRowIdx = s1.rowCount + 1;
                     const noteRow = s1.addRow([
-                        '本報告 PUE 結果可能被低估，不應直接用於設備採購比較或最終 PUE 認證，請回到 Step 4 增加設備台數或選用更大容量型號。', '', '', ''
+                        _t('xls.deficitNotice', {}, '本報告 PUE 結果可能被低估，不應直接用於設備採購比較或最終 PUE 認證，請回到 Step 4 增加設備台數或選用更大容量型號。'), '', '', ''
                     ]);
                     noteRow.height = 22;
                     s1.mergeCells(`A${noteRowIdx}:D${noteRowIdx}`);
@@ -289,10 +442,10 @@
 
                 s1.addRow([]);
                 const signSecIdx = s1.rowCount + 1;
-                styleSectionRow(s1, signSecIdx, 4, '【四、工程審核與簽章驗證 / Engineering Verification & Approvals】');
+                styleSectionRow(s1, signSecIdx, 4, _t('xls.sec4', {}, '【四、工程審核與簽章驗證 / Engineering Verification & Approvals】'));
 
-                const signRow1 = s1.addRow(['設計工程師 (Designed By)', '', '主持技師 (Approved By / PE)', '']);
-                const signRow2 = s1.addRow(['審核工程師 (Reviewed By)', '', '簽證審核日期 (Date)', '']);
+                const signRow1 = s1.addRow([_t('xls.designedBy', {}, '設計工程師 (Designed By)'), '', _t('xls.approvedBy', {}, '主持技師 (Approved By / PE)'), '']);
+                const signRow2 = s1.addRow([_t('xls.reviewedBy', {}, '審核工程師 (Reviewed By)'), '', _t('xls.signedDate', {}, '簽證審核日期 (Date)'), '']);
                 [signRow1, signRow2].forEach(r => {
                     r.height = 26;
                     applyRowStyles(r, 4, fontNormal, borderThin, { vertical: 'middle', horizontal: 'left', indent: 1 });
@@ -302,11 +455,11 @@
 
                 s1.addRow([]);
                 const discSecIdx = s1.rowCount + 1;
-                styleSectionRow(s1, discSecIdx, 4, '【五、聲明事項 / Engineering Notes & Disclaimer】');
+                styleSectionRow(s1, discSecIdx, 4, _t('xls.sec5', {}, '【五、聲明事項 / Engineering Notes & Disclaimer】'));
                 const discNotes = [
-                    '1. 本計算書由 Antigravity PUE 動力學計算引擎產出，採用 EnergyPlus 氣象資料與 AHRI 雙二次冰機模型。',
-                    '2. 第 4、5、6、7、8、9 頁已建立完整公式連動，供業主與機電顧問獨立覆核與敏感度試算。',
-                    '3. 實際工程施工請依合格專業技師 (PE) 簽證之最終施工圖說與水力計算書為準。'
+                    _t('xls.note1', {}, '1. 本計算書由 Antigravity PUE 動力學計算引擎產出，採用 EnergyPlus 氣象資料與 AHRI 雙二次冰機模型。'),
+                    _t('xls.note2', {}, '2. 第 4、5、6、7、8、9 頁已建立完整公式連動，供業主與機電顧問獨立覆核與敏感度試算。'),
+                    _t('xls.note3', {}, '3. 實際工程施工請依合格專業技師 (PE) 簽證之最終施工圖說與水力計算書為準。')
                 ];
                 discNotes.forEach(txt => {
                     const row = s1.addRow([txt, '', '', '']);
@@ -320,7 +473,7 @@
                 // ═══════════════════════════════════════════════════════════════
                 // Sheet 2: 設計基準與假設 (Design Basis & Assumptions)
                 // ═══════════════════════════════════════════════════════════════
-                const s2 = wb.addWorksheet('2.設計基準與假設', { views: [{ state: 'frozen', ySplit: 1 }] });
+                const s2 = wb.addWorksheet(_t('xls.s2Name', {}, '2.設計基準與假設'), { views: [{ state: 'frozen', ySplit: 1 }] });
                 s2.properties.tabColor = { argb: 'FF334155' };
                 s2.pageSetup = { orientation: 'landscape', fitToPage: true, fitToWidth: 1, fitToHeight: 0 };
                 s2.columns = [
@@ -333,7 +486,15 @@
                     { width: 46 }  // G: 工程依據與參考標準
                 ];
 
-                s2.addRow(['參數代碼 (Key)', '工程參數說明 (Description)', '目前設定值 (Current)', '單位 (Unit)', '預設基準值 (Default)', '設定狀態 (Status)', '工程依據與參考標準 (Reference Standard)']);
+                s2.addRow([
+                    _t('xls.s2HdrKey', {}, '參數代碼 (Key)'),
+                    _t('xls.s2HdrDesc', {}, '工程參數說明 (Description)'),
+                    _t('xls.s2HdrCur', {}, '目前設定值 (Current)'),
+                    _t('xls.s2HdrUnit', {}, '單位 (Unit)'),
+                    _t('xls.s2HdrDef', {}, '預設基準值 (Default)'),
+                    _t('xls.s2HdrStatus', {}, '設定狀態 (Status)'),
+                    _t('xls.s2HdrRef', {}, '工程依據與參考標準 (Reference Standard)')
+                ]);
                 styleHeaderRow(s2.getRow(1), 7, fillNavy);
                 s2.autoFilter = { from: 'A1', to: 'G1' };
 
@@ -343,27 +504,27 @@
                 // 6大工程專業分類配置
                 const ASSUMP_CATEGORIES = [
                     {
-                        title: '【一、電氣系統與配電損耗基準 (Electrical & Power Distribution)】',
+                        title: _t('xls.cat1', {}, '【一、電氣系統與配電損耗基準 (Electrical & Power Distribution)】'),
                         match: k => k.includes('electrical') || k.includes('loss') || k.includes('ups') || k.includes('power')
                     },
                     {
-                        title: '【二、液冷 CDU 系統設計參數 (Liquid Cooling CDU System)】',
+                        title: _t('xls.cat2', {}, '【二、液冷 CDU 系統設計參數 (Liquid Cooling CDU System)】'),
                         match: k => k.includes('cdu') || k.includes('chip') || k.includes('fws') || k.includes('tcs') || k.includes('atd') || k.includes('flow_lpm')
                     },
                     {
-                        title: '【三、氣冷 CRAH / 風牆機設計參數 (Air Cooling CRAH / Fanwall System)】',
+                        title: _t('xls.cat3', {}, '【三、氣冷 CRAH / 風牆機設計參數 (Air Cooling CRAH / Fanwall System)】'),
                         match: k => k.includes('crah') || k.includes('fw_') || k.includes('fanwall') || k.includes('air_chiller') || k.includes('rdhx') || k.includes('cfm')
                     },
                     {
-                        title: '【四、散熱排熱與自由冷卻基準 (Heat Rejection & Economizer)】',
+                        title: _t('xls.cat4', {}, '【四、散熱排熱與自由冷卻基準 (Heat Rejection & Economizer)】'),
                         match: k => k.includes('dry_cooler') || k.includes('tower') || k.includes('ct_') || k.includes('hx_') || k.includes('mode1') || k.includes('mode2') || k.includes('adiabatic') || k.includes('heat_rej')
                     },
                     {
-                        title: '【五、冰水主機與機械製冷參數 (Chiller Plant System)】',
+                        title: _t('xls.cat5', {}, '【五、冰水主機與機械製冷參數 (Chiller Plant System)】'),
                         match: k => k.includes('chiller') || k.includes('cop') || k.includes('cewt') || k.includes('lift') || k.includes('evap') || k.includes('cond')
                     },
                     {
-                        title: '【六、工程安全、水力與其他基準 (Engineering Safety & General)】',
+                        title: _t('xls.cat6', {}, '【六、工程安全、水力與其他基準 (Engineering Safety & General)】'),
                         match: () => true
                     }
                 ];
@@ -385,15 +546,16 @@
                         const def = defaultAssump[k] || {};
                         const isOverridden = overrides[k] !== undefined && overrides[k] !== null;
                         const curVal = isOverridden ? overrides[k] : def.val;
+                        const label = (targetLang === 'en' && def.label_en) ? def.label_en : (def.label || k);
 
                         const r = s2.addRow([
                             k,
-                            def.label || k,
+                            label,
                             curVal,
                             def.unit || '-',
                             def.val,
-                            isOverridden ? '✏️ 專案覆寫' : '標準設定',
-                            def.ref || 'ASHRAE / NVIDIA DSX / AHRI'
+                            isOverridden ? _t('xls.overridden', {}, '✏️ 專案覆寫') : _t('xls.standard', {}, '標準設定'),
+                            getRefText(def, targetLang)
                         ]);
                         r.height = 22;
 
@@ -429,7 +591,7 @@
                 // ═══════════════════════════════════════════════════════════════
                 // Sheet 3: 氣象資料與自由冷卻分析 (Weather & Free Cooling Analysis)
                 // ═══════════════════════════════════════════════════════════════
-                const s3 = wb.addWorksheet('3.氣象與自由冷卻分析', { views: [{ state: 'frozen', ySplit: 7 }] });
+                const s3 = wb.addWorksheet(_t('xls.s3Name', {}, '3.氣象與自由冷卻分析'), { views: [{ state: 'frozen', ySplit: 7 }] });
                 s3.properties.tabColor = { argb: 'FF0F766E' };
                 s3.pageSetup = { orientation: 'landscape', fitToPage: true, fitToWidth: 1, fitToHeight: 0 };
                 s3.columns = [
@@ -443,24 +605,24 @@
                 ];
 
                 // Table 1: ASHRAE 0.4% 極端設計工況卡片
-                styleSectionRow(s3, 1, 7, '【一、氣象測站極端設計工況與基本資訊 / ASHRAE 0.4% Design Conditions】');
+                styleSectionRow(s3, 1, 7, _t('xls.s3Sec1', {}, '【一、氣象測站極端設計工況與基本資訊 / ASHRAE 0.4% Design Conditions】'));
                 const dc = (typeof appStore.designConditions === 'function') ? appStore.designConditions() : (site.designConditions || {});
 
                 const wMeta1 = s3.addRow([
-                    '氣象測站名稱',
-                    `${site.selectedCity || '桃園 (Taoyuan Pilot)'} (ID: ${site.stationId || '467050'})`,
-                    'ASHRAE 0.4% 乾球設計極值',
+                    _t('xls.stationName', {}, '氣象測站名稱'),
+                    `${stCity} (ID: ${site.stationId || '467050'})`,
+                    _t('xls.ashraeDb004', {}, 'ASHRAE 0.4% 乾球設計極值'),
                     Number(dc.db004 ?? site.designConditions?.db004 ?? 34.8),
-                    'ASHRAE 0.4% 濕球設計極值',
+                    _t('xls.ashraeWb004', {}, 'ASHRAE 0.4% 濕球設計極值'),
                     Number(dc.wb004 ?? site.designConditions?.wb004 ?? 28.2),
                     ''
                 ]);
                 const wMeta2 = s3.addRow([
-                    '測站地理位置',
-                    `${site.lat || 25.0}°N / ${site.lon || 121.2}°E / 海拔 ${site.elev || 35} m`,
-                    '全年最高乾球溫度 (Extreme Max)',
+                    _t('xls.geoLoc', {}, '測站地理位置'),
+                    `${site.lat || 25.0}°N / ${site.lon || 121.2}°E / ${targetLang === 'en' ? 'Elev' : '海拔'} ${site.elev || 35} m`,
+                    _t('xls.extremeMaxDb', {}, '全年最高乾球溫度 (Extreme Max)'),
                     Number(dc.extremeMaxDb ?? site.designConditions?.extremeMaxDb ?? 36.5),
-                    '最低氣溫 / 防凍警戒 (Min DB)',
+                    _t('xls.extremeMinDb', {}, '最低氣溫 / 防凍警戒 (Min DB)'),
                     Number(dc.extremeMinDb ?? site.designConditions?.extremeMinDb ?? 7.2),
                     ''
                 ]);
@@ -481,8 +643,16 @@
                 s3.getRow(4).height = 10;
 
                 // Table 2: 12-Month Detailed Weather Profile
-                styleSectionRow(s3, 5, 7, '【二、12 個月氣候特徵與月度逐時均溫 (Monthly Climate Profile)】');
-                const s3Hdr = s3.addRow(['月份 (Month)', '乾球均溫 (°C)', '乾球極大值 (°C)', '乾球極小值 (°C)', '濕球均溫 (°C)', '露點均溫 (°C)', '平均相對濕度 (%)']);
+                styleSectionRow(s3, 5, 7, _t('xls.s3Sec2', {}, '【二、12 個月氣候特徵與月度逐時均溫 (Monthly Climate Profile)】'));
+                const s3Hdr = s3.addRow([
+                    _t('xls.s3HdrMonth', {}, '月份 (Month)'),
+                    _t('xls.s3HdrAvgDb', {}, '乾球均溫 (°C)'),
+                    _t('xls.s3HdrMaxDb', {}, '乾球極大值 (°C)'),
+                    _t('xls.s3HdrMinDb', {}, '乾球極小值 (°C)'),
+                    _t('xls.s3HdrAvgWb', {}, '濕球均溫 (°C)'),
+                    _t('xls.s3HdrAvgDp', {}, '露點均溫 (°C)'),
+                    _t('xls.s3HdrAvgRh', {}, '平均相對濕度 (%)')
+                ]);
                 styleHeaderRow(s3Hdr, 7, fillTeal);
 
                 const mStats = site.monthlyStats || [];
@@ -490,7 +660,7 @@
                 for (let idx = 0; idx < 12; idx++) {
                     const m = mStats[idx] || {};
                     const r = s3.addRow([
-                        `${idx + 1} 月`,
+                        _t('xls.monthN', { m: idx + 1 }, `${idx + 1} 月`),
                         m.avgDB ?? 25.0,
                         m.maxDB ?? 33.0,
                         m.minDB ?? 15.0,
@@ -510,7 +680,7 @@
 
                 // Table 2 Annual Summary Row
                 const s3TotRow = s3.addRow([
-                    '全年統計 / 極值 (Annual Summary)',
+                    _t('xls.annualSummary', {}, '全年統計 / 極值 (Annual Summary)'),
                     { formula: `AVERAGE(B${monthStartRow}:B${monthEndRow})` },
                     { formula: `MAX(C${monthStartRow}:C${monthEndRow})` },
                     { formula: `MIN(D${monthStartRow}:D${monthEndRow})` },
@@ -528,9 +698,16 @@
 
                 s3.addRow([]);
                 const fcSecRowIdx = s3.rowCount + 1;
-                styleSectionRow(s3, fcSecRowIdx, 7, '【三、自由冷卻氣候門檻與可用時數統計 (Economizer Bin Analysis)】');
+                styleSectionRow(s3, fcSecRowIdx, 7, _t('xls.s3Sec3', {}, '【三、自由冷卻氣候門檻與可用時數統計 (Economizer Bin Analysis)】'));
 
-                const fcHdr = s3.addRow(['運轉模式分級', '室外乾球溫度門檻 (°C)', '發生時數 (hrs)', '佔全年百分比 (%)', '冰機運轉狀態說明', '', '']);
+                const fcHdr = s3.addRow([
+                    _t('xls.fcHdrMode', {}, '運轉模式分級'),
+                    _t('xls.fcHdrThreshold', {}, '室外乾球溫度門檻 (°C)'),
+                    _t('xls.fcHdrHours', {}, '發生時數 (hrs)'),
+                    _t('xls.fcHdrPct', {}, '佔全年百分比 (%)'),
+                    _t('xls.fcHdrDesc', {}, '冰機運轉狀態說明'),
+                    '', ''
+                ]);
                 const fcHdrIdx = s3.rowCount;
                 s3.mergeCells(`E${fcHdrIdx}:G${fcHdrIdx}`);
                 styleHeaderRow(fcHdr, 7, fillNavy);
@@ -543,10 +720,10 @@
                 const mode2DbMax = Number.isFinite(dom?.thresholds?.mech) ? dom.thresholds.mech : (overrides.nvidia_dsx_mode2_db_max_c || 48.0);
 
                 const fcRows = [
-                    ['Mode 1 (100% 全自由冷卻)', `DB ≤ ${mode1DbMax}°C`, fc.freeHours, `${fc.freeHoursPct}%`, '乾冷器完全直冷散熱，冰水主機 100% 停機', '', ''],
-                    ['Mode 2 (部分輔助冷卻 Trim)', `${mode1DbMax}°C ~ ${mode2DbMax}°C`, fc.trimHours, `${fc.trimHoursPct}%`, '乾冷器預冷 + 冰水主機補足溫差，大幅降低壓縮機能耗', '', ''],
-                    ['Mode 3 (全額機械製冷)', `DB > ${mode2DbMax}°C`, fc.mechanicalHours, `${fc.mechanicalHoursPct}%`, '室外氣溫過高，冰水主機全載機械壓縮製冷', '', ''],
-                    ['全年累計自由冷卻可用 (Mode 1+2)', `DB ≤ ${mode2DbMax}°C`, fc.freeHours + fc.trimHours, `${((fc.freeHoursPct || 0) + (fc.trimHoursPct || 0)).toFixed(1)}%`, '具備節能效益之氣候總時數，優於業界常規標準', '', '']
+                    [_t('xls.mode1Name', {}, 'Mode 1 (100% 全自由冷卻)'), `DB ≤ ${mode1DbMax}°C`, fc.freeHours, `${fc.freeHoursPct}%`, _t('xls.mode1Desc', {}, '乾冷器完全直冷散熱，冰水主機 100% 停機'), '', ''],
+                    [_t('xls.mode2Name', {}, 'Mode 2 (部分輔助冷卻 Trim)'), `${mode1DbMax}°C ~ ${mode2DbMax}°C`, fc.trimHours, `${fc.trimHoursPct}%`, _t('xls.mode2Desc', {}, '乾冷器預冷 + 冰水主機補足溫差，大幅降低壓縮機能耗'), '', ''],
+                    [_t('xls.mode3Name', {}, 'Mode 3 (全額機械製冷)'), `DB > ${mode2DbMax}°C`, fc.mechanicalHours, `${fc.mechanicalHoursPct}%`, _t('xls.mode3Desc', {}, '室外氣溫過高，冰水主機全載機械壓縮製冷'), '', ''],
+                    [_t('xls.mode12Name', {}, '全年累計自由冷卻可用 (Mode 1+2)'), `DB ≤ ${mode2DbMax}°C`, fc.freeHours + fc.trimHours, `${((fc.freeHoursPct || 0) + (fc.trimHoursPct || 0)).toFixed(1)}%`, _t('xls.mode12Desc', {}, '具備節能效益之氣候總時數，優於業界常規標準'), '', '']
                 ];
 
                 fcRows.forEach((rowData, idx) => {
@@ -576,7 +753,7 @@
                 // ═══════════════════════════════════════════════════════════════
                 // Sheet 4: IT 負載明細 (IT Load Schedule with Subtotals)
                 // ═══════════════════════════════════════════════════════════════
-                const s4 = wb.addWorksheet('4.IT負載明細', { views: [{ state: 'frozen', ySplit: 1 }] });
+                const s4 = wb.addWorksheet(_t('xls.s4Name', {}, '4.IT負載明細'), { views: [{ state: 'frozen', ySplit: 1 }] });
                 s4.properties.tabColor = { argb: 'FF3730A3' };
                 s4.pageSetup = { orientation: 'landscape', fitToPage: true, fitToWidth: 1, fitToHeight: 0 };
                 s4.columns = [
@@ -594,7 +771,20 @@
                     { width: 16 }  // L: 氣冷 kW
                 ];
 
-                s4.addRow(['機房 (Data Hall)', '冷卻單元 (DU)', '算力模組 (SU)', '設備類別', '機櫃/伺服器型號', '數量 (台/架)', '單機功耗 (kW)', '液冷散熱 (%)', '氣冷散熱 (%)', '總 IT 負載 (kW)', '液冷散熱需求 (kW)', '氣冷廢熱需求 (kW)']);
+                s4.addRow([
+                    _t('xls.s4HdrHall', {}, '機房 (Data Hall)'),
+                    _t('xls.s4HdrDu', {}, '冷卻單元 (DU)'),
+                    _t('xls.s4HdrSu', {}, '算力模組 (SU)'),
+                    _t('xls.s4HdrCat', {}, '設備類別'),
+                    _t('xls.s4HdrModel', {}, '機櫃/伺服器型號'),
+                    _t('xls.s4HdrQty', {}, '數量 (台/架)'),
+                    _t('xls.s4HdrKw', {}, '單機功耗 (kW)'),
+                    _t('xls.s4HdrLiquidPct', {}, '液冷散熱 (%)'),
+                    _t('xls.s4HdrAirPct', {}, '氣冷散熱 (%)'),
+                    _t('xls.s4HdrTotalKw', {}, '總 IT 負載 (kW)'),
+                    _t('xls.s4HdrReqLiquid', {}, '液冷散熱需求 (kW)'),
+                    _t('xls.s4HdrReqAir', {}, '氣冷廢熱需求 (kW)')
+                ]);
                 styleHeaderRow(s4.getRow(1), 12, fillIndigo);
 
                 let s4RowIdx = 2;
@@ -650,7 +840,7 @@
                         if (hasEq) {
                             const endDuRow = s4RowIdx - 1;
                             const subRow = s4.addRow([
-                                `${h.name} - ${d.name} 小計 (Subtotal)`, '', '', '', '', '', '', '', '',
+                                _t('xls.subtotalFormat', { hall: h.name, unit: d.name }, `${h.name} - ${d.name} 小計 (Subtotal)`), '', '', '', '', '', '', '', '',
                                 { formula: `SUM(J${startDuRow}:J${endDuRow})` },
                                 { formula: `SUM(K${startDuRow}:K${endDuRow})` },
                                 { formula: `SUM(L${startDuRow}:L${endDuRow})` }
@@ -676,9 +866,9 @@
                     (p.equipment || []).forEach(eq => {
                         hasPodEq = true;
                         const r = s4.addRow([
-                            'CorePOD 模組',
+                            _t('xls.corePodModule', {}, 'CorePOD 模組'),
                             p.name,
-                            'CorePOD 機櫃群',
+                            _t('xls.corePodRacks', {}, 'CorePOD 機櫃群'),
                             eq.category || 'NET',
                             eq.model,
                             eq.qty,
@@ -717,7 +907,7 @@
                     if (hasPodEq) {
                         const endPodRow = s4RowIdx - 1;
                         const subRow = s4.addRow([
-                            `CorePOD - ${p.name} 小計 (Subtotal)`, '', '', '', '', '', '', '', '',
+                            _t('xls.corePodSubtotal', { name: p.name }, `CorePOD - ${p.name} 小計 (Subtotal)`), '', '', '', '', '', '', '', '',
                             { formula: `SUM(J${startPodRow}:J${endPodRow})` },
                             { formula: `SUM(K${startPodRow}:K${endPodRow})` },
                             { formula: `SUM(L${startPodRow}:L${endPodRow})` }
@@ -747,7 +937,7 @@
                     : `SUM(L2:L${Math.max(2, s4RowIdx - 1)})`;
 
                 const totalRow = s4.addRow([
-                    '全廠 IT 負載總計 (Facility Grand Total)', '', '', '', '', '', '', '', '',
+                    _t('xls.grandTotalIt', {}, '全廠 IT 負載總計 (Facility Grand Total)'), '', '', '', '', '', '', '', '',
                     { formula: jFormula },
                     { formula: kFormula },
                     { formula: lFormula }
@@ -771,9 +961,10 @@
                 s4.protect('', { selectLockedCells: true, selectUnlockedCells: true });
 
                 // ═══════════════════════════════════════════════════════════════
-                // Sheet 5: 逐DU冷卻系統設計 (Cooling Sizing & Redundancy Schedule)
+                // Sheet 5: 冷卻系統設計 (Cooling Sizing & Redundancy Schedule)
                 // ═══════════════════════════════════════════════════════════════
-                const s5 = wb.addWorksheet('5.逐DU冷卻系統設計', { views: [{ state: 'frozen', ySplit: 1 }] });
+                const s5SheetName = _t('xls.s5Name', {}, '5.冷卻系統設計');
+                const s5 = wb.addWorksheet(s5SheetName, { views: [{ state: 'frozen', ySplit: 1 }] });
                 s5.properties.tabColor = { argb: 'FF1E40AF' };
                 s5.pageSetup = { orientation: 'landscape', fitToPage: true, fitToWidth: 1, fitToHeight: 0 };
                 s5.columns = [
@@ -790,25 +981,40 @@
                     { width: 16 }, // K: 總裝置容量 (kW) = I*J
                     { width: 16 }, // L: 有效容量 N-1 (kW) = MAX(0, (J-1))*I
                     { width: 14 }, // M: 設計安全裕度 (%) = IF(F>0, (L/F-1)*100, 0)
-                    { width: 16 }  // N: N+1 冗餘檢核判定 = IF(J=0, "⬜ 尚未選型", IF(L>=F, "✅ 滿足 N+1", "❌ 容量不足"))
+                    { width: 16 }  // N: N+1 冗餘檢核判定
                 ];
 
                 s5.addRow([
-                    '機房名稱', '冷卻單元 (DU)', '系統類別', '設備類別與項目', '自選設備型號',
-                    '需求容量 (kW)', '銘牌額定容量 (kW)', '溫差折減係數 (%)', '有效單機容量 (kW)',
-                    '選定總台數', '總裝置容量 (kW)', '有效容量 N-1 (kW)', '設計安全裕度 (%)', 'N+1 冗餘檢核判定'
+                    _t('xls.s5HdrHall', {}, '機房名稱'),
+                    _t('xls.s5HdrDu', {}, '冷卻單元 (DU)'),
+                    _t('xls.s5HdrSysCat', {}, '系統類別'),
+                    _t('xls.s5HdrItem', {}, '設備類別與項目'),
+                    _t('xls.s5HdrModel', {}, '自選設備型號'),
+                    _t('xls.s5HdrReqKw', {}, '需求容量 (kW)'),
+                    _t('xls.s5HdrRatedKw', {}, '銘牌額定容量 (kW)'),
+                    _t('xls.s5HdrDerate', {}, '溫差折減係數 (%)'),
+                    _t('xls.s5HdrEffUnitCap', {}, '有效單機容量 (kW)'),
+                    _t('xls.s5HdrQty', {}, '選定總台數'),
+                    _t('xls.s5HdrInstalledCap', {}, '總裝置容量 (kW)'),
+                    _t('xls.s5HdrEffCapN1', {}, '有效容量 N-1 (kW)'),
+                    _t('xls.s5HdrMargin', {}, '設計安全裕度 (%)'),
+                    _t('xls.s5HdrAudit', {}, 'N+1 冗餘檢核判定')
                 ]);
                 styleHeaderRow(s5.getRow(1), 14, fillBlue);
+
+                const pillUnselected = _t('xls.pillUnselected', {}, '⬜ 尚未選型');
+                const pillPass = _t('xls.pillPass', {}, '✅ 滿足 N+1');
+                const pillDeficit = _t('xls.pillDeficit', {}, '❌ 容量不足');
 
                 let s5Row = 2;
                 const coolingUnits = [];
                 halls.forEach(h => {
                     (h.dus || []).forEach(d => {
-                        coolingUnits.push({ hallName: h.name, unitName: d.name, plant: d.plantDesign || {} });
+                        coolingUnits.push({ hallName: h.name, unitName: d.name, plant: d.plantDesign || {}, isCorePod: false });
                     });
                 });
                 pods.filter(p => p.enabled !== false).forEach(p => {
-                    coolingUnits.push({ hallName: 'CorePOD機房', unitName: p.name, plant: p.plantDesign || {} });
+                    coolingUnits.push({ hallName: _t('xls.corePodHall', {}, 'CorePOD機房'), unitName: p.name, plant: p.plantDesign || {}, isCorePod: true });
                 });
 
                 coolingUnits.forEach(u => {
@@ -827,12 +1033,37 @@
                             const isConfigured = qty > 0;
                             const isPass = isConfigured && effectiveTotalCap >= reqKw;
 
+                            let itemLabel = item.label || '';
+                            if (targetLang === 'en') {
+                                if (item.key && _t(`equip.${item.key}`) !== `equip.${item.key}`) {
+                                    itemLabel = _t(`equip.${item.key}`);
+                                } else {
+                                    itemLabel = itemLabel
+                                        .replace(/CDU 液冷分配主機|CDU主機/g, 'CDU Liquid Cooling Distribution Unit')
+                                        .replace(/CDU 循環主機/g, 'CDU Primary Loop Unit')
+                                        .replace(/一次側設施循環水泵|一次側泵/g, 'Primary Loop Pump')
+                                        .replace(/二次側循環水泵|二次側泵/g, 'Secondary Loop Pump')
+                                        .replace(/閉式乾冷器|乾式冷卻器|乾冷器/g, 'Dry Cooler')
+                                        .replace(/輔助修整冰機|輔助冰水主機|冰水主機/g, 'Trim Chiller')
+                                        .replace(/冰水一次水泵|二次側冰水循環水泵|冰水泵/g, 'Chilled Water Pump')
+                                        .replace(/Fanwall 機房空調|風牆機組|風牆機/g, 'Fanwall Array')
+                                        .replace(/冷卻水循環泵|冷卻水泵/g, 'Condenser Water Pump')
+                                        .replace(/板式熱交換器/g, 'Plate Heat Exchanger')
+                                        .replace(/絕熱噴淋冷卻塔/g, 'Adiabatic Cooling Tower')
+                                        .replace(/密閉式冷卻水塔/g, 'Closed-Circuit Cooling Tower')
+                                        .replace(/水冷式冰水主機/g, 'Water-Cooled Chiller')
+                                        .replace(/氣冷式冰水主機/g, 'Air-Cooled Chiller')
+                                        .replace(/[\u4e00-\u9fa5]/g, '')
+                                        .trim() || item.label;
+                                }
+                            }
+
                             const r = s5.addRow([
                                 u.hallName,
                                 u.unitName,
                                 categoryLabel,
-                                item.label,
-                                item.selectedModel || '（尚未選型）',
+                                itemLabel,
+                                item.selectedModel || _t('xls.notSelected', {}, '（尚未選型）'),
                                 reqKw,
                                 nominalCapKw,
                                 derate,
@@ -841,7 +1072,7 @@
                                 { formula: `I${s5Row}*J${s5Row}` },
                                 { formula: `MAX(0, (J${s5Row}-1))*I${s5Row}` },
                                 { formula: `IF(F${s5Row}>0, (L${s5Row}/F${s5Row}-1)*100, 0)` },
-                                { formula: `IF(J${s5Row}=0, "⬜ 尚未選型", IF(L${s5Row}>=F${s5Row}, "✅ 滿足 N+1", "❌ 容量不足"))` }
+                                { formula: `IF(J${s5Row}=0, "${pillUnselected}", IF(L${s5Row}>=F${s5Row}, "${pillPass}", "${pillDeficit}"))` }
                             ]);
                             r.height = 22;
 
@@ -892,8 +1123,8 @@
                         });
                     };
 
-                    renderItems(cduSizing, 'CDU液冷系統');
-                    renderItems(fwSizing, '氣冷排熱系統');
+                    renderItems(cduSizing, _t('xls.cduSysCategory', {}, 'CDU液冷系統'));
+                    renderItems(fwSizing, _t('xls.fwSysCategory', {}, '氣冷排熱系統'));
                 });
 
                 s5.autoFilter = { from: 'A1', to: 'N1' };
@@ -909,7 +1140,7 @@
                 // ═══════════════════════════════════════════════════════════════
                 // Sheet 6: 能耗與 PUE-WUE 計算 (Energy Consumption & PUE/WUE Breakdown)
                 // ═══════════════════════════════════════════════════════════════
-                const s6 = wb.addWorksheet('6.能耗與PUE-WUE計算', { views: [{ state: 'frozen', ySplit: 1 }] });
+                const s6 = wb.addWorksheet(_t('xls.s6Name', {}, '6.能耗與PUE-WUE計算'), { views: [{ state: 'frozen', ySplit: 1 }] });
                 s6.properties.tabColor = { argb: 'FF0F766E' };
                 s6.pageSetup = { orientation: 'landscape', fitToPage: true, fitToWidth: 1, fitToHeight: 0 };
                 s6.columns = [
@@ -929,9 +1160,19 @@
                 ];
 
                 s6.addRow([
-                    '單元名稱 (Unit Name)', 'IT 能耗 (MWh)', 'CDU 泵能 (MWh)', '風扇能 (MWh)', '排熱散熱 (MWh)',
-                    '冰機製冷 (MWh)', '配電損耗 (MWh)', '冷卻總能耗 (MWh)', '全廠總能耗 (MWh)', '年耗水量 (m³)',
-                    '設計 PUE', '設計 pPUE', '設計 WUE (L/kWh)'
+                    _t('xls.s6HdrUnit', {}, '單元名稱 (Unit Name)'),
+                    _t('xls.s6HdrItMwh', {}, 'IT 能耗 (MWh)'),
+                    _t('xls.s6HdrCduMwh', {}, 'CDU 泵能 (MWh)'),
+                    _t('xls.s6HdrFanMwh', {}, '風扇能 (MWh)'),
+                    _t('xls.s6HdrHeatRejMwh', {}, '排熱散熱 (MWh)'),
+                    _t('xls.s6HdrChillerMwh', {}, '冰機製冷 (MWh)'),
+                    _t('xls.s6HdrLossMwh', {}, '配電損耗 (MWh)'),
+                    _t('xls.s6HdrCoolingMwh', {}, '冷卻總能耗 (MWh)'),
+                    _t('xls.s6HdrTotalMwh', {}, '全廠總能耗 (MWh)'),
+                    _t('xls.s6HdrWaterM3', {}, '年耗水量 (m³)'),
+                    _t('xls.s6HdrPue', {}, '設計 PUE'),
+                    _t('xls.s6HdrPpue', {}, '設計 pPUE'),
+                    _t('xls.s6HdrWue', {}, '設計 WUE (L/kWh)')
                 ]);
                 styleHeaderRow(s6.getRow(1), 13, fillTeal);
 
@@ -940,7 +1181,7 @@
 
                 const allUnitsEnergy = [...(res.byDu || []), ...(res.byCorePod || [])];
                 allUnitsEnergy.forEach(u => {
-                    const name = u.duName || u.podName || '冷卻單元';
+                    const name = u.duName || u.podName || _t('xls.defaultUnit', {}, '冷卻單元');
                     const r = s6.addRow([
                         name,
                         u.annualItMwh || 0,
@@ -981,7 +1222,7 @@
                 // Grand Total Row
                 const lastDataRow = Math.max(2, s6Row - 1);
                 const s6TotRow = s6.addRow([
-                    '全廠年度加總 (Facility Grand Total)',
+                    _t('xls.facilityGrandTotal', {}, '全廠年度加總 (Facility Grand Total)'),
                     { formula: `SUM(B2:B${lastDataRow})` },
                     { formula: `SUM(C2:C${lastDataRow})` },
                     { formula: `SUM(D2:D${lastDataRow})` },
@@ -1008,7 +1249,7 @@
                 // Subsystem Share Row (% of Total Facility Energy)
                 const shareRowIdx = s6Row + 1;
                 const shareRow = s6.addRow([
-                    '各分項能耗佔比 (% of Total Facility)',
+                    _t('xls.shareRow', {}, '各分項能耗佔比 (% of Total Facility)'),
                     { formula: `B${s6Row}/I${s6Row}` },
                     { formula: `C${s6Row}/I${s6Row}` },
                     { formula: `D${s6Row}/I${s6Row}` },
@@ -1032,10 +1273,10 @@
                 // Cooling Load Factor (CLF) Row
                 const clfRowIdx = shareRowIdx + 1;
                 const clfRow = s6.addRow([
-                    '空調冷卻負載係數 (Cooling Load Factor, CLF)',
+                    _t('xls.clfRow', {}, '空調冷卻負載係數 (Cooling Load Factor, CLF)'),
                     '', '', '', '', '', '',
                     { formula: `H${s6Row}/B${s6Row}` },
-                    '', '', 'ASHRAE 90.4 規範指標 (CLF = 冷卻總能耗 / IT 能耗)', '', ''
+                    '', '', _t('xls.clfNote', {}, 'ASHRAE 90.4 規範指標 (CLF = 冷卻總能耗 / IT 能耗)'), '', ''
                 ]);
                 clfRow.height = 24;
                 s6.mergeCells(`A${clfRowIdx}:G${clfRowIdx}`);
@@ -1052,7 +1293,7 @@
                 // ═══════════════════════════════════════════════════════════════
                 // Sheet 7: 月度趨勢 (12-Month Comprehensive Energy Balance)
                 // ═══════════════════════════════════════════════════════════════
-                const s7 = wb.addWorksheet('7.月度趨勢', { views: [{ state: 'frozen', ySplit: 1 }] });
+                const s7 = wb.addWorksheet(_t('xls.s7Name', {}, '7.月度趨勢'), { views: [{ state: 'frozen', ySplit: 1 }] });
                 s7.properties.tabColor = { argb: 'FF334155' };
                 s7.pageSetup = { orientation: 'landscape', fitToPage: true, fitToWidth: 1, fitToHeight: 0 };
                 s7.columns = [
@@ -1074,9 +1315,21 @@
                 ];
 
                 s7.addRow([
-                    '月份 (Month)', '乾球均溫 (°C)', '濕球均溫 (°C)', 'IT 耗電 (MWh)', 'CDU 泵能 (MWh)',
-                    '風扇能 (MWh)', '散熱排熱 (MWh)', '冰機製冷 (MWh)', '配電損耗 (MWh)', '冷卻總能耗 (MWh)',
-                    '全廠總能耗 (MWh)', '月耗水量 (m³)', '月度設計 PUE', '月度 pPUE', '月度 WUE (L/kWh)'
+                    _t('xls.s7HdrMonth', {}, '月份 (Month)'),
+                    _t('xls.s7HdrAvgDb', {}, '乾球均溫 (°C)'),
+                    _t('xls.s7HdrAvgWb', {}, '濕球均溫 (°C)'),
+                    _t('xls.s7HdrItMwh', {}, 'IT 耗電 (MWh)'),
+                    _t('xls.s7HdrCduMwh', {}, 'CDU 泵能 (MWh)'),
+                    _t('xls.s7HdrFanMwh', {}, '風扇能 (MWh)'),
+                    _t('xls.s7HdrHeatRejMwh', {}, '散熱排熱 (MWh)'),
+                    _t('xls.s7HdrChillerMwh', {}, '冰機製冷 (MWh)'),
+                    _t('xls.s7HdrLossMwh', {}, '配電損耗 (MWh)'),
+                    _t('xls.s7HdrCoolingMwh', {}, '冷卻總能耗 (MWh)'),
+                    _t('xls.s7HdrTotalMwh', {}, '全廠總能耗 (MWh)'),
+                    _t('xls.s7HdrWaterM3', {}, '月耗水量 (m³)'),
+                    _t('xls.s7HdrPue', {}, '月度設計 PUE'),
+                    _t('xls.s7HdrPpue', {}, '月度 pPUE'),
+                    _t('xls.s7HdrWue', {}, '月度 WUE (L/kWh)')
                 ]);
                 styleHeaderRow(s7.getRow(1), 15, fillSlateHeader);
 
@@ -1087,7 +1340,7 @@
                     const curRow = idx + 2;
 
                     const r = s7.addRow([
-                        `${idx + 1} 月`,
+                        _t('xls.monthN', { m: idx + 1 }, `${idx + 1} 月`),
                         ws.avgDB ?? 25.0,
                         ws.avgWB ?? 20.0,
                         m.itMwh ?? 0,
@@ -1127,7 +1380,7 @@
 
                 // Annual Summary Row for Monthly Sheet
                 const s7TotRow = s7.addRow([
-                    '全年加總 / 年度均值 (Annual Total / Avg)',
+                    _t('xls.s7AnnualTot', {}, '全年加總 / 年度均值 (Annual Total / Avg)'),
                     { formula: 'AVERAGE(B2:B13)' },
                     { formula: 'AVERAGE(C2:C13)' },
                     { formula: 'SUM(D2:D13)' },
@@ -1158,12 +1411,12 @@
                 // Seasonal Analysis Sub-card
                 s7.addRow([]);
                 const s7SubIdx = s7.rowCount + 1;
-                styleSectionRow(s7, s7SubIdx, 15, '【季節性空調能效評估 (Seasonal Efficiency Breakdown)】');
+                styleSectionRow(s7, s7SubIdx, 15, _t('xls.s7SecSub', {}, '【季節性空調能效評估 (Seasonal Efficiency Breakdown)】'));
 
                 const seasonRow = s7.addRow([
-                    '夏季尖峰季均值 PUE (6~8月)', { formula: 'AVERAGE(M7:M9)' }, '',
-                    '冬季過渡季均值 PUE (12~2月)', { formula: '(M13+M2+M3)/3' }, '',
-                    '自由冷卻季節節能效益', { formula: '(AVERAGE(M7:M9)-((M13+M2+M3)/3))/AVERAGE(M7:M9)' }, '',
+                    _t('xls.summerPue', {}, '夏季尖峰季均值 PUE (6~8月)'), { formula: 'AVERAGE(M7:M9)' }, '',
+                    _t('xls.winterPue', {}, '冬季過渡季均值 PUE (12~2月)'), { formula: '(M13+M2+M3)/3' }, '',
+                    _t('xls.seasonSavings', {}, '自由冷卻季節節能效益'), { formula: '(AVERAGE(M7:M9)-((M13+M2+M3)/3))/AVERAGE(M7:M9)' }, '',
                     '', '', '', '', '', '', ''
                 ]);
                 seasonRow.height = 24;
@@ -1186,16 +1439,24 @@
                 // ═══════════════════════════════════════════════════════════════
                 // Sheet 8: 尖峰工況分析 (Peak Conditions & Safety Audit)
                 // ═══════════════════════════════════════════════════════════════
-                const s8 = wb.addWorksheet('8.尖峰工況分析', { views: [{ showGridLines: true }] });
+                const s8 = wb.addWorksheet(_t('xls.s8Name', {}, '8.尖峰工況分析'), { views: [{ showGridLines: true }] });
                 s8.properties.tabColor = { argb: 'FF1E40AF' };
                 s8.pageSetup = { orientation: 'landscape', fitToPage: true, fitToWidth: 1, fitToHeight: 0 };
                 s8.columns = [{ width: 36 }, { width: 32 }, { width: 48 }];
 
-                s8.addRow(['尖峰工況檢核項目 (Evaluation Item)', '數值與檢核結果 (Result / Value)', '工程安全說明與規範依據 (Engineering Basis & Notes)']);
+                s8.addRow([
+                    _t('xls.s8HdrItem', {}, '尖峰工況檢核項目 (Evaluation Item)'),
+                    _t('xls.s8HdrResult', {}, '數值與檢核結果 (Result / Value)'),
+                    _t('xls.s8HdrBasis', {}, '工程安全說明與規範依據 (Engineering Basis & Notes)')
+                ]);
                 styleHeaderRow(s8.getRow(1), 3, fillBlue);
 
                 const hourlyProfile = res.hourlyProfile || [];
-                const modeLabel = { free: 'Mode 1 全自由冷卻', partial: 'Mode 2 部分輔助製冷', mechanical: 'Mode 3 全機械製冷' };
+                const modeLabel = {
+                    free: _t('xls.modeFree', {}, 'Mode 1 全自由冷卻'),
+                    partial: _t('xls.modePartial', {}, 'Mode 2 部分輔助製冷'),
+                    mechanical: _t('xls.modeMech', {}, 'Mode 3 全機械製冷')
+                };
 
                 let peakIdx = 0;
                 let maxHPeakDb = -999;
@@ -1208,12 +1469,15 @@
                 const peakItem = hourlyProfile[peakIdx] || {};
 
                 // Group 1: 氣候極端尖峰工況
-                styleSectionRow(s8, 2, 3, '【一、氣候極端尖峰工況檢核 (Worst-Hour Climate Condition)】');
+                styleSectionRow(s8, 2, 3, _t('xls.s8Sec1', {}, '【一、氣候極端尖峰工況檢核 (Worst-Hour Climate Condition)】'));
+                const peakTimeText = (overall.peakMonth != null)
+                    ? _t('xls.peakTimeFmt', { m: overall.peakMonth, h: overall.peakHour }, `${overall.peakMonth} 月 / 第 ${overall.peakHour} 時`)
+                    : _t('xls.peakTimeFmt', { m: 7, h: 14 }, '7 月 / 第 14 時');
                 const g1Rows = [
-                    ['8,760h 瞬時最高氣溫發生時段', (overall.peakMonth != null) ? `${overall.peakMonth} 月 / 第 ${overall.peakHour} 時` : '7 月 / 第 14 時', '全年度氣候最嚴苛時刻瞬時氣候狀態'],
-                    ['尖峰室外乾球溫度 (Peak Dry-Bulb)', Number((peakItem.db ?? 35.0).toFixed(1)), 'ASHRAE 氣象站實測極端值'],
-                    ['尖峰室外濕球溫度 (Peak Wet-Bulb)', Number((peakItem.wb ?? 28.0).toFixed(1)), '散熱塔與蒸發冷卻極限工況'],
-                    ['尖峰運轉散熱模式 (Operating Mode)', modeLabel[peakItem.mode] || 'Mode 3 全機械製冷', '空調系統在極限氣候下之散熱運行模式']
+                    [_t('xls.peakTimeLabel', {}, '8,760h 瞬時最高氣溫發生時段'), peakTimeText, _t('xls.peakTimeNote', {}, '全年度氣候最嚴苛時刻瞬時氣候狀態')],
+                    [_t('xls.peakDbLabel', {}, '尖峰室外乾球溫度 (Peak Dry-Bulb)'), Number((peakItem.db ?? 35.0).toFixed(1)), _t('xls.peakDbNote', {}, 'ASHRAE 氣象站實測極端值')],
+                    [_t('xls.peakWbLabel', {}, '尖峰室外濕球溫度 (Peak Wet-Bulb)'), Number((peakItem.wb ?? 28.0).toFixed(1)), _t('xls.peakWbNote', {}, '散熱塔與蒸發冷卻極限工況')],
+                    [_t('xls.peakModeLabel', {}, '尖峰運轉散熱模式 (Operating Mode)'), modeLabel[peakItem.mode] || _t('xls.modeMech', {}, 'Mode 3 全機械製冷'), _t('xls.peakModeNote', {}, '空調系統在極限氣候下之散熱運行模式')]
                 ];
                 g1Rows.forEach((rData, idx) => {
                     const r = s8.addRow(rData);
@@ -1229,15 +1493,15 @@
 
                 // Group 2: 尖峰散熱與電力需求
                 const g2SecIdx = s8.rowCount + 1;
-                styleSectionRow(s8, g2SecIdx, 3, '【二、尖峰散熱與電力需求檢核 (Peak Thermal & Electrical Demand)】');
+                styleSectionRow(s8, g2SecIdx, 3, _t('xls.s8Sec2', {}, '【二、尖峰散熱與電力需求檢核 (Peak Thermal & Electrical Demand)】'));
                 const peakCoolKw = Math.round(peakItem.coolingKw || (overall.totalItKw ? overall.totalItKw * 0.18 : 100));
                 const itKw = overall.totalItKw || 1000;
                 const g2Rows = [
-                    ['全廠 IT 尖峰設計負載 (Peak IT Load)', `${((itKw) / 1000).toFixed(2)} MW (${itKw.toLocaleString()} kW)`, '全廠 100% 滿載運轉額定設計容量'],
-                    ['空調系統尖峰電力需量 (Peak Cooling Demand)', `${peakCoolKw.toLocaleString()} kW`, '包含 CDU 泵、風扇、排熱設備與冰機全載需量'],
-                    ['全廠 8,760h 瞬時尖峰 PUE (Worst Hour)', overall.peakPue ?? 1.250, '全年度氣候最嚴苛時刻瞬時 PUE 極值'],
-                    ['全廠 8,760h 瞬時尖峰 Cooling pPUE', overall.peakP_Pue ?? 1.120, '不含泵浦耗電之純空調部分 PUE 極值'],
-                    ['空調尖峰需量係數 (Cooling Demand Factor)', Number((peakCoolKw / itKw).toFixed(3)), '每 kW IT 負載所需之空調尖峰電氣容量 (用於變壓器/配電盤選型)']
+                    [_t('xls.peakItLoad', {}, '全廠 IT 尖峰設計負載 (Peak IT Load)'), `${((itKw) / 1000).toFixed(2)} MW (${itKw.toLocaleString()} kW)`, _t('xls.peakItNote', {}, '全廠 100% 滿載運轉額定設計容量')],
+                    [_t('xls.peakCoolDemand', {}, '空調系統尖峰電力需量 (Peak Cooling Demand)'), `${peakCoolKw.toLocaleString()} kW`, _t('xls.peakCoolNote', {}, '包含 CDU 泵、風扇、排熱設備與冰機全載需量')],
+                    [_t('xls.peakPueWorst', {}, '全廠 8,760h 瞬時尖峰 PUE (Worst Hour)'), overall.peakPue ?? 1.250, _t('xls.peakPueNote', {}, '全年度氣候最嚴苛時刻瞬時 PUE 極值')],
+                    [_t('xls.peakPpueWorst', {}, '全廠 8,760h 瞬時尖峰 Cooling pPUE'), overall.peakP_Pue ?? 1.120, _t('xls.peakPpueNote', {}, '不含泵浦耗電之純空調部分 PUE 極值')],
+                    [_t('xls.coolDemandFactor', {}, '空調尖峰需量係數 (Cooling Demand Factor)'), Number((peakCoolKw / itKw).toFixed(3)), _t('xls.coolDemandNote', {}, '每 kW IT 負載所需之空調尖峰電氣容量 (用於變壓器/配電盤選型)')]
                 ];
                 g2Rows.forEach((rData, idx) => {
                     const r = s8.addRow(rData);
@@ -1258,13 +1522,35 @@
 
                 // Group 3: 冷卻容量冗餘與安全檢核
                 const g3SecIdx = s8.rowCount + 1;
-                styleSectionRow(s8, g3SecIdx, 3, '【三、冷卻容量冗餘與安全檢核 (Cooling Redundancy & Safety Audit)】');
+                styleSectionRow(s8, g3SecIdx, 3, _t('xls.s8Sec3', {}, '【三、冷卻容量冗餘與安全檢核 (Cooling Redundancy & Safety Audit)】'));
                 const failCntRow = s8.rowCount + 1;
 
-                s8.addRow(['N+1 檢核未達標項目數 (自動統計自 Sheet5)', { formula: `COUNTIF('5.逐DU冷卻系統設計'!N:N,"*不足*")` }, '依 Sheet5 實際計算公式動態統計未通過 N+1 項目數']);
-                s8.addRow(['尚未選型項目數 (自動統計自 Sheet5)', { formula: `COUNTIF('5.逐DU冷卻系統設計'!N:N,"*尚未選型*")` }, '統計選定台數為 0 或尚未配置型號之項目數']);
-                s8.addRow(['冷卻容量冗餘結論 (自動判定)', { formula: `IF(B${failCntRow}=0, "✅ 全數滿足 N+1 冗餘設計", "⚠️ 尚有 "&B${failCntRow}&" 項未達標，詳見 Sheet5")` }, '單一機組停機檢修時是否仍可 100% 滿載散熱']);
-                s8.addRow(['單點故障容錯能力 (Fault Tolerance)', '符合 Tier III / Tier IV 在線維護規範 (Concurrent Maintainability)', '水路具備雙環路或 Bypass 旁通切換閥組']);
+                const deficitPattern = (targetLang === 'en') ? '*Deficit*' : '*不足*';
+                const unselectedPattern = (targetLang === 'en') ? '*Not Selected*' : '*尚未選型*';
+
+                s8.addRow([
+                    _t('xls.deficitCount', {}, 'N+1 檢核未達標項目數 (自動統計自 Sheet5)'),
+                    { formula: `COUNTIF('${s5SheetName}'!N:N,"${deficitPattern}")` },
+                    _t('xls.deficitCountNote', {}, '依 Sheet5 實際計算公式動態統計未通過 N+1 項目數')
+                ]);
+                s8.addRow([
+                    _t('xls.unselectedCount', {}, '尚未選型項目數 (自動統計自 Sheet5)'),
+                    { formula: `COUNTIF('${s5SheetName}'!N:N,"${unselectedPattern}")` },
+                    _t('xls.unselectedCountNote', {}, '統計選定台數為 0 或尚未配置型號之項目數')
+                ]);
+                const redundancyFormula = (targetLang === 'en')
+                    ? `IF(B${failCntRow}=0, "✅ All items meet N+1 redundancy", "⚠️ "&B${failCntRow}&" item(s) deficit, see Sheet 5")`
+                    : `IF(B${failCntRow}=0, "✅ 全數滿足 N+1 冗餘設計", "⚠️ 尚有 "&B${failCntRow}&" 項未達標，詳見 Sheet5")`;
+                s8.addRow([
+                    _t('xls.redundancyConclusion', {}, '冷卻容量冗餘結論 (自動判定)'),
+                    { formula: redundancyFormula },
+                    _t('xls.redundancyConclusionNote', {}, '單一機組停機檢修時是否仍可 100% 滿載散熱')
+                ]);
+                s8.addRow([
+                    _t('xls.spofTolerance', {}, '單點故障容錯能力 (Fault Tolerance)'),
+                    _t('xls.spofToleranceVal', {}, '符合 Tier III / Tier IV 在線維護規範 (Concurrent Maintainability)'),
+                    _t('xls.spofToleranceNote', {}, '水路具備雙環路或 Bypass 旁通切換閥組')
+                ]);
 
                 for (let r = failCntRow; r <= s8.rowCount; r++) {
                     const row = s8.getRow(r);
@@ -1285,24 +1571,28 @@
                 // ═══════════════════════════════════════════════════════════════
                 // Sheet 9: 全廠總表與結論 (Executive Scorecard & Standard Benchmarks)
                 // ═══════════════════════════════════════════════════════════════
-                const s9 = wb.addWorksheet('9.全廠總表與結論', { views: [{ showGridLines: true }] });
+                const s9 = wb.addWorksheet(_t('xls.s9Name', {}, '9.全廠總表與結論'), { views: [{ showGridLines: true }] });
                 s9.properties.tabColor = { argb: 'FF0F766E' };
                 s9.pageSetup = { orientation: 'landscape', fitToPage: true, fitToWidth: 1, fitToHeight: 0 };
                 s9.columns = [{ width: 36 }, { width: 32 }, { width: 48 }];
 
-                s9.addRow(['全廠綜合評估指標 (Summary KPI)', '數值與驗收判定 (Value & Compliance)', '業界驗收基準與標準規範 (Benchmark & References)']);
+                s9.addRow([
+                    _t('xls.s9HdrKpi', {}, '全廠綜合評估指標 (Summary KPI)'),
+                    _t('xls.s9HdrVal', {}, '數值與驗收判定 (Value & Compliance)'),
+                    _t('xls.s9HdrRef', {}, '業界驗收基準與標準規範 (Benchmark & References)')
+                ]);
                 styleHeaderRow(s9.getRow(1), 3, fillTeal);
 
                 // Section 1: 全廠核心能效與永續指標
-                styleSectionRow(s9, 2, 3, '【一、全廠核心能效與永續指標 (Executive KPI Scorecard)】');
+                styleSectionRow(s9, 2, 3, _t('xls.s9Sec1', {}, '【一、全廠核心能效與永續指標 (Executive KPI Scorecard)】'));
                 const s9Kpis = [
-                    ['年度全廠設計 PUE (均值)', overall.annualPue ?? 0, '優於 LEED Gold 驗收基準 (≤ 1.20)'],
-                    ['年度全廠設計 Cooling pPUE (局部空調能效)', overall.annualP_Pue ?? 0, '局部空調純製冷能耗比 (不含水泵)'],
-                    ['全廠瞬時尖峰 PUE (Worst Hour)', overall.peakPue ?? '（未計算）', '極端高溫高濕下仍維持穩定散熱'],
-                    ['全廠年度耗水指標 WUE', `${overall.annualWue ?? 0} L/kWh`, '採用乾冷器閉路冷卻實現零耗水'],
-                    ['自由冷卻覆蓋率 (Free Cooling %)', `${res.fcPotential?.freeHoursPct ?? 0}%`, '全年自由冷卻可用時數佔比'],
-                    ['全廠年總耗電量 (Annual Total Energy)', `${(overall.annualTotalMwh || 0).toLocaleString()} MWh/yr`, '全年 8,760 小時累計用電量'],
-                    ['全廠年總耗水量 (Annual Total Water)', `${(overall.annualWaterM3 || 0).toLocaleString()} m³/yr`, '全年冷卻水損耗補水量']
+                    [_t('xls.kpiAnnualPue', {}, '年度全廠設計 PUE (均值)'), overall.annualPue ?? 0, _t('xls.kpiAnnualPueNote', {}, '優於 LEED Gold 驗收基準 (≤ 1.20)')],
+                    [_t('xls.kpiCoolingPpue', {}, '年度全廠設計 Cooling pPUE (局部空調能效)'), overall.annualP_Pue ?? 0, _t('xls.kpiCoolingPpueNote', {}, '局部空調純製冷能耗比 (不含水泵)')],
+                    [_t('xls.kpiPeakPue', {}, '全廠瞬時尖峰 PUE (Worst Hour)'), overall.peakPue ?? _t('xls.notCalculated', {}, '（未計算）'), _t('xls.kpiPeakPueNote', {}, '極端高溫高濕下仍維持穩定散熱')],
+                    [_t('xls.kpiAnnualWue', {}, '全廠年度耗水指標 WUE'), `${overall.annualWue ?? 0} L/kWh`, _t('xls.kpiAnnualWueNote', {}, '採用乾冷器閉路冷卻實現零耗水')],
+                    [_t('xls.kpiFcCoverage', {}, '自由冷卻覆蓋率 (Free Cooling %)'), `${res.fcPotential?.freeHoursPct ?? 0}%`, _t('xls.kpiFcCoverageNote', {}, '全年自由冷卻可用時數佔比')],
+                    [_t('xls.kpiTotalEnergy', {}, '全廠年總耗電量 (Annual Total Energy)'), `${(overall.annualTotalMwh || 0).toLocaleString()} MWh/yr`, _t('xls.kpiTotalEnergyNote', {}, '全年 8,760 小時累計用電量')],
+                    [_t('xls.kpiTotalWater', {}, '全廠年總耗水量 (Annual Total Water)'), `${(overall.annualWaterM3 || 0).toLocaleString()} m³/yr`, _t('xls.kpiTotalWaterNote', {}, '全年冷卻水損耗補水量')]
                 ];
 
                 s9Kpis.forEach((rData, idx) => {
@@ -1320,12 +1610,12 @@
 
                 // Section 2: 國際標準合規與綠色機房對比
                 const stdSecIdx = s9.rowCount + 1;
-                styleSectionRow(s9, stdSecIdx, 3, '【二、國際標準合規與綠色機房對比 (International Standards Benchmarks)】');
+                styleSectionRow(s9, stdSecIdx, 3, _t('xls.s9Sec2', {}, '【二、國際標準合規與綠色機房對比 (International Standards Benchmarks)】'));
                 const standards = [
-                    ['ASHRAE Standard 90.4 能效要求', '符合規範 (本案 MLC ≤ 0.18)', 'ASHRAE 90.4 氣候分區機械冷卻負載指標 (MLC)'],
-                    ['LEED Gold / 綠色資料中心驗收基準', 'PUE ≤ 1.20 (本案達標)', '國際綠建築與超級資料中心評級準則'],
-                    ['NVIDIA DSX 混合冷卻架構指引', '液冷佔比 ≥ 75%，CDU 溫差 3~5°C', '符合次世代高密度 GPU 伺服器散熱規範'],
-                    ['台灣經濟部能源署資料中心能效基準', 'PUE ≤ 1.30 (本案大幅優於法規)', '台灣資料中心能效推廣與專案補助標準']
+                    [_t('xls.stdAshrae', {}, 'ASHRAE Standard 90.4 能效要求'), _t('xls.stdAshraeVal', {}, '符合規範 (本案 MLC ≤ 0.18)'), _t('xls.stdAshraeNote', {}, 'ASHRAE 90.4 氣候分區機械冷卻負載指標 (MLC)')],
+                    [_t('xls.stdLeed', {}, 'LEED Gold / 綠色資料中心驗收基準'), _t('xls.stdLeedVal', {}, 'PUE ≤ 1.20 (本案達標)'), _t('xls.stdLeedNote', {}, '國際綠建築與超級資料中心評級準則')],
+                    [_t('xls.stdNvidia', {}, 'NVIDIA DSX 混合冷卻架構指引'), _t('xls.stdNvidiaVal', {}, '液冷佔比 ≥ 75%，CDU 溫差 3~5°C'), _t('xls.stdNvidiaNote', {}, '符合次世代高密度 GPU 伺服器散熱規範')],
+                    [_t('xls.stdMoea', {}, '台灣經濟部能源署資料中心能效基準'), _t('xls.stdMoeaVal', {}, 'PUE ≤ 1.30 (本案大幅優於法規)'), _t('xls.stdMoeaNote', {}, '台灣資料中心能效推廣與專案補助標準')]
                 ];
                 standards.forEach((rData, idx) => {
                     const r = s9.addRow(rData);
@@ -1338,13 +1628,36 @@
 
                 // Section 3: 綜合評估結論與工程建議
                 const recSecIdx = s9.rowCount + 1;
-                styleSectionRow(s9, recSecIdx, 3, '【三、綜合評估結論與工程建議 (Engineering Assessment & Recommendations)】');
+                styleSectionRow(s9, recSecIdx, 3, _t('xls.s9Sec3', {}, '【三、綜合評估結論與工程建議 (Engineering Assessment & Recommendations)】'));
                 const s9FailRow = s9.rowCount + 1;
 
-                s9.addRow(['N+1 設備冗餘合規性 (Redundancy Compliance)', { formula: `IF(COUNTIF('5.逐DU冷卻系統設計'!N:N,"*不足*")=0, "✅ 100% 全部合格", "⚠️ 尚有未達標項目，詳見 Sheet5")` }, '依 Sheet5 逐項公式判定結果自動彙總，非人工認定']);
-                s9.addRow(['整體節能結論 (Engineering Recommendation)', { formula: `IF(AND(COUNTIF('5.逐DU冷卻系統設計'!N:N,"*不足*")=0, B3<=1.25), "✅ 設計達標，具備高能效與高可靠度，建議採行", "⚠️ 尚有容量未達標項目或能效偏高，請檢視 Sheet5")` }, '綜合 PUE 與 N+1 合規性之自動判定，供工程技師簽證參考']);
-                s9.addRow(['水力平衡與控制策略建議', '建議二次側水泵採用壓差控制變頻，並於板換配置防凍保護溫度開關', '保證全年水力平衡與最低轉速限制']);
-                s9.addRow(['溫差管理與結露防護建議', 'CRAH 供水溫度應高於機房室內露點 1.5°C 以上，避免冷凝結露', '遵循 ASHRAE TC 9.9 露點防護準則']);
+                const recRedundancyFormula = (targetLang === 'en')
+                    ? `IF(COUNTIF('${s5SheetName}'!N:N,"${deficitPattern}")=0, "✅ 100% Compliant", "⚠️ Deficit items found, see Sheet 5")`
+                    : `IF(COUNTIF('${s5SheetName}'!N:N,"${deficitPattern}")=0, "✅ 100% 全部合格", "⚠️ 尚有未達標項目，詳見 Sheet5")`;
+                const recOverallFormula = (targetLang === 'en')
+                    ? `IF(AND(COUNTIF('${s5SheetName}'!N:N,"${deficitPattern}")=0, B3<=1.25), "✅ Design compliant with high efficiency and reliability, recommended for adoption", "⚠️ Capacity deficit or suboptimal efficiency, review Sheet 5")`
+                    : `IF(AND(COUNTIF('${s5SheetName}'!N:N,"${deficitPattern}")=0, B3<=1.25), "✅ 設計達標，具備高能效與高可靠度，建議採行", "⚠️ 尚有容量未達標項目或能效偏高，請檢視 Sheet5")`;
+
+                s9.addRow([
+                    _t('xls.recRedundancy', {}, 'N+1 設備冗餘合規性 (Redundancy Compliance)'),
+                    { formula: recRedundancyFormula },
+                    _t('xls.recRedundancyNote', {}, '依 Sheet5 逐項公式判定結果自動彙總，非人工認定')
+                ]);
+                s9.addRow([
+                    _t('xls.recOverall', {}, '整體節能結論 (Engineering Recommendation)'),
+                    { formula: recOverallFormula },
+                    _t('xls.recOverallNote', {}, '綜合 PUE 與 N+1 合規性之自動判定，供工程技師簽證參考')
+                ]);
+                s9.addRow([
+                    _t('xls.recHydraulic', {}, '水力平衡與控制策略建議'),
+                    _t('xls.recHydraulicVal', {}, '建議二次側水泵採用壓差控制變頻，並於板換配置防凍保護溫度開關'),
+                    _t('xls.recHydraulicNote', {}, '保證全年水力平衡與最低轉速限制')
+                ]);
+                s9.addRow([
+                    _t('xls.recDewPoint', {}, '溫差管理與結露防護建議'),
+                    _t('xls.recDewPointVal', {}, 'CRAH 供水溫度應高於機房室內露點 1.5°C 以上，避免冷凝結露'),
+                    _t('xls.recDewPointNote', {}, '遵循 ASHRAE TC 9.9 露點防護準則')
+                ]);
 
                 for (let r = s9FailRow; r <= s9.rowCount; r++) {
                     const row = s9.getRow(r);
@@ -1360,7 +1673,7 @@
                 // ═══════════════════════════════════════════════════════════════
                 // Sheet 10: 附錄: 年度最熱日逐時明細 (Hottest Day 24h Profile)
                 // ═══════════════════════════════════════════════════════════════
-                const s10 = wb.addWorksheet('10.附錄-最熱日24h明細', { views: [{ state: 'frozen', ySplit: 3 }] });
+                const s10 = wb.addWorksheet(_t('xls.s10Name', {}, '10.附錄-最熱日24h明細'), { views: [{ state: 'frozen', ySplit: 3 }] });
                 s10.properties.tabColor = { argb: 'FF64748B' };
                 s10.pageSetup = { orientation: 'landscape', fitToPage: true, fitToWidth: 1, fitToHeight: 0 };
                 s10.columns = [
@@ -1379,7 +1692,7 @@
                     { width: 16 }  // M: 瞬時 PUE = L/E
                 ];
 
-                s10.addRow(['附錄：全年度最熱日 24 小時逐時動力學模擬明細 (用於抽查極限工況)']);
+                s10.addRow([_t('xls.s10Title', {}, '附錄：全年度最熱日 24 小時逐時動力學模擬明細 (用於抽查極限工況)')]);
                 s10.mergeCells('A1:M1');
                 s10.getCell('A1').font = fontSection;
                 s10.getCell('A1').fill = fillSection;
@@ -1397,7 +1710,7 @@
                     }
                 }
 
-                s10.addRow([`最熱日代表日期：第 ${maxDayIdx + 1} 天 (連續 24 小時均溫最高日) ｜ 展示空調系統在全年度最嚴酷氣候條件下之逐時熱動態響應`]);
+                s10.addRow([_t('xls.s10Subtitle', { day: maxDayIdx + 1 }, `最熱日代表日期：第 ${maxDayIdx + 1} 天 (連續 24 小時均溫最高日) ｜ 展示空調系統在全年度最嚴酷氣候條件下之逐時熱動態響應`)]);
                 s10.mergeCells('A2:M2');
                 s10.getCell('A2').font = fontMuted;
                 s10.getCell('A2').fill = fillLightB;
@@ -1405,9 +1718,19 @@
                 s10.getRow(2).height = 20;
 
                 s10.addRow([
-                    '時間 (Hour)', '室外乾球 DB (°C)', '室外濕球 WB (°C)', '自由冷卻運轉模式', 'IT 負載 (kW)',
-                    'CDU 循環泵 (kW)', '風扇 (kW)', '散熱排熱 (kW)', '冰機製冷 (kW)', '配電損耗 (kW)',
-                    '總冷卻耗電 (kW)', '全廠總耗電 (kW)', '瞬時 PUE'
+                    _t('xls.s10HdrHour', {}, '時間 (Hour)'),
+                    _t('xls.s10HdrDb', {}, '室外乾球 DB (°C)'),
+                    _t('xls.s10HdrWb', {}, '室外濕球 WB (°C)'),
+                    _t('xls.s10HdrMode', {}, '自由冷卻運轉模式'),
+                    _t('xls.s10HdrItKw', {}, 'IT 負載 (kW)'),
+                    _t('xls.s10HdrCduKw', {}, 'CDU 循環泵 (kW)'),
+                    _t('xls.s10HdrFanKw', {}, '風扇 (kW)'),
+                    _t('xls.s10HdrHeatRejKw', {}, '散熱排熱 (kW)'),
+                    _t('xls.s10HdrChillerKw', {}, '冰機製冷 (kW)'),
+                    _t('xls.s10HdrLossKw', {}, '配電損耗 (kW)'),
+                    _t('xls.s10HdrCoolingKw', {}, '總冷卻耗電 (kW)'),
+                    _t('xls.s10HdrTotalKw', {}, '全廠總耗電 (kW)'),
+                    _t('xls.s10HdrPue', {}, '瞬時 PUE')
                 ]);
                 styleHeaderRow(s10.getRow(3), 13, fillNavy);
 
@@ -1422,6 +1745,8 @@
                         peakHOfDay = h;
                     }
                 }
+
+                const peakHourTag = _t('xls.peakHourTag', {}, ' (尖峰)');
 
                 for (let h = 0; h < 24; h++) {
                     const curRow = h + 4;
@@ -1447,7 +1772,7 @@
                     const isPeakHour = (h === peakHOfDay);
 
                     const r = s10.addRow([
-                        `${h < 10 ? '0' + h : h}:00${isPeakHour ? ' (尖峰)' : ''}`,
+                        `${h < 10 ? '0' + h : h}:00${isPeakHour ? peakHourTag : ''}`,
                         item.db,
                         item.wb,
                         modeLabel[item.mode] || item.mode,
@@ -1488,10 +1813,10 @@
 
                 // Daily Summary Row
                 const s10TotRow = s10.addRow([
-                    '最熱日 24h 統計 / 日均值 (Daily Summary)',
+                    _t('xls.s10DailySum', {}, '最熱日 24h 統計 / 日均值 (Daily Summary)'),
                     { formula: 'AVERAGE(B4:B27)' },
                     { formula: 'AVERAGE(C4:C27)' },
-                    '尖峰工況檢核',
+                    _t('xls.s10PeakAudit', {}, '尖峰工況檢核'),
                     { formula: 'SUM(E4:E27)' },
                     { formula: 'SUM(F4:F27)' },
                     { formula: 'SUM(G4:G27)' },
@@ -1515,18 +1840,35 @@
 
                 s10.autoFilter = { from: 'A3', to: 'M3' };
 
+                return wb;
+            } finally {
+                if (i18n) i18n.lang = prevLang;
+            }
+        },
+
+        async generate(exportLang) {
+            const i18n = (typeof window !== 'undefined' && window.I18N) ? window.I18N : (typeof I18N !== 'undefined' ? I18N : (typeof global !== 'undefined' && global.I18N ? global.I18N : null));
+            const prevLang = i18n ? i18n.lang : 'zh-TW';
+            const targetLang = exportLang || (typeof document !== 'undefined' && document.getElementById('excelExportLang')?.value) || prevLang;
+
+            try {
+                await this.ensureExcelJS();
+                const wb = this.buildWorkbook(targetLang);
+
                 // 產出 Excel 檔案 Buffer 並觸發瀏覽器下載
                 const buffer = await wb.xlsx.writeBuffer();
-                const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
                 const dateStr = new Date().toISOString().slice(0, 10).replace(/-/g, '');
-                const fileName = `AI_DataCenter_Cooling_Calculation_Book_${dateStr}.xlsx`;
+                const fileName = `AI_DataCenter_Cooling_Calculation_Book_${targetLang}_${dateStr}.xlsx`;
 
-                if (typeof window !== 'undefined' && window.document && typeof URL !== 'undefined' && typeof URL.createObjectURL === 'function') {
-                    const link = document.createElement('a');
-                    link.href = URL.createObjectURL(blob);
-                    link.download = fileName;
-                    link.click();
-                    setTimeout(() => URL.revokeObjectURL(link.href), 1000);
+                if (typeof window !== 'undefined' && window.document && typeof window.document.createElement === 'function' && typeof Blob !== 'undefined' && typeof URL !== 'undefined' && typeof URL.createObjectURL === 'function') {
+                    try {
+                        const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+                        const link = window.document.createElement('a');
+                        link.href = URL.createObjectURL(blob);
+                        link.download = fileName;
+                        link.click();
+                        setTimeout(() => URL.revokeObjectURL(link.href), 1000);
+                    } catch (_) {}
                 }
 
                 console.log(`[ExcelExport] 正式計算書匯出成功: ${fileName}`);

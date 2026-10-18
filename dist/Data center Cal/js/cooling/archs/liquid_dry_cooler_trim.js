@@ -8,17 +8,20 @@
     if (!CoolingArchRegistry || !CoolingStages) {
         throw new Error('CoolingArchRegistry and CoolingStages must be loaded before liquid_dry_cooler_trim.js');
     }
+    const t = (k, p, fb) => (root.I18N ? root.I18N.t(k, p) : (fb || k));
 
     CoolingArchRegistry.register({
         id: 'dry_cooler_trim',
         aliases: ['dry_cooler_hx'],
         loop: 'liquid',
-        optionLabel: '🟡 乾冷器 + 串聯修整冰機 (NVIDIA DSX 混合三模式 / 推薦標準)',
-        cardLabel: '乾冷器 + Trim 冰機 (NVIDIA DSX)',
-        pillLabel: '乾冷器+Trim',
-        dashboardLabel: '乾冷器 + 修整冰機 (Dry Cooler + Trim Chiller)',
-        aliasDashboardLabels: {
-            dry_cooler_hx: '乾冷器 + 板換 + 修整冰機 (Dry Cooler + PHE + Trim Chiller)'
+        get optionLabel() { return t('arch.dry_cooler_trim.option', null, '🟡 乾冷器 + 串聯修整冰機 (NVIDIA DSX 混合三模式 / 推薦標準)'); },
+        get cardLabel() { return t('arch.dry_cooler_trim.card', null, '乾冷器 + Trim 冰機 (NVIDIA DSX)'); },
+        get pillLabel() { return t('arch.dry_cooler_trim.pill', null, '乾冷器+Trim'); },
+        get dashboardLabel() { return t('arch.dry_cooler_trim.dashboard', null, '乾冷器 + 修整冰機 (Dry Cooler + Trim Chiller)'); },
+        get aliasDashboardLabels() {
+            return {
+                dry_cooler_hx: t('arch.dry_cooler_trim.aliasDashboard', null, '乾冷器 + 板換 + 修整冰機 (Dry Cooler + PHE + Trim Chiller)')
+            };
         },
         flags: { hasMechanical: true, consumesWater: false, isTrim: true },
         terminal: 'cdu',
@@ -30,7 +33,7 @@
         equipment: [
             {
                 key: 'cdu_unit',
-                label: 'CDU 液冷分配主機 (Cooling Distribution Unit)',
+                get label() { return t('equip.cdu_unit', null, 'CDU 液冷分配主機 (Cooling Distribution Unit)'); },
                 category: 'CDU',
                 catalog: 'cdu',
                 role: 'terminal',
@@ -48,7 +51,7 @@
             },
             {
                 key: 'dry_cooler',
-                label: 'Dry Cooler 乾式冷卻器 (零耗水)',
+                get label() { return t('equip.dry_cooler_trim', null, 'Dry Cooler 乾式冷卻器 (零耗水)'); },
                 category: 'DryCooler',
                 catalog: 'dry_cooler',
                 role: 'heat_rejection',
@@ -63,7 +66,7 @@
             },
             {
                 key: 'cdu_pump',
-                label: 'CDU Primary Pump 一次側設施循環水泵',
+                get label() { return t('equip.cdu_pump', null, 'CDU Primary Pump 一次側設施循環水泵'); },
                 category: 'Pump',
                 catalog: 'pump',
                 role: 'pump',
@@ -74,7 +77,7 @@
             },
             {
                 key: 'trim_chiller',
-                label: 'In-line Trim Chiller 輔助修整冰機 (NVIDIA Mode 2/3 機械製冷)',
+                get label() { return t('equip.trim_chiller', null, 'In-line Trim Chiller 輔助修整冰機 (NVIDIA Mode 2/3 機械製冷)'); },
                 category: 'Chiller',
                 catalog: 'chiller_water',
                 role: 'chiller',
@@ -239,31 +242,31 @@
             const h3 = modeHours?.mechanical !== undefined ? `${modeHours.mechanical} h` : '';
 
             return {
-                title: 'NVIDIA DSX 參考拓樸',
-                referenceLabel: 'NVIDIA Reference Schematic',
+                title: t('topo.dsxRefTitle', null, 'NVIDIA DSX 參考拓樸'),
+                referenceLabel: t('topo.dsxRefLabel', null, 'NVIDIA Reference Schematic'),
                 banners: [
                     {
                         id: 'mode1',
-                        title: 'Mode 1 全自然冷卻',
-                        label: `Mode 1 全自然冷卻 (DB ≤ ${fullThresh}°C)${h1 ? ` — 全年 ${h1}` : ''}`,
-                        sub: `DB ≤ ${fullThresh}°C ｜ 全年 ${h1 || '0 h'} ｜ 100% 走 Economizer`,
-                        detail: `DB ≤ ${fullThresh}°C ｜ 全年 ${h1 || '0 h'} ｜ 100% 走 Economizer`,
+                        title: t('topo.m1FullFc', null, 'Mode 1 全自然冷卻'),
+                        label: t('topo.m1FullFcLabel', { fullThresh, hours: h1 ? ` — 全年 ${h1}` : '' }, `Mode 1 全自然冷卻 (DB ≤ ${fullThresh}°C)${h1 ? ` — 全年 ${h1}` : ''}`),
+                        sub: t('topo.m1FullFcSub', { fullThresh, hours: h1 || '0 h' }, `DB ≤ ${fullThresh}°C ｜ 全年 ${h1 || '0 h'} ｜ 100% 走 Economizer`),
+                        detail: t('topo.m1FullFcSub', { fullThresh, hours: h1 || '0 h' }, `DB ≤ ${fullThresh}°C ｜ 全年 ${h1 || '0 h'} ｜ 100% 走 Economizer`),
                         tone: 'emerald'
                     },
                     {
                         id: 'mode2',
-                        title: 'Mode 2 串聯預冷 + Trim 修整',
-                        label: `Mode 2 串聯預冷 + Trim 修整 (${fullThresh} < DB < ${mechThresh}°C)${h2 ? ` — 全年 ${h2}` : ''}`,
-                        sub: `${fullThresh} < DB < ${mechThresh}°C ｜ 全年 ${h2 || '0 h'} ｜ 預冷至 ${tPre}°C → Trim 冰機`,
-                        detail: `${fullThresh} < DB < ${mechThresh}°C ｜ 全年 ${h2 || '0 h'} ｜ 預冷至 ${tPre}°C → Trim 冰機`,
+                        title: t('topo.m2Trim', null, 'Mode 2 串聯預冷 + Trim 修整'),
+                        label: t('topo.m2TrimLabel', { fullThresh, mechThresh, hours: h2 ? ` — 全年 ${h2}` : '' }, `Mode 2 串聯預冷 + Trim 修整 (${fullThresh} < DB < ${mechThresh}°C)${h2 ? ` — 全年 ${h2}` : ''}`),
+                        sub: t('topo.m2TrimSub', { fullThresh, mechThresh, hours: h2 || '0 h', tPre }, `${fullThresh} < DB < ${mechThresh}°C ｜ 全年 ${h2 || '0 h'} ｜ 預冷至 ${tPre}°C → Trim 冰機`),
+                        detail: t('topo.m2TrimSub', { fullThresh, mechThresh, hours: h2 || '0 h', tPre }, `${fullThresh} < DB < ${mechThresh}°C ｜ 全年 ${h2 || '0 h'} ｜ 預冷至 ${tPre}°C → Trim 冰機`),
                         tone: 'amber'
                     },
                     {
                         id: 'mode3',
-                        title: 'Mode 3 乾冷器僅排冷凝熱',
-                        label: `Mode 3 乾冷器僅排冷凝熱 (DB ≥ ${mechThresh}°C)${h3 ? ` — 全年 ${h3}` : ''}`,
-                        sub: `DB ≥ ${mechThresh}°C ｜ 全年 ${h3 || '0 h'} ｜ 乾冷器僅排冷凝熱`,
-                        detail: `DB ≥ ${mechThresh}°C ｜ 全年 ${h3 || '0 h'} ｜ 乾冷器僅排冷凝熱`,
+                        title: t('topo.m3Condenser', null, 'Mode 3 乾冷器僅排冷凝熱'),
+                        label: t('topo.m3CondenserLabel', { mechThresh, hours: h3 ? ` — 全年 ${h3}` : '' }, `Mode 3 乾冷器僅排冷凝熱 (DB ≥ ${mechThresh}°C)${h3 ? ` — 全年 ${h3}` : ''}`),
+                        sub: t('topo.m3CondenserSub', { mechThresh, hours: h3 || '0 h' }, `DB ≥ ${mechThresh}°C ｜ 全年 ${h3 || '0 h'} ｜ 乾冷器僅排冷凝熱`),
+                        detail: t('topo.m3CondenserSub', { mechThresh, hours: h3 || '0 h' }, `DB ≥ ${mechThresh}°C ｜ 全年 ${h3 || '0 h'} ｜ 乾冷器僅排冷凝熱`),
                         tone: 'red'
                     }
                 ],
@@ -273,8 +276,8 @@
                         kind: 'it',
                         title: 'Compute Data Hall',
                         lines: [
-                            'Cold Plate 晶片液冷',
-                            `晶片水溫: ${sys?.secSupplyC ?? 45} ⇄ ${sys?.secReturnC ?? 57}°C`
+                            t('topo.coldPlateLiq', null, 'Cold Plate 晶片液冷'),
+                            t('topo.chipWaterTemp', { sup: sys?.secSupplyC ?? 45, ret: sys?.secReturnC ?? 57 }, `晶片水溫: ${sys?.secSupplyC ?? 45} ⇄ ${sys?.secReturnC ?? 57}°C`)
                         ]
                     },
                     {
@@ -287,9 +290,9 @@
                         kind: 'hx',
                         title: 'Liquid-to-Liquid HX (Primary)',
                         lines: [
-                            '自然預冷 (Free Pre-Cool)',
-                            `回水預冷至 ${tPre}°C`,
-                            '以乾冷器出水為冷源'
+                            t('topo.priFreePreCool', null, '自然預冷 (Free Pre-Cool)'),
+                            t('topo.retPrecooled', { tPre }, `回水預冷至 ${tPre}°C`),
+                            t('topo.dcAsColdSource', null, '以乾冷器出水為冷源')
                         ]
                     },
                     {
@@ -297,9 +300,9 @@
                         kind: 'hx',
                         title: 'Liquid-to-Liquid HX (Secondary)',
                         lines: [
-                            '接力修整 (Trim Cooling)',
-                            `精確修整至 ${tSup}°C`,
-                            `由 Trim Chiller ${tChws}°C 冰水冷卻`
+                            t('topo.secTrimCooling', null, '接力修整 (Trim Cooling)'),
+                            t('topo.trimToSup', { tSup }, `精確修整至 ${tSup}°C`),
+                            t('topo.chilledByTrim', { tChws }, `由 Trim Chiller ${tChws}°C 冰水冷卻`)
                         ]
                     },
                     {
@@ -308,8 +311,8 @@
                         title: 'Water Cooled Chillers',
                         lines: [
                             'Trim',
-                            '冷凝熱串聯排放至 Dry Coolers',
-                            '高效離心/螺桿式機械壓縮製冷'
+                            t('topo.condenserSeriesDc', null, '冷凝熱串聯排放至 Dry Coolers'),
+                            t('topo.effChillerMech', null, '高效離心/螺桿式機械壓縮製冷')
                         ]
                     },
                     {
@@ -317,17 +320,17 @@
                         kind: 'dry_cooler',
                         title: 'Dry Coolers',
                         lines: [
-                            '零耗水自然風冷',
-                            `Approach: ${dcApp}°C ｜ 門檻: ≤${fullThresh}°C`,
-                            'Mode 1: 滿載自然風冷',
-                            'Mode 2: 串聯預冷與主機冷凝排熱'
+                            t('topo.dcZeroWater', null, '零耗水自然風冷'),
+                            t('topo.dcApproachThresh', { app: dcApp, thresh: fullThresh }, `Approach: ${dcApp}°C ｜ 門檻: ≤${fullThresh}°C`),
+                            t('topo.dcM1FullAir', null, 'Mode 1: 滿載自然風冷'),
+                            t('topo.dcM2PrecoolRej', null, 'Mode 2: 串聯預冷與主機冷凝排熱')
                         ]
                     },
                     {
                         id: 'pump_fws',
                         kind: 'pump',
                         title: 'FWS Pump',
-                        lines: ['二次側設施供水泵']
+                        lines: [t('topo.secFwsPump', null, '二次側設施供水泵')]
                     }
                 ],
                 pipes: [

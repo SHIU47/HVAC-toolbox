@@ -77,7 +77,7 @@ const SKELETON_HTML = `<!doctype html>
       <button data-step="1" class="step-btn"><span class="step-circle">1</span><span class="step-title" data-i18n="nav.step1">案場 8760h 氣象</span></button>
       <button data-step="2" class="step-btn"><span class="step-circle">2</span><span class="step-title" data-i18n="nav.step2">Hall → DU → SU 模組</span></button>
       <button data-step="3" class="step-btn"><span class="step-circle">3</span><span class="step-title" data-i18n="nav.step3">CorePOD 核心機房</span></button>
-      <button data-step="4" class="step-btn"><span class="step-circle">4</span><span class="step-title" data-i18n="nav.step4">逐 DU 雙冷卻系統</span></button>
+      <button data-step="4" class="step-btn"><span class="step-circle">4</span><span class="step-title" data-i18n="nav.step4">冷卻系統設計</span></button>
       <button data-step="5" class="step-btn"><span class="step-circle">5</span><span class="step-title" data-i18n="nav.step5">8,760h 成果儀表板</span></button>
     </div>
   </header>

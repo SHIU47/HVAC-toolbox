@@ -8,15 +8,16 @@
     if (!CoolingArchRegistry || !CoolingStages) {
         throw new Error('CoolingArchRegistry and CoolingStages must be loaded before liquid_closed_tower.js');
     }
+    const t = (k, p, fb) => (root.I18N ? root.I18N.t(k, p) : (fb || k));
 
     CoolingArchRegistry.register({
         id: 'cooling_tower_hx',
         aliases: [],
         loop: 'liquid',
-        optionLabel: '🔷 密閉式冷卻水塔 (Closed-Circuit Cooling Tower / 100% 蒸發自然冷卻・零冰機)',
-        cardLabel: '密閉式冷卻水塔 (零冰機)',
-        pillLabel: '閉式塔',
-        dashboardLabel: '密閉式冷卻水塔 (Closed-Circuit Cooling Tower)',
+        get optionLabel() { return t('arch.cooling_tower_hx.option', null, '🔷 密閉式冷卻水塔 (Closed-Circuit Cooling Tower / 100% 蒸發自然冷卻・零冰機)'); },
+        get cardLabel() { return t('arch.cooling_tower_hx.card', null, '密閉式冷卻水塔 (零冰機)'); },
+        get pillLabel() { return t('arch.cooling_tower_hx.pill', null, '閉式塔'); },
+        get dashboardLabel() { return t('arch.cooling_tower_hx.dashboard', null, '密閉式冷卻水塔 (Closed-Circuit Cooling Tower)'); },
         flags: { hasMechanical: false, consumesWater: true, isClosedTower: true },
         terminal: 'cdu',
         schematic: 'single_loop',
@@ -26,17 +27,17 @@
                 key: 'hasPhe',
                 panel: 'custom',
                 type: 'boolean',
-                label: '配置板式熱交換器 (PHE)',
+                get label() { return t('arch.param.pheConfig', null, '配置板式熱交換器 (PHE)'); },
                 idPrefix: 'cduHasPheIn_',
                 default: false
             },
             { key: 'pheApproachC', default: 2.0, min: 0, max: 10, step: 0.5, unit: '°C' }
         ],
-        paramPanelTitle: '密閉式冷卻水塔 (Closed Tower) 專屬參數:',
+        get paramPanelTitle() { return t('arch.param.closedTowerTitle', null, '密閉式冷卻水塔 (Closed Tower) 專屬參數:'); },
         equipment: [
             {
                 key: 'cdu_unit',
-                label: 'CDU 液冷分配主機 (Cooling Distribution Unit)',
+                get label() { return t('equip.cdu_unit', null, 'CDU 液冷分配主機 (Cooling Distribution Unit)'); },
                 category: 'CDU',
                 catalog: 'cdu',
                 role: 'terminal',
@@ -54,7 +55,7 @@
             },
             {
                 key: 'cooling_tower',
-                label: 'Closed-Circuit Cooling Tower 密閉式冷卻水塔',
+                get label() { return t('equip.closed_tower', null, 'Closed-Circuit Cooling Tower 密閉式冷卻水塔'); },
                 category: 'CoolingTower',
                 catalog: 'cooling_tower',
                 role: 'heat_rejection',
@@ -74,7 +75,7 @@
             },
             {
                 key: 'cdu_pump',
-                label: 'CDU Primary Pump 一次側設施循環水泵',
+                get label() { return t('equip.cdu_pump', null, 'CDU Primary Pump 一次側設施循環水泵'); },
                 category: 'Pump',
                 catalog: 'pump',
                 role: 'pump',
@@ -129,8 +130,8 @@
                     kind: 'it',
                     title: 'Compute Data Hall',
                     lines: [
-                        'Cold Plate 晶片液冷',
-                        `晶片水溫: ${sys?.secSupplyC ?? 45} ⇄ ${sys?.secReturnC ?? 57}°C`
+                        t('topo.coldPlateLiq', null, 'Cold Plate 晶片液冷'),
+                        t('topo.chipWaterTemp', { sup: sys?.secSupplyC ?? 45, ret: sys?.secReturnC ?? 57 }, `晶片水溫: ${sys?.secSupplyC ?? 45} ⇄ ${sys?.secReturnC ?? 57}°C`)
                     ]
                 },
                 {
@@ -146,35 +147,35 @@
                 nodes.push({
                     id: 'hx',
                     kind: 'hx',
-                    title: 'PHE-1 閉式塔板換 (Closed Tower PHE)',
+                    title: t('topo.closedTowerPheTitle', null, 'PHE-1 閉式塔板換 (Closed Tower PHE)'),
                     lines: [
-                        '密閉水側自然冷卻 (PHE 隔離)',
-                        `濕球蒸發冷卻至 ${op?.temps?.fwsSup ?? 40}°C`,
-                        '板換水質完全隔離保護 CDU',
-                        '全年濕球驅動零冰機排熱'
+                        t('topo.closedTowerPheLine1', null, '密閉水側自然冷卻 (PHE 隔離)'),
+                        t('topo.closedTowerPheLine2', { tSup: op?.temps?.fwsSup ?? 40 }, `濕球蒸發冷卻至 ${op?.temps?.fwsSup ?? 40}°C`),
+                        t('topo.pheProtectCdu', null, '板換水質完全隔離保護 CDU'),
+                        t('topo.closedTowerPheLine4', null, '全年濕球驅動零冰機排熱')
                     ]
                 });
                 nodes.push({
                     id: 'pump_sec',
                     kind: 'pump',
                     title: 'Secondary Pump',
-                    lines: ['CDU 設施循環泵']
+                    lines: [t('topo.cduFacilityPump', null, 'CDU 設施循環泵')]
                 });
                 nodes.push({
                     id: 'pump_outdoor',
                     kind: 'pump',
                     title: 'Tower Pump',
-                    lines: ['閉式塔循環泵']
+                    lines: [t('topo.closedTowerPump', null, '閉式塔循環泵')]
                 });
                 nodes.push({
                     id: 'heat_rejection',
                     kind: 'tower',
-                    title: '密閉式冷卻水塔 (Closed Cooling Tower)',
+                    title: t('topo.closedTowerTitle', null, '密閉式冷卻水塔 (Closed Cooling Tower)'),
                     lines: [
-                        '閉式盤管蒸發冷卻 (水質隔離・零冰機)',
-                        '以濕球溫度驅動全時自然冷卻，全年無需冰機',
-                        `Approach: ${ctApp}°C ｜ 門檻: ≤${fullThresh}°C WB`,
-                        '盤管內部乾淨迴路，噴淋蒸發散熱'
+                        t('topo.closedTowerCoilEvap', null, '閉式盤管蒸發冷卻 (水質隔離・零冰機)'),
+                        t('topo.closedTowerWbDriven', null, '以濕球溫度驅動全時自然冷卻，全年無需冰機'),
+                        t('topo.dcApproachThresh', { app: ctApp, thresh: fullThresh }, `Approach: ${ctApp}°C ｜ 門檻: ≤${fullThresh}°C WB`),
+                        t('topo.closedTowerCoilClean', null, '盤管內部乾淨迴路，噴淋蒸發散熱')
                     ]
                 });
 
@@ -189,17 +190,17 @@
                     id: 'pump_sec',
                     kind: 'pump',
                     title: 'Closed Tower Pump',
-                    lines: ['閉式塔循環泵']
+                    lines: [t('topo.closedTowerPump', null, '閉式塔循環泵')]
                 });
                 nodes.push({
                     id: 'heat_rejection',
                     kind: 'tower',
-                    title: '密閉式冷卻水塔 (Closed Cooling Tower)',
+                    title: t('topo.closedTowerTitle', null, '密閉式冷卻水塔 (Closed Cooling Tower)'),
                     lines: [
-                        '閉式盤管蒸發冷卻 (一次側直通盤管)',
-                        'CDU 一次側水路直接循環密閉塔內部盤管',
-                        `Approach: ${ctApp}°C ｜ 門檻: ≤${fullThresh}°C WB`,
-                        '零中間板換損失，最高自然冷卻效率'
+                        t('topo.closedTowerDirectCoil', null, '閉式盤管蒸發冷卻 (一次側直通盤管)'),
+                        t('topo.closedTowerCduDirect', null, 'CDU 一次側水路直接循環密閉塔內部盤管'),
+                        t('topo.dcApproachThresh', { app: ctApp, thresh: fullThresh }, `Approach: ${ctApp}°C ｜ 門檻: ≤${fullThresh}°C WB`),
+                        t('topo.zeroPheLossMaxEff', null, '零中間板換損失，最高自然冷卻效率')
                     ]
                 });
 
@@ -211,13 +212,15 @@
 
             const deficitHours = design?.deficitHours ?? extra?.deficitHours ?? 0;
             return {
-                title: '設施排熱拓樸 (Facility Heat Rejection)',
+                title: t('topo.facilityHeatRej', null, '設施排熱拓樸 (Facility Heat Rejection)'),
                 referenceLabel: null,
                 banners: [
                     {
                         id: 'mode1',
-                        label: `全時蒸發自然冷卻 (WB ≤${fullThresh}°C)`,
-                        detail: deficitHours > 0 ? `全年 ${deficitHours} h 超出冷卻能力（供水溫上升）` : '水側直冷・全年零冰機',
+                        label: t('topo.closedTowerThresh', { fullThresh }, `全時蒸發自然冷卻 (WB ≤${fullThresh}°C)`),
+                        detail: deficitHours > 0
+                            ? t('topo.closedTowerDetailDeficit', { hours: deficitHours }, `全年 ${deficitHours} h 超出冷卻能力（供水溫上升）`)
+                            : t('topo.closedTowerDetailOk', null, '水側直冷・全年零冰機'),
                         tone: deficitHours > 0 ? 'amber' : 'emerald'
                     }
                 ],

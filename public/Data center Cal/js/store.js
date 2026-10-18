@@ -1054,7 +1054,9 @@
             const id = options.id || makeId('plant');
             const loop = options.loop === 'air' ? 'air' : 'liquid';
             const num = this.state.coolingPlants.filter(p => p.loop === loop).length + 1;
-            const defName = loop === 'liquid' ? `液冷系統 ${num}` : `氣冷系統 ${num}`;
+            const defName = loop === 'liquid'
+                ? _t('cooling.defaultLiquidPlantName', { n: num }, `液冷系統 ${num}`)
+                : _t('cooling.defaultAirPlantName', { n: num }, `氣冷系統 ${num}`);
             const name = options.name || defName;
             const redundancy = options.redundancy || 'N+1';
             const diversityFactor = typeof options.diversityFactor === 'number' ? options.diversityFactor : 1.0;
@@ -1175,9 +1177,6 @@
             const pSys = plant.system;
             if (pSys.architecture) sys.architecture = pSys.architecture;
             if (loop === 'liquid') {
-                if (pSys.secSupplyC !== undefined) sys.secSupplyC = pSys.secSupplyC;
-                if (pSys.secReturnC !== undefined) sys.secReturnC = pSys.secReturnC;
-                if (pSys.cduApproachC !== undefined) sys.cduApproachC = pSys.cduApproachC;
                 if (pSys.fwsSupplyC !== undefined) sys.fwsSupplyC = pSys.fwsSupplyC;
                 if (pSys.fwsReturnC !== undefined) sys.fwsReturnC = pSys.fwsReturnC;
                 if (pSys.dryCoolerApproachC !== undefined) sys.dryCoolerApproachC = pSys.dryCoolerApproachC;
@@ -1199,6 +1198,116 @@
             allUnits.forEach(u => {
                 this.syncUnitFromPlant(u, 'liquid');
                 this.syncUnitFromPlant(u, 'air');
+            });
+        },
+
+        // P-4: 快速配置預設 (Quick Config Presets)
+        applyDedicatedConfig() {
+            this.state.coolingPlants = [];
+            const allUnits = [];
+            (this.state.halls || []).forEach(h => (h.dus || []).forEach(d => allUnits.push(d)));
+            (this.state.corePods || []).forEach(p => allUnits.push(p));
+            allUnits.forEach(u => {
+                if (u.plantDesign?.cduSystem) u.plantDesign.cduSystem.plantId = null;
+                if (u.plantDesign?.fanwallSystem) u.plantDesign.fanwallSystem.plantId = null;
+            });
+            this.notify();
+        },
+
+        applySiteSharedConfig() {
+            this.applyDedicatedConfig();
+            const allUnits = [];
+            (this.state.halls || []).forEach(h => (h.dus || []).forEach(d => allUnits.push(d)));
+            (this.state.corePods || []).forEach(p => allUnits.push(p));
+
+            const liqMembers = allUnits.filter(u => {
+                const s = u.sus ? this.calcDuSummary(u) : this.calcCorePodSummary(u);
+                return (s?.liquidHeatKw || 0) > 0;
+            }).map(u => u.id);
+
+            const airMembers = allUnits.filter(u => {
+                const s = u.sus ? this.calcDuSummary(u) : this.calcCorePodSummary(u);
+                return ((s?.airHeatKw || 0) + (s?.lossKw || 0)) > 0;
+            }).map(u => u.id);
+
+            if (liqMembers.length > 0) {
+                let maxLiqKw = -1, maxLiqUnit = null;
+                allUnits.forEach(u => {
+                    const s = u.sus ? this.calcDuSummary(u) : this.calcCorePodSummary(u);
+                    if ((s?.liquidHeatKw || 0) > maxLiqKw) {
+                        maxLiqKw = s.liquidHeatKw;
+                        maxLiqUnit = u;
+                    }
+                });
+                const sys = maxLiqUnit?.plantDesign?.cduSystem ? JSON.parse(JSON.stringify(maxLiqUnit.plantDesign.cduSystem)) : null;
+                this.addCoolingPlant({
+                    loop: 'liquid',
+                    name: _t('cooling.siteSharedLiquidName', null, '全廠共用液冷系統'),
+                    memberIds: liqMembers,
+                    system: sys
+                });
+            }
+
+            if (airMembers.length > 0) {
+                let maxAirKw = -1, maxAirUnit = null;
+                allUnits.forEach(u => {
+                    const s = u.sus ? this.calcDuSummary(u) : this.calcCorePodSummary(u);
+                    const load = (s?.airHeatKw || 0) + (s?.lossKw || 0);
+                    if (load > maxAirKw) {
+                        maxAirKw = load;
+                        maxAirUnit = u;
+                    }
+                });
+                const sys = maxAirUnit?.plantDesign?.fanwallSystem ? JSON.parse(JSON.stringify(maxAirUnit.plantDesign.fanwallSystem)) : null;
+                this.addCoolingPlant({
+                    loop: 'air',
+                    name: _t('cooling.siteSharedAirName', null, '全廠共用氣冷系統'),
+                    memberIds: airMembers,
+                    system: sys
+                });
+            }
+        },
+
+        applyHallGroupedConfig() {
+            this.applyDedicatedConfig();
+            (this.state.halls || []).forEach(hall => {
+                const dus = hall.dus || [];
+                const liqDus = dus.filter(d => (this.calcDuSummary(d)?.liquidHeatKw || 0) > 0);
+                const airDus = dus.filter(d => ((this.calcDuSummary(d)?.airHeatKw || 0) + (this.calcDuSummary(d)?.lossKw || 0)) > 0);
+
+                let liqPlant = null;
+                if (liqDus.length > 0) {
+                    const sys = JSON.parse(JSON.stringify(liqDus[0].plantDesign.cduSystem));
+                    liqPlant = this.addCoolingPlant({
+                        loop: 'liquid',
+                        name: `${hall.name} - ${_t('cooling.hallLiquidPlant', null, '液冷系統')}`,
+                        memberIds: liqDus.map(d => d.id),
+                        system: sys
+                    });
+                }
+
+                let airPlant = null;
+                if (airDus.length > 0) {
+                    const sys = JSON.parse(JSON.stringify(airDus[0].plantDesign.fanwallSystem));
+                    airPlant = this.addCoolingPlant({
+                        loop: 'air',
+                        name: `${hall.name} - ${_t('cooling.hallAirPlant', null, '氣冷系統')}`,
+                        memberIds: airDus.map(d => d.id),
+                        system: sys
+                    });
+                }
+
+                (this.state.corePods || []).filter(p => p.enabled !== false).forEach(pod => {
+                    if (Array.isArray(pod.supportsHallIds) && pod.supportsHallIds.includes(hall.id)) {
+                        const ps = this.calcCorePodSummary(pod);
+                        if (liqPlant && (ps?.liquidHeatKw || 0) > 0 && !liqPlant.memberIds.includes(pod.id)) {
+                            this.addPlantMember(liqPlant.id, pod.id);
+                        }
+                        if (airPlant && ((ps?.airHeatKw || 0) + (ps?.lossKw || 0)) > 0 && !airPlant.memberIds.includes(pod.id)) {
+                            this.addPlantMember(airPlant.id, pod.id);
+                        }
+                    }
+                });
             });
         },
 
@@ -1430,10 +1539,33 @@
                 });
             };
 
+            const checkTempCompat = (name, targetId, cduSys) => {
+                if (cduSys?.plantId) {
+                    const plant = (this.state.coolingPlants || []).find(p => p.id === cduSys.plantId);
+                    if (plant && plant.system) {
+                        const plantFws = plant.system.fwsSupplyC ?? 42.0;
+                        const cduApp = cduSys.cduApproachC ?? 3.0;
+                        const chipSupplyReq = cduSys.secSupplyC ?? 45.0;
+                        if (chipSupplyReq < plantFws + cduApp) {
+                            allPassed = false;
+                            failedItems.push({
+                                targetId: targetId,
+                                targetName: name,
+                                systemName: _t('store.cduLiquidSys', null, '💧 CDU 液冷'),
+                                equipName: _t('cooling.secSupply', null, '晶片供水溫度'),
+                                reqText: `${chipSupplyReq}°C`,
+                                selText: `${(plantFws + cduApp).toFixed(1)}°C (${_t('cooling.tempIncompatibleBrief', null, '群組FWS+CDU趨近超出要求')})`
+                            });
+                        }
+                    }
+                }
+            };
+
             this.state.halls.forEach(h => {
                 h.dus.forEach(du => {
                     checkSys(h.name + ' - ' + du.name, du.id, du.plantDesign.cduSystem, true);
                     checkSys(h.name + ' - ' + du.name, du.id, du.plantDesign.fanwallSystem, false);
+                    checkTempCompat(h.name + ' - ' + du.name, du.id, du.plantDesign.cduSystem);
                 });
             });
 
@@ -1442,10 +1574,11 @@
             this.state.corePods.filter(p => p.enabled !== false).forEach(pod => {
                 checkSys(pod.name, pod.id, pod.plantDesign.cduSystem, true);
                 checkSys(pod.name, pod.id, pod.plantDesign.fanwallSystem, false);
+                checkTempCompat(pod.name, pod.id, pod.plantDesign.cduSystem);
             });
 
             (this.state.coolingPlants || []).forEach(plant => {
-                if (plant.system) {
+                if (plant.system && !plant.isEmpty && (plant.memberIds || []).length > 0) {
                     checkSys(plant.name, plant.id, plant.system, plant.loop === 'liquid');
                 }
             });

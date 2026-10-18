@@ -18,6 +18,8 @@
         }
     };
 
+    const _t = (k, p, fb) => (root.I18N ? root.I18N.t(k, p) : (fb || k));
+
     root.CoolingSchematics.register('air_plant', {
         render(ctx) {
             const t = ctx.t || {};
@@ -121,16 +123,16 @@
             const ecoStroke = isEcoBypass ? '#475569' : '#10b981';
             const ecoHeaderFill = isEcoBypass ? '#1e293b' : '#064e3b';
             const ecoTitleFill = isEcoBypass ? '#94a3b8' : '#d1fae5';
-            const ecoTitle = (nEco?.title || 'Free-Cooling 盤管') + (isEcoBypass ? ' — 旁通' : '');
+            const ecoTitle = (nEco?.title || _t('topo.fcCoilTitle', null, 'Free-Cooling 盤管')) + (isEcoBypass ? _t('schematic.bypassSuffix', null, ' — 旁通') : '');
             const ecoIconStroke = isEcoBypass ? '#64748b' : '#34d399';
-            const ecoBasis = op?.thresholds?.basis === 'wb' ? '濕球' : '外氣乾球';
+            const ecoBasis = op?.thresholds?.basis === 'wb' ? _t('schematic.wbBasis', null, '濕球') : _t('schematic.dbBasis', null, '外氣乾球');
             const ecoTAvail = (op?.tAvail !== undefined && op?.tAvail !== null) ? Number(op.tAvail).toFixed(1) : '—';
-            const ecoLine1 = isEcoBypass ? '旁通停用 (Bypass)' : (nEco?.lines?.[0] || '');
-            const ecoLine2 = isEcoBypass ? `旁通（${ecoBasis}過高，可用溫度 ${ecoTAvail}°C ≥ 回水 ${chwReturnC}°C）` : (nEco?.lines?.[1] || '');
-            const ecoLine3 = isEcoBypass ? '100% 冰水回水直通蒸發器' : (nEco?.lines?.[2] || '');
-            const ecoLine4 = isEcoBypass ? '零自然預冷 ｜ 全機械壓縮製冷' : (nEco?.lines?.[3] || '');
+            const ecoLine1 = isEcoBypass ? _t('schematic.bypassDisabled', null, '旁通停用 (Bypass)') : (nEco?.lines?.[0] || '');
+            const ecoLine2 = isEcoBypass ? _t('schematic.bypassHighTemp', { basis: ecoBasis, avail: ecoTAvail, ret: chwReturnC }, `旁通（${ecoBasis}過高，可用溫度 ${ecoTAvail}°C ≥ 回水 ${chwReturnC}°C）`) : (nEco?.lines?.[1] || '');
+            const ecoLine3 = isEcoBypass ? _t('schematic.directToEvap', null, '100% 冰水回水直通蒸發器') : (nEco?.lines?.[2] || '');
+            const ecoLine4 = isEcoBypass ? _t('schematic.zeroFcAllMech', null, '零自然預冷 ｜ 全機械壓縮製冷') : (nEco?.lines?.[3] || '');
             const ecoPipeColor = isEcoBypass ? '#475569' : '#f59e0b';
-            const ecoPipeBadgeText = pipeEcoToEvap || (isEcoBypass ? '旁通' : '預冷');
+            const ecoPipeBadgeText = pipeEcoToEvap || (isEcoBypass ? _t('schematic.bypassBadge', null, '旁通') : _t('schematic.precoolBadge', null, '預冷'));
 
             // 冰水管路與冷源拓樸 (分含 Economizer 與單階兩類佈局)
             const chwPipingAndPlantSvg = hasEco ? `
@@ -146,7 +148,7 @@
                 <polygon points="401,209 389,215 401,221" fill="#ffffff" />
                 <text x="395" y="240" fill="#38bdf8" font-size="8.5" font-weight="bold" text-anchor="middle" ${fitTextAttr(nPump.title || 'CHW Pump', 85, 8.5)}>${nPump.title || 'CHW Pump'}</text>
                 <rect x="465" y="226" width="140" height="22" rx="4" fill="#0c4a6e" stroke="#0284c7" stroke-width="1.2" />
-                <text x="535" y="241" fill="#e0f2fe" font-size="9.5" font-weight="bold" text-anchor="middle" ${fitTextAttr(`供水: ${pipeEvapToCrah} (CHW Supply)`, 132, 9.5)}>供水: ${pipeEvapToCrah} (CHW Supply)</text>
+                <text x="535" y="241" fill="#e0f2fe" font-size="9.5" font-weight="bold" text-anchor="middle" ${fitTextAttr(_t('schematic.chwSupply', { pipe: pipeEvapToCrah }, `供水: ${pipeEvapToCrah} (CHW Supply)`), 132, 9.5)}>${_t('schematic.chwSupply', { pipe: pipeEvapToCrah }, `供水: ${pipeEvapToCrah} (CHW Supply)`)}</text>
 
                 <!-- 4. 排熱與冰機拓樸 (Plant Schematic - 2-Stage Series) -->
                 <!-- Economizer (FC 盤管 / WSE 板換) -->
@@ -169,19 +171,19 @@
                 <!-- Evaporator / Chiller (冰水蒸發器) -->
                 <rect x="665" y="55" width="175" height="195" rx="10" fill="#0f172a" stroke="${theme.evapStroke}" stroke-width="2" />
                 <rect x="665" y="55" width="175" height="26" rx="10" fill="${theme.evapHeaderFill}" />
-                <text x="752" y="73" fill="#e0e7ff" font-size="11.5" font-weight="bold" text-anchor="middle" ${fitTextAttr(nEvap.title || '冰水蒸發器 (CHW Evaporator)', 165, 11.5)}>${nEvap.title || '冰水蒸發器 (CHW Evaporator)'}</text>
+                <text x="752" y="73" fill="#e0e7ff" font-size="11.5" font-weight="bold" text-anchor="middle" ${fitTextAttr(nEvap.title || _t('schematic.chwEvaporator', null, '冰水蒸發器 (CHW Evaporator)'), 165, 11.5)}>${nEvap.title || _t('schematic.chwEvaporator', null, '冰水蒸發器 (CHW Evaporator)')}</text>
 
                 <rect x="673" y="88" width="18" height="100" rx="3" fill="#1e293b" stroke="${theme.evapStroke}" stroke-width="1" />
                 <path d="M 677 96 L 687 108 L 677 120 M 683 96 L 693 108 L 683 120 M 677 120 L 687 132 L 677 144 M 683 120 L 693 132 L 683 144 M 677 144 L 687 156 L 677 168" stroke="${theme.evapIconStroke}" stroke-width="1.3" fill="none" stroke-linecap="round" />
-                <text x="700" y="103" fill="#f8fafc" font-size="10.5" font-weight="bold" ${fitTextAttr(nEvap.lines?.[0] || '機械壓縮製冷', 135, 10.5)}>${nEvap.lines?.[0] || '機械壓縮製冷'}</text>
-                <text x="700" y="127" fill="${theme.evapIconStroke}" font-size="9.5" font-weight="bold" ${fitTextAttr(nEvap.lines?.[1] || `供水 ${chwSupplyC}°C ⇄ 回水 ${chwReturnC}°C`, 135, 9.5)}>${nEvap.lines?.[1] || `供水 ${chwSupplyC}°C ⇄ 回水 ${chwReturnC}°C`}</text>
+                <text x="700" y="103" fill="#f8fafc" font-size="10.5" font-weight="bold" ${fitTextAttr(nEvap.lines?.[0] || _t('schematic.mechCooling', null, '機械壓縮製冷'), 135, 10.5)}>${nEvap.lines?.[0] || _t('schematic.mechCooling', null, '機械壓縮製冷')}</text>
+                <text x="700" y="127" fill="${theme.evapIconStroke}" font-size="9.5" font-weight="bold" ${fitTextAttr(nEvap.lines?.[1] || _t('topo.evapSupplyReturn', { sup: chwSupplyC, ret: chwReturnC }, `供水 ${chwSupplyC}°C ⇄ 回水 ${chwReturnC}°C`), 135, 9.5)}>${nEvap.lines?.[1] || _t('topo.evapSupplyReturn', { sup: chwSupplyC, ret: chwReturnC }, `供水 ${chwSupplyC}°C ⇄ 回水 ${chwReturnC}°C`)}</text>
                 <text x="700" y="152" fill="#cbd5e1" font-size="9" ${fitTextAttr(nEvap.lines?.[2] || '', 135, 9)}>${nEvap.lines?.[2] || ''}</text>
                 <text x="700" y="175" fill="#94a3b8" font-size="8.5" ${fitTextAttr(nEvap.lines?.[3] || '', 135, 8.5)}>${nEvap.lines?.[3] || ''}</text>
 
                 <!-- 室外排熱設備模組 -->
                 <rect x="880" y="55" width="265" height="195" rx="10" fill="${theme.rejFill}" stroke="${theme.rejStroke}" stroke-width="2" />
                 <rect x="880" y="55" width="265" height="26" rx="10" fill="${theme.rejHeaderFill}" />
-                <text x="1012" y="73" fill="#f8fafc" font-size="12" font-weight="bold" text-anchor="middle" ${fitTextAttr(nRej.title || '室外排熱機組', 245, 12)}>${nRej.title || '室外排熱機組'}</text>
+                <text x="1012" y="73" fill="#f8fafc" font-size="12" font-weight="bold" text-anchor="middle" ${fitTextAttr(nRej.title || _t('schematic.outdoorHeatRej', null, '室外排熱機組'), 245, 12)}>${nRej.title || _t('schematic.outdoorHeatRej', null, '室外排熱機組')}</text>
                 
                 <text x="895" y="105" fill="#f1f5f9" font-size="10.5" font-weight="bold" ${fitTextAttr(nRej.lines?.[0] || '', 240, 10.5)}>${nRej.lines?.[0] || ''}</text>
                 <text x="895" y="128" fill="${theme.evapIconStroke}" font-size="9.5" ${fitTextAttr(nRej.lines?.[1] || '', 240, 9.5)}>${nRej.lines?.[1] || ''}</text>
@@ -199,7 +201,7 @@
                 <!-- 冷卻塔出水分支至 WSE -->
                 <path d="M 855 160 L 855 38 L 522 38 L 522 55" stroke="#38bdf8" stroke-width="2.2" stroke-dasharray="4,3" fill="none" stroke-linejoin="round" />
                 <rect x="640" y="27" width="115" height="18" rx="3" fill="#082f49" stroke="#38bdf8" stroke-width="1" />
-                <text x="697" y="39" fill="#7dd3fc" font-size="8" font-weight="bold" text-anchor="middle">CW 供水分歧 ⇄ WSE</text>
+                <text x="697" y="39" fill="#7dd3fc" font-size="8" font-weight="bold" text-anchor="middle">${_t('schematic.cwBranchWse', null, 'CW 供水分歧 ⇄ WSE')}</text>
                 ` : `
                 <line x1="840" y1="105" x2="880" y2="105" stroke="#ea580c" stroke-width="3.5" stroke-linecap="round" />
                 <line x1="880" y1="185" x2="840" y2="185" stroke="#0284c7" stroke-width="3.5" stroke-linecap="round" />
@@ -209,7 +211,7 @@
                 <!-- CHW Return -->
                 <line x1="355" y1="110" x2="510" y2="110" stroke="#ea580c" stroke-width="4.5" stroke-linecap="round" />
                 <rect x="365" y="65" width="135" height="24" rx="5" fill="#881337" stroke="#f43f5e" stroke-width="1.5" />
-                <text x="432" y="81" fill="#ffe4e6" font-size="10" font-weight="bold" text-anchor="middle" ${fitTextAttr(`回水: ${pipeCrahToEvap} (CHW Return)`, 126, 10)}>回水: ${pipeCrahToEvap} (CHW Return)</text>
+                <text x="432" y="81" fill="#ffe4e6" font-size="10" font-weight="bold" text-anchor="middle" ${fitTextAttr(_t('schematic.chwReturn', { pipe: pipeCrahToEvap }, `回水: ${pipeCrahToEvap} (CHW Return)`), 126, 10)}>${_t('schematic.chwReturn', { pipe: pipeCrahToEvap }, `回水: ${pipeCrahToEvap} (CHW Return)`)}</text>
 
                 <!-- CHW Supply -->
                 <line x1="510" y1="200" x2="445" y2="200" stroke="#0284c7" stroke-width="4.5" stroke-linecap="round" />
@@ -221,19 +223,19 @@
 
                 <line x1="415" y1="200" x2="355" y2="200" stroke="#0284c7" stroke-width="4.5" stroke-linecap="round" />
                 <rect x="365" y="238" width="135" height="24" rx="5" fill="#0c4a6e" stroke="#0284c7" stroke-width="1.5" />
-                <text x="432" y="254" fill="#e0f2fe" font-size="10" font-weight="bold" text-anchor="middle" ${fitTextAttr(`供水: ${pipeEvapToCrah} (CHW Supply)`, 126, 10)}>供水: ${pipeEvapToCrah} (CHW Supply)</text>
+                <text x="432" y="254" fill="#e0f2fe" font-size="10" font-weight="bold" text-anchor="middle" ${fitTextAttr(_t('schematic.chwSupply', { pipe: pipeEvapToCrah }, `供水: ${pipeEvapToCrah} (CHW Supply)`), 126, 10)}>${_t('schematic.chwSupply', { pipe: pipeEvapToCrah }, `供水: ${pipeEvapToCrah} (CHW Supply)`)}</text>
 
                 <!-- 4. 排熱與冰機拓樸 (Plant Schematic) -->
                 <!-- 蒸發器換熱核心 (Evaporator / PHE) -->
                 <rect x="510" y="70" width="200" height="175" rx="10" fill="#0f172a" stroke="${theme.evapStroke}" stroke-width="2" />
                 <rect x="510" y="70" width="200" height="30" rx="10" fill="${theme.evapHeaderFill}" />
-                <text x="610" y="90" fill="#e0e7ff" font-size="12" font-weight="bold" text-anchor="middle" ${fitTextAttr(nEvap.title || '冰水蒸發器 (CHW Evaporator)', 180, 12)}>${nEvap.title || '冰水蒸發器 (CHW Evaporator)'}</text>
+                <text x="610" y="90" fill="#e0e7ff" font-size="12" font-weight="bold" text-anchor="middle" ${fitTextAttr(nEvap.title || _t('schematic.chwEvaporator', null, '冰水蒸發器 (CHW Evaporator)'), 180, 12)}>${nEvap.title || _t('schematic.chwEvaporator', null, '冰水蒸發器 (CHW Evaporator)')}</text>
                 
                 <rect x="525" y="118" width="26" height="100" rx="4" fill="#1e293b" stroke="${theme.evapStroke}" stroke-width="1.2" />
                 <path d="M 531 128 L 542 143 L 531 158 M 538 128 L 549 143 L 538 158 M 531 158 L 542 173 L 531 188 M 538 158 L 549 173 L 538 188" stroke="${theme.evapIconStroke}" stroke-width="1.5" fill="none" stroke-linecap="round" />
-                <text x="630" y="135" fill="#f8fafc" font-size="12" font-weight="bold" text-anchor="middle" ${fitTextAttr(nEvap.lines?.[0] || '機械壓縮製冷', 140, 12)}>${nEvap.lines?.[0] || '機械壓縮製冷'}</text>
-                <text x="630" y="162" fill="${theme.evapIconStroke}" font-size="11" font-weight="bold" text-anchor="middle" ${fitTextAttr(nEvap.lines?.[1] || `供水 ${chwSupplyC}°C ⇄ 回水 ${chwReturnC}°C`, 140, 11)}>${nEvap.lines?.[1] || `供水 ${chwSupplyC}°C ⇄ 回水 ${chwReturnC}°C`}</text>
-                <text x="630" y="188" fill="#cbd5e1" font-size="10" text-anchor="middle" ${fitTextAttr(nEvap.lines?.[2] || '全時連續供冷・穩定控溫', 140, 10)}>${nEvap.lines?.[2] || '全時連續供冷・穩定控溫'}</text>
+                <text x="630" y="135" fill="#f8fafc" font-size="12" font-weight="bold" text-anchor="middle" ${fitTextAttr(nEvap.lines?.[0] || _t('schematic.mechCooling', null, '機械壓縮製冷'), 140, 12)}>${nEvap.lines?.[0] || _t('schematic.mechCooling', null, '機械壓縮製冷')}</text>
+                <text x="630" y="162" fill="${theme.evapIconStroke}" font-size="11" font-weight="bold" text-anchor="middle" ${fitTextAttr(nEvap.lines?.[1] || _t('topo.evapSupplyReturn', { sup: chwSupplyC, ret: chwReturnC }, `供水 ${chwSupplyC}°C ⇄ 回水 ${chwReturnC}°C`), 140, 11)}>${nEvap.lines?.[1] || _t('topo.evapSupplyReturn', { sup: chwSupplyC, ret: chwReturnC }, `供水 ${chwSupplyC}°C ⇄ 回水 ${chwReturnC}°C`)}</text>
+                <text x="630" y="188" fill="#cbd5e1" font-size="10" text-anchor="middle" ${fitTextAttr(nEvap.lines?.[2] || _t('schematic.continuousCooling', null, '全時連續供冷・穩定控溫'), 140, 10)}>${nEvap.lines?.[2] || _t('schematic.continuousCooling', null, '全時連續供冷・穩定控溫')}</text>
                 <text x="630" y="212" fill="#94a3b8" font-size="9.5" text-anchor="middle" ${fitTextAttr(nEvap.lines?.[3] || '', 140, 9.5)}>${nEvap.lines?.[3] || ''}</text>
 
                 <!-- 室外排熱設備連結管路 -->
@@ -251,7 +253,7 @@
                 <!-- 室外排熱設備模組 -->
                 <rect x="820" y="70" width="315" height="175" rx="10" fill="${theme.rejFill}" stroke="${theme.rejStroke}" stroke-width="2" />
                 <rect x="820" y="70" width="315" height="30" rx="10" fill="${theme.rejHeaderFill}" />
-                <text x="977" y="90" fill="#f8fafc" font-size="13" font-weight="bold" text-anchor="middle" ${fitTextAttr(nRej.title || '室外排熱機組', 290, 13)}>${nRej.title || '室外排熱機組'}</text>
+                <text x="977" y="90" fill="#f8fafc" font-size="13" font-weight="bold" text-anchor="middle" ${fitTextAttr(nRej.title || _t('schematic.outdoorHeatRej', null, '室外排熱機組'), 290, 13)}>${nRej.title || _t('schematic.outdoorHeatRej', null, '室外排熱機組')}</text>
                 
                 <text x="840" y="132" fill="#f1f5f9" font-size="12" font-weight="bold" ${fitTextAttr(nRej.lines?.[0] || '', 275, 12)}>${nRej.lines?.[0] || ''}</text>
                 <text x="840" y="158" fill="${theme.evapIconStroke}" font-size="11" ${fitTextAttr(nRej.lines?.[1] || '', 275, 11)}>${nRej.lines?.[1] || ''}</text>
@@ -259,18 +261,21 @@
                 <text x="840" y="210" fill="#94a3b8" font-size="9.5" ${fitTextAttr(nRej.lines?.[3] || '', 275, 9.5)}>${nRej.lines?.[3] || ''}</text>
             `;
 
+            const rdhxOrFanwallTitle = isRdhx ? _t('schematic.rdhxRearDoorTitle', null, 'RDHX 背板換熱器') : _t('schematic.fanwallCrah', null, 'Fanwall / CRAH');
+            const fanTypeDesc = isRdhx ? _t('schematic.passiveOrMicroFan', null, '背板無風扇/微風扇') : _t('schematic.ecFanMatrix', null, 'EC 變頻風機牆矩陣');
+
             return `
                 <div class="p-4 bg-slate-950 rounded-2xl text-white font-mono border border-slate-800 shadow-xl overflow-hidden">
                     <!-- 頂部標題 -->
                     <div class="flex flex-col sm:flex-row sm:items-center justify-between text-xs pb-3 border-b border-slate-800/80 gap-2">
                         <div class="flex items-center gap-2">
                             <span class="inline-flex items-center justify-center px-3 py-1 rounded-md bg-indigo-950 text-indigo-300 font-black text-xs border border-indigo-700">Air Cooling Schematic</span>
-                            <span class="font-bold text-slate-100 text-sm">${model?.title || '白區氣冷與輔助排熱拓樸 (Air & Fanwall Heat Rejection System)'}</span>
+                            <span class="font-bold text-slate-100 text-sm">${model?.title || _t('schematic.airCoolingSchematic', null, '白區氣冷與輔助排熱拓樸 (Air & Fanwall Heat Rejection System)')}</span>
                         </div>
                         <div class="flex items-center gap-2">
                             <span class="px-3 py-1 rounded-md bg-indigo-950/80 text-indigo-300 text-xs font-bold border border-indigo-800 flex items-center gap-1.5">
                                 <span class="w-2 h-2 rounded-full bg-indigo-400"></span>
-                                排熱架構: ${nRej.title || '氣冷系統'}
+                                ${_t('schematic.heatRejArch', null, '排熱架構')}: ${nRej.title || _t('schematic.airSystem', null, '氣冷系統')}
                             </span>
                         </div>
                     </div>
@@ -284,18 +289,18 @@
                             <!-- 1. 白區 IT 機櫃廢熱源 (Air Heat Load) -->
                             <rect x="20" y="25" width="150" height="250" rx="10" fill="#0f172a" stroke="#475569" stroke-width="2" />
                             <rect x="20" y="25" width="150" height="30" rx="10" fill="#1e293b" />
-                            <text x="95" y="46" fill="#f8fafc" font-size="12" font-weight="bold" text-anchor="middle">IT 白區氣流廢熱</text>
+                            <text x="95" y="46" fill="#f8fafc" font-size="12" font-weight="bold" text-anchor="middle">${_t('schematic.itAirHeat', null, 'IT 白區氣流廢熱')}</text>
 
                             <rect x="30" y="70" width="130" height="65" rx="8" fill="#1e293b" stroke="#334155" stroke-width="1.5" />
                             <rect x="37" y="78" width="116" height="18" rx="4" fill="#334155" />
                             <circle cx="49" cy="87" r="3" fill="#6366f1" />
                             <circle cx="59" cy="87" r="3" fill="#38bdf8" />
-                            <text x="100" y="91" fill="#f1f5f9" font-size="9.5" font-weight="bold" text-anchor="middle">網通 / 儲存 / 輔助廢熱</text>
+                            <text x="100" y="91" fill="#f1f5f9" font-size="9.5" font-weight="bold" text-anchor="middle">${_t('schematic.netStorageHeat', null, '網通 / 儲存 / 輔助廢熱')}</text>
                             <text x="95" y="123" fill="#818cf8" font-size="14" font-weight="900" text-anchor="middle">${airLoadKw.toFixed(0)} kW</text>
 
-                            <text x="95" y="165" fill="#38bdf8" font-size="10.5" font-weight="bold" text-anchor="middle" ${fitTextAttr(`進風冷通道: ${coldAisleC}°C (典型值)`, 140, 10.5)}>進風冷通道: ${coldAisleC}°C (典型值)</text>
-                            <text x="95" y="190" fill="#f43f5e" font-size="10" text-anchor="middle" ${fitTextAttr(`排風熱通道: ${hotAisleC}°C (典型值)`, 140, 10)}>排風熱通道: ${hotAisleC}°C (典型值)</text>
-                            <text x="95" y="215" fill="#94a3b8" font-size="9" text-anchor="middle" ${fitTextAttr(`氣流溫升: ΔT ≈ ${deltaAirC}°C (典型值)`, 140, 9)}>氣流溫升: ΔT ≈ ${deltaAirC}°C (典型值)</text>
+                            <text x="95" y="165" fill="#38bdf8" font-size="10.5" font-weight="bold" text-anchor="middle" ${fitTextAttr(_t('schematic.coldAisle', { temp: coldAisleC }, `進風冷通道: ${coldAisleC}°C (典型值)`), 140, 10.5)}>${_t('schematic.coldAisle', { temp: coldAisleC }, `進風冷通道: ${coldAisleC}°C (典型值)`)}</text>
+                            <text x="95" y="190" fill="#f43f5e" font-size="10" text-anchor="middle" ${fitTextAttr(_t('schematic.hotAisle', { temp: hotAisleC }, `排風熱通道: ${hotAisleC}°C (典型值)`), 140, 10)}>${_t('schematic.hotAisle', { temp: hotAisleC }, `排風熱通道: ${hotAisleC}°C (典型值)`)}</text>
+                            <text x="95" y="215" fill="#94a3b8" font-size="9" text-anchor="middle" ${fitTextAttr(_t('schematic.airDeltaT', { temp: deltaAirC }, `氣流溫升: ΔT ≈ ${deltaAirC}°C (典型值)`), 140, 9)}>${_t('schematic.airDeltaT', { temp: deltaAirC }, `氣流溫升: ΔT ≈ ${deltaAirC}°C (典型值)`)}</text>
 
                             <!-- 2. 白區空調機組 (Fanwall / CRAH / RDHX) -->
                             <!-- 熱回風管路 -->
@@ -305,7 +310,7 @@
 
                             <rect x="210" y="25" width="145" height="250" rx="10" fill="#1e1b4b" stroke="#6366f1" stroke-width="2" />
                             <rect x="210" y="25" width="145" height="30" rx="10" fill="#312e81" />
-                            <text x="282" y="46" fill="#faf5ff" font-size="12" font-weight="bold" text-anchor="middle" ${fitTextAttr(isRdhx ? 'RDHX 背板換熱器' : 'Fanwall / CRAH', 135, 12)}>${isRdhx ? 'RDHX 背板換熱器' : 'Fanwall / CRAH'}</text>
+                            <text x="282" y="46" fill="#faf5ff" font-size="12" font-weight="bold" text-anchor="middle" ${fitTextAttr(rdhxOrFanwallTitle, 135, 12)}>${rdhxOrFanwallTitle}</text>
 
                             <rect x="222" y="70" width="121" height="100" rx="8" fill="#0f172a" stroke="#4f46e5" stroke-width="1.5" />
                             <!-- 空調盤管與風扇圖標 -->
@@ -315,9 +320,9 @@
                             <circle cx="295" cy="135" r="14" fill="#1e1b4b" stroke="#818cf8" stroke-width="1.2" />
                             <text x="295" y="139" fill="#a5b4fc" font-size="9" font-weight="bold" text-anchor="middle">FAN</text>
 
-                            <text x="282" y="195" fill="#e0e7ff" font-size="11" font-weight="bold" text-anchor="middle">${fwUnitQty} 台 (N+1)</text>
-                            <text x="282" y="215" fill="#a5b4fc" font-size="9.5" text-anchor="middle" ${fitTextAttr(isRdhx ? '背板無風扇/微風扇' : 'EC 變頻風機牆矩陣', 130, 9.5)}>${isRdhx ? '背板無風扇/微風扇' : 'EC 變頻風機牆矩陣'}</text>
-                            <text x="282" y="235" fill="#34d399" font-size="10" font-weight="bold" text-anchor="middle" ${fitTextAttr(`冰水流量: ${flowChwLpm.toLocaleString()} LPM`, 130, 10)}>冰水流量: ${flowChwLpm.toLocaleString()} LPM</text>
+                            <text x="282" y="195" fill="#e0e7ff" font-size="11" font-weight="bold" text-anchor="middle">${_t('schematic.unitsN1', { qty: fwUnitQty }, `${fwUnitQty} 台 (N+1)`)}</text>
+                            <text x="282" y="215" fill="#a5b4fc" font-size="9.5" text-anchor="middle" ${fitTextAttr(fanTypeDesc, 130, 9.5)}>${fanTypeDesc}</text>
+                            <text x="282" y="235" fill="#34d399" font-size="10" font-weight="bold" text-anchor="middle" ${fitTextAttr(_t('schematic.chwFlowLpm', { flow: flowChwLpm.toLocaleString() }, `冰水流量: ${flowChwLpm.toLocaleString()} LPM`), 130, 10)}>${_t('schematic.chwFlowLpm', { flow: flowChwLpm.toLocaleString() }, `冰水流量: ${flowChwLpm.toLocaleString()} LPM`)}</text>
 
                             <!-- 3 & 4. 冰水管路與冷源拓樸模組 -->
                             ${chwPipingAndPlantSvg}

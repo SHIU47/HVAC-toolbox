@@ -84,18 +84,31 @@
                     + '</tr>';
             });
 
+            const t = (k, p, fb) => (window.I18N ? window.I18N.t(k, p) : (fb || k));
+
             container.innerHTML = '<div class="space-y-4 bg-white p-5 rounded-2xl border border-slate-200">'
                 + '<div class="p-4 bg-slate-50/80 rounded-xl border border-slate-200/80 space-y-2">'
-                + '<div class="flex justify-between items-center mb-1"><span class="text-xs font-extrabold text-slate-700">⚡ 快速加入標準型號 (Quick Add)</span><button onclick="EquipmentDesigner.addCustomItem(\'' + containerId + '\')" class="text-xs font-bold text-purple-700 hover:underline">➕ 自訂設備</button></div>'
+                + '<div class="flex justify-between items-center mb-1"><span class="text-xs font-extrabold text-slate-700">' + t('eqd.quickAdd', null, '⚡ 快速加入標準型號 (Quick Add)') + '</span><button onclick="EquipmentDesigner.addCustomItem(\'' + containerId + '\')" class="text-xs font-bold text-purple-700 hover:underline">' + t('eqd.customItem', null, '➕ 自訂設備') + '</button></div>'
                 + chipsHtml
                 + '</div>'
                 + '<div class="overflow-x-auto"><table class="w-full text-left border-collapse">'
-                + '<thead><tr class="text-[11px] font-bold text-slate-400 uppercase tracking-wider border-b"><th class="py-2 px-3">類別</th><th class="py-2 px-3">設備型號名稱</th><th class="py-2 px-3 text-center">台數</th><th class="py-2 px-3 text-right">單台功耗</th><th class="py-2 px-3 text-center">液冷比</th><th class="py-2 px-3 text-right">小計 IT (液冷)</th><th class="py-2 px-3 text-center">操作</th></tr></thead>'
-                + '<tbody>' + (tableRows || '<tr><td colspan="7" class="py-6 text-center text-xs text-slate-400">目前清單為空，請點選上方按鈕快速加入設備</td></tr>') + '</tbody>'
+                + '<thead><tr class="text-[11px] font-bold text-slate-400 uppercase tracking-wider border-b">'
+                + '<th class="py-2 px-3">' + t('eqd.thCategory', null, '類別') + '</th>'
+                + '<th class="py-2 px-3">' + t('eqd.thModel', null, '設備型號名稱') + '</th>'
+                + '<th class="py-2 px-3 text-center">' + t('eqd.thQty', null, '台數') + '</th>'
+                + '<th class="py-2 px-3 text-right">' + t('eqd.thUnitKw', null, '單台功耗') + '</th>'
+                + '<th class="py-2 px-3 text-center">' + t('eqd.thLiquidPct', null, '液冷比') + '</th>'
+                + '<th class="py-2 px-3 text-right">' + t('eqd.thSubtotal', null, '小計 IT (液冷)') + '</th>'
+                + '<th class="py-2 px-3 text-center">' + t('eqd.thAction', null, '操作') + '</th>'
+                + '</tr></thead>'
+                + '<tbody>' + (tableRows || ('<tr><td colspan="7" class="py-6 text-center text-xs text-slate-400">' + t('eqd.empty', null, '目前清單為空，請點選上方按鈕快速加入設備') + '</td></tr>')) + '</tbody>'
                 + '</table></div>'
                 + '<div class="pt-4 border-t">'
-                + '<div class="grid grid-cols-3 gap-3 p-4 bg-slate-50 rounded-xl border border-slate-200"><div><span class="text-[10px] font-bold text-slate-400 uppercase">總 IT 負載</span><div class="text-base font-black text-slate-900 mt-0.5">' + totalItKw.toFixed(1) + ' kW</div></div><div><span class="text-[10px] font-bold text-emerald-800 uppercase">💧 液冷散熱量</span><div class="text-base font-black text-emerald-950 mt-0.5">' + liquidHeatKw.toFixed(1) + ' kW <span class="text-[10px] font-semibold">(' + dlcPct.toFixed(1) + '%)</span></div></div><div><span class="text-[10px] font-bold text-amber-800 uppercase">💨 氣冷散熱量</span><div class="text-base font-black text-amber-950 mt-0.5">' + airHeatKw.toFixed(1) + ' kW</div></div></div>'
-                + '</div></div>';
+                + '<div class="grid grid-cols-3 gap-3 p-4 bg-slate-50 rounded-xl border border-slate-200">'
+                + '<div><span class="text-[10px] font-bold text-slate-400 uppercase">' + t('eqd.totalIt', null, '總 IT 負載') + '</span><div class="text-base font-black text-slate-900 mt-0.5">' + totalItKw.toFixed(1) + ' kW</div></div>'
+                + '<div><span class="text-[10px] font-bold text-emerald-800 uppercase">' + t('eqd.liquidHeat', null, '💧 液冷散熱量') + '</span><div class="text-base font-black text-emerald-950 mt-0.5">' + liquidHeatKw.toFixed(1) + ' kW <span class="text-[10px] font-semibold">(' + dlcPct.toFixed(1) + '%)</span></div></div>'
+                + '<div><span class="text-[10px] font-bold text-amber-800 uppercase">' + t('eqd.airHeat', null, '💨 氣冷散熱量') + '</span><div class="text-base font-black text-amber-950 mt-0.5">' + airHeatKw.toFixed(1) + ' kW</div></div>'
+                + '</div></div></div>';
 
             container._designerOptions = options;
         },
@@ -126,11 +139,12 @@
             const container = document.getElementById(containerId);
             if (!container || !container._designerOptions) return;
             const options = container._designerOptions;
+            const t = (k, p, fb) => (window.I18N ? window.I18N.t(k, p) : (fb || k));
 
             const newItem = {
                 id: 'eq_' + Date.now(),
                 category: 'CUSTOM',
-                model: '自訂設備單元',
+                model: t('eqd.customUnitModel', null, '自訂設備單元'),
                 qty: 1,
                 itLoadKw: 10.0,
                 liquidPct: 0,

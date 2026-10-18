@@ -8,15 +8,16 @@
     if (!CoolingArchRegistry || !CoolingStages) {
         throw new Error('CoolingArchRegistry and CoolingStages must be loaded before liquid_adiabatic_tower.js');
     }
+    const t = (k, p, fb) => (root.I18N ? root.I18N.t(k, p) : (fb || k));
 
     CoolingArchRegistry.register({
         id: 'adiabatic_tower',
         aliases: [],
         loop: 'liquid',
-        optionLabel: '🔵 絕熱冷卻塔 (Adiabatic Tower / 100% 絕熱預冷自然散熱・零冰機)',
-        cardLabel: '絕熱冷卻塔 (零冰機)',
-        pillLabel: '絕熱塔',
-        dashboardLabel: '絕熱密閉冷卻水塔 (Adiabatic Tower)',
+        get optionLabel() { return t('arch.adiabatic_tower.option', null, '🔵 絕熱冷卻塔 (Adiabatic Tower / 100% 絕熱預冷自然散熱・零冰機)'); },
+        get cardLabel() { return t('arch.adiabatic_tower.card', null, '絕熱冷卻塔 (零冰機)'); },
+        get pillLabel() { return t('arch.adiabatic_tower.pill', null, '絕熱塔'); },
+        get dashboardLabel() { return t('arch.adiabatic_tower.dashboard', null, '絕熱密閉冷卻水塔 (Adiabatic Tower)'); },
         flags: { hasMechanical: false, consumesWater: true, isAdiabatic: true },
         terminal: 'cdu',
         schematic: 'single_loop',
@@ -26,7 +27,7 @@
                 key: 'hasPhe',
                 panel: 'custom',
                 type: 'boolean',
-                label: '配置板式熱交換器 (PHE)',
+                get label() { return t('arch.param.pheConfig', null, '配置板式熱交換器 (PHE)'); },
                 idPrefix: 'cduHasPheIn_',
                 default: true
             },
@@ -34,7 +35,7 @@
             {
                 key: 'adiabaticSaturationEfficiencyPct',
                 archSpecific: true,
-                label: '噴霧飽和效率 (%)',
+                get label() { return t('arch.param.adiabaticSaturationEff', null, '噴霧飽和效率 (%)'); },
                 idPrefix: 'atSatEffIn_',
                 default: 85.0,
                 min: 0,
@@ -46,7 +47,7 @@
                 key: 'adiabaticDrySwitchpointC',
                 archSpecific: true,
                 nullable: true,
-                label: '乾式切換點 (°C，留空=自動估算)',
+                get label() { return t('arch.param.drySwitchpoint', null, '乾式切換點 (°C，留空=自動估算)'); },
                 idPrefix: 'atSwitchpointIn_',
                 step: 0.5,
                 unit: '°C',
@@ -55,11 +56,11 @@
                     const hasPhe = (sys?.hasPhe !== undefined && sys?.hasPhe !== null) ? !!sys.hasPhe : true;
                     const pheApp = hasPhe ? (sys?.pheApproachC ?? 2.0) : 0.0;
                     const est = (sys?.fwsSupplyC ?? 40.0) - dcApp - pheApp;
-                    return `估算值 ${est.toFixed(1)}°C`;
+                    return t('arch.param.estValue', { est: est.toFixed(1) }, `估算值 ${est.toFixed(1)}°C`);
                 }
             }
         ],
-        paramPanelTitle: '絕熱冷卻塔 (Adiabatic Tower) 專屬參數:',
+        get paramPanelTitle() { return t('arch.param.adiabaticTowerTitle', null, '絕熱冷卻塔 (Adiabatic Tower) 專屬參數:'); },
         paramPanelNote(sys) {
             const dcApp = sys?.dryCoolerApproachC ?? 5.0;
             const hasPhe = (sys?.hasPhe !== undefined && sys?.hasPhe !== null) ? !!sys.hasPhe : true;
@@ -70,14 +71,14 @@
             return {
                 hasOverride,
                 text: hasOverride
-                    ? `目前使用手動輸入值 <strong>${effectiveSwitchpoint}°C</strong>（來自實際廠商選型報告）。`
-                    : `目前依需求自動切換：<strong>供水溫 − 盤管 Approach${hasPhe ? ' − PHE Approach' : ''} = ${effectiveSwitchpoint.toFixed(1)}°C</strong>（乾式直冷剛好無法滿足供水溫時才啟動絕熱噴淋預冷）。正式設計前建議向廠商索取針對本案實際供水溫與設計氣候條件的選型報告，並把報告上的真實 Dry Switchpoint 填入上方欄位覆蓋此估算值。`
+                    ? t('arch.param.manualSwitchpointDesc', { val: effectiveSwitchpoint }, `目前使用手動輸入值 <strong>${effectiveSwitchpoint}°C</strong>（來自實際廠商選型報告）。`)
+                    : t('arch.param.autoSwitchpointDesc', { phe: hasPhe ? ' − PHE Approach' : '', val: effectiveSwitchpoint.toFixed(1) }, `目前依需求自動切換：<strong>供水溫 − 盤管 Approach${hasPhe ? ' − PHE Approach' : ''} = ${effectiveSwitchpoint.toFixed(1)}°C</strong>（乾式直冷剛好無法滿足供水溫時才啟動絕熱噴淋預冷）。正式設計前建議向廠商索取針對本案實際供水溫與設計氣候條件的選型報告，並把報告上的真實 Dry Switchpoint 填入上方欄位覆蓋此估算值。`)
             };
         },
         equipment: [
             {
                 key: 'cdu_unit',
-                label: 'CDU 液冷分配主機 (Cooling Distribution Unit)',
+                get label() { return t('equip.cdu_unit', null, 'CDU 液冷分配主機 (Cooling Distribution Unit)'); },
                 category: 'CDU',
                 catalog: 'cdu',
                 role: 'terminal',
@@ -95,7 +96,7 @@
             },
             {
                 key: 'adiabatic_tower',
-                label: 'Adiabatic Tower 絕熱噴淋冷卻塔',
+                get label() { return t('equip.adiabatic_tower', null, 'Adiabatic Tower 絕熱噴淋冷卻塔'); },
                 category: 'AdiabaticTower',
                 catalog: 'cooling_tower',
                 role: 'heat_rejection',
@@ -115,7 +116,7 @@
             },
             {
                 key: 'cdu_pump',
-                label: 'CDU Primary Pump 一次側設施循環水泵',
+                get label() { return t('equip.cdu_pump', null, 'CDU Primary Pump 一次側設施循環水泵'); },
                 category: 'Pump',
                 catalog: 'pump',
                 role: 'pump',
@@ -182,8 +183,8 @@
                     kind: 'it',
                     title: 'Compute Data Hall',
                     lines: [
-                        'Cold Plate 晶片液冷',
-                        `晶片水溫: ${sys?.secSupplyC ?? 45} ⇄ ${sys?.secReturnC ?? 57}°C`
+                        t('topo.coldPlateLiq', null, 'Cold Plate 晶片液冷'),
+                        t('topo.chipWaterTemp', { sup: sys?.secSupplyC ?? 45, ret: sys?.secReturnC ?? 57 }, `晶片水溫: ${sys?.secSupplyC ?? 45} ⇄ ${sys?.secReturnC ?? 57}°C`)
                     ]
                 },
                 {
@@ -199,35 +200,35 @@
                 nodes.push({
                     id: 'hx',
                     kind: 'hx',
-                    title: 'PHE-1 絕熱預冷板換 (Adiabatic PHE)',
+                    title: t('topo.adiabaticPheTitle', null, 'PHE-1 絕熱預冷板換 (Adiabatic PHE)'),
                     lines: [
-                        '絕熱預冷自然散熱 (Adiabatic)',
-                        `噴霧輔助冷卻至 ${op?.temps?.fwsSup ?? 40}°C`,
-                        '蒸發預冷大幅降低進風溫',
-                        '水質完全隔離保護 CDU'
+                        t('topo.adiabaticPrecool', null, '絕熱預冷自然散熱 (Adiabatic)'),
+                        t('topo.sprayAssistCool', { tSup: op?.temps?.fwsSup ?? 40 }, `噴霧輔助冷卻至 ${op?.temps?.fwsSup ?? 40}°C`),
+                        t('topo.evapPrecoolAir', null, '蒸發預冷大幅降低進風溫'),
+                        t('topo.pheProtectCdu', null, '水質完全隔離保護 CDU')
                     ]
                 });
                 nodes.push({
                     id: 'pump_sec',
                     kind: 'pump',
                     title: 'Secondary Pump',
-                    lines: ['CDU 設施循環泵']
+                    lines: [t('topo.cduFacilityPump', null, 'CDU 設施循環泵')]
                 });
                 nodes.push({
                     id: 'pump_outdoor',
                     kind: 'pump',
                     title: 'Coil Pump',
-                    lines: ['盤管循環泵']
+                    lines: [t('topo.coilPump', null, '盤管循環泵')]
                 });
                 nodes.push({
                     id: 'heat_rejection',
                     kind: 'adiabatic',
-                    title: '絕熱冷卻塔 (Adiabatic Tower)',
+                    title: t('topo.adiabaticTowerTitle', null, '絕熱冷卻塔 (Adiabatic Tower)'),
                     lines: [
-                        '高溫噴霧預冷 + 乾式自然散熱 (零冰機)',
-                        `噴霧飽和效率: ${sys?.adiabaticSaturationEfficiencyPct ?? 85}% ｜ 乾式切換點: ≤${switchpoint}°C`,
-                        `氣溫 ≤${switchpoint}°C 乾式 0 耗水，超過後啟動蒸發預冷`,
-                        '噴淋水泵 (附屬噴霧系統，依氣候啟閉)'
+                        t('topo.adiabaticTowerLine1', null, '高溫噴霧預冷 + 乾式自然散熱 (零冰機)'),
+                        t('topo.adiabaticTowerLine2', { eff: sys?.adiabaticSaturationEfficiencyPct ?? 85, sp: switchpoint }, `噴霧飽和效率: ${sys?.adiabaticSaturationEfficiencyPct ?? 85}% ｜ 乾式切換點: ≤${switchpoint}°C`),
+                        t('topo.adiabaticTowerLine3', { sp: switchpoint }, `氣溫 ≤${switchpoint}°C 乾式 0 耗水，超過後啟動蒸發預冷`),
+                        t('topo.sprayPumpSub', null, '噴淋水泵 (附屬噴霧系統，依氣候啟閉)')
                     ]
                 });
 
@@ -242,17 +243,17 @@
                     id: 'pump_sec',
                     kind: 'pump',
                     title: 'Coil Pump',
-                    lines: ['盤管循環泵']
+                    lines: [t('topo.coilPump', null, '盤管循環泵')]
                 });
                 nodes.push({
                     id: 'heat_rejection',
                     kind: 'adiabatic',
-                    title: '絕熱冷卻塔 (Adiabatic Tower - 直冷式)',
+                    title: t('topo.adiabaticDirect', null, '絕熱冷卻塔 (Adiabatic Tower - 直冷式)'),
                     lines: [
-                        '高溫噴霧預冷 + 乾式自然散熱 (零冰機)',
-                        `噴霧飽和效率: ${sys?.adiabaticSaturationEfficiencyPct ?? 85}% ｜ 乾式切換點: ≤${switchpoint}°C`,
-                        '一次側直接連接絕熱塔內部盤管',
-                        '噴淋水泵 (附屬噴霧系統，依氣候啟閉)'
+                        t('topo.adiabaticTowerLine1', null, '高溫噴霧預冷 + 乾式自然散熱 (零冰機)'),
+                        t('topo.adiabaticTowerLine2', { eff: sys?.adiabaticSaturationEfficiencyPct ?? 85, sp: switchpoint }, `噴霧飽和效率: ${sys?.adiabaticSaturationEfficiencyPct ?? 85}% ｜ 乾式切換點: ≤${switchpoint}°C`),
+                        t('topo.adiabaticDirectLine', null, '一次側直接連接絕熱塔內部盤管'),
+                        t('topo.sprayPumpSub', null, '噴淋水泵 (附屬噴霧系統，依氣候啟閉)')
                     ]
                 });
 
@@ -264,13 +265,15 @@
 
             const deficitHours = design?.deficitHours ?? extra?.deficitHours ?? 0;
             return {
-                title: '設施排熱拓樸 (Facility Heat Rejection)',
+                title: t('topo.facilityHeatRej', null, '設施排熱拓樸 (Facility Heat Rejection)'),
                 referenceLabel: null,
                 banners: [
                     {
                         id: 'mode1',
-                        label: `絕熱預冷自然冷卻 (有效乾球 ≤${fullThresh}°C)`,
-                        detail: deficitHours > 0 ? `全年 ${deficitHours} h 超出冷卻能力（供水溫上升）` : '高溫噴霧預冷 (自然冷卻・零冰機)',
+                        label: t('topo.adiabaticThresh', { fullThresh }, `絕熱預冷自然冷卻 (有效乾球 ≤${fullThresh}°C)`),
+                        detail: deficitHours > 0
+                            ? t('topo.adiabaticDetailDeficit', { hours: deficitHours }, `全年 ${deficitHours} h 超出冷卻能力（供水溫上升）`)
+                            : t('topo.adiabaticDetailOk', null, '高溫噴霧預冷 (自然冷卻・零冰機)'),
                         tone: deficitHours > 0 ? 'amber' : 'emerald'
                     }
                 ],

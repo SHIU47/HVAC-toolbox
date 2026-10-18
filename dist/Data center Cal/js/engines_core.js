@@ -34,6 +34,7 @@ function sumRunning(list, field) {
 const AHRI_PRESETS = {
   centrifugal_standard: {
     name: '離心式冷機（標準）',
+    name_en: 'Centrifugal Chiller (Standard)',
     note: 'Trane CTV / York YT / Carrier 19XR',
     CapFT:    [1.335,  0.025, 0.0,  -0.017, 0.0, 0.0],
     EIR_FT:   [0.406, -0.018, 0.0,   0.024, 0.0, 0.0],
@@ -43,6 +44,7 @@ const AHRI_PRESETS = {
   },
   centrifugal_higheff: {
     name: '離心式冷機（高效）',
+    name_en: 'Centrifugal Chiller (High Efficiency)',
     note: 'Trane Turbocor / York YVFA / Carrier AquaEdge',
     CapFT:    [1.364,  0.028, 0.0,  -0.019, 0.0, 0.0],
     EIR_FT:   [0.376, -0.022, 0.0,   0.021, 0.0, 0.0],
@@ -52,6 +54,7 @@ const AHRI_PRESETS = {
   },
   screw_standard: {
     name: '螺旋式冷機（標準）',
+    name_en: 'Screw Chiller (Standard)',
     note: 'Trane RTWD / Carrier 30XA / Daikin EWWD',
     CapFT:    [1.298,  0.022, 0.0,  -0.015, 0.0, 0.0],
     EIR_FT:   [0.440, -0.015, 0.0,   0.026, 0.0, 0.0],
@@ -61,6 +64,7 @@ const AHRI_PRESETS = {
   },
   air_cooled_screw: {
     name: '氣冷式冷機（螺旋/渦卷標準）',
+    name_en: 'Air-Cooled Chiller (Screw/Scroll Standard)',
     note: 'Carrier 30XA / Trane RTAC / York YVAA (Air-Cooled)',
     CapFT:    [1.085,  0.024, 0.0,  -0.012, 0.0, 0.0],
     EIR_FT:   [0.470, -0.014, 0.0,   0.018, 0.0, 0.0],
@@ -70,6 +74,7 @@ const AHRI_PRESETS = {
   },
   air_cooled_vfd_centrifugal: {
     name: '氣冷式冷機（無油磁浮/高效離心）',
+    name_en: 'Air-Cooled Chiller (Oil-Free Magnetic/High-Eff Centrifugal)',
     note: 'Schneider Uniflair XCAC/XCAF / Smardt / Turbocor (Air-Cooled VFD)',
     CapFT:    [1.120,  0.026, 0.0,  -0.011, 0.0, 0.0],
     EIR_FT:   [0.410, -0.018, 0.0,   0.016, 0.0, 0.0],
@@ -91,11 +96,11 @@ for (const [key, p] of Object.entries(AHRI_PRESETS)) {
 }
 
 const LOAD_PROFILE_PRESETS = {
-  constant:   { name: '恆定滿載 (Constant 100%)', states: [{ load_pct: 100, weight_pct: 100, note: '基準滿載運行' }] },
-  ai:         { name: 'AI 訓練週期 (AI Training Cycle)', states: [{ load_pct: 100, weight_pct: 70, note: 'AI 訓練階段' }, { load_pct: 25, weight_pct: 30, note: '待機 / 存檔點' }] },
-  cloud:      { name: '商業雲端混合 (Cloud Hybrid - Day/Night)', states: [{ load_pct: 80, weight_pct: 50, note: '日間尖峰載' }, { load_pct: 40, weight_pct: 50, note: '夜間離峰載' }] },
-  enterprise: { name: '企業辦公負載 (Enterprise / Office IT)', states: [{ load_pct: 75, weight_pct: 30, note: '上班時段尖峰' }, { load_pct: 20, weight_pct: 70, note: '非上班時段低載' }] },
-  custom:     { name: '自訂負載 (Custom Load Profile)', states: [{ load_pct: 100, weight_pct: 50, note: '自訂狀態 1' }, { load_pct: 50, weight_pct: 50, note: '自訂狀態 2' }] }
+  constant:   { name: '恆定滿載 (Constant 100%)', name_en: 'Constant 100%', states: [{ load_pct: 100, weight_pct: 100, note: '基準滿載運行' }] },
+  ai:         { name: 'AI 訓練週期 (AI Training Cycle)', name_en: 'AI Training Cycle', states: [{ load_pct: 100, weight_pct: 70, note: 'AI 訓練階段' }, { load_pct: 25, weight_pct: 30, note: '待機 / 存檔點' }] },
+  cloud:      { name: '商業雲端混合 (Cloud Hybrid - Day/Night)', name_en: 'Cloud Hybrid - Day/Night', states: [{ load_pct: 80, weight_pct: 50, note: '日間尖峰載' }, { load_pct: 40, weight_pct: 50, note: '夜間離峰載' }] },
+  enterprise: { name: '企業辦公負載 (Enterprise / Office IT)', name_en: 'Enterprise / Office IT', states: [{ load_pct: 75, weight_pct: 30, note: '上班時段尖峰' }, { load_pct: 20, weight_pct: 70, note: '非上班時段低載' }] },
+  custom:     { name: '自訂負載 (Custom Load Profile)', name_en: 'Custom Load Profile', states: [{ load_pct: 100, weight_pct: 50, note: '自訂狀態 1' }, { load_pct: 50, weight_pct: 50, note: '自訂狀態 2' }] }
 };
 // ─── Psychrometric: Magnus-Tetens approximation ───────────
 function calcDewPointC(db_c, rh_pct) {

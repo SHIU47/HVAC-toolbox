@@ -5,6 +5,16 @@
 // Depends on: engines_core.js
 // Reference: ASHRAE 2020 HVAC Systems & Equipment Chapter 40
 // ============================================================
+function _t(key, params, fallback) {
+  if (typeof I18N !== 'undefined' && typeof I18N.t === 'function') {
+    return I18N.t(key, params);
+  }
+  if (fallback && params) {
+    return fallback.replace(/\{(\w+)\}/g, (_, k) => (k in params ? params[k] : `{${k}}`));
+  }
+  return fallback || key;
+}
+
 const CoolingTowerEngine = {
 
   /**
@@ -49,12 +59,22 @@ const CoolingTowerEngine = {
    */
   calcFanPower(devices, plr_ct, is_fc, min_speed = 0.20) {
     const fan_key = is_fc ? 'fan_kw_fc' : 'fan_kw_dx';
-    const speed   = Math.max(min_speed, Math.min(1.0, plr_ct));
 
     return (devices ?? []).reduce((sum, d) => {
       const n  = d.qty_running ?? d.qty_total ?? 1;
       const fw = d[fan_key] ?? 0;
       const ctrl = d.fan_control ?? 'vfd';
+
+      let effPlr = plr_ct;
+      if (d.run_mode === 'share' && d.qty_total && d.qty_running && d.qty_running === d.qty_total) {
+        const sizingEng = (typeof window !== 'undefined' && window.SizingEngine) || (typeof global !== 'undefined' && global.SizingEngine) || (typeof SizingEngine !== 'undefined' ? SizingEngine : null);
+        const designRunning = sizingEng ? sizingEng.runningQty(d.qty_total, d.redundancy || 'N+1') : Math.max(1, d.qty_total - 1);
+        if (designRunning < d.qty_running) {
+          effPlr = plr_ct * (designRunning / d.qty_running);
+        }
+      }
+      const speed = Math.max(min_speed, Math.min(1.0, effPlr));
+
       if (ctrl === 'single_speed') return sum + n * fw;
       if (ctrl === 'two_speed')    return sum + n * fw * (speed >= 0.6 ? 1.0 : 0.125);
       return sum + n * fw * (0.10 + 0.90 * Math.pow(speed, 3));
@@ -91,26 +111,31 @@ const CoolingTowerEngine = {
     if (approach < 1.5) {
       warnings.push({ code: 'CT_APPROACH_PHYSICALLY_IMPOSSIBLE', severity: 'critical',
         value: approach.toFixed(1),
-        message: `冷卻水塔接近溫差 ${approach.toFixed(1)}°C < 1.5°C，違反物理限制 (T_cws 不能接近 WB)` });
+        message: _t('warn.CT_APPROACH_PHYSICALLY_IMPOSSIBLE', { approach: approach.toFixed(1) },
+          `冷卻水塔接近溫差 ${approach.toFixed(1)}°C < 1.5°C，違反物理限制 (T_cws 不能接近 WB)`) });
     } else if (approach < 3.0) {
       warnings.push({ code: 'CT_APPROACH_LOW', severity: 'warning',
         value: approach.toFixed(1),
-        message: `冷卻水塔接近溫差 ${approach.toFixed(1)}°C 偏低，需要超大散熱面積，建議 ≥ 3.5°C` });
+        message: _t('warn.CT_APPROACH_LOW', { approach: approach.toFixed(1) },
+          `冷卻水塔接近溫差 ${approach.toFixed(1)}°C 偏低，需要超大散熱面積，建議 ≥ 3.5°C`) });
     } else if (approach > 9.0) {
       warnings.push({ code: 'CT_APPROACH_HIGH', severity: 'warning',
         value: approach.toFixed(1),
-        message: `冷卻水塔接近溫差 ${approach.toFixed(1)}°C 偏高，顯示冷卻塔面積過小或風機轉速不足` });
+        message: _t('warn.CT_APPROACH_HIGH', { approach: approach.toFixed(1) },
+          `冷卻水塔接近溫差 ${approach.toFixed(1)}°C 偏高，顯示冷卻塔面積過小或風機轉速不足`) });
     }
 
     // Range limits (ASHRAE typical: 5-8°C)
     if (range < 2.0) {
       warnings.push({ code: 'CT_RANGE_LOW', severity: 'warning',
         value: range.toFixed(1),
-        message: `冷卻水塔溫差 (Range) ${range.toFixed(1)}°C 過低，散熱水流量可能過大或冷卻負載過輕` });
+        message: _t('warn.CT_RANGE_LOW', { range: range.toFixed(1) },
+          `冷卻水塔溫差 (Range) ${range.toFixed(1)}°C 過低，散熱水流量可能過大或冷卻負載過輕`) });
     } else if (range > 14.0) {
       warnings.push({ code: 'CT_RANGE_HIGH', severity: 'critical',
         value: range.toFixed(1),
-        message: `冷卻水塔溫差 (Range) ${range.toFixed(1)}°C 過高，冷卻塔散熱容量嚴重不足` });
+        message: _t('warn.CT_RANGE_HIGH', { range: range.toFixed(1) },
+          `冷卻水塔溫差 (Range) ${range.toFixed(1)}°C 過高，冷卻塔散熱容量嚴重不足`) });
     }
 
     return warnings;

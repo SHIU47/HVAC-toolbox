@@ -48,7 +48,12 @@
 
         // 三態設計狀態燈號 (v27/v25 規劃的灰/紅/綠): 'unconfigured' | 'fail' | 'pass'
         statusBadge(status, textMap) {
-            const labels = textMap || { unconfigured: '尚未選型', fail: '容量不足', pass: '滿足 N+1' };
+            const _t = (k, fb) => (typeof window !== 'undefined' && window.I18N && typeof window.I18N.t === 'function' ? window.I18N.t(k, null, fb) : fb);
+            const labels = textMap || {
+                unconfigured: _t('cooling.statusNoEquip', '尚未選型'),
+                fail: _t('cooling.statusDeficit', '容量不足'),
+                pass: _t('cooling.statusPassed', '滿足 N+1')
+            };
             if (status === 'pass') return this.badge(labels.pass, 'success', 'check-circle-2');
             if (status === 'fail') return this.badge(labels.fail, 'danger', 'x-circle');
             return this.badge(labels.unconfigured, 'neutral', 'circle-dashed');

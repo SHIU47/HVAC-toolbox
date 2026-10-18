@@ -6,6 +6,7 @@
 
     let selectedHallId = 'hall_1';
     let expandedDuIds = new Set(['du_1_1']); // 預設展開第 1 個 DU
+    const t = (k, p, fb) => (window.I18N ? window.I18N.t(k, p) : (fb || k));
 
     const ViewHallSU = {
         render(container) {
@@ -13,7 +14,7 @@
             const halls = state.halls || [];
 
             if (halls.length === 0) {
-                container.innerHTML = '<div class="p-8 text-center bg-white rounded-2xl border">尚無 Data Hall 機房資料，請點選「+ 新增 Hall」開始設計</div>';
+                container.innerHTML = '<div class="p-8 text-center bg-white rounded-2xl border">' + t('hall.noHalls', null, '尚無 Data Hall 機房資料，請點選「+ 新增 Hall」開始設計') + '</div>';
                 return;
             }
 
@@ -33,7 +34,7 @@
                     + '<span>🏢 ' + h.name + '</span>'
                     + '<span class="px-2 py-0.5 rounded-full text-[10px] ' + (isSel ? 'bg-purple-800 text-purple-100' : 'bg-slate-200 text-slate-800') + '">' + (hs.totalItKw / 1000).toFixed(2) + ' MW</span>'
                     + '</button>'
-                    + (halls.length > 1 ? '<button onclick="event.stopPropagation(); ViewHallSU.deleteHall(\'' + h.id + '\')" title="刪除此 Hall 機房" class="px-2.5 py-2 text-xs font-black ' + (isSel ? 'hover:bg-purple-700 text-purple-200 hover:text-white border-l border-purple-500' : 'hover:bg-red-100 text-slate-400 hover:text-red-600 border-l border-slate-200') + ' transition">✕</button>' : '')
+                    + (halls.length > 1 ? '<button onclick="event.stopPropagation(); ViewHallSU.deleteHall(\'' + h.id + '\')" title="' + t('hall.deleteTitle', null, '刪除此 Hall 機房') + '" class="px-2.5 py-2 text-xs font-black ' + (isSel ? 'hover:bg-purple-700 text-purple-200 hover:text-white border-l border-purple-500' : 'hover:bg-red-100 text-slate-400 hover:text-red-600 border-l border-slate-200') + ' transition">✕</button>' : '')
                     + '</div>';
             });
 
@@ -62,7 +63,7 @@
                             + '<td class="py-2 px-2.5"><input type="text" value="' + window.UIKit.escapeHTML(item.model) + '" onchange="ViewHallSU.updateEquipModel(\'' + currentHall.id + '\', \'' + du.id + '\', \'' + su.id + '\', ' + eqIdx + ', this.value)" class="w-full font-bold text-slate-800 border border-transparent hover:border-slate-300 focus:border-indigo-500 rounded p-1 bg-transparent text-xs"></td>'
                             + '<td class="py-2 px-2.5 text-center"><input type="number" min="1" max="128" value="' + qty + '" oninput="ViewHallSU.updateEquipQty(\'' + currentHall.id + '\', \'' + du.id + '\', \'' + su.id + '\', ' + eqIdx + ', parseInt(this.value,10)||1)" class="w-14 text-center font-bold border rounded p-1 bg-white"></td>'
                             + '<td class="py-2 px-2.5 text-right"><div class="flex items-center justify-end gap-1"><input type="number" min="0" max="1000" step="0.5" value="' + (item.itLoadKw || 0) + '" oninput="ViewHallSU.updateEquipKw(\'' + currentHall.id + '\', \'' + du.id + '\', \'' + su.id + '\', ' + eqIdx + ', parseFloat(this.value)||0)" class="w-16 text-right font-bold border rounded p-1 bg-white"><span class="text-xs text-slate-500">kW</span></div></td>'
-                            + '<td class="py-2 px-2.5 text-center"><div class="flex items-center justify-center gap-1"><input type="number" min="0" max="100" step="1" value="' + liqPct + '" oninput="ViewHallSU.updateEquipLiquid(\'' + currentHall.id + '\', \'' + du.id + '\', \'' + su.id + '\', ' + eqIdx + ', parseFloat(this.value)||0)" class="w-14 text-center font-black text-emerald-800 border border-emerald-300 rounded p-1 bg-emerald-50/50 focus:bg-white"><span class="text-xs font-bold text-slate-500">%</span></div><div class="text-[10px] text-slate-400 font-normal">氣冷 ' + airPct.toFixed(0) + '%</div></td>'
+                            + '<td class="py-2 px-2.5 text-center"><div class="flex items-center justify-center gap-1"><input type="number" min="0" max="100" step="1" value="' + liqPct + '" oninput="ViewHallSU.updateEquipLiquid(\'' + currentHall.id + '\', \'' + du.id + '\', \'' + su.id + '\', ' + eqIdx + ', parseFloat(this.value)||0)" class="w-14 text-center font-black text-emerald-800 border border-emerald-300 rounded p-1 bg-emerald-50/50 focus:bg-white"><span class="text-xs font-bold text-slate-500">%</span></div><div class="text-[10px] text-slate-400 font-normal">' + t('su.airPct', { pct: airPct.toFixed(0) }, '氣冷 ' + airPct.toFixed(0) + '%') + '</div></td>'
                             + '<td class="py-2 px-2.5 text-right font-black text-purple-950">' + itKw.toFixed(1) + ' kW <div class="text-[10px] text-emerald-800 font-normal">💧 ' + liqKw.toFixed(1) + ' kW</div></td>'
                             + '<td class="py-2 px-2.5 text-center"><button onclick="ViewHallSU.deleteEquip(\'' + currentHall.id + '\', \'' + du.id + '\', \'' + su.id + '\', ' + eqIdx + ')" class="text-slate-400 hover:text-red-500 font-bold p-1">✕</button></td>'
                             + '</tr>';
@@ -99,27 +100,27 @@
                         + '</span>'
                         + '</div>'
                         + '<div class="flex items-center gap-2">'
-                        + '<button onclick="ViewHallSU.promptCopySU(\'' + currentHall.id + '\', \'' + du.id + '\', \'' + su.id + '\')" class="px-2.5 py-1 bg-blue-50 hover:bg-blue-100 text-blue-700 text-xs font-bold rounded-lg border border-blue-200 transition">📋 複製 SU×N</button>'
-                        + (du.sus.length > 1 ? '<button onclick="ViewHallSU.deleteSU(\'' + currentHall.id + '\', \'' + du.id + '\', \'' + su.id + '\')" class="px-2.5 py-1 bg-red-50 hover:bg-red-100 text-red-600 text-xs font-bold rounded-lg border border-red-200 transition">🗑️ 刪除 SU</button>' : '')
+                        + '<button onclick="ViewHallSU.promptCopySU(\'' + currentHall.id + '\', \'' + du.id + '\', \'' + su.id + '\')" class="px-2.5 py-1 bg-blue-50 hover:bg-blue-100 text-blue-700 text-xs font-bold rounded-lg border border-blue-200 transition">' + t('su.copyBtn', null, '📋 複製 SU×N') + '</button>'
+                        + (du.sus.length > 1 ? '<button onclick="ViewHallSU.deleteSU(\'' + currentHall.id + '\', \'' + du.id + '\', \'' + su.id + '\')" class="px-2.5 py-1 bg-red-50 hover:bg-red-100 text-red-600 text-xs font-bold rounded-lg border border-red-200 transition">' + t('su.deleteBtn', null, '🗑️ 刪除 SU') + '</button>' : '')
                         + '</div>'
                         + '</div>'
                         + '<div class="p-3 bg-slate-50 rounded-xl border border-slate-200 space-y-2">'
                         + '<div class="flex justify-between items-center text-[11px] font-bold text-slate-700">'
-                        + '<span>⚡ 快速加入標準機架與網通設備 (Quick Add)</span>'
-                        + '<button onclick="ViewHallSU.addCustomEquip(\'' + currentHall.id + '\', \'' + du.id + '\', \'' + su.id + '\')" class="text-purple-700 hover:underline font-bold">+ 自訂設備</button>'
+                        + '<span>' + t('su.quickAdd', null, '⚡ 快速加入標準機架與網通設備 (Quick Add)') + '</span>'
+                        + '<button onclick="ViewHallSU.addCustomEquip(\'' + currentHall.id + '\', \'' + du.id + '\', \'' + su.id + '\')" class="text-purple-700 hover:underline font-bold">' + t('su.customEquip', null, '+ 自訂設備') + '</button>'
                         + '</div>'
                         + '<div class="flex items-center gap-1.5 flex-wrap">' + quickChipsHtml + '</div>'
                         + '</div>'
                         + '<div class="overflow-x-auto">'
                         + '<table class="w-full text-left">'
-                        + '<thead><tr class="text-[11px] font-bold text-slate-400 uppercase tracking-wider border-b"><th class="py-2 px-2.5">類別</th><th class="py-2 px-2.5">設備型號名稱</th><th class="py-2 px-2.5 text-center">台數</th><th class="py-2 px-2.5 text-right">單台功耗</th><th class="py-2 px-2.5 text-center">液冷比</th><th class="py-2 px-2.5 text-right">小計 IT (液冷)</th><th class="py-2 px-2.5 text-center">操作</th></tr></thead>'
-                        + '<tbody>' + (equipRows || '<tr><td colspan="7" class="py-4 text-center text-xs text-slate-400">目前尚無設備，請點選上方按鈕加入</td></tr>') + '</tbody>'
+                        + '<thead><tr class="text-[11px] font-bold text-slate-400 uppercase tracking-wider border-b"><th class="py-2 px-2.5">' + t('eqd.thCategory', null, '類別') + '</th><th class="py-2 px-2.5">' + t('eqd.thModel', null, '設備型號名稱') + '</th><th class="py-2 px-2.5 text-center">' + t('eqd.thQty', null, '台數') + '</th><th class="py-2 px-2.5 text-right">' + t('eqd.thUnitKw', null, '單台功耗') + '</th><th class="py-2 px-2.5 text-center">' + t('eqd.thLiquidPct', null, '液冷比') + '</th><th class="py-2 px-2.5 text-right">' + t('eqd.thSubtotal', null, '小計 IT (液冷)') + '</th><th class="py-2 px-2.5 text-center">' + t('eqd.thAction', null, '操作') + '</th></tr></thead>'
+                        + '<tbody>' + (equipRows || '<tr><td colspan="7" class="py-4 text-center text-xs text-slate-400">' + t('su.emptyEquip', null, '目前尚無設備，請點選上方按鈕加入') + '</td></tr>') + '</tbody>'
                         + '</table>'
                         + '</div>'
                         + '<div class="grid grid-cols-3 gap-3 p-3 bg-slate-50 rounded-xl border text-xs">'
-                        + '<div><span class="text-slate-400 font-bold">總 IT 負載</span><div class="font-extrabold text-slate-900 mt-0.5 text-sm">' + suSumm.totalItKw.toFixed(1) + ' kW</div></div>'
-                        + '<div><span class="text-purple-900 font-bold">💧 液冷散熱量</span><div class="font-extrabold text-purple-950 mt-0.5 text-sm">' + suSumm.liquidHeatKw.toFixed(1) + ' kW (' + suSumm.dlcPct.toFixed(0) + '%)</div></div>'
-                        + '<div><span class="text-indigo-900 font-bold">💨 氣冷散熱量</span><div class="font-extrabold text-indigo-950 mt-0.5 text-sm">' + suSumm.airHeatKw.toFixed(1) + ' kW</div></div>'
+                        + '<div><span class="text-slate-400 font-bold">' + t('su.totalIt', null, '總 IT 負載') + '</span><div class="font-extrabold text-slate-900 mt-0.5 text-sm">' + suSumm.totalItKw.toFixed(1) + ' kW</div></div>'
+                        + '<div><span class="text-purple-900 font-bold">' + t('su.liquidLoad', null, '💧 液冷散熱量') + '</span><div class="font-extrabold text-purple-950 mt-0.5 text-sm">' + suSumm.liquidHeatKw.toFixed(1) + ' kW (' + suSumm.dlcPct.toFixed(0) + '%)</div></div>'
+                        + '<div><span class="text-indigo-900 font-bold">' + t('su.airLoad', null, '💨 氣冷散熱量') + '</span><div class="font-extrabold text-indigo-950 mt-0.5 text-sm">' + suSumm.airHeatKw.toFixed(1) + ' kW</div></div>'
                         + '</div>'
                         + '</div>';
                 });
@@ -134,13 +135,13 @@
                     + '<input type="text" value="' + window.UIKit.escapeHTML(du.name) + '" onclick="event.stopPropagation()" onchange="ViewHallSU.renameDU(\'' + currentHall.id + '\', \'' + du.id + '\', this.value)" class="text-base font-black text-purple-950 border rounded-xl px-3 py-1 bg-white border-purple-300">'
                     + '</div>'
                     + '<div class="text-xs text-purple-800 font-bold mt-1">'
-                    + '冷卻單元彙總：IT <strong>' + duSumm.totalItKw.toFixed(1) + ' kW</strong> &middot; 💧 液冷 <strong>' + duSumm.liquidHeatKw.toFixed(1) + ' kW (' + duSumm.dlcPct.toFixed(1) + '%)</strong> &middot; 包含 <strong>' + du.sus.length + ' 組 SU</strong>'
+                    + t('du.summaryHtml', { it: duSumm.totalItKw.toFixed(1), liq: duSumm.liquidHeatKw.toFixed(1), dlc: duSumm.dlcPct.toFixed(1), n: du.sus.length })
                     + '</div>'
                     + '</div>'
                     + '</div>'
                     + '<div class="flex items-center gap-2" onclick="event.stopPropagation()">'
-                    + '<button onclick="ViewHallSU.addSU(\'' + currentHall.id + '\', \'' + du.id + '\')" class="px-3.5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs rounded-xl shadow-xs transition">➕ 新增 SU 模組</button>'
-                    + '<button onclick="ViewHallSU.copyDU(\'' + currentHall.id + '\', \'' + du.id + '\')" class="px-3.5 py-2 bg-purple-100 hover:bg-purple-200 text-purple-950 font-bold text-xs rounded-xl transition">📋 複製 DU</button>'
+                    + '<button onclick="ViewHallSU.addSU(\'' + currentHall.id + '\', \'' + du.id + '\')" class="px-3.5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs rounded-xl shadow-xs transition">' + t('du.addSu', null, '➕ 新增 SU 模組') + '</button>'
+                    + '<button onclick="ViewHallSU.copyDU(\'' + currentHall.id + '\', \'' + du.id + '\')" class="px-3.5 py-2 bg-purple-100 hover:bg-purple-200 text-purple-950 font-bold text-xs rounded-xl transition">' + t('du.copy', null, '📋 複製 DU') + '</button>'
                     + (currentHall.dus.length > 1 ? '<button onclick="ViewHallSU.deleteDU(\'' + currentHall.id + '\', \'' + du.id + '\')" class="px-3 py-2 bg-red-100 hover:bg-red-200 text-red-700 font-bold text-xs rounded-xl transition">✕</button>' : '')
                     + '</div>'
                     + '</div>'
@@ -155,15 +156,15 @@
                         <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
                             <div>
                                 <h2 class="text-xl font-black text-slate-900 flex items-center gap-2">
-                                    <span>🧩</span> Step 2: Hall → DU → SU 模組與設備設計 (Hierarchy & Equipment Designer)
+                                    <span>🧩</span> ${t('hall.stepTitle', null, 'Step 2: Hall → DU → SU 模組與設備設計 (Hierarchy & Equipment Designer)')}
                                 </h2>
                                 <p class="text-xs text-slate-500 mt-1">
-                                    建立 Hall 機房、劃分 <strong>DU (Data Center Unit 冷卻單元)</strong>，並於 DU 內組合 <strong>SU (Scalable Unit 算力模組)</strong> 自由配置 Vera Rubin / Blackwell / AMD Helios / 網通機架。
+                                    ${t('hall.stepDesc', null, '建立 Hall 機房、劃分 <strong>DU (Data Center Unit 冷卻單元)</strong>，並於 DU 內組合 <strong>SU (Scalable Unit 算力模組)</strong> 自由配置 Vera Rubin / Blackwell / AMD Helios / 網通機架。')}
                                 </p>
                             </div>
                             <div class="flex items-center gap-2 flex-wrap">
                                 <button onclick="ViewHallSU.addHall()" class="px-4 py-2 bg-purple-700 hover:bg-purple-800 text-white font-black text-xs rounded-xl shadow-xs transition flex items-center gap-1.5">
-                                    <span>➕</span> 新增 Hall 機房
+                                    <span>➕</span> ${t('hall.addHallBtn', null, '新增 Hall 機房')}
                                 </button>
                             </div>
                         </div>
@@ -175,18 +176,18 @@
                             </div>
                             <div class="flex items-center gap-2 flex-wrap">
                                 <div class="flex items-center gap-1.5 bg-slate-50 px-2.5 py-1 rounded-xl border border-slate-200">
-                                    <span class="text-[11px] font-bold text-slate-500">機房名稱:</span>
+                                    <span class="text-[11px] font-bold text-slate-500">${t('hall.nameLabel', null, '機房名稱:')}</span>
                                     <input type="text" value="${window.UIKit.escapeHTML(currentHall.name)}" onchange="ViewHallSU.renameHall('${currentHall.id}', this.value)" class="text-xs font-black text-purple-950 border border-purple-300 rounded-lg px-2 py-0.5 bg-white focus:ring-2 focus:ring-purple-400">
-                                    ${halls.length > 1 ? `<button onclick="ViewHallSU.deleteHall('${currentHall.id}')" title="刪除當前機房" class="px-2 py-0.5 text-xs font-bold bg-red-50 hover:bg-red-100 text-red-700 rounded-lg border border-red-200 transition">🗑️ 刪除 Hall</button>` : ''}
+                                    ${halls.length > 1 ? `<button onclick="ViewHallSU.deleteHall('${currentHall.id}')" title="${t('hall.deleteCurrent', null, '刪除當前機房')}" class="px-2 py-0.5 text-xs font-bold bg-red-50 hover:bg-red-100 text-red-700 rounded-lg border border-red-200 transition">${t('hall.deleteCurrent', null, '🗑️ 刪除 Hall')}</button>` : ''}
                                 </div>
                                 <button onclick="ViewHallSU.expandAllDUs()" class="px-2.5 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-lg transition">
-                                    📂 全部展開
+                                    ${t('hall.expandAll', null, '📂 全部展開')}
                                 </button>
                                 <button onclick="ViewHallSU.collapseAllDUs()" class="px-2.5 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-lg transition">
-                                    📁 全部收合
+                                    ${t('hall.collapseAll', null, '📁 全部收合')}
                                 </button>
                                 <div class="text-xs text-purple-900 font-black px-3 py-1.5 bg-purple-50 rounded-xl border border-purple-200">
-                                    當前 Hall 總負載: ${(hallSumm.totalItKw / 1000).toFixed(2)} MW (💧 ${hallSumm.dlcPct.toFixed(1)}% 液冷)
+                                    ${t('hall.currentLoad', { mw: (hallSumm.totalItKw / 1000).toFixed(2), dlc: hallSumm.dlcPct.toFixed(1) })}
                                 </div>
                             </div>
                         </div>
@@ -199,10 +200,10 @@
 
                     <div class="flex justify-between pt-2">
                         <button onclick="window.App.prevStep()" class="px-6 py-3 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-sm rounded-xl transition">
-                            <span>←</span> 上一步: 案場氣象
+                            <span>←</span> ${t('hall.prevStep', null, '上一步: 案場氣象')}
                         </button>
                         <button onclick="window.App.nextStep()" class="px-6 py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-sm rounded-xl shadow-sm transition flex items-center gap-2">
-                            下一步: CorePOD 核心機房設計 <span>→</span>
+                            ${t('hall.nextStep', null, '下一步: CorePOD 核心機房設計')} <span>→</span>
                         </button>
                     </div>
                 </div>
@@ -240,8 +241,8 @@
         },
         deleteHall(hallId) {
             const hall = window.AppStore.state.halls.find(h => h.id === hallId);
-            const hallName = hall ? hall.name : '此 Hall';
-            if (typeof confirm === 'function' && !confirm(`確定要刪除「${hallName}」及其包含的所有 DU/SU 設備嗎？`)) {
+            const hallName = hall ? hall.name : t('hall.thisHall', null, '此 Hall');
+            if (typeof confirm === 'function' && !confirm(t('hall.deleteConfirm', { name: hallName }, `確定要刪除「${hallName}」及其包含的所有 DU/SU 設備嗎？`))) {
                 return;
             }
             const ok = window.AppStore.deleteHall(hallId);
@@ -291,7 +292,7 @@
             this.render(document.getElementById('stepContent'));
         },
         promptCopySU(hallId, duId, suId) {
-            const countStr = prompt('請輸入要複製的 SU 數量 (1~16):', '3');
+            const countStr = prompt(t('su.copyPrompt', null, '請輸入要複製的 SU 數量 (1~16):'), '3');
             if (countStr) {
                 const n = parseInt(countStr, 10);
                 if (n > 0) {
@@ -397,7 +398,7 @@
                 su.equipment.push({
                     id: 'eq_' + Date.now(),
                     category: 'CUSTOM',
-                    model: '自訂設備單元',
+                    model: t('eqd.customUnitModel', null, '自訂設備單元'),
                     qty: 1,
                     itLoadKw: 10.0,
                     liquidPct: 0,
