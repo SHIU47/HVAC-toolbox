@@ -4431,6 +4431,106 @@ function sizeCduToDeratedN1(S) {
   });
 })();
 
+// ═══════════════════════════════════════════════════════════════
+// P-3 Shared cooling plant calculation engine
+// ═══════════════════════════════════════════════════════════════
+(function () {
+  const ctx = freshCtx();
+  const S = ctx.AppStore;
+
+  test('P-3: Consistency: 1 DU in shared plant produces identical PUE vs independent mode (< 0.001)', () => {
+    S.calculate();
+    const indepPue = S.state.results.overall.annualPue;
+    const indepMwh = S.state.results.overall.annualTotalMwh;
+    const du = S.state.halls[0].dus[0];
+
+    const plant = S.addCoolingPlant({
+      loop: 'liquid',
+      memberIds: [du.id],
+      redundancy: 'N+1',
+      diversityFactor: 1.0,
+      system: JSON.parse(JSON.stringify(du.plantDesign.cduSystem))
+    });
+    S.calculate();
+
+    const sharedPue = S.state.results.overall.annualPue;
+    const sharedMwh = S.state.results.overall.annualTotalMwh;
+    const duRes = S.state.results.byDu.find(d => d.duId === du.id);
+
+    assert(Math.abs(sharedPue - indepPue) < 0.001, `PUE difference (${Math.abs(sharedPue - indepPue)}) must be < 0.001`);
+    assert(Math.abs(sharedMwh - indepMwh) <= 1, `MWh difference (${Math.abs(sharedMwh - indepMwh)}) must be <= 1 MWh`);
+    assert.strictEqual(duRes.liquidPlantId, plant.id, 'DU result must have liquidPlantId set to plant id');
+    assert(duRes.allocatedPlantMwh > 0, 'DU result must have positive allocatedPlantMwh');
+    assert.strictEqual(S.state.results.overall.byPlant.length, 1, 'overall.byPlant must contain 1 plant entry');
+    assert.strictEqual(S.state.results.overall.energyLedger.plant_allocations_balanced, true, 'energyLedger plant_allocations_balanced must be true');
+  });
+
+  test('P-3: Consolidation benefit: 2 identical DUs merged into plant have equipment qty <= indep sum, and PUE <= indep', () => {
+    const freshC = freshCtx();
+    const store = freshC.AppStore;
+    const hall = store.state.halls[0];
+    const du1 = hall.dus[0];
+    const du2 = store.copyDU(hall.id, du1.id);
+    assert(du2, 'du2 copy must succeed');
+
+    store.calculate();
+    const indepPue = store.state.results.overall.annualPue;
+    const indepMwh = store.state.results.overall.annualTotalMwh;
+
+    const indepPumps = du1.plantDesign.cduSystem.sizing.find(s => s.key === 'cdu_pump').selectedQty +
+                       du2.plantDesign.cduSystem.sizing.find(s => s.key === 'cdu_pump').selectedQty;
+    const indepTowers = du1.plantDesign.cduSystem.sizing.find(s => s.key === 'dry_cooler').selectedQty +
+                        du2.plantDesign.cduSystem.sizing.find(s => s.key === 'dry_cooler').selectedQty;
+
+    const plant = store.addCoolingPlant({
+      loop: 'liquid',
+      memberIds: [du1.id, du2.id],
+      redundancy: 'N+1',
+      diversityFactor: 1.0,
+      system: JSON.parse(JSON.stringify(du1.plantDesign.cduSystem))
+    });
+    store.calculate();
+
+    const sharedPue = store.state.results.overall.annualPue;
+    const sharedMwh = store.state.results.overall.annualTotalMwh;
+    const plantPumps = plant.system.sizing.find(s => s.key === 'cdu_pump').selectedQty;
+    const plantTowers = plant.system.sizing.find(s => s.key === 'dry_cooler').selectedQty;
+
+    assert(plantPumps <= indepPumps, `Plant pump qty (${plantPumps}) must be <= independent sum (${indepPumps})`);
+    assert(plantTowers <= indepTowers, `Plant dry cooler qty (${plantTowers}) must be <= independent sum (${indepTowers})`);
+    assert(sharedPue <= indepPue, `Shared PUE (${sharedPue}) must be <= independent PUE (${indepPue})`);
+    assert(sharedMwh <= indepMwh, `Shared MWh (${sharedMwh}) must be <= independent MWh (${indepMwh})`);
+  });
+
+  test('P-3: Energy conservation: member MWh sums match overall and energyLedger balanced', () => {
+    const freshC = freshCtx();
+    const store = freshC.AppStore;
+    const hall = store.state.halls[0];
+    const du1 = hall.dus[0];
+    store.copyDU(hall.id, du1.id);
+
+    store.addCoolingPlant({
+      loop: 'liquid',
+      memberIds: store.state.halls[0].dus.map(d => d.id),
+      redundancy: 'N+1',
+      diversityFactor: 1.0,
+      system: JSON.parse(JSON.stringify(du1.plantDesign.cduSystem))
+    });
+    store.calculate();
+
+    const sumDuMwh = store.state.results.byDu.reduce((acc, d) => acc + d.annualTotalMwh, 0);
+    const sumPodMwh = store.state.results.byCorePod.reduce((acc, p) => acc + p.annualTotalMwh, 0);
+    const overallMwh = store.state.results.overall.annualTotalMwh;
+    assert(Math.abs((sumDuMwh + sumPodMwh) - overallMwh) <= 1, `Sum of member MWh (${sumDuMwh + sumPodMwh}) must match overall MWh (${overallMwh}) within 1 MWh`);
+
+    const ledger = store.state.results.overall.energyLedger;
+    assert.strictEqual(ledger.is_balanced, true, 'Energy ledger must be balanced');
+    assert.strictEqual(ledger.plant_allocations_balanced, true, 'Plant allocations must be balanced');
+    assert(Array.isArray(ledger.plant_allocations) && ledger.plant_allocations.length === 1, 'Should have 1 plant allocation');
+    assert(ledger.plant_allocations[0].diffKwh < 1e-4, `diffKwh (${ledger.plant_allocations[0].diffKwh}) must be < 1e-4`);
+  });
+})();
+
 console.log(`\n${passCount} passed, ${failCount} failed, ${skipCount} skipped`);
 process.exit(failCount > 0 ? 1 : 0);
 
