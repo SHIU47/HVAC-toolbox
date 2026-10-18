@@ -3594,6 +3594,29 @@ function sizeCduToDeratedN1(S) {
     const enMsg = I18N.t('step4.deficitMsg', { n: 3, redundancy: 'N+1' });
     assert.strictEqual(enMsg, '3 equipment item(s) below N+1 capacity requirement');
   });
+
+  test('I-2: header, nav, sticky KPI, and footer render 0 CJK characters in English mode', async () => {
+    const { buildWindow } = require('./dom_harness.js');
+    const win = buildWindow();
+    if (win.App && typeof win.App.init === 'function') {
+      await win.App.init();
+    }
+    win.I18N.setLang('en');
+    const header = win.document.querySelector('header');
+    const footer = win.document.querySelector('footer');
+    assert(header, 'header must exist');
+    assert(footer, 'footer must exist');
+    const cjkRegex = /[\u3400-\u9fff]/g;
+    const headerCjk = (header.innerHTML.match(cjkRegex) || []);
+    const footerCjk = (footer.innerHTML.match(cjkRegex) || []);
+    assert.strictEqual(headerCjk.length, 0, 'header must have 0 CJK characters in en mode, got: ' + headerCjk.join(''));
+    assert.strictEqual(footerCjk.length, 0, 'footer must have 0 CJK characters in en mode, got: ' + footerCjk.join(''));
+
+    // Switch back to zh-TW
+    win.I18N.setLang('zh-TW');
+    assert(header.innerHTML.includes('PUE 計算系統'), 'zh-TW header must contain original title');
+    assert(footer.innerHTML.includes('專業 AI 資料中心全生命週期能耗與耗水動力學評估工具'), 'zh-TW footer must contain original description');
+  });
 })();
 
 console.log(`\n${passCount} passed, ${failCount} failed, ${skipCount} skipped`);

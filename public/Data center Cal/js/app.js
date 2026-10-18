@@ -114,9 +114,9 @@
                             this.updateStickyBar();
                         });
                     }
-                    alert('✅ 專案檔載入成功！');
+                    alert(window.I18N ? window.I18N.t('app.importSuccess') : '✅ 專案檔載入成功！');
                 } else {
-                    alert('❌ 專案檔格式錯誤，無法載入。');
+                    alert(window.I18N ? window.I18N.t('app.importError') : '❌ 專案檔格式錯誤，無法載入。');
                 }
                 event.target.value = '';
             };
@@ -124,7 +124,7 @@
         },
 
         resetProject() {
-            if (confirm('確定要清除所有自訂配置並重置為預設範例專案嗎？')) {
+            if (confirm(window.I18N ? window.I18N.t('app.resetConfirm') : '確定要清除所有自訂配置並重置為預設範例專案嗎？')) {
                 window.AppStore.resetProject();
                 location.reload();
             }
@@ -146,7 +146,7 @@
             if (stepNum === 5) {
                 const check = window.AppStore.canProceedStep4();
                 if (!check.ok) {
-                    alert('⚠️ 尚有冷卻設備選型容量未達 N+1 規範，請先修正後方可檢視 Dashboard！');
+                    alert(window.I18N ? window.I18N.t('app.step5Blocked') : '⚠️ 尚有冷卻設備選型容量未達 N+1 規範，請先修正後方可檢視 Dashboard！');
                     return;
                 }
             }
@@ -182,8 +182,9 @@
             } else if (stepNum === 5 && window.ViewDashboard) {
                 window.ViewDashboard.render(container);
             } else {
+                const errMsg = window.I18N ? window.I18N.t('app.viewLoadError', { step: stepNum }) : ('⚠️ 視圖模組 (Step ' + stepNum + ') 載入異常，請確認相關 JS 檔案是否已正確引入。');
                 container.innerHTML = '<div class="p-8 bg-red-50 border-2 border-red-400 rounded-2xl text-red-900 font-bold text-center">'
-                    + '⚠️ 視圖模組 (Step ' + stepNum + ') 載入異常，請確認相關 JS 檔案是否已正確引入。'
+                    + errMsg
                     + '</div>';
             }
             // v30 設計系統: 各 view 以 innerHTML 動態插入 data-lucide 圖示標籤，每次換頁都要重新掃描轉換成 SVG

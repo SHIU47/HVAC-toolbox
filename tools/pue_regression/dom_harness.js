@@ -9,7 +9,7 @@ const { JSDOM } = require('jsdom');
 const JS_DIR = path.resolve(__dirname, '../../public/Data center Cal/js');
 
 const APP_FILES = [
-  'assumptions.js', 'engines_core.js', 'engines_cdu.js', 'engines_crah.js', 'engines_chiller.js',
+  'assumptions.js', 'i18n.js', 'i18n_zh.js', 'i18n_en.js', 'engines_core.js', 'engines_cdu.js', 'engines_crah.js', 'engines_chiller.js',
   'engines_cooling_tower.js', 'engines_free_cooling.js', 'engines_hx.js', 'engines_pump.js',
   'cooling/registry.js',
   'cooling/stages/stage_dry_cooler.js',
@@ -50,34 +50,39 @@ const SKELETON_HTML = `<!doctype html>
       <div class="flex items-center gap-3">
         <img src="app_icon.png" class="w-9 h-9 rounded-lg object-cover" alt="PUE Logo">
         <div>
-          <h1 class="text-base font-semibold text-primary leading-tight">PUE 計算系統</h1>
+          <h1 class="text-base font-semibold text-primary leading-tight"><span data-i18n="app.title">PUE 計算系統</span></h1>
+          <p class="text-[11px] text-secondary" data-i18n="app.subtitle"> 全球 8,760hr 年度PUE估算</p>
         </div>
       </div>
       <div class="flex items-center gap-3 flex-wrap">
         <div class="flex items-center gap-1.5 bg-bg px-2.5 py-1.5 rounded-lg border border-border">
-          <button onclick="window.App.exportProjectFile()">儲存專案</button>
-          <button onclick="document.getElementById('projectFileInput').click()">開啟專案</button>
+          <button onclick="window.App.exportProjectFile()"><span data-i18n="app.save">儲存專案</span></button>
+          <button onclick="document.getElementById('projectFileInput').click()"><span data-i18n="app.open">開啟專案</span></button>
           <input type="file" id="projectFileInput" accept=".json" class="hidden" onchange="window.App.importProjectFile(event)">
-          <button onclick="window.App.resetProject()">重置</button>
+          <button onclick="window.App.resetProject()" title="重置為初始範例專案" data-i18n-title="app.resetTitle"><span data-i18n="app.reset">重置</span></button>
+        </div>
+        <div class="flex items-center bg-bg p-0.5 rounded-lg border border-border" id="langSwitchGroup">
+          <button type="button" onclick="window.I18N && window.I18N.setLang('zh-TW')" id="langBtnZh" class="px-2.5 py-1 text-[11px] font-semibold rounded-md transition bg-surface text-primary shadow-sm">中</button>
+          <button type="button" onclick="window.I18N && window.I18N.setLang('en')" id="langBtnEn" class="px-2.5 py-1 text-[11px] font-medium rounded-md transition text-secondary hover:text-primary">EN</button>
         </div>
         <div class="flex items-center gap-3 bg-bg px-3.5 py-1.5 rounded-lg border border-border text-xs">
-          <div><div class="text-sm font-semibold text-brand-600 tabular-nums" id="stickyPue">1.071</div></div>
-          <div><div class="text-sm font-semibold text-primary tabular-nums" id="stickyWue">0.00 L/kWh</div></div>
-          <div><div class="text-sm font-semibold text-primary tabular-nums" id="stickyIt">1.08 MW</div></div>
-          <div><div class="text-sm font-semibold text-brand-600 tabular-nums" id="stickyFc">100.0%</div></div>
+          <div><span data-i18n="kpi.designPue">設計 PUE</span><div class="text-sm font-semibold text-brand-600 tabular-nums" id="stickyPue">1.071</div></div>
+          <div><span data-i18n="kpi.waterWue">耗水 WUE</span><div class="text-sm font-semibold text-primary tabular-nums" id="stickyWue">0.00 L/kWh</div></div>
+          <div><span data-i18n="kpi.itCapacity">IT 容量</span><div class="text-sm font-semibold text-primary tabular-nums" id="stickyIt">1.08 MW</div></div>
+          <div><span data-i18n="kpi.freeCooling" data-i18n-title="kpi.freeCoolingTitle" title="CDU 液冷自然冷卻時數佔比 (Free Cooling Ratio)">自然冷卻 FC</span><div class="text-sm font-semibold text-brand-600 tabular-nums" id="stickyFc">100.0%</div></div>
         </div>
       </div>
     </div>
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-2 border-t border-border-subtle overflow-x-auto flex items-center gap-2">
-      <button data-step="1" class="step-btn"><span class="step-circle">1</span><span class="step-title">案場 8760h 氣象</span></button>
-      <button data-step="2" class="step-btn"><span class="step-circle">2</span><span class="step-title">Hall → DU → SU 模組</span></button>
-      <button data-step="3" class="step-btn"><span class="step-circle">3</span><span class="step-title">CorePOD 核心機房</span></button>
-      <button data-step="4" class="step-btn"><span class="step-circle">4</span><span class="step-title">逐 DU 雙冷卻系統</span></button>
-      <button data-step="5" class="step-btn"><span class="step-circle">5</span><span class="step-title">8,760h 成果儀表板</span></button>
+      <button data-step="1" class="step-btn"><span class="step-circle">1</span><span class="step-title" data-i18n="nav.step1">案場 8760h 氣象</span></button>
+      <button data-step="2" class="step-btn"><span class="step-circle">2</span><span class="step-title" data-i18n="nav.step2">Hall → DU → SU 模組</span></button>
+      <button data-step="3" class="step-btn"><span class="step-circle">3</span><span class="step-title" data-i18n="nav.step3">CorePOD 核心機房</span></button>
+      <button data-step="4" class="step-btn"><span class="step-circle">4</span><span class="step-title" data-i18n="nav.step4">逐 DU 雙冷卻系統</span></button>
+      <button data-step="5" class="step-btn"><span class="step-circle">5</span><span class="step-title" data-i18n="nav.step5">8,760h 成果儀表板</span></button>
     </div>
   </header>
   <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6" id="stepContent"></main>
-  <footer class="bg-surface border-t border-border py-4 text-center text-xs text-tertiary">PUE 計算系統</footer>
+  <footer class="bg-surface border-t border-border py-4 text-center text-xs text-tertiary" data-i18n="footer.desc">PUE 計算系統 · 專業 AI 資料中心全生命週期能耗與耗水動力學評估工具</footer>
 </body>
 </html>`;
 
