@@ -184,6 +184,8 @@
             scenarios: [],
             activeScenarioId: null,
 
+            templates: [],
+
             assumptions_override: {},
 
             results: {
@@ -243,6 +245,7 @@
                 coolingPlants: s.coolingPlants || [],
                 scenarios: s.scenarios || [],
                 activeScenarioId: s.activeScenarioId || null,
+                templates: s.templates || [],
                 assumptions_override: s.assumptions_override || {}
             };
             return JSON.stringify(exportData, null, 2);
@@ -420,6 +423,19 @@
                 });
             }
 
+            // Phase T: 範本資料模型 (templates) 遷移
+            if (!Array.isArray(stateData.templates)) {
+                stateData.templates = [];
+            } else {
+                stateData.templates.forEach(tpl => {
+                    if (!tpl.id) tpl.id = makeId('tpl');
+                    if (!tpl.name) tpl.name = '未命名範本';
+                    if (!tpl.version) tpl.version = 1;
+                    if (!tpl.kind) tpl.kind = 'du';
+                    if (!tpl.content) tpl.content = { sus: [] };
+                });
+            }
+
             stateData.schemaVersion = 'v7';
             return stateData;
         },
@@ -446,6 +462,11 @@
                 } else {
                     this.state.scenarios = [];
                     this.state.activeScenarioId = null;
+                }
+                if (stateData.templates && Array.isArray(stateData.templates)) {
+                    this.state.templates = stateData.templates;
+                } else {
+                    this.state.templates = [];
                 }
                 if (stateData.assumptions_override) {
                     this.state.assumptions_override = stateData.assumptions_override;
@@ -1655,6 +1676,374 @@
         evaluateAllScenarios() {
             if (!Array.isArray(this.state.scenarios)) return [];
             return this.state.scenarios.map(scen => this.evaluateScenario(scen));
+        },
+
+        // ═══════════════════════════════════════════════════════════════
+        // Phase T: DU 模組範本 (DU Module Templates)
+        // ═══════════════════════════════════════════════════════════════
+        getTemplate(id) {
+            if (!Array.isArray(this.state.templates)) return null;
+            return this.state.templates.find(t => t.id === id) || null;
+        },
+
+        addTemplate(tplData) {
+            if (!Array.isArray(this.state.templates)) this.state.templates = [];
+            const tpl = {
+                id: tplData.id || makeId('tpl'),
+                kind: tplData.kind || 'du',
+                name: tplData.name || _t('template.defaultSuffix', null, '標準範本'),
+                version: tplData.version || 1,
+                updatedAt: tplData.updatedAt || new Date().toISOString(),
+                content: tplData.content ? JSON.parse(JSON.stringify(tplData.content)) : (tplData.kind === 'corepod' ? { equipment: [] } : { sus: [] })
+            };
+            this.state.templates.push(tpl);
+            this.notify();
+            return tpl;
+        },
+
+        updateTemplate(id, updates = {}) {
+            const tpl = this.getTemplate(id);
+            if (!tpl) return null;
+            if (updates.name !== undefined) tpl.name = updates.name;
+            if (updates.content !== undefined) {
+                tpl.content = JSON.parse(JSON.stringify(updates.content));
+                tpl.version = (tpl.version || 1) + 1;
+                tpl.updatedAt = new Date().toISOString();
+            }
+            this.notify();
+            return tpl;
+        },
+
+        deleteTemplate(id) {
+            if (!Array.isArray(this.state.templates)) return false;
+            const idx = this.state.templates.findIndex(t => t.id === id);
+            if (idx === -1) return false;
+            this.state.templates.splice(idx, 1);
+
+            // Unlink all units referencing this template
+            (this.state.halls || []).forEach(h => {
+                (h.dus || []).forEach(d => {
+                    if (d.templateRef && d.templateRef.id === id) {
+                        d.templateRef.linked = false;
+                    }
+                });
+            });
+            (this.state.corePods || []).forEach(p => {
+                if (p.templateRef && p.templateRef.id === id) {
+                    p.templateRef.linked = false;
+                }
+            });
+
+            this.notify();
+            return true;
+        },
+
+        _applyTemplateContentToDu(du, tpl) {
+            const clonedSus = JSON.parse(JSON.stringify(tpl.content?.sus || [])).map(su => {
+                const newSuId = makeId('su');
+                const newEquip = (su.equipment || []).map(eq => ({
+                    ...eq,
+                    id: makeId('eq')
+                }));
+                return {
+                    ...su,
+                    id: newSuId,
+                    equipment: newEquip
+                };
+            });
+            du.sus = clonedSus;
+
+            if (tpl.content?.terminalDesign) {
+                const td = tpl.content.terminalDesign;
+                if (td.cdu_unit && du.plantDesign?.cduSystem) {
+                    if (!Array.isArray(du.plantDesign.cduSystem.sizing)) du.plantDesign.cduSystem.sizing = [];
+                    let item = du.plantDesign.cduSystem.sizing.find(s => s.key === 'cdu_unit');
+                    if (!item) {
+                        item = { key: 'cdu_unit', name: 'CDU 液冷分配單元', unit: '台', sizingBasis: 'peak_kw' };
+                        du.plantDesign.cduSystem.sizing.push(item);
+                    }
+                    if (td.cdu_unit.model) item.selectedModel = td.cdu_unit.model;
+                    if (td.cdu_unit.redundancy) item.redundancy = td.cdu_unit.redundancy;
+                    if (td.cdu_unit.runMode) item.runMode = td.cdu_unit.runMode;
+                    item.userEdited = false;
+                }
+                if (td.crah_unit && du.plantDesign?.fanwallSystem) {
+                    if (!Array.isArray(du.plantDesign.fanwallSystem.sizing)) du.plantDesign.fanwallSystem.sizing = [];
+                    let item = du.plantDesign.fanwallSystem.sizing.find(s => s.key === 'crah_unit');
+                    if (!item) {
+                        item = { key: 'crah_unit', name: 'CRAH 室內空調箱', unit: '台', sizingBasis: 'peak_kw' };
+                        du.plantDesign.fanwallSystem.sizing.push(item);
+                    }
+                    if (td.crah_unit.model) item.selectedModel = td.crah_unit.model;
+                    if (td.crah_unit.redundancy) item.redundancy = td.crah_unit.redundancy;
+                    if (td.crah_unit.runMode) item.runMode = td.crah_unit.runMode;
+                    item.userEdited = false;
+                }
+            }
+        },
+
+        _applyTemplateContentToCorePod(pod, tpl) {
+            const clonedEquip = JSON.parse(JSON.stringify(tpl.content?.equipment || [])).map(eq => ({
+                ...eq,
+                id: makeId('cpeq')
+            }));
+            pod.equipment = clonedEquip;
+
+            if (tpl.content?.terminalDesign) {
+                const td = tpl.content.terminalDesign;
+                if (td.cdu_unit && pod.plantDesign?.cduSystem) {
+                    if (!Array.isArray(pod.plantDesign.cduSystem.sizing)) pod.plantDesign.cduSystem.sizing = [];
+                    let item = pod.plantDesign.cduSystem.sizing.find(s => s.key === 'cdu_unit');
+                    if (!item) {
+                        item = { key: 'cdu_unit', name: 'CDU 液冷分配單元', unit: '台', sizingBasis: 'peak_kw' };
+                        pod.plantDesign.cduSystem.sizing.push(item);
+                    }
+                    if (td.cdu_unit.model) item.selectedModel = td.cdu_unit.model;
+                    if (td.cdu_unit.redundancy) item.redundancy = td.cdu_unit.redundancy;
+                    if (td.cdu_unit.runMode) item.runMode = td.cdu_unit.runMode;
+                    item.userEdited = false;
+                }
+                if (td.crah_unit && pod.plantDesign?.fanwallSystem) {
+                    if (!Array.isArray(pod.plantDesign.fanwallSystem.sizing)) pod.plantDesign.fanwallSystem.sizing = [];
+                    let item = pod.plantDesign.fanwallSystem.sizing.find(s => s.key === 'crah_unit');
+                    if (!item) {
+                        item = { key: 'crah_unit', name: 'CRAH 室內空調箱', unit: '台', sizingBasis: 'peak_kw' };
+                        pod.plantDesign.fanwallSystem.sizing.push(item);
+                    }
+                    if (td.crah_unit.model) item.selectedModel = td.crah_unit.model;
+                    if (td.crah_unit.redundancy) item.redundancy = td.crah_unit.redundancy;
+                    if (td.crah_unit.runMode) item.runMode = td.crah_unit.runMode;
+                    item.userEdited = false;
+                }
+            }
+        },
+
+        saveDuAsTemplate(duId, name, includeTerminal = false) {
+            let du = null;
+            for (const h of this.state.halls) {
+                du = (h.dus || []).find(d => d.id === duId);
+                if (du) break;
+            }
+            if (!du) return null;
+
+            let terminalDesign = null;
+            if (includeTerminal) {
+                terminalDesign = {};
+                const cduItem = du.plantDesign?.cduSystem?.sizing?.find(s => s.key === 'cdu_unit');
+                if (cduItem) {
+                    terminalDesign.cdu_unit = {
+                        model: cduItem.selectedModel,
+                        redundancy: cduItem.redundancy || 'N+1',
+                        runMode: cduItem.runMode || 'standby'
+                    };
+                }
+                const crahItem = du.plantDesign?.fanwallSystem?.sizing?.find(s => s.key === 'crah_unit');
+                if (crahItem) {
+                    terminalDesign.crah_unit = {
+                        model: crahItem.selectedModel,
+                        redundancy: crahItem.redundancy || 'N+1',
+                        runMode: crahItem.runMode || 'standby'
+                    };
+                }
+            }
+
+            const tpl = {
+                id: makeId('tpl'),
+                kind: 'du',
+                name: name || `${du.name} ${_t('template.defaultSuffix', null, '標準範本')}`,
+                version: 1,
+                updatedAt: new Date().toISOString(),
+                content: {
+                    sus: JSON.parse(JSON.stringify(du.sus || [])),
+                    ...(terminalDesign ? { terminalDesign } : {})
+                }
+            };
+
+            if (!Array.isArray(this.state.templates)) this.state.templates = [];
+            this.state.templates.push(tpl);
+            du.templateRef = { id: tpl.id, version: tpl.version, linked: true };
+            this.notify();
+            return tpl;
+        },
+
+        saveCorePodAsTemplate(podId, name, includeTerminal = false) {
+            const pod = (this.state.corePods || []).find(p => p.id === podId);
+            if (!pod) return null;
+
+            let terminalDesign = null;
+            if (includeTerminal) {
+                terminalDesign = {};
+                const cduItem = pod.plantDesign?.cduSystem?.sizing?.find(s => s.key === 'cdu_unit');
+                if (cduItem) {
+                    terminalDesign.cdu_unit = {
+                        model: cduItem.selectedModel,
+                        redundancy: cduItem.redundancy || 'N+1',
+                        runMode: cduItem.runMode || 'standby'
+                    };
+                }
+                const crahItem = pod.plantDesign?.fanwallSystem?.sizing?.find(s => s.key === 'crah_unit');
+                if (crahItem) {
+                    terminalDesign.crah_unit = {
+                        model: crahItem.selectedModel,
+                        redundancy: crahItem.redundancy || 'N+1',
+                        runMode: crahItem.runMode || 'standby'
+                    };
+                }
+            }
+
+            const tpl = {
+                id: makeId('tpl'),
+                kind: 'corepod',
+                name: name || `${pod.name} ${_t('template.defaultSuffix', null, '標準範本')}`,
+                version: 1,
+                updatedAt: new Date().toISOString(),
+                content: {
+                    equipment: JSON.parse(JSON.stringify(pod.equipment || [])),
+                    ...(terminalDesign ? { terminalDesign } : {})
+                }
+            };
+
+            if (!Array.isArray(this.state.templates)) this.state.templates = [];
+            this.state.templates.push(tpl);
+            pod.templateRef = { id: tpl.id, version: tpl.version, linked: true };
+            this.notify();
+            return tpl;
+        },
+
+        applyTemplateToDu(duId, templateId, link = true) {
+            let du = null;
+            for (const h of this.state.halls) {
+                du = (h.dus || []).find(d => d.id === duId);
+                if (du) break;
+            }
+            if (!du) return null;
+            const tpl = this.getTemplate(templateId);
+            if (!tpl || tpl.kind !== 'du') return null;
+
+            this._applyTemplateContentToDu(du, tpl);
+            du.templateRef = { id: tpl.id, version: tpl.version, linked: !!link };
+            this.notify();
+            return du;
+        },
+
+        applyTemplateToCorePod(podId, templateId, link = true) {
+            const pod = (this.state.corePods || []).find(p => p.id === podId);
+            if (!pod) return null;
+            const tpl = this.getTemplate(templateId);
+            if (!tpl || tpl.kind !== 'corepod') return null;
+
+            this._applyTemplateContentToCorePod(pod, tpl);
+            pod.templateRef = { id: tpl.id, version: tpl.version, linked: !!link };
+            this.notify();
+            return pod;
+        },
+
+        batchCreateDusFromTemplate(hallId, templateId, count = 1, namePrefix = 'DU-') {
+            const hall = this.state.halls.find(h => h.id === hallId);
+            if (!hall) return [];
+            const tpl = this.getTemplate(templateId);
+            if (!tpl || tpl.kind !== 'du') return [];
+
+            let maxNum = 0;
+            (hall.dus || []).forEach(d => {
+                const match = (d.name || '').match(/(\d+)$/);
+                if (match) {
+                    const n = parseInt(match[1], 10);
+                    if (n > maxNum) maxNum = n;
+                }
+            });
+
+            const createdDUs = [];
+            for (let i = 1; i <= count; i++) {
+                const seq = maxNum + i;
+                const duName = `${namePrefix}${seq < 10 ? '0' + seq : seq}`;
+                const duId = makeId('du');
+                const newDu = {
+                    id: duId,
+                    name: duName,
+                    sus: [],
+                    templateRef: { id: tpl.id, version: tpl.version, linked: true },
+                    plantDesign: {
+                        cduSystem: this.defaultCduSystem('dry_cooler_hx'),
+                        fanwallSystem: {
+                            architecture: 'air_cooled_chiller',
+                            chwSupplyC: 12.0,
+                            chwReturnC: 18.0,
+                            sizing: []
+                        }
+                    }
+                };
+                hall.dus.push(newDu);
+                this._applyTemplateContentToDu(newDu, tpl);
+                createdDUs.push(newDu);
+            }
+
+            this.notify();
+            return createdDUs;
+        },
+
+        syncDuWithTemplate(duId) {
+            let du = null;
+            for (const h of this.state.halls) {
+                du = (h.dus || []).find(d => d.id === duId);
+                if (du) break;
+            }
+            if (!du || !du.templateRef?.linked || !du.templateRef.id) return false;
+            const tpl = this.getTemplate(du.templateRef.id);
+            if (!tpl) return false;
+
+            this._applyTemplateContentToDu(du, tpl);
+            du.templateRef.version = tpl.version;
+            this.notify();
+            return true;
+        },
+
+        syncAllDusLinkedToTemplate(templateId) {
+            const tpl = this.getTemplate(templateId);
+            if (!tpl) return 0;
+            let count = 0;
+            (this.state.halls || []).forEach(h => {
+                (h.dus || []).forEach(d => {
+                    if (d.templateRef?.linked && d.templateRef.id === templateId) {
+                        this._applyTemplateContentToDu(d, tpl);
+                        d.templateRef.version = tpl.version;
+                        count++;
+                    }
+                });
+            });
+            (this.state.corePods || []).forEach(p => {
+                if (p.templateRef?.linked && p.templateRef.id === templateId) {
+                    this._applyTemplateContentToCorePod(p, tpl);
+                    p.templateRef.version = tpl.version;
+                    count++;
+                }
+            });
+            if (count > 0) {
+                this.notify();
+            }
+            return count;
+        },
+
+        unlinkDu(duId) {
+            for (const h of this.state.halls) {
+                const du = (h.dus || []).find(d => d.id === duId);
+                if (du && du.templateRef) {
+                    du.templateRef.linked = false;
+                    this.notify();
+                    return true;
+                }
+            }
+            return false;
+        },
+
+        unlinkCorePod(podId) {
+            const pod = (this.state.corePods || []).find(p => p.id === podId);
+            if (pod && pod.templateRef) {
+                pod.templateRef.linked = false;
+                this.notify();
+                return true;
+            }
+            return false;
         },
 
         designConditions() {

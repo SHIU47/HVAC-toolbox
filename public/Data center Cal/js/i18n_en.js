@@ -1498,7 +1498,34 @@
     'scen.promptEditName': 'Edit scenario name:',
     'scen.promptEditNote': 'Edit scenario note:',
     'xls.s11Name': '11.Scenario Comparison',
-    'xls.s11Title': 'Cooling Design Scenario Multi-Dimensional Comparison Schedule'
+    'xls.s11Title': 'Cooling Design Scenario Multi-Dimensional Comparison Schedule',
+
+    // Phase T: DU Module Templates (template.*)
+    'template.defaultSuffix': 'Standard Template',
+    'template.title': 'Module Template Library',
+    'template.subtitle': 'Manage standardized IT and terminal cooling templates with batch apply and sync',
+    'template.duTemplates': 'DU Module Templates',
+    'template.corePodTemplates': 'CorePOD Templates',
+    'template.saveAsTemplate': '💾 Save as Template',
+    'template.applyTemplate': '📥 Apply Template',
+    'template.batchCreate': 'Batch Create DUs from Template',
+    'template.linked': '🔗 Linked to Template',
+    'template.unlinked': 'Unlinked',
+    'template.unlink': 'Unlink',
+    'template.sync': '🔄 Sync Template',
+    'template.syncAll': '🔄 Sync All',
+    'template.version': 'v{v}',
+    'template.updated': 'Template Updated',
+    'template.includeTerminal': 'Include Terminal Equipment Sizing (CDU / CRAH)',
+    'template.export': 'Export Templates (.json)',
+    'template.import': 'Import Templates',
+    'template.delete': 'Delete Template',
+    'template.deleteConfirm': 'Delete this template? All linked units will automatically be unlinked.',
+    'template.empty': 'No saved templates found.',
+    'template.countPrompt': 'Enter number of DUs to create (1 ~ 50):',
+    'template.namePrefixPrompt': 'Enter DU name prefix (default DU-):',
+    'template.templateNamePrompt': 'Enter template name:',
+    'template.includeTerminalPrompt': 'Include terminal equipment sizing (CDU / CRAH model & redundancy) in template?'
   };
 
   const target = (typeof window !== 'undefined' ? window.I18N : (typeof global !== 'undefined' ? global.I18N : null));

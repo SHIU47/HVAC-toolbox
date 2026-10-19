@@ -4960,6 +4960,137 @@ function sizeCduToDeratedN1(S) {
 
     assert.strictEqual(violations.length, 0, `Sheet 11 English workbook should have 0 CJK violations. Found: ${violations.join(', ')}`);
   });
+
+  // ═══════════════════════════════════════════════════════════════
+  // Phase T: Task T-1 — DU Module Templates Data Model & Operations
+  // ═══════════════════════════════════════════════════════════════
+  test('T-1: Default state initializes with empty templates array', () => {
+    const c = freshCtx();
+    const S = c.AppStore;
+    assert(Array.isArray(S.state.templates), 'state.templates must be an array');
+    assert.strictEqual(S.state.templates.length, 0);
+  });
+
+  test('T-1: serializeProject and deserializeProject preserve templates and templateRef', () => {
+    const c = freshCtx();
+    const S = c.AppStore;
+    const du0 = S.state.halls[0].dus[0];
+    const tpl = S.saveDuAsTemplate(du0.id, 'Standard NVL72', true);
+
+    assert(tpl && tpl.id, 'Template must be created');
+    assert.strictEqual(S.state.templates.length, 1);
+    assert(du0.templateRef, 'DU must have templateRef');
+    assert.strictEqual(du0.templateRef.id, tpl.id);
+    assert.strictEqual(du0.templateRef.linked, true);
+
+    const json = S.serializeProject();
+    const c2 = freshCtx();
+    const S2 = c2.AppStore;
+    S2.deserializeProject(json);
+
+    assert.strictEqual(S2.state.templates.length, 1);
+    const restoredTpl = S2.state.templates[0];
+    assert.strictEqual(restoredTpl.id, tpl.id);
+    assert.strictEqual(restoredTpl.name, 'Standard NVL72');
+    assert.strictEqual(restoredTpl.kind, 'du');
+
+    const restoredDu0 = S2.state.halls[0].dus[0];
+    assert(restoredDu0.templateRef, 'Restored DU must have templateRef');
+    assert.strictEqual(restoredDu0.templateRef.id, tpl.id);
+    assert.strictEqual(restoredDu0.templateRef.linked, true);
+  });
+
+  test('T-1: batchCreateDusFromTemplate creates unique IDs and updates IT sum', () => {
+    const c = freshCtx();
+    const S = c.AppStore;
+    S.calculate();
+    const initialItKw = S.state.results.overall.totalItKw;
+    const hall0 = S.state.halls[0];
+    const du0 = hall0.dus[0];
+
+    let tplItKw = 0;
+    (du0.sus || []).forEach(su => (su.equipment || []).forEach(eq => {
+      tplItKw += (eq.qty || 0) * (eq.itLoadKw || 0);
+    }));
+
+    const tpl = S.saveDuAsTemplate(du0.id, 'AI Cluster Template', true);
+    const createdDUs = S.batchCreateDusFromTemplate(hall0.id, tpl.id, 3, 'DU-');
+
+    assert.strictEqual(createdDUs.length, 3);
+    assert.strictEqual(hall0.dus.length, 4); // 1 initial + 3 created
+
+    // Check unique DU names
+    const names = hall0.dus.map(d => d.name);
+    const uniqueNames = new Set(names);
+    assert.strictEqual(uniqueNames.size, names.length, 'All DU names must be unique');
+
+    // Check unique SU and equipment IDs
+    const allSuIds = new Set();
+    const allEqIds = new Set();
+    hall0.dus.forEach(d => {
+      (d.sus || []).forEach(su => {
+        assert(!allSuIds.has(su.id), `Duplicate SU id: ${su.id}`);
+        allSuIds.add(su.id);
+        (su.equipment || []).forEach(eq => {
+          assert(!allEqIds.has(eq.id), `Duplicate Eq id: ${eq.id}`);
+          allEqIds.add(eq.id);
+        });
+      });
+    });
+
+    // Check IT load conservation
+    const expectedItKw = initialItKw + 3 * tplItKw;
+    assert(Math.abs(S.state.results.overall.totalItKw - expectedItKw) < 0.01, `totalItKw must equal initial + 3*tplIt (${expectedItKw}), got ${S.state.results.overall.totalItKw}`);
+  });
+
+  test('T-1: updateTemplate and syncAllDusLinkedToTemplate updates linked DUs and preserves unlinked DUs', () => {
+    const c = freshCtx();
+    const S = c.AppStore;
+    const hall0 = S.state.halls[0];
+    const du0 = hall0.dus[0];
+    const tpl = S.saveDuAsTemplate(du0.id, 'V1 Template', false);
+    const createdDUs = S.batchCreateDusFromTemplate(hall0.id, tpl.id, 2, 'DU-');
+
+    const duLinked = createdDUs[0];
+    const duUnlinked = createdDUs[1];
+
+    // Unlink the second DU
+    S.unlinkDu(duUnlinked.id);
+    assert.strictEqual(duUnlinked.templateRef.linked, false);
+
+    // Modify unlinked DU's equipment quantity
+    duUnlinked.sus[0].equipment[0].qty = 99;
+
+    // Update template with a new name and updated SU content
+    const updatedContent = JSON.parse(JSON.stringify(tpl.content));
+    updatedContent.sus[0].equipment[0].qty = 10;
+    S.updateTemplate(tpl.id, { content: updatedContent, name: 'V2 Template' });
+
+    assert.strictEqual(tpl.version, 2, 'Template version should increment to 2');
+
+    // Sync all linked DUs
+    const syncedCount = S.syncAllDusLinkedToTemplate(tpl.id);
+    assert(syncedCount >= 2, `Should sync at least du0 and duLinked (synced: ${syncedCount})`);
+
+    // Verify linked DU has updated qty (10) and updated version (2)
+    assert.strictEqual(duLinked.templateRef.version, 2);
+    assert.strictEqual(duLinked.sus[0].equipment[0].qty, 10);
+
+    // Verify unlinked DU kept its modified qty (99) and was not overwritten
+    assert.strictEqual(duUnlinked.sus[0].equipment[0].qty, 99);
+  });
+
+  test('T-1: deleteTemplate unlinks referencing DUs and CorePODs', () => {
+    const c = freshCtx();
+    const S = c.AppStore;
+    const du0 = S.state.halls[0].dus[0];
+    const tpl = S.saveDuAsTemplate(du0.id, 'Temporary Template');
+    assert.strictEqual(du0.templateRef.linked, true);
+
+    S.deleteTemplate(tpl.id);
+    assert.strictEqual(S.getTemplate(tpl.id), null, 'Template must be deleted');
+    assert.strictEqual(du0.templateRef.linked, false, 'DU must be unlinked');
+  });
 })();
 
 console.log(`\n${passCount} passed, ${failCount} failed, ${skipCount} skipped`);

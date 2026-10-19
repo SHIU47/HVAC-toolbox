@@ -1498,7 +1498,34 @@
     'scen.promptEditName': '修改方案名稱:',
     'scen.promptEditNote': '修改方案備註:',
     'xls.s11Name': '11.方案比較',
-    'xls.s11Title': '空調冷卻設計方案多維度對比與評估表'
+    'xls.s11Title': '空調冷卻設計方案多維度對比與評估表',
+
+    // Phase T: DU Module Templates (template.*)
+    'template.defaultSuffix': '標準範本',
+    'template.title': 'DU 模組範本庫',
+    'template.subtitle': '管理標準化 IT 與終端冷卻模組範本，支援一鍵套用與全場批次同步',
+    'template.duTemplates': 'DU 算力單元範本',
+    'template.corePodTemplates': 'CorePOD 核心機房範本',
+    'template.saveAsTemplate': '💾 存為範本',
+    'template.applyTemplate': '📥 套用範本',
+    'template.batchCreate': '從範本批次新增 DU',
+    'template.linked': '🔗 連結範本',
+    'template.unlinked': '未連結範本',
+    'template.unlink': '解除連結',
+    'template.sync': '🔄 同步範本',
+    'template.syncAll': '🔄 全部同步',
+    'template.version': 'v{v}',
+    'template.updated': '範本已更新',
+    'template.includeTerminal': '包含終端設備選型 (CDU / CRAH)',
+    'template.export': '匯出範本 (.json)',
+    'template.import': '匯入範本',
+    'template.delete': '刪除範本',
+    'template.deleteConfirm': '確定要刪除此範本嗎？所有已連結之單元將自動解除連結。',
+    'template.empty': '目前無已儲存的範本。',
+    'template.countPrompt': '請輸入要新增的 DU 數量 (1 ~ 50):',
+    'template.namePrefixPrompt': '請輸入 DU 名稱前綴 (預設 DU-):',
+    'template.templateNamePrompt': '請輸入範本名稱:',
+    'template.includeTerminalPrompt': '是否同時將終端設備選型 (CDU / CRAH 型號與冗餘) 納入範本？'
   };
 
   const target = (typeof window !== 'undefined' ? window.I18N : (typeof global !== 'undefined' ? global.I18N : null));
