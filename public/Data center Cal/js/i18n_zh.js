@@ -1456,6 +1456,7 @@
 
     // Phase S: Scenario Comparison (scen.*)
     'common.copy': '副本',
+    'common.sets': '套',
     'scen.title': '冷卻設計方案多維度對比與評估 (Scenario Comparison)',
     'scen.subtitle': '評估不同冷卻架構與共用機房配置方案之 PUE、耗電與設備規模',
     'scen.defaultName': '方案 {n}',
@@ -1490,6 +1491,12 @@
     'scen.thActions': '操作',
     'scen.baseline': '基準',
     'scen.noScenarios': '尚未建立任何設計方案，請點選上方「存為方案」開始建立與比較',
+    'scen.chartTitle': '各方案年耗電量分項對比 (MWh)',
+    'scen.heatRejEquip': '排熱器',
+    'scen.promptName': '請輸入方案名稱:',
+    'scen.promptNote': '請輸入方案備註 (選填):',
+    'scen.promptEditName': '修改方案名稱:',
+    'scen.promptEditNote': '修改方案備註:',
     'xls.s11Name': '11.方案比較',
     'xls.s11Title': '空調冷卻設計方案多維度對比與評估表'
   };

@@ -1881,6 +1881,127 @@
 
                 s10.autoFilter = { from: 'A3', to: 'M3' };
 
+                // Sheet 11: 方案比較 (Scenario Comparison)
+                const scenarios = state.scenarios || [];
+                if (scenarios.length > 0) {
+                    const s11 = wb.addWorksheet(_t('xls.s11Name', {}, '11.方案比較'), { views: [{ state: 'frozen', ySplit: 2 }] });
+                    s11.properties.tabColor = { argb: 'FF4F46E5' };
+                    s11.pageSetup = { orientation: 'landscape', fitToPage: true, fitToWidth: 1, fitToHeight: 0 };
+                    s11.columns = [
+                        { width: 22 }, // A: 方案名稱
+                        { width: 14 }, // B: 狀態
+                        { width: 26 }, // C: 冷卻架構與分組
+                        { width: 14 }, // D: 年度 PUE
+                        { width: 14 }, // E: PUE 差值 (Δ)
+                        { width: 14 }, // F: 局部冷卻 pPUE
+                        { width: 14 }, // G: 尖峰 PUE
+                        { width: 14 }, // H: 耗水 WUE (L/kWh)
+                        { width: 16 }, // I: 全廠年總耗電 (MWh)
+                        { width: 16 }, // J: 耗電差值 (MWh)
+                        { width: 14 }, // K: 冰機能耗 (MWh)
+                        { width: 14 }, // L: 排熱能耗 (MWh)
+                        { width: 14 }, // M: 水泵+CDU (MWh)
+                        { width: 14 }, // N: CRAH (MWh)
+                        { width: 14 }, // O: 電力損耗 (MWh)
+                        { width: 14 }, // P: 冰機台數
+                        { width: 14 }, // Q: 排熱台數
+                        { width: 14 }, // R: 水泵台數
+                        { width: 14 }, // S: 容量不足 (h)
+                        { width: 24 }  // T: 備註
+                    ];
+
+                    s11.addRow([_t('xls.s11Title', {}, '空調冷卻設計方案多維度對比與評估表')]);
+                    s11.mergeCells('A1:T1');
+                    s11.getCell('A1').font = fontSection;
+                    s11.getCell('A1').fill = fillSection;
+                    s11.getCell('A1').alignment = { vertical: 'middle', horizontal: 'left', indent: 1 };
+                    s11.getRow(1).height = 26;
+
+                    s11.addRow([
+                        _t('scen.thName', {}, '方案名稱'),
+                        _t('scen.activeBadge', {}, '當前方案'),
+                        _t('scen.thCoolingConfig', {}, '冷卻架構與分組'),
+                        _t('scen.thAnnualPue', {}, '年 PUE'),
+                        'Δ PUE',
+                        _t('scen.thPpue', {}, 'pPUE'),
+                        _t('scen.thPeakPue', {}, '尖峰 PUE'),
+                        _t('scen.thWue', {}, 'WUE (L/kWh)'),
+                        _t('scen.thTotalPower', {}, '年總耗電 (MWh)'),
+                        'Δ MWh',
+                        _t('scen.thChillerMwh', {}, '冰機 (MWh)'),
+                        _t('scen.thHeatRejMwh', {}, '排熱 (MWh)'),
+                        _t('scen.thPumpMwh', {}, '泵+CDU (MWh)'),
+                        _t('scen.thCrahMwh', {}, 'CRAH (MWh)'),
+                        _t('scen.thLossMwh', {}, '電損 (MWh)'),
+                        targetLang === 'en' ? 'Chiller Units' : '冰機台數',
+                        targetLang === 'en' ? 'Heat Rejection Units' : '排熱設備台數',
+                        targetLang === 'en' ? 'Pump Units' : '水泵台數',
+                        _t('scen.thDeficitHours', {}, '容量不足 (h)'),
+                        _t('scen.scenarioNote', {}, '備註說明')
+                    ]);
+                    styleHeaderRow(s11.getRow(2), 20, fillBlue);
+
+                    let s11Row = 3;
+                    const baseRow = 3;
+                    scenarios.forEach((scen, idx) => {
+                        let summ = scen.resultSummary;
+                        const appStore = (typeof window !== 'undefined' && window.AppStore) ? window.AppStore : ((typeof AppStore !== 'undefined') ? AppStore : null);
+                        if (!summ && appStore && typeof appStore.evaluateScenario === 'function') {
+                            summ = appStore.evaluateScenario(scen);
+                        }
+                        const isActive = scen.id === state.activeScenarioId;
+                        const statusLabel = isActive ? _t('scen.activeBadge', {}, '當前方案') : (idx === 0 ? _t('scen.baseline', {}, '基準') : '');
+                        const isBase = idx === 0;
+
+                        const bk = summ?.breakdownMwh || {};
+                        const coolingCfgText = (appStore && typeof appStore.getCoolingConfigSummary === 'function')
+                            ? appStore.getCoolingConfigSummary(scen)
+                            : (summ?.coolingConfigSummary || '');
+                        const r = s11.addRow([
+                            scen.name || '',
+                            statusLabel,
+                            coolingCfgText,
+                            summ?.annualPue ?? 0,
+                            isBase ? '-' : { formula: `D${s11Row}-D${baseRow}` },
+                            summ?.annualP_Pue ?? 0,
+                            summ?.peakPue ?? 0,
+                            summ?.annualWue ?? 0,
+                            summ?.annualTotalMwh ?? 0,
+                            isBase ? '-' : { formula: `I${s11Row}-I${baseRow}` },
+                            bk.chiller ?? 0,
+                            bk.heatRejection ?? 0,
+                            bk.cduPump ?? 0,
+                            bk.crahFan ?? 0,
+                            bk.loss ?? 0,
+                            summ?.totalChillers ?? 0,
+                            summ?.totalHeatRej ?? 0,
+                            summ?.totalPumps ?? 0,
+                            summ?.capacityDeficitHours ?? 0,
+                            scen.note || ''
+                        ]);
+                        r.height = 22;
+                        applyRowStyles(r, 20, fontNormal, borderThin, { vertical: 'middle', horizontal: 'right' });
+                        r.getCell(1).alignment = { vertical: 'middle', horizontal: 'left', indent: 1 };
+                        r.getCell(2).alignment = { vertical: 'middle', horizontal: 'center' };
+                        r.getCell(3).alignment = { vertical: 'middle', horizontal: 'left', indent: 1 };
+                        r.getCell(20).alignment = { vertical: 'middle', horizontal: 'left', indent: 1 };
+
+                        r.getCell(4).numFmt = '0.000';
+                        r.getCell(5).numFmt = '+0.000;-0.000;0.000';
+                        r.getCell(6).numFmt = '0.000';
+                        r.getCell(7).numFmt = '0.000';
+                        r.getCell(8).numFmt = '#,##0.00';
+                        r.getCell(9).numFmt = '#,##0';
+                        r.getCell(10).numFmt = '+#,##0;-#,##0;0';
+                        for (let c = 11; c <= 19; c++) r.getCell(c).numFmt = '#,##0';
+
+                        zebra(r, s11Row, 20);
+                        s11Row++;
+                    });
+
+                    s11.autoFilter = { from: 'A2', to: 'T2' };
+                }
+
                 return wb;
             } finally {
                 if (i18n) i18n.lang = prevLang;

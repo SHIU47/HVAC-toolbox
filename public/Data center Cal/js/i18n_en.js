@@ -1456,6 +1456,7 @@
 
     // Phase S: Scenario Comparison (scen.*)
     'common.copy': 'Copy',
+    'common.sets': 'Sets',
     'scen.title': 'Cooling Design Scenario Multi-Dimensional Comparison (Scenario Comparison)',
     'scen.subtitle': 'Evaluate PUE, energy consumption, and equipment sizing across cooling architectures and plant groupings',
     'scen.defaultName': 'Scenario {n}',
@@ -1490,6 +1491,12 @@
     'scen.thActions': 'Actions',
     'scen.baseline': 'Baseline',
     'scen.noScenarios': 'No scenarios created yet. Click "Save as Scenario" above to start comparing.',
+    'scen.chartTitle': 'Annual Energy Breakdown by Scenario (MWh)',
+    'scen.heatRejEquip': 'Heat Rejection',
+    'scen.promptName': 'Enter scenario name:',
+    'scen.promptNote': 'Enter scenario note (optional):',
+    'scen.promptEditName': 'Edit scenario name:',
+    'scen.promptEditNote': 'Edit scenario note:',
     'xls.s11Name': '11.Scenario Comparison',
     'xls.s11Title': 'Cooling Design Scenario Multi-Dimensional Comparison Schedule'
   };

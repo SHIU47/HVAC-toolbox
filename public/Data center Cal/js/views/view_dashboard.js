@@ -13,6 +13,7 @@
 
     let breakdownChart = null;
     let monthlyChart = null;
+    let scenarioCompareChart = null;
 
     const ViewDashboard = {
         render(container) {
@@ -143,6 +144,115 @@
                 if (m.pue > worstMonthPue) { worstMonthPue = m.pue; worstMonthIdx = idx; }
                 if (m.pue < bestMonthPue) { bestMonthPue = m.pue; bestMonthIdx = idx; }
             });
+
+            // Phase S: Scenario Comparison Data Preparation
+            const scenarios = state.scenarios || [];
+            let scenarioRows = '';
+            let baseSummary = null;
+
+            if (scenarios.length > 0) {
+                const evaluatedList = scenarios.map((scen, idx) => {
+                    const summ = window.AppStore.evaluateScenario(scen);
+                    if (idx === 0) baseSummary = summ;
+                    return { scen, summ };
+                });
+
+                scenarioRows = evaluatedList.map(({ scen, summ }, idx) => {
+                    const isBase = (idx === 0);
+                    const isActive = (scen.id === state.activeScenarioId);
+
+                    const formatDelta = (val, baseVal, decimals = 3, invertGood = false) => {
+                        if (isBase || val == null || baseVal == null) return '';
+                        const delta = val - baseVal;
+                        if (Math.abs(delta) < (decimals === 0 ? 0.5 : Math.pow(10, -decimals) / 2)) {
+                            return '<span class="text-[10px] text-tertiary ml-1 font-mono font-normal">(±0)</span>';
+                        }
+                        const isGood = invertGood ? delta > 0 : delta < 0;
+                        const sign = delta > 0 ? '+' : '';
+                        const colorClass = isGood ? 'text-emerald-600' : 'text-danger-600';
+                        const arrow = delta > 0 ? '▲' : '▼';
+                        return `<span class="text-[10px] ${colorClass} ml-1 font-mono font-normal">(${arrow}${sign}${delta.toFixed(decimals)})</span>`;
+                    };
+
+                    const bkMwh = summ?.breakdownMwh || {};
+                    const bkHtml = `<div class="text-[10px] space-y-0.5 text-secondary font-mono">
+                        <div>${_t('dash.chartChiller', null, '冰機')}: ${(bkMwh.chiller || 0).toLocaleString()}</div>
+                        <div>${_t('dash.chartHeatRej', null, '排熱')}: ${(bkMwh.heatRejection || 0).toLocaleString()}</div>
+                        <div>${_t('dash.chartCduPump', null, '泵+CDU')}: ${(bkMwh.cduPump || 0).toLocaleString()}</div>
+                        <div>${_t('dash.chartCrahFan', null, 'CRAH')}: ${(bkMwh.crahFan || 0).toLocaleString()}</div>
+                        <div>${_t('dash.chartElecLoss', null, '電損')}: ${(bkMwh.loss || 0).toLocaleString()}</div>
+                    </div>`;
+
+                    const equipHtml = `<div class="text-[10px] space-y-0.5 text-secondary font-mono">
+                        <div>${_t('dash.chartChiller', null, '冰機')}: ${summ?.totalChillers ?? '—'}</div>
+                        <div>${_t('scen.heatRejEquip', null, '排熱器')}: ${summ?.totalHeatRej ?? '—'}</div>
+                        <div>${_t('dash.chartCduPump', null, '泵浦')}: ${summ?.totalPumps ?? '—'}</div>
+                    </div>`;
+
+                    const deficitHtml = (summ?.capacityDeficitHours > 0)
+                        ? `<span class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold bg-danger-50 text-danger-700 border border-danger-200">⚠ ${summ.capacityDeficitHours} h</span>`
+                        : `<span class="text-[10px] text-emerald-700 font-mono">0 h</span>`;
+
+                    return `
+                        <tr class="border-b border-border-subtle hover:bg-bg transition-colors text-xs ${isActive ? 'bg-brand-50/20' : ''}">
+                            <td class="py-3 px-4">
+                                <div class="flex items-center gap-1.5 flex-wrap">
+                                    <span class="font-semibold text-primary">${U0.escapeHTML(scen.name)}</span>
+                                    ${isActive ? `<span class="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-brand-100 text-brand-800 border border-brand-200">${_t('scen.activeBadge', null, '當前')}</span>` : ''}
+                                    ${isBase ? `<span class="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-neutral-100 text-neutral-700 border border-neutral-200">${_t('scen.baseline', null, '基準')}</span>` : ''}
+                                </div>
+                                ${scen.note ? `<div class="text-[10px] text-tertiary mt-0.5">${U0.escapeHTML(scen.note)}</div>` : ''}
+                            </td>
+                            <td class="py-3 px-4 text-secondary text-[11px]">${U0.escapeHTML(summ?.coolingConfigSummary || '—')}</td>
+                            <td class="py-3 px-4 text-right font-mono font-bold text-brand-600 tabular-nums">
+                                ${summ?.annualPue ? U0.pueDot(summ.annualPue) + summ.annualPue : '—'}
+                                ${formatDelta(summ?.annualPue, baseSummary?.annualPue, 3)}
+                            </td>
+                            <td class="py-3 px-4 text-right font-mono text-secondary tabular-nums">
+                                ${summ?.annualP_Pue ?? '—'}
+                                ${formatDelta(summ?.annualP_Pue, baseSummary?.annualP_Pue, 3)}
+                            </td>
+                            <td class="py-3 px-4 text-right font-mono text-secondary tabular-nums">
+                                ${summ?.peakPue ?? '—'}
+                                ${formatDelta(summ?.peakPue, baseSummary?.peakPue, 3)}
+                            </td>
+                            <td class="py-3 px-4 text-right font-mono text-secondary tabular-nums">
+                                ${summ?.annualWue ?? '—'}
+                                ${formatDelta(summ?.annualWue, baseSummary?.annualWue, 2)}
+                            </td>
+                            <td class="py-3 px-4 text-right font-mono font-semibold text-primary tabular-nums">
+                                ${(summ?.annualTotalMwh || 0).toLocaleString()}
+                                ${formatDelta(summ?.annualTotalMwh, baseSummary?.annualTotalMwh, 0)}
+                            </td>
+                            <td class="py-3 px-4">${bkHtml}</td>
+                            <td class="py-3 px-4">${equipHtml}</td>
+                            <td class="py-3 px-4 text-right">${deficitHtml}</td>
+                            <td class="py-3 px-4 text-right">
+                                <div class="flex items-center justify-end gap-1">
+                                    ${!isActive ? `
+                                        <button onclick="ViewDashboard.applyScenario('${scen.id}')" class="px-2 py-1 text-[11px] rounded bg-brand-50 hover:bg-brand-100 text-brand-700 font-medium transition" title="${_t('scen.applyScenario', null, '套用此方案')}">
+                                            ${_t('scen.applyScenario', null, '套用')}
+                                        </button>
+                                    ` : `
+                                        <button onclick="ViewDashboard.saveActiveScenario()" class="px-2 py-1 text-[11px] rounded bg-emerald-50 hover:bg-emerald-100 text-emerald-700 font-medium transition" title="${_t('scen.saveChanges', null, '儲存變更')}">
+                                            ${_t('scen.saveChanges', null, '儲存變更')}
+                                        </button>
+                                    `}
+                                    <button onclick="ViewDashboard.duplicateScenario('${scen.id}')" class="p-1 rounded text-secondary hover:text-primary hover:bg-bg transition" title="${_t('scen.duplicate', null, '複製方案')}">
+                                        ${U0.icon('copy', 'w-3.5 h-3.5')}
+                                    </button>
+                                    <button onclick="ViewDashboard.editScenario('${scen.id}')" class="p-1 rounded text-secondary hover:text-primary hover:bg-bg transition" title="${_t('scen.scenarioName', null, '修改名稱/備註')}">
+                                        ${U0.icon('edit-2', 'w-3.5 h-3.5')}
+                                    </button>
+                                    <button onclick="ViewDashboard.deleteScenario('${scen.id}')" class="p-1 rounded text-danger-500 hover:text-danger-700 hover:bg-danger-50 transition" title="${_t('scen.delete', null, '刪除')}">
+                                        ${U0.icon('trash-2', 'w-3.5 h-3.5')}
+                                    </button>
+                                </div>
+                            </td>
+                        </tr>
+                    `;
+                }).join('');
+            }
 
             const U = window.UIKit;
             container.innerHTML = `
@@ -419,6 +529,67 @@
                     </div>
                     ` : ''}
 
+                    <!-- Phase S: 設計方案比較 (Cooling Scenario Comparison) -->
+                    <div class="${U.cardClass('p-6 space-y-4')}">
+                        <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 border-b border-border-subtle pb-3">
+                            <div class="flex items-center gap-3">
+                                ${U.iconBadge('git-compare', 'brand')}
+                                <div>
+                                    <h3 class="text-sm font-semibold text-primary">${_t('scen.title', null, '冷卻設計方案多維度對比與評估 (Scenario Comparison)')}</h3>
+                                    <p class="text-xs text-tertiary mt-0.5">${_t('scen.subtitle', null, '評估不同冷卻架構與共用機房配置方案之 PUE、耗電與設備規模')}</p>
+                                </div>
+                            </div>
+                            <div class="flex items-center gap-2 flex-wrap">
+                                <button onclick="ViewDashboard.recalculateAllScenarios()" class="${U.buttonClass('secondary')}">
+                                    ${U.icon('refresh-cw', 'w-3.5 h-3.5')} ${_t('scen.recalculateAll', null, '全部重新計算')}
+                                </button>
+                                <button onclick="ViewDashboard.promptSaveScenario()" class="${U.buttonClass('primary')}">
+                                    ${U.icon('plus', 'w-3.5 h-3.5')} ${_t('scen.saveAsScenario', null, '💾 存為方案')}
+                                </button>
+                            </div>
+                        </div>
+
+                        ${scenarios.length === 0 ? `
+                            <div class="text-center py-8 text-secondary">
+                                <p class="text-xs text-tertiary mb-3">${_t('scen.noScenarios', null, '尚未建立任何設計方案，請點選上方「存為方案」開始建立與比較')}</p>
+                            </div>
+                        ` : `
+                            <div class="overflow-x-auto">
+                                <table class="w-full text-left">
+                                    <thead>
+                                        <tr class="border-b border-border text-[11px] font-medium text-tertiary uppercase tracking-wide">
+                                            <th class="py-2.5 px-4">${_t('scen.thName', null, '方案名稱')}</th>
+                                            <th class="py-2.5 px-4">${_t('scen.thCoolingConfig', null, '冷卻架構與分組')}</th>
+                                            <th class="py-2.5 px-4 text-right">${_t('scen.thAnnualPue', null, '年 PUE')}</th>
+                                            <th class="py-2.5 px-4 text-right">${_t('scen.thPpue', null, 'pPUE')}</th>
+                                            <th class="py-2.5 px-4 text-right">${_t('scen.thPeakPue', null, '尖峰 PUE')}</th>
+                                            <th class="py-2.5 px-4 text-right">${_t('scen.thWue', null, 'WUE')}</th>
+                                            <th class="py-2.5 px-4 text-right">${_t('scen.thTotalPower', null, '年總耗電 (MWh)')}</th>
+                                            <th class="py-2.5 px-4">${_t('dash.donutTitle', null, '耗電分項 (MWh)')}</th>
+                                            <th class="py-2.5 px-4">${_t('scen.thEquipQty', null, '主機房設備總台數')}</th>
+                                            <th class="py-2.5 px-4 text-right">${_t('scen.thDeficitHours', null, '容量不足')}</th>
+                                            <th class="py-2.5 px-4 text-right">${_t('scen.thActions', null, '操作')}</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        ${scenarioRows}
+                                    </tbody>
+                                </table>
+                            </div>
+
+                            <!-- 方案年耗電堆疊長條圖 -->
+                            <div class="pt-4 border-t border-border-subtle">
+                                <div class="text-xs font-semibold text-primary mb-2 flex items-center gap-2">
+                                    ${U.icon('bar-chart-2', 'w-4 h-4 text-brand-600')}
+                                    <span>${_t('scen.chartTitle', null, '各方案年耗電量分項對比 (MWh)')}</span>
+                                </div>
+                                <div class="h-64">
+                                    <canvas id="scenarioCompareChart"></canvas>
+                                </div>
+                            </div>
+                        `}
+                    </div>
+
                     <!-- 工程物理帳本與能量/熱平衡核驗 (Energy, Thermal & Hydraulic Ledgers) -->
                     <div class="${U.cardClass('p-6 space-y-4')}">
                         <div class="flex justify-between items-center border-b border-border-subtle pb-3">
@@ -650,6 +821,7 @@
 
             this.renderDonut();
             this.renderMonthly();
+            this.renderScenarioChart(scenarios);
             this.renderEquipmentExhibition();
             this.renderHeatmap();
 
@@ -2102,6 +2274,148 @@
             a.href = url;
             a.download = 'PUE_v25_' + (state.site.selectedCity || 'Site') + '_Simulation_Report.csv';
             a.click();
+        },
+
+        renderScenarioChart(scenarios) {
+            const ctx = document.getElementById('scenarioCompareChart');
+            if (!ctx || typeof Chart === 'undefined') return;
+            if (!scenarios || scenarios.length === 0) return;
+
+            const labels = scenarios.map(s => s.name);
+            const summaries = scenarios.map(s => s.resultSummary || window.AppStore.evaluateScenario(s) || {});
+
+            const datasets = [
+                {
+                    label: _t('dash.chartItChip', null, 'IT 晶片負載'),
+                    data: summaries.map(s => s.breakdownMwh?.it || 0),
+                    backgroundColor: '#1F6354'
+                },
+                {
+                    label: _t('dash.chartCduPump', null, 'CDU 循環泵'),
+                    data: summaries.map(s => s.breakdownMwh?.cduPump || 0),
+                    backgroundColor: '#4C9A81'
+                },
+                {
+                    label: _t('dash.chartCrahFan', null, 'CRAH 空調風扇'),
+                    data: summaries.map(s => s.breakdownMwh?.crahFan || 0),
+                    backgroundColor: '#7FB8A4'
+                },
+                {
+                    label: _t('dash.chartHeatRej', null, '乾冷器/水塔排熱'),
+                    data: summaries.map(s => s.breakdownMwh?.heatRejection || 0),
+                    backgroundColor: '#B3D5C6'
+                },
+                {
+                    label: _t('dash.chartChiller', null, '修整/氣冷冰機'),
+                    data: summaries.map(s => s.breakdownMwh?.chiller || 0),
+                    backgroundColor: '#B45309'
+                },
+                {
+                    label: _t('dash.chartElecLoss', null, '配電損耗'),
+                    data: summaries.map(s => s.breakdownMwh?.loss || 0),
+                    backgroundColor: '#A1A1AA'
+                }
+            ];
+
+            if (scenarioCompareChart) scenarioCompareChart.destroy();
+            scenarioCompareChart = new Chart(ctx, {
+                type: 'bar',
+                data: { labels, datasets },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        x: { stacked: true, grid: { display: false } },
+                        y: { stacked: true, beginAtZero: true, title: { display: true, text: 'MWh' } }
+                    },
+                    plugins: {
+                        legend: { position: 'top', labels: { boxWidth: 12, font: { size: 11 } } },
+                        tooltip: {
+                            callbacks: {
+                                label: (item) => ` ${item.dataset.label}: ${(item.raw || 0).toLocaleString()} MWh`
+                            }
+                        }
+                    }
+                }
+            });
+        },
+
+        promptSaveScenario() {
+            const currentCount = (window.AppStore.state.scenarios || []).length;
+            if (currentCount >= 8) {
+                alert(_t('scen.maxReached', null, '方案數量已達上限 (最多 8 個方案)'));
+                return;
+            }
+            const defaultName = _t('scen.defaultName', { n: currentCount + 1 }, `方案 ${currentCount + 1}`);
+            const name = window.prompt(_t('scen.promptName', null, '請輸入方案名稱:'), defaultName);
+            if (!name || !name.trim()) return;
+            const note = window.prompt(_t('scen.promptNote', null, '請輸入方案備註 (選填):'), '') || '';
+            try {
+                const scen = window.AppStore.saveCurrentAsScenario(name.trim(), note.trim());
+                window.AppStore.evaluateScenario(scen);
+                this.render(document.getElementById('step5View') || document.getElementById('app-main'));
+            } catch (e) {
+                alert(e.message || e);
+            }
+        },
+
+        saveActiveScenario() {
+            window.AppStore.saveActiveScenario();
+            if (window.AppStore.state.activeScenarioId) {
+                const scen = window.AppStore.state.scenarios.find(s => s.id === window.AppStore.state.activeScenarioId);
+                if (scen) window.AppStore.evaluateScenario(scen);
+            }
+            this.render(document.getElementById('step5View') || document.getElementById('app-main'));
+        },
+
+        applyScenario(id) {
+            if (window.AppStore.hasActiveScenarioUnsavedChanges()) {
+                const proceed = window.confirm(_t('scen.unsavedConfirm', null, '目前方案有未儲存的冷卻設計變更，切換前是否要先儲存？'));
+                if (proceed) {
+                    window.AppStore.saveActiveScenario();
+                }
+            }
+            window.AppStore.applyScenario(id);
+            if (typeof window.App !== 'undefined' && typeof window.App.renderCurrentStep === 'function') {
+                window.App.renderCurrentStep();
+            } else {
+                this.render(document.getElementById('step5View') || document.getElementById('app-main'));
+            }
+        },
+
+        duplicateScenario(id) {
+            try {
+                const copy = window.AppStore.duplicateScenario(id);
+                if (copy) {
+                    window.AppStore.evaluateScenario(copy);
+                    this.render(document.getElementById('step5View') || document.getElementById('app-main'));
+                }
+            } catch (e) {
+                alert(e.message || e);
+            }
+        },
+
+        deleteScenario(id) {
+            const proceed = window.confirm(_t('scen.deleteConfirm', null, '確定要刪除此方案嗎？'));
+            if (!proceed) return;
+            window.AppStore.deleteScenario(id);
+            this.render(document.getElementById('step5View') || document.getElementById('app-main'));
+        },
+
+        editScenario(id) {
+            const scen = (window.AppStore.state.scenarios || []).find(s => s.id === id);
+            if (!scen) return;
+            const newName = window.prompt(_t('scen.promptEditName', null, '修改方案名稱:'), scen.name);
+            if (newName === null) return;
+            const newNote = window.prompt(_t('scen.promptEditNote', null, '修改方案備註:'), scen.note || '');
+            if (newNote === null) return;
+            window.AppStore.updateScenario(id, { name: newName.trim() || scen.name, note: newNote.trim() });
+            this.render(document.getElementById('step5View') || document.getElementById('app-main'));
+        },
+
+        recalculateAllScenarios() {
+            window.AppStore.evaluateAllScenarios();
+            this.render(document.getElementById('step5View') || document.getElementById('app-main'));
         }
     };
 

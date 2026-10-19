@@ -1497,6 +1497,166 @@
             return JSON.stringify(curr) !== JSON.stringify(scen.snapshot);
         },
 
+        getScenarioInputHash(scenario) {
+            let itSum = 0;
+            (this.state.halls || []).forEach(h => (h.dus || []).forEach(d => {
+                (d.sus || []).forEach(su => (su.equipment || []).forEach(eq => {
+                    itSum += (eq.qty || 0) * (eq.itLoadKw || 0);
+                }));
+            }));
+            const station = this.state.site.stationId || this.state.site.selectedCity || '';
+            const snapStr = JSON.stringify(scenario?.snapshot || {});
+            const key = `${itSum}_${station}_${snapStr}`;
+            let hash = 0;
+            for (let i = 0; i < key.length; i++) {
+                hash = ((hash << 5) - hash) + key.charCodeAt(i);
+                hash |= 0;
+            }
+            return String(hash);
+        },
+
+        getCoolingConfigSummary(scenario) {
+            const plants = scenario?.snapshot?.coolingPlants || [];
+            if (plants.length === 0) {
+                return _t('cooling.dedicated', null, '獨立');
+            }
+            const liqPlants = plants.filter(p => p.loop === 'liquid');
+            const airPlants = plants.filter(p => p.loop === 'air');
+            const parts = [];
+            const setsWord = _t('common.sets', null, '套');
+            if (liqPlants.length > 0) {
+                parts.push(`${_t('cooling.liquidLoop', null, '液冷')} ${liqPlants.length} ${setsWord} (${liqPlants[0].redundancy})`);
+            }
+            if (airPlants.length > 0) {
+                parts.push(`${_t('cooling.airLoop', null, '氣冷')} ${airPlants.length} ${setsWord} (${airPlants[0].redundancy})`);
+            }
+            return parts.join(' / ');
+        },
+
+        evaluateScenario(scenario) {
+            if (!scenario || !scenario.snapshot) return null;
+            if (typeof AnnualRunner === 'undefined') return null;
+
+            const currentHash = this.getScenarioInputHash(scenario);
+            if (scenario.resultSummary && scenario.resultSummary.inputHash === currentHash) {
+                return scenario.resultSummary;
+            }
+
+            const clonedState = JSON.parse(JSON.stringify({
+                halls: this.state.halls,
+                corePods: this.state.corePods,
+                coolingPlants: scenario.snapshot.coolingPlants || [],
+                facilityElectricalLossPct: scenario.snapshot.facilityElectricalLossPct ?? this.state.facilityElectricalLossPct,
+                assumptions_override: this.state.assumptions_override || {},
+                site: {
+                    selectedCity: this.state.site.selectedCity,
+                    stats: this.state.site.stats,
+                    designConditions: this.state.site.designConditions
+                }
+            }));
+
+            if (scenario.snapshot.unitPlants && typeof scenario.snapshot.unitPlants === 'object') {
+                (clonedState.halls || []).forEach(h => {
+                    (h.dus || []).forEach(d => {
+                        if (scenario.snapshot.unitPlants[d.id]) {
+                            d.plantDesign = JSON.parse(JSON.stringify(scenario.snapshot.unitPlants[d.id]));
+                        }
+                    });
+                });
+                (clonedState.corePods || []).forEach(p => {
+                    if (scenario.snapshot.unitPlants[p.id]) {
+                        p.plantDesign = JSON.parse(JSON.stringify(scenario.snapshot.unitPlants[p.id]));
+                    }
+                });
+            }
+
+            const hourlyWeather = (this.state.site.hourly && this.state.site.hourly.length >= 8760) 
+                ? this.state.site.hourly 
+                : this.generateFallbackWeather();
+
+            const simResults = AnnualRunner.run(clonedState, hourlyWeather, {
+                calcDuSummary: (du) => this.calcDuSummary(du),
+                calcCorePodSummary: (pod) => this.calcCorePodSummary(pod),
+                bridgeDuToPlantModel: (unit, summ) => this.bridgeDuToPlantModel(unit, summ),
+                bridgePlantModel: (plant) => this.bridgePlantModel(plant),
+                calcHourlyEnergy: (plant, summ, w, pre) => this.calcHourlyEnergy(plant, summ, w, pre),
+                calcLiquidLoopHour: (sys, summ, w, pre) => this.calcLiquidLoopHour(sys, summ, w, pre),
+                calcAirLoopHour: (sys, summ, w, pre) => this.calcAirLoopHour(sys, summ, w, pre),
+                resolveEquipment: (arch, sys) => this.resolveEquipment(arch, sys)
+            });
+
+            const overall = simResults.overall || {};
+            const bk = overall.breakdownKwh || {};
+
+            let totalChillers = 0;
+            let totalHeatRej = 0;
+            let totalPumps = 0;
+
+            const countSizingItems = (sizing = []) => {
+                (sizing || []).forEach(item => {
+                    const qty = item.selectedQty || 0;
+                    if (item.key?.includes('chiller')) totalChillers += qty;
+                    else if (item.key?.includes('cooler') || item.key?.includes('tower')) totalHeatRej += qty;
+                    else if (item.key?.includes('pump')) totalPumps += qty;
+                });
+            };
+
+            (clonedState.coolingPlants || []).forEach(cp => {
+                countSizingItems(cp.system?.sizing);
+            });
+
+            (clonedState.halls || []).forEach(h => {
+                (h.dus || []).forEach(d => {
+                    if (!d.plantDesign?.cduSystem?.plantId) {
+                        countSizingItems(d.plantDesign?.cduSystem?.sizing);
+                    }
+                    if (!d.plantDesign?.fanwallSystem?.plantId) {
+                        countSizingItems(d.plantDesign?.fanwallSystem?.sizing);
+                    }
+                });
+            });
+            (clonedState.corePods || []).forEach(p => {
+                if (!p.plantDesign?.cduSystem?.plantId) {
+                    countSizingItems(p.plantDesign?.cduSystem?.sizing);
+                }
+                if (!p.plantDesign?.fanwallSystem?.plantId) {
+                    countSizingItems(p.plantDesign?.fanwallSystem?.sizing);
+                }
+            });
+
+            const coolingConfigSummary = this.getCoolingConfigSummary(scenario);
+
+            const summary = {
+                inputHash: currentHash,
+                annualPue: overall.annualPue,
+                annualP_Pue: overall.annualP_Pue,
+                peakPue: overall.peakPue,
+                annualWue: overall.annualWue,
+                annualTotalMwh: overall.annualTotalMwh,
+                breakdownMwh: {
+                    it: Math.round((bk.it || 0) / 1000),
+                    cduPump: Math.round(((bk.cduPump || 0) + (bk.cduUnitKwh || 0)) / 1000),
+                    crahFan: Math.round((bk.crahFan || 0) / 1000),
+                    heatRejection: Math.round((bk.heatRejection || 0) / 1000),
+                    chiller: Math.round((bk.chiller || 0) / 1000),
+                    loss: Math.round((bk.loss || 0) / 1000)
+                },
+                coolingConfigSummary,
+                totalChillers,
+                totalHeatRej,
+                totalPumps,
+                capacityDeficitHours: overall.capacityDeficitHours || 0
+            };
+
+            scenario.resultSummary = summary;
+            return summary;
+        },
+
+        evaluateAllScenarios() {
+            if (!Array.isArray(this.state.scenarios)) return [];
+            return this.state.scenarios.map(scen => this.evaluateScenario(scen));
+        },
+
         designConditions() {
             if (this.state.site.design) return this.state.site.design;
             const site = this.state.site;

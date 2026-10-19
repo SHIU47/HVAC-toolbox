@@ -4811,6 +4811,155 @@ function sizeCduToDeratedN1(S) {
     S.saveActiveScenario();
     assert.strictEqual(S.hasActiveScenarioUnsavedChanges(), false, 'After saveActiveScenario, should have no unsaved changes');
   });
+
+  // ═══════════════════════════════════════════════════════════════
+  // Phase S: Task S-2 — Scenario Evaluation and UI View
+  // ═══════════════════════════════════════════════════════════════
+  test('S-2: evaluateScenario does not mutate AppStore state (strict JSON comparison)', () => {
+    const c = freshCtx();
+    const S = c.AppStore;
+    S.calculate();
+    const rA = S.saveCurrentAsScenario('Scenario A - Dedicated');
+    S.applySiteSharedConfig();
+    S.calculate();
+    const rB = S.saveCurrentAsScenario('Scenario B - Shared');
+
+    // Clone state before evaluation (ignoring resultSummary)
+    const stateBefore = JSON.parse(JSON.stringify(S.state));
+    delete stateBefore.scenarios[0].resultSummary;
+    delete stateBefore.scenarios[1].resultSummary;
+
+    // Evaluate both scenarios
+    const summA = S.evaluateScenario(rA.scenario);
+    const summB = S.evaluateScenario(rB.scenario);
+
+    assert(summA && typeof summA.annualPue === 'number', 'summA must have valid annualPue');
+    assert(summB && typeof summB.annualPue === 'number', 'summB must have valid annualPue');
+
+    const stateAfter = JSON.parse(JSON.stringify(S.state));
+    delete stateAfter.scenarios[0].resultSummary;
+    delete stateAfter.scenarios[1].resultSummary;
+
+    assert.strictEqual(JSON.stringify(stateBefore), JSON.stringify(stateAfter), 'evaluateScenario must not mutate AppStore state');
+  });
+
+  test('S-2: evaluateScenario returns valid breakdownMwh, equipment counts, and hash caching', () => {
+    const c = freshCtx();
+    const S = c.AppStore;
+    S.calculate();
+    const r = S.saveCurrentAsScenario('Test Scenario');
+    const summ = S.evaluateScenario(r.scenario);
+
+    assert(summ, 'Summary must exist');
+    assert(summ.inputHash, 'Summary must have inputHash');
+    assert(typeof summ.annualPue === 'number');
+    assert(typeof summ.annualP_Pue === 'number');
+    assert(typeof summ.peakPue === 'number');
+    assert(typeof summ.annualWue === 'number');
+    assert(typeof summ.annualTotalMwh === 'number');
+    assert(summ.breakdownMwh, 'Summary must have breakdownMwh');
+    assert(typeof summ.breakdownMwh.it === 'number');
+    assert(typeof summ.breakdownMwh.chiller === 'number');
+    assert(typeof summ.breakdownMwh.heatRejection === 'number');
+    assert(typeof summ.breakdownMwh.cduPump === 'number');
+    assert(typeof summ.breakdownMwh.crahFan === 'number');
+    assert(typeof summ.breakdownMwh.loss === 'number');
+    assert(typeof summ.totalChillers === 'number');
+    assert(typeof summ.totalHeatRej === 'number');
+    assert(typeof summ.totalPumps === 'number');
+    assert(typeof summ.coolingConfigSummary === 'string');
+
+    // Cached check
+    const cached = S.evaluateScenario(r.scenario);
+    assert.strictEqual(cached, summ, 'Calling evaluateScenario with matching hash should return cached result');
+  });
+
+  test('S-2: evaluateAllScenarios populates resultSummary on all scenarios', () => {
+    const c = freshCtx();
+    const S = c.AppStore;
+    S.calculate();
+    S.saveCurrentAsScenario('Scenario 1');
+    S.applySiteSharedConfig();
+    S.calculate();
+    S.saveCurrentAsScenario('Scenario 2');
+
+    assert.strictEqual(S.state.scenarios.length, 2);
+    const results = S.evaluateAllScenarios();
+    assert.strictEqual(results.length, 2);
+    assert(S.state.scenarios[0].resultSummary !== null);
+    assert(S.state.scenarios[1].resultSummary !== null);
+  });
+
+  test('S-2: ViewDashboard DOM harness renders scenario comparison table and chart canvas', () => {
+    const { buildWindow } = require('./dom_harness.js');
+    const win = buildWindow();
+    win.AppStore.calculate();
+    win.AppStore.saveCurrentAsScenario('Scenario 1 - Dedicated');
+    win.AppStore.applySiteSharedConfig();
+    win.AppStore.calculate();
+    win.AppStore.saveCurrentAsScenario('Scenario 2 - Shared');
+
+    const container = win.document.getElementById('stepContent');
+    win.ViewDashboard.render(container);
+    const content = container.innerHTML;
+
+    assert(content.includes('冷卻設計方案多維度對比與評估') || content.includes('Scenario Comparison'), 'Dashboard must render scenario comparison card title');
+    assert(content.includes('Scenario 1 - Dedicated'), 'Dashboard must render Scenario 1');
+    assert(content.includes('Scenario 2 - Shared'), 'Dashboard must render Scenario 2');
+    assert(content.includes('scenarioCompareChart'), 'Dashboard must include scenario compare canvas');
+  });
+
+  test('S-2: ExcelExport generates Sheet 11 (11.方案比較) with 0 CJK in English mode when scenarios exist', () => {
+    const { buildWindow } = require('./dom_harness.js');
+    const win = buildWindow();
+    win.AppStore.calculate();
+    const r1 = win.AppStore.saveCurrentAsScenario('Plan A');
+    win.AppStore.applySiteSharedConfig();
+    win.AppStore.calculate();
+    const r2 = win.AppStore.saveCurrentAsScenario('Plan B');
+
+    // Chinese workbook
+    const wbZh = win.ExcelExport.buildWorkbook('zh-TW');
+    assert.strictEqual(wbZh.worksheets.length, 11, 'Should have 11 sheets with scenarios');
+    assert.strictEqual(wbZh.worksheets[10].name, '11.方案比較');
+
+    // English workbook
+    const wbEn = win.ExcelExport.buildWorkbook('en');
+    assert.strictEqual(wbEn.worksheets.length, 11);
+    assert.strictEqual(wbEn.worksheets[10].name, '11.Scenario Comparison');
+
+    const whitelist = ['Plan A', 'Plan B', '(標準)'];
+    (win.AppStore.state.halls || []).forEach(h => {
+      whitelist.push(h.name);
+      (h.dus || []).forEach(d => {
+        whitelist.push(d.name);
+        (d.sus || []).forEach(su => whitelist.push(su.name));
+      });
+    });
+    (win.AppStore.state.corePods || []).forEach(p => whitelist.push(p.name));
+    (win.AppStore.state.coolingPlants || []).forEach(p => whitelist.push(p.name));
+    if (win.AppStore.state.site?.selectedCity) whitelist.push(win.AppStore.state.site.selectedCity);
+
+    const cjkRegex = /[\u4e00-\u9fa5]/;
+    const sheet11 = wbEn.worksheets[10];
+    const violations = [];
+    sheet11.eachRow((row, rowNumber) => {
+      row.eachCell((cell, colNumber) => {
+        let text = '';
+        if (typeof cell.value === 'string') text = cell.value;
+        else if (cell.value && typeof cell.value === 'object' && cell.value.formula) text = '';
+        else if (cell.value && typeof cell.value === 'object' && cell.value.richText) {
+          text = cell.value.richText.map(t => t.text).join('');
+        }
+        whitelist.forEach(w => { text = text.split(w).join(''); });
+        if (cjkRegex.test(text)) {
+          violations.push(`Sheet 11 R${rowNumber}C${colNumber}: "${text}"`);
+        }
+      });
+    });
+
+    assert.strictEqual(violations.length, 0, `Sheet 11 English workbook should have 0 CJK violations. Found: ${violations.join(', ')}`);
+  });
 })();
 
 console.log(`\n${passCount} passed, ${failCount} failed, ${skipCount} skipped`);
