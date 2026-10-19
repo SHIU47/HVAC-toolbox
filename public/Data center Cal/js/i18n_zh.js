@@ -1525,7 +1525,16 @@
     'template.countPrompt': '請輸入要新增的 DU 數量 (1 ~ 50):',
     'template.namePrefixPrompt': '請輸入 DU 名稱前綴 (預設 DU-):',
     'template.templateNamePrompt': '請輸入範本名稱:',
-    'template.includeTerminalPrompt': '是否同時將終端設備選型 (CDU / CRAH 型號與冗餘) 納入範本？'
+    'template.includeTerminalPrompt': '是否同時將終端設備選型 (CDU / CRAH 型號與冗餘) 納入範本？',
+    'template.imported': '匯入',
+    'template.close': '關閉',
+    'template.linkedNotice': '此 DU 已連結標準範本，設備由範本統一管理。如需個別微調，請點選上方「解除連結」。',
+    'template.rename': '重新命名',
+    'template.totalCount': '共 {n} 個範本',
+    'template.unitsLinked': '已連結 {n} 個單元',
+    'template.importSuccess': '成功匯入 {n} 個範本！',
+    'template.importFailed': '範本匯入失敗: {err}',
+    'template.selectTemplatePrompt': '請輸入欲套用的範本編號 (1-{n}):'
   };
 
   const target = (typeof window !== 'undefined' ? window.I18N : (typeof global !== 'undefined' ? global.I18N : null));

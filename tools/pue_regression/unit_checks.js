@@ -5091,6 +5091,156 @@ function sizeCduToDeratedN1(S) {
     assert.strictEqual(S.getTemplate(tpl.id), null, 'Template must be deleted');
     assert.strictEqual(du0.templateRef.linked, false, 'DU must be unlinked');
   });
+
+  test('T-2: batchCreate 5 DUs matches plan: identical IT, unique IDs, IT sum matches calculate', () => {
+    const c = freshCtx();
+    const S = c.AppStore;
+    S.calculate();
+    const initialItKw = S.state.results.overall.totalItKw;
+    const hall0 = S.state.halls[0];
+    const du0 = hall0.dus[0];
+
+    let tplItKw = 0;
+    (du0.sus || []).forEach(su => (su.equipment || []).forEach(eq => {
+      tplItKw += (eq.qty || 0) * (eq.itLoadKw || 0);
+    }));
+
+    const tpl = S.saveDuAsTemplate(du0.id, 'Standard NVL72 DU', true);
+    const createdDUs = S.batchCreateDusFromTemplate(hall0.id, tpl.id, 5, 'DU-');
+
+    assert.strictEqual(createdDUs.length, 5);
+    assert.strictEqual(hall0.dus.length, 6); // 1 initial + 5 created
+
+    // Check unique DU names
+    const names = hall0.dus.map(d => d.name);
+    assert.strictEqual(new Set(names).size, names.length);
+
+    // Check unique SU and Eq IDs across all DUs
+    const suIds = new Set();
+    const eqIds = new Set();
+    hall0.dus.forEach(d => {
+      (d.sus || []).forEach(su => {
+        assert(!suIds.has(su.id), `Duplicate SU id: ${su.id}`);
+        suIds.add(su.id);
+        (su.equipment || []).forEach(eq => {
+          assert(!eqIds.has(eq.id), `Duplicate Eq id: ${eq.id}`);
+          eqIds.add(eq.id);
+        });
+      });
+    });
+
+    // Check IT total with calculate()
+    S.calculate();
+    const expectedItKw = initialItKw + 5 * tplItKw;
+    assert(Math.abs(S.state.results.overall.totalItKw - expectedItKw) < 0.01);
+  });
+
+  test('T-2: terminalDesign sizing preservation: selectedModel applied with userEdited=false and auto sizing', () => {
+    const c = freshCtx();
+    const S = c.AppStore;
+    const hall0 = S.state.halls[0];
+    const du0 = hall0.dus[0];
+
+    // Configure CDU item with custom model, redundancy, and runMode
+    if (!du0.plantDesign) du0.plantDesign = { cduSystem: S.defaultCduSystem('dry_cooler_hx') };
+    if (!du0.plantDesign.cduSystem.sizing) du0.plantDesign.cduSystem.sizing = [];
+    du0.plantDesign.cduSystem.sizing = [{
+      key: 'cdu_unit',
+      name: 'CDU 液冷分配單元',
+      unit: '台',
+      sizingBasis: 'peak_kw',
+      selectedModel: 'CoolIT High Density CDU 600kW',
+      redundancy: '2N',
+      runMode: 'share',
+      selectedQty: 4,
+      userEdited: true
+    }];
+
+    const tpl = S.saveDuAsTemplate(du0.id, 'CDU 2N Template', true);
+    assert(tpl.content.terminalDesign, 'Template must have terminalDesign');
+    assert.strictEqual(tpl.content.terminalDesign.cdu_unit.model, 'CoolIT High Density CDU 600kW');
+    assert.strictEqual(tpl.content.terminalDesign.cdu_unit.redundancy, '2N');
+    assert.strictEqual(tpl.content.terminalDesign.cdu_unit.runMode, 'share');
+
+    // Create new DU from template
+    const newDus = S.batchCreateDusFromTemplate(hall0.id, tpl.id, 1, 'DU-Target-');
+    const targetDu = newDus[0];
+    const cduSizing = targetDu.plantDesign.cduSystem.sizing.find(s => s.key === 'cdu_unit');
+
+    assert(cduSizing, 'Target DU must inherit cdu_unit sizing');
+    assert.strictEqual(cduSizing.selectedModel, 'CoolIT High Density CDU 600kW');
+    assert.strictEqual(cduSizing.redundancy, '2N');
+    assert.strictEqual(cduSizing.runMode, 'share');
+    assert.strictEqual(cduSizing.userEdited, false, 'userEdited must be reset to false so engine can auto-size');
+  });
+
+  test('T-2: ViewHallSU DOM harness renders template badges, sync alerts, and template modal', () => {
+    const { buildWindow } = require('./dom_harness.js');
+    const win = buildWindow();
+    const S = win.AppStore;
+    const hall0 = S.state.halls[0];
+    const du0 = hall0.dus[0];
+
+    const tpl = S.saveDuAsTemplate(du0.id, 'Standard Hall DU Template', false);
+    assert.strictEqual(du0.templateRef.linked, true);
+
+    const container = win.document.getElementById('stepContent');
+    win.ViewHallSU.render(container);
+    let html = container.innerHTML;
+
+    assert(html.includes('Standard Hall DU Template'), 'ViewHallSU should render template name badge');
+    assert(html.includes('解除連結') || html.includes('Unlink'), 'ViewHallSU should render unlink button');
+    assert(html.includes('從範本批次新增 DU') || html.includes('Batch Create DUs'), 'ViewHallSU should render batch create button');
+
+    // Update template version
+    S.updateTemplate(tpl.id, { content: tpl.content });
+    assert.strictEqual(tpl.version, 2);
+
+    win.ViewHallSU.render(container);
+    html = container.innerHTML;
+    assert(html.includes('同步') || html.includes('Sync'), 'ViewHallSU should render sync button when outdated');
+
+    // Test template manager modal
+    win.ViewHallSU.openTemplateManager();
+    const modal = win.document.getElementById('templateManagerModal');
+    assert(modal, 'templateManagerModal must be added to document');
+    assert(modal.innerHTML.includes('Standard Hall DU Template'), 'Modal should list template');
+    win.ViewHallSU.closeTemplateManager();
+    assert.strictEqual(win.document.getElementById('templateManagerModal'), null, 'Modal should be removed after close');
+  });
+
+  test('T-2: ViewCorePod DOM harness renders template actions, badges, and sync for CorePOD', () => {
+    const { buildWindow } = require('./dom_harness.js');
+    const win = buildWindow();
+    const S = win.AppStore;
+    const pod0 = S.state.corePods[0];
+    assert(pod0, 'pod0 must exist');
+
+    const container = win.document.getElementById('stepContent');
+    win.ViewCorePod.render(container);
+    let html = container.innerHTML;
+
+    assert(html.includes('存為範本') || html.includes('Save as Template'), 'ViewCorePod should render save as template button');
+
+    const tpl = S.saveCorePodAsTemplate(pod0.id, 'CorePOD Backbone Template', false);
+    assert.strictEqual(pod0.templateRef.linked, true);
+
+    win.ViewCorePod.render(container);
+    html = container.innerHTML;
+    assert(html.includes('CorePOD Backbone Template'), 'ViewCorePod should render template name');
+    assert(html.includes('解除連結') || html.includes('Unlink'), 'ViewCorePod should render unlink button');
+
+    // Test syncCorePodWithTemplate
+    S.updateTemplate(tpl.id, { content: tpl.content });
+    assert.strictEqual(tpl.version, 2);
+    win.ViewCorePod.render(container);
+    html = container.innerHTML;
+    assert(html.includes('同步') || html.includes('Sync'), 'ViewCorePod should render sync button when outdated');
+
+    const synced = S.syncCorePodWithTemplate(pod0.id);
+    assert.strictEqual(synced, true);
+    assert.strictEqual(pod0.templateRef.version, 2);
+  });
 })();
 
 console.log(`\n${passCount} passed, ${failCount} failed, ${skipCount} skipped`);

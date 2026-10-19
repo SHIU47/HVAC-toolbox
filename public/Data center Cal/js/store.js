@@ -2046,6 +2046,59 @@
             return false;
         },
 
+        syncCorePodWithTemplate(podId) {
+            const pod = (this.state.corePods || []).find(p => p.id === podId);
+            if (!pod || !pod.templateRef?.linked || !pod.templateRef.id) return false;
+            const tpl = this.getTemplate(pod.templateRef.id);
+            if (!tpl) return false;
+
+            this._applyTemplateContentToCorePod(pod, tpl);
+            pod.templateRef.version = tpl.version;
+            this.notify();
+            return true;
+        },
+
+        exportTemplatesJson() {
+            const data = {
+                format: 'pue-template',
+                schemaVersion: 1,
+                exportedAt: new Date().toISOString(),
+                templates: this.state.templates || []
+            };
+            return JSON.stringify(data, null, 2);
+        },
+
+        importTemplatesJson(jsonStr) {
+            try {
+                const parsed = typeof jsonStr === 'string' ? JSON.parse(jsonStr) : jsonStr;
+                if (!parsed || parsed.format !== 'pue-template' || !Array.isArray(parsed.templates)) {
+                    throw new Error('無效的範本檔案格式 (Invalid template format)');
+                }
+                if (!Array.isArray(this.state.templates)) this.state.templates = [];
+
+                const imported = [];
+                parsed.templates.forEach(tpl => {
+                    const cloned = JSON.parse(JSON.stringify(tpl));
+                    const idConflict = this.state.templates.some(t => t.id === cloned.id);
+                    if (idConflict) {
+                        cloned.id = makeId('tpl');
+                    }
+                    const nameConflict = this.state.templates.some(t => t.name === cloned.name);
+                    if (nameConflict) {
+                        cloned.name = `${cloned.name} (${_t('template.imported', null, '匯入')})`;
+                    }
+                    this.state.templates.push(cloned);
+                    imported.push(cloned);
+                });
+
+                this.notify();
+                return imported;
+            } catch (err) {
+                console.error('importTemplatesJson error:', err);
+                throw err;
+            }
+        },
+
         designConditions() {
             if (this.state.site.design) return this.state.site.design;
             const site = this.state.site;
@@ -2951,13 +3004,33 @@
             // V21 依架構生成專屬 sizing 清單 (若品項不符則重置)；若加入共用群組則單元端只保留 terminal 終端設備
             if (cduSys.plantId) {
                 if (!cduSys.sizing || cduSys.sizing.length === 0 || cduSys.sizingArch !== arch || cduSys.sizing.some(s => s.role !== 'terminal')) {
+                    const oldSizing = cduSys.sizing || [];
                     const fullSizing = this.generateCduSizing(arch, reqCduKw, cduSys.hydraulics.pump_power_kw, { cwPumpKw: cduSys.hydraulics.cw_pump_power_kw });
                     cduSys.sizing = fullSizing.filter(s => s.role === 'terminal');
+                    oldSizing.forEach(oldItem => {
+                        const newItem = cduSys.sizing.find(s => s.key === oldItem.key);
+                        if (newItem) {
+                            if (oldItem.selectedModel) newItem.selectedModel = oldItem.selectedModel;
+                            if (oldItem.redundancy) newItem.redundancy = oldItem.redundancy;
+                            if (oldItem.runMode) newItem.runMode = oldItem.runMode;
+                            if (oldItem.userEdited !== undefined) newItem.userEdited = oldItem.userEdited;
+                        }
+                    });
                     cduSys.sizingArch = arch;
                 }
             } else {
                 if (!cduSys.sizing || cduSys.sizing.length === 0 || cduSys.sizingArch !== arch || cduSys.sizing.every(s => s.role === 'terminal')) {
+                    const oldSizing = cduSys.sizing || [];
                     cduSys.sizing = this.generateCduSizing(arch, reqCduKw, cduSys.hydraulics.pump_power_kw, { cwPumpKw: cduSys.hydraulics.cw_pump_power_kw });
+                    oldSizing.forEach(oldItem => {
+                        const newItem = cduSys.sizing.find(s => s.key === oldItem.key);
+                        if (newItem) {
+                            if (oldItem.selectedModel) newItem.selectedModel = oldItem.selectedModel;
+                            if (oldItem.redundancy) newItem.redundancy = oldItem.redundancy;
+                            if (oldItem.runMode) newItem.runMode = oldItem.runMode;
+                            if (oldItem.userEdited !== undefined) newItem.userEdited = oldItem.userEdited;
+                        }
+                    });
                     cduSys.sizingArch = arch;
                 }
             }
@@ -3023,13 +3096,33 @@
             // V24 Phase 2: 若架構變更或尚未初始化，依新架構動態生成選型清單；若加入共用群組則單元端只保留 terminal 終端設備
             if (fwSys.plantId) {
                 if (!fwSys.sizing || fwSys.sizing.length === 0 || fwSys.sizingArch !== fwArch || fwSys.sizing.some(s => s.role !== 'terminal')) {
+                    const oldSizing = fwSys.sizing || [];
                     const fullSizing = this.generateFwSizing(fwArch, reqAirKw, fwSys.hydraulics.pump_power_kw, { cwPumpKw: fwSys.hydraulics.cw_pump_power_kw });
                     fwSys.sizing = fullSizing.filter(s => s.role === 'terminal');
+                    oldSizing.forEach(oldItem => {
+                        const newItem = fwSys.sizing.find(s => s.key === oldItem.key);
+                        if (newItem) {
+                            if (oldItem.selectedModel) newItem.selectedModel = oldItem.selectedModel;
+                            if (oldItem.redundancy) newItem.redundancy = oldItem.redundancy;
+                            if (oldItem.runMode) newItem.runMode = oldItem.runMode;
+                            if (oldItem.userEdited !== undefined) newItem.userEdited = oldItem.userEdited;
+                        }
+                    });
                     fwSys.sizingArch = fwArch;
                 }
             } else {
                 if (!fwSys.sizing || fwSys.sizing.length === 0 || fwSys.sizingArch !== fwArch || fwSys.sizing.every(s => s.role === 'terminal')) {
+                    const oldSizing = fwSys.sizing || [];
                     fwSys.sizing = this.generateFwSizing(fwArch, reqAirKw, fwSys.hydraulics.pump_power_kw, { cwPumpKw: fwSys.hydraulics.cw_pump_power_kw });
+                    oldSizing.forEach(oldItem => {
+                        const newItem = fwSys.sizing.find(s => s.key === oldItem.key);
+                        if (newItem) {
+                            if (oldItem.selectedModel) newItem.selectedModel = oldItem.selectedModel;
+                            if (oldItem.redundancy) newItem.redundancy = oldItem.redundancy;
+                            if (oldItem.runMode) newItem.runMode = oldItem.runMode;
+                            if (oldItem.userEdited !== undefined) newItem.userEdited = oldItem.userEdited;
+                        }
+                    });
                     fwSys.sizingArch = fwArch;
                 }
             }

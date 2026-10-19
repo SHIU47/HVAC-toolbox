@@ -8,7 +8,8 @@
 
     const ViewCorePod = {
         render(container) {
-            const state = window.AppStore.state;
+            const S = window.AppStore;
+            const state = S.state;
             const pods = state.corePods || [];
             const halls = state.halls || [];
 
@@ -17,6 +18,27 @@
             }
             const currentPod = pods.find(p => p.id === selectedPodId) || pods[0];
             const t = (k, p, fb) => (window.I18N ? window.I18N.t(k, p) : (fb || k));
+
+            const isLinked = !!currentPod?.templateRef?.linked;
+            const tpl = (isLinked && currentPod?.templateRef?.id) ? S.getTemplate(currentPod.templateRef.id) : null;
+            const isOutdated = tpl ? (tpl.version > (currentPod.templateRef.version || 1)) : false;
+
+            let templateActionsHtml = '';
+            if (isLinked) {
+                templateActionsHtml = '<div class="flex items-center gap-1.5 flex-wrap">'
+                    + '<span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-xl text-xs font-bold bg-indigo-50 text-indigo-700 border border-indigo-200" title="' + (tpl ? window.UIKit.escapeHTML(tpl.name) : '') + '">'
+                    + '🔗 ' + (tpl ? window.UIKit.escapeHTML(tpl.name) : t('template.linked', null, '已連結範本')) + ' v' + (currentPod.templateRef.version || 1)
+                    + '</span>'
+                    + (isOutdated ? '<button onclick="ViewCorePod.syncPod(\'' + currentPod.id + '\')" class="px-2.5 py-1 bg-amber-500 hover:bg-amber-600 text-white font-bold text-xs rounded-xl shadow-xs transition animate-pulse" title="' + t('template.updated', null, '範本已更新') + '">' + t('template.sync', null, '🔄 同步新版') + ' (v' + tpl.version + ')</button>' : '')
+                    + '<button onclick="ViewCorePod.unlinkPod(\'' + currentPod.id + '\')" class="px-2.5 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs rounded-xl transition">' + t('template.unlink', null, '解除連結') + '</button>'
+                    + '</div>';
+            } else {
+                const hasCorePodTemplates = (S.state.templates || []).some(item => item.kind === 'corepod');
+                templateActionsHtml = '<div class="flex items-center gap-1.5 flex-wrap">'
+                    + '<button onclick="ViewCorePod.saveAsTemplate(\'' + (currentPod ? currentPod.id : '') + '\')" class="px-2.5 py-1 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 font-bold text-xs rounded-xl border border-emerald-200 transition" title="' + t('template.saveAsTemplate', null, '💾 存為範本') + '">' + t('template.saveAsTemplate', null, '💾 存為範本') + '</button>'
+                    + (hasCorePodTemplates ? '<button onclick="ViewCorePod.promptApplyTemplate(\'' + (currentPod ? currentPod.id : '') + '\')" class="px-2.5 py-1 bg-blue-50 hover:bg-blue-100 text-blue-800 font-bold text-xs rounded-xl border border-blue-200 transition" title="' + t('template.applyTemplate', null, '📥 套用範本') + '">' + t('template.applyTemplate', null, '📥 套用範本') + '</button>' : '')
+                    + '</div>';
+            }
 
             let podButtons = '';
             pods.forEach((pod, idx) => {
@@ -47,7 +69,10 @@
                                     ${t('corepod.desc', null, '配置跨 Hall 共用之<strong>核心網通（Spine / Router）、集中式儲存與管理叢集</strong>（不含 GPU 運算機櫃）。')}
                                 </p>
                             </div>
-                            <div class="flex items-center gap-2">
+                            <div class="flex items-center gap-2 flex-wrap">
+                                <button onclick="ViewHallSU.openTemplateManager()" class="px-3.5 py-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-800 font-bold text-xs rounded-xl border border-indigo-200 transition flex items-center gap-1.5 shadow-2xs">
+                                    <span>📚</span> ${t('template.title', null, '範本庫')} (${(S.state.templates || []).length})
+                                </button>
                                 <button onclick="ViewCorePod.addPod()" class="px-4 py-2 bg-teal-600 hover:bg-teal-700 text-white font-bold text-xs rounded-xl shadow-sm transition flex items-center gap-1.5">
                                     <span>➕</span> ${t('corepod.addBtn', null, '新增 CorePOD')}
                                 </button>
@@ -78,6 +103,7 @@
                                             <input type="text" value="${window.UIKit.escapeHTML(currentPod.name)}" onchange="ViewCorePod.updatePodName(this.value)" class="w-full font-extrabold text-teal-900 border rounded-lg px-2.5 py-1 text-sm bg-teal-50/60 focus:bg-white focus:ring-2 focus:ring-teal-400">
                                         </div>
                                         <div class="flex items-center gap-2 flex-wrap">
+                                            ${templateActionsHtml}
                                             <button onclick="ViewCorePod.copyPod('${currentPod.id}')" class="px-3 py-1 bg-slate-100 hover:bg-teal-50 text-slate-700 hover:text-teal-900 text-xs font-bold rounded-lg border border-slate-200 transition flex items-center gap-1">
                                                 <span>📋</span> ${t('corepod.copyBtn', null, '複製此 CorePOD')}
                                             </button>
@@ -93,6 +119,8 @@
                                         <span class="font-bold text-slate-800">${halls.map(h=>h.name).join(', ') || t('corepod.allHalls', null, '全廠共用')}</span>
                                     </div>
                                 </div>
+
+                                ${isLinked ? `<div class="p-3 bg-indigo-50/70 rounded-2xl border border-indigo-200 text-xs text-indigo-900 font-medium flex items-center justify-between"><span>🔗 ${t('template.linkedNotice', null, '此單元已連結標準範本，設備由範本統一管理。如需個別微調，請點選上方「解除連結」。')}</span></div>` : ''}
 
                                 <!-- Equipment Designer (No GPU) -->
                                 <div id="corePodEquipmentDesignerContainer"></div>
@@ -164,6 +192,53 @@
             } else {
                 this.render(document.getElementById('stepContent'));
             }
+        },
+        saveAsTemplate(podId) {
+            const S = window.AppStore;
+            const t = (k, p, fb) => (window.I18N ? window.I18N.t(k, p) : (fb || k));
+            const pod = (S.state.corePods || []).find(p => p.id === podId);
+            if (!pod) return;
+            const defaultName = pod.name + ' ' + t('template.defaultSuffix', null, '標準範本');
+            const name = prompt(t('template.templateNamePrompt', null, '請輸入範本名稱:'), defaultName);
+            if (!name) return;
+            const hasTerminal = !!(pod.plantDesign?.cduSystem?.sizing?.length || pod.plantDesign?.fanwallSystem?.sizing?.length);
+            let includeTerminal = false;
+            if (hasTerminal) {
+                includeTerminal = confirm(t('template.includeTerminalPrompt', null, '是否同時將終端設備選型 (CDU / CRAH 型號與冗餘) 納入範本？'));
+            }
+            S.saveCorePodAsTemplate(podId, name.trim(), includeTerminal);
+            this.render(document.getElementById('stepContent'));
+        },
+        promptApplyTemplate(podId) {
+            const S = window.AppStore;
+            const t = (k, p, fb) => (window.I18N ? window.I18N.t(k, p) : (fb || k));
+            const cpTemplates = (S.state.templates || []).filter(item => item.kind === 'corepod');
+            if (cpTemplates.length === 0) {
+                alert(t('template.empty', null, '目前無已儲存的範本。'));
+                return;
+            }
+            let choiceText = t('template.applyTemplate', null, '套用範本') + ':\n';
+            cpTemplates.forEach((tpl, idx) => {
+                choiceText += (idx + 1) + '. ' + tpl.name + ' (v' + (tpl.version || 1) + ')\n';
+            });
+            choiceText += '\n' + t('template.selectTemplatePrompt', { n: cpTemplates.length }, '請輸入欲套用的範本編號 (1-' + cpTemplates.length + '):');
+            const choice = prompt(choiceText, '1');
+            if (!choice) return;
+            const idx = parseInt(choice, 10) - 1;
+            if (isNaN(idx) || idx < 0 || idx >= cpTemplates.length) {
+                return;
+            }
+            const selectedTpl = cpTemplates[idx];
+            S.applyTemplateToCorePod(podId, selectedTpl.id, true);
+            this.render(document.getElementById('stepContent'));
+        },
+        unlinkPod(podId) {
+            window.AppStore.unlinkCorePod(podId);
+            this.render(document.getElementById('stepContent'));
+        },
+        syncPod(podId) {
+            window.AppStore.syncCorePodWithTemplate(podId);
+            this.render(document.getElementById('stepContent'));
         }
     };
 

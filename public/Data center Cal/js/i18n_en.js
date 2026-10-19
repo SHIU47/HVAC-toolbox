@@ -1525,7 +1525,16 @@
     'template.countPrompt': 'Enter number of DUs to create (1 ~ 50):',
     'template.namePrefixPrompt': 'Enter DU name prefix (default DU-):',
     'template.templateNamePrompt': 'Enter template name:',
-    'template.includeTerminalPrompt': 'Include terminal equipment sizing (CDU / CRAH model & redundancy) in template?'
+    'template.includeTerminalPrompt': 'Include terminal equipment sizing (CDU / CRAH model & redundancy) in template?',
+    'template.imported': 'Imported',
+    'template.close': 'Close',
+    'template.linkedNotice': 'This DU is linked to a standard template and managed centrally. To edit individually, click "Unlink" above.',
+    'template.rename': 'Rename',
+    'template.totalCount': '{n} total templates',
+    'template.unitsLinked': '{n} units linked',
+    'template.importSuccess': 'Successfully imported {n} templates!',
+    'template.importFailed': 'Failed to import templates: {err}',
+    'template.selectTemplatePrompt': 'Enter template number (1-{n}):'
   };
 
   const target = (typeof window !== 'undefined' ? window.I18N : (typeof global !== 'undefined' ? global.I18N : null));

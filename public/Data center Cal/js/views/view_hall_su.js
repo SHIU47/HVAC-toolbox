@@ -10,7 +10,8 @@
 
     const ViewHallSU = {
         render(container) {
-            const state = window.AppStore.state;
+            const S = window.AppStore;
+            const state = S.state;
             const halls = state.halls || [];
 
             if (halls.length === 0) {
@@ -125,6 +126,27 @@
                         + '</div>';
                 });
 
+                const isLinked = !!du.templateRef?.linked;
+                const tpl = isLinked ? S.getTemplate(du.templateRef.id) : null;
+                const isOutdated = tpl ? (tpl.version > (du.templateRef.version || 1)) : false;
+
+                let templateActionsHtml = '';
+                if (isLinked) {
+                    templateActionsHtml = '<div class="flex items-center gap-1.5 flex-wrap">'
+                        + '<span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-xl text-xs font-bold bg-indigo-50 text-indigo-700 border border-indigo-200" title="' + (tpl ? window.UIKit.escapeHTML(tpl.name) : '') + '">'
+                        + '🔗 ' + (tpl ? window.UIKit.escapeHTML(tpl.name) : t('template.linked', null, '已連結範本')) + ' v' + (du.templateRef.version || 1)
+                        + '</span>'
+                        + (isOutdated ? '<button onclick="ViewHallSU.syncDU(\'' + du.id + '\')" class="px-2.5 py-1 bg-amber-500 hover:bg-amber-600 text-white font-bold text-xs rounded-xl shadow-xs transition animate-pulse" title="' + t('template.updated', null, '範本已更新') + '">' + t('template.sync', null, '🔄 同步新版') + ' (v' + tpl.version + ')</button>' : '')
+                        + '<button onclick="ViewHallSU.unlinkDU(\'' + du.id + '\')" class="px-2.5 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs rounded-xl transition">' + t('template.unlink', null, '解除連結') + '</button>'
+                        + '</div>';
+                } else {
+                    const hasDuTemplates = (S.state.templates || []).some(t => t.kind === 'du');
+                    templateActionsHtml = '<div class="flex items-center gap-1.5 flex-wrap">'
+                        + '<button onclick="ViewHallSU.saveAsTemplate(\'' + du.id + '\')" class="px-2.5 py-1 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 font-bold text-xs rounded-xl border border-emerald-200 transition" title="' + t('template.saveAsTemplate', null, '💾 存為範本') + '">' + t('template.saveAsTemplate', null, '💾 存為範本') + '</button>'
+                        + (hasDuTemplates ? '<button onclick="ViewHallSU.promptApplyTemplate(\'' + du.id + '\')" class="px-2.5 py-1 bg-blue-50 hover:bg-blue-100 text-blue-800 font-bold text-xs rounded-xl border border-blue-200 transition" title="' + t('template.applyTemplate', null, '📥 套用範本') + '">' + t('template.applyTemplate', null, '📥 套用範本') + '</button>' : '')
+                        + '</div>';
+                }
+
                 duCardsHtml += '<div class="bg-gradient-to-br from-slate-50 to-purple-50/30 p-6 rounded-3xl border-2 border-purple-200 shadow-sm space-y-5">'
                     + '<div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-3 border-b border-purple-200 cursor-pointer" onclick="ViewHallSU.toggleDU(\'' + du.id + '\')">'
                     + '<div class="flex items-center gap-3">'
@@ -139,14 +161,27 @@
                     + '</div>'
                     + '</div>'
                     + '</div>'
-                    + '<div class="flex items-center gap-2" onclick="event.stopPropagation()">'
+                    + '<div class="flex items-center gap-2 flex-wrap" onclick="event.stopPropagation()">'
+                    + templateActionsHtml
                     + '<button onclick="ViewHallSU.addSU(\'' + currentHall.id + '\', \'' + du.id + '\')" class="px-3.5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs rounded-xl shadow-xs transition">' + t('du.addSu', null, '➕ 新增 SU 模組') + '</button>'
                     + '<button onclick="ViewHallSU.copyDU(\'' + currentHall.id + '\', \'' + du.id + '\')" class="px-3.5 py-2 bg-purple-100 hover:bg-purple-200 text-purple-950 font-bold text-xs rounded-xl transition">' + t('du.copy', null, '📋 複製 DU') + '</button>'
                     + (currentHall.dus.length > 1 ? '<button onclick="ViewHallSU.deleteDU(\'' + currentHall.id + '\', \'' + du.id + '\')" class="px-3 py-2 bg-red-100 hover:bg-red-200 text-red-700 font-bold text-xs rounded-xl transition">✕</button>' : '')
                     + '</div>'
                     + '</div>'
-                    + (isExpanded ? '<div class="space-y-4">' + suCardsHtml + '</div>' : '')
+                    + (isExpanded ? ('<div class="space-y-4">' + (isLinked ? ('<div class="p-3 bg-indigo-50/70 rounded-2xl border border-indigo-200 text-xs text-indigo-900 font-medium flex items-center justify-between"><span>🔗 ' + t('template.linkedNotice', null, '此 DU 已連結標準範本，設備由範本統一管理。如需個別微調，請點選上方「解除連結」。') + '</span></div>') : '') + suCardsHtml + '</div>') : '')
                     + '</div>';
+            });
+
+            let canSyncCount = 0;
+            (S.state.halls || []).forEach(h => {
+                (h.dus || []).forEach(d => {
+                    if (d.templateRef?.linked && d.templateRef.id) {
+                        const tpl = S.getTemplate(d.templateRef.id);
+                        if (tpl && tpl.version > (d.templateRef.version || 1)) {
+                            canSyncCount++;
+                        }
+                    }
+                });
             });
 
             container.innerHTML = `
@@ -163,6 +198,19 @@
                                 </p>
                             </div>
                             <div class="flex items-center gap-2 flex-wrap">
+                                <button onclick="ViewHallSU.openTemplateManager()" class="px-3.5 py-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-800 font-bold text-xs rounded-xl border border-indigo-200 transition flex items-center gap-1.5 shadow-2xs">
+                                    <span>📚</span> ${t('template.title', null, '範本庫')} (${(S.state.templates || []).length})
+                                </button>
+                                ${(S.state.templates || []).filter(t => t.kind === 'du').length > 0 ? `
+                                    <button onclick="ViewHallSU.promptBatchCreateDU('${currentHall.id}')" class="px-3.5 py-2 bg-purple-50 hover:bg-purple-100 text-purple-900 font-bold text-xs rounded-xl border border-purple-200 transition flex items-center gap-1.5 shadow-2xs">
+                                        <span>📦</span> ${t('template.batchCreate', null, '從範本批次新增 DU')}
+                                    </button>
+                                ` : ''}
+                                ${canSyncCount > 0 ? `
+                                    <button onclick="ViewHallSU.syncAllOutdatedDUs()" class="px-3.5 py-2 bg-amber-500 hover:bg-amber-600 text-white font-bold text-xs rounded-xl shadow-xs transition animate-pulse flex items-center gap-1.5">
+                                        <span>🔄</span> ${t('template.syncAll', null, '全部同步')} (${canSyncCount})
+                                    </button>
+                                ` : ''}
                                 <button onclick="ViewHallSU.addHall()" class="px-4 py-2 bg-purple-700 hover:bg-purple-800 text-white font-black text-xs rounded-xl shadow-xs transition flex items-center gap-1.5">
                                     <span>➕</span> ${t('hall.addHallBtn', null, '新增 Hall 機房')}
                                 </button>
@@ -473,6 +521,264 @@
             expandedDuIds.add(targetDu.id);
             window.AppStore.notify();
             this.render(document.getElementById('stepContent'));
+        },
+
+        saveAsTemplate(duId) {
+            const S = window.AppStore;
+            let du = null;
+            for (const h of (S.state.halls || [])) {
+                du = (h.dus || []).find(d => d.id === duId);
+                if (du) break;
+            }
+            if (!du) return;
+            const defaultName = du.name + ' ' + t('template.defaultSuffix', null, '標準範本');
+            const name = prompt(t('template.templateNamePrompt', null, '請輸入範本名稱:'), defaultName);
+            if (!name) return;
+            const hasTerminal = !!(du.plantDesign?.cduSystem?.sizing?.length || du.plantDesign?.fanwallSystem?.sizing?.length);
+            let includeTerminal = false;
+            if (hasTerminal) {
+                includeTerminal = confirm(t('template.includeTerminalPrompt', null, '是否同時將終端設備選型 (CDU / CRAH 型號與冗餘) 納入範本？'));
+            }
+            S.saveDuAsTemplate(duId, name.trim(), includeTerminal);
+            this.render(document.getElementById('stepContent'));
+        },
+
+        promptApplyTemplate(duId) {
+            const S = window.AppStore;
+            const duTemplates = (S.state.templates || []).filter(item => item.kind === 'du');
+            if (duTemplates.length === 0) {
+                alert(t('template.empty', null, '目前無已儲存的範本。'));
+                return;
+            }
+            let choiceText = t('template.applyTemplate', null, '套用範本') + ':\n';
+            duTemplates.forEach((tpl, idx) => {
+                choiceText += (idx + 1) + '. ' + tpl.name + ' (v' + (tpl.version || 1) + ')\n';
+            });
+            choiceText += '\n' + t('template.selectTemplatePrompt', { n: duTemplates.length }, '請輸入欲套用的範本編號 (1-' + duTemplates.length + '):');
+            const choice = prompt(choiceText, '1');
+            if (!choice) return;
+            const idx = parseInt(choice, 10) - 1;
+            if (isNaN(idx) || idx < 0 || idx >= duTemplates.length) {
+                return;
+            }
+            const selectedTpl = duTemplates[idx];
+            S.applyTemplateToDu(duId, selectedTpl.id, true);
+            this.render(document.getElementById('stepContent'));
+        },
+
+        unlinkDU(duId) {
+            window.AppStore.unlinkDu(duId);
+            this.render(document.getElementById('stepContent'));
+        },
+
+        syncDU(duId) {
+            window.AppStore.syncDuWithTemplate(duId);
+            this.render(document.getElementById('stepContent'));
+        },
+
+        syncAllOutdatedDUs() {
+            const S = window.AppStore;
+            const outdatedTplIds = new Set();
+            (S.state.halls || []).forEach(h => {
+                (h.dus || []).forEach(d => {
+                    if (d.templateRef?.linked && d.templateRef.id) {
+                        const tpl = S.getTemplate(d.templateRef.id);
+                        if (tpl && tpl.version > (d.templateRef.version || 1)) {
+                            outdatedTplIds.add(tpl.id);
+                        }
+                    }
+                });
+            });
+            (S.state.corePods || []).forEach(p => {
+                if (p.templateRef?.linked && p.templateRef.id) {
+                    const tpl = S.getTemplate(p.templateRef.id);
+                    if (tpl && tpl.version > (p.templateRef.version || 1)) {
+                        outdatedTplIds.add(tpl.id);
+                    }
+                }
+            });
+            outdatedTplIds.forEach(id => S.syncAllDusLinkedToTemplate(id));
+            this.render(document.getElementById('stepContent'));
+        },
+
+        promptBatchCreateDU(hallId) {
+            const S = window.AppStore;
+            const duTemplates = (S.state.templates || []).filter(item => item.kind === 'du');
+            if (duTemplates.length === 0) {
+                alert(t('template.empty', null, '目前無已儲存的範本。'));
+                return;
+            }
+            let selectedTpl = duTemplates[0];
+            if (duTemplates.length > 1) {
+                let choiceText = t('template.batchCreate', null, '從範本批次新增 DU') + ':\n';
+                duTemplates.forEach((tpl, idx) => {
+                    choiceText += (idx + 1) + '. ' + tpl.name + ' (v' + (tpl.version || 1) + ')\n';
+                });
+                choiceText += '\n' + t('template.selectTemplatePrompt', { n: duTemplates.length }, '請輸入欲套用的範本編號 (1-' + duTemplates.length + '):');
+                const choice = prompt(choiceText, '1');
+                if (!choice) return;
+                const idx = parseInt(choice, 10) - 1;
+                if (isNaN(idx) || idx < 0 || idx >= duTemplates.length) return;
+                selectedTpl = duTemplates[idx];
+            }
+            const countStr = prompt(t('template.countPrompt', null, '請輸入要新增的 DU 數量 (1 ~ 50):'), '4');
+            if (!countStr) return;
+            const count = parseInt(countStr, 10);
+            if (isNaN(count) || count < 1 || count > 50) return;
+            const prefix = prompt(t('template.namePrefixPrompt', null, '請輸入 DU 名稱前綴 (預設 DU-):'), 'DU-') || 'DU-';
+            S.batchCreateDusFromTemplate(hallId, selectedTpl.id, count, prefix);
+            this.render(document.getElementById('stepContent'));
+        },
+
+        openTemplateManager() {
+            let modalEl = document.getElementById('templateManagerModal');
+            if (!modalEl) {
+                modalEl = document.createElement('div');
+                modalEl.id = 'templateManagerModal';
+                document.body.appendChild(modalEl);
+            }
+            this._renderTemplateManagerModal(modalEl);
+        },
+
+        closeTemplateManager() {
+            const modalEl = document.getElementById('templateManagerModal');
+            if (modalEl) {
+                modalEl.remove();
+            }
+        },
+
+        _renderTemplateManagerModal(modalEl) {
+            const S = window.AppStore;
+            const templates = S.state.templates || [];
+            let duListHtml = '';
+            let corePodListHtml = '';
+
+            const getRefCount = (tplId) => {
+                let cnt = 0;
+                (S.state.halls || []).forEach(h => {
+                    (h.dus || []).forEach(d => {
+                        if (d.templateRef?.id === tplId && d.templateRef.linked) cnt++;
+                    });
+                });
+                (S.state.corePods || []).forEach(p => {
+                    if (p.templateRef?.id === tplId && p.templateRef.linked) cnt++;
+                });
+                return cnt;
+            };
+
+            templates.forEach(tpl => {
+                const refCount = getRefCount(tpl.id);
+                const itemHtml = '<div class="p-4 bg-slate-50 rounded-2xl border border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3">'
+                    + '<div>'
+                    + '<div class="flex items-center gap-2">'
+                    + '<span class="font-extrabold text-sm text-slate-800">' + window.UIKit.escapeHTML(tpl.name) + '</span>'
+                    + '<span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-indigo-100 text-indigo-700">v' + (tpl.version || 1) + '</span>'
+                    + '<span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-200 text-slate-600">' + (tpl.kind === 'corepod' ? t('template.corePodTemplates', null, 'CorePOD') : t('template.duTemplates', null, 'DU')) + '</span>'
+                    + '</div>'
+                    + '<div class="text-xs text-slate-500 mt-1 flex items-center gap-3">'
+                    + '<span>' + t('template.unitsLinked', { n: refCount }, '已連結 ' + refCount + ' 個單元') + '</span>'
+                    + (tpl.updatedAt ? ('<span>' + new Date(tpl.updatedAt).toLocaleDateString() + '</span>') : '')
+                    + '</div>'
+                    + '</div>'
+                    + '<div class="flex items-center gap-2">'
+                    + '<button onclick="ViewHallSU.renameTemplate(\'' + tpl.id + '\')" class="px-3 py-1.5 bg-white hover:bg-slate-100 text-slate-700 border border-slate-200 font-bold text-xs rounded-xl transition">' + t('template.rename', null, '重新命名') + '</button>'
+                    + '<button onclick="ViewHallSU.deleteTemplate(\'' + tpl.id + '\')" class="px-3 py-1.5 bg-red-50 hover:bg-red-100 text-red-700 border border-red-200 font-bold text-xs rounded-xl transition">' + t('template.delete', null, '刪除') + '</button>'
+                    + '</div>'
+                    + '</div>';
+
+                if (tpl.kind === 'corepod') {
+                    corePodListHtml += itemHtml;
+                } else {
+                    duListHtml += itemHtml;
+                }
+            });
+
+            modalEl.className = 'fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-xs';
+            modalEl.innerHTML = '<div class="bg-white rounded-3xl max-w-2xl w-full max-h-[90vh] flex flex-col shadow-2xl border border-slate-200 overflow-hidden animate-in fade-in duration-200">'
+                + '<div class="p-6 border-b border-slate-200 flex items-center justify-between bg-gradient-to-r from-purple-50 to-indigo-50">'
+                + '<div>'
+                + '<h3 class="text-lg font-black text-slate-900 flex items-center gap-2"><span>📚</span> ' + t('template.title', null, '模組範本庫') + '</h3>'
+                + '<p class="text-xs text-slate-500 mt-0.5">' + t('template.subtitle', null, '管理標準化 IT 與終端冷卻模組範本，支援一鍵套用與全場批次同步') + '</p>'
+                + '</div>'
+                + '<button onclick="ViewHallSU.closeTemplateManager()" class="text-slate-400 hover:text-slate-700 p-2 text-xl font-bold rounded-xl transition leading-none">✕</button>'
+                + '</div>'
+                + '<div class="p-6 overflow-y-auto space-y-6 flex-1">'
+                + '<div class="flex items-center justify-between gap-3 flex-wrap pb-3 border-b border-slate-200">'
+                + '<div class="flex items-center gap-2">'
+                + '<button onclick="ViewHallSU.exportTemplates()" class="px-3 py-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-800 font-bold text-xs rounded-xl border border-indigo-200 transition flex items-center gap-1.5">'
+                + '<span>📤</span> ' + t('template.export', null, '匯出範本 (.json)')
+                + '</button>'
+                + '<label class="px-3 py-1.5 bg-purple-50 hover:bg-purple-100 text-purple-900 font-bold text-xs rounded-xl border border-purple-200 transition flex items-center gap-1.5 cursor-pointer">'
+                + '<span>📥</span> ' + t('template.import', null, '匯入範本')
+                + '<input type="file" accept=".json" class="hidden" onchange="ViewHallSU.handleImportTemplates(this)">'
+                + '</label>'
+                + '</div>'
+                + '<span class="text-xs text-slate-500 font-semibold">' + t('template.totalCount', { n: templates.length }, '共 ' + templates.length + ' 個範本') + '</span>'
+                + '</div>'
+                + '<div class="space-y-3">'
+                + '<h4 class="text-xs font-black text-purple-950 uppercase tracking-wider flex items-center gap-2"><span>🏢</span> ' + t('template.duTemplates', null, 'DU 算力單元範本') + ' (' + ((templates.filter(item=>item.kind==='du')).length) + ')</h4>'
+                + (duListHtml || ('<div class="p-6 text-center text-xs text-slate-400 bg-slate-50 rounded-2xl border border-dashed border-slate-200">' + t('template.empty', null, '目前無已儲存的範本。') + '</div>'))
+                + '</div>'
+                + '<div class="space-y-3">'
+                + '<h4 class="text-xs font-black text-teal-950 uppercase tracking-wider flex items-center gap-2"><span>📦</span> ' + t('template.corePodTemplates', null, 'CorePOD 核心機房範本') + ' (' + ((templates.filter(item=>item.kind==='corepod')).length) + ')</h4>'
+                + (corePodListHtml || ('<div class="p-6 text-center text-xs text-slate-400 bg-slate-50 rounded-2xl border border-dashed border-slate-200">' + t('template.empty', null, '目前無已儲存的範本。') + '</div>'))
+                + '</div>'
+                + '</div>'
+                + '<div class="p-4 bg-slate-50 border-t border-slate-200 flex justify-end">'
+                + '<button onclick="ViewHallSU.closeTemplateManager()" class="px-4 py-2 bg-slate-200 hover:bg-slate-300 text-slate-800 font-bold text-xs rounded-xl transition">' + t('template.close', null, '關閉') + '</button>'
+                + '</div>'
+                + '</div>';
+        },
+
+        deleteTemplate(tplId) {
+            if (!confirm(t('template.deleteConfirm', null, '確定要刪除此範本嗎？所有已連結之單元將自動解除連結。'))) return;
+            window.AppStore.deleteTemplate(tplId);
+            const modalEl = document.getElementById('templateManagerModal');
+            if (modalEl) this._renderTemplateManagerModal(modalEl);
+            this.render(document.getElementById('stepContent'));
+        },
+
+        renameTemplate(tplId) {
+            const tpl = window.AppStore.getTemplate(tplId);
+            if (!tpl) return;
+            const newName = prompt(t('template.templateNamePrompt', null, '請輸入範本名稱:'), tpl.name);
+            if (!newName || !newName.trim()) return;
+            window.AppStore.updateTemplate(tplId, { name: newName.trim() });
+            const modalEl = document.getElementById('templateManagerModal');
+            if (modalEl) this._renderTemplateManagerModal(modalEl);
+            this.render(document.getElementById('stepContent'));
+        },
+
+        exportTemplates() {
+            const jsonStr = window.AppStore.exportTemplatesJson();
+            if (typeof document === 'undefined') return;
+            const blob = new Blob([jsonStr], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `pue_templates_${new Date().toISOString().slice(0, 10)}.json`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        },
+
+        handleImportTemplates(inputEl) {
+            const file = inputEl.files?.[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                try {
+                    const imported = window.AppStore.importTemplatesJson(e.target.result);
+                    alert(t('template.importSuccess', { n: imported.length }, '成功匯入 ' + imported.length + ' 個範本！'));
+                    const modalEl = document.getElementById('templateManagerModal');
+                    if (modalEl) this._renderTemplateManagerModal(modalEl);
+                    this.render(document.getElementById('stepContent'));
+                } catch (err) {
+                    alert(t('template.importFailed', { err: err.message || err }, '範本匯入失敗: ' + (err.message || err)));
+                }
+            };
+            reader.readAsText(file);
         }
     };
 
