@@ -1452,7 +1452,46 @@
     // Modes
     'xls.modeFree': 'Mode 1 全自由冷卻',
     'xls.modePartial': 'Mode 2 部分輔助製冷',
-    'xls.modeMech': 'Mode 3 全機械製冷'
+    'xls.modeMech': 'Mode 3 全機械製冷',
+
+    // Phase S: Scenario Comparison (scen.*)
+    'common.copy': '副本',
+    'scen.title': '冷卻設計方案多維度對比與評估 (Scenario Comparison)',
+    'scen.subtitle': '評估不同冷卻架構與共用機房配置方案之 PUE、耗電與設備規模',
+    'scen.defaultName': '方案 {n}',
+    'scen.saveAsScenario': '💾 存為方案',
+    'scen.saveChanges': '💾 儲存變更',
+    'scen.saveNewModalTitle': '將目前冷卻設計存為新方案',
+    'scen.scenarioName': '方案名稱',
+    'scen.scenarioNote': '備註說明 (選填)',
+    'scen.activeBadge': '當前方案',
+    'scen.applyScenario': '套用此方案',
+    'scen.duplicate': '複製方案',
+    'scen.delete': '刪除',
+    'scen.deleteConfirm': '確定要刪除此方案嗎？',
+    'scen.unsavedConfirm': '目前方案有未儲存的冷卻設計變更，切換前是否要先儲存？',
+    'scen.maxReached': '方案數量已達上限 (最多 8 個方案)',
+    'scen.recalculateAll': '🔄 全部重新計算',
+    'scen.needRecalc': '需重新計算',
+    'scen.thName': '方案名稱',
+    'scen.thCoolingConfig': '冷卻架構與分組',
+    'scen.thAnnualPue': '年 PUE',
+    'scen.thPpue': 'pPUE',
+    'scen.thPeakPue': '尖峰 PUE',
+    'scen.thWue': 'WUE (L/kWh)',
+    'scen.thTotalPower': '年總耗電 (MWh)',
+    'scen.thChillerMwh': '冰機 (MWh)',
+    'scen.thHeatRejMwh': '排熱 (MWh)',
+    'scen.thPumpMwh': '泵+CDU (MWh)',
+    'scen.thCrahMwh': 'CRAH (MWh)',
+    'scen.thLossMwh': '電損 (MWh)',
+    'scen.thEquipQty': '主機房設備總台數',
+    'scen.thDeficitHours': '容量不足 (h)',
+    'scen.thActions': '操作',
+    'scen.baseline': '基準',
+    'scen.noScenarios': '尚未建立任何設計方案，請點選上方「存為方案」開始建立與比較',
+    'xls.s11Name': '11.方案比較',
+    'xls.s11Title': '空調冷卻設計方案多維度對比與評估表'
   };
 
   const target = (typeof window !== 'undefined' ? window.I18N : (typeof global !== 'undefined' ? global.I18N : null));

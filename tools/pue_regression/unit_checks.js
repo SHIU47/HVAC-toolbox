@@ -4700,6 +4700,117 @@ function sizeCduToDeratedN1(S) {
 
     assert.strictEqual(violations.length, 0, `English workbook with shared plants had CJK violations:\n${violations.join('\n')}`);
   });
+
+  test('S-1: Default state initializes with empty scenarios array and null activeScenarioId', () => {
+    const c = freshCtx();
+    const S = c.AppStore;
+    assert(Array.isArray(S.state.scenarios), 'state.scenarios must be an array');
+    assert.strictEqual(S.state.scenarios.length, 0);
+    assert.strictEqual(S.state.activeScenarioId, null);
+  });
+
+  test('S-1: serializeProject and deserializeProject preserve scenarios and activeScenarioId', () => {
+    const c = freshCtx();
+    const S = c.AppStore;
+    const res = S.saveCurrentAsScenario('Baseline Design', 'Default unconfigured scenario');
+    assert.strictEqual(res.ok, true);
+    assert.strictEqual(S.state.scenarios.length, 1);
+    assert.strictEqual(S.state.activeScenarioId, res.scenario.id);
+
+    const json = S.serializeProject();
+    const c2 = freshCtx();
+    const S2 = c2.AppStore;
+    S2.deserializeProject(json);
+
+    assert.strictEqual(S2.state.scenarios.length, 1);
+    assert.strictEqual(S2.state.scenarios[0].name, 'Baseline Design');
+    assert.strictEqual(S2.state.scenarios[0].note, 'Default unconfigured scenario');
+    assert.strictEqual(S2.state.activeScenarioId, res.scenario.id);
+  });
+
+  test('S-1: saveCurrentAsScenario, duplicateScenario, updateScenario, deleteScenario CRUD and max 8 limit', () => {
+    const c = freshCtx();
+    const S = c.AppStore;
+
+    // Save
+    const r1 = S.saveCurrentAsScenario('Scenario 1');
+    assert.strictEqual(r1.ok, true);
+    assert.strictEqual(S.state.scenarios.length, 1);
+    assert.strictEqual(S.state.activeScenarioId, r1.scenario.id);
+
+    // Duplicate
+    const r2 = S.duplicateScenario(r1.scenario.id);
+    assert.strictEqual(r2.ok, true);
+    assert.strictEqual(S.state.scenarios.length, 2);
+    assert(r2.scenario.name.includes('Copy') || r2.scenario.name.includes('副本'));
+
+    // Update
+    S.updateScenario(r2.scenario.id, { name: 'Scenario 2 Renamed', note: 'Modified note' });
+    assert.strictEqual(S.state.scenarios[1].name, 'Scenario 2 Renamed');
+    assert.strictEqual(S.state.scenarios[1].note, 'Modified note');
+
+    // Fill up to 8
+    while (S.state.scenarios.length < 8) {
+      S.saveCurrentAsScenario();
+    }
+    assert.strictEqual(S.state.scenarios.length, 8);
+    const r9 = S.saveCurrentAsScenario('Scenario 9');
+    assert.strictEqual(r9.ok, false, 'Should reject 9th scenario');
+
+    // Delete
+    const idToDelete = S.state.scenarios[0].id;
+    S.deleteScenario(idToDelete);
+    assert.strictEqual(S.state.scenarios.length, 7);
+    assert(!S.state.scenarios.some(s => s.id === idToDelete));
+  });
+
+  test('S-1: Switching between Scenario A (independent) and Scenario B (site shared) has zero state residue', () => {
+    const c = freshCtx();
+    const S = c.AppStore;
+    S.calculate();
+    const initialPue = S.state.results.overall.annualPue;
+
+    // Scenario A: Independent (baseline default)
+    const rA = S.saveCurrentAsScenario('Scenario A - Independent');
+    assert.strictEqual(rA.ok, true);
+
+    // Modify cooling to Site Shared
+    S.applySiteSharedConfig();
+    S.calculate();
+    assert(S.state.coolingPlants.length >= 2, 'Site shared should have cooling plants');
+    const sharedPue = S.state.results.overall.annualPue;
+
+    // Scenario B: Shared
+    const rB = S.saveCurrentAsScenario('Scenario B - Shared');
+    assert.strictEqual(rB.ok, true);
+
+    // Switch back to Scenario A
+    S.applyScenario(rA.scenario.id);
+    assert.strictEqual(S.state.coolingPlants.length, 0, 'Scenario A should restore 0 cooling plants');
+    const restoredPueA = S.state.results.overall.annualPue;
+    assert.strictEqual(restoredPueA, initialPue, 'Restored PUE for Scenario A must match exactly');
+
+    // Switch back to Scenario B
+    S.applyScenario(rB.scenario.id);
+    assert(S.state.coolingPlants.length >= 2, 'Scenario B should restore shared plants');
+    const restoredPueB = S.state.results.overall.annualPue;
+    assert.strictEqual(restoredPueB, sharedPue, 'Restored PUE for Scenario B must match exactly');
+  });
+
+  test('S-1: hasActiveScenarioUnsavedChanges accurately detects modifications', () => {
+    const c = freshCtx();
+    const S = c.AppStore;
+    const r = S.saveCurrentAsScenario('Test Scenario');
+    assert.strictEqual(S.hasActiveScenarioUnsavedChanges(), false, 'Immediately after saving, should have no unsaved changes');
+
+    // Modify facilityElectricalLossPct
+    S.state.facilityElectricalLossPct = 6.0;
+    assert.strictEqual(S.hasActiveScenarioUnsavedChanges(), true, 'After modifying loss pct, should detect unsaved changes');
+
+    // Save active scenario
+    S.saveActiveScenario();
+    assert.strictEqual(S.hasActiveScenarioUnsavedChanges(), false, 'After saveActiveScenario, should have no unsaved changes');
+  });
 })();
 
 console.log(`\n${passCount} passed, ${failCount} failed, ${skipCount} skipped`);

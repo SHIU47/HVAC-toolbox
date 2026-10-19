@@ -181,6 +181,9 @@
 
             coolingPlants: [],
 
+            scenarios: [],
+            activeScenarioId: null,
+
             assumptions_override: {},
 
             results: {
@@ -238,6 +241,8 @@
                 halls: s.halls,
                 corePods: s.corePods,
                 coolingPlants: s.coolingPlants || [],
+                scenarios: s.scenarios || [],
+                activeScenarioId: s.activeScenarioId || null,
                 assumptions_override: s.assumptions_override || {}
             };
             return JSON.stringify(exportData, null, 2);
@@ -403,6 +408,18 @@
                 });
             }
 
+            // Phase S: 方案資料模型 (scenarios) 遷移
+            if (!Array.isArray(stateData.scenarios)) {
+                stateData.scenarios = [];
+                stateData.activeScenarioId = null;
+            } else {
+                stateData.scenarios.forEach(scen => {
+                    if (!scen.id) scen.id = makeId('scen');
+                    if (!scen.name) scen.name = '方案';
+                    if (!scen.snapshot) scen.snapshot = {};
+                });
+            }
+
             stateData.schemaVersion = 'v7';
             return stateData;
         },
@@ -422,6 +439,13 @@
                     this.state.coolingPlants = stateData.coolingPlants;
                 } else {
                     this.state.coolingPlants = [];
+                }
+                if (stateData.scenarios && Array.isArray(stateData.scenarios)) {
+                    this.state.scenarios = stateData.scenarios;
+                    this.state.activeScenarioId = stateData.activeScenarioId || null;
+                } else {
+                    this.state.scenarios = [];
+                    this.state.activeScenarioId = null;
                 }
                 if (stateData.assumptions_override) {
                     this.state.assumptions_override = stateData.assumptions_override;
@@ -1309,6 +1333,168 @@
                     }
                 });
             });
+        },
+
+        // ─────────────────────────────────────────────────────────────
+        // Phase S: 方案管理與快照 (Scenario Management & Snapshot)
+        // ─────────────────────────────────────────────────────────────
+
+        createCoolingSnapshot() {
+            const unitPlants = {};
+            (this.state.halls || []).forEach(h => {
+                (h.dus || []).forEach(d => {
+                    if (d.plantDesign) {
+                        unitPlants[d.id] = JSON.parse(JSON.stringify(d.plantDesign));
+                    }
+                });
+            });
+            (this.state.corePods || []).forEach(p => {
+                if (p.plantDesign) {
+                    unitPlants[p.id] = JSON.parse(JSON.stringify(p.plantDesign));
+                }
+            });
+
+            return {
+                coolingPlants: JSON.parse(JSON.stringify(this.state.coolingPlants || [])),
+                unitPlants,
+                facilityElectricalLossPct: this.state.facilityElectricalLossPct ?? 4.5
+            };
+        },
+
+        applyCoolingSnapshot(snapshot) {
+            if (!snapshot) return;
+            if (Array.isArray(snapshot.coolingPlants)) {
+                this.state.coolingPlants = JSON.parse(JSON.stringify(snapshot.coolingPlants));
+            } else {
+                this.state.coolingPlants = [];
+            }
+
+            if (snapshot.unitPlants && typeof snapshot.unitPlants === 'object') {
+                (this.state.halls || []).forEach(h => {
+                    (h.dus || []).forEach(d => {
+                        if (snapshot.unitPlants[d.id]) {
+                            d.plantDesign = JSON.parse(JSON.stringify(snapshot.unitPlants[d.id]));
+                        }
+                    });
+                });
+                (this.state.corePods || []).forEach(p => {
+                    if (snapshot.unitPlants[p.id]) {
+                        p.plantDesign = JSON.parse(JSON.stringify(snapshot.unitPlants[p.id]));
+                    }
+                });
+            }
+
+            if (snapshot.facilityElectricalLossPct !== undefined) {
+                this.state.facilityElectricalLossPct = snapshot.facilityElectricalLossPct;
+            }
+        },
+
+        saveCurrentAsScenario(name, note = '') {
+            if (!Array.isArray(this.state.scenarios)) {
+                this.state.scenarios = [];
+            }
+            if (this.state.scenarios.length >= 8) {
+                return { ok: false, error: _t('scen.maxReached', null, '方案數量已達上限 (最多 8 個方案)') };
+            }
+
+            this.calculate();
+
+            const id = makeId('scen');
+            const scenNum = this.state.scenarios.length + 1;
+            const finalName = (name && name.trim()) ? name.trim() : _t('scen.defaultName', { n: scenNum }, `方案 ${scenNum}`);
+            const scenario = {
+                id,
+                name: finalName,
+                note: (note || '').trim(),
+                createdAt: new Date().toISOString(),
+                snapshot: this.createCoolingSnapshot(),
+                resultSummary: null
+            };
+
+            this.state.scenarios.push(scenario);
+            this.state.activeScenarioId = id;
+            this.notify();
+            return { ok: true, scenario };
+        },
+
+        duplicateScenario(id) {
+            if (!Array.isArray(this.state.scenarios)) return null;
+            if (this.state.scenarios.length >= 8) {
+                return { ok: false, error: _t('scen.maxReached', null, '方案數量已達上限 (最多 8 個方案)') };
+            }
+            const src = this.state.scenarios.find(s => s.id === id);
+            if (!src) return null;
+
+            const newId = makeId('scen');
+            const copyName = `${src.name} (${_t('common.copy', null, '副本')})`;
+            const clone = {
+                id: newId,
+                name: copyName,
+                note: src.note || '',
+                createdAt: new Date().toISOString(),
+                snapshot: JSON.parse(JSON.stringify(src.snapshot)),
+                resultSummary: src.resultSummary ? JSON.parse(JSON.stringify(src.resultSummary)) : null
+            };
+
+            this.state.scenarios.push(clone);
+            this.notify();
+            return { ok: true, scenario: clone };
+        },
+
+        applyScenario(id) {
+            if (!Array.isArray(this.state.scenarios)) return false;
+            const scen = this.state.scenarios.find(s => s.id === id);
+            if (!scen) return false;
+
+            this.applyCoolingSnapshot(scen.snapshot);
+            this.state.activeScenarioId = id;
+            this.notify();
+            return true;
+        },
+
+        deleteScenario(id) {
+            if (!Array.isArray(this.state.scenarios)) return false;
+            const idx = this.state.scenarios.findIndex(s => s.id === id);
+            if (idx === -1) return false;
+
+            this.state.scenarios.splice(idx, 1);
+            if (this.state.activeScenarioId === id) {
+                this.state.activeScenarioId = null;
+            }
+            this.notify();
+            return true;
+        },
+
+        updateScenario(id, updates = {}) {
+            if (!Array.isArray(this.state.scenarios)) return false;
+            const scen = this.state.scenarios.find(s => s.id === id);
+            if (!scen) return false;
+
+            if (updates.name !== undefined) scen.name = updates.name.trim();
+            if (updates.note !== undefined) scen.note = updates.note;
+            this.notify();
+            return true;
+        },
+
+        saveActiveScenario() {
+            if (!this.state.activeScenarioId || !Array.isArray(this.state.scenarios)) return false;
+            const scen = this.state.scenarios.find(s => s.id === this.state.activeScenarioId);
+            if (!scen) return false;
+
+            this.calculate();
+            scen.snapshot = this.createCoolingSnapshot();
+            scen.resultSummary = null;
+            this.notify();
+            return true;
+        },
+
+        hasActiveScenarioUnsavedChanges() {
+            if (!this.state.activeScenarioId || !Array.isArray(this.state.scenarios)) return false;
+            const scen = this.state.scenarios.find(s => s.id === this.state.activeScenarioId);
+            if (!scen || !scen.snapshot) return false;
+
+            const curr = this.createCoolingSnapshot();
+            return JSON.stringify(curr) !== JSON.stringify(scen.snapshot);
         },
 
         designConditions() {

@@ -1452,7 +1452,46 @@
     // Modes
     'xls.modeFree': 'Mode 1 Full Free Cooling',
     'xls.modePartial': 'Mode 2 Partial Trim Cooling',
-    'xls.modeMech': 'Mode 3 Full Mechanical Cooling'
+    'xls.modeMech': 'Mode 3 Full Mechanical Cooling',
+
+    // Phase S: Scenario Comparison (scen.*)
+    'common.copy': 'Copy',
+    'scen.title': 'Cooling Design Scenario Multi-Dimensional Comparison (Scenario Comparison)',
+    'scen.subtitle': 'Evaluate PUE, energy consumption, and equipment sizing across cooling architectures and plant groupings',
+    'scen.defaultName': 'Scenario {n}',
+    'scen.saveAsScenario': '💾 Save as Scenario',
+    'scen.saveChanges': '💾 Save Changes',
+    'scen.saveNewModalTitle': 'Save Current Cooling Design as New Scenario',
+    'scen.scenarioName': 'Scenario Name',
+    'scen.scenarioNote': 'Notes (Optional)',
+    'scen.activeBadge': 'Active',
+    'scen.applyScenario': 'Apply Scenario',
+    'scen.duplicate': 'Duplicate',
+    'scen.delete': 'Delete',
+    'scen.deleteConfirm': 'Are you sure you want to delete this scenario?',
+    'scen.unsavedConfirm': 'The active scenario has unsaved cooling design changes. Save before switching?',
+    'scen.maxReached': 'Maximum number of scenarios reached (up to 8 scenarios)',
+    'scen.recalculateAll': '🔄 Recalculate All',
+    'scen.needRecalc': 'Needs Recalculation',
+    'scen.thName': 'Scenario Name',
+    'scen.thCoolingConfig': 'Cooling Configuration',
+    'scen.thAnnualPue': 'Annual PUE',
+    'scen.thPpue': 'pPUE',
+    'scen.thPeakPue': 'Peak PUE',
+    'scen.thWue': 'WUE (L/kWh)',
+    'scen.thTotalPower': 'Annual Total MWh',
+    'scen.thChillerMwh': 'Chiller (MWh)',
+    'scen.thHeatRejMwh': 'Heat Rej (MWh)',
+    'scen.thPumpMwh': 'Pumps+CDU (MWh)',
+    'scen.thCrahMwh': 'CRAH (MWh)',
+    'scen.thLossMwh': 'Electrical Loss (MWh)',
+    'scen.thEquipQty': 'Central Equipment Units',
+    'scen.thDeficitHours': 'Deficit Hours (h)',
+    'scen.thActions': 'Actions',
+    'scen.baseline': 'Baseline',
+    'scen.noScenarios': 'No scenarios created yet. Click "Save as Scenario" above to start comparing.',
+    'xls.s11Name': '11.Scenario Comparison',
+    'xls.s11Title': 'Cooling Design Scenario Multi-Dimensional Comparison Schedule'
   };
 
   const target = (typeof window !== 'undefined' ? window.I18N : (typeof global !== 'undefined' ? global.I18N : null));
