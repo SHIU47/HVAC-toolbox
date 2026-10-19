@@ -1063,6 +1063,10 @@
             const cduArch = cduSys.architecture || 'dry_cooler_trim';
             const fwArch = fwSys.architecture || 'air_cooled_chiller';
 
+            const cduArchDesc = (typeof window !== 'undefined' && window.CoolingArchRegistry) ? window.CoolingArchRegistry.get(cduArch) : null;
+            const isClosedTower = !!(cduArchDesc?.flags?.isClosedTower);
+            const isTower = isClosedTower || !!(cduArchDesc?.flags?.consumesWater && !cduArchDesc?.flags?.hasMechanical);
+
             const cduArchLabel = (window.CoolingArchRegistry ? window.CoolingArchRegistry.getDashboardLabel(cduArch) : '') || _t('dash.heatRejTower', null, '排熱塔');
             const fwArchLabel = (window.CoolingArchRegistry ? window.CoolingArchRegistry.getDashboardLabel(fwArch) : '') || _t('dash.chiller', null, '冰機');
 
@@ -1100,7 +1104,15 @@
                     return catEntry?.capKw ?? catEntry?.powerKw ?? item.unitCapKw ?? 5.5;
                 }
                 if (role === 'heat_rejection' || item.key?.includes('tower') || item.key?.includes('cooler')) {
-                    return catEntry?.fanKwDx ?? ((item.unitCapKw || 1000) / 500 * 10);
+                    const fanKw = catEntry?.fanKwDx ?? ((item.unitCapKw || 1000) / 500 * 10);
+                    const isClosed = isClosedTower || item.key === 'cooling_tower' || catEntry?.tower_type === 'closed_tower';
+                    const getA = (typeof window !== 'undefined' && typeof window.A === 'function') ? window.A : (typeof A === 'function' ? A : null);
+                    const sprayRatio = getA ? getA('closed_tower_spray_pump_kw_per_kw') : 0.0055;
+                    const nominalCap = item.unitCapKw || catEntry?.capKw || catEntry?.heat_rejection_kw || 1000;
+                    const sprayKw = isClosed
+                        ? Math.max(catEntry?.pump_kw ?? catEntry?.pumpKw ?? 0, nominalCap * sprayRatio)
+                        : 0;
+                    return fanKw + sprayKw;
                 }
                 if ((role === 'terminal' && item.key !== 'cdu_unit') || item.key === 'crah_unit' || item.key?.includes('rdhx')) {
                     return catEntry?.fanPowerKw ?? ((item.unitCapKw || 60) * 0.08);
@@ -1114,16 +1126,19 @@
                 return catEntry?.powerKw ?? catEntry?.capKw ?? item.unitCapKw ?? 0;
             };
 
-            const getSizingStats = (keys) => {
+            // R8: 共用冷卻機房的主機房設備（冷卻塔、泵、冰機）存在 plant.system.sizing，成員單元只保留終端設備，
+            // 兩者合併統計才不會漏算也不會重複
+            const plantSystems = (state.coolingPlants || []).filter(p => !p.isEmpty).map(p => p.system || {});
+            const getSizingStats = (match) => {
                 let totalSelectedQty = 0;
                 let totalRunningPowerKw = 0;
-                const keySet = new Set(Array.isArray(keys) ? keys : [keys]);
-                const allItems = [...allCduSystems, ...allFwSystems].flatMap(s => s.sizing || []);
-                allItems.filter(item => keySet.has(item.key)).forEach(item => {
+                const pred = (typeof match === 'function') ? match : ((item) => new Set(Array.isArray(match) ? match : [match]).has(item.key));
+                const allItems = [...allCduSystems, ...allFwSystems, ...plantSystems].flatMap(s => s.sizing || []);
+                allItems.filter(item => (item.requiredKw ?? 1) > 0 && pred(item)).forEach(item => {
                     const qty = item.selectedQty || 0;
                     totalSelectedQty += qty;
-                    const runningQty = (typeof window.AppStore !== 'undefined' && typeof window.AppStore.runningQtyFromSelected === 'function')
-                        ? window.AppStore.runningQtyFromSelected(qty)
+                    const runningQty = (typeof window.SizingEngine !== 'undefined' && typeof window.SizingEngine.runningQty === 'function')
+                        ? window.SizingEngine.runningQty(qty, item.redundancy || 'N+1')
                         : Math.max(1, qty - 1);
                     const unitPower = resolveItemPower(item);
                     totalRunningPowerKw += runningQty * unitPower;
@@ -1135,10 +1150,10 @@
             };
 
             const cduStats = getSizingStats('cdu_unit');
-            const pumpStats = getSizingStats(['cdu_pump', 'fw_pump']);
-            const rejStats = getSizingStats(['dry_cooler', 'cooling_tower', 'adiabatic_tower']);
+            const pumpStats = getSizingStats(item => item.role === 'pump' || /_pump$/.test(item.key || ''));
+            const rejStats = getSizingStats(item => item.role === 'heat_rejection' || ['dry_cooler', 'cooling_tower', 'closed_tower', 'adiabatic_tower'].includes(item.key));
             const fanStats = getSizingStats(['crah_unit', 'rdhx_unit']);
-            const chillerStats = getSizingStats(['trim_chiller', 'air_cooled_chiller', 'water_cooled_chiller']);
+            const chillerStats = getSizingStats(item => item.role === 'chiller' || ['trim_chiller', 'air_cooled_chiller', 'water_cooled_chiller'].includes(item.key));
             const chillerOperatingHours = (hourlyProfile || []).filter(h => (h.chillerKw || 0) > 0).length;
 
             // FLH 設備台帳
@@ -1159,7 +1174,7 @@
                     note: _t('dash.flhCduNote', null, '全時 100% 運轉散熱')
                 },
                 {
-                    name: _t('dash.flhPumpName', null, 'CDU 一次側設施循環泵浦群'),
+                    name: _t('dash.flhPumpName', null, '全廠水泵群（FWS / 排熱側 / 冰水 / 冷卻水）'),
                     tag: _t('dash.flhPumpTag', null, '一次水路'),
                     qty: pumpStats.qty > 0 ? _t('dash.flhPumpQty', { qty: pumpStats.qty }, `${pumpStats.qty} 台 (變頻 N+1)`) : _t('dash.flhZeroUnits', null, '0 台'),
                     kwh: Math.round(Math.max(0, (bk.cduPump || 0) - (bk.cduUnitKwh || 0)) / 1000),
@@ -1170,11 +1185,15 @@
                 {
                     name: _t('dash.flhRejName', { arch: cduArchLabel }, `室外排熱設備 (${cduArchLabel})`),
                     tag: _t('dash.flhRejTag', null, '室外排熱'),
-                    qty: rejStats.qty > 0 ? _t('dash.flhRejQty', { qty: rejStats.qty }, `${rejStats.qty} 台 (EC 風機群)`) : _t('dash.flhZeroUnits', null, '0 台'),
+                    qty: rejStats.qty > 0 
+                        ? (isTower ? _t('dash.flhRejTowerQty', { qty: rejStats.qty }, `${rejStats.qty} 台 (冷卻水塔群)`) : _t('dash.flhRejQty', { qty: rejStats.qty }, `${rejStats.qty} 台 (EC 風機群)`)) 
+                        : _t('dash.flhZeroUnits', null, '0 台'),
                     kwh: Math.round((bk.heatRejection || 0) / 1000),
                     powerKw: rejStats.powerKw,
                     hours: 8760,
-                    note: isCduFree ? _t('dash.flhRejFree', null, '全自然排熱 (零冰機)') : _t('dash.flhRejTrim', null, '噴霧/乾態智慧切換')
+                    note: isCduFree 
+                        ? (isTower ? _t('dash.flhRejTowerFree', null, '全時濕球蒸發自然排熱 (零冰機)') : _t('dash.flhRejFree', null, '全自然排熱 (零冰機)')) 
+                        : _t('dash.flhRejTrim', null, '噴霧/乾態智慧切換')
                 },
                 {
                     name: _t('dash.flhFanName', null, '室內風牆 / CRAH / RDHx 送風機群'),
@@ -1199,7 +1218,7 @@
                     tag: _t('dash.flhElecTag', null, '電力傳輸'),
                     qty: _t('dash.flhElecQty', null, '全廠集中配電母線'),
                     kwh: Math.round((bk.loss || 0) / 1000),
-                    powerKw: Math.round(totalItKw * ((state.facilityElectricalLossPct || 0) / 100)),
+                    powerKw: totalItKw * ((state.facilityElectricalLossPct || 0) / 100),
                     hours: 8760,
                     note: _t('dash.flhElecNote', { loss: (state.facilityElectricalLossPct || 0) }, `損失率 ${(state.facilityElectricalLossPct || 0)}% (雙轉換/變壓阻抗)`)
                 }
@@ -1208,8 +1227,8 @@
             let flhRows = '';
             flhTable.forEach(row => {
                 const sharePct = totalCoolingKwh > 0 ? (((row.kwh * 1000) / (overall.annualTotalMwh * 1000)) * 100).toFixed(1) : '0.0';
-                const flh = row.powerKw > 0 ? Math.round((row.kwh * 1000) / row.powerKw) : 0;
-                const avgPlr = ((flh / 8760) * 100).toFixed(1);
+                const flh = row.powerKw > 0 ? Math.min(row.hours, Math.round((row.kwh * 1000) / row.powerKw)) : 0;
+                const avgPlr = Math.min(100.0, (flh / 8760) * 100).toFixed(1);
 
                 flhRows += `
                     <tr class="border-b border-border-subtle hover:bg-bg transition text-xs">
@@ -1342,7 +1361,7 @@
                             </div>
                         </div>
 
-                        <!-- 子系統 2: 室外排熱 (絕熱塔/乾冷器) -->
+                        <!-- 子系統 2: 室外排熱 (絕熱塔/乾冷器/密閉水塔) -->
                         <div class="p-4 bg-surface rounded-xl border border-border hover:border-brand-300 transition-all space-y-3">
                             <div class="flex items-center justify-between border-b border-border-subtle pb-2.5">
                                 <div class="flex items-center gap-2">
@@ -1350,19 +1369,21 @@
                                     <span class="font-bold text-sm text-primary">${_t('dash.outdoorRejCardTitle', { arch: cduArchLabel }, `🌬️ 室外排熱 (${cduArchLabel})`)}</span>
                                 </div>
                                 <span class="px-2 py-0.5 rounded text-[10px] font-bold ${isCduFree ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-amber-50 text-amber-700 border border-amber-200'}">
-                                    ${isCduFree ? _t('dash.rejBadgeFree', null, '🟢 零冰機乾態/濕球排熱') : _t('dash.rejBadgeTrim', null, '🟡 噴霧預冷蒸發輔助')}
+                                    ${isCduFree 
+                                        ? (isTower ? _t('dash.rejBadgeTowerFree', null, '🟢 零冰機濕球蒸發排熱') : _t('dash.rejBadgeFree', null, '🟢 零冰機乾態/濕球排熱')) 
+                                        : _t('dash.rejBadgeTrim', null, '🟡 噴霧預冷蒸發輔助')}
                                 </span>
                             </div>
                             <div class="grid grid-cols-2 gap-2 text-xs">
                                 <div class="p-2.5 bg-bg rounded-lg">
-                                    <span class="text-[10px] text-tertiary block">${_t('dash.ecFanGroup', null, '頂置 EC 排熱風扇群')}</span>
+                                    <span class="text-[10px] text-tertiary block">${isTower ? _t('dash.towerFanGroup', null, '冷卻水塔排熱風機群') : _t('dash.ecFanGroup', null, '頂置 EC 排熱風扇群')}</span>
                                     <span class="font-mono font-bold text-primary text-sm">${_t('dash.fanSpeedVal', { spd: rejFanSpeed }, `${rejFanSpeed}% 轉速`)}</span>
                                     <span class="text-[10px] text-secondary block mt-0.5">${_t('dash.fanPowerSub', { kw: Math.round((curHour.coolingKw - (curHour.chillerKw||0) - (curHour.cduPumpKw||0)) * 0.6) }, `耗電: ${Math.round((curHour.coolingKw - (curHour.chillerKw||0) - (curHour.cduPumpKw||0)) * 0.6)} kW`)}</span>
                                 </div>
                                 <div class="p-2.5 bg-bg rounded-lg">
-                                    <span class="text-[10px] text-tertiary block">${_t('dash.spraySys', null, '絕熱噴霧預冷系統')}</span>
-                                    <span class="font-mono font-bold ${sprayM3h !== '0.00' ? 'text-cyan-700' : 'text-slate-400'} text-sm">${sprayM3h !== '0.00' ? _t('dash.sprayActive', null, '💧 噴霧啟動中') : _t('dash.dryStandby', null, '⚪ 乾態待機')}</span>
-                                    <span class="text-[10px] text-secondary block mt-0.5">${_t('dash.sprayWaterSub', { m3: sprayM3h }, `噴霧水耗: ${sprayM3h} m³/h`)}</span>
+                                    <span class="text-[10px] text-tertiary block">${isTower ? _t('dash.towerSpraySys', null, '盤管噴淋水系統') : _t('dash.spraySys', null, '絕熱噴霧預冷系統')}</span>
+                                    <span class="font-mono font-bold ${sprayM3h !== '0.00' ? 'text-cyan-700' : 'text-slate-400'} text-sm">${isTower ? (sprayM3h !== '0.00' ? _t('dash.towerSprayActive', null, '💧 噴淋循環中') : _t('dash.towerSprayStandby', null, '⚪ 停機待機')) : (sprayM3h !== '0.00' ? _t('dash.sprayActive', null, '💧 噴霧啟動中') : _t('dash.dryStandby', null, '⚪ 乾態待機'))}</span>
+                                    <span class="text-[10px] text-secondary block mt-0.5">${isTower ? _t('dash.towerWaterSub', { m3: sprayM3h }, `蒸發與補水量: ${sprayM3h} m³/h`) : _t('dash.sprayWaterSub', { m3: sprayM3h }, `噴霧水耗: ${sprayM3h} m³/h`)}</span>
                                 </div>
                                 <div class="p-2.5 bg-bg rounded-lg">
                                     <span class="text-[10px] text-tertiary block">${_t('dash.rejApproach', null, '排熱 Approach')}</span>
