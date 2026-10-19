@@ -5289,6 +5289,76 @@ function sizeCduToDeratedN1(S) {
     assert.strictEqual(newDus.length, 2);
     assert.strictEqual(newDus[0].templateRef.id, imported2[0].id);
   });
+
+  test('W-6 Global weather stations discovery, country options, continent filtering, and fallback metadata', async () => {
+    const { buildWindow } = require('./dom_harness.js');
+    const win = buildWindow();
+    const VW = win.ViewWeather;
+    const WS = win.WeatherSource;
+
+    // 1. 165 Global stations available at startup
+    const initialStations = VW.getInitialStations();
+    assert.strictEqual(initialStations.length, 165, 'Initial stations must load 165 catalog stations');
+
+    // 2. Global countries options in Traditional Chinese and English
+    win.I18N.setLang('zh-TW');
+    const zhOptions = VW.getCountryOptions();
+    assert(zhOptions.includes('台灣') && zhOptions.includes('日本') && zhOptions.includes('美國') && zhOptions.includes('新加坡') && zhOptions.includes('德國'), 'ZH country options must include multiple global countries');
+
+    win.I18N.setLang('en');
+    const enOptions = VW.getCountryOptions();
+    assert(enOptions.includes('Japan') && enOptions.includes('United States') && enOptions.includes('Singapore') && enOptions.includes('Germany'), 'EN country options must include multiple global countries');
+
+    // 3. Continent filtering parity
+    win.I18N.setLang('zh-TW');
+    VW.onFilterContinent('Americas');
+    assert.strictEqual(VW.filterStations().length, 52, 'Americas must have 52 stations');
+    assert(VW.getCountryOptions().includes('美國') && !VW.getCountryOptions().includes('日本'), 'Americas country options must only contain American countries');
+
+    VW.onFilterContinent('Asia');
+    assert.strictEqual(VW.filterStations().length, 46, 'Asia must have 46 stations');
+
+    VW.onFilterContinent('Europe');
+    assert.strictEqual(VW.filterStations().length, 36, 'Europe must have 36 stations');
+
+    VW.onFilterContinent('Africa');
+    assert.strictEqual(VW.filterStations().length, 21, 'Africa must have 21 stations');
+
+    VW.onFilterContinent('Oceania');
+    assert.strictEqual(VW.filterStations().length, 10, 'Oceania must have 10 stations');
+
+    // Reset continent filter
+    VW.onFilterContinent('');
+
+    // 4. Country filtering
+    VW.onFilterCountry('日本');
+    const jpStations = VW.filterStations();
+    assert.strictEqual(jpStations.length, 3, 'Japan must have 3 stations (Narita, Osaka, Chiyoda)');
+    assert(jpStations.every(s => s.countryZh === '日本'), 'All filtered stations must be Japan');
+
+    VW.onFilterCountry('新加坡');
+    const sgStations = VW.filterStations();
+    assert.strictEqual(sgStations.length, 1, 'Singapore must have 1 station');
+    assert.strictEqual(sgStations[0].countryCode, 'SGP');
+
+    // Reset country filter
+    VW.onFilterCountry('');
+
+    // 5. Fallback builtinList metadata integrity (no hardcoded Taiwan for international stations)
+    const sgpBuiltin = VW.builtinList.find(b => b.key.includes('新加坡'));
+    assert(sgpBuiltin && sgpBuiltin.countryCode === 'SGP' && sgpBuiltin.flag === '🇸🇬', 'Singapore builtin must have SGP countryCode and flag');
+
+    const usaBuiltin = VW.builtinList.find(b => b.key.includes('美國'));
+    assert(usaBuiltin && usaBuiltin.countryCode === 'USA' && usaBuiltin.flag === '🇺🇸', 'USA builtin must have USA countryCode and flag');
+
+    const phlBuiltin = VW.builtinList.find(b => b.key.includes('菲律賓'));
+    assert(phlBuiltin && phlBuiltin.countryCode === 'PHL' && phlBuiltin.flag === '🇵🇭', 'Philippines builtin must have PHL countryCode and flag');
+
+    // 6. Builtin offline station loads without fetch
+    const tyStation = await WS.loadStation('TWN_NOR_Taoyuan.589650_TMYx.2011-2025');
+    assert.strictEqual(tyStation.source, 'builtin');
+    assert.strictEqual(tyStation.hourlyData.length, 8760);
+  });
 })();
 
 console.log(`\n${passCount} passed, ${failCount} failed, ${skipCount} skipped`);

@@ -205,16 +205,30 @@
 
             // In browser environment:
             if (typeof document !== 'undefined') {
-                return new Promise((resolve) => {
-                    const script = document.createElement('script');
-                    script.src = this.basePath() + 'weather_data.js';
-                    script.onload = () => resolve(root.BUILTIN_WEATHER_STATIONS || null);
-                    script.onerror = () => resolve(null);
-                    (document.head || document.documentElement).appendChild(script);
-                });
+                const candidates = [
+                    'js/weather_data.js',
+                    this.basePath() + 'weather_data.js',
+                    'weather_catalog/weather_data.js',
+                    '../天氣資料/weather_data.js',
+                    '天氣資料/weather_data.js',
+                    '/天氣資料/weather_data.js'
+                ];
+                for (const src of candidates) {
+                    if (root.BUILTIN_WEATHER_STATIONS && root.BUILTIN_WEATHER_STATIONS.length > 0) {
+                        return root.BUILTIN_WEATHER_STATIONS;
+                    }
+                    const ok = await new Promise((resolve) => {
+                        const script = document.createElement('script');
+                        script.src = src;
+                        script.onload = () => resolve(Boolean(root.BUILTIN_WEATHER_STATIONS && root.BUILTIN_WEATHER_STATIONS.length > 0));
+                        script.onerror = () => resolve(false);
+                        (document.head || document.documentElement).appendChild(script);
+                    });
+                    if (ok) return root.BUILTIN_WEATHER_STATIONS;
+                }
             }
 
-            return null;
+            return root.BUILTIN_WEATHER_STATIONS || null;
         },
 
         async listStations() {
@@ -377,12 +391,31 @@
                 if (typeof fetch !== 'function') {
                     throw new WeatherSourceError('NOT_FOUND', `Cannot load hourly data for ${id} without fetch`);
                 }
-                const url = this.basePath() + 'hourly/' + encodeURIComponent(id) + '.json';
-                const resp = await fetch(url);
-                if (!resp.ok) {
-                    throw new WeatherSourceError('NOT_FOUND', `${id} (HTTP ${resp.status})`);
+                const candidateBases = [
+                    this.basePath(),
+                    'weather_catalog/',
+                    '../天氣資料/',
+                    '天氣資料/',
+                    '/天氣資料/'
+                ];
+                let lastErr = null;
+                for (const base of candidateBases) {
+                    try {
+                        const url = base + 'hourly/' + encodeURIComponent(id) + '.json';
+                        const resp = await fetch(url);
+                        if (resp.ok) {
+                            raw = await resp.json();
+                            break;
+                        } else {
+                            lastErr = `HTTP ${resp.status}`;
+                        }
+                    } catch (e) {
+                        lastErr = e.message;
+                    }
                 }
-                raw = await resp.json();
+                if (!raw) {
+                    throw new WeatherSourceError('NOT_FOUND', `${id} (${lastErr || 'unknown'})`);
+                }
             }
 
             const hourlyData = this.adaptHourly(raw);

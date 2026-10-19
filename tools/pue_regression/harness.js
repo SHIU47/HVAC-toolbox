@@ -29,6 +29,7 @@ const FILES = ['assumptions.js','i18n.js','i18n_zh.js','i18n_en.js','engines_cor
   'sizing/sizing_engine.js',
   'simulation/annual_runner.js',
   'weather_builtin.js',
+  'weather_data.js',
   'weather_source.js',
   'ashrae_design_conditions.js',
   'epw_parser.js',

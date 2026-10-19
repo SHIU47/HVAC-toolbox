@@ -16,13 +16,13 @@
 
     const ViewWeather = {
         builtinList: [
-            { key: '桃園 (Taoyuan Pilot)', desc: 'Vera Rubin Pilot 標竿案場 (真實 EPW)', db: 22.8, wb: 19.5, dp: 17.2, rh: 76.5 },
-            { key: '新加坡 (Singapore)', desc: '東南亞超大規模數據中心樞紐 (樟宜 EPW)', db: 28.0, wb: 25.1, dp: 24.1, rh: 80.0 },
-            { key: '高雄 (Kaohsiung)', desc: '南台灣高溫高濕案場 (真實 EPW)', db: 25.5, wb: 22.0, dp: 20.1, rh: 78.0 },
-            { key: '新竹 (Hsinchu)', desc: '竹科半導體園區 (真實 EPW)', db: 23.0, wb: 19.8, dp: 17.5, rh: 75.0 },
-            { key: '台中 (Taichung)', desc: '中台灣氣候 (真實 EPW)', db: 23.8, wb: 20.2, dp: 18.0, rh: 74.0 },
-            { key: '菲律賓 (Ambulong)', desc: '東南亞熱帶氣候 (真實 EPW)', db: 27.8, wb: 24.5, dp: 23.0, rh: 82.0 },
-            { key: '美國 (Alabama Andalusia)', desc: '美洲海外資料中心 (真實 EPW)', db: 18.5, wb: 15.2, dp: 13.0, rh: 68.0 }
+            { key: '桃園 (Taoyuan Pilot)', country: 'Taiwan', countryZh: '台灣', countryCode: 'TWN', flag: '🇹🇼', continent: 'Asia', desc: 'Vera Rubin Pilot 標竿案場 (真實 EPW)', db: 22.8, wb: 19.5, dp: 17.2, rh: 76.5 },
+            { key: '新加坡 (Singapore)', country: 'Singapore', countryZh: '新加坡', countryCode: 'SGP', flag: '🇸🇬', continent: 'Asia', desc: '東南亞超大規模數據中心樞紐 (樟宜 EPW)', db: 28.0, wb: 25.1, dp: 24.1, rh: 80.0 },
+            { key: '高雄 (Kaohsiung)', country: 'Taiwan', countryZh: '台灣', countryCode: 'TWN', flag: '🇹🇼', continent: 'Asia', desc: '南台灣高溫高濕案場 (真實 EPW)', db: 25.5, wb: 22.0, dp: 20.1, rh: 78.0 },
+            { key: '新竹 (Hsinchu)', country: 'Taiwan', countryZh: '台灣', countryCode: 'TWN', flag: '🇹🇼', continent: 'Asia', desc: '竹科半導體園區 (真實 EPW)', db: 23.0, wb: 19.8, dp: 17.5, rh: 75.0 },
+            { key: '台中 (Taichung)', country: 'Taiwan', countryZh: '台灣', countryCode: 'TWN', flag: '🇹🇼', continent: 'Asia', desc: '中台灣氣候 (真實 EPW)', db: 23.8, wb: 20.2, dp: 18.0, rh: 74.0 },
+            { key: '菲律賓 (Ambulong)', country: 'Philippines', countryZh: '菲律賓', countryCode: 'PHL', flag: '🇵🇭', continent: 'Asia', desc: '東南亞熱帶氣候 (真實 EPW)', db: 27.8, wb: 24.5, dp: 23.0, rh: 82.0 },
+            { key: '美國 (Alabama Andalusia)', country: 'United States', countryZh: '美國', countryCode: 'USA', flag: '🇺🇸', continent: 'Americas', desc: '美洲海外資料中心 (真實 EPW)', db: 18.5, wb: 15.2, dp: 13.0, rh: 68.0 }
         ],
         searchQuery: '',
         continentFilter: '',
@@ -43,6 +43,8 @@
                     this.renderStationList();
                     const sel = document.getElementById('stationCountrySelect');
                     if (sel) sel.innerHTML = '<option value="">' + t('weather.allCountries', null, '全部國家') + '</option>' + this.getCountryOptions();
+                    const countEl = document.getElementById('stationCountBadge');
+                    if (countEl) countEl.innerText = t('weather.stationCount', { n: this.stationsList.length }, `共 ${this.stationsList.length} 站`);
                     return this.stationsList;
                 });
             }
@@ -51,19 +53,21 @@
 
         getInitialStations() {
             if (this.stationsList && this.stationsList.length > 0) return this.stationsList;
-            if (window.BUILTIN_WEATHER_STATIONS && window.BUILTIN_WEATHER_STATIONS.length > 0) {
-                return window.BUILTIN_WEATHER_STATIONS;
+            const globalStations = (typeof window !== 'undefined' ? window.BUILTIN_WEATHER_STATIONS : null) ||
+                                   (typeof BUILTIN_WEATHER_STATIONS !== 'undefined' ? BUILTIN_WEATHER_STATIONS : null);
+            if (globalStations && globalStations.length > 0) {
+                return globalStations;
             }
             return this.builtinList.map(c => ({
                 id: window.WeatherSource?.REVERSE_BUILTIN_MAP?.[c.key] || c.key,
                 city: c.key,
                 cityZh: c.key,
                 stationName: c.key,
-                country: 'TWN',
-                countryZh: '台灣',
-                countryCode: 'TWN',
-                flag: '🇹🇼',
-                continent: 'Asia',
+                country: c.country,
+                countryZh: c.countryZh,
+                countryCode: c.countryCode,
+                flag: c.flag,
+                continent: c.continent,
                 extDB: c.db,
                 extWB: c.wb,
                 source: 'builtin',
@@ -112,6 +116,7 @@
                            (s.city && s.city.toLowerCase().includes(q)) ||
                            (s.countryZh && s.countryZh.toLowerCase().includes(q)) ||
                            (s.country && s.country.toLowerCase().includes(q)) ||
+                           (s.countryCode && s.countryCode.toLowerCase().includes(q)) ||
                            (s.id && s.id.toLowerCase().includes(q)) ||
                            (s.wmo && String(s.wmo).includes(q));
                 });
@@ -120,7 +125,7 @@
                 list = list.filter(s => s.continent === this.continentFilter);
             }
             if (this.countryFilter) {
-                list = list.filter(s => (s.countryZh === this.countryFilter || s.country === this.countryFilter));
+                list = list.filter(s => (s.countryZh === this.countryFilter || s.country === this.countryFilter || s.countryCode === this.countryFilter));
             }
             if (this.zoneFilter) {
                 list = list.filter(s => s.zone === this.zoneFilter);
@@ -263,7 +268,7 @@
                             <div class="lg:col-span-2 space-y-2.5">
                                 <div class="flex items-center justify-between">
                                     <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider">${t('weather.selectStation', null, '選擇案場氣象測站 (165 站全球氣候資料庫)')}</label>
-                                    <span class="text-[11px] text-slate-400 font-medium">${t('weather.stationCount', { n: totalStationsCount }, `共 ${totalStationsCount} 站`)}</span>
+                                    <span id="stationCountBadge" class="text-[11px] text-slate-400 font-medium">${t('weather.stationCount', { n: totalStationsCount }, `共 ${totalStationsCount} 站`)}</span>
                                 </div>
 
                                 ${fileProtocolWarning}
