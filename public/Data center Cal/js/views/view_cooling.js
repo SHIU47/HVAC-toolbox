@@ -44,9 +44,28 @@
             return (plants.length === 0) ? 'dedicated' : (this._lastPreset || 'custom');
         },
 
+        _renderTimer: null,
+        scheduleRender() {
+            if (this._renderTimer) clearTimeout(this._renderTimer);
+            this._renderTimer = setTimeout(() => {
+                this._renderTimer = null;
+                const container = document.getElementById('stepContent');
+                if (container && window.App && window.App.currentStep === 4) {
+                    this.render(container);
+                }
+            }, 0);
+        },
+
         render(container) {
+            if (this._renderTimer) {
+                clearTimeout(this._renderTimer);
+                this._renderTimer = null;
+            }
             const scrollPos = (typeof window !== 'undefined') ? (window.scrollY || document.documentElement.scrollTop || 0) : 0;
-            const activeId = (typeof document !== 'undefined' && document.activeElement) ? document.activeElement.id : null;
+            const activeEl = (typeof document !== 'undefined' && document.activeElement) ? document.activeElement : null;
+            const activeId = (activeEl && activeEl.id) ? activeEl.id : null;
+            const selStart = (activeEl && typeof activeEl.selectionStart === 'number') ? activeEl.selectionStart : null;
+            const selEnd = (activeEl && typeof activeEl.selectionEnd === 'number') ? activeEl.selectionEnd : null;
 
             const state = window.AppStore.state;
             const halls = state.halls;
@@ -309,6 +328,9 @@
                 const el = document.getElementById(activeId);
                 if (el) {
                     el.focus();
+                    if (selStart !== null && selEnd !== null && typeof el.setSelectionRange === 'function') {
+                        try { el.setSelectionRange(selStart, selEnd); } catch (_) {}
+                    }
                 }
             }
             if (window.UIKit) window.UIKit.refreshIcons(container);
@@ -999,7 +1021,7 @@ ${inputsHtml}
                             <div class="p-4 bg-slate-50/80 rounded-xl border border-slate-200 space-y-3 shadow-2xs">
                                 <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-200/60 pb-2.5">
                                     <div class="flex items-center gap-2 flex-wrap">
-                                        <input type="text" value="${window.UIKit ? window.UIKit.escapeHTML(plant.name) : plant.name}" onchange="ViewCooling.renamePlant('${plant.id}', this.value)" class="text-xs font-bold bg-white border border-slate-300 rounded px-2 py-1 text-slate-900 w-36 sm:w-44 focus:ring-1 focus:ring-purple-500" placeholder="${_t('cooling.plantName', null, '系統名稱')}">
+                                        <input type="text" id="plantNameIn_${plant.id}" value="${window.UIKit ? window.UIKit.escapeHTML(plant.name) : plant.name}" onchange="ViewCooling.renamePlant('${plant.id}', this.value)" onkeydown="if(event.key==='Enter')this.blur()" class="text-xs font-bold bg-white border border-slate-300 rounded px-2 py-1 text-slate-900 w-36 sm:w-44 focus:ring-1 focus:ring-purple-500" placeholder="${_t('cooling.plantName', null, '系統名稱')}">
                                         <select onchange="ViewCooling.changePlantRedundancy('${plant.id}', this.value)" class="text-xs font-bold bg-white border border-slate-300 rounded px-2 py-1 text-slate-800">
                                             <option value="N" ${redundancy === 'N' ? 'selected' : ''}>N</option>
                                             <option value="N+1" ${redundancy === 'N+1' ? 'selected' : ''}>N+1</option>
@@ -1008,7 +1030,7 @@ ${inputsHtml}
                                         </select>
                                         <div class="flex items-center gap-1 text-[11px] text-slate-600">
                                             <span>${_t('cooling.diversityFactor', null, '同時使用係數')}</span>
-                                            <input type="number" step="0.05" min="0.5" max="1.2" value="${diversity}" onchange="ViewCooling.changePlantDiversity('${plant.id}', this.value)" class="w-16 text-xs font-bold bg-white border border-slate-300 rounded px-1.5 py-0.5 text-slate-900 text-center">
+                                            <input type="number" id="plantDiversityIn_${plant.id}" step="0.05" min="0.5" max="1.2" value="${diversity}" onchange="ViewCooling.changePlantDiversity('${plant.id}', this.value)" onkeydown="if(event.key==='Enter')this.blur()" class="w-16 text-xs font-bold bg-white border border-slate-300 rounded px-1.5 py-0.5 text-slate-900 text-center">
                                         </div>
                                     </div>
                                     <div class="flex items-center gap-2 shrink-0">
@@ -1233,7 +1255,7 @@ ${inputsHtml}
                             </div>
                             <div>
                                 <label class="block text-[9px] text-slate-400 font-bold mb-0.5">${_t('cooling.selectedQty', null, '選定台數')}</label>
-                                <input type="number" min="1" max="50" value="${item.selectedQty}" onchange="ViewCooling.changeQty('${plant.id}', '${plant.loop}', '${item.key}', this.value)" class="w-full text-xs font-black border rounded-lg p-1.5 bg-white text-slate-900 text-center">
+                                <input type="number" id="qty_plant_${plant.id}_${plant.loop}_${item.key}" min="1" max="50" value="${item.selectedQty}" onchange="ViewCooling.changeQty('${plant.id}', '${plant.loop}', '${item.key}', this.value)" onkeydown="if(event.key==='Enter')this.blur()" class="w-full text-xs font-black border rounded-lg p-1.5 bg-white text-slate-900 text-center">
                             </div>
                         </div>
                         <div class="text-[10px] flex justify-between text-slate-400 pt-0.5 border-t border-slate-200">
@@ -1456,7 +1478,7 @@ ${inputsHtml}
 
         renamePlant(plantId, name) {
             window.AppStore.updateCoolingPlant(plantId, { name: name.trim() });
-            this.render(document.getElementById('stepContent'));
+            this.scheduleRender();
         },
 
         changePlantRedundancy(plantId, redundancy) {
@@ -1476,7 +1498,7 @@ ${inputsHtml}
             if (Number.isFinite(d)) {
                 window.AppStore.updateCoolingPlant(plantId, { diversityFactor: d });
             }
-            this.render(document.getElementById('stepContent'));
+            this.scheduleRender();
         },
 
         togglePlantMember(plantId, memberId) {
@@ -1553,7 +1575,7 @@ ${inputsHtml}
             }
             window.AppStore.syncAllUnitsFromPlants();
             window.AppStore.notify();
-            this.render(document.getElementById('stepContent'));
+            this.scheduleRender();
         },
 
         getTargetObj(targetId) {
@@ -1613,7 +1635,7 @@ ${inputsHtml}
 
         changeQty(targetId, sysType, equipKey, qty) {
             window.AppStore.updateSelectedEquipment(targetId, sysType, equipKey, undefined, qty);
-            this.render(document.getElementById('stepContent'));
+            this.scheduleRender();
         },
 
         changeRedundancy(targetId, sysType, equipKey, redundancy) {
@@ -1727,7 +1749,7 @@ ${inputsHtml}
 
                 window.AppStore.notify();
             }
-            this.render(document.getElementById('stepContent'));
+            this.scheduleRender();
         },
 
         updateFwParams(targetId) {
@@ -1775,7 +1797,7 @@ ${inputsHtml}
 
                 window.AppStore.notify();
             }
-            this.render(document.getElementById('stepContent'));
+            this.scheduleRender();
         }
     };
 

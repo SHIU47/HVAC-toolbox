@@ -34,9 +34,28 @@
     };
 
     const EquipmentDesigner = {
+        _renderTimers: {},
+        scheduleRender(containerId, options) {
+            if (this._renderTimers[containerId]) clearTimeout(this._renderTimers[containerId]);
+            this._renderTimers[containerId] = setTimeout(() => {
+                delete this._renderTimers[containerId];
+                this.render(containerId, options);
+            }, 0);
+        },
+
         render(containerId, options) {
             const container = document.getElementById(containerId);
             if (!container) return;
+
+            if (this._renderTimers[containerId]) {
+                clearTimeout(this._renderTimers[containerId]);
+                delete this._renderTimers[containerId];
+            }
+
+            const activeEl = (typeof document !== 'undefined') ? document.activeElement : null;
+            const activeId = (activeEl && activeEl.id) ? activeEl.id : null;
+            const selStart = (activeEl && typeof activeEl.selectionStart === 'number') ? activeEl.selectionStart : null;
+            const selEnd = (activeEl && typeof activeEl.selectionEnd === 'number') ? activeEl.selectionEnd : null;
 
             const eqList = options.equipment || [];
             const lossPct = options.electricalLossFactorPct || 8.0;
@@ -72,13 +91,14 @@
                 const qty = item.qty || 1;
                 const rowTotalKw = (item.itLoadKw * qty).toFixed(1);
                 const rowLiqKw = (item.itLoadKw * qty * (item.liquidPct / 100)).toFixed(1);
+                const rowKey = containerId + '_' + idx;
 
                 tableRows += '<tr class="border-b border-slate-100 hover:bg-slate-50/60 text-xs">'
                     + '<td class="py-2.5 px-3"><span class="px-1.5 py-0.5 rounded font-mono font-bold text-[10px] ' + (item.category === 'GPU' ? 'bg-purple-100 text-purple-800' : 'bg-indigo-100 text-indigo-800') + '">' + window.UIKit.escapeHTML(item.category || 'CUSTOM') + '</span></td>'
-                    + '<td class="py-2.5 px-3"><input type="text" value="' + window.UIKit.escapeHTML(item.model) + '" onchange="EquipmentDesigner.updateItem(\'' + containerId + '\', ' + idx + ', \'model\', this.value)" class="w-full font-bold text-slate-800 border border-transparent hover:border-slate-300 focus:border-purple-500 rounded p-1 bg-transparent"></td>'
-                    + '<td class="py-2.5 px-3 text-center"><input type="number" value="' + item.qty + '" min="1" max="128" step="1" oninput="EquipmentDesigner.updateItem(\'' + containerId + '\', ' + idx + ', \'qty\', parseInt(this.value,10)||1)" class="w-14 text-center font-bold text-slate-900 border rounded p-1 bg-white"></td>'
-                    + '<td class="py-2.5 px-3 text-right"><input type="number" value="' + item.itLoadKw + '" min="0" max="500" step="0.5" oninput="EquipmentDesigner.updateItem(\'' + containerId + '\', ' + idx + ', \'itLoadKw\', parseFloat(this.value)||0)" class="w-16 text-right font-bold text-slate-900 border rounded p-1 bg-white"> kW</td>'
-                    + '<td class="py-2.5 px-3 text-center"><div class="flex items-center justify-center gap-1"><input type="number" value="' + item.liquidPct + '" min="0" max="100" step="1" oninput="EquipmentDesigner.updateItemLiquid(\'' + containerId + '\', ' + idx + ', parseFloat(this.value)||0)" class="w-12 text-center font-bold text-emerald-700 border rounded p-1 bg-white"> %</div></td>'
+                    + '<td class="py-2.5 px-3"><input type="text" id="ed_model_' + rowKey + '" value="' + window.UIKit.escapeHTML(item.model) + '" onchange="EquipmentDesigner.updateItem(\'' + containerId + '\', ' + idx + ', \'model\', this.value)" class="w-full font-bold text-slate-800 border border-transparent hover:border-slate-300 focus:border-purple-500 rounded p-1 bg-transparent"></td>'
+                    + '<td class="py-2.5 px-3 text-center"><input type="number" id="ed_qty_' + rowKey + '" value="' + item.qty + '" min="1" max="128" step="1" onchange="EquipmentDesigner.updateItem(\'' + containerId + '\', ' + idx + ', \'qty\', parseInt(this.value,10)||1)" onkeydown="if(event.key===\'Enter\')this.blur()" class="w-14 text-center font-bold text-slate-900 border rounded p-1 bg-white"></td>'
+                    + '<td class="py-2.5 px-3 text-right"><input type="number" id="ed_kw_' + rowKey + '" value="' + item.itLoadKw + '" min="0" max="500" step="0.5" onchange="EquipmentDesigner.updateItem(\'' + containerId + '\', ' + idx + ', \'itLoadKw\', parseFloat(this.value)||0)" onkeydown="if(event.key===\'Enter\')this.blur()" class="w-16 text-right font-bold text-slate-900 border rounded p-1 bg-white"> kW</td>'
+                    + '<td class="py-2.5 px-3 text-center"><div class="flex items-center justify-center gap-1"><input type="number" id="ed_liq_' + rowKey + '" value="' + item.liquidPct + '" min="0" max="100" step="1" onchange="EquipmentDesigner.updateItemLiquid(\'' + containerId + '\', ' + idx + ', parseFloat(this.value)||0)" onkeydown="if(event.key===\'Enter\')this.blur()" class="w-12 text-center font-bold text-emerald-700 border rounded p-1 bg-white"> %</div></td>'
                     + '<td class="py-2.5 px-3 text-right font-extrabold text-purple-900">' + rowTotalKw + ' kW<div class="text-[10px] text-emerald-700 font-normal">💧 ' + rowLiqKw + ' kW</div></td>'
                     + '<td class="py-2.5 px-3 text-center"><button onclick="EquipmentDesigner.deleteItem(\'' + containerId + '\', ' + idx + ')" class="text-slate-400 hover:text-red-500 font-bold p-1">✕</button></td>'
                     + '</tr>';
@@ -109,6 +129,16 @@
                 + '<div><span class="text-[10px] font-bold text-emerald-800 uppercase">' + t('eqd.liquidHeat', null, '💧 液冷散熱量') + '</span><div class="text-base font-black text-emerald-950 mt-0.5">' + liquidHeatKw.toFixed(1) + ' kW <span class="text-[10px] font-semibold">(' + dlcPct.toFixed(1) + '%)</span></div></div>'
                 + '<div><span class="text-[10px] font-bold text-amber-800 uppercase">' + t('eqd.airHeat', null, '💨 氣冷散熱量') + '</span><div class="text-base font-black text-amber-950 mt-0.5">' + airHeatKw.toFixed(1) + ' kW</div></div>'
                 + '</div></div></div>';
+
+            if (activeId) {
+                const el = document.getElementById(activeId);
+                if (el) {
+                    el.focus();
+                    if (selStart !== null && selEnd !== null && typeof el.setSelectionRange === 'function') {
+                        try { el.setSelectionRange(selStart, selEnd); } catch (_) {}
+                    }
+                }
+            }
 
             container._designerOptions = options;
         },
@@ -172,7 +202,7 @@
             if (options.equipment[idx]) {
                 options.equipment[idx][field] = val;
                 if (options.onChange) options.onChange(options.equipment, options.electricalLossFactorPct);
-                this.render(containerId, options);
+                this.scheduleRender(containerId, options);
             }
         },
 
@@ -184,7 +214,7 @@
                 options.equipment[idx].liquidPct = liqPct;
                 options.equipment[idx].airPct = 100 - liqPct;
                 if (options.onChange) options.onChange(options.equipment, options.electricalLossFactorPct);
-                this.render(containerId, options);
+                this.scheduleRender(containerId, options);
             }
         },
 
@@ -194,7 +224,7 @@
             const options = container._designerOptions;
             options.electricalLossFactorPct = lossPct;
             if (options.onChange) options.onChange(options.equipment, options.electricalLossFactorPct);
-            this.render(containerId, options);
+            this.scheduleRender(containerId, options);
         }
     };
 

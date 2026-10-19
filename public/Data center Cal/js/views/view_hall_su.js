@@ -9,7 +9,29 @@
     const t = (k, p, fb) => (window.I18N ? window.I18N.t(k, p) : (fb || k));
 
     const ViewHallSU = {
+        _renderTimer: null,
+        scheduleRender() {
+            if (this._renderTimer) clearTimeout(this._renderTimer);
+            this._renderTimer = setTimeout(() => {
+                this._renderTimer = null;
+                const container = document.getElementById('stepContent');
+                if (container && window.App && window.App.currentStep === 2) {
+                    this.render(container);
+                }
+            }, 0);
+        },
+
         render(container) {
+            if (this._renderTimer) {
+                clearTimeout(this._renderTimer);
+                this._renderTimer = null;
+            }
+            const scrollPos = (typeof window !== 'undefined') ? (window.scrollY || document.documentElement.scrollTop || 0) : 0;
+            const activeEl = (typeof document !== 'undefined' && document.activeElement) ? document.activeElement : null;
+            const activeId = (activeEl && activeEl.id) ? activeEl.id : null;
+            const selStart = (activeEl && typeof activeEl.selectionStart === 'number') ? activeEl.selectionStart : null;
+            const selEnd = (activeEl && typeof activeEl.selectionEnd === 'number') ? activeEl.selectionEnd : null;
+
             const S = window.AppStore;
             const state = S.state;
             const halls = state.halls || [];
@@ -59,12 +81,13 @@
                         const airPct = (item.airPct !== undefined) ? item.airPct : (100 - liqPct);
                         const liqKw = itKw * (liqPct / 100);
 
+                        const rowKey = currentHall.id + '_' + du.id + '_' + su.id + '_' + eqIdx;
                         equipRows += '<tr class="border-b border-slate-100 hover:bg-slate-50/70 text-xs">'
                             + '<td class="py-2 px-2.5 font-mono font-black ' + (item.category === 'GPU' ? 'text-purple-700' : 'text-indigo-700') + '">' + (item.category || 'GPU') + '</td>'
-                            + '<td class="py-2 px-2.5"><input type="text" value="' + window.UIKit.escapeHTML(item.model) + '" onchange="ViewHallSU.updateEquipModel(\'' + currentHall.id + '\', \'' + du.id + '\', \'' + su.id + '\', ' + eqIdx + ', this.value)" class="w-full font-bold text-slate-800 border border-transparent hover:border-slate-300 focus:border-indigo-500 rounded p-1 bg-transparent text-xs"></td>'
-                            + '<td class="py-2 px-2.5 text-center"><input type="number" min="1" max="128" value="' + qty + '" oninput="ViewHallSU.updateEquipQty(\'' + currentHall.id + '\', \'' + du.id + '\', \'' + su.id + '\', ' + eqIdx + ', parseInt(this.value,10)||1)" class="w-14 text-center font-bold border rounded p-1 bg-white"></td>'
-                            + '<td class="py-2 px-2.5 text-right"><div class="flex items-center justify-end gap-1"><input type="number" min="0" max="1000" step="0.5" value="' + (item.itLoadKw || 0) + '" oninput="ViewHallSU.updateEquipKw(\'' + currentHall.id + '\', \'' + du.id + '\', \'' + su.id + '\', ' + eqIdx + ', parseFloat(this.value)||0)" class="w-16 text-right font-bold border rounded p-1 bg-white"><span class="text-xs text-slate-500">kW</span></div></td>'
-                            + '<td class="py-2 px-2.5 text-center"><div class="flex items-center justify-center gap-1"><input type="number" min="0" max="100" step="1" value="' + liqPct + '" oninput="ViewHallSU.updateEquipLiquid(\'' + currentHall.id + '\', \'' + du.id + '\', \'' + su.id + '\', ' + eqIdx + ', parseFloat(this.value)||0)" class="w-14 text-center font-black text-emerald-800 border border-emerald-300 rounded p-1 bg-emerald-50/50 focus:bg-white"><span class="text-xs font-bold text-slate-500">%</span></div><div class="text-[10px] text-slate-400 font-normal">' + t('su.airPct', { pct: airPct.toFixed(0) }, '氣冷 ' + airPct.toFixed(0) + '%') + '</div></td>'
+                            + '<td class="py-2 px-2.5"><input type="text" id="eq_model_' + rowKey + '" value="' + window.UIKit.escapeHTML(item.model) + '" onchange="ViewHallSU.updateEquipModel(\'' + currentHall.id + '\', \'' + du.id + '\', \'' + su.id + '\', ' + eqIdx + ', this.value)" class="w-full font-bold text-slate-800 border border-transparent hover:border-slate-300 focus:border-indigo-500 rounded p-1 bg-transparent text-xs"></td>'
+                            + '<td class="py-2 px-2.5 text-center"><input type="number" id="eq_qty_' + rowKey + '" min="1" max="128" value="' + qty + '" onchange="ViewHallSU.updateEquipQty(\'' + currentHall.id + '\', \'' + du.id + '\', \'' + su.id + '\', ' + eqIdx + ', parseInt(this.value,10)||1)" onkeydown="if(event.key===\'Enter\')this.blur()" class="w-14 text-center font-bold border rounded p-1 bg-white"></td>'
+                            + '<td class="py-2 px-2.5 text-right"><div class="flex items-center justify-end gap-1"><input type="number" id="eq_kw_' + rowKey + '" min="0" max="1000" step="0.5" value="' + (item.itLoadKw || 0) + '" onchange="ViewHallSU.updateEquipKw(\'' + currentHall.id + '\', \'' + du.id + '\', \'' + su.id + '\', ' + eqIdx + ', parseFloat(this.value)||0)" onkeydown="if(event.key===\'Enter\')this.blur()" class="w-16 text-right font-bold border rounded p-1 bg-white"><span class="text-xs text-slate-500">kW</span></div></td>'
+                            + '<td class="py-2 px-2.5 text-center"><div class="flex items-center justify-center gap-1"><input type="number" id="eq_liq_' + rowKey + '" min="0" max="100" step="1" value="' + liqPct + '" onchange="ViewHallSU.updateEquipLiquid(\'' + currentHall.id + '\', \'' + du.id + '\', \'' + su.id + '\', ' + eqIdx + ', parseFloat(this.value)||0)" onkeydown="if(event.key===\'Enter\')this.blur()" class="w-14 text-center font-black text-emerald-800 border border-emerald-300 rounded p-1 bg-emerald-50/50 focus:bg-white"><span class="text-xs font-bold text-slate-500">%</span></div><div class="text-[10px] text-slate-400 font-normal">' + t('su.airPct', { pct: airPct.toFixed(0) }, '氣冷 ' + airPct.toFixed(0) + '%') + '</div></td>'
                             + '<td class="py-2 px-2.5 text-right font-black text-purple-950">' + itKw.toFixed(1) + ' kW <div class="text-[10px] text-emerald-800 font-normal">💧 ' + liqKw.toFixed(1) + ' kW</div></td>'
                             + '<td class="py-2 px-2.5 text-center"><button onclick="ViewHallSU.deleteEquip(\'' + currentHall.id + '\', \'' + du.id + '\', \'' + su.id + '\', ' + eqIdx + ')" class="text-slate-400 hover:text-red-500 font-bold p-1">✕</button></td>'
                             + '</tr>';
@@ -95,7 +118,7 @@
                         + '<div class="flex flex-col sm:flex-row sm:items-center justify-between pb-3 border-b gap-2">'
                         + '<div class="flex items-center gap-2">'
                         + '<span class="text-base font-black text-indigo-950">🧩</span>'
-                        + '<input type="text" value="' + window.UIKit.escapeHTML(su.name) + '" onchange="ViewHallSU.renameSU(\'' + currentHall.id + '\', \'' + du.id + '\', \'' + su.id + '\', this.value)" class="font-extrabold text-slate-900 border rounded-lg px-2 py-1 text-sm bg-slate-50 border-slate-200">'
+                        + '<input type="text" id="su_name_' + currentHall.id + '_' + du.id + '_' + su.id + '" value="' + window.UIKit.escapeHTML(su.name) + '" onchange="ViewHallSU.renameSU(\'' + currentHall.id + '\', \'' + du.id + '\', \'' + su.id + '\', this.value)" class="font-extrabold text-slate-900 border rounded-lg px-2 py-1 text-sm bg-slate-50 border-slate-200">'
                         + '<span class="px-2 py-0.5 bg-indigo-50 text-indigo-950 text-xs font-bold rounded-md border border-indigo-200">'
                         + 'IT: <strong>' + suSumm.totalItKw.toFixed(1) + ' kW</strong> (💧 ' + suSumm.liquidHeatKw.toFixed(1) + ' kW &middot; ' + suSumm.dlcPct.toFixed(0) + '%)'
                         + '</span>'
@@ -154,7 +177,7 @@
                     + '<div>'
                     + '<div class="flex items-center gap-2">'
                     + '<span class="text-xl font-black text-purple-950">🏢</span>'
-                    + '<input type="text" value="' + window.UIKit.escapeHTML(du.name) + '" onclick="event.stopPropagation()" onchange="ViewHallSU.renameDU(\'' + currentHall.id + '\', \'' + du.id + '\', this.value)" class="text-base font-black text-purple-950 border rounded-xl px-3 py-1 bg-white border-purple-300">'
+                    + '<input type="text" id="du_name_' + currentHall.id + '_' + du.id + '" value="' + window.UIKit.escapeHTML(du.name) + '" onclick="event.stopPropagation()" onchange="ViewHallSU.renameDU(\'' + currentHall.id + '\', \'' + du.id + '\', this.value)" class="text-base font-black text-purple-950 border rounded-xl px-3 py-1 bg-white border-purple-300">'
                     + '</div>'
                     + '<div class="text-xs text-purple-800 font-bold mt-1">'
                     + t('du.summaryHtml', { it: duSumm.totalItKw.toFixed(1), liq: duSumm.liquidHeatKw.toFixed(1), dlc: duSumm.dlcPct.toFixed(1), n: du.sus.length })
@@ -225,7 +248,7 @@
                             <div class="flex items-center gap-2 flex-wrap">
                                 <div class="flex items-center gap-1.5 bg-slate-50 px-2.5 py-1 rounded-xl border border-slate-200">
                                     <span class="text-[11px] font-bold text-slate-500">${t('hall.nameLabel', null, '機房名稱:')}</span>
-                                    <input type="text" value="${window.UIKit.escapeHTML(currentHall.name)}" onchange="ViewHallSU.renameHall('${currentHall.id}', this.value)" class="text-xs font-black text-purple-950 border border-purple-300 rounded-lg px-2 py-0.5 bg-white focus:ring-2 focus:ring-purple-400">
+                                    <input type="text" id="hall_name_${currentHall.id}" value="${window.UIKit.escapeHTML(currentHall.name)}" onchange="ViewHallSU.renameHall('${currentHall.id}', this.value)" class="text-xs font-black text-purple-950 border border-purple-300 rounded-lg px-2 py-0.5 bg-white focus:ring-2 focus:ring-purple-400">
                                     ${halls.length > 1 ? `<button onclick="ViewHallSU.deleteHall('${currentHall.id}')" title="${t('hall.deleteCurrent', null, '刪除當前機房')}" class="px-2 py-0.5 text-xs font-bold bg-red-50 hover:bg-red-100 text-red-700 rounded-lg border border-red-200 transition">${t('hall.deleteCurrent', null, '🗑️ 刪除 Hall')}</button>` : ''}
                                 </div>
                                 <button onclick="ViewHallSU.expandAllDUs()" class="px-2.5 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-lg transition">
@@ -256,6 +279,18 @@
                     </div>
                 </div>
             `;
+            if (typeof window !== 'undefined' && scrollPos > 0) {
+                window.scrollTo({ top: scrollPos, behavior: 'instant' });
+            }
+            if (activeId) {
+                const el = document.getElementById(activeId);
+                if (el) {
+                    el.focus();
+                    if (selStart !== null && selEnd !== null && typeof el.setSelectionRange === 'function') {
+                        try { el.setSelectionRange(selStart, selEnd); } catch (_) {}
+                    }
+                }
+            }
             if (window.UIKit) window.UIKit.refreshIcons(container);
         },
 
@@ -301,7 +336,7 @@
         },
         renameHall(hallId, name) {
             window.AppStore.renameHall(hallId, name);
-            this.render(document.getElementById('stepContent'));
+            this.scheduleRender();
         },
         renameDU(hallId, duId, name) {
             const hall = window.AppStore.state.halls.find(h => h.id === hallId);
@@ -310,6 +345,7 @@
                 if (du) {
                     du.name = name;
                     window.AppStore.notify();
+                    this.scheduleRender();
                 }
             }
         },
@@ -322,6 +358,7 @@
                     if (su) {
                         su.name = name;
                         window.AppStore.notify();
+                        this.scheduleRender();
                     }
                 }
             }
@@ -362,7 +399,7 @@
             if (su && su.equipment && su.equipment[eqIdx]) {
                 su.equipment[eqIdx].qty = qty;
                 window.AppStore.notify();
-                this.render(document.getElementById('stepContent'));
+                this.scheduleRender();
             }
         },
         updateEquipLiquid(hallId, duId, suId, eqIdx, liqPct) {
@@ -376,7 +413,7 @@
                 su.equipment[eqIdx].liquidPct = clamped;
                 su.equipment[eqIdx].airPct = 100 - clamped;
                 window.AppStore.notify();
-                this.render(document.getElementById('stepContent'));
+                this.scheduleRender();
             }
         },
         updateEquipKw(hallId, duId, suId, eqIdx, kw) {
@@ -388,7 +425,7 @@
             if (su && su.equipment && su.equipment[eqIdx]) {
                 su.equipment[eqIdx].itLoadKw = Math.max(0, kw);
                 window.AppStore.notify();
-                this.render(document.getElementById('stepContent'));
+                this.scheduleRender();
             }
         },
         updateEquipModel(hallId, duId, suId, eqIdx, model) {
@@ -400,6 +437,7 @@
             if (su && su.equipment && su.equipment[eqIdx]) {
                 su.equipment[eqIdx].model = model;
                 window.AppStore.notify();
+                this.scheduleRender();
             }
         },
         deleteEquip(hallId, duId, suId, eqIdx) {

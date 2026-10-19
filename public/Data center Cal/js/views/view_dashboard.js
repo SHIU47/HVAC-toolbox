@@ -16,7 +16,29 @@
     let scenarioCompareChart = null;
 
     const ViewDashboard = {
+        _renderTimer: null,
+        scheduleRender() {
+            if (this._renderTimer) clearTimeout(this._renderTimer);
+            this._renderTimer = setTimeout(() => {
+                this._renderTimer = null;
+                const container = document.getElementById('stepContent');
+                if (container && window.App && window.App.currentStep === 5) {
+                    this.render(container);
+                }
+            }, 0);
+        },
+
         render(container) {
+            if (this._renderTimer) {
+                clearTimeout(this._renderTimer);
+                this._renderTimer = null;
+            }
+            const scrollPos = (typeof window !== 'undefined') ? (window.scrollY || document.documentElement.scrollTop || 0) : 0;
+            const activeEl = (typeof document !== 'undefined' && document.activeElement) ? document.activeElement : null;
+            const activeId = (activeEl && activeEl.id) ? activeEl.id : null;
+            const selStart = (activeEl && typeof activeEl.selectionStart === 'number') ? activeEl.selectionStart : null;
+            const selEnd = (activeEl && typeof activeEl.selectionEnd === 'number') ? activeEl.selectionEnd : null;
+
             const state = window.AppStore.state;
             if (state.site && state.site.isWeatherLoading) {
                 container.innerHTML = `
@@ -396,11 +418,13 @@
                                 </div>
                                 <div class="flex items-center gap-1.5">
                                     <input type="number" 
+                                           id="facilityElectricalLossInput"
                                            min="0.0" 
                                            max="25.0" 
                                            step="0.5" 
                                            value="${state.facilityElectricalLossPct || 0.0}" 
-                                           onchange="window.AppStore.setFacilityElectricalLossPct(this.value); window.ViewDashboard.render(document.getElementById('stepContent'))" 
+                                           onchange="window.AppStore.setFacilityElectricalLossPct(this.value); window.ViewDashboard.scheduleRender()" 
+                                           onkeydown="if(event.key==='Enter')this.blur()"
                                            class="w-20 text-center font-bold text-base text-primary bg-surface border border-border focus:border-brand-500 rounded-lg py-1 px-2 font-mono tabular-nums shadow-xs">
                                     <span class="text-sm font-bold text-primary">%</span>
                                 </div>
@@ -410,10 +434,10 @@
                         <div class="flex items-center justify-between gap-2 mt-3 pt-3 border-t border-border-subtle flex-wrap text-xs">
                             <div class="flex items-center gap-1.5 flex-wrap">
                                 <span class="text-tertiary text-[11px] font-medium">${_t('dash.commonPresets', null, '常見經驗預設值:')}</span>
-                                <button onclick="window.AppStore.setFacilityElectricalLossPct(0.0); window.ViewDashboard.render(document.getElementById('stepContent'))" class="px-2 py-0.5 rounded-md text-[11px] font-semibold bg-bg hover:bg-border-subtle text-secondary border border-border transition">${_t('dash.preset0', null, '0% (純空調 PUE)')}</button>
-                                <button onclick="window.AppStore.setFacilityElectricalLossPct(2.5); window.ViewDashboard.render(document.getElementById('stepContent'))" class="px-2 py-0.5 rounded-md text-[11px] font-semibold bg-bg hover:bg-border-subtle text-secondary border border-border transition">${_t('dash.preset25', null, '2.5% (超高壓直供+高效UPS)')}</button>
-                                <button onclick="window.AppStore.setFacilityElectricalLossPct(4.0); window.ViewDashboard.render(document.getElementById('stepContent'))" class="px-2 py-0.5 rounded-md text-[11px] font-semibold bg-bg hover:bg-border-subtle text-secondary border border-border transition">${_t('dash.preset40', null, '4.0% (標準在線雙轉換 UPS)')}</button>
-                                <button onclick="window.AppStore.setFacilityElectricalLossPct(6.5); window.ViewDashboard.render(document.getElementById('stepContent'))" class="px-2 py-0.5 rounded-md text-[11px] font-semibold bg-bg hover:bg-border-subtle text-secondary border border-border transition">${_t('dash.preset65', null, '6.5% (多級降壓/傳統配電)')}</button>
+                                <button onclick="window.AppStore.setFacilityElectricalLossPct(0.0); window.ViewDashboard.scheduleRender()" class="px-2 py-0.5 rounded-md text-[11px] font-semibold bg-bg hover:bg-border-subtle text-secondary border border-border transition">${_t('dash.preset0', null, '0% (純空調 PUE)')}</button>
+                                <button onclick="window.AppStore.setFacilityElectricalLossPct(2.5); window.ViewDashboard.scheduleRender()" class="px-2 py-0.5 rounded-md text-[11px] font-semibold bg-bg hover:bg-border-subtle text-secondary border border-border transition">${_t('dash.preset25', null, '2.5% (超高壓直供+高效UPS)')}</button>
+                                <button onclick="window.AppStore.setFacilityElectricalLossPct(4.0); window.ViewDashboard.scheduleRender()" class="px-2 py-0.5 rounded-md text-[11px] font-semibold bg-bg hover:bg-border-subtle text-secondary border border-border transition">${_t('dash.preset40', null, '4.0% (標準在線雙轉換 UPS)')}</button>
+                                <button onclick="window.AppStore.setFacilityElectricalLossPct(6.5); window.ViewDashboard.scheduleRender()" class="px-2 py-0.5 rounded-md text-[11px] font-semibold bg-bg hover:bg-border-subtle text-secondary border border-border transition">${_t('dash.preset65', null, '6.5% (多級降壓/傳統配電)')}</button>
                             </div>
                             <div class="text-[11px] text-tertiary font-mono">
                                 ${_t('dash.pueContribution', { val: ((state.facilityElectricalLossPct || 0) / 100).toFixed(3) }, `當前對 PUE 增量貢獻: <strong class="text-brand-600 font-bold">+${((state.facilityElectricalLossPct || 0) / 100).toFixed(3)}</strong>`)}
@@ -830,6 +854,19 @@
                 const heroEl = document.getElementById('heroPueNum');
                 if (heroEl) window.UIKit.countUp(heroEl, overall.annualPue, { decimals: 3, duration: 700 });
                 window.UIKit.refreshIcons(container);
+            }
+
+            if (typeof window !== 'undefined' && scrollPos > 0) {
+                window.scrollTo({ top: scrollPos, behavior: 'instant' });
+            }
+            if (activeId) {
+                const el = document.getElementById(activeId);
+                if (el) {
+                    el.focus();
+                    if (selStart !== null && selEnd !== null && typeof el.setSelectionRange === 'function') {
+                        try { el.setSelectionRange(selStart, selEnd); } catch (_) {}
+                    }
+                }
             }
         },
 

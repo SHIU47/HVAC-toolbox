@@ -7,7 +7,29 @@
     let selectedPodId = 'corepod_01';
 
     const ViewCorePod = {
+        _renderTimer: null,
+        scheduleRender() {
+            if (this._renderTimer) clearTimeout(this._renderTimer);
+            this._renderTimer = setTimeout(() => {
+                this._renderTimer = null;
+                const container = document.getElementById('stepContent');
+                if (container && window.App && window.App.currentStep === 3) {
+                    this.render(container);
+                }
+            }, 0);
+        },
+
         render(container) {
+            if (this._renderTimer) {
+                clearTimeout(this._renderTimer);
+                this._renderTimer = null;
+            }
+            const scrollPos = (typeof window !== 'undefined') ? (window.scrollY || document.documentElement.scrollTop || 0) : 0;
+            const activeEl = (typeof document !== 'undefined' && document.activeElement) ? document.activeElement : null;
+            const activeId = (activeEl && activeEl.id) ? activeEl.id : null;
+            const selStart = (activeEl && typeof activeEl.selectionStart === 'number') ? activeEl.selectionStart : null;
+            const selEnd = (activeEl && typeof activeEl.selectionEnd === 'number') ? activeEl.selectionEnd : null;
+
             const S = window.AppStore;
             const state = S.state;
             const pods = state.corePods || [];
@@ -100,7 +122,7 @@
                                     <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b pb-3">
                                         <div class="flex items-center gap-2 flex-1 max-w-md">
                                             <span class="text-base font-bold text-slate-900 shrink-0">${t('corepod.facilityLabel', null, '📦 核心機房:')}</span>
-                                            <input type="text" value="${window.UIKit.escapeHTML(currentPod.name)}" onchange="ViewCorePod.updatePodName(this.value)" class="w-full font-extrabold text-teal-900 border rounded-lg px-2.5 py-1 text-sm bg-teal-50/60 focus:bg-white focus:ring-2 focus:ring-teal-400">
+                                            <input type="text" id="corepodNameIn_${currentPod.id}" value="${window.UIKit.escapeHTML(currentPod.name)}" onchange="ViewCorePod.updatePodName(this.value)" onkeydown="if(event.key==='Enter')this.blur()" class="w-full font-extrabold text-teal-900 border rounded-lg px-2.5 py-1 text-sm bg-teal-50/60 focus:bg-white focus:ring-2 focus:ring-teal-400">
                                         </div>
                                         <div class="flex items-center gap-2 flex-wrap">
                                             ${templateActionsHtml}
@@ -150,6 +172,19 @@
                 });
             }
             if (window.UIKit) window.UIKit.refreshIcons(container);
+
+            if (typeof window !== 'undefined' && scrollPos > 0) {
+                window.scrollTo({ top: scrollPos, behavior: 'instant' });
+            }
+            if (activeId) {
+                const el = document.getElementById(activeId);
+                if (el) {
+                    el.focus();
+                    if (selStart !== null && selEnd !== null && typeof el.setSelectionRange === 'function') {
+                        try { el.setSelectionRange(selStart, selEnd); } catch (_) {}
+                    }
+                }
+            }
         },
 
         selectPod(id) {
@@ -182,7 +217,7 @@
             if (p) {
                 p.name = name;
                 window.AppStore.notify();
-                this.render(document.getElementById('stepContent'));
+                this.scheduleRender();
             }
         },
         setMode(mode) {
