@@ -25,6 +25,8 @@
         }
     }
 
+    const round2 = (x) => Math.round(x * 100) / 100;
+
     function hourToMonth(hourIdx) {
         if (hourIdx >= 0 && hourIdx < 8760) return HOUR_TO_MONTH_LUT[hourIdx];
         for (let m = 11; m >= 0; m--) {
@@ -150,6 +152,9 @@
                         cduPriKw += cduSys.hydraulics.cw_pump_power_kw * (baseFrac + (1 - baseFrac) * Math.pow(cduPumpSpd, 3));
                     }
                 }
+                // R8: 有泵組明細時改用全部泵組（FWS、排熱側、一次冰水、冷卻水）；Trim 冰水泵逐時另計
+                const cduLoopKw = root.AppStore?.loopPumpKw ? root.AppStore.loopPumpKw(cduSys, cduPumpSpd) : null;
+                if (cduLoopKw !== null) cduPriKw = loadSumm.liquidHeatKw > 0 ? cduLoopKw : 0;
 
                 const fwPumpMin = (typeof root.FreeCoolingEngine !== 'undefined') ? root.FreeCoolingEngine.getPumpMinSpeed(mode) : 0.45;
                 const fwPumpSpd = Math.max(fwPumpMin, fwLoadRatio);
@@ -165,6 +170,9 @@
                         fwPmpKw += fwSys.hydraulics.cw_pump_power_kw * (baseFrac + (1 - baseFrac) * Math.pow(fwPumpSpd, 3));
                     }
                 }
+                // R8: 有泵組明細時改用全部泵組（二次 / 一次冰水泵、冷卻水泵）
+                const fwLoopKw = root.AppStore?.loopPumpKw ? root.AppStore.loopPumpKw(fwSys, fwPumpSpd) : null;
+                if (fwLoopKw !== null) fwPmpKw = airHeatTotal > 0 ? fwLoopKw : 0;
 
                 return {
                     cduPumpSpeed: cduPumpSpd,
@@ -649,19 +657,20 @@
                     hourOfDay: i % 24,
                     db: w.db,
                     wb: w.wb,
-                    itKw: Math.round(it),
+                    // R8: 功率保留 2 位小數（原為整數），Excel 計算書以逐時資料加總驗證年度值時誤差 < 0.01%
+                    itKw: round2(it),
                     pue: pue,
                     mode: cduMode,
                     cduMode: cduMode,
                     fwMode: fwMode,
                     combinedMode: combinedMode,
-                    chillerKw: Math.round(chKw),
-                    mechLoadKw: Math.round(hourlyFacilityStats[i].mechLoadKw || 0),
-                    cduPumpKw: Math.round(hourlyFacilityStats[i].cduPumpKw || 0),
-                    crahFanKw: Math.round(hourlyFacilityStats[i].crahFanKw || 0),
-                    heatRejKw: Math.round(hourlyFacilityStats[i].heatRejKw || 0),
-                    coolingKw: Math.round(coolKw),
-                    totalKw: Math.round(tot),
+                    chillerKw: round2(chKw),
+                    mechLoadKw: round2(hourlyFacilityStats[i].mechLoadKw || 0),
+                    cduPumpKw: round2(hourlyFacilityStats[i].cduPumpKw || 0),
+                    crahFanKw: round2(hourlyFacilityStats[i].crahFanKw || 0),
+                    heatRejKw: round2(hourlyFacilityStats[i].heatRejKw || 0),
+                    coolingKw: round2(coolKw),
+                    totalKw: round2(tot),
                     waterM3: parseFloat(((hourlyFacilityStats[i].waterM3 || 0)).toFixed(4))
                 });
             }

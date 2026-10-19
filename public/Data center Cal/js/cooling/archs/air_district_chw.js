@@ -14,7 +14,7 @@
         id: 'chilled_water_plant',
         aliases: ['campus_chilled_water'],
         loop: 'air',
-        get optionLabel() { return t('arch.chilled_water_plant.option', null, '🏢 廠區集中冰水管網 (Central Chilled Water Plant)'); },
+        get optionLabel() { return t('arch.chilled_water_plant.option', null, '廠區集中冰水管網 (Central Chilled Water Plant)'); },
         get cardLabel() { return t('arch.chilled_water_plant.card', null, '廠區集中冰水'); },
         get pillLabel() { return t('arch.chilled_water_plant.pill', null, '廠區冰水'); },
         get dashboardLabel() { return t('arch.chilled_water_plant.dashboard', null, '廠區集中冷站 (Chilled Water Plant)'); },

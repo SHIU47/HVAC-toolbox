@@ -14,7 +14,7 @@
         id: 'rdhx',
         aliases: [],
         loop: 'air',
-        get optionLabel() { return t('arch.rdhx.option', null, '🚪 背板式熱交換器 (Rear Door Heat Exchanger, RDHX)'); },
+        get optionLabel() { return t('arch.rdhx.option', null, '背板式熱交換器 (Rear Door Heat Exchanger, RDHX)'); },
         get cardLabel() { return t('arch.rdhx.card', null, 'RDHX 背板'); },
         get pillLabel() { return t('arch.rdhx.pill', null, 'RDHX 背板'); },
         get dashboardLabel() { return t('arch.rdhx.dashboard', null, '背板熱交換器 (RDHx Neutral Loop)'); },
@@ -22,6 +22,7 @@
         terminal: 'rdhx',
         schematic: 'air_plant',
         params: [
+            root.CoolingArchHelpers.chwPumpingParam('fwChwPsIn_'),
             { key: 'chwSupplyC', default: 12.0, min: 7, max: 25, step: 0.5, unit: '°C' },
             { key: 'chwReturnC', default: 18.0, min: 12, max: 35, step: 0.5, unit: '°C' },
             {
@@ -108,7 +109,8 @@
                     return { model, capKw };
                 },
                 calcQty: () => ({ qty: 2, n1: 2 })
-            }
+            },
+            root.CoolingArchHelpers.pumpEquipment('chw_primary_pump', 'Primary CHW Pump 一次冰水泵（冰機定流量）', (sys) => root.CoolingArchHelpers.usesPrimarySecondary(sys))
         ],
 
         operatingPoint(sys, w, equip) {

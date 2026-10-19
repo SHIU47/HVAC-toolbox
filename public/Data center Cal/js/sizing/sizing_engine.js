@@ -92,6 +92,150 @@
             return 'N-1';
         },
 
+        // ─────────────────────────────────────────────────────────
+        // R8: 泵組水力設計 — 每個迴路依冷卻架構列出完整泵組，逐組以「流量 × 揚程」計算電功率
+        //   流量 LPM = Q × 60 ÷ (cp × ΔT)（密度 1 kg/L）；電功率 = 流量 × 揚程 × g ÷ (60000 × η泵 × η馬達)
+        //   operation: 'always' = 迴路有負載即運轉；'mechanical' = 僅冰機運轉時（Trim 冰水泵）
+        // ─────────────────────────────────────────────────────────
+        designPumps(archDesc, sys, loop, qKw, opts = {}) {
+            const Af = (k, d) => ((typeof root.A === 'function') ? root.A(k) : d);
+            const H = root.CoolingArchHelpers || {};
+            const id = archDesc?.id || sys?.architecture;
+            const flags = archDesc?.flags || {};
+            const cpW = 4.186;
+            const cpG = Af('glycol_cp_kj_kgk', 3.90);
+            const g = 9.80665;
+            const etaOf = opts.etaOf || (() => [Af('pump_eta_default', 0.75), Af('motor_eta_default', 0.92)]);
+            const pumps = [];
+            const add = (key, labelKey, q, cp, dt, head, operation = 'always') => {
+                if (!(q > 0) || !(head > 0)) return;
+                const dtE = Math.max(1, dt);
+                const flow = q * 60 / (cp * dtE);
+                const [ep, em] = etaOf(key);
+                pumps.push({
+                    key, labelKey, q_kw: q, cp, dt_c: dtE, flow_lpm: flow, head_m: head,
+                    eta_pump: ep, eta_motor: em, power_kw: flow * head * g / (60000 * ep * em), operation
+                });
+            };
+            const outdoorArchs = ['dry_cooler_hx', 'dry_cooler_pure', 'dry_cooler_trim', 'adiabatic_tower', 'cooling_tower_hx'];
+            const primHead = Af('chw_primary_pump_head_m', 15);
+
+            if (loop === 'liquid') {
+                const hasChiller = !!flags.isWaterChiller;
+                const ps = hasChiller && (H.usesPrimarySecondary ? H.usesPrimarySecondary(sys) : true);
+                const hasPhe = H.archHasPhe ? H.archHasPhe(archDesc, sys) : !!sys?.hasPhe;
+                const dt = (sys?.fwsReturnC ?? 55) - (sys?.fwsSupplyC ?? 40);
+                // 無 PHE 時 FWS 直接進入室外排熱設備，迴路為防凍水溶液；有 PHE 則 FWS 為純水
+                const cpFws = (!hasPhe && outdoorArchs.includes(id)) ? cpG : cpW;
+                const mainHead = (sys?.pumpHeadM ?? Af('cdu_pump_head_default_m', 28))
+                    + (hasPhe ? Af('phe_primary_side_drop_m', 6) : 0)
+                    + ((hasChiller && !ps) ? primHead : 0);
+                add('cdu_pump', hasChiller ? (ps ? 'pump.chwSecondaryFws' : 'pump.chwVpfFws') : 'pump.fwsPrimary', qKw, cpFws, dt, mainHead);
+                if (hasPhe && outdoorArchs.includes(id)) {
+                    const qRej = qKw * (1 + (flags.isTrim ? (opts.trimPeakFrac || 0) / Math.max(1, opts.trimCop || 6.2) : 0));
+                    add('rej_pump', 'pump.heatRejGlycol', qRej, cpG, dt, sys?.rejPumpHeadM ?? Af('phe_secondary_loop_head_m', 16));
+                }
+                if (flags.isTrim) {
+                    add('chw_pump', 'pump.trimChw', qKw * (opts.trimPeakFrac || 0), cpW,
+                        sys?.trimChwDtC ?? Af('trim_chw_dt_default_c', 5), Af('trim_chw_pump_head_m', 15), 'mechanical');
+                }
+                if (ps) add('chw_primary_pump', 'pump.chwPrimary', qKw, cpW, dt, primHead);
+                if (flags.needsCwPump || flags.isWaterChiller) {
+                    add('cw_pump', 'pump.condenserWater', qKw * (opts.rejFactor || Af('tower_heat_rejection_factor', 1.2)), cpW,
+                        Af('cw_loop_delta_t_c', 5.5), Af('cw_pump_head_default_m', 22));
+                }
+            } else {
+                const hasChiller = !!flags.hasMechanical && !flags.isDistrict;
+                const ps = hasChiller && (H.usesPrimarySecondary ? H.usesPrimarySecondary(sys) : true);
+                const dt = (sys?.chwReturnC ?? 18) - (sys?.chwSupplyC ?? 12);
+                const mainHead = (sys?.pumpHeadM ?? Af('fw_pump_head_default_m', 22)) + ((hasChiller && !ps) ? primHead : 0);
+                add('fw_pump', hasChiller ? (ps ? 'pump.chwSecondary' : 'pump.chwVpf') : 'pump.chwDistribution', qKw, cpW, dt, mainHead);
+                if (ps) add('chw_primary_pump', 'pump.chwPrimary', qKw, cpW, dt, primHead);
+                if (flags.needsCwPump) {
+                    add('cw_pump', 'pump.condenserWater', qKw * (opts.rejFactor || Af('tower_heat_rejection_factor', 1.2)), cpW,
+                        Af('cw_loop_delta_t_c', 5.5), Af('cw_pump_head_default_m', 22));
+                }
+            }
+            return pumps;
+        },
+
+        isPumpItem(s) {
+            return !!s && (s.role === 'pump' || /_pump$/.test(s.key || ''));
+        },
+
+        _withRedundancy(baseN, redundancy) {
+            const r = redundancy || 'N+1';
+            if (r === 'N') return baseN;
+            if (r === 'N+2') return baseN + 2;
+            if (r === '2N') return 2 * baseN;
+            return baseN + 1;
+        },
+
+        // 未經使用者指定型號時，自型錄中挑選「揚程足夠、運轉台數 ≤ 6、總馬達功率最小」的泵
+        _autoSelectPump(s) {
+            const fl = (c) => Number(c.designFlowM3h || c.design_flow_m3h || 0);
+            const hd = (c) => Number(c.designHeadM || c.design_head_m || 0);
+            const cands = (s.catalog || []).filter(c => c.capKw > 0 && fl(c) > 0 && hd(c) >= s.requiredHeadM);
+            if (!cands.length) { s.autoSelected = false; return; }
+            // 排序鍵（依序比較）：運轉台數超過 6 台者排後 → 總馬達功率 → 運轉台數 → 單機功率
+            const lexLess = (a, b) => {
+                for (let i = 0; i < a.length; i++) if (a[i] !== b[i]) return a[i] < b[i];
+                return false;
+            };
+            let best = null, bestKey = null;
+            cands.forEach(c => {
+                const nRun = Math.max(1, Math.ceil(s.requiredFlowM3h / fl(c)), Math.ceil(s.requiredKw / c.capKw));
+                const key = [nRun > 6 ? 1 : 0, nRun * c.capKw, nRun, c.capKw];
+                if (!bestKey || lexLess(key, bestKey)) { best = c; bestKey = key; }
+            });
+            s.selectedModel = best.model;
+            s.unitCapKw = best.capKw;
+            s.autoSelected = true;
+        },
+
+        // 泵的需求、台數與檢核：馬達功率、型錄流量、型錄揚程三項皆需滿足
+        _evaluatePump(s, sys, red) {
+            let pp = (sys?.hydraulics?.pumps || []).find(p => p.key === s.key) || null;
+            if (!pp && !Array.isArray(sys?.hydraulics?.pumps)) {
+                // 舊存檔只有 pump_power_kw / cw_pump_power_kw，無泵組明細（無流量 / 揚程資料）
+                const legacyKw = (s.key === 'cw_pump') ? sys?.hydraulics?.cw_pump_power_kw
+                    : ((s.key === 'cdu_pump' || s.key === 'fw_pump') ? sys?.hydraulics?.pump_power_kw : 0);
+                if (legacyKw > 0) pp = { power_kw: legacyKw, flow_lpm: 0, head_m: 0 };
+            }
+            s.requiredKw = pp ? pp.power_kw : 0;
+            s.requiredFlowM3h = pp ? pp.flow_lpm * 0.06 : 0;
+            s.requiredHeadM = pp ? pp.head_m : 0;
+            s.autoSelected = false;
+            if (!s.userEdited && s.requiredKw > 0) this._autoSelectPump(s);
+            const cur = (s.catalog || []).find(c => c.model === s.selectedModel) || {};
+            s.unitCapKw = cur.capKw ?? s.unitCapKw ?? 0;
+            const catFlow = Number(cur.designFlowM3h || cur.design_flow_m3h || 0);
+            const catHead = Number(cur.designHeadM || cur.design_head_m || 0);
+            s.unitFlowM3h = catFlow;
+            s.unitHeadM = catHead;
+            const baseKw = s.unitCapKw > 0 ? Math.ceil(s.requiredKw / s.unitCapKw) : 1;
+            const baseFlow = catFlow > 0 ? Math.ceil(s.requiredFlowM3h / catFlow) : 0;
+            s.requiredUnits = this._withRedundancy(Math.max(1, baseKw, baseFlow), red);
+            s.requiredUnitsN1 = s.requiredUnits;
+            if (s.autoSelected || (!s.userEdited && (s.selectedQty || 0) < s.requiredUnits)) s.selectedQty = s.requiredUnits;
+            const standby = this.standbyUnits(s.selectedQty, red);
+            const active = Math.max(0, (s.selectedQty || 0) - standby);
+            s.effectiveCapKw = Math.round(active * s.unitCapKw);
+            const minUnits = this.minAllowedQty(red);
+            const motorOk = active * s.unitCapKw >= s.requiredKw;
+            const flowOk = !(catFlow > 0) || active * catFlow >= s.requiredFlowM3h - 1e-9;
+            const headOk = !(catHead > 0) || catHead >= s.requiredHeadM - 1e-9;
+            s.pumpChecks = { motorOk, flowOk, headOk, active };
+            s.passed = s.requiredKw <= 0 ? true : (s.selectedQty >= minUnits && motorOk && flowOk && headOk);
+            const minUnitsStr = (red === 'N+1')
+                ? ((root.I18N && root.I18N.lang === 'en') ? ` (N+1 Min ${s.requiredUnits} units)` : ` (N+1 最少 ${s.requiredUnits} 台)`)
+                : t('sizing.minUnitsWithRedundancy', { redundancy: red, minUnits: s.requiredUnits });
+            const issues = [!motorOk ? t('sizing.motorDeficit') : '', !flowOk ? t('sizing.pumpFlowShort') : '', !headOk ? t('sizing.pumpHeadShort') : ''].join('');
+            s.requiredText = t('sizing.pumpDesignText', {
+                kw: s.requiredKw.toFixed(1), flow: s.requiredFlowM3h.toFixed(0), head: s.requiredHeadM.toFixed(1)
+            }) + minUnitsStr + issues;
+        },
+
         _createSizingItem(eq, ctx) {
             const cat = getCatalog(eq.catalog);
             const reqKw = (typeof eq.requiredKw === 'function') ? eq.requiredKw(ctx) : ctx.reqKw;
@@ -169,7 +313,7 @@
                 getTowerRejectionFactor: (s) => getTowerRejectionFactor(s),
                 isCdu: true
             };
-            return archDesc.equipment.map(eq => this._createSizingItem(eq, ctx));
+            return archDesc.equipment.filter(eq => typeof eq.when !== 'function' || eq.when(helpers.sys || {})).map(eq => this._createSizingItem(eq, ctx));
         },
 
         generateFwSizing(arch, reqKw, pumpPowerKw, helpers = {}) {
@@ -188,15 +332,13 @@
                 getTowerRejectionFactor: (s) => getTowerRejectionFactor(s),
                 isFw: true
             };
-            return archDesc.equipment.map(eq => this._createSizingItem(eq, ctx));
+            return archDesc.equipment.filter(eq => typeof eq.when !== 'function' || eq.when(helpers.sys || {})).map(eq => this._createSizingItem(eq, ctx));
         },
 
         evaluateCduSizing(cduSys, reqCduKw, designCond, helpers = {}) {
             cduSys.sizing.forEach(s => {
                 s.requiredKw = reqCduKw;
                 if (s.key === 'cooling_tower') s.requiredKw = reqCduKw * getTowerRejectionFactor(cduSys);
-                if (s.key === 'cdu_pump') s.requiredKw = cduSys.hydraulics?.pump_power_kw || 0;
-                if (s.key === 'cw_pump') s.requiredKw = cduSys.hydraulics?.cw_pump_power_kw || 0;
 
                 if (s.key === 'trim_chiller') {
                     const peakDb = designCond?.peakDb?.value ?? designCond?.maxDb ?? ((designCond?.designDb ?? 34.0) + 3.0);
@@ -263,6 +405,7 @@
                 const red = s.redundancy || 'N+1';
                 s.redundancy = red;
                 if (!s.runMode) s.runMode = 'standby';
+                if (SizingEngine.isPumpItem(s)) { SizingEngine._evaluatePump(s, cduSys, red); return; }
                 s.requiredUnits = SizingEngine.requiredQty(s.requiredKw, s.unitCapKw, s.derateFactor, red);
                 s.requiredUnitsN1 = s.requiredUnits;
                 if (!s.userEdited && s.selectedQty < s.requiredUnits) s.selectedQty = s.requiredUnits;
@@ -275,16 +418,6 @@
                 s.requiredText = (red === 'N+1')
                     ? t('sizing.requiredN1', { reqKw: s.requiredKw.toFixed(1), n1: s.requiredUnits, derateNote })
                     : t('sizing.requiredWithRedundancy', { reqKw: s.requiredKw.toFixed(1), redundancy: red, minUnits: s.requiredUnits, derateNote });
-                if (s.key === 'cdu_pump' || s.key === 'cw_pump') {
-                    s.effectiveCapKw = Math.round(activeUnits * s.unitCapKw * s.derateFactor);
-                    const isMotorDeficit = s.requiredKw > s.effectiveCapKw;
-                    s.passed = (s.selectedQty >= minUnits) && !isMotorDeficit;
-                    const pfx = (s.key === 'cw_pump') ? t('sizing.cwPumpHydDemand') : t('sizing.pumpHydDemand');
-                    const minUnitsStr = (red === 'N+1')
-                        ? ((root.I18N && root.I18N.lang === 'en') ? ` (N+1 Min ${s.requiredUnits} units)` : ` (N+1 最少 ${s.requiredUnits} 台)`)
-                        : t('sizing.minUnitsWithRedundancy', { redundancy: red, minUnits: s.requiredUnits });
-                    s.requiredText = pfx + s.requiredKw.toFixed(1) + ' kW' + minUnitsStr + (isMotorDeficit ? t('sizing.motorDeficit') : '');
-                }
                 if (s.key === 'trim_chiller') {
                     s.maxMechanicalPassed = s.effectiveCapKw >= s.maxMechanicalKw;
                     const peak = designCond?.peakDb;
@@ -303,8 +436,6 @@
             fwSys.sizing.forEach(s => {
                 s.requiredKw = reqAirKw;
                 if (s.key === 'cooling_tower') s.requiredKw = reqAirKw * getTowerRejectionFactor(fwSys);
-                if (s.key === 'fw_pump') s.requiredKw = fwSys.hydraulics?.pump_power_kw || 0;
-                if (s.key === 'cw_pump') s.requiredKw = fwSys.hydraulics?.cw_pump_power_kw || 0;
 
                 const curItem = (s.catalog && Array.isArray(s.catalog))
                     ? (s.catalog.find(c => c.model === s.selectedModel) || s.catalog[0] || { capKw: s.unitCapKw || 100 })
@@ -344,6 +475,7 @@
                 const red = s.redundancy || 'N+1';
                 s.redundancy = red;
                 if (!s.runMode) s.runMode = 'standby';
+                if (SizingEngine.isPumpItem(s)) { SizingEngine._evaluatePump(s, fwSys, red); return; }
                 s.requiredUnits = SizingEngine.requiredQty(s.requiredKw, s.unitCapKw, s.derateFactor, red);
                 s.requiredUnitsN1 = s.requiredUnits;
                 if (!s.userEdited && s.selectedQty < s.requiredUnits) s.selectedQty = s.requiredUnits;
@@ -356,16 +488,6 @@
                 s.requiredText = (red === 'N+1')
                     ? t('sizing.requiredN1', { reqKw: s.requiredKw.toFixed(1), n1: s.requiredUnits, derateNote })
                     : t('sizing.requiredWithRedundancy', { reqKw: s.requiredKw.toFixed(1), redundancy: red, minUnits: s.requiredUnits, derateNote });
-                if (s.key === 'fw_pump' || s.key === 'cw_pump') {
-                    s.effectiveCapKw = Math.round(activeUnits * s.unitCapKw * s.derateFactor);
-                    const isMotorDeficit = s.requiredKw > s.effectiveCapKw;
-                    s.passed = (s.selectedQty >= minUnits) && !isMotorDeficit;
-                    const pfx = (s.key === 'cw_pump') ? t('sizing.cwPumpHydDemand') : t('sizing.fwPumpHydDemand');
-                    const minUnitsStr = (red === 'N+1')
-                        ? ((root.I18N && root.I18N.lang === 'en') ? ` (N+1 Min ${s.requiredUnits} units)` : ` (N+1 最少 ${s.requiredUnits} 台)`)
-                        : t('sizing.minUnitsWithRedundancy', { redundancy: red, minUnits: s.requiredUnits });
-                    s.requiredText = pfx + s.requiredKw.toFixed(1) + ' kW' + minUnitsStr + (isMotorDeficit ? t('sizing.motorDeficit') : '');
-                }
             });
         },
 

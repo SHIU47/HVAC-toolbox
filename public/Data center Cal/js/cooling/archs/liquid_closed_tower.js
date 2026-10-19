@@ -14,7 +14,7 @@
         id: 'cooling_tower_hx',
         aliases: [],
         loop: 'liquid',
-        get optionLabel() { return t('arch.cooling_tower_hx.option', null, '🔷 密閉式冷卻水塔 (Closed-Circuit Cooling Tower / 100% 蒸發自然冷卻・零冰機)'); },
+        get optionLabel() { return t('arch.cooling_tower_hx.option', null, '密閉式冷卻水塔 (Closed-Circuit Cooling Tower / 100% 蒸發自然冷卻・零冰機)'); },
         get cardLabel() { return t('arch.cooling_tower_hx.card', null, '密閉式冷卻水塔 (零冰機)'); },
         get pillLabel() { return t('arch.cooling_tower_hx.pill', null, '閉式塔'); },
         get dashboardLabel() { return t('arch.cooling_tower_hx.dashboard', null, '密閉式冷卻水塔 (Closed-Circuit Cooling Tower)'); },
@@ -83,7 +83,8 @@
                 defaultUnitCapKw: 5.5,
                 requiredKw: (ctx) => ctx.hydKw || 5.5,
                 calcQty: () => ({ qty: 3, n1: 3 })
-            }
+            },
+            root.CoolingArchHelpers.pumpEquipment('rej_pump', 'Heat Rejection Loop Pump 排熱側循環泵', (sys) => root.CoolingArchHelpers.archHasPhe(root.CoolingArchRegistry.get('cooling_tower_hx'), sys))
         ],
 
         stages: [

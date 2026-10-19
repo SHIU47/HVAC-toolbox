@@ -14,7 +14,7 @@
         id: 'water_chiller',
         aliases: [],
         loop: 'liquid',
-        get optionLabel() { return t('arch.water_chiller.option', null, '⚙️ 全額水冷式冰水主機 (Full Mechanical Water Chiller / 全機械壓縮製冷)'); },
+        get optionLabel() { return t('arch.water_chiller.option', null, '全額水冷式冰水主機 (Full Mechanical Water Chiller / 全機械壓縮製冷)'); },
         get cardLabel() { return t('arch.water_chiller.card', null, '全額水冷式冰機'); },
         get pillLabel() { return t('arch.water_chiller.pill', null, '水冷冰機'); },
         get dashboardLabel() { return t('arch.water_chiller.dashboard', null, '水冷冰機製冷 (Water-Cooled Chiller)'); },
@@ -22,6 +22,7 @@
         terminal: 'cdu',
         schematic: 'single_loop',
         params: [
+            root.CoolingArchHelpers.chwPumpingParam('cduChwPsIn_'),
             {
                 key: 'hasPhe',
                 panel: 'custom',
@@ -128,7 +129,8 @@
                     return { model, capKw };
                 },
                 calcQty: () => ({ qty: 2, n1: 2 })
-            }
+            },
+            root.CoolingArchHelpers.pumpEquipment('chw_primary_pump', 'Primary CHW Pump 一次冰水泵（冰機定流量）', (sys) => root.CoolingArchHelpers.usesPrimarySecondary(sys))
         ],
 
         operatingPoint(sys, w, equip, opts) {

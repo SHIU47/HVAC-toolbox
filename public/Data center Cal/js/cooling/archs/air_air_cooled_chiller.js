@@ -14,7 +14,7 @@
         id: 'air_cooled_chiller',
         aliases: [],
         loop: 'air',
-        get optionLabel() { return t('arch.air_cooled_chiller.option', null, '💨 氣冷式冰水主機 (Air-Cooled Chiller / 零耗水)'); },
+        get optionLabel() { return t('arch.air_cooled_chiller.option', null, '氣冷式冰水主機 (Air-Cooled Chiller / 零耗水)'); },
         get cardLabel() { return t('arch.air_cooled_chiller.card', null, '氣冷式冰機'); },
         get pillLabel() { return t('arch.air_cooled_chiller.pill', null, '氣冷冰機'); },
         get dashboardLabel() { return t('arch.air_cooled_chiller.dashboard', null, '氣冷式冰水主機 (Air-Cooled Chiller)'); },
@@ -22,6 +22,7 @@
         terminal: 'crah',
         schematic: 'air_plant',
         params: [
+            root.CoolingArchHelpers.chwPumpingParam('fwChwPsIn_'),
             { key: 'chwSupplyC', default: 12.0, min: 7, max: 25, step: 0.5, unit: '°C' },
             { key: 'chwReturnC', default: 18.0, min: 12, max: 35, step: 0.5, unit: '°C' }
         ],
@@ -81,7 +82,8 @@
                     return { model, capKw };
                 },
                 calcQty: () => ({ qty: 2, n1: 2 })
-            }
+            },
+            root.CoolingArchHelpers.pumpEquipment('chw_primary_pump', 'Primary CHW Pump 一次冰水泵（冰機定流量）', (sys) => root.CoolingArchHelpers.usesPrimarySecondary(sys))
         ],
 
         stages: [

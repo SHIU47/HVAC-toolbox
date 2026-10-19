@@ -54,7 +54,7 @@
                 const hs = window.AppStore.calcHallSummary(h);
                 hallTabs += '<div class="inline-flex items-center rounded-xl overflow-hidden border ' + (isSel ? 'bg-purple-600 border-purple-700 text-white shadow-md' : 'bg-slate-100 border-slate-200 text-slate-700 hover:bg-slate-200') + '">'
                     + '<button onclick="ViewHallSU.selectHall(\'' + h.id + '\')" class="px-3.5 py-2 text-xs font-bold transition flex items-center gap-2">'
-                    + '<span>🏢 ' + h.name + '</span>'
+                    + '<span class="flex items-center gap-1.5"><i data-lucide="building-2" class="w-3.5 h-3.5"></i>' + h.name + '</span>'
                     + '<span class="px-2 py-0.5 rounded-full text-[10px] ' + (isSel ? 'bg-purple-800 text-purple-100' : 'bg-slate-200 text-slate-800') + '">' + (hs.totalItKw / 1000).toFixed(2) + ' MW</span>'
                     + '</button>'
                     + (halls.length > 1 ? '<button onclick="event.stopPropagation(); ViewHallSU.deleteHall(\'' + h.id + '\')" title="' + t('hall.deleteTitle', null, '刪除此 Hall 機房') + '" class="px-2.5 py-2 text-xs font-black ' + (isSel ? 'hover:bg-purple-700 text-purple-200 hover:text-white border-l border-purple-500' : 'hover:bg-red-100 text-slate-400 hover:text-red-600 border-l border-slate-200') + ' transition">✕</button>' : '')
@@ -88,7 +88,7 @@
                             + '<td class="py-2 px-2.5 text-center"><input type="number" id="eq_qty_' + rowKey + '" min="1" max="128" value="' + qty + '" onchange="ViewHallSU.updateEquipQty(\'' + currentHall.id + '\', \'' + du.id + '\', \'' + su.id + '\', ' + eqIdx + ', parseInt(this.value,10)||1)" onkeydown="if(event.key===\'Enter\')this.blur()" class="w-14 text-center font-bold border rounded p-1 bg-white"></td>'
                             + '<td class="py-2 px-2.5 text-right"><div class="flex items-center justify-end gap-1"><input type="number" id="eq_kw_' + rowKey + '" min="0" max="1000" step="0.5" value="' + (item.itLoadKw || 0) + '" onchange="ViewHallSU.updateEquipKw(\'' + currentHall.id + '\', \'' + du.id + '\', \'' + su.id + '\', ' + eqIdx + ', parseFloat(this.value)||0)" onkeydown="if(event.key===\'Enter\')this.blur()" class="w-16 text-right font-bold border rounded p-1 bg-white"><span class="text-xs text-slate-500">kW</span></div></td>'
                             + '<td class="py-2 px-2.5 text-center"><div class="flex items-center justify-center gap-1"><input type="number" id="eq_liq_' + rowKey + '" min="0" max="100" step="1" value="' + liqPct + '" onchange="ViewHallSU.updateEquipLiquid(\'' + currentHall.id + '\', \'' + du.id + '\', \'' + su.id + '\', ' + eqIdx + ', parseFloat(this.value)||0)" onkeydown="if(event.key===\'Enter\')this.blur()" class="w-14 text-center font-black text-emerald-800 border border-emerald-300 rounded p-1 bg-emerald-50/50 focus:bg-white"><span class="text-xs font-bold text-slate-500">%</span></div><div class="text-[10px] text-slate-400 font-normal">' + t('su.airPct', { pct: airPct.toFixed(0) }, '氣冷 ' + airPct.toFixed(0) + '%') + '</div></td>'
-                            + '<td class="py-2 px-2.5 text-right font-black text-purple-950">' + itKw.toFixed(1) + ' kW <div class="text-[10px] text-emerald-800 font-normal">💧 ' + liqKw.toFixed(1) + ' kW</div></td>'
+                            + '<td class="py-2 px-2.5 text-right font-black text-purple-950">' + itKw.toFixed(1) + ' kW <div class="text-[10px] text-emerald-800 font-normal flex items-center justify-end gap-1"><span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>' + liqKw.toFixed(1) + ' kW</div></td>'
                             + '<td class="py-2 px-2.5 text-center"><button onclick="ViewHallSU.deleteEquip(\'' + currentHall.id + '\', \'' + du.id + '\', \'' + su.id + '\', ' + eqIdx + ')" class="text-slate-400 hover:text-red-500 font-bold p-1">✕</button></td>'
                             + '</tr>';
                     });
@@ -117,20 +117,20 @@
                     suCardsHtml += '<div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-5 space-y-4">'
                         + '<div class="flex flex-col sm:flex-row sm:items-center justify-between pb-3 border-b gap-2">'
                         + '<div class="flex items-center gap-2">'
-                        + '<span class="text-base font-black text-indigo-950">🧩</span>'
+                        + '<div class="w-7 h-7 rounded-lg bg-indigo-100 text-indigo-700 flex items-center justify-center shrink-0"><i data-lucide="cpu" class="w-4 h-4"></i></div>'
                         + '<input type="text" id="su_name_' + currentHall.id + '_' + du.id + '_' + su.id + '" value="' + window.UIKit.escapeHTML(su.name) + '" onchange="ViewHallSU.renameSU(\'' + currentHall.id + '\', \'' + du.id + '\', \'' + su.id + '\', this.value)" class="font-extrabold text-slate-900 border rounded-lg px-2 py-1 text-sm bg-slate-50 border-slate-200">'
                         + '<span class="px-2 py-0.5 bg-indigo-50 text-indigo-950 text-xs font-bold rounded-md border border-indigo-200">'
-                        + 'IT: <strong>' + suSumm.totalItKw.toFixed(1) + ' kW</strong> (💧 ' + suSumm.liquidHeatKw.toFixed(1) + ' kW &middot; ' + suSumm.dlcPct.toFixed(0) + '%)'
+                        + 'IT: <strong>' + suSumm.totalItKw.toFixed(1) + ' kW</strong> (' + suSumm.liquidHeatKw.toFixed(1) + ' kW &middot; ' + suSumm.dlcPct.toFixed(0) + '% DLC)'
                         + '</span>'
                         + '</div>'
                         + '<div class="flex items-center gap-2">'
-                        + '<button onclick="ViewHallSU.promptCopySU(\'' + currentHall.id + '\', \'' + du.id + '\', \'' + su.id + '\')" class="px-2.5 py-1 bg-blue-50 hover:bg-blue-100 text-blue-700 text-xs font-bold rounded-lg border border-blue-200 transition">' + t('su.copyBtn', null, '📋 複製 SU×N') + '</button>'
-                        + (du.sus.length > 1 ? '<button onclick="ViewHallSU.deleteSU(\'' + currentHall.id + '\', \'' + du.id + '\', \'' + su.id + '\')" class="px-2.5 py-1 bg-red-50 hover:bg-red-100 text-red-600 text-xs font-bold rounded-lg border border-red-200 transition">' + t('su.deleteBtn', null, '🗑️ 刪除 SU') + '</button>' : '')
+                        + '<button onclick="ViewHallSU.promptCopySU(\'' + currentHall.id + '\', \'' + du.id + '\', \'' + su.id + '\')" class="px-2.5 py-1 bg-blue-50 hover:bg-blue-100 text-blue-700 text-xs font-bold rounded-lg border border-blue-200 transition flex items-center gap-1.5"><i data-lucide="copy" class="w-3.5 h-3.5"></i>' + t('su.copyBtn', null, '複製 SU×N') + '</button>'
+                        + (du.sus.length > 1 ? '<button onclick="ViewHallSU.deleteSU(\'' + currentHall.id + '\', \'' + du.id + '\', \'' + su.id + '\')" class="px-2.5 py-1 bg-red-50 hover:bg-red-100 text-red-600 text-xs font-bold rounded-lg border border-red-200 transition flex items-center gap-1.5"><i data-lucide="trash-2" class="w-3.5 h-3.5"></i>' + t('su.deleteBtn', null, '刪除 SU') + '</button>' : '')
                         + '</div>'
                         + '</div>'
                         + '<div class="p-3 bg-slate-50 rounded-xl border border-slate-200 space-y-2">'
                         + '<div class="flex justify-between items-center text-[11px] font-bold text-slate-700">'
-                        + '<span>' + t('su.quickAdd', null, '⚡ 快速加入標準機架與網通設備 (Quick Add)') + '</span>'
+                        + '<span class="flex items-center gap-1.5"><i data-lucide="zap" class="w-3.5 h-3.5 text-amber-500"></i>' + t('su.quickAdd', null, '快速加入標準機架與網通設備 (Quick Add)') + '</span>'
                         + '<button onclick="ViewHallSU.addCustomEquip(\'' + currentHall.id + '\', \'' + du.id + '\', \'' + su.id + '\')" class="text-purple-700 hover:underline font-bold">' + t('su.customEquip', null, '+ 自訂設備') + '</button>'
                         + '</div>'
                         + '<div class="flex items-center gap-1.5 flex-wrap">' + quickChipsHtml + '</div>'
@@ -143,8 +143,8 @@
                         + '</div>'
                         + '<div class="grid grid-cols-3 gap-3 p-3 bg-slate-50 rounded-xl border text-xs">'
                         + '<div><span class="text-slate-400 font-bold">' + t('su.totalIt', null, '總 IT 負載') + '</span><div class="font-extrabold text-slate-900 mt-0.5 text-sm">' + suSumm.totalItKw.toFixed(1) + ' kW</div></div>'
-                        + '<div><span class="text-purple-900 font-bold">' + t('su.liquidLoad', null, '💧 液冷散熱量') + '</span><div class="font-extrabold text-purple-950 mt-0.5 text-sm">' + suSumm.liquidHeatKw.toFixed(1) + ' kW (' + suSumm.dlcPct.toFixed(0) + '%)</div></div>'
-                        + '<div><span class="text-indigo-900 font-bold">' + t('su.airLoad', null, '💨 氣冷散熱量') + '</span><div class="font-extrabold text-indigo-950 mt-0.5 text-sm">' + suSumm.airHeatKw.toFixed(1) + ' kW</div></div>'
+                        + '<div><span class="text-purple-900 font-bold flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-purple-500 inline-block"></span>' + t('su.liquidLoad', null, '液冷散熱量') + '</span><div class="font-extrabold text-purple-950 mt-0.5 text-sm">' + suSumm.liquidHeatKw.toFixed(1) + ' kW (' + suSumm.dlcPct.toFixed(0) + '%)</div></div>'
+                        + '<div><span class="text-indigo-900 font-bold flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-indigo-500 inline-block"></span>' + t('su.airLoad', null, '氣冷散熱量') + '</span><div class="font-extrabold text-indigo-950 mt-0.5 text-sm">' + suSumm.airHeatKw.toFixed(1) + ' kW</div></div>'
                         + '</div>'
                         + '</div>';
                 });
@@ -156,27 +156,27 @@
                 let templateActionsHtml = '';
                 if (isLinked) {
                     templateActionsHtml = '<div class="flex items-center gap-1.5 flex-wrap">'
-                        + '<span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-xl text-xs font-bold bg-indigo-50 text-indigo-700 border border-indigo-200" title="' + (tpl ? window.UIKit.escapeHTML(tpl.name) : '') + '">'
-                        + '🔗 ' + (tpl ? window.UIKit.escapeHTML(tpl.name) : t('template.linked', null, '已連結範本')) + ' v' + (du.templateRef.version || 1)
+                        + '<span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-xs font-bold bg-indigo-50 text-indigo-700 border border-indigo-200" title="' + (tpl ? window.UIKit.escapeHTML(tpl.name) : '') + '">'
+                        + '<i data-lucide="link-2" class="w-3.5 h-3.5"></i> ' + (tpl ? window.UIKit.escapeHTML(tpl.name) : t('template.linked', null, '已連結範本')) + ' v' + (du.templateRef.version || 1)
                         + '</span>'
-                        + (isOutdated ? '<button onclick="ViewHallSU.syncDU(\'' + du.id + '\')" class="px-2.5 py-1 bg-amber-500 hover:bg-amber-600 text-white font-bold text-xs rounded-xl shadow-xs transition animate-pulse" title="' + t('template.updated', null, '範本已更新') + '">' + t('template.sync', null, '🔄 同步新版') + ' (v' + tpl.version + ')</button>' : '')
+                        + (isOutdated ? '<button onclick="ViewHallSU.syncDU(\'' + du.id + '\')" class="px-2.5 py-1 bg-amber-500 hover:bg-amber-600 text-white font-bold text-xs rounded-xl shadow-xs transition animate-pulse flex items-center gap-1" title="' + t('template.updated', null, '範本已更新') + '"><i data-lucide="refresh-cw" class="w-3.5 h-3.5"></i> ' + t('template.sync', null, '同步新版') + ' (v' + tpl.version + ')</button>' : '')
                         + '<button onclick="ViewHallSU.unlinkDU(\'' + du.id + '\')" class="px-2.5 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs rounded-xl transition">' + t('template.unlink', null, '解除連結') + '</button>'
                         + '</div>';
                 } else {
                     const hasDuTemplates = (S.state.templates || []).some(t => t.kind === 'du');
                     templateActionsHtml = '<div class="flex items-center gap-1.5 flex-wrap">'
-                        + '<button onclick="ViewHallSU.saveAsTemplate(\'' + du.id + '\')" class="px-2.5 py-1 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 font-bold text-xs rounded-xl border border-emerald-200 transition" title="' + t('template.saveAsTemplate', null, '💾 存為範本') + '">' + t('template.saveAsTemplate', null, '💾 存為範本') + '</button>'
-                        + (hasDuTemplates ? '<button onclick="ViewHallSU.promptApplyTemplate(\'' + du.id + '\')" class="px-2.5 py-1 bg-blue-50 hover:bg-blue-100 text-blue-800 font-bold text-xs rounded-xl border border-blue-200 transition" title="' + t('template.applyTemplate', null, '📥 套用範本') + '">' + t('template.applyTemplate', null, '📥 套用範本') + '</button>' : '')
+                        + '<button onclick="ViewHallSU.saveAsTemplate(\'' + du.id + '\')" class="px-2.5 py-1 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 font-bold text-xs rounded-xl border border-emerald-200 transition flex items-center gap-1" title="' + t('template.saveAsTemplate', null, '存為範本') + '"><i data-lucide="bookmark" class="w-3.5 h-3.5"></i> ' + t('template.saveAsTemplate', null, '存為範本') + '</button>'
+                        + (hasDuTemplates ? '<button onclick="ViewHallSU.promptApplyTemplate(\'' + du.id + '\')" class="px-2.5 py-1 bg-blue-50 hover:bg-blue-100 text-blue-800 font-bold text-xs rounded-xl border border-blue-200 transition flex items-center gap-1" title="' + t('template.applyTemplate', null, '套用範本') + '"><i data-lucide="download" class="w-3.5 h-3.5"></i> ' + t('template.applyTemplate', null, '套用範本') + '</button>' : '')
                         + '</div>';
                 }
 
                 duCardsHtml += '<div class="bg-gradient-to-br from-slate-50 to-purple-50/30 p-6 rounded-3xl border-2 border-purple-200 shadow-sm space-y-5">'
                     + '<div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-3 border-b border-purple-200 cursor-pointer" onclick="ViewHallSU.toggleDU(\'' + du.id + '\')">'
                     + '<div class="flex items-center gap-3">'
-                    + '<span class="text-lg text-purple-700 font-black transition transform ' + (isExpanded ? 'rotate-90' : '') + '">▶</span>'
+                    + '<span class="text-purple-700 font-black transition transform ' + (isExpanded ? 'rotate-90' : '') + ' flex items-center"><i data-lucide="chevron-right" class="w-5 h-5"></i></span>'
                     + '<div>'
                     + '<div class="flex items-center gap-2">'
-                    + '<span class="text-xl font-black text-purple-950">🏢</span>'
+                    + '<span class="w-8 h-8 rounded-xl bg-purple-100 text-purple-800 flex items-center justify-center shrink-0"><i data-lucide="building-2" class="w-4 h-4"></i></span>'
                     + '<input type="text" id="du_name_' + currentHall.id + '_' + du.id + '" value="' + window.UIKit.escapeHTML(du.name) + '" onclick="event.stopPropagation()" onchange="ViewHallSU.renameDU(\'' + currentHall.id + '\', \'' + du.id + '\', this.value)" class="text-base font-black text-purple-950 border rounded-xl px-3 py-1 bg-white border-purple-300">'
                     + '</div>'
                     + '<div class="text-xs text-purple-800 font-bold mt-1">'
@@ -186,12 +186,12 @@
                     + '</div>'
                     + '<div class="flex items-center gap-2 flex-wrap" onclick="event.stopPropagation()">'
                     + templateActionsHtml
-                    + '<button onclick="ViewHallSU.addSU(\'' + currentHall.id + '\', \'' + du.id + '\')" class="px-3.5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs rounded-xl shadow-xs transition">' + t('du.addSu', null, '➕ 新增 SU 模組') + '</button>'
-                    + '<button onclick="ViewHallSU.copyDU(\'' + currentHall.id + '\', \'' + du.id + '\')" class="px-3.5 py-2 bg-purple-100 hover:bg-purple-200 text-purple-950 font-bold text-xs rounded-xl transition">' + t('du.copy', null, '📋 複製 DU') + '</button>'
+                    + '<button onclick="ViewHallSU.addSU(\'' + currentHall.id + '\', \'' + du.id + '\')" class="px-3.5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs rounded-xl shadow-xs transition flex items-center gap-1.5"><i data-lucide="plus" class="w-3.5 h-3.5"></i>' + t('du.addSu', null, '新增 SU 模組') + '</button>'
+                    + '<button onclick="ViewHallSU.copyDU(\'' + currentHall.id + '\', \'' + du.id + '\')" class="px-3.5 py-2 bg-purple-100 hover:bg-purple-200 text-purple-950 font-bold text-xs rounded-xl transition flex items-center gap-1.5"><i data-lucide="copy" class="w-3.5 h-3.5"></i>' + t('du.copy', null, '複製 DU') + '</button>'
                     + (currentHall.dus.length > 1 ? '<button onclick="ViewHallSU.deleteDU(\'' + currentHall.id + '\', \'' + du.id + '\')" class="px-3 py-2 bg-red-100 hover:bg-red-200 text-red-700 font-bold text-xs rounded-xl transition">✕</button>' : '')
                     + '</div>'
                     + '</div>'
-                    + (isExpanded ? ('<div class="space-y-4">' + (isLinked ? ('<div class="p-3 bg-indigo-50/70 rounded-2xl border border-indigo-200 text-xs text-indigo-900 font-medium flex items-center justify-between"><span>🔗 ' + t('template.linkedNotice', null, '此 DU 已連結標準範本，設備由範本統一管理。如需個別微調，請點選上方「解除連結」。') + '</span></div>') : '') + suCardsHtml + '</div>') : '')
+                    + (isExpanded ? ('<div class="space-y-4">' + (isLinked ? ('<div class="p-3 bg-indigo-50/70 rounded-2xl border border-indigo-200 text-xs text-indigo-900 font-medium flex items-center gap-2"><i data-lucide="link-2" class="w-4 h-4 text-indigo-600 shrink-0"></i><span>' + t('template.linkedNotice', null, '此 DU 已連結標準範本，設備由範本統一管理。如需個別微調，請點選上方「解除連結」。') + '</span></div>') : '') + suCardsHtml + '</div>') : '')
                     + '</div>';
             });
 
@@ -213,8 +213,8 @@
                     <div class="bg-white p-6 rounded-3xl shadow-sm border border-slate-200 space-y-4">
                         <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
                             <div>
-                                <h2 class="text-xl font-black text-slate-900 flex items-center gap-2">
-                                    <span>🧩</span> ${t('hall.stepTitle', null, 'Step 2: Hall → DU → SU 模組與設備設計 (Hierarchy & Equipment Designer)')}
+                                <h2 class="text-xl font-black text-slate-900 flex items-center gap-2.5">
+                                    <div class="w-8 h-8 rounded-xl bg-purple-100 text-purple-800 flex items-center justify-center shrink-0"><i data-lucide="layout-grid" class="w-5 h-5"></i></div> ${t('hall.stepTitle', null, 'Step 2: Hall → DU → SU 模組與設備設計 (Hierarchy & Equipment Designer)')}
                                 </h2>
                                 <p class="text-xs text-slate-500 mt-1">
                                     ${t('hall.stepDesc', null, '建立 Hall 機房、劃分 <strong>DU (Data Center Unit 冷卻單元)</strong>，並於 DU 內組合 <strong>SU (Scalable Unit 算力模組)</strong> 自由配置 Vera Rubin / Blackwell / AMD Helios / 網通機架。')}
@@ -222,20 +222,20 @@
                             </div>
                             <div class="flex items-center gap-2 flex-wrap">
                                 <button onclick="ViewHallSU.openTemplateManager()" class="px-3.5 py-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-800 font-bold text-xs rounded-xl border border-indigo-200 transition flex items-center gap-1.5 shadow-2xs">
-                                    <span>📚</span> ${t('template.title', null, '範本庫')} (${(S.state.templates || []).length})
+                                    <i data-lucide="book-open" class="w-3.5 h-3.5"></i> ${t('template.title', null, '範本庫')} (${(S.state.templates || []).length})
                                 </button>
                                 ${(S.state.templates || []).filter(t => t.kind === 'du').length > 0 ? `
                                     <button onclick="ViewHallSU.promptBatchCreateDU('${currentHall.id}')" class="px-3.5 py-2 bg-purple-50 hover:bg-purple-100 text-purple-900 font-bold text-xs rounded-xl border border-purple-200 transition flex items-center gap-1.5 shadow-2xs">
-                                        <span>📦</span> ${t('template.batchCreate', null, '從範本批次新增 DU')}
+                                        <i data-lucide="box" class="w-3.5 h-3.5"></i> ${t('template.batchCreate', null, '從範本批次新增 DU')}
                                     </button>
                                 ` : ''}
                                 ${canSyncCount > 0 ? `
                                     <button onclick="ViewHallSU.syncAllOutdatedDUs()" class="px-3.5 py-2 bg-amber-500 hover:bg-amber-600 text-white font-bold text-xs rounded-xl shadow-xs transition animate-pulse flex items-center gap-1.5">
-                                        <span>🔄</span> ${t('template.syncAll', null, '全部同步')} (${canSyncCount})
+                                        <i data-lucide="refresh-cw" class="w-3.5 h-3.5"></i> ${t('template.syncAll', null, '全部同步')} (${canSyncCount})
                                     </button>
                                 ` : ''}
                                 <button onclick="ViewHallSU.addHall()" class="px-4 py-2 bg-purple-700 hover:bg-purple-800 text-white font-black text-xs rounded-xl shadow-xs transition flex items-center gap-1.5">
-                                    <span>➕</span> ${t('hall.addHallBtn', null, '新增 Hall 機房')}
+                                    <i data-lucide="plus" class="w-3.5 h-3.5"></i> ${t('hall.addHallBtn', null, '新增 Hall 機房')}
                                 </button>
                             </div>
                         </div>
@@ -249,13 +249,13 @@
                                 <div class="flex items-center gap-1.5 bg-slate-50 px-2.5 py-1 rounded-xl border border-slate-200">
                                     <span class="text-[11px] font-bold text-slate-500">${t('hall.nameLabel', null, '機房名稱:')}</span>
                                     <input type="text" id="hall_name_${currentHall.id}" value="${window.UIKit.escapeHTML(currentHall.name)}" onchange="ViewHallSU.renameHall('${currentHall.id}', this.value)" class="text-xs font-black text-purple-950 border border-purple-300 rounded-lg px-2 py-0.5 bg-white focus:ring-2 focus:ring-purple-400">
-                                    ${halls.length > 1 ? `<button onclick="ViewHallSU.deleteHall('${currentHall.id}')" title="${t('hall.deleteCurrent', null, '刪除當前機房')}" class="px-2 py-0.5 text-xs font-bold bg-red-50 hover:bg-red-100 text-red-700 rounded-lg border border-red-200 transition">${t('hall.deleteCurrent', null, '🗑️ 刪除 Hall')}</button>` : ''}
+                                    ${halls.length > 1 ? `<button onclick="ViewHallSU.deleteHall('${currentHall.id}')" title="${t('hall.deleteCurrent', null, '刪除當前機房')}" class="px-2 py-0.5 text-xs font-bold bg-red-50 hover:bg-red-100 text-red-700 rounded-lg border border-red-200 transition flex items-center gap-1"><i data-lucide="trash-2" class="w-3 h-3"></i> ${t('hall.deleteCurrent', null, '刪除 Hall')}</button>` : ''}
                                 </div>
-                                <button onclick="ViewHallSU.expandAllDUs()" class="px-2.5 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-lg transition">
-                                    ${t('hall.expandAll', null, '📂 全部展開')}
+                                <button onclick="ViewHallSU.expandAllDUs()" class="px-2.5 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-lg transition flex items-center gap-1.5">
+                                    <i data-lucide="folder-open" class="w-3.5 h-3.5"></i> ${t('hall.expandAll', null, '全部展開')}
                                 </button>
-                                <button onclick="ViewHallSU.collapseAllDUs()" class="px-2.5 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-lg transition">
-                                    ${t('hall.collapseAll', null, '📁 全部收合')}
+                                <button onclick="ViewHallSU.collapseAllDUs()" class="px-2.5 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-lg transition flex items-center gap-1.5">
+                                    <i data-lucide="folder" class="w-3.5 h-3.5"></i> ${t('hall.collapseAll', null, '全部收合')}
                                 </button>
                                 <div class="text-xs text-purple-900 font-black px-3 py-1.5 bg-purple-50 rounded-xl border border-purple-200">
                                     ${t('hall.currentLoad', { mw: (hallSumm.totalItKw / 1000).toFixed(2), dlc: hallSumm.dlcPct.toFixed(1) })}
@@ -270,11 +270,11 @@
                     </div>
 
                     <div class="flex justify-between pt-2">
-                        <button onclick="window.App.prevStep()" class="px-6 py-3 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-sm rounded-xl transition">
-                            <span>←</span> ${t('hall.prevStep', null, '上一步: 案場氣象')}
+                        <button onclick="window.App.prevStep()" class="px-6 py-3 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-sm rounded-xl transition flex items-center gap-2">
+                            <i data-lucide="arrow-left" class="w-4 h-4"></i> ${t('hall.prevStep', null, '上一步: 案場氣象')}
                         </button>
                         <button onclick="window.App.nextStep()" class="px-6 py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-sm rounded-xl shadow-sm transition flex items-center gap-2">
-                            ${t('hall.nextStep', null, '下一步: CorePOD 核心機房設計')} <span>→</span>
+                            <span>${t('hall.nextStep', null, '下一步: CorePOD 核心機房設計')}</span> <i data-lucide="arrow-right" class="w-4 h-4"></i>
                         </button>
                     </div>
                 </div>
@@ -734,9 +734,12 @@
             modalEl.className = 'fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-xs';
             modalEl.innerHTML = '<div class="bg-white rounded-3xl max-w-2xl w-full max-h-[90vh] flex flex-col shadow-2xl border border-slate-200 overflow-hidden animate-in fade-in duration-200">'
                 + '<div class="p-6 border-b border-slate-200 flex items-center justify-between bg-gradient-to-r from-purple-50 to-indigo-50">'
+                + '<div class="flex items-center gap-3">'
+                + '<div class="w-9 h-9 rounded-xl bg-purple-100 text-purple-800 flex items-center justify-center shrink-0"><i data-lucide="book-open" class="w-5 h-5"></i></div>'
                 + '<div>'
-                + '<h3 class="text-lg font-black text-slate-900 flex items-center gap-2"><span>📚</span> ' + t('template.title', null, '模組範本庫') + '</h3>'
+                + '<h3 class="text-lg font-black text-slate-900">' + t('template.title', null, '模組範本庫') + '</h3>'
                 + '<p class="text-xs text-slate-500 mt-0.5">' + t('template.subtitle', null, '管理標準化 IT 與終端冷卻模組範本，支援一鍵套用與全場批次同步') + '</p>'
+                + '</div>'
                 + '</div>'
                 + '<button onclick="ViewHallSU.closeTemplateManager()" class="text-slate-400 hover:text-slate-700 p-2 text-xl font-bold rounded-xl transition leading-none">✕</button>'
                 + '</div>'
@@ -744,21 +747,21 @@
                 + '<div class="flex items-center justify-between gap-3 flex-wrap pb-3 border-b border-slate-200">'
                 + '<div class="flex items-center gap-2">'
                 + '<button onclick="ViewHallSU.exportTemplates()" class="px-3 py-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-800 font-bold text-xs rounded-xl border border-indigo-200 transition flex items-center gap-1.5">'
-                + '<span>📤</span> ' + t('template.export', null, '匯出範本 (.json)')
+                + '<i data-lucide="upload" class="w-3.5 h-3.5"></i> ' + t('template.export', null, '匯出範本 (.json)')
                 + '</button>'
                 + '<label class="px-3 py-1.5 bg-purple-50 hover:bg-purple-100 text-purple-900 font-bold text-xs rounded-xl border border-purple-200 transition flex items-center gap-1.5 cursor-pointer">'
-                + '<span>📥</span> ' + t('template.import', null, '匯入範本')
+                + '<i data-lucide="download" class="w-3.5 h-3.5"></i> ' + t('template.import', null, '匯入範本')
                 + '<input type="file" accept=".json" class="hidden" onchange="ViewHallSU.handleImportTemplates(this)">'
                 + '</label>'
                 + '</div>'
                 + '<span class="text-xs text-slate-500 font-semibold">' + t('template.totalCount', { n: templates.length }, '共 ' + templates.length + ' 個範本') + '</span>'
                 + '</div>'
                 + '<div class="space-y-3">'
-                + '<h4 class="text-xs font-black text-purple-950 uppercase tracking-wider flex items-center gap-2"><span>🏢</span> ' + t('template.duTemplates', null, 'DU 算力單元範本') + ' (' + ((templates.filter(item=>item.kind==='du')).length) + ')</h4>'
+                + '<h4 class="text-xs font-black text-purple-950 uppercase tracking-wider flex items-center gap-2"><i data-lucide="building-2" class="w-3.5 h-3.5"></i> ' + t('template.duTemplates', null, 'DU 算力單元範本') + ' (' + ((templates.filter(item=>item.kind==='du')).length) + ')</h4>'
                 + (duListHtml || ('<div class="p-6 text-center text-xs text-slate-400 bg-slate-50 rounded-2xl border border-dashed border-slate-200">' + t('template.empty', null, '目前無已儲存的範本。') + '</div>'))
                 + '</div>'
                 + '<div class="space-y-3">'
-                + '<h4 class="text-xs font-black text-teal-950 uppercase tracking-wider flex items-center gap-2"><span>📦</span> ' + t('template.corePodTemplates', null, 'CorePOD 核心機房範本') + ' (' + ((templates.filter(item=>item.kind==='corepod')).length) + ')</h4>'
+                + '<h4 class="text-xs font-black text-teal-950 uppercase tracking-wider flex items-center gap-2"><i data-lucide="box" class="w-3.5 h-3.5"></i> ' + t('template.corePodTemplates', null, 'CorePOD 核心機房範本') + ' (' + ((templates.filter(item=>item.kind==='corepod')).length) + ')</h4>'
                 + (corePodListHtml || ('<div class="p-6 text-center text-xs text-slate-400 bg-slate-50 rounded-2xl border border-dashed border-slate-200">' + t('template.empty', null, '目前無已儲存的範本。') + '</div>'))
                 + '</div>'
                 + '</div>'
@@ -766,6 +769,7 @@
                 + '<button onclick="ViewHallSU.closeTemplateManager()" class="px-4 py-2 bg-slate-200 hover:bg-slate-300 text-slate-800 font-bold text-xs rounded-xl transition">' + t('template.close', null, '關閉') + '</button>'
                 + '</div>'
                 + '</div>';
+            if (window.UIKit) window.UIKit.refreshIcons(modalEl);
         },
 
         deleteTemplate(tplId) {

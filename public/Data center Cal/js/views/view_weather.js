@@ -135,7 +135,7 @@
 
         renderStationCardsHtml() {
             if (this.isLoading) {
-                return '<div class="p-4 text-center text-xs text-emerald-800 font-bold bg-emerald-50 rounded-lg flex items-center justify-center gap-2">' + t('weather.loadingHourly', null, '⏳ 正在載入測站逐時氣象資料...') + '</div>';
+                return '<div class="p-4 text-center text-xs text-emerald-800 font-bold bg-emerald-50 rounded-lg flex items-center justify-center gap-2"><i data-lucide="loader-2" class="w-4 h-4 animate-spin text-emerald-700"></i>' + t('weather.loadingHourly', null, '正在載入測站逐時氣象資料...') + '</div>';
             }
             const site = window.AppStore.state.site || {};
             const filtered = this.filterStations();
@@ -162,13 +162,13 @@
                     <button type="button" onclick="ViewWeather.selectStation('${s.id}')" class="w-full text-left p-2.5 rounded-xl border transition ${activeCls}">
                         <div class="flex items-center justify-between gap-2">
                             <div class="flex items-center gap-1.5 min-w-0">
-                                <span class="text-base shrink-0">${s.flag || '🌐'}</span>
+                                <span class="text-base shrink-0">${s.flag || '<i data-lucide="globe" class="w-4 h-4 text-slate-400 inline-block"></i>'}</span>
                                 <span class="text-xs font-black text-slate-800 truncate">${cityDisplay}</span>
                                 <span class="text-[10px] text-slate-400 truncate">(${countryDisplay})</span>
                             </div>
                             <div class="flex items-center gap-1.5 shrink-0">
                                 ${s.source === 'builtin' ? '<span class="text-[10px] bg-emerald-100 text-emerald-800 border border-emerald-300 px-1.5 py-0.5 rounded font-bold">' + t('weather.offlineBadge', null, '內建・離線可用') + '</span>' : ''}
-                                ${hasWarn ? '<span title="' + t('weather.warnDiff', null, '本站 ASHRAE 20年極值與 TMY 最高溫相差 > 5°C') + '" class="text-xs cursor-help">⚠️</span>' : ''}
+                                ${hasWarn ? '<span title="' + t('weather.warnDiff', null, '本站 ASHRAE 20年極值與 TMY 最高溫相差 > 5°C') + '" class="text-xs cursor-help text-amber-500 inline-flex items-center"><i data-lucide="alert-triangle" class="w-3.5 h-3.5"></i></span>' : ''}
                             </div>
                         </div>
                         <div class="flex items-center gap-3 mt-1 text-[10px] text-slate-500">
@@ -185,6 +185,7 @@
             const listEl = document.getElementById('stationListContainer');
             if (listEl) {
                 listEl.innerHTML = this.renderStationCardsHtml();
+                if (window.UIKit) window.UIKit.refreshIcons(listEl);
             }
         },
 
@@ -235,8 +236,8 @@
             const countryOptions = this.getCountryOptions();
             const totalStationsCount = (this.stationsList || this.getInitialStations()).length;
             const fileProtocolWarning = this.fileProtocolError ? `
-                <div class="p-3 mb-3 bg-amber-50 border border-amber-300 rounded-xl text-xs text-amber-900 flex items-start gap-2 shadow-xs">
-                    <span class="text-base shrink-0">⚠️</span>
+                <div class="p-3 mb-3 bg-amber-50 border border-amber-300 rounded-xl text-xs text-amber-900 flex items-start gap-2.5 shadow-xs">
+                    <i data-lucide="alert-triangle" class="w-5 h-5 text-amber-600 shrink-0 mt-0.5"></i>
                     <div class="space-y-1">
                         <div class="font-bold">${t('weather.fileProtocolTitle', null, '直接開啟 HTML 檔案時，瀏覽器不允許讀取本機氣象資料。')}</div>
                         <div class="text-[11px] text-amber-800">${t('weather.fileProtocolDesc', null, '請改用桌面版 <b>PUE計算系統.exe</b>、線上版，或在此資料夾執行 <code>npx serve</code> 後用 <code>http://localhost</code> 開啟。也可以下載該站 EPW 後用「上傳 EPW」。')}</div>
@@ -252,7 +253,7 @@
                         <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
                             <div>
                                 <h2 class="text-xl font-bold text-slate-900 flex items-center gap-2">
-                                    <span>📍</span> ${t('weather.stepTitle', null, 'Step 1: 案場 8,760h 氣象動力學分析 (EPW Climate Analyzer)')}
+                                    <i data-lucide="map-pin" class="w-5 h-5 text-emerald-600 shrink-0"></i> ${t('weather.stepTitle', null, 'Step 1: 案場 8,760h 氣象動力學分析 (EPW Climate Analyzer)')}
                                 </h2>
                                 <p class="text-sm text-slate-500 mt-1">
                                     ${t('weather.stepDescHtml', null, '完整載入 EnergyPlus EPW 逐時數據。<strong>本頁為先天環境氣候分析（Bin Analysis / FC可用時數 / 雙軸趨勢），不依賴後續設備配置</strong>。')}
@@ -279,8 +280,8 @@
                                         <input type="text" id="stationSearchInput" placeholder="${t('weather.searchPlaceholder', null, '搜尋城市、國家、WMO (例如: 台北, Tokyo, 545110)...')}"
                                             value="${this.searchQuery || ''}"
                                             oninput="ViewWeather.onSearch(this.value)"
-                                            class="w-full text-xs border border-slate-300 rounded-lg px-2.5 py-1.5 pl-7 bg-white text-slate-800 focus:ring-2 focus:ring-emerald-500 focus:outline-none">
-                                        <span class="absolute left-2 top-2 text-xs text-slate-400">🔍</span>
+                                            class="w-full text-xs border border-slate-300 rounded-lg px-2.5 py-1.5 pl-8 bg-white text-slate-800 focus:ring-2 focus:ring-emerald-500 focus:outline-none">
+                                        <span class="absolute left-2.5 top-2 text-slate-400 flex items-center"><i data-lucide="search" class="w-3.5 h-3.5"></i></span>
                                     </div>
                                     <div class="sm:col-span-2">
                                         <select id="stationContinentSelect" onchange="ViewWeather.onFilterContinent(this.value)" class="w-full text-xs border border-slate-300 rounded-lg px-2 py-1.5 bg-white text-slate-700">
@@ -320,7 +321,7 @@
                             <div>
                                 <label class="block text-xs font-bold text-slate-600 uppercase tracking-wider mb-2">${t('weather.uploadEpwTitle', null, '上傳自定義 EPW 檔案')}</label>
                                 <div id="weatherDropZone" class="border-2 border-dashed border-emerald-400 hover:border-emerald-600 rounded-xl p-5 text-center bg-emerald-50/40 cursor-pointer flex flex-col items-center justify-center min-h-[160px] transition">
-                                    <span class="text-xl">📂</span>
+                                    <i data-lucide="upload-cloud" class="w-8 h-8 text-emerald-600 mb-1"></i>
                                     <div class="text-xs font-bold text-emerald-950 mt-1">${t('weather.dropPrompt', null, '點擊或拖曳 .epw 檔案')}</div>
                                     <div class="text-[10px] text-slate-500 mt-0.5">${t('weather.dropSub', null, '支援 EnergyPlus EPW 格式')}</div>
                                     <input type="file" id="weatherFileInput" accept=".epw,.csv" class="hidden">
@@ -356,8 +357,8 @@
                     <!-- 版面 1.5: 自由冷卻氣候門檻 (依主要架構物理門檻) -->
                     <div class="bg-gradient-to-r from-emerald-50/80 to-teal-50/80 p-5 rounded-2xl border-2 border-emerald-300 shadow-xs flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
                         <div>
-                            <h3 class="text-sm font-black text-emerald-950 flex items-center gap-1.5">
-                                <span>⚙️</span> ${t('weather.threshTitle', { arch: archName }, `自由冷卻運轉模式氣候門檻（依 ${archName} 門檻）`)}
+                            <h3 class="text-sm font-black text-emerald-950 flex items-center gap-2">
+                                <i data-lucide="sliders" class="w-4 h-4 text-emerald-800"></i> ${t('weather.threshTitle', { arch: archName }, `自由冷卻運轉模式氣候門檻（依 ${archName} 門檻）`)}
                             </h3>
                             <p class="text-xs text-emerald-800/90 mt-0.5">
                                 ${basis === 'wb' ? t('weather.threshDescWb', null, '以室外濕球溫度 (WB) 為基準，依密閉塔與板換溫差計算全時直冷門檻。') : t('weather.threshDescDb', null, '以室外乾球溫度 (DB) 為基準，依乾冷器與板換溫差計算全直冷與輔助冷卻門檻。')}
@@ -365,13 +366,15 @@
                         </div>
                         <div class="flex items-center gap-3 flex-wrap">
                             <div class="bg-white px-3 py-1.5 rounded-xl border border-emerald-300 shadow-xs flex items-center gap-2 text-xs">
-                                <span class="font-bold text-emerald-900">${t('weather.mode1Thresh', null, '🟢 Mode 1 全直冷門檻:')}</span>
+                                <span class="w-2 h-2 rounded-full bg-emerald-500 inline-block"></span>
+                                <span class="font-bold text-emerald-900">${t('weather.mode1Thresh', null, 'Mode 1 全直冷門檻:')}</span>
                                 <span class="font-black text-emerald-800 text-sm">${mode1Max != null ? `${mode1Max}°C` : t('weather.none', null, '無')}</span>
                                 <span class="text-[10px] text-slate-500 font-bold">${basis.toUpperCase()}</span>
                             </div>
                             ${mode2Max != null ? `
                             <div class="bg-white px-3 py-1.5 rounded-xl border border-emerald-300 shadow-xs flex items-center gap-2 text-xs">
-                                <span class="font-bold text-teal-900">${t('weather.mode2Thresh', null, '🔵 Mode 2 部分輔助上限:')}</span>
+                                <span class="w-2 h-2 rounded-full bg-teal-500 inline-block"></span>
+                                <span class="font-bold text-teal-900">${t('weather.mode2Thresh', null, 'Mode 2 部分輔助上限:')}</span>
                                 <span class="font-black text-teal-800 text-sm">${mode2Max}°C</span>
                                 <span class="text-[10px] text-slate-500 font-bold">${basis.toUpperCase()}</span>
                             </div>
@@ -384,7 +387,7 @@
                         <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-emerald-100 pb-3">
                             <div>
                                 <div class="flex items-center gap-2">
-                                    <span class="w-8 h-8 rounded-xl bg-emerald-100 text-emerald-800 font-black flex items-center justify-center text-sm shadow-2xs">❄️</span>
+                                    <span class="w-8 h-8 rounded-xl bg-emerald-100 text-emerald-800 font-black flex items-center justify-center text-sm shadow-2xs"><i data-lucide="snowflake" class="w-4 h-4"></i></span>
                                     <h3 class="text-base font-black text-slate-900">
                                         ${t('weather.fcPotentialTitle', null, '8,760h 全年自由冷卻可用時數 (Free Cooling Potential)')}
                                     </h3>
@@ -457,10 +460,10 @@
                         <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b pb-3">
                             <div>
                                 <h3 class="text-base font-bold text-slate-900 flex items-center gap-2">
-                                    <span>📊</span> ${t('weather.binTitle', null, '氣候區間頻率分析 (Bin Analysis)')}
+                                    <i data-lucide="bar-chart-2" class="w-4 h-4 text-slate-600"></i> ${t('weather.binTitle', null, '氣候區間頻率分析 (Bin Analysis)')}
                                 </h3>
                                 <p class="text-xs text-slate-400 mt-0.5">
-                                    ${t('weather.binSubtitle', { m1: mode1Max != null ? `≤${mode1Max}°C` : t('weather.none', null, '無'), m2: mode2Max != null ? `≤${mode2Max}°C` : t('weather.none', null, '無'), m3: mode2Max != null ? `>${mode2Max}°C` : t('weather.allYear', null, '全年') }, `統計 8,760 小時落在各溫度/濕度區間之發生時數。直方圖已自動標記門檻區間 (🟢 Mode 1 ${mode1Max != null ? `≤${mode1Max}°C` : '無'} | 🔵 Mode 2 ${mode2Max != null ? `≤${mode2Max}°C` : '無'} | 🟡 Mode 3 ${mode2Max != null ? `>${mode2Max}°C` : '全年'})`)}
+                                    ${t('weather.binSubtitle', { m1: mode1Max != null ? `≤${mode1Max}°C` : t('weather.none', null, '無'), m2: mode2Max != null ? `≤${mode2Max}°C` : t('weather.none', null, '無'), m3: mode2Max != null ? `>${mode2Max}°C` : t('weather.allYear', null, '全年') }, `統計 8,760 小時落在各溫度/濕度區間之發生時數。直方圖已自動標記門檻區間 (Mode 1 ${mode1Max != null ? `≤${mode1Max}°C` : '無'} | Mode 2 ${mode2Max != null ? `≤${mode2Max}°C` : '無'} | Mode 3 ${mode2Max != null ? `>${mode2Max}°C` : '全年'})`)}
                                 </p>
                             </div>
                             <div class="flex items-center gap-2">
@@ -491,8 +494,8 @@
                         <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
                             <div class="flex items-center justify-between mb-3">
                                 <div>
-                                    <h3 class="text-sm font-bold text-slate-800">${t('weather.monthlyFcTitle', null, '📅 各月份 Free Cooling 潛力時數堆疊分析')}</h3>
-                                    <div class="text-[11px] text-slate-400">${t('weather.monthlyFcLegend', { m1: mode1Max != null ? `≤${mode1Max}°C` : t('weather.none', null, '無') }, `綠色: 全直冷 (${mode1Max != null ? `≤${mode1Max}°C` : '無'}) | 藍色: 輔助直冷 | 黃色: 全機械製冷`)}</div>
+                                    <h3 class="text-sm font-bold text-slate-800 flex items-center gap-1.5"><i data-lucide="calendar" class="w-4 h-4 text-slate-600"></i> <span>${t('weather.monthlyFcTitle', null, '各月份 Free Cooling 潛力時數堆疊分析')}</span></h3>
+                                    <div class="text-[11px] text-slate-400 mt-0.5">${t('weather.monthlyFcLegend', { m1: mode1Max != null ? `≤${mode1Max}°C` : t('weather.none', null, '無') }, `綠色: 全直冷 (${mode1Max != null ? `≤${mode1Max}°C` : '無'}) | 藍色: 輔助直冷 | 黃色: 全機械製冷`)}</div>
                                 </div>
                                 <span class="text-xs text-emerald-600 font-bold">${t('weather.threeTierStack', null, '三階模式堆疊')}</span>
                             </div>
@@ -504,8 +507,8 @@
                         <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
                             <div class="flex items-center justify-between mb-3">
                                 <div>
-                                    <h3 class="text-sm font-bold text-slate-800">${t('weather.monthlyTrendTitle', null, '📈 12 個月氣候雙軸走勢 (含設定門檻線標記)')}</h3>
-                                    <div class="text-[11px] text-slate-400">${t('weather.monthlyTrendSub', { m1: mode1Max != null ? `${mode1Max}°C` : t('weather.none', null, '無'), m2: mode2Max != null ? `${mode2Max}°C` : t('weather.none', null, '無') }, `包含 Mode 1 (${mode1Max != null ? `${mode1Max}°C` : '無'}) 與 Mode 2 (${mode2Max != null ? `${mode2Max}°C` : '無'}) 基準參考線`)}</div>
+                                    <h3 class="text-sm font-bold text-slate-800 flex items-center gap-1.5"><i data-lucide="trending-up" class="w-4 h-4 text-slate-600"></i> <span>${t('weather.monthlyTrendTitle', null, '12 個月氣候雙軸走勢 (含設定門檻線標記)')}</span></h3>
+                                    <div class="text-[11px] text-slate-400 mt-0.5">${t('weather.monthlyTrendSub', { m1: mode1Max != null ? `${mode1Max}°C` : t('weather.none', null, '無'), m2: mode2Max != null ? `${mode2Max}°C` : t('weather.none', null, '無') }, `包含 Mode 1 (${mode1Max != null ? `${mode1Max}°C` : '無'}) 與 Mode 2 (${mode2Max != null ? `${mode2Max}°C` : '無'}) 基準參考線`)}</div>
                                 </div>
                                 <span class="text-xs text-blue-600 font-bold">Monthly Trends</span>
                             </div>
@@ -518,7 +521,7 @@
                     <!-- 版面 4: 月度氣象資料摘要表 (含複製/匯出) -->
                     <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 space-y-4">
                         <div class="flex justify-between items-center border-b pb-3">
-                            <h3 class="text-sm font-bold text-slate-800">${t('weather.monthlySummaryTitle', null, '📋 12 個月氣候摘要明細表 (Monthly Summary)')}</h3>
+                            <h3 class="text-sm font-bold text-slate-800 flex items-center gap-1.5"><i data-lucide="table" class="w-4 h-4 text-slate-600"></i> <span>${t('weather.monthlySummaryTitle', null, '12 個月氣候摘要明細表 (Monthly Summary)')}</span></h3>
                             <div class="flex items-center gap-2">
                                 <button onclick="ViewWeather.copyTable()" class="px-3 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-lg transition">${t('weather.copyTable', null, '複製表格')}</button>
                                 <button onclick="ViewWeather.exportCsv()" class="px-3 py-1 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-lg transition">${t('weather.exportCsv', null, '匯出 CSV')}</button>
@@ -544,7 +547,7 @@
 
                     <div class="flex justify-end pt-2">
                         <button onclick="window.App.nextStep()" class="px-6 py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-sm rounded-xl shadow-sm transition flex items-center gap-2">
-                            ${t('weather.nextStep', null, '下一步: Hall → DU → SU 模組設計')} <span>→</span>
+                            <span>${t('weather.nextStep', null, '下一步: Hall → DU → SU 模組設計')}</span> <i data-lucide="arrow-right" class="w-4 h-4"></i>
                         </button>
                     </div>
                 </div>
@@ -655,6 +658,9 @@
                     const parsed = window.EpwParser.parse(e.target.result);
                     window.AppStore.updateSite({
                         selectedCity: file.name.replace('.epw', ''),
+                        // R8: 一併更新測站代碼與來源，避免沿用上一個測站（計算書會顯示錯誤的氣象資料來源）
+                        stationId: file.name.replace(/\.epw$/i, ''),
+                        stationSource: 'epw',
                         stationName: parsed.stationInfo.location,
                         country: parsed.stationInfo.country,
                         lat: parsed.stationInfo.lat,

@@ -14,7 +14,7 @@
         id: 'dry_cooler_pure',
         aliases: [],
         loop: 'liquid',
-        get optionLabel() { return t('arch.dry_cooler_pure.option', null, '🟢 純乾冷器節能直冷 (Dry Cooler Pure FC / 100% 自然風冷・零冰機・零耗水)'); },
+        get optionLabel() { return t('arch.dry_cooler_pure.option', null, '純乾冷器節能直冷 (Dry Cooler Pure FC / 100% 自然風冷・零冰機・零耗水)'); },
         get cardLabel() { return t('arch.dry_cooler_pure.card', null, '純乾冷器 (零冰機)'); },
         get pillLabel() { return t('arch.dry_cooler_pure.pill', null, '純乾冷器'); },
         get dashboardLabel() { return t('arch.dry_cooler_pure.dashboard', null, '純乾冷器自然排熱 (Dry Cooler)'); },
@@ -78,7 +78,8 @@
                 defaultUnitCapKw: 5.5,
                 requiredKw: (ctx) => ctx.hydKw || 5.5,
                 calcQty: () => ({ qty: 3, n1: 3 })
-            }
+            },
+            root.CoolingArchHelpers.pumpEquipment('rej_pump', 'Heat Rejection Loop Pump 排熱側循環泵', (sys) => root.CoolingArchHelpers.archHasPhe(root.CoolingArchRegistry.get('dry_cooler_pure'), sys))
         ],
 
         stages: [
@@ -161,8 +162,8 @@
                 nodes.push({
                     id: 'pump_outdoor',
                     kind: 'pump',
-                    title: 'Glycol Pump',
-                    lines: [t('topo.glycolPump', null, '乙二醇循環泵')]
+                    title: 'Rejection Pump',
+                    lines: [t('topo.glycolPump', null, '排熱側循環泵')]
                 });
                 nodes.push({
                     id: 'heat_rejection',

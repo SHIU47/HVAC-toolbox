@@ -43,7 +43,9 @@
             if (state.site && state.site.isWeatherLoading) {
                 container.innerHTML = `
                     <div class="bg-white p-12 rounded-2xl border border-slate-200 text-center space-y-4 shadow-sm">
-                        <div class="text-4xl">⏳</div>
+                        <div class="w-12 h-12 mx-auto rounded-full bg-brand-50 text-brand-600 flex items-center justify-center">
+                            <i data-lucide="loader-2" class="w-7 h-7 animate-spin"></i>
+                        </div>
                         <h3 class="text-lg font-bold text-slate-800">${_t('dash.weatherLoading', null, '氣象資料載入中...')}</h3>
                         <p class="text-xs text-slate-500">${_t('dash.weatherLoadingDesc', { city: state.site.selectedCity || state.site.stationId }, `正在非同步載入「${state.site.selectedCity || state.site.stationId}」之 8,760 小時氣象資料，請稍候。`)}</p>
                     </div>
@@ -78,8 +80,8 @@
                 const memberNames = (pl.memberIds || []).map(id => getUnitNameById(id)).join(', ');
                 const plantTotalMwh = (pl.annualMwh?.chiller || 0) + (pl.annualMwh?.heatRej || 0) + (pl.annualMwh?.pump || 0);
                 const loopBadge = pl.loop === 'liquid'
-                    ? '<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-semibold bg-brand-50 text-brand-700 border border-brand-200">💧 ' + _t('cooling.liquidLoop', null, '液冷迴路') + '</span>'
-                    : '<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-semibold bg-sky-50 text-sky-700 border border-sky-200">💨 ' + _t('cooling.airLoop', null, '氣冷迴路') + '</span>';
+                    ? '<span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-[10px] font-semibold bg-brand-50 text-brand-700 border border-brand-200"><span class="w-1.5 h-1.5 rounded-full bg-brand-500"></span>' + _t('cooling.liquidLoop', null, '液冷迴路') + '</span>'
+                    : '<span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-[10px] font-semibold bg-sky-50 text-sky-700 border border-sky-200"><span class="w-1.5 h-1.5 rounded-full bg-sky-500"></span>' + _t('cooling.airLoop', null, '氣冷迴路') + '</span>';
                 const redundancyText = def?.redundancy || 'N+1';
 
                 plantTableRows += '<tr class="border-b border-border-subtle hover:bg-bg transition-colors text-xs">'
@@ -103,8 +105,8 @@
                 const liqText = liqPlant ? liqPlant.name : _t('cooling.dedicated', null, '獨立');
                 const airText = airPlant ? airPlant.name : _t('cooling.dedicated', null, '獨立');
                 const supplyPlantHtml = '<div class="text-[11px] space-y-0.5">'
-                    + '<div class="flex items-center gap-1 ' + (liqPlant ? 'text-brand-600 font-semibold' : 'text-tertiary font-normal') + '"><span>💧</span><span>' + U0.escapeHTML(liqText) + '</span></div>'
-                    + '<div class="flex items-center gap-1 ' + (airPlant ? 'text-sky-600 font-semibold' : 'text-tertiary font-normal') + '"><span>💨</span><span>' + U0.escapeHTML(airText) + '</span></div>'
+                    + '<div class="flex items-center gap-1.5 ' + (liqPlant ? 'text-brand-600 font-semibold' : 'text-tertiary font-normal') + '"><span class="w-1.5 h-1.5 rounded-full ' + (liqPlant ? 'bg-brand-500' : 'bg-slate-300') + '"></span><span>' + U0.escapeHTML(liqText) + '</span></div>'
+                    + '<div class="flex items-center gap-1.5 ' + (airPlant ? 'text-sky-600 font-semibold' : 'text-tertiary font-normal') + '"><span class="w-1.5 h-1.5 rounded-full ' + (airPlant ? 'bg-sky-500' : 'bg-slate-300') + '"></span><span>' + U0.escapeHTML(airText) + '</span></div>'
                     + '</div>';
 
                 duTableRows += '<tr class="border-b border-border-subtle hover:bg-bg transition-colors text-xs">'
@@ -131,8 +133,8 @@
                 const liqText = liqPlant ? liqPlant.name : _t('cooling.dedicated', null, '獨立');
                 const airText = airPlant ? airPlant.name : _t('cooling.dedicated', null, '獨立');
                 const supplyPlantHtml = '<div class="text-[11px] space-y-0.5">'
-                    + (cp.liquidHeatKw > 0 ? ('<div class="flex items-center gap-1 ' + (liqPlant ? 'text-brand-600 font-semibold' : 'text-tertiary font-normal') + '"><span>💧</span><span>' + U0.escapeHTML(liqText) + '</span></div>') : '')
-                    + '<div class="flex items-center gap-1 ' + (airPlant ? 'text-sky-600 font-semibold' : 'text-tertiary font-normal') + '"><span>💨</span><span>' + U0.escapeHTML(airText) + '</span></div>'
+                    + (cp.liquidHeatKw > 0 ? ('<div class="flex items-center gap-1.5 ' + (liqPlant ? 'text-brand-600 font-semibold' : 'text-tertiary font-normal') + '"><span class="w-1.5 h-1.5 rounded-full ' + (liqPlant ? 'bg-brand-500' : 'bg-slate-300') + '"></span><span>' + U0.escapeHTML(liqText) + '</span></div>') : '')
+                    + '<div class="flex items-center gap-1.5 ' + (airPlant ? 'text-sky-600 font-semibold' : 'text-tertiary font-normal') + '"><span class="w-1.5 h-1.5 rounded-full ' + (airPlant ? 'bg-sky-500' : 'bg-slate-300') + '"></span><span>' + U0.escapeHTML(airText) + '</span></div>'
                     + '</div>';
 
                 corePodTableRows += '<tr class="border-b border-border-subtle hover:bg-bg transition-colors text-xs">'
@@ -212,7 +214,7 @@
                     </div>`;
 
                     const deficitHtml = (summ?.capacityDeficitHours > 0)
-                        ? `<span class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold bg-danger-50 text-danger-700 border border-danger-200">⚠ ${summ.capacityDeficitHours} h</span>`
+                        ? `<span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-bold bg-danger-50 text-danger-700 border border-danger-200"><i data-lucide="alert-triangle" class="w-3 h-3 text-red-600"></i><span>${summ.capacityDeficitHours} h</span></span>`
                         : `<span class="text-[10px] text-emerald-700 font-mono">0 h</span>`;
 
                     return `
@@ -319,7 +321,7 @@
                         <div class="flex items-start gap-3">
                             ${U.iconBadge('triangle-alert', 'danger', 'w-9 h-9')}
                             <div class="flex-1">
-                                <div class="text-sm font-bold text-danger-600">${_t('dash.deficitWarnTitle', null, '⚠ 設備容量不足警示 — 此 PUE 結果可能被低估')}</div>
+                                <div class="text-sm font-bold text-danger-600">${_t('dash.deficitWarnTitle', null, '設備容量不足警示 — 此 PUE 結果可能被低估')}</div>
                                 <div class="text-xs text-danger-600 mt-1">
                                     ${_t('dash.deficitWarnBody', { hours: overall.capacityDeficitHours.toLocaleString(), kw: overall.maxCapacityDeficitKw.toLocaleString() }, `全年 8,760 小時中，有 <strong>${overall.capacityDeficitHours.toLocaleString()}</strong> 小時偵測到冰機容量不足（需求超過已選型號扣除 N+1 備援後的可用容量），尖峰缺口約 <strong>${overall.maxCapacityDeficitKw.toLocaleString()} kW</strong>。這些小時的耗電量已被引擎依可用容量封頂計算，並不代表冷量真的有被完全供應，此結果<strong>不應直接用於設備比較或最終 PUE 認證</strong>，請回到 Step 4 增加設備台數或選用更大容量型號。`)}
                                 </div>
@@ -568,7 +570,7 @@
                                     ${U.icon('refresh-cw', 'w-3.5 h-3.5')} ${_t('scen.recalculateAll', null, '全部重新計算')}
                                 </button>
                                 <button onclick="ViewDashboard.promptSaveScenario()" class="${U.buttonClass('primary')}">
-                                    ${U.icon('plus', 'w-3.5 h-3.5')} ${_t('scen.saveAsScenario', null, '💾 存為方案')}
+                                    ${U.icon('plus', 'w-3.5 h-3.5')} ${_t('scen.saveAsScenario', null, '存為方案')}
                                 </button>
                             </div>
                         </div>
@@ -666,7 +668,7 @@
                                     <div class="flex justify-between"><span>${_t('dash.pumpPowerEnergy', null, '循環泵動力耗能:')}</span><strong class="font-mono text-primary">${(overall.energyLedger?.cdu_pump_kwh / 1000 || 0).toLocaleString()} MWh</strong></div>
                                     <div class="flex justify-between"><span>${_t('dash.chillerSchedule', null, '冰機分階排程:')}</span><strong class="text-emerald-700 font-medium">${_t('dash.leadLagSmart', null, 'Lead-Lag 智慧啟閉')}</strong></div>
                                     <div class="flex justify-between"><span>${_t('dash.n1StandbyIsol', null, 'N+1 備援隔離:')}</span><strong class="text-emerald-700 font-medium">${_t('dash.standby1Unit', null, '1台待機 (不計運轉)')}</strong></div>
-                                    <div class="flex justify-between border-t border-border-subtle pt-1.5 font-bold text-primary"><span>${_t('dash.engAvailability', null, '工程可用性:')}</span><span class="font-mono ${overall.capacityDeficitHours > 0 ? 'text-danger-600' : 'text-emerald-700'}">${overall.capacityDeficitHours > 0 ? _t('dash.deficitWarnBadge', null, '⚠ 容量不足') : _t('dash.passSpecs', null, '✓ 100% 滿足規範')}</span></div>
+                                    <div class="flex justify-between border-t border-border-subtle pt-1.5 font-bold text-primary"><span>${_t('dash.engAvailability', null, '工程可用性:')}</span><span class="font-mono ${overall.capacityDeficitHours > 0 ? 'text-danger-600' : 'text-emerald-700'}">${overall.capacityDeficitHours > 0 ? _t('dash.deficitWarnBadge', null, '容量不足') : _t('dash.passSpecs', null, '100% 滿足規範')}</span></div>
                                 </div>
                             </div>
                         </div>
@@ -720,20 +722,25 @@
 
                             <div class="flex items-center gap-2 flex-wrap">
                                 <div class="flex items-center bg-bg p-1 rounded-lg border border-border text-xs flex-wrap gap-1">
-                                    <button id="btnHeatmapCdu" onclick="ViewDashboard.setHeatmapMode('cdu')" class="px-2.5 py-1 rounded font-semibold text-xs transition bg-surface text-primary shadow-2xs">
-                                        ${_t('dash.btnHeatmapCdu', null, '💧 CDU 液冷主迴路')}
+                                    <button id="btnHeatmapCdu" onclick="ViewDashboard.setHeatmapMode('cdu')" class="px-2.5 py-1 rounded font-semibold text-xs transition bg-surface text-primary shadow-2xs inline-flex items-center gap-1.5">
+                                        <i data-lucide="cpu" class="w-3.5 h-3.5 text-indigo-500"></i>
+                                        <span>${_t('dash.btnHeatmapCdu', null, 'CDU 液冷主迴路')}</span>
                                     </button>
-                                    <button id="btnHeatmapFw" onclick="ViewDashboard.setHeatmapMode('fw')" class="px-2.5 py-1 rounded font-medium text-xs transition text-secondary hover:text-primary">
-                                        ${_t('dash.btnHeatmapFw', null, '💨 Fanwall 氣冷冰水')}
+                                    <button id="btnHeatmapFw" onclick="ViewDashboard.setHeatmapMode('fw')" class="px-2.5 py-1 rounded font-medium text-xs transition text-secondary hover:text-primary inline-flex items-center gap-1.5">
+                                        <i data-lucide="server" class="w-3.5 h-3.5 text-emerald-500"></i>
+                                        <span>${_t('dash.btnHeatmapFw', null, 'Fanwall 氣冷冰水')}</span>
                                     </button>
-                                    <button id="btnHeatmapCombined" onclick="ViewDashboard.setHeatmapMode('combined')" class="px-2.5 py-1 rounded font-medium text-xs transition text-secondary hover:text-primary">
-                                        ${_t('dash.btnHeatmapCombined', null, '🌐 全廠綜合雙迴路')}
+                                    <button id="btnHeatmapCombined" onclick="ViewDashboard.setHeatmapMode('combined')" class="px-2.5 py-1 rounded font-medium text-xs transition text-secondary hover:text-primary inline-flex items-center gap-1.5">
+                                        <i data-lucide="layers" class="w-3.5 h-3.5 text-brand-600"></i>
+                                        <span>${_t('dash.btnHeatmapCombined', null, '全廠綜合雙迴路')}</span>
                                     </button>
-                                    <button id="btnHeatmapPue" onclick="ViewDashboard.setHeatmapMode('pue')" class="px-2.5 py-1 rounded font-medium text-xs transition text-secondary hover:text-primary">
-                                        ${_t('dash.btnHeatmapPue', null, '⚡ 即時 PUE')}
+                                    <button id="btnHeatmapPue" onclick="ViewDashboard.setHeatmapMode('pue')" class="px-2.5 py-1 rounded font-medium text-xs transition text-secondary hover:text-primary inline-flex items-center gap-1.5">
+                                        <i data-lucide="gauge" class="w-3.5 h-3.5 text-amber-500"></i>
+                                        <span>${_t('dash.btnHeatmapPue', null, '即時 PUE')}</span>
                                     </button>
-                                    <button id="btnHeatmapDb" onclick="ViewDashboard.setHeatmapMode('db')" class="px-2.5 py-1 rounded font-medium text-xs transition text-secondary hover:text-primary">
-                                        ${_t('dash.btnHeatmapDb', null, '☀️ 外氣乾球溫')}
+                                    <button id="btnHeatmapDb" onclick="ViewDashboard.setHeatmapMode('db')" class="px-2.5 py-1 rounded font-medium text-xs transition text-secondary hover:text-primary inline-flex items-center gap-1.5">
+                                        <i data-lucide="sun" class="w-3.5 h-3.5 text-yellow-500"></i>
+                                        <span>${_t('dash.btnHeatmapDb', null, '外氣乾球溫')}</span>
                                     </button>
                                 </div>
 
@@ -743,21 +750,21 @@
                                     </button>
                                     <div id="heatmapExportMenu" class="hidden absolute right-0 mt-1.5 w-64 bg-white rounded-xl shadow-xl border border-slate-200 py-1.5 z-50 text-xs text-slate-700">
                                         <button onclick="ViewDashboard.downloadHeatmapSvg()" class="w-full text-left px-3.5 py-2 hover:bg-indigo-50 flex items-center gap-2.5 font-bold text-indigo-900 transition">
-                                            <span class="text-base">📐</span>
+                                            <i data-lucide="file-code" class="w-4 h-4 text-indigo-600 shrink-0"></i>
                                             <div>
                                                 <div>${_t('dash.exportSvg', null, '匯出向量圖檔 (.SVG)')}</div>
                                                 <div class="text-[10px] text-slate-400 font-normal">${_t('dash.exportSvgDesc', null, '無限縮放零失真・可入 PPT/Visio')}</div>
                                             </div>
                                         </button>
                                         <button onclick="ViewDashboard.downloadHeatmapMatrixCsv()" class="w-full text-left px-3.5 py-2 hover:bg-emerald-50 flex items-center gap-2.5 font-bold text-emerald-900 transition">
-                                            <span class="text-base">📊</span>
+                                            <i data-lucide="file-spreadsheet" class="w-4 h-4 text-emerald-600 shrink-0"></i>
                                             <div>
                                                 <div>${_t('dash.exportMatrixCsv', null, '匯出 365×24 熱力矩陣 (.CSV)')}</div>
                                                 <div class="text-[10px] text-slate-400 font-normal">${_t('dash.exportMatrixCsvDesc', null, 'Excel 直接套用條件式格式熱力圖')}</div>
                                             </div>
                                         </button>
                                         <button onclick="ViewDashboard.download8760DetailedCsv()" class="w-full text-left px-3.5 py-2 hover:bg-blue-50 flex items-center gap-2.5 font-bold text-blue-900 transition">
-                                            <span class="text-base">📈</span>
+                                            <i data-lucide="line-chart" class="w-4 h-4 text-blue-600 shrink-0"></i>
                                             <div>
                                                 <div>${_t('dash.export8760Csv', null, '匯出 8,760h 逐時全量明細 (.CSV)')}</div>
                                                 <div class="text-[10px] text-slate-400 font-normal">${_t('dash.export8760CsvDesc', null, '含乾濕球、PUE、各設備耗電與水量')}</div>
@@ -765,7 +772,7 @@
                                         </button>
                                         <div class="border-t border-slate-100 my-1"></div>
                                         <button onclick="ViewDashboard.downloadHeatmapHiResPng()" class="w-full text-left px-3.5 py-2 hover:bg-slate-50 flex items-center gap-2.5 text-slate-600 transition">
-                                            <span class="text-base">🖼️</span>
+                                            <i data-lucide="image" class="w-4 h-4 text-slate-600 shrink-0"></i>
                                             <div>
                                                 <div>${_t('dash.exportPng', null, '匯出超高解析度圖 (.PNG 3x)')}</div>
                                                 <div class="text-[10px] text-slate-400 font-normal">${_t('dash.exportPngDesc', null, '300 DPI 印刷出版級點陣圖')}</div>
@@ -1271,16 +1278,20 @@
                         </span>
                         <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 flex-1 sm:max-w-3xl">
                             <button onclick="ViewDashboard.setExhibitionPreset('summer_peak')" class="px-3 py-1.5 rounded-lg text-xs font-semibold justify-center ${hIdx === 4718 ? 'bg-amber-600 text-white shadow-xs' : 'bg-bg hover:bg-border-subtle text-secondary border border-border'} transition flex items-center gap-1.5">
-                                <span>☀️</span> ${_t('dash.summerPeak', null, '夏季尖峰 (7/15 14:00)')}
+                                <i data-lucide="sun" class="w-3.5 h-3.5 ${hIdx === 4718 ? 'text-white' : 'text-amber-500'}"></i>
+                                <span>${_t('dash.summerPeak', null, '夏季尖峰 (7/15 14:00)')}</span>
                             </button>
                             <button onclick="ViewDashboard.setExhibitionPreset('winter_free')" class="px-3 py-1.5 rounded-lg text-xs font-semibold justify-center ${hIdx === 340 ? 'bg-brand-600 text-white shadow-xs' : 'bg-bg hover:bg-border-subtle text-secondary border border-border'} transition flex items-center gap-1.5">
-                                <span>❄️</span> ${_t('dash.winterFree', null, '冬季深冷 (1/15 04:00)')}
+                                <i data-lucide="snowflake" class="w-3.5 h-3.5 ${hIdx === 340 ? 'text-white' : 'text-sky-500'}"></i>
+                                <span>${_t('dash.winterFree', null, '冬季深冷 (1/15 04:00)')}</span>
                             </button>
                             <button onclick="ViewDashboard.setExhibitionPreset('spring_mild')" class="px-3 py-1.5 rounded-lg text-xs font-semibold justify-center ${hIdx === 2508 ? 'bg-indigo-600 text-white shadow-xs' : 'bg-bg hover:bg-border-subtle text-secondary border border-border'} transition flex items-center gap-1.5">
-                                <span>🍂</span> ${_t('dash.springMild', null, '春秋過渡 (4/15 12:00)')}
+                                <i data-lucide="leaf" class="w-3.5 h-3.5 ${hIdx === 2508 ? 'text-white' : 'text-emerald-500'}"></i>
+                                <span>${_t('dash.springMild', null, '春秋過渡 (4/15 12:00)')}</span>
                             </button>
                             <button onclick="ViewDashboard.setExhibitionPreset('summer_night')" class="px-3 py-1.5 rounded-lg text-xs font-semibold justify-center ${hIdx === 4726 ? 'bg-slate-800 text-white shadow-xs' : 'bg-bg hover:bg-border-subtle text-secondary border border-border'} transition flex items-center gap-1.5">
-                                <span>🌙</span> ${_t('dash.summerNight', null, '夏季夜間 (7/15 22:00)')}
+                                <i data-lucide="moon" class="w-3.5 h-3.5 ${hIdx === 4726 ? 'text-white' : 'text-indigo-400'}"></i>
+                                <span>${_t('dash.summerNight', null, '夏季夜間 (7/15 22:00)')}</span>
                             </button>
                         </div>
                     </div>
@@ -1289,16 +1300,16 @@
                     <div class="p-4 bg-bg rounded-xl border border-border-subtle space-y-3">
                         <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-3 text-xs">
                             <div class="flex items-center gap-2 font-bold text-primary flex-wrap">
-                                <span>${_t('dash.operatingTime', null, '📅 工況時段:')}</span>
+                                <span class="inline-flex items-center gap-1.5"><i data-lucide="calendar" class="w-3.5 h-3.5 text-slate-500"></i><span>${_t('dash.operatingTime', null, '工況時段:')}</span></span>
                                 <span class="px-2.5 py-1 bg-surface rounded-lg border border-border font-mono text-brand-700 text-xs shadow-2xs">${_t('dash.operatingTimeVal', { m: mIdx, d: dayInMonth, h: String(hourOfDay).padStart(2, '0') }, `${mIdx} 月 ${dayInMonth} 日 ${String(hourOfDay).padStart(2, '0')}:00`)}</span>
                                 <span class="text-tertiary text-[11px] font-mono">${_t('dash.dayHourIndex', { d: d + 1, h: hIdx + 1 }, `(第 ${d + 1} 天 / 時數 #${hIdx + 1})`)}</span>
                             </div>
                             <div class="flex items-center gap-2 font-mono text-xs flex-wrap">
-                                <span class="px-2 py-1 bg-surface rounded border border-border-subtle">${_t('dash.dryBulb', null, '☀️ 乾球:')} <strong class="text-primary font-bold">${curHour.db.toFixed(1)}°C</strong></span>
-                                <span class="px-2 py-1 bg-surface rounded border border-border-subtle">${_t('dash.wetBulb', null, '💧 濕球:')} <strong class="text-primary font-bold">${curHour.wb.toFixed(1)}°C</strong></span>
-                                <span class="px-2 py-1 bg-surface rounded border border-border-subtle">${_t('dash.itLoad', null, '⚡ IT負載:')} <strong class="text-primary font-bold">${curHour.itKw.toLocaleString()} kW</strong></span>
-                                <span class="px-2 py-1 bg-surface rounded border border-border-subtle">${_t('dash.coolingPower', null, '❄️ 冷卻耗電:')} <strong class="text-amber-600 font-bold">${curHour.coolingKw.toLocaleString()} kW</strong></span>
-                                <span class="px-2.5 py-1 bg-brand-50 text-brand-800 rounded border border-brand-200">${_t('dash.instantPue', null, '⚡ 即時 PUE:')} <strong class="font-bold">${curHour.pue.toFixed(3)}</strong></span>
+                                <span class="px-2 py-1 bg-surface rounded border border-border-subtle inline-flex items-center gap-1"><i data-lucide="thermometer" class="w-3 h-3 text-amber-500"></i><span class="text-tertiary">${_t('dash.dryBulb', null, '乾球:')}</span> <strong class="text-primary font-bold">${curHour.db.toFixed(1)}°C</strong></span>
+                                <span class="px-2 py-1 bg-surface rounded border border-border-subtle inline-flex items-center gap-1"><i data-lucide="droplets" class="w-3 h-3 text-sky-500"></i><span class="text-tertiary">${_t('dash.wetBulb', null, '濕球:')}</span> <strong class="text-primary font-bold">${curHour.wb.toFixed(1)}°C</strong></span>
+                                <span class="px-2 py-1 bg-surface rounded border border-border-subtle inline-flex items-center gap-1"><i data-lucide="cpu" class="w-3 h-3 text-indigo-500"></i><span class="text-tertiary">${_t('dash.itLoad', null, 'IT負載:')}</span> <strong class="text-primary font-bold">${curHour.itKw.toLocaleString()} kW</strong></span>
+                                <span class="px-2 py-1 bg-surface rounded border border-border-subtle inline-flex items-center gap-1"><i data-lucide="zap" class="w-3 h-3 text-amber-500"></i><span class="text-tertiary">${_t('dash.coolingPower', null, '冷卻耗電:')}</span> <strong class="text-amber-600 font-bold">${curHour.coolingKw.toLocaleString()} kW</strong></span>
+                                <span class="px-2.5 py-1 bg-brand-50 text-brand-800 rounded border border-brand-200 inline-flex items-center gap-1"><i data-lucide="gauge" class="w-3 h-3 text-brand-600"></i><span>${_t('dash.instantPue', null, '即時 PUE:')}</span> <strong class="font-bold">${curHour.pue.toFixed(3)}</strong></span>
                             </div>
                         </div>
 
@@ -1330,11 +1341,12 @@
                         <div class="p-4 bg-surface rounded-xl border border-border hover:border-brand-300 transition-all space-y-3">
                             <div class="flex items-center justify-between border-b border-border-subtle pb-2.5">
                                 <div class="flex items-center gap-2">
-                                    <span class="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"></span>
-                                    <span class="font-bold text-sm text-primary">${_t('dash.cduCardTitle', null, '💧 CDU 晶片側與一次水迴路')}</span>
+                                    <i data-lucide="cpu" class="w-4 h-4 text-brand-600"></i>
+                                    <span class="font-bold text-sm text-primary">${_t('dash.cduCardTitle', null, 'CDU 晶片側與一次水迴路')}</span>
                                 </div>
-                                <span class="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
-                                    ${isCduFree ? _t('dash.cduBadgeFree', null, '🟢 全自然冷卻排熱') : (isCduTrim ? _t('dash.cduBadgeTrim', null, '🟡 噴霧預冷/修整') : _t('dash.cduBadgeMech', null, '🔴 機械製冷'))}
+                                <span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-[10px] font-bold ${isCduFree ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : (isCduTrim ? 'bg-amber-50 text-amber-700 border border-amber-200' : 'bg-red-50 text-red-700 border border-red-200')}">
+                                    <span class="w-1.5 h-1.5 rounded-full ${isCduFree ? 'bg-emerald-500' : (isCduTrim ? 'bg-amber-500' : 'bg-red-500')} shrink-0"></span>
+                                    <span>${isCduFree ? _t('dash.cduBadgeFree', null, '全自然冷卻排熱') : (isCduTrim ? _t('dash.cduBadgeTrim', null, '噴霧預冷/修整') : _t('dash.cduBadgeMech', null, '機械製冷'))}</span>
                                 </span>
                             </div>
                             <div class="grid grid-cols-2 gap-2 text-xs">
@@ -1365,13 +1377,14 @@
                         <div class="p-4 bg-surface rounded-xl border border-border hover:border-brand-300 transition-all space-y-3">
                             <div class="flex items-center justify-between border-b border-border-subtle pb-2.5">
                                 <div class="flex items-center gap-2">
-                                    <span class="w-2.5 h-2.5 rounded-full ${isCduFree ? 'bg-emerald-500' : 'bg-amber-500'} animate-pulse"></span>
-                                    <span class="font-bold text-sm text-primary">${_t('dash.outdoorRejCardTitle', { arch: cduArchLabel }, `🌬️ 室外排熱 (${cduArchLabel})`)}</span>
+                                    <i data-lucide="wind" class="w-4 h-4 text-cyan-600"></i>
+                                    <span class="font-bold text-sm text-primary">${_t('dash.outdoorRejCardTitle', { arch: cduArchLabel }, `室外排熱 (${cduArchLabel})`)}</span>
                                 </div>
-                                <span class="px-2 py-0.5 rounded text-[10px] font-bold ${isCduFree ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-amber-50 text-amber-700 border border-amber-200'}">
-                                    ${isCduFree 
-                                        ? (isTower ? _t('dash.rejBadgeTowerFree', null, '🟢 零冰機濕球蒸發排熱') : _t('dash.rejBadgeFree', null, '🟢 零冰機乾態/濕球排熱')) 
-                                        : _t('dash.rejBadgeTrim', null, '🟡 噴霧預冷蒸發輔助')}
+                                <span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-[10px] font-bold ${isCduFree ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-amber-50 text-amber-700 border border-amber-200'}">
+                                    <span class="w-1.5 h-1.5 rounded-full ${isCduFree ? 'bg-emerald-500' : 'bg-amber-500'} shrink-0"></span>
+                                    <span>${isCduFree 
+                                        ? (isTower ? _t('dash.rejBadgeTowerFree', null, '零冰機濕球蒸發排熱') : _t('dash.rejBadgeFree', null, '零冰機乾態/濕球排熱')) 
+                                        : _t('dash.rejBadgeTrim', null, '噴霧預冷蒸發輔助')}</span>
                                 </span>
                             </div>
                             <div class="grid grid-cols-2 gap-2 text-xs">
@@ -1382,7 +1395,10 @@
                                 </div>
                                 <div class="p-2.5 bg-bg rounded-lg">
                                     <span class="text-[10px] text-tertiary block">${isTower ? _t('dash.towerSpraySys', null, '盤管噴淋水系統') : _t('dash.spraySys', null, '絕熱噴霧預冷系統')}</span>
-                                    <span class="font-mono font-bold ${sprayM3h !== '0.00' ? 'text-cyan-700' : 'text-slate-400'} text-sm">${isTower ? (sprayM3h !== '0.00' ? _t('dash.towerSprayActive', null, '💧 噴淋循環中') : _t('dash.towerSprayStandby', null, '⚪ 停機待機')) : (sprayM3h !== '0.00' ? _t('dash.sprayActive', null, '💧 噴霧啟動中') : _t('dash.dryStandby', null, '⚪ 乾態待機'))}</span>
+                                    <span class="font-mono font-bold ${sprayM3h !== '0.00' ? 'text-cyan-700' : 'text-slate-400'} text-sm inline-flex items-center gap-1.5">
+                                        <span class="w-1.5 h-1.5 rounded-full ${sprayM3h !== '0.00' ? 'bg-cyan-500' : 'bg-slate-400'} shrink-0"></span>
+                                        <span>${isTower ? (sprayM3h !== '0.00' ? _t('dash.towerSprayActive', null, '噴淋循環中') : _t('dash.towerSprayStandby', null, '停機待機')) : (sprayM3h !== '0.00' ? _t('dash.sprayActive', null, '噴霧啟動中') : _t('dash.dryStandby', null, '乾態待機'))}</span>
+                                    </span>
                                     <span class="text-[10px] text-secondary block mt-0.5">${isTower ? _t('dash.towerWaterSub', { m3: sprayM3h }, `蒸發與補水量: ${sprayM3h} m³/h`) : _t('dash.sprayWaterSub', { m3: sprayM3h }, `噴霧水耗: ${sprayM3h} m³/h`)}</span>
                                 </div>
                                 <div class="p-2.5 bg-bg rounded-lg">
@@ -1402,11 +1418,12 @@
                         <div class="p-4 bg-surface rounded-xl border border-border hover:border-brand-300 transition-all space-y-3">
                             <div class="flex items-center justify-between border-b border-border-subtle pb-2.5">
                                 <div class="flex items-center gap-2">
-                                    <span class="w-2.5 h-2.5 rounded-full ${isFwFree ? 'bg-emerald-500' : 'bg-blue-500'} animate-pulse"></span>
-                                    <span class="font-bold text-sm text-primary">${_t('dash.fwCardTitle', null, '💨 風牆 / CRAH / RDHx 氣冷室內機')}</span>
+                                    <i data-lucide="server" class="w-4 h-4 text-emerald-600"></i>
+                                    <span class="font-bold text-sm text-primary">${_t('dash.fwCardTitle', null, '風牆 / CRAH / RDHx 氣冷室內機')}</span>
                                 </div>
-                                <span class="px-2 py-0.5 rounded text-[10px] font-bold ${isFwFree ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-blue-50 text-blue-700 border border-blue-200'}">
-                                    ${isFwFree ? _t('dash.fwCardBadgeFree', { t: fwSys.chwReturnC || 18 }, `🟢 氣側自然冷卻 (Economizer ≤${fwSys.chwReturnC || 18}°C)`) : _t('dash.fwCardBadgeMech', { t: fwSys.chwReturnC || 18 }, `🔵 冰水製冷循環 (>${fwSys.chwReturnC || 18}°C)`)}
+                                <span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-[10px] font-bold ${isFwFree ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-blue-50 text-blue-700 border border-blue-200'}">
+                                    <span class="w-1.5 h-1.5 rounded-full ${isFwFree ? 'bg-emerald-500' : 'bg-blue-500'} shrink-0"></span>
+                                    <span>${isFwFree ? _t('dash.fwCardBadgeFree', { t: fwSys.chwReturnC || 18 }, `氣側自然冷卻 (Economizer ≤${fwSys.chwReturnC || 18}°C)`) : _t('dash.fwCardBadgeMech', { t: fwSys.chwReturnC || 18 }, `冰水製冷循環 (>${fwSys.chwReturnC || 18}°C)`)}</span>
                                 </span>
                             </div>
                             <div class="grid grid-cols-2 gap-2 text-xs">
@@ -1437,11 +1454,12 @@
                         <div class="p-4 bg-surface rounded-xl border border-border hover:border-brand-300 transition-all space-y-3">
                             <div class="flex items-center justify-between border-b border-border-subtle pb-2.5">
                                 <div class="flex items-center gap-2">
-                                    <span class="w-2.5 h-2.5 rounded-full ${isChillerOn ? 'bg-blue-500' : 'bg-slate-400'} ${isChillerOn ? 'animate-pulse' : ''}"></span>
-                                    <span class="font-bold text-sm text-primary">${_t('dash.chillerCardTitle', { arch: fwArchLabel }, `❄️ 冰水主機壓縮機群 (${fwArchLabel})`)}</span>
+                                    <i data-lucide="snowflake" class="w-4 h-4 text-blue-600"></i>
+                                    <span class="font-bold text-sm text-primary">${_t('dash.chillerCardTitle', { arch: fwArchLabel }, `冰水主機壓縮機群 (${fwArchLabel})`)}</span>
                                 </div>
-                                <span class="px-2 py-0.5 rounded text-[10px] font-bold ${isChillerOn ? 'bg-blue-50 text-blue-700 border border-blue-200' : 'bg-slate-100 text-slate-600 border border-slate-200'}">
-                                    ${isChillerOn ? _t('dash.chillerActiveBadge', null, '🔵 壓縮機運轉製冷中') : _t('dash.chillerOffBadge', null, '🟢 冰機關機待機 (0 kW)')}
+                                <span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-[10px] font-bold ${isChillerOn ? 'bg-blue-50 text-blue-700 border border-blue-200' : 'bg-slate-100 text-slate-600 border border-slate-200'}">
+                                    <span class="w-1.5 h-1.5 rounded-full ${isChillerOn ? 'bg-blue-500' : 'bg-emerald-500'} shrink-0"></span>
+                                    <span>${isChillerOn ? _t('dash.chillerActiveBadge', null, '壓縮機運轉製冷中') : _t('dash.chillerOffBadge', null, '冰機關機待機 (0 kW)')}</span>
                                 </span>
                             </div>
                             <div class="grid grid-cols-2 gap-2 text-xs">
@@ -1473,7 +1491,8 @@
                     <div class="space-y-2.5 pt-2">
                         <div class="flex items-center justify-between border-b border-border-subtle pb-2">
                             <span class="text-xs font-bold text-primary flex items-center gap-1.5">
-                                ${_t('dash.flhTitle', null, '📋 全廠空調設備全年運轉台帳與等效滿載小時 (Full Load Hours Ledger)')}
+                                <i data-lucide="clipboard-list" class="w-4 h-4 text-slate-600"></i>
+                                <span>${_t('dash.flhTitle', null, '全廠空調設備全年運轉台帳與等效滿載小時 (Full Load Hours Ledger)')}</span>
                             </span>
                             <span class="text-[11px] text-tertiary">${_t('dash.flhSubtitle', null, '依據 ASHRAE 90.1 / AHRI 550 年時序統計')}</span>
                         </div>
@@ -1541,7 +1560,7 @@
                 container.innerHTML = `
                     <div class="p-3 bg-brand-50/60 border border-brand-200 rounded-xl">
                         <div class="text-[11px] font-medium text-brand-800 flex items-center gap-1.5">
-                            <span class="w-2 h-2 rounded-full bg-emerald-500"></span> ${_t('dash.cduFreeKpi', null, '💧 CDU 全自然冷卻')}
+                            <span class="w-2 h-2 rounded-full bg-emerald-500"></span> ${_t('dash.cduFreeKpi', null, 'CDU 全自然冷卻')}
                         </div>
                         <div class="text-lg font-bold text-brand-900 mt-1 tabular-nums">
                             ${(cdu.freeHours || 0).toLocaleString()} <span class="text-xs font-normal text-brand-700">${_t('dash.hoursUnit', null, '小時')} (${cdu.freeHoursPct || 0}%)</span>
@@ -1550,7 +1569,7 @@
                     </div>
                     <div class="p-3 bg-amber-50/60 border border-amber-200 rounded-xl">
                         <div class="text-[11px] font-medium text-amber-800 flex items-center gap-1.5">
-                            <span class="w-2 h-2 rounded-full bg-amber-500"></span> ${_t('dash.cduPartialKpi', null, '🟡 CDU 部分冷卻/噴霧預冷')}
+                            <span class="w-2 h-2 rounded-full bg-amber-500"></span> ${_t('dash.cduPartialKpi', null, 'CDU 部分冷卻 / 噴霧預冷')}
                         </div>
                         <div class="text-lg font-bold text-amber-900 mt-1 tabular-nums">
                             ${(cdu.partialHours || 0).toLocaleString()} <span class="text-xs font-normal text-amber-700">${_t('dash.hoursUnit', null, '小時')} (${cdu.partialHoursPct || 0}%)</span>
@@ -1559,7 +1578,7 @@
                     </div>
                     <div class="p-3 bg-red-50/60 border border-red-200 rounded-xl">
                         <div class="text-[11px] font-medium text-red-800 flex items-center gap-1.5">
-                            <span class="w-2 h-2 rounded-full bg-red-500"></span> ${_t('dash.cduMechKpi', null, '🔴 CDU 機械壓縮冷卻')}
+                            <span class="w-2 h-2 rounded-full bg-red-500"></span> ${_t('dash.cduMechKpi', null, 'CDU 機械壓縮冷卻')}
                         </div>
                         <div class="text-lg font-bold text-red-900 mt-1 tabular-nums">
                             ${(cdu.mechHours || 0).toLocaleString()} <span class="text-xs font-normal text-red-700">${_t('dash.hoursUnit', null, '小時')} (${cdu.mechHoursPct || 0}%)</span>
@@ -1580,7 +1599,7 @@
                 container.innerHTML = `
                     <div class="p-3 bg-brand-50/60 border border-brand-200 rounded-xl">
                         <div class="text-[11px] font-medium text-brand-800 flex items-center gap-1.5">
-                            <span class="w-2 h-2 rounded-full bg-emerald-500"></span> ${_t('dash.fwFreeMode', null, '💨 Fanwall 氣側自然冷卻')}
+                            <span class="w-2 h-2 rounded-full bg-emerald-500"></span> ${_t('dash.fwFreeMode', null, 'Fanwall 氣側自然冷卻')}
                         </div>
                         <div class="text-lg font-bold text-brand-900 mt-1 tabular-nums">
                             ${(fw.freeHours || 0).toLocaleString()} <span class="text-xs font-normal text-brand-700">${_t('dash.hoursUnit', null, '小時')} (${fw.freeHoursPct || 0}%)</span>
@@ -1589,7 +1608,7 @@
                     </div>
                     <div class="p-3 bg-blue-50/60 border border-blue-200 rounded-xl">
                         <div class="text-[11px] font-medium text-blue-800 flex items-center gap-1.5">
-                            <span class="w-2 h-2 rounded-full bg-blue-500"></span> ${_t('dash.fwMechMode', null, '❄️ 氣冷冰機運轉時段')}
+                            <span class="w-2 h-2 rounded-full bg-blue-500"></span> ${_t('dash.fwMechMode', null, '氣冷冰機運轉時段')}
                         </div>
                         <div class="text-lg font-bold text-blue-900 mt-1 tabular-nums">
                             ${(fw.mechHours || 0).toLocaleString()} <span class="text-xs font-normal text-blue-700">${_t('dash.hoursUnit', null, '小時')} (${fw.mechHoursPct || 0}%)</span>
@@ -1598,7 +1617,7 @@
                     </div>
                     <div class="p-3 bg-amber-50/60 border border-amber-200 rounded-xl">
                         <div class="text-[11px] font-medium text-amber-800 flex items-center gap-1.5">
-                            <span class="w-2 h-2 rounded-full bg-amber-500"></span> ${_t('dash.fwAnnualPower', null, '⚡ 氣冷年總電耗')}
+                            <span class="w-2 h-2 rounded-full bg-amber-500"></span> ${_t('dash.fwAnnualPower', null, '氣冷年總電耗')}
                         </div>
                         <div class="text-lg font-bold text-amber-900 mt-1 tabular-nums">
                             ${Math.round((overall.breakdownKwh?.chiller || 0) / 1000).toLocaleString()} <span class="text-xs font-normal text-amber-700">MWh</span>
@@ -1619,7 +1638,7 @@
                 container.innerHTML = `
                     <div class="p-3 bg-brand-50/60 border border-brand-200 rounded-xl">
                         <div class="text-[11px] font-medium text-brand-800 flex items-center gap-1.5">
-                            <span class="w-2 h-2 rounded-full bg-emerald-500"></span> ${_t('dash.combFree', null, '🌐 全廠雙零冰機自然冷卻')}
+                            <span class="w-2 h-2 rounded-full bg-emerald-500"></span> ${_t('dash.combFree', null, '全廠雙零冰機自然冷卻')}
                         </div>
                         <div class="text-lg font-bold text-brand-900 mt-1 tabular-nums">
                             ${(combined.freeHours || 0).toLocaleString()} <span class="text-xs font-normal text-brand-700">${_t('dash.hoursUnit', null, '小時')} (${combined.freeHoursPct || 0}%)</span>
@@ -1628,7 +1647,7 @@
                     </div>
                     <div class="p-3 bg-amber-50/60 border border-amber-200 rounded-xl">
                         <div class="text-[11px] font-medium text-amber-800 flex items-center gap-1.5">
-                            <span class="w-2 h-2 rounded-full bg-amber-500"></span> ${_t('dash.combPartial', null, '🟡 混合冷卻 (CDU自然+氣冷冰機)')}
+                            <span class="w-2 h-2 rounded-full bg-amber-500"></span> ${_t('dash.combPartial', null, '混合冷卻 (CDU自然+氣冷冰機)')}
                         </div>
                         <div class="text-lg font-bold text-amber-900 mt-1 tabular-nums">
                             ${(combined.partialHours || 0).toLocaleString()} <span class="text-xs font-normal text-amber-700">${_t('dash.hoursUnit', null, '小時')} (${combined.partialHoursPct || 0}%)</span>
@@ -1637,7 +1656,7 @@
                     </div>
                     <div class="p-3 bg-red-50/60 border border-red-200 rounded-xl">
                         <div class="text-[11px] font-medium text-red-800 flex items-center gap-1.5">
-                            <span class="w-2 h-2 rounded-full bg-red-500"></span> ${_t('dash.combMech', null, '🔴 全廠機械壓縮製冷')}
+                            <span class="w-2 h-2 rounded-full bg-red-500"></span> ${_t('dash.combMech', null, '全廠機械壓縮製冷')}
                         </div>
                         <div class="text-lg font-bold text-red-900 mt-1 tabular-nums">
                             ${(combined.mechHours || 0).toLocaleString()} <span class="text-xs font-normal text-red-700">${_t('dash.hoursUnit', null, '小時')} (${combined.mechHoursPct || 0}%)</span>
@@ -1793,31 +1812,31 @@
                 if (mode === 'cdu' || mode === 'mode') {
                     legendEl.innerHTML = `
                         <div class="flex items-center gap-4 flex-wrap">
-                            <span class="font-bold text-primary">${_t('dash.cduLegendTitle', null, '💧 CDU 液冷排熱圖例:')}</span>
-                            <span class="flex items-center gap-1.5"><span class="w-3 h-3 rounded-xs bg-[#10B981]"></span> ${_t('dash.cduLegendFree', null, '🟢 全自然冷卻 (Free Cooling - 絕熱塔/乾冷器零冰機)')}</span>
-                            <span class="flex items-center gap-1.5"><span class="w-3 h-3 rounded-xs bg-[#F59E0B]"></span> ${_t('dash.cduLegendTrim', null, '🟡 部分自然冷卻 / 噴霧預冷 (Trim Mode / Attention)')}</span>
-                            <span class="flex items-center gap-1.5"><span class="w-3 h-3 rounded-xs bg-[#EF4444]"></span> ${_t('dash.cduLegendMech', null, '🔴 機械壓縮冷卻 (DX Mode)')}</span>
+                            <span class="font-bold text-primary">${_t('dash.cduLegendTitle', null, 'CDU 液冷排熱圖例:')}</span>
+                            <span class="flex items-center gap-1.5"><span class="w-3 h-3 rounded-xs bg-[#10B981]"></span> ${_t('dash.cduLegendFree', null, '全自然冷卻 (Free Cooling - 絕熱塔/乾冷器零冰機)')}</span>
+                            <span class="flex items-center gap-1.5"><span class="w-3 h-3 rounded-xs bg-[#F59E0B]"></span> ${_t('dash.cduLegendTrim', null, '部分自然冷卻 / 噴霧預冷 (Trim Mode / Attention)')}</span>
+                            <span class="flex items-center gap-1.5"><span class="w-3 h-3 rounded-xs bg-[#EF4444]"></span> ${_t('dash.cduLegendMech', null, '機械壓縮冷卻 (DX Mode)')}</span>
                         </div>
-                        <div class="text-[11px] text-tertiary">${_t('dash.hoverHint', null, '💡 移動滑鼠至像素格可查看該小時完整數據')}</div>
+                        <div class="text-[11px] text-tertiary flex items-center gap-1.5"><i data-lucide="info" class="w-3 h-3 text-slate-400 shrink-0"></i><span>${_t('dash.hoverHint', null, '移動滑鼠至像素格可查看該小時完整數據')}</span></div>
                     `;
                 } else if (mode === 'fw') {
                     legendEl.innerHTML = `
                         <div class="flex items-center gap-4 flex-wrap">
-                            <span class="font-bold text-primary">${_t('dash.fwLegendTitle', null, '💨 Fanwall 氣冷冰水圖例:')}</span>
-                            <span class="flex items-center gap-1.5"><span class="w-3 h-3 rounded-xs bg-[#10B981]"></span> ${_t('dash.fwLegendFree', null, '🟢 氣側自然冷卻 (Economizer ≤ 18°C - 冰機關機)')}</span>
-                            <span class="flex items-center gap-1.5"><span class="w-3 h-3 rounded-xs bg-[#3B82F6]"></span> ${_t('dash.fwLegendMech', null, '🔵 氣冷冰機運轉製冷 (Chiller Active > 18°C)')}</span>
+                            <span class="font-bold text-primary">${_t('dash.fwLegendTitle', null, 'Fanwall 氣冷冰水圖例:')}</span>
+                            <span class="flex items-center gap-1.5"><span class="w-3 h-3 rounded-xs bg-[#10B981]"></span> ${_t('dash.fwLegendFree', null, '氣側自然冷卻 (Economizer ≤ 18°C - 冰機關機)')}</span>
+                            <span class="flex items-center gap-1.5"><span class="w-3 h-3 rounded-xs bg-[#3B82F6]"></span> ${_t('dash.fwLegendMech', null, '氣冷冰機運轉製冷 (Chiller Active > 18°C)')}</span>
                         </div>
-                        <div class="text-[11px] text-tertiary">${_t('dash.fwLegendHint', null, '💡 反映風牆氣冷側 8,760h 冰機開機與自然冷卻時段')}</div>
+                        <div class="text-[11px] text-tertiary flex items-center gap-1.5"><i data-lucide="info" class="w-3 h-3 text-slate-400 shrink-0"></i><span>${_t('dash.fwLegendHint', null, '反映風牆氣冷側 8,760h 冰機開機與自然冷卻時段')}</span></div>
                     `;
                 } else if (mode === 'combined') {
                     legendEl.innerHTML = `
                         <div class="flex items-center gap-4 flex-wrap">
-                            <span class="font-bold text-primary">${_t('dash.combLegendTitle', null, '🌐 全廠雙迴路綜合圖例:')}</span>
-                            <span class="flex items-center gap-1.5"><span class="w-3 h-3 rounded-xs bg-[#10B981]"></span> ${_t('dash.combLegendFree', null, '🟢 全廠雙零冰機 (液冷與氣冷皆免開冰機)')}</span>
-                            <span class="flex items-center gap-1.5"><span class="w-3 h-3 rounded-xs bg-[#F59E0B]"></span> ${_t('dash.combLegendTrim', null, '🟡 混合冷卻 (CDU自然冷卻 + 氣冷冰機運轉)')}</span>
-                            <span class="flex items-center gap-1.5"><span class="w-3 h-3 rounded-xs bg-[#EF4444]"></span> ${_t('dash.combLegendMech', null, '🔴 全廠機械製冷 (高溫尖峰)')}</span>
+                            <span class="font-bold text-primary">${_t('dash.combLegendTitle', null, '全廠雙迴路綜合圖例:')}</span>
+                            <span class="flex items-center gap-1.5"><span class="w-3 h-3 rounded-xs bg-[#10B981]"></span> ${_t('dash.combLegendFree', null, '全廠雙零冰機 (液冷與氣冷皆免開冰機)')}</span>
+                            <span class="flex items-center gap-1.5"><span class="w-3 h-3 rounded-xs bg-[#F59E0B]"></span> ${_t('dash.combLegendTrim', null, '混合冷卻 (CDU自然冷卻 + 氣冷冰機運轉)')}</span>
+                            <span class="flex items-center gap-1.5"><span class="w-3 h-3 rounded-xs bg-[#EF4444]"></span> ${_t('dash.combLegendMech', null, '全廠機械製冷 (高溫尖峰)')}</span>
                         </div>
-                        <div class="text-[11px] text-tertiary">${_t('dash.combLegendHint', null, '💡 呈現全廠兩套冷卻系統同時聯鎖運轉型態')}</div>
+                        <div class="text-[11px] text-tertiary flex items-center gap-1.5"><i data-lucide="info" class="w-3 h-3 text-slate-400 shrink-0"></i><span>${_t('dash.combLegendHint', null, '呈現全廠兩套冷卻系統同時聯鎖運轉型態')}</span></div>
                     `;
                 } else if (mode === 'pue') {
                     legendEl.innerHTML = `
@@ -1891,12 +1910,12 @@
                     if (!item) return;
 
                     const md = getMonthAndDay(d);
-                    const cduModeText = item.cduMode === 'free' ? _t('dash.cduModeFree', null, '🟢 自然排熱 (零冰機)') : (item.cduMode === 'partial' ? _t('dash.cduModePartial', null, '🟡 噴霧預冷/修整') : _t('dash.cduModeMech', null, '🔴 機械壓縮'));
-                    const fwModeText = item.fwMode === 'free' ? _t('dash.fwModeFree', null, '🟢 氣側自然冷卻 (Economizer)') : _t('dash.fwModeMech', null, '🔵 氣冷冰機運轉製冷');
+                    const cduModeText = item.cduMode === 'free' ? _t('dash.cduModeFree', null, '自然排熱 (零冰機)') : (item.cduMode === 'partial' ? _t('dash.cduModePartial', null, '噴霧預冷/修整') : _t('dash.cduModeMech', null, '機械壓縮'));
+                    const fwModeText = item.fwMode === 'free' ? _t('dash.fwModeFree', null, '氣側自然冷卻 (Economizer)') : _t('dash.fwModeMech', null, '氣冷冰機運轉製冷');
 
                     tooltip.innerHTML = `
                         <div class="font-bold border-b border-neutral-700 pb-1 flex items-center justify-between gap-3 text-brand-300">
-                            <span>📅 ${_t('dash.dateFormat', { m: md.month, d: md.day, h: String(h).padStart(2, '0') }, `${md.month}月${md.day}日 ${String(h).padStart(2, '0')}:00`)}</span>
+                            <span>${_t('dash.dateFormat', { m: md.month, d: md.day, h: String(h).padStart(2, '0') }, `${md.month}月${md.day}日 ${String(h).padStart(2, '0')}:00`)}</span>
                             <span class="text-[10px] text-neutral-400 font-mono">${_t('dash.dayHour', { d: d + 1, idx: idx + 1 }, `第 ${d + 1} 天 / H#${idx + 1}`)}</span>
                         </div>
                         <div class="grid grid-cols-2 gap-x-3 gap-y-1 pt-1 text-[11px]">
@@ -1906,8 +1925,8 @@
                             <div>${_t('dash.ttChiller', null, '冰機耗電:')} <strong class="text-amber-300">${item.chillerKw.toLocaleString()} kW</strong></div>
                             <div class="col-span-2">${_t('dash.ttCooling', null, '冷卻總耗電:')} <strong class="text-white">${item.coolingKw.toLocaleString()} kW</strong> ${_t('dash.ttTotalFac', { kw: item.totalKw.toLocaleString() }, `(全廠總: ${item.totalKw.toLocaleString()} kW)`)}</div>
                             <div class="col-span-2 text-[10px] pt-1 border-t border-neutral-700/60 space-y-0.5">
-                                <div>${_t('dash.ttCdu', null, '💧 CDU液冷:')} <strong>${cduModeText}</strong></div>
-                                <div>${_t('dash.ttFw', null, '💨 Fanwall氣冷:')} <strong>${fwModeText}</strong></div>
+                                <div>${_t('dash.ttCdu', null, 'CDU液冷:')} <strong>${cduModeText}</strong></div>
+                                <div>${_t('dash.ttFw', null, 'Fanwall氣冷:')} <strong>${fwModeText}</strong></div>
                             </div>
                         </div>
                     `;
@@ -2023,11 +2042,11 @@
             });
 
             const modeTitles = {
-                cdu: '💧 CDU 液冷主迴路自然冷卻排熱型態',
-                fw: '💨 Fanwall 氣冷冰水迴路運轉型態',
-                combined: '🌐 全廠綜合雙迴路聯鎖運轉型態',
-                pue: '⚡ 即時 PUE 分布',
-                db: '☀️ 外氣乾球溫 (DB) 分布'
+                cdu: 'CDU 液冷主迴路自然冷卻排熱型態',
+                fw: 'Fanwall 氣冷冰水迴路運轉型態',
+                combined: '全廠綜合雙迴路聯鎖運轉型態',
+                pue: '即時 PUE 分布',
+                db: '外氣乾球溫 (DB) 分布'
             };
             const modeTitle = modeTitles[mode] || '運轉型態';
             const svgContent = `<?xml version="1.0" encoding="UTF-8"?>

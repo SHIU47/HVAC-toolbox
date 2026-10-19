@@ -14,7 +14,7 @@
         id: 'adiabatic_tower',
         aliases: [],
         loop: 'liquid',
-        get optionLabel() { return t('arch.adiabatic_tower.option', null, '🔵 絕熱冷卻塔 (Adiabatic Tower / 100% 絕熱預冷自然散熱・零冰機)'); },
+        get optionLabel() { return t('arch.adiabatic_tower.option', null, '絕熱冷卻塔 (Adiabatic Tower / 100% 絕熱預冷自然散熱・零冰機)'); },
         get cardLabel() { return t('arch.adiabatic_tower.card', null, '絕熱冷卻塔 (零冰機)'); },
         get pillLabel() { return t('arch.adiabatic_tower.pill', null, '絕熱塔'); },
         get dashboardLabel() { return t('arch.adiabatic_tower.dashboard', null, '絕熱密閉冷卻水塔 (Adiabatic Tower)'); },
@@ -124,7 +124,8 @@
                 defaultUnitCapKw: 5.5,
                 requiredKw: (ctx) => ctx.hydKw || 5.5,
                 calcQty: () => ({ qty: 3, n1: 3 })
-            }
+            },
+            root.CoolingArchHelpers.pumpEquipment('rej_pump', 'Heat Rejection Loop Pump 排熱側循環泵', (sys) => root.CoolingArchHelpers.archHasPhe(root.CoolingArchRegistry.get('adiabatic_tower'), sys))
         ],
 
         stages: [

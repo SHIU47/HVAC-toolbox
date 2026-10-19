@@ -1312,7 +1312,7 @@ function sizeCduToDeratedN1(S) {
         assert(item.selectedModel, 'sizing item must have selectedModel');
         assert(item.unitCapKw > 0, 'sizing item must have positive unitCapKw');
         assert(item.selectedQty >= 2, 'sizing item must have at least 2 qty');
-        assert(item.requiredKw > 0, 'sizing item must have positive requiredKw');
+        assert(item.requiredKw > 0 || item.role === 'pump', 'sizing item must have positive requiredKw (pumps come from hydraulics)');
       }
     }
 
@@ -1327,7 +1327,7 @@ function sizeCduToDeratedN1(S) {
         assert(item.selectedModel, 'sizing item must have selectedModel');
         assert(item.unitCapKw > 0, 'sizing item must have positive unitCapKw');
         assert(item.selectedQty >= 2, 'sizing item must have at least 2 qty');
-        assert(item.requiredKw > 0, 'sizing item must have positive requiredKw');
+        assert(item.requiredKw > 0 || item.role === 'pump', 'sizing item must have positive requiredKw (pumps come from hydraulics)');
       }
     }
   });
@@ -1725,7 +1725,7 @@ function sizeCduToDeratedN1(S) {
     assert.strictEqual(opWith.thresholds.full, 33.0, 'threshold must subtract pheApproach: 40 - 5 - 2 = 33');
     const topoWith = arch.topology(sysWithPhe, opWith, {});
     assert(topoWith.nodes.some(n => n.id === 'hx'), 'topology must include PHE node when hasPhe=true');
-    assert(topoWith.nodes.some(n => n.title?.includes('Glycol Pump') || n.lines?.some(l => l.includes('乙二醇'))), 'outdoor pump must be Glycol Pump');
+    assert(topoWith.nodes.some(n => n.id === 'pump_outdoor' && (n.title?.includes('Pump') || n.lines?.some(l => l.includes('循環泵')))), 'outdoor pump must be present');
 
     const sysWithoutPhe = { fwsSupplyC: 40.0, fwsReturnC: 55.0, dryCoolerApproachC: 5.0, hasPhe: false, pheApproachC: 2.0 };
     const opWithout = arch.operatingPoint(sysWithoutPhe, { db: 30 }, {});
@@ -3157,17 +3157,25 @@ function sizeCduToDeratedN1(S) {
     const mockSumm = { liquidHeatKw: 500, airHeatKw: 100, lossKw: 0, dlcPct: 83.3 };
     AppStore.bridgeDuToPlantModel(mockDu, mockSumm);
 
-    // R6 P1-H1: dry_cooler_trim 具板換二次迴路，預設總揚程為 28m + 16m = 44m，比熱採乙二醇 3.90
-    assert(mockDu.plantDesign.cduSystem.hydraulics.pump_head_m === 44, 'Default CDU head with PHE must be 44m (28m base + 16m PHE)');
-    const pCdu = mockDu.plantDesign.cduSystem.hydraulics.pump_power_kw;
-    assert(pCdu > 5.0 && pCdu < 5.6, `CDU hydraulic power ${pCdu} should be ~5.34 kW`);
+    // R8: dry_cooler_trim 有 PHE：FWS 泵揚程 = 28m + PHE 一次側 6m = 34m（純水），排熱側乙二醇泵獨立 16m
+    const hyd = mockDu.plantDesign.cduSystem.hydraulics;
+    const pumpOf = (h, k) => h.pumps.find(p => p.key === k);
+    assert(hyd.pump_head_m === 34, 'Default FWS pump head with PHE must be 34m (28m base + 6m PHE primary side), got ' + hyd.pump_head_m);
+    assert(pumpOf(hyd, 'rej_pump') && pumpOf(hyd, 'rej_pump').head_m === 16 && pumpOf(hyd, 'rej_pump').cp === 3.9, 'separate glycol heat-rejection pump at 16m');
+    assert(pumpOf(hyd, 'chw_pump') && pumpOf(hyd, 'chw_pump').operation === 'mechanical', 'trim CHW pump runs only with the chiller');
+    const fws = pumpOf(hyd, 'cdu_pump');
+    const expectKw = fws.flow_lpm * fws.head_m * 9.80665 / (60000 * fws.eta_pump * fws.eta_motor);
+    assert(Math.abs(fws.power_kw - expectKw) < 1e-9, 'pump power must follow flow × head × g ÷ (60000 × η)');
+    assert(Math.abs(fws.flow_lpm - 500 * 60 / (4.186 * 15)) < 1e-6, 'FWS flow uses water cp with PHE');
 
-    // Override base head to 72m (72 + 16 = 88m, exactly 2x of 44m) -> power should double
-    mockDu.plantDesign.cduSystem.pumpHeadM = 72;
+    // 基礎揚程改為 62m → FWS 總揚程 68m（34m 的兩倍）→ 扣除效率後的水力功率加倍
+    const norm = (p) => p.power_kw * p.eta_pump * p.eta_motor;
+    const n1 = norm(fws);
+    mockDu.plantDesign.cduSystem.pumpHeadM = 62;
     AppStore.bridgeDuToPlantModel(mockDu, mockSumm);
-    assert(mockDu.plantDesign.cduSystem.hydraulics.pump_head_m === 88, 'CDU head must update to 88m');
-    const pCduDouble = mockDu.plantDesign.cduSystem.hydraulics.pump_power_kw;
-    assert(Math.abs((pCduDouble / pCdu) - 2.0) < 0.001, 'Doubled total head must double hydraulic power');
+    const fws2 = pumpOf(mockDu.plantDesign.cduSystem.hydraulics, 'cdu_pump');
+    assert(fws2.head_m === 68, 'FWS head must update to 68m');
+    assert(Math.abs(norm(fws2) / n1 - 2.0) < 1e-9, 'Doubled head must double hydraulic power');
 
     // 3. Sizing Engine evaluates motor adequacy vs P_design
     const cduSysSizing = {
@@ -3209,12 +3217,13 @@ function sizeCduToDeratedN1(S) {
     const duWin = win.AppStore.state.halls[0].dus[0];
     const initialPriKwh = win.AppStore.state.results.overall.breakdownKwh.cduPrimaryPumpKwh;
 
-    // Change base pumpHeadM on DU to 72m (total head doubles from 44m to 88m)
+    // 提高基礎揚程 → 液冷泵組年耗電必須增加，且 FWS 泵揚程反映新值
     duWin.plantDesign.cduSystem.pumpHeadM = 72;
     win.AppStore.calculate();
     const doubledPriKwh = win.AppStore.state.results.overall.breakdownKwh.cduPrimaryPumpKwh;
-    const ratio = doubledPriKwh / initialPriKwh;
-    assert(Math.abs(ratio - 2.0) < 0.02, `Doubling total head must double primary pump energy (±2%), got ratio ${ratio}`);
+    assert(doubledPriKwh > initialPriKwh * 1.3, `Raising FWS head must raise pump energy, got ${initialPriKwh} -> ${doubledPriKwh}`);
+    const fwsHead = duWin.plantDesign.cduSystem.hydraulics.pump_head_m;
+    assert(fwsHead === 72 + (win.AppStore.computeHydraulics && win.CoolingArchHelpers.archHasPhe(win.CoolingArchRegistry.get(duWin.plantDesign.cduSystem.architecture), duWin.plantDesign.cduSystem) ? 6 : 0), 'FWS head reflects user input, got ' + fwsHead);
 
     // Verify DOM rendering
     win.ViewCooling.render(win.document.getElementById('stepContent'));
@@ -3336,7 +3345,7 @@ function sizeCduToDeratedN1(S) {
   const ctx = freshCtx();
   const { AppStore: S, CoolingStages } = ctx;
 
-  test('R6 P1-H1 dry_cooler_pure uses glycol Cp (3.90) and PHE extra head (+16m)', () => {
+  test('R8 dry_cooler_pure with PHE: FWS loop is water (34m), glycol heat-rejection loop has its own pump (16m)', () => {
     const du = {
       id: 'du-test',
       plantDesign: {
@@ -3346,10 +3355,14 @@ function sizeCduToDeratedN1(S) {
     };
     const summ = { totalItKw: 1000, liquidHeatKw: 900, airHeatKw: 100, lossKw: 0, dlcPct: 90 };
     S.bridgeDuToPlantModel(du, summ);
-    // flow = round(900 * 60 / (3.90 * 15)) = round(923.0769) = 923 L/min
-    assert(du.plantDesign.cduSystem.hydraulics.flow_lpm === 923, 'flow got ' + du.plantDesign.cduSystem.hydraulics.flow_lpm);
-    // head = 28 + 16 = 44 m
-    assert(du.plantDesign.cduSystem.hydraulics.pump_head_m === 44, 'head got ' + du.plantDesign.cduSystem.hydraulics.pump_head_m);
+    const h = du.plantDesign.cduSystem.hydraulics;
+    // FWS（純水）：flow = round(900 × 60 / (4.186 × 15)) = 860 L/min；揚程 28 + 6 = 34 m
+    assert(h.flow_lpm === 860, 'FWS flow got ' + h.flow_lpm);
+    assert(h.pump_head_m === 34, 'FWS head got ' + h.pump_head_m);
+    // 排熱側（乙二醇 3.90）：900 × 60 / (3.90 × 15) = 923.08 L/min；揚程 16 m
+    const rej = h.pumps.find(p => p.key === 'rej_pump');
+    assert(rej && Math.abs(rej.flow_lpm - 923.0769) < 0.01 && rej.head_m === 16, 'glycol loop pump got ' + JSON.stringify(rej));
+    assert(du.plantDesign.cduSystem.sizing.some(s => s.key === 'rej_pump'), 'rej_pump sizing item must exist');
   });
 
   test('R7-0b water_chiller separates CW pump power and adds cw_pump sizing item', () => {
@@ -4076,20 +4089,20 @@ function sizeCduToDeratedN1(S) {
   const wbZh = win.ExcelExport.buildWorkbook('zh-TW');
   const wbEn = win.ExcelExport.buildWorkbook('en');
 
-  test('I-7: Exported workbooks contain 10 sheets with localized names', () => {
-    assert.strictEqual(wbZh.worksheets.length, 10, 'zh-TW workbook must have 10 sheets');
-    assert.strictEqual(wbEn.worksheets.length, 10, 'en workbook must have 10 sheets');
+  test('I-7: Exported workbooks contain 11 sheets with localized names', () => {
+    assert.strictEqual(wbZh.worksheets.length, 11, 'zh-TW workbook must have 11 sheets');
+    assert.strictEqual(wbEn.worksheets.length, 11, 'en workbook must have 11 sheets');
     const expectedZh = [
       '1.封面與專案資訊', '2.設計基準與假設', '3.氣象與自由冷卻分析',
       '4.IT負載明細', '5.冷卻系統設計', '6.能耗與PUE-WUE計算',
-      '7.月度趨勢', '8.尖峰工況分析', '9.全廠總表與結論', '10.附錄-最熱日24h明細'
+      '7.月度趨勢', '8.尖峰工況分析', '9.驗證檢核', '10.附錄-最熱日24h明細', '11.附錄-8760逐時資料'
     ];
     const expectedEn = [
       '1.Cover & Project Info', '2.Design Basis & Assumptions', '3.Weather & Free Cooling',
       '4.IT Load Schedule', '5.Cooling System Design', '6.Energy & PUE-WUE',
-      '7.Monthly Trend', '8.Peak Condition Analysis', '9.Site Summary & Conclusion', '10.Appx-Hottest Day 24h'
+      '7.Monthly Trend', '8.Peak Condition Analysis', '9.Verification Checks', '10.Appx-Hottest Day 24h', '11.Appx-8760h Hourly Data'
     ];
-    for (let i = 0; i < 10; i++) {
+    for (let i = 0; i < 11; i++) {
       assert.strictEqual(wbZh.worksheets[i].name, expectedZh[i], `Sheet ${i + 1} name mismatch in zh-TW`);
       assert.strictEqual(wbEn.worksheets[i].name, expectedEn[i], `Sheet ${i + 1} name mismatch in en`);
     }
@@ -4133,15 +4146,17 @@ function sizeCduToDeratedN1(S) {
   test('I-7: Numerical cells between zh-TW and en workbooks match 100% across all sheets', () => {
     let numChecked = 0;
     const diffs = [];
-    for (let i = 0; i < 10; i++) {
+    // R8: 計算書數值多為公式，比對範圍涵蓋全部工作表，且公式以快取結果 (cell.result) 比對
+    const numOf = (cell) => (cell.type === 6 ? cell.result : cell.value);
+    for (let i = 0; i < wbZh.worksheets.length; i++) {
       const sZh = wbZh.worksheets[i];
       const sEn = wbEn.worksheets[i];
       sZh.eachRow((rZh, rIdx) => {
         const rEn = sEn.getRow(rIdx);
         rZh.eachCell((cZh, cIdx) => {
           const cEn = rEn.getCell(cIdx);
-          const vZh = cZh.value;
-          const vEn = cEn.value;
+          const vZh = numOf(cZh);
+          const vEn = numOf(cEn);
           if (typeof vZh === 'number' || typeof vEn === 'number') {
             numChecked++;
             if (vZh !== vEn && Math.abs((vZh || 0) - (vEn || 0)) > 1e-5) {
@@ -4153,6 +4168,28 @@ function sizeCduToDeratedN1(S) {
     }
     assert(numChecked >= 500, `Expected at least 500 numerical cells, checked ${numChecked}`);
     assert.strictEqual(diffs.length, 0, `Found ${diffs.length} numerical cell differences: ` + JSON.stringify(diffs.slice(0, 5)));
+  });
+
+  test('R8: Verification sheet — every consistency check passes and every formula carries a cached result', () => {
+    [wbZh, wbEn].forEach(wb => {
+      const v = wb.worksheets[8];
+      const rows = [];
+      v.eachRow((row, r) => {
+        const h = row.getCell(8);
+        if (h.type === 6 && typeof h.result === 'string' && /^[✔✘⚠]/.test(h.result)) rows.push({ r, result: h.result, label: row.getCell(2).value });
+      });
+      const fails = rows.filter(x => x.result.startsWith('✘'));
+      assert(rows.length >= 15, `${v.name}: expected >= 15 check rows, got ${rows.length}`);
+      assert.strictEqual(fails.length, 0, `${v.name}: consistency checks failing: ` + JSON.stringify(fails));
+      assert(String(v.getCell('D4').result).startsWith('✔'), `${v.name} D4 summary must pass, got ${v.getCell('D4').result}`);
+      let missing = 0;
+      wb.eachSheet(ws => ws.eachRow(row => row.eachCell(cell => {
+        if (cell.type === 6 && !(cell.isMerged && cell.master.address !== cell.address) && cell.result === undefined) missing++;
+      })));
+      assert.strictEqual(missing, 0, `${missing} formula cells have no cached result`);
+      const hourly = wb.worksheets[10];
+      assert.strictEqual(hourly.rowCount, 8763, 'hourly appendix must hold 8,760 data rows below a 3-row header');
+    });
   });
 })();
 
@@ -4520,6 +4557,76 @@ function sizeCduToDeratedN1(S) {
         assert(Math.abs(atRating - 1) < 0.02 || chillerType === 'water_cooled', `${c.model} at its own rating point must be ~1.0 (got ${atRating.toFixed(3)})`);
       }
     }));
+  });
+
+  // R8 泵組設計：每個迴路依架構列出完整泵組
+  const bridgeWith = (cdu, fw) => {
+    const S = freshCtx().AppStore;
+    const du = { id: 'du-pump', plantDesign: { cduSystem: { fwsSupplyC: 40, fwsReturnC: 52, ...cdu }, fanwallSystem: { chwSupplyC: 12, chwReturnC: 18, ...fw } } };
+    S.bridgeDuToPlantModel(du, { totalItKw: 1100, liquidHeatKw: 900, airHeatKw: 200, lossKw: 0, dlcPct: 82 });
+    return { S, du, cduP: du.plantDesign.cduSystem.hydraulics.pumps, fwP: du.plantDesign.fanwallSystem.hydraulics.pumps };
+  };
+  const keys = (pumps) => pumps.map(p => p.key).sort().join(',');
+
+  test('R8-5: chiller CHW loops default to primary + secondary pumps; VPF merges the primary head into one pump group', () => {
+    const ps = bridgeWith({ architecture: 'water_chiller', hasPhe: false }, { architecture: 'air_cooled_chiller' });
+    assert.strictEqual(keys(ps.fwP), 'chw_primary_pump,fw_pump', 'air-cooled chiller loop: secondary + primary CHW pumps');
+    assert.strictEqual(keys(ps.cduP), 'cdu_pump,chw_primary_pump,cw_pump', 'water chiller liquid loop: secondary + primary CHW + condenser water pumps');
+    assert(ps.du.plantDesign.fanwallSystem.sizing.some(s => s.key === 'chw_primary_pump'), 'primary CHW pump appears in sizing');
+    const vpf = bridgeWith({ architecture: 'water_chiller', hasPhe: false }, { architecture: 'air_cooled_chiller', chwPrimarySecondary: false });
+    assert.strictEqual(keys(vpf.fwP), 'fw_pump', 'VPF has a single pump group');
+    const head = (pumps, k) => pumps.find(p => p.key === k).head_m;
+    assert.strictEqual(head(vpf.fwP, 'fw_pump'), head(ps.fwP, 'fw_pump') + head(ps.fwP, 'chw_primary_pump'), 'VPF head = secondary + primary head');
+    assert(!vpf.du.plantDesign.fanwallSystem.sizing.some(s => s.key === 'chw_primary_pump'), 'VPF removes the primary pump from sizing');
+    const district = bridgeWith({ architecture: 'cooling_tower_hx' }, { architecture: 'chilled_water_plant' });
+    assert.strictEqual(keys(district.fwP), 'fw_pump', 'district chilled water has no in-house primary pump');
+  });
+
+  test('R8-6: PHE splits the FWS pump and a separate glycol heat-rejection pump; no PHE means no extra head', () => {
+    const noPhe = bridgeWith({ architecture: 'cooling_tower_hx' }, { architecture: 'air_cooled_chiller' });
+    assert.strictEqual(keys(noPhe.cduP), 'cdu_pump', 'closed tower without PHE: FWS pump only');
+    assert.strictEqual(noPhe.cduP[0].head_m, 28, 'no PHE head added when hasPhe is not set (arch default false)');
+    const withPhe = bridgeWith({ architecture: 'cooling_tower_hx', hasPhe: true }, { architecture: 'air_cooled_chiller' });
+    assert.strictEqual(keys(withPhe.cduP), 'cdu_pump,rej_pump', 'closed tower with PHE adds the glycol loop pump');
+    assert.strictEqual(withPhe.cduP.find(p => p.key === 'cdu_pump').head_m, 34, 'FWS head = 28 + 6 m PHE primary side');
+    assert(withPhe.du.plantDesign.cduSystem.sizing.some(s => s.key === 'rej_pump'), 'rej_pump sizing item created when PHE toggled on');
+    const trim = bridgeWith({ architecture: 'dry_cooler_trim' }, { architecture: 'air_cooled_chiller' });
+    assert.strictEqual(keys(trim.cduP), 'cdu_pump,chw_pump,rej_pump', 'trim: FWS + glycol + trim CHW pumps');
+    const rej = trim.cduP.find(p => p.key === 'rej_pump');
+    assert(rej.q_kw > 900, 'trim glycol loop also carries the chiller compressor heat');
+  });
+
+  test('R8-7: trim CHW pump draws power only in hours when the trim chiller carries load', () => {
+    const { S, du } = bridgeWith({ architecture: 'dry_cooler_trim' }, { architecture: 'air_cooled_chiller' });
+    const cdu = du.plantDesign.cduSystem;
+    const summ = { liquidHeatKw: 900 };
+    const cold = S.calcLiquidLoopHour(cdu, summ, { db: 5, wb: 3 });
+    const hot = S.calcLiquidLoopHour(cdu, summ, { db: 38, wb: 28 });
+    const base = S.loopPumpKw(cdu, 1.0);
+    assert.strictEqual(cold.mechLoadKw, 0, 'cold hour is full free cooling');
+    assert(Math.abs(cold.primaryPumpKw - base) < 1e-9, 'no trim CHW pump power in free-cooling hours');
+    assert(hot.mechLoadKw > 0, 'hot hour runs the trim chiller');
+    assert(hot.primaryPumpKw > base + 1e-6, 'trim CHW pump power is added when the chiller runs');
+  });
+
+  test('R8-8: pumps are selected by flow and head from the catalog; user-chosen models are kept', () => {
+    const { du } = bridgeWith({ architecture: 'adiabatic_tower' }, { architecture: 'air_cooled_chiller' });
+    du.plantDesign.cduSystem.sizing.filter(s => s.role === 'pump').forEach(s => {
+      const cat = s.catalog.find(c => c.model === s.selectedModel);
+      assert(s.autoSelected, `${s.key} auto-selected`);
+      assert(cat.designHeadM >= s.requiredHeadM, `${s.key} catalog head ${cat.designHeadM} ≥ ${s.requiredHeadM}`);
+      assert(s.pumpChecks.active * cat.designFlowM3h >= s.requiredFlowM3h, `${s.key} running flow covers ${s.requiredFlowM3h}`);
+      assert(s.passed, `${s.key} passes`);
+    });
+    const S2 = freshCtx().AppStore;
+    const du2 = { id: 'du-user', plantDesign: { cduSystem: { architecture: 'adiabatic_tower', fwsSupplyC: 40, fwsReturnC: 52 }, fanwallSystem: { architecture: 'air_cooled_chiller', chwSupplyC: 12, chwReturnC: 18 } } };
+    const summ = { totalItKw: 1100, liquidHeatKw: 900, airHeatKw: 200, lossKw: 0, dlcPct: 82 };
+    S2.bridgeDuToPlantModel(du2, summ);
+    const fws = du2.plantDesign.cduSystem.sizing.find(s => s.key === 'cdu_pump');
+    fws.selectedModel = 'Grundfos TPE 3.0kW Inverter Pump'; fws.selectedQty = 2; fws.userEdited = true;
+    S2.bridgeDuToPlantModel(du2, summ);
+    assert.strictEqual(fws.selectedModel, 'Grundfos TPE 3.0kW Inverter Pump', 'user-chosen pump model is kept');
+    assert(!fws.passed && /馬達|motor/i.test(fws.requiredText), 'undersized user pump fails with a motor warning');
   });
 
   test('R8-4: plant redundancy (N+2) is applied to generated plant equipment', () => {
@@ -5062,7 +5169,7 @@ function sizeCduToDeratedN1(S) {
     assert(content.includes('scenarioCompareChart'), 'Dashboard must include scenario compare canvas');
   });
 
-  test('S-2: ExcelExport generates Sheet 11 (11.方案比較) with 0 CJK in English mode when scenarios exist', () => {
+  test('S-2: ExcelExport generates Sheet 12 (12.方案比較) with 0 CJK in English mode when scenarios exist', () => {
     const { buildWindow } = require('./dom_harness.js');
     const win = buildWindow();
     win.AppStore.calculate();
@@ -5073,13 +5180,13 @@ function sizeCduToDeratedN1(S) {
 
     // Chinese workbook
     const wbZh = win.ExcelExport.buildWorkbook('zh-TW');
-    assert.strictEqual(wbZh.worksheets.length, 11, 'Should have 11 sheets with scenarios');
-    assert.strictEqual(wbZh.worksheets[10].name, '11.方案比較');
+    assert.strictEqual(wbZh.worksheets.length, 12, 'Should have 12 sheets with scenarios');
+    assert.strictEqual(wbZh.worksheets[11].name, '12.方案比較');
 
     // English workbook
     const wbEn = win.ExcelExport.buildWorkbook('en');
-    assert.strictEqual(wbEn.worksheets.length, 11);
-    assert.strictEqual(wbEn.worksheets[10].name, '11.Scenario Comparison');
+    assert.strictEqual(wbEn.worksheets.length, 12);
+    assert.strictEqual(wbEn.worksheets[11].name, '12.Scenario Comparison');
 
     const whitelist = ['Plan A', 'Plan B', '(標準)'];
     (win.AppStore.state.halls || []).forEach(h => {
@@ -5094,7 +5201,7 @@ function sizeCduToDeratedN1(S) {
     if (win.AppStore.state.site?.selectedCity) whitelist.push(win.AppStore.state.site.selectedCity);
 
     const cjkRegex = /[\u4e00-\u9fa5]/;
-    const sheet11 = wbEn.worksheets[10];
+    const sheet11 = wbEn.worksheets[11];
     const violations = [];
     sheet11.eachRow((row, rowNumber) => {
       row.eachCell((cell, colNumber) => {
@@ -5106,7 +5213,7 @@ function sizeCduToDeratedN1(S) {
         }
         whitelist.forEach(w => { text = text.split(w).join(''); });
         if (cjkRegex.test(text)) {
-          violations.push(`Sheet 11 R${rowNumber}C${colNumber}: "${text}"`);
+          violations.push(`Sheet 12 R${rowNumber}C${colNumber}: "${text}"`);
         }
       });
     });

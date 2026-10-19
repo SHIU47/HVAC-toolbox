@@ -14,7 +14,7 @@
         id: 'dry_cooler_trim',
         aliases: ['dry_cooler_hx'],
         loop: 'liquid',
-        get optionLabel() { return t('arch.dry_cooler_trim.option', null, '🟡 乾冷器 + 串聯修整冰機 (NVIDIA DSX 混合三模式 / 推薦標準)'); },
+        get optionLabel() { return t('arch.dry_cooler_trim.option', null, '乾冷器 + 串聯修整冰機 (NVIDIA DSX 混合三模式 / 推薦標準)'); },
         get cardLabel() { return t('arch.dry_cooler_trim.card', null, '乾冷器 + Trim 冰機 (NVIDIA DSX)'); },
         get pillLabel() { return t('arch.dry_cooler_trim.pill', null, '乾冷器+Trim'); },
         get dashboardLabel() { return t('arch.dry_cooler_trim.dashboard', null, '乾冷器 + 修整冰機 (Dry Cooler + Trim Chiller)'); },
@@ -132,7 +132,9 @@
                     };
                     return root.ChillerEngine.deratedCapacityKW(spec, opPeak.tChws, opPeak.tCewt, peakDb)?.derate_factor ?? 1.0;
                 }
-            }
+            },
+            root.CoolingArchHelpers.pumpEquipment('rej_pump', 'Heat Rejection Loop Pump 排熱側循環泵', (sys) => root.CoolingArchHelpers.archHasPhe(root.CoolingArchRegistry.get('dry_cooler_trim'), sys)),
+            root.CoolingArchHelpers.pumpEquipment('chw_pump', 'Trim CHW Pump Trim 冰機冰水泵')
         ],
 
         stages: [

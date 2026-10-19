@@ -452,15 +452,33 @@ const ASSUMPTIONS = {
   // ── [Round 6] 水力迴路揚程、冷卻水泵與噴淋水泵 (P1-H1) ───────────────────
   glycol_cp_kj_kgk: {
     val: 3.90, unit: 'kJ/(kg·K)',
-    label: '30% 乙二醇/丙二醇水溶液比熱容（乾冷器與閉式塔防凍/防腐迴路）',
-    label_en: '30% glycol solution specific heat capacity (dry cooler & closed tower loop)',
+    label: '防凍冷媒水溶液比熱容（乾冷器與閉式塔防凍/防腐迴路）',
+    label_en: 'Antifreeze solution specific heat capacity (dry cooler & closed tower loop)',
     ref: 'ASHRAE Fundamentals Handbook Chapter 31 — Physical Properties of Secondary Coolants (EG/PG 25-30%)'
   },
   phe_secondary_loop_head_m: {
     val: 16.0, unit: 'm',
-    label: '板式熱交換器 (PHE) 雙迴路隔離或串聯雙熱交換器之附加水頭損失 (含 PHE 壓降 + 二次側管損)',
-    label_en: 'Plate heat exchanger (PHE) secondary loop additional head loss',
-    ref: 'Alfa Laval / SWEP Brazed & Gasketed PHE Hydraulic Drop (50-70 kPa) + Secondary Loop Piping (90-100 kPa)'
+    label: '排熱側循環泵揚程：PHE 二次側壓降 + 室外排熱設備（乾冷器 / 絕熱塔 / 閉式塔）盤管 + 室外管路',
+    label_en: 'Heat rejection loop pump head: PHE secondary side + outdoor heat rejection coil + outdoor piping',
+    ref: 'Alfa Laval / SWEP Brazed & Gasketed PHE Hydraulic Drop (50-70 kPa) + Secondary Loop Piping (90-100 kPa)；R8 起為獨立泵組，不再疊加於 FWS 泵'
+  },
+  phe_primary_side_drop_m: {
+    val: 6.0, unit: 'm',
+    label: '板式熱交換器 (PHE) 一次側（FWS 側）壓降，計入 FWS 循環泵揚程',
+    label_en: 'Plate heat exchanger (PHE) primary (FWS) side pressure drop, added to the FWS pump head',
+    ref: 'PHE 設計壓降典型 50–70 kPa（約 5–7 m）'
+  },
+  chw_primary_pump_head_m: {
+    val: 15.0, unit: 'm',
+    label: '一次冰水泵揚程（冰機蒸發器 + 一次側集管 / 旁通管），一次＋二次泵配置使用；VPF 時疊加於主泵',
+    label_en: 'Primary CHW pump head (chiller evaporator + primary header / decoupler); added to the main pump under VPF',
+    ref: '冰機蒸發器壓降 50–80 kPa + 機房集管與閥件'
+  },
+  trim_chw_pump_head_m: {
+    val: 15.0, unit: 'm',
+    label: 'Trim 冰機冰水泵揚程（蒸發器 + 二次板換 + 機房管路）',
+    label_en: 'Trim chiller CHW pump head (evaporator + secondary HX + plant piping)',
+    ref: '冰機蒸發器 50–80 kPa + 板換 50–70 kPa'
   },
   cw_pump_head_default_m: {
     val: 22.0, unit: 'm',

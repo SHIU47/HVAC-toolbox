@@ -48,17 +48,17 @@
             let templateActionsHtml = '';
             if (isLinked) {
                 templateActionsHtml = '<div class="flex items-center gap-1.5 flex-wrap">'
-                    + '<span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-xl text-xs font-bold bg-indigo-50 text-indigo-700 border border-indigo-200" title="' + (tpl ? window.UIKit.escapeHTML(tpl.name) : '') + '">'
-                    + '🔗 ' + (tpl ? window.UIKit.escapeHTML(tpl.name) : t('template.linked', null, '已連結範本')) + ' v' + (currentPod.templateRef.version || 1)
+                    + '<span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-xs font-bold bg-indigo-50 text-indigo-700 border border-indigo-200" title="' + (tpl ? window.UIKit.escapeHTML(tpl.name) : '') + '">'
+                    + '<i data-lucide="link-2" class="w-3.5 h-3.5"></i> ' + (tpl ? window.UIKit.escapeHTML(tpl.name) : t('template.linked', null, '已連結範本')) + ' v' + (currentPod.templateRef.version || 1)
                     + '</span>'
-                    + (isOutdated ? '<button onclick="ViewCorePod.syncPod(\'' + currentPod.id + '\')" class="px-2.5 py-1 bg-amber-500 hover:bg-amber-600 text-white font-bold text-xs rounded-xl shadow-xs transition animate-pulse" title="' + t('template.updated', null, '範本已更新') + '">' + t('template.sync', null, '🔄 同步新版') + ' (v' + tpl.version + ')</button>' : '')
+                    + (isOutdated ? '<button onclick="ViewCorePod.syncPod(\'' + currentPod.id + '\')" class="px-2.5 py-1 bg-amber-500 hover:bg-amber-600 text-white font-bold text-xs rounded-xl shadow-xs transition animate-pulse flex items-center gap-1" title="' + t('template.updated', null, '範本已更新') + '"><i data-lucide="refresh-cw" class="w-3.5 h-3.5"></i> ' + t('template.sync', null, '同步新版') + ' (v' + tpl.version + ')</button>' : '')
                     + '<button onclick="ViewCorePod.unlinkPod(\'' + currentPod.id + '\')" class="px-2.5 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs rounded-xl transition">' + t('template.unlink', null, '解除連結') + '</button>'
                     + '</div>';
             } else {
                 const hasCorePodTemplates = (S.state.templates || []).some(item => item.kind === 'corepod');
                 templateActionsHtml = '<div class="flex items-center gap-1.5 flex-wrap">'
-                    + '<button onclick="ViewCorePod.saveAsTemplate(\'' + (currentPod ? currentPod.id : '') + '\')" class="px-2.5 py-1 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 font-bold text-xs rounded-xl border border-emerald-200 transition" title="' + t('template.saveAsTemplate', null, '💾 存為範本') + '">' + t('template.saveAsTemplate', null, '💾 存為範本') + '</button>'
-                    + (hasCorePodTemplates ? '<button onclick="ViewCorePod.promptApplyTemplate(\'' + (currentPod ? currentPod.id : '') + '\')" class="px-2.5 py-1 bg-blue-50 hover:bg-blue-100 text-blue-800 font-bold text-xs rounded-xl border border-blue-200 transition" title="' + t('template.applyTemplate', null, '📥 套用範本') + '">' + t('template.applyTemplate', null, '📥 套用範本') + '</button>' : '')
+                    + '<button onclick="ViewCorePod.saveAsTemplate(\'' + (currentPod ? currentPod.id : '') + '\')" class="px-2.5 py-1 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 font-bold text-xs rounded-xl border border-emerald-200 transition flex items-center gap-1" title="' + t('template.saveAsTemplate', null, '存為範本') + '"><i data-lucide="bookmark" class="w-3.5 h-3.5"></i> ' + t('template.saveAsTemplate', null, '存為範本') + '</button>'
+                    + (hasCorePodTemplates ? '<button onclick="ViewCorePod.promptApplyTemplate(\'' + (currentPod ? currentPod.id : '') + '\')" class="px-2.5 py-1 bg-blue-50 hover:bg-blue-100 text-blue-800 font-bold text-xs rounded-xl border border-blue-200 transition flex items-center gap-1" title="' + t('template.applyTemplate', null, '套用範本') + '"><i data-lucide="download" class="w-3.5 h-3.5"></i> ' + t('template.applyTemplate', null, '套用範本') + '</button>' : '')
                     + '</div>';
             }
 
@@ -73,7 +73,7 @@
                     + '<div class="text-[11px] text-teal-800 font-bold mt-0.5">' + ps.totalItKw.toFixed(1) + ' kW <span class="text-[10px] font-normal text-slate-400">(' + topoModeLabel + ')</span></div>'
                     + '</div>'
                     + '<div class="flex items-center gap-1 shrink-0">'
-                    + '<button onclick="event.stopPropagation(); ViewCorePod.copyPod(\'' + pod.id + '\')" title="' + t('corepod.copyTitle', null, '複製此 CorePOD') + '" class="px-1.5 py-0.5 text-xs bg-slate-100 hover:bg-teal-100 text-slate-600 hover:text-teal-900 rounded font-bold transition">📋</button>'
+                    + '<button onclick="event.stopPropagation(); ViewCorePod.copyPod(\'' + pod.id + '\')" title="' + t('corepod.copyTitle', null, '複製此 CorePOD') + '" class="px-1.5 py-1 text-xs bg-slate-100 hover:bg-teal-100 text-slate-600 hover:text-teal-900 rounded font-bold transition flex items-center"><i data-lucide="copy" class="w-3.5 h-3.5"></i></button>'
                     + (pods.length > 1 ? '<button onclick="event.stopPropagation(); ViewCorePod.deletePod(\'' + pod.id + '\')" title="' + t('corepod.deleteTitle', null, '刪除此 CorePOD') + '" class="px-1.5 py-0.5 text-xs bg-slate-100 hover:bg-red-100 text-slate-400 hover:text-red-600 rounded font-bold transition">✕</button>' : '')
                     + '</div>'
                     + '</div>';
@@ -84,8 +84,8 @@
                     <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 space-y-4">
                         <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
                             <div>
-                                <h2 class="text-xl font-bold text-slate-900 flex items-center gap-2">
-                                    <span>📦</span> ${t('corepod.title', null, 'Step 3: CorePOD 核心機房設計 (Cross-Hall Core Facility)')}
+                                <h2 class="text-xl font-bold text-slate-900 flex items-center gap-2.5">
+                                    <div class="w-8 h-8 rounded-xl bg-teal-100 text-teal-800 flex items-center justify-center shrink-0"><i data-lucide="box" class="w-4 h-4"></i></div> ${t('corepod.title', null, 'Step 3: CorePOD 核心機房設計 (Cross-Hall Core Facility)')}
                                 </h2>
                                 <p class="text-sm text-slate-500 mt-1">
                                     ${t('corepod.desc', null, '配置跨 Hall 共用之<strong>核心網通（Spine / Router）、集中式儲存與管理叢集</strong>（不含 GPU 運算機櫃）。')}
@@ -93,10 +93,10 @@
                             </div>
                             <div class="flex items-center gap-2 flex-wrap">
                                 <button onclick="ViewHallSU.openTemplateManager()" class="px-3.5 py-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-800 font-bold text-xs rounded-xl border border-indigo-200 transition flex items-center gap-1.5 shadow-2xs">
-                                    <span>📚</span> ${t('template.title', null, '範本庫')} (${(S.state.templates || []).length})
+                                    <i data-lucide="book-open" class="w-3.5 h-3.5"></i> ${t('template.title', null, '範本庫')} (${(S.state.templates || []).length})
                                 </button>
                                 <button onclick="ViewCorePod.addPod()" class="px-4 py-2 bg-teal-600 hover:bg-teal-700 text-white font-bold text-xs rounded-xl shadow-sm transition flex items-center gap-1.5">
-                                    <span>➕</span> ${t('corepod.addBtn', null, '新增 CorePOD')}
+                                    <i data-lucide="plus" class="w-3.5 h-3.5"></i> ${t('corepod.addBtn', null, '新增 CorePOD')}
                                 </button>
                             </div>
                         </div>
@@ -121,13 +121,13 @@
                                 <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 space-y-3">
                                     <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b pb-3">
                                         <div class="flex items-center gap-2 flex-1 max-w-md">
-                                            <span class="text-base font-bold text-slate-900 shrink-0">${t('corepod.facilityLabel', null, '📦 核心機房:')}</span>
+                                            <span class="text-sm font-bold text-slate-900 shrink-0 flex items-center gap-1.5"><i data-lucide="box" class="w-4 h-4 text-teal-700"></i> ${t('corepod.facilityLabel', null, '核心機房:')}</span>
                                             <input type="text" id="corepodNameIn_${currentPod.id}" value="${window.UIKit.escapeHTML(currentPod.name)}" onchange="ViewCorePod.updatePodName(this.value)" onkeydown="if(event.key==='Enter')this.blur()" class="w-full font-extrabold text-teal-900 border rounded-lg px-2.5 py-1 text-sm bg-teal-50/60 focus:bg-white focus:ring-2 focus:ring-teal-400">
                                         </div>
                                         <div class="flex items-center gap-2 flex-wrap">
                                             ${templateActionsHtml}
-                                            <button onclick="ViewCorePod.copyPod('${currentPod.id}')" class="px-3 py-1 bg-slate-100 hover:bg-teal-50 text-slate-700 hover:text-teal-900 text-xs font-bold rounded-lg border border-slate-200 transition flex items-center gap-1">
-                                                <span>📋</span> ${t('corepod.copyBtn', null, '複製此 CorePOD')}
+                                            <button onclick="ViewCorePod.copyPod('${currentPod.id}')" class="px-3 py-1 bg-slate-100 hover:bg-teal-50 text-slate-700 hover:text-teal-900 text-xs font-bold rounded-lg border border-slate-200 transition flex items-center gap-1.5">
+                                                <i data-lucide="copy" class="w-3.5 h-3.5"></i> ${t('corepod.copyBtn', null, '複製此 CorePOD')}
                                             </button>
                                             <div class="flex items-center gap-1.5 pl-2 border-l border-slate-200">
                                                 <span class="text-xs text-slate-500 font-bold">${t('corepod.topoLabel', null, '冷卻拓撲:')}</span>
@@ -136,13 +136,13 @@
                                             </div>
                                         </div>
                                     </div>
-                                    <div class="text-xs text-slate-500 flex items-center gap-2">
-                                        <span>${t('corepod.servicedHalls', null, '🔗 服務關聯 Hall:')}</span>
+                                    <div class="text-xs text-slate-500 flex items-center gap-1.5">
+                                        <span class="flex items-center gap-1"><i data-lucide="link" class="w-3.5 h-3.5 text-slate-400"></i> ${t('corepod.servicedHalls', null, '服務關聯 Hall:')}</span>
                                         <span class="font-bold text-slate-800">${halls.map(h=>h.name).join(', ') || t('corepod.allHalls', null, '全廠共用')}</span>
                                     </div>
                                 </div>
 
-                                ${isLinked ? `<div class="p-3 bg-indigo-50/70 rounded-2xl border border-indigo-200 text-xs text-indigo-900 font-medium flex items-center justify-between"><span>🔗 ${t('template.linkedNotice', null, '此單元已連結標準範本，設備由範本統一管理。如需個別微調，請點選上方「解除連結」。')}</span></div>` : ''}
+                                ${isLinked ? `<div class="p-3 bg-indigo-50/70 rounded-2xl border border-indigo-200 text-xs text-indigo-900 font-medium flex items-center gap-2"><i data-lucide="link-2" class="w-4 h-4 text-indigo-600 shrink-0"></i><span>${t('template.linkedNotice', null, '此單元已連結標準範本，設備由範本統一管理。如需個別微調，請點選上方「解除連結」。')}</span></div>` : ''}
 
                                 <!-- Equipment Designer (No GPU) -->
                                 <div id="corePodEquipmentDesignerContainer"></div>
@@ -151,11 +151,11 @@
                     </div>
 
                     <div class="flex justify-between pt-2">
-                        <button onclick="window.App.prevStep()" class="px-6 py-3 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-sm rounded-xl transition">
-                            <span>←</span> ${t('corepod.prevStep', null, '上一步: Hall/SU 設計')}
+                        <button onclick="window.App.prevStep()" class="px-6 py-3 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-sm rounded-xl transition flex items-center gap-2">
+                            <i data-lucide="arrow-left" class="w-4 h-4"></i> ${t('corepod.prevStep', null, '上一步: Hall/SU 設計')}
                         </button>
                         <button onclick="window.App.nextStep()" class="px-6 py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-sm rounded-xl shadow-sm transition flex items-center gap-2">
-                            ${t('corepod.nextStep', null, '下一步: 廠務冷卻工程設計 (Plant Model)')} <span>→</span>
+                            <span>${t('corepod.nextStep', null, '下一步: 廠務冷卻工程設計 (Plant Model)')}</span> <i data-lucide="arrow-right" class="w-4 h-4"></i>
                         </button>
                     </div>
                 </div>
