@@ -34,10 +34,59 @@
             const corePodGroup = res.corePodGroup || { annualPue: 1.00, totalItKw: 0 };
 
             const U0 = window.UIKit;
+            const byPlant = res.byPlant || overall.byPlant || [];
+            const plantMap = new Map((state.coolingPlants || []).map(p => [p.id, p]));
+
+            const getUnitNameById = (id) => {
+                for (const h of (state.halls || [])) {
+                    for (const d of (h.dus || [])) {
+                        if (d.id === id) return d.name;
+                    }
+                }
+                for (const cp of (state.corePods || [])) {
+                    if (cp.id === id) return cp.name;
+                }
+                return id;
+            };
+
+            let plantTableRows = '';
+            byPlant.forEach(pl => {
+                const def = plantMap.get(pl.id);
+                const memberNames = (pl.memberIds || []).map(id => getUnitNameById(id)).join(', ');
+                const plantTotalMwh = (pl.annualMwh?.chiller || 0) + (pl.annualMwh?.heatRej || 0) + (pl.annualMwh?.pump || 0);
+                const loopBadge = pl.loop === 'liquid'
+                    ? '<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-semibold bg-brand-50 text-brand-700 border border-brand-200">💧 ' + _t('cooling.liquidLoop', null, '液冷迴路') + '</span>'
+                    : '<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-semibold bg-sky-50 text-sky-700 border border-sky-200">💨 ' + _t('cooling.airLoop', null, '氣冷迴路') + '</span>';
+                const redundancyText = def?.redundancy || 'N+1';
+
+                plantTableRows += '<tr class="border-b border-border-subtle hover:bg-bg transition-colors text-xs">'
+                    + '<td class="py-3 px-4 font-semibold text-primary">' + U0.escapeHTML(pl.name) + '</td>'
+                    + '<td class="py-3 px-4">' + loopBadge + '</td>'
+                    + '<td class="py-3 px-4 text-secondary"><div class="max-w-[200px] truncate" title="' + U0.escapeHTML(memberNames) + '">' + U0.escapeHTML(memberNames || '—') + '</div><div class="text-[10px] text-tertiary font-mono">(' + (pl.memberIds?.length || 0) + ')</div></td>'
+                    + '<td class="py-3 px-4 font-mono font-semibold text-primary">' + redundancyText + '</td>'
+                    + '<td class="py-3 px-4 text-right font-mono font-medium text-primary tabular-nums">' + (pl.peakLoadKw || 0).toLocaleString() + '</td>'
+                    + '<td class="py-3 px-4 text-right font-mono text-secondary tabular-nums">' + (pl.annualMwh?.chiller || 0).toLocaleString() + '</td>'
+                    + '<td class="py-3 px-4 text-right font-mono text-secondary tabular-nums">' + (pl.annualMwh?.heatRej || 0).toLocaleString() + '</td>'
+                    + '<td class="py-3 px-4 text-right font-mono text-secondary tabular-nums">' + (pl.annualMwh?.pump || 0).toLocaleString() + '</td>'
+                    + '<td class="py-3 px-4 text-right font-mono font-bold text-brand-600 tabular-nums">' + plantTotalMwh.toLocaleString() + '</td>'
+                    + '<td class="py-3 px-4 text-right font-mono font-medium text-emerald-700 tabular-nums">' + (pl.modeHours?.free || 0) + ' h</td>'
+                    + '</tr>';
+            });
+
             let duTableRows = '';
             byDu.forEach(d => {
+                const liqPlant = d.liquidPlantId ? plantMap.get(d.liquidPlantId) : null;
+                const airPlant = d.airPlantId ? plantMap.get(d.airPlantId) : null;
+                const liqText = liqPlant ? liqPlant.name : _t('cooling.dedicated', null, '獨立');
+                const airText = airPlant ? airPlant.name : _t('cooling.dedicated', null, '獨立');
+                const supplyPlantHtml = '<div class="text-[11px] space-y-0.5">'
+                    + '<div class="flex items-center gap-1 ' + (liqPlant ? 'text-brand-600 font-semibold' : 'text-tertiary font-normal') + '"><span>💧</span><span>' + U0.escapeHTML(liqText) + '</span></div>'
+                    + '<div class="flex items-center gap-1 ' + (airPlant ? 'text-sky-600 font-semibold' : 'text-tertiary font-normal') + '"><span>💨</span><span>' + U0.escapeHTML(airText) + '</span></div>'
+                    + '</div>';
+
                 duTableRows += '<tr class="border-b border-border-subtle hover:bg-bg transition-colors text-xs">'
                     + '<td class="py-3 px-4 font-semibold text-primary"><div class="flex items-center gap-2">' + U0.iconBadge('building-2', 'neutral', 'w-6 h-6') + '<span>' + U0.escapeHTML(d.duName) + '<div class="text-[10px] text-tertiary font-normal">' + U0.escapeHTML(d.hallName) + '</div></span></div></td>'
+                    + '<td class="py-3 px-4">' + supplyPlantHtml + '</td>'
                     + '<td class="py-3 px-4 font-mono font-semibold text-primary">' + d.cduArchitecture
                     + '<div class="text-[10px] text-secondary font-normal">' + d.cduSupplyTemp + '/' + d.cduReturnTemp + '°C</div>'
                     + '<div class="text-[10px] text-secondary font-medium mt-0.5">' + _t('dash.liquidEnergy', null, '液冷能耗') + ': ' + (d.cduSystemMwh || 0).toLocaleString() + ' MWh</div></td>'
@@ -54,8 +103,18 @@
 
             let corePodTableRows = '';
             byCorePod.forEach(cp => {
+                const liqPlant = cp.liquidPlantId ? plantMap.get(cp.liquidPlantId) : null;
+                const airPlant = cp.airPlantId ? plantMap.get(cp.airPlantId) : null;
+                const liqText = liqPlant ? liqPlant.name : _t('cooling.dedicated', null, '獨立');
+                const airText = airPlant ? airPlant.name : _t('cooling.dedicated', null, '獨立');
+                const supplyPlantHtml = '<div class="text-[11px] space-y-0.5">'
+                    + (cp.liquidHeatKw > 0 ? ('<div class="flex items-center gap-1 ' + (liqPlant ? 'text-brand-600 font-semibold' : 'text-tertiary font-normal') + '"><span>💧</span><span>' + U0.escapeHTML(liqText) + '</span></div>') : '')
+                    + '<div class="flex items-center gap-1 ' + (airPlant ? 'text-sky-600 font-semibold' : 'text-tertiary font-normal') + '"><span>💨</span><span>' + U0.escapeHTML(airText) + '</span></div>'
+                    + '</div>';
+
                 corePodTableRows += '<tr class="border-b border-border-subtle hover:bg-bg transition-colors text-xs">'
                     + '<td class="py-3 px-4 font-semibold text-primary"><div class="flex items-center gap-2">' + U0.iconBadge('server', 'violet', 'w-6 h-6') + '<span>' + U0.escapeHTML(cp.podName) + '<div class="text-[10px] text-tertiary font-normal">' + _t('dash.corePodModule', null, '核心機房模組') + '</div></span></div></td>'
+                    + '<td class="py-3 px-4">' + supplyPlantHtml + '</td>'
                     + '<td class="py-3 px-4 font-mono font-semibold text-primary">' + (cp.liquidHeatKw > 0 ? cp.cduArchitecture : _t('dash.noLiquidLoad', null, '無液冷負載'))
                     + (cp.liquidHeatKw > 0 ? ('<div class="text-[10px] text-secondary font-normal">' + cp.cduSupplyTemp + '/' + cp.cduReturnTemp + '°C</div>'
                     + '<div class="text-[10px] text-secondary font-medium mt-0.5">' + _t('dash.liquidEnergy', null, '液冷能耗') + ': ' + (cp.cduSystemMwh || 0).toLocaleString() + ' MWh</div>') : ('<div class="text-[10px] text-tertiary font-normal">' + _t('dash.allAirEquip', null, '100% 氣冷設備') + '</div>')) + '</td>'
@@ -252,6 +311,42 @@
                         </div>
                     </div>
 
+                    <!-- 共用冷卻系統運轉與耗能成果 (Cooling Plants) -->
+                    <div class="${U.cardClass('p-6 space-y-4')}">
+                        <div class="flex justify-between items-center border-b border-border-subtle pb-3">
+                            <div class="flex items-center gap-3">
+                                ${U.iconBadge('network', 'brand')}
+                                <div>
+                                    <h3 class="text-sm font-semibold text-primary">${_t('dash.plantTableTitle', null, '共用冷卻系統運轉與耗能成果 (Cooling Plants)')}</h3>
+                                    <p class="text-xs text-tertiary mt-0.5">${_t('dash.plantTableSubtitle', null, '依迴路彙整中央主機房冰機、排熱設備與水泵年耗電、耗水與自然冷卻時數')}</p>
+                                </div>
+                            </div>
+                            ${U.badge(String(byPlant.length), 'neutral')}
+                        </div>
+
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-left">
+                                <thead>
+                                    <tr class="border-b border-border text-[11px] font-medium text-tertiary uppercase tracking-wide">
+                                        <th class="py-2.5 px-4">${_t('dash.thPlantName', null, '系統名稱')}</th>
+                                        <th class="py-2.5 px-4">${_t('dash.thLoopType', null, '冷卻迴路')}</th>
+                                        <th class="py-2.5 px-4">${_t('dash.thPlantMembers', null, '成員單元')}</th>
+                                        <th class="py-2.5 px-4">${_t('dash.thPlantRedundancy', null, '冗餘等級')}</th>
+                                        <th class="py-2.5 px-4 text-right">${_t('dash.thPlantPeakLoad', null, '尖峰負載 (kW)')}</th>
+                                        <th class="py-2.5 px-4 text-right">${_t('dash.thPlantChillerMwh', null, '冰機能耗 (MWh)')}</th>
+                                        <th class="py-2.5 px-4 text-right">${_t('dash.thPlantHeatRejMwh', null, '排熱能耗 (MWh)')}</th>
+                                        <th class="py-2.5 px-4 text-right">${_t('dash.thPlantPumpMwh', null, '水泵能耗 (MWh)')}</th>
+                                        <th class="py-2.5 px-4 text-right">${_t('dash.thPlantTotalMwh', null, '主機房年耗電 (MWh)')}</th>
+                                        <th class="py-2.5 px-4 text-right">${_t('dash.thPlantFreeHours', null, '自然冷卻 (h)')}</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    ${plantTableRows || '<tr><td colspan="10" class="text-center py-6 text-xs text-tertiary">' + _t('dash.noPlantsData', null, '目前案場未建立共用冷卻系統（所有單元皆採獨立配置）') + '</td></tr>'}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
                     <!-- 逐 DU 成果比較清單 (含雙冷卻架構與能耗拆解) -->
                     <div class="${U.cardClass('p-6 space-y-4')}">
                         <div class="flex justify-between items-center border-b border-border-subtle pb-3">
@@ -270,6 +365,7 @@
                                 <thead>
                                     <tr class="border-b border-border text-[11px] font-medium text-tertiary uppercase tracking-wide">
                                         <th class="py-2.5 px-4">${_t('dash.thDuUnit', null, 'DU 單元')}</th>
+                                        <th class="py-2.5 px-4">${_t('dash.thSupplyPlant', null, '供冷系統 (Plant)')}</th>
                                         <th class="py-2.5 px-4">${_t('dash.thCduSystem', null, 'CDU 液冷系統 (水溫 & 能耗)')}</th>
                                         <th class="py-2.5 px-4">${_t('dash.thFwSystem', null, 'Fanwall 氣冷系統 (能耗)')}</th>
                                         <th class="py-2.5 px-4 text-right">${_t('dash.thItCap', null, 'IT 容量 (kW)')}</th>
@@ -279,7 +375,7 @@
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    ${duTableRows || '<tr><td colspan="7" class="text-center py-4 text-xs text-tertiary">' + _t('dash.noDuData', null, '尚無 DU 資料') + '</td></tr>'}
+                                    ${duTableRows || '<tr><td colspan="8" class="text-center py-4 text-xs text-tertiary">' + _t('dash.noDuData', null, '尚無 DU 資料') + '</td></tr>'}
                                 </tbody>
                             </table>
                         </div>
@@ -306,6 +402,7 @@
                                 <thead>
                                     <tr class="border-b border-border text-[11px] font-medium text-tertiary uppercase tracking-wide">
                                         <th class="py-2.5 px-4">${_t('dash.thCorePodUnit', null, 'CorePOD 單元')}</th>
+                                        <th class="py-2.5 px-4">${_t('dash.thSupplyPlant', null, '供冷系統 (Plant)')}</th>
                                         <th class="py-2.5 px-4">${_t('dash.thLiquidSystem', null, '液冷系統 (水溫 & 能耗)')}</th>
                                         <th class="py-2.5 px-4">${_t('dash.thAirSystem', null, '氣冷系統 (能耗)')}</th>
                                         <th class="py-2.5 px-4 text-right">${_t('dash.thItCap', null, 'IT 容量 (kW)')}</th>

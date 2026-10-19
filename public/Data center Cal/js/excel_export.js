@@ -1017,122 +1017,163 @@
                     coolingUnits.push({ hallName: _t('xls.corePodHall', {}, 'CorePOD機房'), unitName: p.name, plant: p.plantDesign || {}, isCorePod: true });
                 });
 
+                const renderSizingRow = (hallName, unitName, categoryLabel, item) => {
+                    const reqKw = item.requiredKw ?? 0;
+                    const nominalCapKw = item.unitCapKw ?? 0;
+                    const derate = (typeof item.derateFactor === 'number' && item.derateFactor > 0) ? item.derateFactor : 1.0;
+                    const effectiveUnitCap = Number((nominalCapKw * derate).toFixed(1));
+                    const qty = item.selectedQty ?? 0;
+                    const red = item.redundancy || 'N+1';
+                    let effCapFormula = `MAX(0, (J${s5Row}-1))*I${s5Row}`;
+                    if (red === 'N') effCapFormula = `J${s5Row}*I${s5Row}`;
+                    else if (red === 'N+2') effCapFormula = `MAX(0, (J${s5Row}-2))*I${s5Row}`;
+                    else if (red === '2N') effCapFormula = `INT(J${s5Row}/2)*I${s5Row}`;
+
+                    const effectiveTotalCap = Math.max(0, (red === 'N' ? qty : red === 'N+2' ? qty - 2 : red === '2N' ? Math.floor(qty / 2) : qty - 1)) * effectiveUnitCap;
+                    const isConfigured = qty > 0;
+                    const isPass = isConfigured && effectiveTotalCap >= reqKw;
+
+                    let itemLabel = item.label || '';
+                    if (targetLang === 'en') {
+                        if (item.key && _t(`equip.${item.key}`) !== `equip.${item.key}`) {
+                            itemLabel = _t(`equip.${item.key}`);
+                        } else {
+                            itemLabel = itemLabel
+                                .replace(/CDU 液冷分配主機|CDU主機/g, 'CDU Liquid Cooling Distribution Unit')
+                                .replace(/CDU 循環主機/g, 'CDU Primary Loop Unit')
+                                .replace(/一次側設施循環水泵|一次側泵/g, 'Primary Loop Pump')
+                                .replace(/二次側循環水泵|二次側泵/g, 'Secondary Loop Pump')
+                                .replace(/閉式乾冷器|乾式冷卻器|乾冷器/g, 'Dry Cooler')
+                                .replace(/輔助修整冰機|輔助冰水主機|冰水主機/g, 'Trim Chiller')
+                                .replace(/冰水一次水泵|二次側冰水循環水泵|冰水泵/g, 'Chilled Water Pump')
+                                .replace(/Fanwall 機房空調|風牆機組|風牆機/g, 'Fanwall Array')
+                                .replace(/冷卻水循環泵|冷卻水泵/g, 'Condenser Water Pump')
+                                .replace(/板式熱交換器/g, 'Plate Heat Exchanger')
+                                .replace(/絕熱噴淋冷卻塔/g, 'Adiabatic Cooling Tower')
+                                .replace(/密閉式冷卻水塔/g, 'Closed-Circuit Cooling Tower')
+                                .replace(/水冷式冰水主機/g, 'Water-Cooled Chiller')
+                                .replace(/氣冷式冰水主機/g, 'Air-Cooled Chiller')
+                                .replace(/[\u4e00-\u9fa5]/g, '')
+                                .trim() || item.label;
+                        }
+                    }
+
+                    const r = s5.addRow([
+                        hallName,
+                        unitName,
+                        categoryLabel,
+                        itemLabel,
+                        item.selectedModel || _t('xls.notSelected', {}, '（尚未選型）'),
+                        reqKw,
+                        nominalCapKw,
+                        derate,
+                        { formula: `ROUND(G${s5Row}*H${s5Row}, 1)` },
+                        qty,
+                        { formula: `I${s5Row}*J${s5Row}` },
+                        { formula: effCapFormula },
+                        { formula: `IF(F${s5Row}>0, (L${s5Row}/F${s5Row}-1)*100, 0)` },
+                        { formula: `IF(J${s5Row}=0, "${pillUnselected}", IF(L${s5Row}>=F${s5Row}, "${pillPass}", "${pillDeficit}"))` }
+                    ]);
+                    r.height = 22;
+
+                    applyRowStyles(r, 14, fontNormal, borderThin, { vertical: 'middle', horizontal: 'left', indent: 1 });
+                    r.getCell(1).alignment = { vertical: 'middle', horizontal: 'left', indent: 1 };
+                    r.getCell(2).alignment = { vertical: 'middle', horizontal: 'left', indent: 1 };
+                    r.getCell(3).alignment = { vertical: 'middle', horizontal: 'center' };
+                    r.getCell(6).alignment = { vertical: 'middle', horizontal: 'right' };
+                    r.getCell(7).alignment = { vertical: 'middle', horizontal: 'right' };
+                    r.getCell(8).alignment = { vertical: 'middle', horizontal: 'right' };
+                    r.getCell(9).alignment = { vertical: 'middle', horizontal: 'right' };
+                    r.getCell(10).alignment = { vertical: 'middle', horizontal: 'center' };
+                    r.getCell(11).alignment = { vertical: 'middle', horizontal: 'right' };
+                    r.getCell(12).alignment = { vertical: 'middle', horizontal: 'right' };
+                    r.getCell(13).alignment = { vertical: 'middle', horizontal: 'right' };
+                    r.getCell(14).alignment = { vertical: 'middle', horizontal: 'center' };
+
+                    r.getCell(6).numFmt = '#,##0.0';
+                    r.getCell(7).numFmt = '#,##0.0';
+                    r.getCell(8).numFmt = '0.0%';
+                    r.getCell(9).numFmt = '#,##0.0';
+                    r.getCell(10).numFmt = '#,##0';
+                    r.getCell(11).numFmt = '#,##0.0';
+                    r.getCell(12).numFmt = '#,##0.0';
+                    r.getCell(13).numFmt = '+0.0%;-0.0%;0.0%';
+
+                    r.getCell(9).font = fontFormula;
+                    r.getCell(11).font = fontFormula;
+                    r.getCell(12).font = fontFormula;
+                    r.getCell(13).font = fontFormula;
+
+                    zebra(r, s5Row, 14);
+
+                    // Status Cell Pill
+                    const statusCell = r.getCell(14);
+                    if (!isConfigured) {
+                        statusCell.fill = fillNeutralBadge;
+                        statusCell.font = fontMuted;
+                    } else if (isPass) {
+                        statusCell.fill = fillPass;
+                        statusCell.font = fontPass;
+                    } else {
+                        statusCell.fill = fillDanger;
+                        statusCell.font = fontDanger;
+                    }
+
+                    s5Row++;
+                };
+
+                const coolingPlants = state.coolingPlants || [];
+                // 1. 若有共用冷卻系統，先輸出共用主機房設備
+                if (coolingPlants.length > 0) {
+                    coolingPlants.forEach(p => {
+                        const hallLabel = _t('xls.sharedCentralPlant', {}, '中央主機房');
+                        const unitLabel = (_t('xls.sharedPlantPrefix', {}, '【共用】') + p.name).trim();
+                        const catLabel = p.loop === 'liquid'
+                            ? _t('xls.cduSysCategory', {}, 'CDU液冷系統')
+                            : _t('xls.fwSysCategory', {}, '氣冷排熱系統');
+                        (p.system?.sizing || []).forEach(item => {
+                            renderSizingRow(hallLabel, unitLabel, catLabel, item);
+                        });
+                    });
+
+                    // 說明列
+                    const noteRow = s5.addRow([_t('xls.plantAllocationNote', {}, '※ 註：共用冷卻系統主機房設備能耗依各成員單元熱負載比例自動分攤')]);
+                    noteRow.height = 20;
+                    s5.mergeCells(`A${s5Row}:N${s5Row}`);
+                    noteRow.getCell(1).font = { italic: true, color: { argb: 'FF6B7280' }, size: 9 };
+                    noteRow.getCell(1).alignment = { vertical: 'middle', horizontal: 'left', indent: 1 };
+                    s5Row++;
+                }
+
+                // 2. 輸出各 DU 與 CorePOD 之設備
                 coolingUnits.forEach(u => {
                     const plant = u.plant || {};
-                    const cduSizing = plant.cduSystem?.sizing || [];
-                    const fwSizing = plant.fanwallSystem?.sizing || [];
+                    let cduSizing = plant.cduSystem?.sizing || [];
+                    let fwSizing = plant.fanwallSystem?.sizing || [];
 
-                    const renderItems = (items, categoryLabel) => {
-                        items.forEach(item => {
-                            const reqKw = item.requiredKw ?? 0;
-                            const nominalCapKw = item.unitCapKw ?? 0;
-                            const derate = (typeof item.derateFactor === 'number' && item.derateFactor > 0) ? item.derateFactor : 1.0;
-                            const effectiveUnitCap = Number((nominalCapKw * derate).toFixed(1));
-                            const qty = item.selectedQty ?? 0;
-                            const effectiveTotalCap = Math.max(0, qty - 1) * effectiveUnitCap;
-                            const isConfigured = qty > 0;
-                            const isPass = isConfigured && effectiveTotalCap >= reqKw;
+                    if (plant.cduSystem?.plantId) {
+                        cduSizing = cduSizing.filter(item => item.role === 'terminal' || item.key === 'cdu_unit');
+                    }
+                    if (plant.fanwallSystem?.plantId) {
+                        fwSizing = fwSizing.filter(item => item.role === 'terminal' || item.key === 'crah_unit' || item.key === 'rdhx_unit');
+                    }
 
-                            let itemLabel = item.label || '';
-                            if (targetLang === 'en') {
-                                if (item.key && _t(`equip.${item.key}`) !== `equip.${item.key}`) {
-                                    itemLabel = _t(`equip.${item.key}`);
-                                } else {
-                                    itemLabel = itemLabel
-                                        .replace(/CDU 液冷分配主機|CDU主機/g, 'CDU Liquid Cooling Distribution Unit')
-                                        .replace(/CDU 循環主機/g, 'CDU Primary Loop Unit')
-                                        .replace(/一次側設施循環水泵|一次側泵/g, 'Primary Loop Pump')
-                                        .replace(/二次側循環水泵|二次側泵/g, 'Secondary Loop Pump')
-                                        .replace(/閉式乾冷器|乾式冷卻器|乾冷器/g, 'Dry Cooler')
-                                        .replace(/輔助修整冰機|輔助冰水主機|冰水主機/g, 'Trim Chiller')
-                                        .replace(/冰水一次水泵|二次側冰水循環水泵|冰水泵/g, 'Chilled Water Pump')
-                                        .replace(/Fanwall 機房空調|風牆機組|風牆機/g, 'Fanwall Array')
-                                        .replace(/冷卻水循環泵|冷卻水泵/g, 'Condenser Water Pump')
-                                        .replace(/板式熱交換器/g, 'Plate Heat Exchanger')
-                                        .replace(/絕熱噴淋冷卻塔/g, 'Adiabatic Cooling Tower')
-                                        .replace(/密閉式冷卻水塔/g, 'Closed-Circuit Cooling Tower')
-                                        .replace(/水冷式冰水主機/g, 'Water-Cooled Chiller')
-                                        .replace(/氣冷式冰水主機/g, 'Air-Cooled Chiller')
-                                        .replace(/[\u4e00-\u9fa5]/g, '')
-                                        .trim() || item.label;
-                                }
-                            }
-
-                            const r = s5.addRow([
-                                u.hallName,
-                                u.unitName,
-                                categoryLabel,
-                                itemLabel,
-                                item.selectedModel || _t('xls.notSelected', {}, '（尚未選型）'),
-                                reqKw,
-                                nominalCapKw,
-                                derate,
-                                { formula: `ROUND(G${s5Row}*H${s5Row}, 1)` },
-                                qty,
-                                { formula: `I${s5Row}*J${s5Row}` },
-                                { formula: `MAX(0, (J${s5Row}-1))*I${s5Row}` },
-                                { formula: `IF(F${s5Row}>0, (L${s5Row}/F${s5Row}-1)*100, 0)` },
-                                { formula: `IF(J${s5Row}=0, "${pillUnselected}", IF(L${s5Row}>=F${s5Row}, "${pillPass}", "${pillDeficit}"))` }
-                            ]);
-                            r.height = 22;
-
-                            applyRowStyles(r, 14, fontNormal, borderThin, { vertical: 'middle', horizontal: 'left', indent: 1 });
-                            r.getCell(1).alignment = { vertical: 'middle', horizontal: 'left', indent: 1 };
-                            r.getCell(2).alignment = { vertical: 'middle', horizontal: 'left', indent: 1 };
-                            r.getCell(3).alignment = { vertical: 'middle', horizontal: 'center' };
-                            r.getCell(6).alignment = { vertical: 'middle', horizontal: 'right' };
-                            r.getCell(7).alignment = { vertical: 'middle', horizontal: 'right' };
-                            r.getCell(8).alignment = { vertical: 'middle', horizontal: 'right' };
-                            r.getCell(9).alignment = { vertical: 'middle', horizontal: 'right' };
-                            r.getCell(10).alignment = { vertical: 'middle', horizontal: 'center' };
-                            r.getCell(11).alignment = { vertical: 'middle', horizontal: 'right' };
-                            r.getCell(12).alignment = { vertical: 'middle', horizontal: 'right' };
-                            r.getCell(13).alignment = { vertical: 'middle', horizontal: 'right' };
-                            r.getCell(14).alignment = { vertical: 'middle', horizontal: 'center' };
-
-                            r.getCell(6).numFmt = '#,##0.0';
-                            r.getCell(7).numFmt = '#,##0.0';
-                            r.getCell(8).numFmt = '0.0%';
-                            r.getCell(9).numFmt = '#,##0.0';
-                            r.getCell(10).numFmt = '#,##0';
-                            r.getCell(11).numFmt = '#,##0.0';
-                            r.getCell(12).numFmt = '#,##0.0';
-                            r.getCell(13).numFmt = '+0.0%;-0.0%;0.0%';
-
-                            r.getCell(9).font = fontFormula;
-                            r.getCell(11).font = fontFormula;
-                            r.getCell(12).font = fontFormula;
-                            r.getCell(13).font = fontFormula;
-
-                            zebra(r, s5Row, 14);
-
-                            // Status Cell Pill
-                            const statusCell = r.getCell(14);
-                            if (!isConfigured) {
-                                statusCell.fill = fillNeutralBadge;
-                                statusCell.font = fontMuted;
-                            } else if (isPass) {
-                                statusCell.fill = fillPass;
-                                statusCell.font = fontPass;
-                            } else {
-                                statusCell.fill = fillDanger;
-                                statusCell.font = fontDanger;
-                            }
-
-                            s5Row++;
-                        });
-                    };
-
-                    renderItems(cduSizing, _t('xls.cduSysCategory', {}, 'CDU液冷系統'));
-                    renderItems(fwSizing, _t('xls.fwSysCategory', {}, '氣冷排熱系統'));
+                    cduSizing.forEach(item => {
+                        renderSizingRow(u.hallName, u.unitName, _t('xls.cduSysCategory', {}, 'CDU液冷系統'), item);
+                    });
+                    fwSizing.forEach(item => {
+                        renderSizingRow(u.hallName, u.unitName, _t('xls.fwSysCategory', {}, '氣冷排熱系統'), item);
+                    });
                 });
 
                 s5.autoFilter = { from: 'A1', to: 'N1' };
                 // 需求容量(F)、額定容量(G)、折減係數(H)、台數(J)開放業主可調整試算；其他公式鎖定
                 for (let rn = 2; rn <= s5Row - 1; rn++) {
+                    const row = s5.getRow(rn);
+                    if (row.getCell(6).value === null || row.getCell(6).value === undefined) continue;
                     for (let c = 1; c <= 14; c++) {
                         const canEdit = (c === 6 || c === 7 || c === 8 || c === 10);
-                        s5.getRow(rn).getCell(c).protection = { locked: !canEdit };
+                        row.getCell(c).protection = { locked: !canEdit };
                     }
                 }
                 s5.protect('', { selectLockedCells: true, selectUnlockedCells: true });

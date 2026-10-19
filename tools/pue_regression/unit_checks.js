@@ -4612,6 +4612,94 @@ function sizeCduToDeratedN1(S) {
     const plantEl = win.document.getElementById(`plant_${liqPlant.id}`);
     assert(plantEl !== null, 'Shared plant element must be rendered in DOM');
   });
+
+  test('P-5: ViewDashboard DOM harness renders cooling plants table and supply plant columns', () => {
+    const { buildWindow } = require('./dom_harness.js');
+    const win = buildWindow();
+    win.AppStore.applySiteSharedConfig();
+    win.AppStore.calculate();
+
+    win.ViewDashboard.render(win.document.getElementById('stepContent'));
+    const content = win.document.getElementById('stepContent').innerHTML;
+
+    assert(content.includes('共用冷卻系統運轉與耗能成果') || content.includes('Shared Cooling Plants Operations'), 'Dashboard must render cooling plants table');
+    assert(content.includes('供冷系統 (Plant)') || content.includes('Supply Plant'), 'Dashboard must render supply plant header');
+
+    const liqPlant = win.AppStore.state.coolingPlants.find(p => p.loop === 'liquid');
+    assert(liqPlant, 'Liquid plant must exist');
+    assert(content.includes(liqPlant.name), 'Plant name must appear in the dashboard');
+  });
+
+  test('P-5: ExcelExport Sheet 5 includes shared plants and allocation note when plants configured', () => {
+    const { buildWindow } = require('./dom_harness.js');
+    const win = buildWindow();
+    win.AppStore.applySiteSharedConfig();
+    win.AppStore.calculate();
+
+    const wb = win.ExcelExport.buildWorkbook('zh-TW');
+    const s5 = wb.getWorksheet('5.冷卻系統設計');
+    assert(s5, 'Sheet 5 must exist');
+
+    let foundSharedPlant = false;
+    let foundNote = false;
+    s5.eachRow((row, rowNumber) => {
+      const valA = row.getCell(1).value;
+      const textA = (typeof valA === 'string' ? valA : (valA?.richText ? valA.richText.map(t => t.text).join('') : '')) || '';
+      if (textA.includes('中央主機房')) foundSharedPlant = true;
+      if (textA.includes('共用冷卻系統主機房設備能耗依各成員單元熱負載比例自動分攤')) foundNote = true;
+    });
+
+    assert(foundSharedPlant, 'Sheet 5 must contain central plant rows');
+    assert(foundNote, 'Sheet 5 must contain allocation note');
+  });
+
+  test('P-5: ExcelExport with shared plants in English mode contains 0 CJK across sheets', () => {
+    const { buildWindow } = require('./dom_harness.js');
+    const win = buildWindow();
+    win.AppStore.applySiteSharedConfig();
+    win.AppStore.calculate();
+
+    const whitelist = [];
+    (win.AppStore.state.halls || []).forEach(h => {
+      whitelist.push(h.name);
+      (h.dus || []).forEach(d => {
+        whitelist.push(d.name);
+        (d.sus || []).forEach(su => whitelist.push(su.name));
+      });
+    });
+    (win.AppStore.state.corePods || []).forEach(p => whitelist.push(p.name));
+    (win.AppStore.state.coolingPlants || []).forEach(p => whitelist.push(p.name));
+    Object.values(win.CatalogManager?.catalogs || {}).forEach(cat => {
+      if (Array.isArray(cat)) cat.forEach(item => {
+        if (item.model) whitelist.push(item.model);
+      });
+    });
+    whitelist.push('(標準)');
+    if (win.AppStore.state.site?.selectedCity) whitelist.push(win.AppStore.state.site.selectedCity);
+
+    const wbEn = win.ExcelExport.buildWorkbook('en');
+    const cjkRegex = /[\u4e00-\u9fa5]/;
+    const violations = [];
+
+    wbEn.eachSheet(sheet => {
+      sheet.eachRow((row, rowNumber) => {
+        row.eachCell((cell, colNumber) => {
+          let text = '';
+          if (typeof cell.value === 'string') text = cell.value;
+          else if (cell.value && typeof cell.value === 'object' && cell.value.formula) text = '';
+          else if (cell.value && typeof cell.value === 'object' && cell.value.richText) {
+            text = cell.value.richText.map(t => t.text).join('');
+          }
+          whitelist.forEach(w => { text = text.split(w).join(''); });
+          if (cjkRegex.test(text)) {
+            violations.push(`${sheet.name} R${rowNumber}C${colNumber}: "${text}"`);
+          }
+        });
+      });
+    });
+
+    assert.strictEqual(violations.length, 0, `English workbook with shared plants had CJK violations:\n${violations.join('\n')}`);
+  });
 })();
 
 console.log(`\n${passCount} passed, ${failCount} failed, ${skipCount} skipped`);
