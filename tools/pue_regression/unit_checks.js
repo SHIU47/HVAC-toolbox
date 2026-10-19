@@ -4613,6 +4613,54 @@ function sizeCduToDeratedN1(S) {
     assert(plantEl !== null, 'Shared plant element must be rendered in DOM');
   });
 
+  test('P-4: ViewCooling preset buttons dynamic active highlights', () => {
+    const { buildWindow } = require('./dom_harness.js');
+    const win = buildWindow();
+    const container = win.document.getElementById('stepContent');
+
+    const getButtons = () => ({
+      ded: container.querySelector('button[onclick*="applyDedicatedConfig"]'),
+      site: container.querySelector('button[onclick*="applySiteSharedConfig"]'),
+      hall: container.querySelector('button[onclick*="applyHallGroupedConfig"]')
+    });
+
+    // 1. Dedicated config (default or applied)
+    win.ViewCooling.applyDedicatedConfig();
+    assert.strictEqual(win.ViewCooling.detectActivePreset(), 'dedicated');
+    win.ViewCooling.render(container);
+    let btns = getButtons();
+    assert(btns.ded && btns.ded.className.includes('bg-slate-800 text-white'), 'Dedicated button must have active dark styling');
+    assert(btns.site && !btns.site.className.includes('bg-purple-700 text-white'), 'Site shared must not be active');
+    assert(btns.hall && !btns.hall.className.includes('bg-indigo-700 text-white'), 'Hall grouped must not be active');
+
+    // 2. Site shared config
+    win.ViewCooling.applySiteSharedConfig();
+    assert.strictEqual(win.ViewCooling.detectActivePreset(), 'site_shared');
+    win.ViewCooling.render(container);
+    btns = getButtons();
+    assert(btns.site && btns.site.className.includes('bg-purple-700 text-white'), 'Site shared button must have active purple styling');
+    assert(btns.ded && !btns.ded.className.includes('bg-slate-800 text-white'), 'Dedicated must not be active');
+    assert(btns.hall && !btns.hall.className.includes('bg-indigo-700 text-white'), 'Hall grouped must not be active');
+
+    // 3. Hall grouped config
+    win.ViewCooling.applyHallGroupedConfig();
+    assert.strictEqual(win.ViewCooling.detectActivePreset(), 'hall_grouped');
+    win.ViewCooling.render(container);
+    btns = getButtons();
+    assert(btns.hall && btns.hall.className.includes('bg-indigo-700 text-white'), 'Hall grouped button must have active indigo styling');
+    assert(btns.ded && !btns.ded.className.includes('bg-slate-800 text-white'), 'Dedicated must not be active');
+    assert(btns.site && !btns.site.className.includes('bg-purple-700 text-white'), 'Site shared must not be active');
+
+    // 4. Custom plant configuration
+    win.ViewCooling.createNewPlant('liquid');
+    assert.strictEqual(win.ViewCooling.detectActivePreset(), 'custom');
+    win.ViewCooling.render(container);
+    btns = getButtons();
+    assert(btns.ded && !btns.ded.className.includes('bg-slate-800 text-white'), 'Dedicated not active in custom');
+    assert(btns.site && !btns.site.className.includes('bg-purple-700 text-white'), 'Site shared not active in custom');
+    assert(btns.hall && !btns.hall.className.includes('bg-indigo-700 text-white'), 'Hall grouped not active in custom');
+  });
+
   test('P-5: ViewDashboard DOM harness renders cooling plants table and supply plant columns', () => {
     const { buildWindow } = require('./dom_harness.js');
     const win = buildWindow();

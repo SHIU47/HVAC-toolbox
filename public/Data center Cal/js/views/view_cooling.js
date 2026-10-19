@@ -14,6 +14,36 @@
     const expandedUnitIds = {}; // targetId -> boolean
 
     const ViewCooling = {
+        _lastPreset: null,
+
+        detectActivePreset() {
+            const state = window.AppStore?.state || {};
+            const plants = state.coolingPlants || [];
+            if (plants.length === 0) {
+                return 'dedicated';
+            }
+            if (this._lastPreset) {
+                if (this._lastPreset === 'site_shared') {
+                    const liq = plants.filter(p => p.loop === 'liquid');
+                    const air = plants.filter(p => p.loop === 'air');
+                    if (liq.length <= 1 && air.length <= 1) return 'site_shared';
+                } else if (this._lastPreset === 'hall_grouped') {
+                    return 'hall_grouped';
+                } else if (this._lastPreset === 'custom') {
+                    return 'custom';
+                }
+            }
+            const liq = plants.filter(p => p.loop === 'liquid');
+            const air = plants.filter(p => p.loop === 'air');
+            if (liq.length <= 1 && air.length <= 1 && plants.some(p => p.name && (p.name.includes('全廠') || p.name.includes('Site')))) {
+                return 'site_shared';
+            }
+            if (plants.some(p => p.name && (p.name.includes('Hall') || p.name.includes('區')))) {
+                return 'hall_grouped';
+            }
+            return (plants.length === 0) ? 'dedicated' : (this._lastPreset || 'custom');
+        },
+
         render(container) {
             const scrollPos = (typeof window !== 'undefined') ? (window.scrollY || document.documentElement.scrollTop || 0) : 0;
             const activeId = (typeof document !== 'undefined' && document.activeElement) ? document.activeElement.id : null;
@@ -1036,6 +1066,23 @@ ${inputsHtml}
                 `;
             };
 
+            const activePreset = this.detectActivePreset();
+            const isDed = (activePreset === 'dedicated');
+            const isSite = (activePreset === 'site_shared');
+            const isHall = (activePreset === 'hall_grouped');
+
+            const btnClsDedicated = isDed
+                ? 'px-3 py-1.5 text-xs font-black bg-slate-800 text-white rounded-lg transition border border-slate-800 shadow-sm ring-2 ring-slate-400/50 flex items-center gap-1.5 cursor-pointer'
+                : 'px-3 py-1.5 text-xs font-semibold bg-white hover:bg-slate-100 text-slate-600 rounded-lg transition border border-slate-200 shadow-2xs flex items-center gap-1.5 cursor-pointer';
+
+            const btnClsSiteShared = isSite
+                ? 'px-3 py-1.5 text-xs font-black bg-purple-700 text-white rounded-lg transition border border-purple-700 shadow-sm ring-2 ring-purple-300 flex items-center gap-1.5 cursor-pointer'
+                : 'px-3 py-1.5 text-xs font-semibold bg-white hover:bg-purple-50 text-slate-600 hover:text-purple-700 rounded-lg transition border border-slate-200 shadow-2xs flex items-center gap-1.5 cursor-pointer';
+
+            const btnClsHallGrouped = isHall
+                ? 'px-3 py-1.5 text-xs font-black bg-indigo-700 text-white rounded-lg transition border border-indigo-700 shadow-sm ring-2 ring-indigo-300 flex items-center gap-1.5 cursor-pointer'
+                : 'px-3 py-1.5 text-xs font-semibold bg-white hover:bg-indigo-50 text-slate-600 hover:text-indigo-700 rounded-lg transition border border-slate-200 shadow-2xs flex items-center gap-1.5 cursor-pointer';
+
             return `
                 <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 space-y-4">
                     <div class="flex flex-col md:flex-row md:items-center justify-between gap-3 border-b border-slate-100 pb-3">
@@ -1047,13 +1094,16 @@ ${inputsHtml}
                         </div>
                         <div class="flex items-center gap-2 flex-wrap">
                             <span class="text-xs font-bold text-slate-600">${_t('cooling.quickConfig', null, '快速配置：')}</span>
-                            <button onclick="ViewCooling.applyDedicatedConfig()" class="px-2.5 py-1 text-xs font-bold bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg transition border border-slate-200 shadow-2xs">
+                            <button type="button" onclick="ViewCooling.applyDedicatedConfig()" class="${btnClsDedicated}">
+                                ${isDed ? '<i data-lucide="check" class="w-3.5 h-3.5 stroke-[3]"></i>' : ''}
                                 ${_t('cooling.quickConfigDedicated', null, '每個單元獨立')}
                             </button>
-                            <button onclick="ViewCooling.applySiteSharedConfig()" class="px-2.5 py-1 text-xs font-bold bg-purple-50 hover:bg-purple-100 text-purple-800 rounded-lg transition border border-purple-200 shadow-2xs">
+                            <button type="button" onclick="ViewCooling.applySiteSharedConfig()" class="${btnClsSiteShared}">
+                                ${isSite ? '<i data-lucide="check" class="w-3.5 h-3.5 stroke-[3]"></i>' : ''}
                                 ${_t('cooling.quickConfigSiteShared', null, '整場共用一套')}
                             </button>
-                            <button onclick="ViewCooling.applyHallGroupedConfig()" class="px-2.5 py-1 text-xs font-bold bg-indigo-50 hover:bg-indigo-100 text-indigo-800 rounded-lg transition border border-indigo-200 shadow-2xs">
+                            <button type="button" onclick="ViewCooling.applyHallGroupedConfig()" class="${btnClsHallGrouped}">
+                                ${isHall ? '<i data-lucide="check" class="w-3.5 h-3.5 stroke-[3]"></i>' : ''}
                                 ${_t('cooling.quickConfigHallGrouped', null, '依 Hall 分組')}
                             </button>
                         </div>
@@ -1388,6 +1438,7 @@ ${inputsHtml}
         },
 
         createNewPlant(loop) {
+            this._lastPreset = 'custom';
             const plant = window.AppStore.addCoolingPlant({ loop });
             this.render(document.getElementById('stepContent'));
             if (plant) this.scrollToPlant(plant.id);
@@ -1398,6 +1449,8 @@ ${inputsHtml}
                 return;
             }
             window.AppStore.deleteCoolingPlant(plantId);
+            const remaining = (window.AppStore.state?.coolingPlants || []).length;
+            this._lastPreset = (remaining === 0) ? 'dedicated' : 'custom';
             this.render(document.getElementById('stepContent'));
         },
 
@@ -1427,6 +1480,7 @@ ${inputsHtml}
         },
 
         togglePlantMember(plantId, memberId) {
+            this._lastPreset = 'custom';
             const plant = window.AppStore.getCoolingPlant(plantId);
             if (plant) {
                 if ((plant.memberIds || []).includes(memberId)) {
@@ -1439,16 +1493,19 @@ ${inputsHtml}
         },
 
         applyDedicatedConfig() {
+            this._lastPreset = 'dedicated';
             window.AppStore.applyDedicatedConfig();
             this.render(document.getElementById('stepContent'));
         },
 
         applySiteSharedConfig() {
+            this._lastPreset = 'site_shared';
             window.AppStore.applySiteSharedConfig();
             this.render(document.getElementById('stepContent'));
         },
 
         applyHallGroupedConfig() {
+            this._lastPreset = 'hall_grouped';
             window.AppStore.applyHallGroupedConfig();
             this.render(document.getElementById('stepContent'));
         },
