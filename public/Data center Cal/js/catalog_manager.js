@@ -29,7 +29,9 @@
             { model: 'BAC VFL-1200 2000kW', capKw: 2000, vendor: 'BAC', fanKwDx: 55, approachC: 5.0 },
             { model: 'BAC VFL-1500 2500kW', capKw: 2500, vendor: 'BAC', fanKwDx: 75, approachC: 5.0 },
             { model: 'BAC Closed CXV-1500 1800kW', capKw: 1800, vendor: 'BAC', fanKwDx: 55, approachC: 7.0 },
-            { model: 'Liang Chi LBC 1500kW Industrial', capKw: 1500, vendor: 'Liang Chi', fanKwDx: 38, approachC: 5.0 }
+            { model: 'Liang Chi LBC 1500kW Industrial', capKw: 1500, vendor: 'Liang Chi', fanKwDx: 38, approachC: 5.0 },
+            { model: 'BAC FXV3-1426-24D-20 XE 6000kW (雙聯/2-Unit)', capKw: 6004, vendor: 'BAC', fanKwDx: 30.0, approachC: 5.4, tower_type: 'closed_tower' },
+            { model: 'BAC FXV3-1426-24D-20 XE 3000kW (單格/1-Unit)', capKw: 3002, vendor: 'BAC', fanKwDx: 15.0, approachC: 5.4, tower_type: 'closed_tower' }
         ],
         heat_exchanger: [
             { model: 'Alfa Laval M10 Plate HX 500kW', capKw: 500, vendor: 'Alfa Laval', approachC: 1.5 },

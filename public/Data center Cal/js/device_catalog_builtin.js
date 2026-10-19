@@ -4,7 +4,7 @@
  * 用途：當頁面以 file:// 協議開啟（直接雙擊 index.html）時，CatalogManager
  * 無法用 fetch() 讀取 device_catalog/ 底下的 JSON 檔案（瀏覽器 CORS 限制），
  * 此檔案把相同內容內嵌為 JS 物件，改用 <script> 標籤載入即可繞過限制。
- * 產生時間：2026-10-17T04:27:44.025Z
+ * 產生時間：2026-10-19T03:20:56.814Z
  * 若修改了 device_catalog/*.json，請重新執行：node device_catalog/build_builtin.js
  */
 window.DEVICE_CATALOG_BUILTIN_RAW = {
@@ -877,6 +877,76 @@ window.DEVICE_CATALOG_BUILTIN_RAW = {
         "_source": "[BAC] FXV3-1426-28D-40 閉式冷卻塔 [性能數據導出表].xlsx",
         "_ai_confidence": 0.75,
         "_verified": false
+      },
+      "BAC FXV3-1426-24D-20 XE 6000kW": {
+        "model": "BAC FXV3-1426-24D-20 XE 6000kW (雙聯/2-Unit)",
+        "vendor": "Baltimore Aircoil (BAC)",
+        "tower_type": "closed_tower",
+        "heat_rejection_kw": 6004,
+        "fan_kw_dx": 30,
+        "fan_kw_fc": null,
+        "approach_design_c": 5.4,
+        "flow_rate_m3h": 517.32,
+        "pump_kw": 22,
+        "spray_water_flow_lps": 239.74,
+        "air_flow_m3s": 171.46,
+        "fluid_pressure_drop_kpa": 47.07,
+        "fluid_temp_in_c": 45,
+        "fluid_temp_out_c": 35,
+        "fluid_range_c": 10,
+        "fluid_type": "Water",
+        "wet_bulb_design_c": 29.6,
+        "units_in_selection": 2,
+        "unit_model": "FXV3-1426-24D-20 XE",
+        "reserve_capability_pct": 12.41,
+        "energy_rating": "58.58 USGPM/HP per ASHRAE 90.1 / ASHRAE 189 / CA Title 24",
+        "dimensions_per_unit_m": {
+          "length": 4.2672,
+          "width": 8.0264,
+          "height": 6.0452
+        },
+        "shipping_weight_kg": 36668,
+        "operating_weight_kg": 65172,
+        "weight_kg": 65172,
+        "sound_power_lw_dba": 99,
+        "notes": "資料來源：使用者提供的 Baltimore Aircoil Company (BAC) 官方選型報告 Closed Circuit Product Selection Report (Version 7.8.25 NA，專案名稱：Foxconn Project，選型名稱：(2) FXV3-1426-24D-20，案場地點：泰國 Thailand，日期：2026-10-14)。雙聯密閉式冷卻水塔 (2 Units)，總額定散熱量 6,004 kW，進出水溫 45.0°C / 35.0°C (Range 10.0°C)，設計濕球溫度 29.60°C，接近溫差 Approach 5.40°C，循環水流量 143.70 l/s (517.32 m³/h)，盤管水壓降 47.07 kPa。風機馬達 2×15.0 kW = 30.0 kW，噴淋水泵馬達 2×(2×5.5 kW) = 22.0 kW。屬 BAC XE 超高能效機種 (58.58 USGPM/HP，達 ASHRAE 90.1 基準 2 倍以上)。",
+        "_source": "BAC Closed Circuit Product Selection Report - (2) FXV3-1426-24D-20 (Foxconn Project Thailand 2026-10-14).pdf",
+        "_ai_confidence": 1,
+        "_verified": true
+      },
+      "BAC FXV3-1426-24D-20 XE 3000kW": {
+        "model": "BAC FXV3-1426-24D-20 XE 3000kW (單格/1-Unit)",
+        "vendor": "Baltimore Aircoil (BAC)",
+        "tower_type": "closed_tower",
+        "heat_rejection_kw": 3002,
+        "fan_kw_dx": 15,
+        "fan_kw_fc": null,
+        "approach_design_c": 5.4,
+        "flow_rate_m3h": 258.66,
+        "pump_kw": 11,
+        "spray_water_flow_lps": 119.87,
+        "air_flow_m3s": 85.73,
+        "fluid_pressure_drop_kpa": 47.07,
+        "fluid_temp_in_c": 45,
+        "fluid_temp_out_c": 35,
+        "fluid_range_c": 10,
+        "fluid_type": "Water",
+        "wet_bulb_design_c": 29.6,
+        "reserve_capability_pct": 12.41,
+        "energy_rating": "58.58 USGPM/HP per ASHRAE 90.1 / ASHRAE 189 / CA Title 24",
+        "dimensions_m": {
+          "length": 4.2672,
+          "width": 8.0264,
+          "height": 6.0452
+        },
+        "shipping_weight_kg": 18334,
+        "operating_weight_kg": 32586,
+        "weight_kg": 32586,
+        "sound_power_lw_dba": 99,
+        "notes": "資料來源：使用者提供的 BAC 官方選型報告單機數據 (Foxconn Project Thailand 2026-10-14)。單格密閉式冷卻水塔 (1 Unit)，額定散熱量 3,002 kW，進出水溫 45.0°C / 35.0°C (Range 10.0°C)，設計濕球溫度 29.60°C，接近溫差 Approach 5.40°C，循環水流量 71.85 l/s (258.66 m³/h)，盤管水壓降 47.07 kPa。風機功率 15.0 kW，噴淋水泵功率 11.0 kW (2×5.5 kW)。屬 BAC XE 超高能效機種。",
+        "_source": "BAC Closed Circuit Product Selection Report - FXV3-1426-24D-20 XE (Foxconn Project Thailand 2026-10-14).pdf",
+        "_ai_confidence": 1,
+        "_verified": true
       }
     },
     {
