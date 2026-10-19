@@ -114,10 +114,10 @@ const ASSUMPTIONS = {
     ref: 'ASHRAE TC9.9 液冷白皮書 CDU approach 典型 2–4°C'
   },
   cdu_derate_pct_per_c: {
-    val: 2.0, unit: '%/°C',
-    label: 'CDU 容量隨一次側供水溫每升高 1°C 的線性降額率',
-    label_en: 'CDU linear derating rate per 1°C rise in primary supply temperature',
-    ref: '廠商型錄常見趨勢（板式換熱器 UA 固定、驅動溫差縮小），概估非實測曲線'
+    val: 0.0, unit: '%/°C',
+    label: 'CDU 容量隨一次側供水溫每升高 1°C 的線性降額率（預設 0 = 以型錄標稱容量 100% 選型）',
+    label_en: 'CDU linear derating rate per 1°C rise in primary supply temperature (default 0 = size at 100% nominal capacity)',
+    ref: 'R8：CDU 容量取決於 approach（TCS 供水 − FWS 供水）與流量，非 FWS 絕對溫度；型錄標稱容量已對應設計 approach，故預設不降額。需要時可於專案假設覆寫（舊值 2.0）'
   },
   cdu_nominal_fws_design_c: {
     val: 30.0, unit: '°C',
@@ -489,7 +489,9 @@ const ASSUMPTIONS = {
 };
 
 function A(key, state) {
-  const s = state ?? (typeof st !== 'undefined' ? st : undefined);
+  // R8: 全域 st 已不存在，未傳 state 時改讀 AppStore.state，否則專案的 assumptions_override 對引擎無效
+  const s = state ?? (typeof st !== 'undefined' ? st
+    : ((typeof AppStore !== 'undefined' && AppStore?.state) ? AppStore.state : undefined));
   const override = s?.assumptions_override?.[key];
   return override ?? ASSUMPTIONS[key].val;
 }

@@ -3002,6 +3002,7 @@
             const reqCduKw = duSumm.liquidHeatKw;
 
             // V21 依架構生成專屬 sizing 清單 (若品項不符則重置)；若加入共用群組則單元端只保留 terminal 終端設備
+            this._backfillSizingRoles(cduArchDesc, cduSys);
             if (cduSys.plantId) {
                 if (!cduSys.sizing || cduSys.sizing.length === 0 || cduSys.sizingArch !== arch || cduSys.sizing.some(s => s.role !== 'terminal')) {
                     const oldSizing = cduSys.sizing || [];
@@ -3011,6 +3012,8 @@
                         const newItem = cduSys.sizing.find(s => s.key === oldItem.key);
                         if (newItem) {
                             if (oldItem.selectedModel) newItem.selectedModel = oldItem.selectedModel;
+                            // R8: 型號與台數必須一起還原，否則新台數是依「預設型號」容量算出，換上大型號後台數暴增
+                            if (Number.isFinite(oldItem.selectedQty) && oldItem.selectedQty > 0) newItem.selectedQty = oldItem.selectedQty;
                             if (oldItem.redundancy) newItem.redundancy = oldItem.redundancy;
                             if (oldItem.runMode) newItem.runMode = oldItem.runMode;
                             if (oldItem.userEdited !== undefined) newItem.userEdited = oldItem.userEdited;
@@ -3026,6 +3029,8 @@
                         const newItem = cduSys.sizing.find(s => s.key === oldItem.key);
                         if (newItem) {
                             if (oldItem.selectedModel) newItem.selectedModel = oldItem.selectedModel;
+                            // R8: 型號與台數必須一起還原，否則新台數是依「預設型號」容量算出，換上大型號後台數暴增
+                            if (Number.isFinite(oldItem.selectedQty) && oldItem.selectedQty > 0) newItem.selectedQty = oldItem.selectedQty;
                             if (oldItem.redundancy) newItem.redundancy = oldItem.redundancy;
                             if (oldItem.runMode) newItem.runMode = oldItem.runMode;
                             if (oldItem.userEdited !== undefined) newItem.userEdited = oldItem.userEdited;
@@ -3094,6 +3099,7 @@
             const reqAirKw = airHeatTotal;
 
             // V24 Phase 2: 若架構變更或尚未初始化，依新架構動態生成選型清單；若加入共用群組則單元端只保留 terminal 終端設備
+            this._backfillSizingRoles(fwArchDesc, fwSys);
             if (fwSys.plantId) {
                 if (!fwSys.sizing || fwSys.sizing.length === 0 || fwSys.sizingArch !== fwArch || fwSys.sizing.some(s => s.role !== 'terminal')) {
                     const oldSizing = fwSys.sizing || [];
@@ -3103,6 +3109,8 @@
                         const newItem = fwSys.sizing.find(s => s.key === oldItem.key);
                         if (newItem) {
                             if (oldItem.selectedModel) newItem.selectedModel = oldItem.selectedModel;
+                            // R8: 型號與台數必須一起還原，否則新台數是依「預設型號」容量算出，換上大型號後台數暴增
+                            if (Number.isFinite(oldItem.selectedQty) && oldItem.selectedQty > 0) newItem.selectedQty = oldItem.selectedQty;
                             if (oldItem.redundancy) newItem.redundancy = oldItem.redundancy;
                             if (oldItem.runMode) newItem.runMode = oldItem.runMode;
                             if (oldItem.userEdited !== undefined) newItem.userEdited = oldItem.userEdited;
@@ -3118,6 +3126,8 @@
                         const newItem = fwSys.sizing.find(s => s.key === oldItem.key);
                         if (newItem) {
                             if (oldItem.selectedModel) newItem.selectedModel = oldItem.selectedModel;
+                            // R8: 型號與台數必須一起還原，否則新台數是依「預設型號」容量算出，換上大型號後台數暴增
+                            if (Number.isFinite(oldItem.selectedQty) && oldItem.selectedQty > 0) newItem.selectedQty = oldItem.selectedQty;
                             if (oldItem.redundancy) newItem.redundancy = oldItem.redundancy;
                             if (oldItem.runMode) newItem.runMode = oldItem.runMode;
                             if (oldItem.userEdited !== undefined) newItem.userEdited = oldItem.userEdited;
@@ -3131,6 +3141,32 @@
                 SizingEngine.evaluateFwSizing(fwSys, reqAirKw, this.designConditions());
                 fwSys.validation = SizingEngine.validateFw(fwSys, pipeFw.velocity_mps);
             }
+        },
+
+        // R8: 舊版專案檔的 sizing 品項沒有 role 欄位，導致「是否含 terminal」判斷失效
+        // （共用機房不重新選型、沿用 DU 的設備與 userEdited）。依架構描述檔的 equipment 定義回填。
+        _backfillSizingRoles(archDesc, sys) {
+            if (!archDesc || !Array.isArray(archDesc.equipment) || !Array.isArray(sys?.sizing)) return;
+            sys.sizing.forEach(s => {
+                if (s.role) return;
+                const eq = archDesc.equipment.find(e => e.key === s.key);
+                if (eq?.role) s.role = eq.role;
+            });
+        },
+
+        // R8: 共用機房由某個 DU 的系統複製而來時，沿用該 DU 已選定的主機房設備型號與台數，
+        // 但清除 userEdited：群組負載為成員加總，台數須能由選型引擎自動往上補足（只增不減）。
+        // 單一成員的共用機房因此與獨立配置的設備完全相同。冗餘等級以群組設定為準。
+        _inheritPlantSizing(newSizing, oldSizing) {
+            (oldSizing || []).forEach(oldItem => {
+                if (oldItem.role === 'terminal') return;
+                const newItem = newSizing.find(s => s.key === oldItem.key);
+                if (!newItem) return;
+                if (oldItem.selectedModel) newItem.selectedModel = oldItem.selectedModel;
+                if (Number.isFinite(oldItem.selectedQty) && oldItem.selectedQty > 0) newItem.selectedQty = oldItem.selectedQty;
+                if (oldItem.runMode) newItem.runMode = oldItem.runMode;
+                newItem.userEdited = false;
+            });
         },
 
         // P-3: 共用冷卻系統群組 (Cooling Plant) 橋接、水力計算與設備選型評估
@@ -3229,12 +3265,15 @@
                 };
 
                 // 群組 sizing 只包含主機房設備 (排除 terminal)
+                this._backfillSizingRoles(cduArchDesc, cduSys);
                 if (!cduSys.sizing || cduSys.sizing.length === 0 || cduSys.sizingArch !== arch || cduSys.sizing.some(s => s.role === 'terminal')) {
+                    const oldSizing = (!cduSys.sizingArch || cduSys.sizingArch === arch) ? (cduSys.sizing || []) : [];
                     const fullSizing = this.generateCduSizing(arch, requiredKw, cduSys.hydraulics.pump_power_kw, {
                         cwPumpKw: cduSys.hydraulics.cw_pump_power_kw,
                         defaultRedundancy: plant.redundancy || 'N+1'
                     });
                     cduSys.sizing = fullSizing.filter(s => s.role !== 'terminal');
+                    this._inheritPlantSizing(cduSys.sizing, oldSizing);
                     cduSys.sizingArch = arch;
                 }
 
@@ -3296,12 +3335,15 @@
                 };
 
                 // 群組 sizing 只包含主機房設備 (排除 terminal)
+                this._backfillSizingRoles(fwArchDesc, fwSys);
                 if (!fwSys.sizing || fwSys.sizing.length === 0 || fwSys.sizingArch !== fwArch || fwSys.sizing.some(s => s.role === 'terminal')) {
+                    const oldSizing = (!fwSys.sizingArch || fwSys.sizingArch === fwArch) ? (fwSys.sizing || []) : [];
                     const fullSizing = this.generateFwSizing(fwArch, requiredKw, fwSys.hydraulics.pump_power_kw, {
                         cwPumpKw: fwSys.hydraulics.cw_pump_power_kw,
                         defaultRedundancy: plant.redundancy || 'N+1'
                     });
                     fwSys.sizing = fullSizing.filter(s => s.role !== 'terminal');
+                    this._inheritPlantSizing(fwSys.sizing, oldSizing);
                     fwSys.sizingArch = fwArch;
                 }
 

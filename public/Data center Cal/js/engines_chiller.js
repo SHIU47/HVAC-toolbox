@@ -219,11 +219,13 @@ const ChillerEngine = {
   /**
    * [V7-P6] 設計工況降額容量 — 選型時不得用型錄「標稱容量」直接比對負載，
    * 必須用「設計工況（設計 CHWS/CEWT 或設計 DB）下實際可交付容量」。
-   * 水冷機有 AHRI biquadratic 曲線者用 CapFT(T_chws, T_cewt)；無曲線資料
-   * （fixed / custom_poly）者容量不隨溫度變化，回傳標稱值。
-   * 氣冷機用線性降額（35°C 以上每 1°C 降 chiller_air_derate_pct_per_c_above35%）。
+   * R8 修正：直接重用 calcPower() 的 CapFT 計算（同一條曲線、同樣以機型自身額定點
+   * t_chws_design 歸一化、同樣的範圍截斷），保證選型容量與 8760h 模擬可用容量一致。
+   * 舊版以 AHRI 7°C 額定點歸一化，20°C 額定機型在 CHWS 20°C 時被高估約 37%；
+   * fixed 曲線舊版回傳 1.0，但模擬時會依壓縮機型式套用 preset 曲線，兩邊亦不一致。
    *
-   * @param {object} spec           - 型錄規格（含 cooling_capacity_kw, chiller_type, cop_curve）
+   * @param {object} spec           - 型錄規格（含 cooling_capacity_kw, chiller_type, cop_curve,
+   *                                  t_chws_design 型錄額定供水溫, category 壓縮機型式）
    * @param {number} T_chws_design  - 設計冰水供水溫 (°C)
    * @param {number} T_cewt_design  - 設計冷凝器進水溫 (°C)，水冷機專用
    * @param {number} db_design      - 設計乾球溫 (°C)，氣冷機專用
@@ -233,39 +235,21 @@ const ChillerEngine = {
     const nominal_kw = spec?.cooling_capacity_kw ?? 0;
     if (nominal_kw <= 0) return { derated_kw: 0, nominal_kw: 0, derate_factor: 1.0 };
 
-    const is_air_cooled = (spec.chiller_type === 'air_cooled');
-    if (is_air_cooled) {
-      const curve = spec.cop_curve ?? { type: 'fixed' };
-      if (curve.type === 'ahri_biquadratic') {
-        const coefs = AHRI_PRESETS[curve.preset] ?? curve.coef_override;
-        if (coefs) {
-          const [T_lo, T_hi] = coefs.t_chws_range ?? [4, 25];
-          const [C_lo, C_hi] = coefs.t_cewt_range ?? [10, 48];
-          const T_c = clamp(T_chws_design ?? 7, T_lo, T_hi);
-          const C_c = clamp(db_design ?? 35, C_lo, C_hi);
-          const factor = clamp(biQuad(coefs.CapFT, T_c, C_c), 0.4, 1.6);
-          return { derated_kw: nominal_kw * factor, nominal_kw, derate_factor: factor };
-        }
-      }
-      const pct_per_c = A('chiller_air_derate_pct_per_c_above35');
-      const factor = Math.max(0.5, 1 - (pct_per_c / 100) * Math.max(0, (db_design ?? 35) - 35));
-      return { derated_kw: nominal_kw * factor, nominal_kw, derate_factor: factor };
-    }
-
-    const curve = spec.cop_curve ?? { type: 'fixed' };
-    if (curve.type === 'ahri_biquadratic') {
-      const coefs = AHRI_PRESETS[curve.preset] ?? curve.coef_override;
-      if (coefs) {
-        const [T_lo, T_hi] = coefs.t_chws_range ?? [4, 14];
-        const [C_lo, C_hi] = coefs.t_cewt_range ?? [18, 42];
-        const T_c = clamp(T_chws_design ?? 7, T_lo, T_hi);
-        const C_c = clamp(T_cewt_design ?? 30, C_lo, C_hi);
-        const factor = clamp(biQuad(coefs.CapFT, T_c, C_c), 0.4, 1.6);
-        return { derated_kw: nominal_kw * factor, nominal_kw, derate_factor: factor };
-      }
-    }
-    // fixed / custom_poly：無容量-溫度曲線資料，保留標稱容量（不臆測）
-    return { derated_kw: nominal_kw, nominal_kw, derate_factor: 1.0 };
+    const t_chws_ref = spec.t_chws_design ?? spec.t_chws_c ?? 7.0;
+    const unit = {
+      cooling_capacity_kw: nominal_kw,
+      cop_design: spec.cop_design ?? spec.cop ?? 5.0,
+      t_chws_design: t_chws_ref,
+      t_cewt_design_c: spec.t_cewt_design_c,
+      cop_curve: spec.cop_curve ?? { type: 'fixed' },
+      category: spec.category,
+      chiller_type: spec.chiller_type,
+      qty_running: 1,
+      qty_total: 1
+    };
+    const res = this.calcPower(1, [unit], T_chws_design ?? t_chws_ref, T_cewt_design ?? 30, db_design ?? 35);
+    const factor = res.available_kw > 0 ? res.available_kw / nominal_kw : 1.0;
+    return { derated_kw: nominal_kw * factor, nominal_kw, derate_factor: factor };
   },
 
   /**

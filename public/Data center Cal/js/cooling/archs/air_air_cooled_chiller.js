@@ -60,7 +60,9 @@
                     const spec = {
                         cooling_capacity_kw: curItem.capKw,
                         chiller_type: 'air_cooled',
-                        cop_curve: curItem.cop_curve || { type: 'fixed' }
+                        cop_curve: curItem.cop_curve || { type: 'fixed' },
+                        t_chws_design: curItem.t_chws_c,
+                        category: curItem.category
                     };
                     return root.ChillerEngine.deratedCapacityKW(spec, ctx.sys?.chwSupplyC || 12.0, undefined, ctx.designCond.designDb)?.derate_factor ?? 1.0;
                 }

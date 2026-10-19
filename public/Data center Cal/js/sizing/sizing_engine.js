@@ -15,7 +15,17 @@
     }
 
     function getTowerRejectionFactor(sys) {
-        if (sys && Array.isArray(sys.sizing)) {
+        if (!sys) return 1.0;
+        const arch = sys.architecture;
+        const archDesc = (typeof root.CoolingArchRegistry !== 'undefined' && arch) ? root.CoolingArchRegistry.get(arch) : null;
+
+        // 零冰機純自然冷卻架構 (例如 cooling_tower_hx 密閉式冷卻水塔)：無主機壓縮機耗電轉化之廢熱，排熱係數為 1.0
+        if (archDesc?.flags?.isClosedTower || archDesc?.flags?.hasMechanical === false) {
+            return 1.0;
+        }
+
+        // 若系統包含水冷冰機或修整冰機，冷卻塔需帶走蒸發器吸熱 + 壓縮機耗電功: Q_cond = Q_evap * (1 + 1/COP)
+        if (Array.isArray(sys.sizing)) {
             const chillerItem = sys.sizing.find(s => s.key === 'water_cooled_chiller' || s.key === 'trim_chiller');
             if (chillerItem) {
                 const catChiller = (chillerItem.catalog || []).find(c => c.model === chillerItem.selectedModel);
@@ -23,12 +33,21 @@
                 if (typeof cop === 'number' && cop > 0) {
                     return 1 + (1 / cop);
                 }
+                return (typeof root.A === 'function' && root.ASSUMPTIONS && root.ASSUMPTIONS.tower_heat_rejection_factor)
+                    ? root.A('tower_heat_rejection_factor')
+                    : 1.2;
             }
         }
-        if (typeof root.A === 'function' && root.ASSUMPTIONS && root.ASSUMPTIONS.tower_heat_rejection_factor) {
-            return root.A('tower_heat_rejection_factor');
+
+        // 若架構本身為水冷冰水主機架構 (例如 water_chiller 或 water_cooled_chiller)
+        if (archDesc?.flags?.isWaterChiller || archDesc?.flags?.needsCwPump) {
+            if (typeof root.A === 'function' && root.ASSUMPTIONS && root.ASSUMPTIONS.tower_heat_rejection_factor) {
+                return root.A('tower_heat_rejection_factor');
+            }
+            return 1.2;
         }
-        return 1.2;
+
+        return 1.0;
     }
 
     const SizingEngine = {
@@ -145,6 +164,7 @@
                 reqKw,
                 hydKw,
                 cwPumpKw: helpers?.cwPumpKw || 0,
+                defaultRedundancy: helpers?.defaultRedundancy,
                 helpers,
                 getTowerRejectionFactor: (s) => getTowerRejectionFactor(s),
                 isCdu: true
@@ -163,6 +183,7 @@
                 reqKw,
                 pumpPowerKw,
                 cwPumpKw: helpers?.cwPumpKw || 0,
+                defaultRedundancy: helpers?.defaultRedundancy,
                 helpers,
                 getTowerRejectionFactor: (s) => getTowerRejectionFactor(s),
                 isFw: true
@@ -173,7 +194,7 @@
         evaluateCduSizing(cduSys, reqCduKw, designCond, helpers = {}) {
             cduSys.sizing.forEach(s => {
                 s.requiredKw = reqCduKw;
-                if (s.key === 'cooling_tower' || s.key === 'heat_exchanger') s.requiredKw = reqCduKw * getTowerRejectionFactor(cduSys);
+                if (s.key === 'cooling_tower') s.requiredKw = reqCduKw * getTowerRejectionFactor(cduSys);
                 if (s.key === 'cdu_pump') s.requiredKw = cduSys.hydraulics?.pump_power_kw || 0;
                 if (s.key === 'cw_pump') s.requiredKw = cduSys.hydraulics?.cw_pump_power_kw || 0;
 
@@ -214,7 +235,9 @@
                     const spec = {
                         cooling_capacity_kw: curItem.capKw,
                         chiller_type: 'water_cooled',
-                        cop_curve: curItem.cop_curve || { type: 'fixed' }
+                        cop_curve: curItem.cop_curve || { type: 'fixed' },
+                        t_chws_design: curItem.t_chws_c,
+                        category: curItem.category
                     };
                     const d = root.ChillerEngine.deratedCapacityKW(spec, opPeak.tChws, opPeak.tCewt, peakDb);
                     derateFactor = d.derate_factor;
@@ -225,7 +248,9 @@
                     const spec = {
                         cooling_capacity_kw: curItem.capKw,
                         chiller_type: 'water_cooled',
-                        cop_curve: curItem.cop_curve || { type: 'fixed' }
+                        cop_curve: curItem.cop_curve || { type: 'fixed' },
+                        t_chws_design: curItem.t_chws_c,
+                        category: curItem.category
                     };
                     const d = root.ChillerEngine.deratedCapacityKW(spec, cduSys.fwsSupplyC || 40.0, T_cewt, designCond.designDb);
                     derateFactor = d.derate_factor;
@@ -291,7 +316,9 @@
                     const spec = {
                         cooling_capacity_kw: curItem.capKw,
                         chiller_type: 'air_cooled',
-                        cop_curve: curItem.cop_curve || { type: 'fixed' }
+                        cop_curve: curItem.cop_curve || { type: 'fixed' },
+                        t_chws_design: curItem.t_chws_c,
+                        category: curItem.category
                     };
                     const d = root.ChillerEngine.deratedCapacityKW(spec, fwSys.chwSupplyC || 12.0, undefined, designCond.designDb);
                     derateFactor = d.derate_factor;
@@ -302,7 +329,9 @@
                     const spec = {
                         cooling_capacity_kw: curItem.capKw,
                         chiller_type: 'water_cooled',
-                        cop_curve: curItem.cop_curve || { type: 'fixed' }
+                        cop_curve: curItem.cop_curve || { type: 'fixed' },
+                        t_chws_design: curItem.t_chws_c,
+                        category: curItem.category
                     };
                     const d = root.ChillerEngine.deratedCapacityKW(spec, fwSys.chwSupplyC || 12.0, T_cewt, designCond.designDb);
                     derateFactor = d.derate_factor;

@@ -234,14 +234,29 @@ function sizeCduToDeratedN1(S) {
   S2.calculate();
   const cduSizing = du.plantDesign.cduSystem.sizing.find(s => s.key === 'cdu_unit');
 
-  test('P1-1 CDU sizing applies derateFactor at 40C FWS', () => {
+  // R8: CDU 預設以型錄標稱容量 100% 選型（cdu_derate_pct_per_c 預設 0），不再依 FWS 絕對溫度降額
+  test('P1-1 CDU sizing uses 100% nominal capacity at 40C FWS by default (no derate note)', () => {
     assert(cduSizing, 'cdu_unit sizing must exist');
-    assert.strictEqual(cduSizing.derateFactor, 0.8);
-    // 12 台選用 (N+1 含降額自動選型)，N+1 可用台數 11，標稱 100 kW -> 11 * 100 * 0.8 = 880 kW
-    assert.strictEqual(cduSizing.selectedQty, 12);
-    assert.strictEqual(cduSizing.effectiveCapKw, 880);
+    assert.strictEqual(cduSizing.derateFactor, 1.0);
     assert.strictEqual(cduSizing.unitCapKw, 100);
-    assert(cduSizing.requiredText.includes('（已依設計工況降額 ×0.80）'), 'requiredText should note derating');
+    const running = cduSizing.selectedQty - 1;
+    assert.strictEqual(cduSizing.effectiveCapKw, running * 100);
+    assert(cduSizing.effectiveCapKw >= cduSizing.requiredKw, 'N+1 effective capacity must cover requirement');
+    assert(!cduSizing.requiredText.includes('已依設計工況降額'), 'requiredText must not note derating');
+  });
+
+  test('P1-1 CDU derating still applies when project overrides cdu_derate_pct_per_c = 2.0', () => {
+    const S3 = freshCtx().AppStore;
+    const du3 = S3.state.halls[0].dus[0];
+    du3.plantDesign.cduSystem.fwsSupplyC = 40.0;
+    S3.state.assumptions_override = { cdu_derate_pct_per_c: 2.0 };
+    S3.calculate();
+    const s3 = du3.plantDesign.cduSystem.sizing.find(s => s.key === 'cdu_unit');
+    assert.strictEqual(s3.derateFactor, 0.8);
+    // 12 台選用 (N+1 含降額自動選型)，N+1 可用台數 11，標稱 100 kW -> 11 * 100 * 0.8 = 880 kW
+    assert.strictEqual(s3.selectedQty, 12);
+    assert.strictEqual(s3.effectiveCapKw, 880);
+    assert(s3.requiredText.includes('（已依設計工況降額 ×0.80）'), 'requiredText should note derating');
   });
 
   const dcSizing = du.plantDesign.cduSystem.sizing.find(s => s.key === 'dry_cooler');
@@ -3436,7 +3451,7 @@ function sizeCduToDeratedN1(S) {
   const ctx = freshCtx();
   const { AppStore: S } = ctx;
 
-  test('R7 Benchmark: Default project Kaohsiung 4.5% loss PUE is 1.188 ± 0.005', () => {
+  test('R7 Benchmark: Default project Kaohsiung 4.5% loss PUE is 1.179 ± 0.005 (R8: CDU 100% nominal)', () => {
     S.state.site.selectedCity = '高雄 (Kaohsiung)';
     const data = ctx.BUILTIN_WEATHER_DATA['高雄 (Kaohsiung)'];
     S.state.site.hourly = data.hourlyData;
@@ -3446,27 +3461,27 @@ function sizeCduToDeratedN1(S) {
     S.state.facilityElectricalLossPct = 4.5;
     S.calculate();
     const pue = S.state.results.overall.annualPue;
-    assert(Math.abs(pue - 1.188) < 0.005, `Default Kaohsiung 4.5% loss PUE must be ~1.188, got ${pue}`);
+    assert(Math.abs(pue - 1.179) < 0.005, `Default Kaohsiung 4.5% loss PUE must be ~1.179, got ${pue}`);
   });
 
-  test('R7 Benchmark: Default project Kaohsiung 0.0% loss PUE is 1.130 ± 0.005', () => {
+  test('R7 Benchmark: Default project Kaohsiung 0.0% loss PUE is 1.121 ± 0.005 (R8: CDU 100% nominal)', () => {
     S.state.facilityElectricalLossPct = 0.0;
     S.calculate();
     const pue = S.state.results.overall.annualPue;
-    assert(Math.abs(pue - 1.130) < 0.005, `Default Kaohsiung 0% loss PUE must be ~1.130, got ${pue}`);
+    assert(Math.abs(pue - 1.121) < 0.005, `Default Kaohsiung 0% loss PUE must be ~1.121, got ${pue}`);
   });
 
   const projPath = path.resolve(__dirname, '../../public/Data center Cal/projects/PUE_Project_高雄 (Kaohsiung)_20260901.json');
   if (fs.existsSync(projPath)) {
-    test('R6 Benchmark: 17.95 MW Kaohsiung project 4.5% loss PUE is 1.164 ± 0.005 and DU-01 is 1.128 ± 0.005', () => {
+    test('R6 Benchmark: 17.95 MW Kaohsiung project 4.5% loss PUE is 1.158 ± 0.005 and DU-01 is 1.121 ± 0.005 (R8: CDU 100% nominal)', () => {
       const projRaw = fs.readFileSync(projPath, 'utf8');
       S.deserializeProject(projRaw);
       S.state.facilityElectricalLossPct = 4.5;
       S.calculate();
       const pue = S.state.results.overall.annualPue;
       const du1Pue = S.state.results.byDu[0]?.annualPue;
-      assert(Math.abs(pue - 1.164) < 0.005, `17.95MW project PUE must be ~1.164, got ${pue}`);
-      assert(Math.abs(du1Pue - 1.128) < 0.005, `DU-01 PUE must be ~1.128, got ${du1Pue}`);
+      assert(Math.abs(pue - 1.158) < 0.005, `17.95MW project PUE must be ~1.158, got ${pue}`);
+      assert(Math.abs(du1Pue - 1.121) < 0.005, `DU-01 PUE must be ~1.121, got ${du1Pue}`);
     });
   }
 })();
@@ -4309,7 +4324,8 @@ function sizeCduToDeratedN1(S) {
         requiredKw: 500,
         redundancy: '2N',
         userEdited: true,
-        catalog: [{ model: 'ACC-300', capKw: 300 }]
+        // R8: 降額改與模擬共用曲線並以機型額定點歸一化；額定點 = 設計工況 (12°C / DB 35°C) → 係數 1.0
+        catalog: [{ model: 'ACC-300', capKw: 300, t_chws_c: 12 }]
       }]
     };
     SE.evaluateFwSizing(mockFwSys2N, 500, { designDb: 35.0, designWb: 28.0 });
@@ -4428,6 +4444,95 @@ function sizeCduToDeratedN1(S) {
     item.selectedQty = originalQty;
     S.changeSizingRedundancy(du.id, 'cdu', item.key, 'N+1');
     S.calculate();
+  });
+})();
+
+// ═══════════════════════════════════════════════════════════════
+// R8 共用機房選型保存、舊檔 role 回填、冰機降額與模擬一致性
+// ═══════════════════════════════════════════════════════════════
+(function () {
+  // 單一 DU 專案（移除 CorePOD），使用者把 CDU 換成大型號並手動設定台數
+  function singleDuWithEditedCdu() {
+    const S = freshCtx().AppStore;
+    S.state.corePods = [];
+    S.calculate();
+    const du = S.state.halls[0].dus[0];
+    const cdu = du.plantDesign.cduSystem.sizing.find(s => s.key === 'cdu_unit');
+    const big = cdu.catalog.slice().sort((a, b) => b.capKw - a.capKw)[0];
+    cdu.selectedModel = big.model;
+    cdu.selectedQty = Math.ceil(cdu.requiredKw / big.capKw) + 1;
+    cdu.userEdited = true;
+    S.calculate();
+    return { S, du, model: big.model, qty: cdu.selectedQty };
+  }
+
+  test('R8-1: edited terminal model+qty survive joining site-shared plant and returning to dedicated; single-unit PUE invariant', () => {
+    const { S, du, model, qty } = singleDuWithEditedCdu();
+    const indepPue = S.state.results.overall.annualPue;
+    const cduOf = () => du.plantDesign.cduSystem.sizing.find(s => s.key === 'cdu_unit');
+
+    S.applySiteSharedConfig();
+    S.calculate();
+    assert.strictEqual(cduOf().selectedModel, model, 'terminal model must be kept in shared mode');
+    assert.strictEqual(cduOf().selectedQty, qty, `terminal qty must stay ${qty} in shared mode (got ${cduOf().selectedQty})`);
+    const sharedPue = S.state.results.overall.annualPue;
+    assert(Math.abs(sharedPue - indepPue) < 0.001, `single-unit shared PUE ${sharedPue} must equal dedicated ${indepPue}`);
+
+    S.applyDedicatedConfig();
+    S.calculate();
+    assert.strictEqual(cduOf().selectedQty, qty, 'terminal qty must stay after returning to dedicated');
+    assert(Math.abs(S.state.results.overall.annualPue - indepPue) < 0.001, 'PUE must round-trip back to dedicated value');
+  });
+
+  test('R8-2: legacy sizing items without role are backfilled; shared plant excludes terminals and re-sizes to pass', () => {
+    const S = freshCtx().AppStore;
+    S.calculate();
+    const units = [...S.state.halls.flatMap(h => h.dus), ...S.state.corePods];
+    units.forEach(u => ['cduSystem', 'fanwallSystem'].forEach(k =>
+      (u.plantDesign[k].sizing || []).forEach(s => { delete s.role; s.userEdited = true; })));
+    S.applySiteSharedConfig();
+    S.calculate();
+    assert(S.state.coolingPlants.length > 0, 'site-shared config must create plants');
+    S.state.coolingPlants.forEach(p => {
+      const items = p.system.sizing || [];
+      assert(items.length > 0, `plant ${p.name} must have sizing`);
+      assert(items.every(s => s.role && s.role !== 'terminal'), `plant ${p.name} must not contain terminal items`);
+      items.filter(s => s.role !== 'pump').forEach(s =>
+        assert(s.passed, `plant ${p.name} item ${s.key} must pass sizing (eff ${s.effectiveCapKw} vs req ${s.requiredKw})`));
+    });
+  });
+
+  test('R8-3: chiller deratedCapacityKW equals simulation CapFT for every catalog chiller (rating-point normalized)', () => {
+    const ctx = freshCtx();
+    const E = ctx.ChillerEngine;
+    const conds = [[7, 30, 35], [12, 32, 38], [20, 34, 40], [30, 40, 40]];
+    ['chiller_air', 'chiller_water'].forEach(cat => (ctx.CatalogManager.getCatalog(cat) || []).forEach(c => {
+      const chillerType = c.chiller_type ?? (cat === 'chiller_air' ? 'air_cooled' : 'water_cooled');
+      const spec = { cooling_capacity_kw: c.capKw, chiller_type: chillerType, cop_curve: c.cop_curve || { type: 'fixed' }, t_chws_design: c.t_chws_c, category: c.category };
+      const unit = { cooling_capacity_kw: c.capKw, cop_design: c.cop, t_chws_design: c.t_chws_c ?? 7.0, cop_curve: c.cop_curve, category: c.category, chiller_type: chillerType, qty_running: 1, qty_total: 1 };
+      conds.forEach(([tchws, tcewt, db]) => {
+        const sizingF = E.deratedCapacityKW(spec, tchws, tcewt, db).derate_factor;
+        const simF = E.calcPower(1, [unit], tchws, tcewt, db).available_kw / c.capKw;
+        assert(Math.abs(sizingF - simF) < 1e-6, `${c.model} @${tchws}/${tcewt}/${db}: sizing ${sizingF.toFixed(4)} != sim ${simF.toFixed(4)}`);
+      });
+      if (c.t_chws_c) {
+        const atRating = E.deratedCapacityKW(spec, c.t_chws_c, 30, 35).derate_factor;
+        assert(Math.abs(atRating - 1) < 0.02 || chillerType === 'water_cooled', `${c.model} at its own rating point must be ~1.0 (got ${atRating.toFixed(3)})`);
+      }
+    }));
+  });
+
+  test('R8-4: plant redundancy (N+2) is applied to generated plant equipment', () => {
+    const S = freshCtx().AppStore;
+    S.calculate();
+    const du = S.state.halls[0].dus[0];
+    const sys = JSON.parse(JSON.stringify(du.plantDesign.cduSystem));
+    sys.sizing = [];
+    S.addCoolingPlant({ loop: 'liquid', memberIds: [du.id], redundancy: 'N+2', system: sys });
+    S.calculate();
+    const plant = S.state.coolingPlants[0];
+    assert(plant.system.sizing.length > 0, 'plant sizing must be generated');
+    plant.system.sizing.forEach(s => assert.strictEqual(s.redundancy, 'N+2', `${s.key} redundancy must be N+2 (got ${s.redundancy})`));
   });
 })();
 
