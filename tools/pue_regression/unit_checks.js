@@ -5241,6 +5241,54 @@ function sizeCduToDeratedN1(S) {
     assert.strictEqual(synced, true);
     assert.strictEqual(pod0.templateRef.version, 2);
   });
+
+  test('T-3: exportTemplatesJson and importTemplatesJson handles format validation, ID conflicts, and duplicate naming', () => {
+    const c = freshCtx();
+    const S = c.AppStore;
+    const du0 = S.state.halls[0].dus[0];
+    const tpl1 = S.saveDuAsTemplate(du0.id, 'NVL72 Production', true);
+    const pod0 = S.state.corePods[0];
+    const tpl2 = S.saveCorePodAsTemplate(pod0.id, 'Spine Fabric Pod', false);
+
+    const exportedStr = S.exportTemplatesJson();
+    assert(typeof exportedStr === 'string');
+    const parsed = JSON.parse(exportedStr);
+    assert.strictEqual(parsed.format, 'pue-template');
+    assert.strictEqual(parsed.schemaVersion, 1);
+    assert.strictEqual(parsed.templates.length, 2);
+
+    // Test invalid format error
+    assert.throws(() => S.importTemplatesJson('{"invalid": true}'), /Invalid template format|無效的範本檔案格式/);
+
+    // Import into fresh context
+    const c2 = freshCtx();
+    const S2 = c2.AppStore;
+    assert.strictEqual(S2.state.templates.length, 0);
+    const imported1 = S2.importTemplatesJson(exportedStr);
+    assert.strictEqual(imported1.length, 2);
+    assert.strictEqual(S2.state.templates.length, 2);
+    assert.strictEqual(S2.state.templates[0].name, 'NVL72 Production');
+    assert(S2.state.templates[0].content.terminalDesign, 'Exported and imported template must preserve terminalDesign');
+
+    // Import again into same context (tests ID conflict regeneration and duplicate naming suffix)
+    const imported2 = S2.importTemplatesJson(exportedStr);
+    assert.strictEqual(imported2.length, 2);
+    assert.strictEqual(S2.state.templates.length, 4);
+
+    // Verify IDs are unique across all 4 templates
+    const allIds = S2.state.templates.map(t => t.id);
+    assert.strictEqual(new Set(allIds).size, 4, 'All template IDs must be unique after import with conflicts');
+
+    // Verify duplicate name was suffixed with (匯入) or (Imported)
+    const importedName = imported2[0].name;
+    assert(importedName.includes('(匯入)') || importedName.includes('(Imported)'), `Duplicate name should be suffixed: ${importedName}`);
+
+    // Verify batch DU creation works with imported template
+    const hall = S2.state.halls[0];
+    const newDus = S2.batchCreateDusFromTemplate(hall.id, imported2[0].id, 2, 'DU-Import-');
+    assert.strictEqual(newDus.length, 2);
+    assert.strictEqual(newDus[0].templateRef.id, imported2[0].id);
+  });
 })();
 
 console.log(`\n${passCount} passed, ${failCount} failed, ${skipCount} skipped`);
