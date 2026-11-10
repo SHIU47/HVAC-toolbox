@@ -6000,6 +6000,69 @@ test('V9-P4 Step 6 report renders; PUE derivation and peak-hour hand calc match 
   });
 }
 
+// ===== V10 Phase 8：Step 4 改版 =====
+test('V10-P8a Step 4 renders site panel, equipment tables with preview options, terminal table', () => {
+  const { buildWindow } = require('./dom_harness.js');
+  const win = buildWindow();
+  const S = win.AppStore;
+  S.applySiteSharedConfig();
+  S.calculate();
+  win.ViewCooling.render(win.document.getElementById('stepContent'));
+  const doc = win.document;
+  assert(doc.getElementById('sitePanel'), 'site panel missing');
+  assert(doc.getElementById('siteSecSupplyIn'), 'site chip supply input missing');
+  assert(doc.getElementById('terminalTable'), 'terminal table missing');
+  const plant = S.state.coolingPlants.find(p => p.loop === 'liquid');
+  const it = plant.system.sizing.find(s => s.requiredKw > 0 && !win.SizingEngine.isPumpItem(s));
+  assert(doc.getElementById('qty_plant_' + plant.id + '_' + plant.loop + '_' + it.key), 'plant qty input id preserved');
+  const html = doc.getElementById('stepContent').innerHTML;
+  assert(/需 \d+ 台/.test(html), 'model options must show required units');
+  // 全廠面板改晶片供水 → 所有單元跟著變
+  win.ViewCooling.setSiteTemp('liquid', 'secSupplyC', 44);
+  [...S.state.halls.flatMap(h => h.dus), ...S.state.corePods].forEach(u => assert.strictEqual(u.plantDesign.cduSystem.secSupplyC, 44));
+});
+
+test('V10-P8b +/- stepper and apply-to-all-DUs keep model consistent and re-size quantities', () => {
+  const { buildWindow } = require('./dom_harness.js');
+  const win = buildWindow();
+  win.confirm = () => true;
+  const S = win.AppStore;
+  S.calculate();
+  const hall = S.state.halls[0];
+  S.copyDU(hall.id, hall.dus[0].id);
+  S.calculate();
+  const [d1, d2] = hall.dus;
+  const item1 = d1.plantDesign.cduSystem.sizing.find(s => s.key === 'cdu_unit');
+  const other = item1.catalog.find(c => c.model !== item1.selectedModel && c.capKw > 0);
+  S.updateSelectedEquipment(d1.id, 'cdu', 'cdu_unit', other.model, undefined);
+  S.calculate();
+  const q0 = d1.plantDesign.cduSystem.sizing.find(s => s.key === 'cdu_unit').selectedQty;
+  win.ViewCooling.stepQty(d1.id, 'cdu', 'cdu_unit', 1);
+  assert.strictEqual(d1.plantDesign.cduSystem.sizing.find(s => s.key === 'cdu_unit').selectedQty, q0 + 1, '+ button');
+  win.ViewCooling.render(win.document.getElementById('stepContent'));
+  const sel = win.document.getElementById('termSrcSel');
+  assert(sel, 'source DU selector must exist with 2 DUs');
+  sel.value = d1.id;
+  win.ViewCooling.applyTerminalToAllDus();
+  const item2 = d2.plantDesign.cduSystem.sizing.find(s => s.key === 'cdu_unit');
+  assert.strictEqual(item2.selectedModel, other.model, 'model applied to other DU');
+  assert(item2.selectedQty >= item2.requiredUnits && item2.passed, 'quantity re-sized by engine');
+});
+
+test('V10-P8c Step 5 is no longer blocked when sizing fails', () => {
+  const { buildWindow } = require('./dom_harness.js');
+  const win = buildWindow();
+  const S = win.AppStore;
+  S.calculate();
+  const du = S.state.halls[0].dus[0];
+  S.updateSelectedEquipment(du.id, 'cdu', 'cdu_unit', undefined, 1);
+  S.calculate();
+  assert.strictEqual(S.canProceedStep4().ok, false);
+  win.App.goToStep(5);
+  assert.strictEqual(win.App.currentStep, 5, 'dashboard must open even when sizing fails');
+  assert(win.document.getElementById('complianceBanner'), 'compliance banner must be shown');
+});
+
 console.log(`\n${passCount} passed, ${failCount} failed, ${skipCount} skipped`);
 process.exit(failCount > 0 ? 1 : 0);
 

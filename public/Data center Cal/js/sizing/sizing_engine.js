@@ -204,6 +204,37 @@
             s.autoSelected = true;
         },
 
+        // V10 Phase 8：型號下拉預覽。每個型錄型號在目前需求下「需要幾台、有效容量、餘裕」，
+        //   與評估流程用同一個降額函式與冗餘規則；畫面只讀 s.optionPreview，不自行計算。
+        _buildPreview(s, derateOf) {
+            const req = Number(s.requiredKw || 0);
+            const red = s.redundancy || 'N+1';
+            s.optionPreview = (s.catalog || []).filter(c => Number(c.capKw) > 0).map(c => {
+                let d = 1.0;
+                try { d = Number(derateOf(c)) || 1.0; } catch (_) { d = 1.0; }
+                if (!(req > 0)) return { model: c.model, capKw: c.capKw, derate: d, units: 0, effCapKw: 0, marginPct: null, feasible: true };
+                const units = this.requiredQty(req, c.capKw, d, red);
+                const run = Math.max(0, units - this.standbyUnits(units, red));
+                const eff = run * c.capKw * d;
+                return { model: c.model, capKw: c.capKw, derate: d, units, effCapKw: eff, marginPct: (eff / req - 1) * 100, feasible: eff >= req };
+            });
+        },
+
+        _buildPumpPreview(s, red) {
+            const fl = (c) => Number(c.designFlowM3h || c.design_flow_m3h || 0);
+            const hd = (c) => Number(c.designHeadM || c.design_head_m || 0);
+            s.optionPreview = (s.catalog || []).filter(c => Number(c.capKw) > 0).map(c => {
+                if (!(s.requiredKw > 0)) return { model: c.model, capKw: c.capKw, units: 0, marginPct: null, feasible: true, headOk: true };
+                const baseKw = Math.ceil(s.requiredKw / c.capKw);
+                const baseFlow = fl(c) > 0 ? Math.ceil((s.requiredFlowM3h || 0) / fl(c)) : 0;
+                const units = this._withRedundancy(Math.max(1, baseKw, baseFlow), red);
+                const run = Math.max(0, units - this.standbyUnits(units, red));
+                const headOk = !(hd(c) > 0) || hd(c) >= (s.requiredHeadM || 0) - 1e-9;
+                return { model: c.model, capKw: c.capKw, units, flowM3h: fl(c), headM: hd(c), headOk,
+                    marginPct: ((run * c.capKw) / s.requiredKw - 1) * 100, feasible: headOk };
+            });
+        },
+
         // 未經使用者指定型號時，自型錄中挑選「揚程足夠、運轉台數 ≤ 6、總馬達功率最小」的泵
         _autoSelectPump(s) {
             const fl = (c) => Number(c.designFlowM3h || c.design_flow_m3h || 0);
@@ -250,6 +281,7 @@
             const baseFlow = catFlow > 0 ? Math.ceil(s.requiredFlowM3h / catFlow) : 0;
             s.requiredUnits = this._withRedundancy(Math.max(1, baseKw, baseFlow), red);
             s.requiredUnitsN1 = s.requiredUnits;
+            this._buildPumpPreview(s, red);
             if (s.autoSelected || (!s.userEdited && (s.selectedQty || 0) < s.requiredUnits)) s.selectedQty = s.requiredUnits;
             const standby = this.standbyUnits(s.selectedQty, red);
             const active = Math.max(0, (s.selectedQty || 0) - standby);
@@ -442,6 +474,7 @@
                     : { capKw: s.unitCapKw || 100 };
                 s.unitCapKw = curItem.capKw;
                 s.derateFactor = Math.round(derateOf(curItem) * 1000) / 1000;
+                SizingEngine._buildPreview(s, derateOf);
                 const red = s.redundancy || 'N+1';
                 s.redundancy = red;
                 if (!s.runMode) s.runMode = 'standby';
@@ -516,6 +549,7 @@
                     : { capKw: s.unitCapKw || 100 };
                 s.unitCapKw = curItem.capKw;
                 s.derateFactor = Math.round(derateOf(curItem) * 1000) / 1000;
+                SizingEngine._buildPreview(s, derateOf);
                 const red = s.redundancy || 'N+1';
                 s.redundancy = red;
                 if (!s.runMode) s.runMode = 'standby';

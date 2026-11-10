@@ -931,6 +931,15 @@
             this.notify();
         },
 
+        // 冗餘等級套用到全部選型項目（V10 Phase 8）
+        applyRedundancyToAll(redundancy) {
+            if (!['N', 'N+1', 'N+2', '2N'].includes(redundancy)) return;
+            const setAll = (sys) => (sys?.sizing || []).forEach(s => { s.redundancy = redundancy; s.userRedundancyEdited = true; });
+            (this.state.coolingPlants || []).forEach(p => { p.redundancy = redundancy; setAll(p.system); });
+            this._allCoolingUnits().forEach(u => { setAll(u.plantDesign?.cduSystem); setAll(u.plantDesign?.fanwallSystem); });
+            this.notify();
+        },
+
         // 泵揚程套用到全部系統（V10 Phase 8 用）
         applyPumpHeadToAll(loop, headM) {
             const v = Number(headM);

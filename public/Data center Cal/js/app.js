@@ -142,14 +142,7 @@
         goToStep(stepNum) {
             if (stepNum < 1 || stepNum > this.totalSteps) return;
 
-            // B-7 fix: 任何步驟跳轉至 Step 5 都須通過 N+1 驗證
-            if (stepNum === 5) {
-                const check = window.AppStore.canProceedStep4();
-                if (!check.ok) {
-                    alert(window.I18N ? window.I18N.t('app.step5Blocked') : '⚠️ 尚有冷卻設備選型容量未達 N+1 規範，請先修正後方可檢視 Dashboard！');
-                    return;
-                }
-            }
+            // V10 Phase 8：選型不合格時不再阻擋 Step 5；儀表板以合格判定橫幅（overall.compliance）標示
 
             this.currentStep = stepNum;
             this.renderStep(stepNum);

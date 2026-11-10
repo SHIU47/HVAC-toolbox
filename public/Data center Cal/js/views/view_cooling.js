@@ -283,8 +283,11 @@
                         </div>
                     </div>${sharedPlantNoticesHtml ? `\n\n                    ${sharedPlantNoticesHtml}` : ''}
 
-                    <!-- 冷卻系統分組面板 (Plant Grouping Panel) -->
-                    ${this.renderPlantGroupingPanel(targets)}
+                    <!-- V10 Phase 8：全廠設計條件（水溫連動、揚程／冗餘套用到全部） -->
+                    ${this.renderSitePanel()}
+
+                    <!-- 冷卻系統分組面板 (Plant Grouping Panel)：預設收合 -->
+                    ${this.collapsible('grouping', _t('cooling.groupingSummary', { n: (state.coolingPlants || []).filter(p => (p.memberIds || []).length).length }, `冷卻系統分組（目前 ${(state.coolingPlants || []).filter(p => (p.memberIds || []).length).length} 組共用機房，點擊展開調整）`), this.renderPlantGroupingPanel(targets))}
 
                     <!-- 共用冷卻系統設備配置 (Shared Cooling Plants) -->
                     ${plantsListHtml ? `
@@ -298,7 +301,11 @@
                         </div>
                     </div>` : ''}
 
-                    <!-- 全廠冷卻配置狀態導覽條 (Plant Overview Bar) -->
+                    <!-- V10 Phase 8：終端設備總表（全部單元一張表） -->
+                    ${this.renderTerminalTable(targets)}
+
+                    <!-- 全廠冷卻配置狀態導覽條 (Plant Overview Bar)：V10 Phase 8 起由終端設備總表取代，預設收合 -->
+                    ${this.collapsible('overviewBar', _t('cooling.overviewCompleted', { done: targets.length - attentionCount, total: targets.length }, `已完成: ${targets.length - attentionCount} / ${targets.length}`), `
                     <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 space-y-3">
                         <div class="flex justify-between items-center text-xs font-bold text-slate-600 border-b pb-2">
                             <span>${_t('cooling.overviewBar', null, '全廠冷卻單元即時狀態總覽 (點擊可快速展開並定位至該單元)')}</span>
@@ -307,7 +314,7 @@
                         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
                             ${overviewPillsHtml}
                         </div>
-                    </div>
+                    </div>`)}
 
                     <!-- 逐單元智慧折疊列表 -->
                     <div class="space-y-6">
@@ -322,9 +329,9 @@
                             <span>←</span> ${_t('cooling.prevStep', null, '上一步: CorePOD 設計')}
                         </button>
                         
-                        <button ${proceedStatus.ok ? 'onclick="window.App.nextStep()"' : 'disabled'} 
-                            class="px-6 py-3 ${proceedStatus.ok ? 'bg-emerald-600 hover:bg-emerald-700 text-white cursor-pointer shadow-md' : 'bg-slate-300 text-slate-500 cursor-not-allowed'} font-black text-sm rounded-xl transition flex items-center gap-2">
-                            ${proceedStatus.ok ? `<span class="inline-flex items-center gap-1.5"><i data-lucide="bar-chart-2" class="w-4 h-4"></i><span>${_t('cooling.nextStepOk', null, '計算並檢視 8,760h PUE / WUE 成果儀表板')}</span></span>` : `<span class="inline-flex items-center gap-1.5"><i data-lucide="lock" class="w-4 h-4"></i><span>${_t('cooling.nextStepLocked', null, '設備選型未達 N+1 (已鎖定)')}</span></span>`}
+                        <button onclick="window.App.nextStep()"
+                            class="px-6 py-3 ${proceedStatus.ok ? 'bg-emerald-600 hover:bg-emerald-700 text-white' : 'bg-amber-500 hover:bg-amber-600 text-white'} cursor-pointer shadow-md font-black text-sm rounded-xl transition flex items-center gap-2">
+                            ${proceedStatus.ok ? `<span class="inline-flex items-center gap-1.5"><i data-lucide="bar-chart-2" class="w-4 h-4"></i><span>${_t('cooling.nextStepOk', null, '計算並檢視 8,760h PUE / WUE 成果儀表板')}</span></span>` : `<span class="inline-flex items-center gap-1.5"><i data-lucide="alert-triangle" class="w-4 h-4"></i><span>${_t('cooling.nextStepWarn', null, '選型有不合格項目，仍可檢視儀表板（結果會標示不合格）')}</span></span>`}
                         </button>
                     </div>
                 </div>
@@ -884,7 +891,7 @@ ${inputsHtml}
                                         <i data-lucide="settings-2" class="w-3.5 h-3.5 text-slate-500"></i> ${_t('cooling.cduEquipSizingTitle', null, 'CDU 設備自選與 N+1 檢核 (專屬架構型錄庫)')}
                                     </span>
                                     <div class="space-y-2">
-                                        ${cduSizingHtml}
+                                        ${ViewCooling.renderEquipTable(targetId, 'cdu', cduSizingList, 'qty_cdu_' + targetId + '_')}
                                     </div>
                                 </div>
                             </div>
@@ -982,7 +989,7 @@ ${inputsHtml}
                                         <span>${isRdhx ? _t('cooling.rdhxEquipSizing', null, 'RDHX 設備自選與 N+1 檢核') : _t('cooling.fwEquipSizing', null, 'Fanwall 設備自選與 N+1 檢核')}</span>
                                     </span>
                                     <div class="space-y-2">
-                                        ${fwSizingHtml}
+                                        ${ViewCooling.renderEquipTable(targetId, 'fanwall', fwSizingList, 'qty_fw_' + targetId + '_')}
                                     </div>
                                 </div>
                             </div>
@@ -1403,18 +1410,24 @@ ${inputsHtml}
                     <!-- 全寬拓樸圖 SVG（預設收合） -->
                     ${ViewCooling.collapsible('schem_plant_' + plant.id, _t('cooling.showSchematic', null, '系統示意圖'), topoDiagram)}
 
-                    <!-- 下方 2 欄子面板: 水溫設定 (左) + 主機房設備選型清單 (右) -->
-                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-5 pt-1">
-                        ${paramsPanelHtml}
-                        <div class="space-y-2.5">
-                            <span class="text-xs font-bold text-slate-700 uppercase flex items-center gap-1.5">
-                                <i data-lucide="settings-2" class="w-3.5 h-3.5 text-slate-500"></i> ${_t('cooling.plantOverview', null, '共用主機房設備選型')}
-                            </span>
-                            <div class="space-y-2">
-                                ${sizingHtml || `<div class="p-4 text-center bg-slate-50 rounded-xl border text-xs text-slate-400">${_t('cooling.emptyPlant', null, '尚未產生選型資料')}</div>`}
-                            </div>
-                        </div>
+                    <!-- V10 Phase 8：主機房設備表佔整列寬；水溫連動時參數面板改成一行摘要（水溫由全廠設計條件決定） -->
+                    <div class="space-y-2.5 pt-1">
+                        <span class="text-xs font-bold text-slate-700 uppercase flex items-center gap-1.5">
+                            <i data-lucide="settings-2" class="w-3.5 h-3.5 text-slate-500"></i> ${_t('cooling.plantOverview', null, '共用主機房設備選型')}
+                        </span>
+                        ${sizingList.length ? ViewCooling.renderEquipTable(plant.id, plant.loop, sizingList, 'qty_plant_' + plant.id + '_' + plant.loop + '_') : `<div class="p-4 text-center bg-slate-50 rounded-xl border text-xs text-slate-400">${_t('cooling.emptyPlant', null, '尚未產生選型資料')}</div>`}
                     </div>
+                    ${(window.AppStore.getSiteCooling && window.AppStore.getSiteCooling().linkTemps) ? `
+                    <div class="flex flex-wrap items-center gap-3 text-xs text-slate-600 px-1">
+                        <span>${isLiquid
+                            ? _t('cooling.plantLinkedLiq', { s: sys.fwsSupplyC, r: sys.fwsReturnC }, `水溫依全廠設計條件：FWS ${sys.fwsSupplyC} / ${sys.fwsReturnC} °C`)
+                            : _t('cooling.plantLinkedAir', { s: sys.chwSupplyC, r: sys.chwReturnC }, `水溫依全廠設計條件：冰水 ${sys.chwSupplyC} / ${sys.chwReturnC} °C`)}</span>
+                        <span class="text-slate-400">|</span>
+                        <label class="flex items-center gap-1">${_t('cooling.plantHead', null, '本系統泵揚程 m')}
+                            <input type="number" id="plantHeadIn_${plant.id}" value="${sys.pumpHeadM ?? (isLiquid ? 28 : 22)}" step="1" onchange="ViewCooling.updatePlantParams('${plant.id}')" onkeydown="if(event.key==='Enter')this.blur()" class="w-16 text-xs font-bold text-center border border-slate-300 rounded-md py-0.5 bg-white">
+                        </label>
+                    </div>` : `
+                    <div>${paramsPanelHtml}</div>`}
                 </div>
             `;
         },
@@ -1675,6 +1688,322 @@ ${inputsHtml}
                 }
                 window.AppStore.notify();
             }
+            this.render(document.getElementById('stepContent'));
+        },
+
+        // ===== V10 Phase 8：Step 4 改版 =====
+        _num(v, d = 1) {
+            return (v === null || v === undefined || !Number.isFinite(Number(v))) ? '—' : Number(v).toLocaleString('en-US', { minimumFractionDigits: d, maximumFractionDigits: d });
+        },
+
+        // A. 全廠設計條件
+        renderSitePanel() {
+            const S = window.AppStore;
+            if (!S || typeof S.getSiteCooling !== 'function') return '';
+            const sc = S.getSiteCooling();
+            const L = sc.liquid, Ai = sc.air, fws = S.siteFws();
+            const units = S._allCoolingUnits();
+            const plants = (S.state.coolingPlants || []);
+            const anyPhe = [...units.map(u => u.plantDesign?.cduSystem), ...plants.filter(p => p.loop === 'liquid').map(p => p.system)].some(x => x && x.hasPhe);
+            const fcThresh = fws.supplyC - L.dryCoolerApproachC - (anyPhe ? L.pheApproachC : 0);
+            const inp = (id, loop, key, val, step = 0.5) => `<input type="number" id="${id}" value="${val}" step="${step}" onchange="ViewCooling.setSiteTemp('${loop}', '${key}', this.value)" onkeydown="if(event.key==='Enter')this.blur()" class="w-16 text-xs font-bold text-center border border-slate-300 rounded-md py-1 bg-white">`;
+            const lbl = (t) => `<span class="text-[11px] text-slate-500">${t}</span>`;
+            const btn = 'px-2 py-0.5 rounded-md border text-[10px] font-bold bg-white hover:bg-slate-100 text-slate-700 border-slate-300';
+            const headOf = (loop) => {
+                const p = plants.find(x => x.loop === loop && x.system?.pumpHeadM);
+                if (p) return p.system.pumpHeadM;
+                const u = units.find(x => (loop === 'liquid' ? x.plantDesign?.cduSystem : x.plantDesign?.fanwallSystem)?.pumpHeadM);
+                return u ? (loop === 'liquid' ? u.plantDesign.cduSystem.pumpHeadM : u.plantDesign.fanwallSystem.pumpHeadM) : '';
+            };
+            const overrides = units.filter(u => u.plantDesign?.cduSystem?.tempOverride || u.plantDesign?.fanwallSystem?.tempOverride).map(u => u.name);
+            const liquidRow = sc.linkTemps ? `
+                <div class="flex flex-wrap items-center gap-x-3 gap-y-2">
+                    <span class="w-12 text-xs font-black text-purple-900">${_t('cooling.siteLiquid', null, '液冷')}</span>
+                    ${lbl(_t('cooling.chipSupply', null, '晶片供水 (°C)'))}${inp('siteSecSupplyIn', 'liquid', 'secSupplyC', L.secSupplyC)}
+                    ${lbl(_t('cooling.siteReturn', null, '回水'))}${inp('siteSecReturnIn', 'liquid', 'secReturnC', L.secReturnC)}
+                    ${lbl(_t('cooling.siteCduApp', null, 'CDU approach'))}${inp('siteCduAppIn', 'liquid', 'cduApproachC', L.cduApproachC)}
+                    <span class="text-slate-400">→</span>
+                    ${lbl('FWS')}${inp('siteFwsSupplyIn', 'liquid', 'fwsSupplyC', fws.supplyC)}${lbl('/')}${inp('siteFwsReturnIn', 'liquid', 'fwsReturnC', fws.returnC)}
+                    ${lbl(_t('cooling.siteRejApp', null, '排熱 approach'))}${inp('siteDcAppIn', 'liquid', 'dryCoolerApproachC', L.dryCoolerApproachC)}
+                    ${lbl(_t('cooling.sitePheApp', null, 'PHE approach'))}${inp('sitePheAppIn', 'liquid', 'pheApproachC', L.pheApproachC)}
+                    <span class="text-[11px] text-emerald-700 font-bold">${_t('cooling.siteFcThresh', { t: this._num(fcThresh, 1) }, `全自然冷卻門檻 DB ≤ ${this._num(fcThresh, 1)} °C`)}</span>
+                    <span class="flex gap-1">
+                        <button class="${btn}" onclick="ViewCooling.applySitePreset('nvidia')">${_t('cooling.presetNvidia', null, 'NVIDIA 45/57')}</button>
+                        <button class="${btn}" onclick="ViewCooling.applySitePreset('site')">${_t('cooling.presetSite', null, '案場 41/51')}</button>
+                    </span>
+                </div>
+                <div class="flex flex-wrap items-center gap-x-3 gap-y-2">
+                    <span class="w-12 text-xs font-black text-indigo-900">${_t('cooling.siteAir', null, '氣冷')}</span>
+                    ${lbl(_t('cooling.siteChwSupply', null, '冰水供水 (°C)'))}${inp('siteChwSupplyIn', 'air', 'chwSupplyC', Ai.chwSupplyC)}
+                    ${lbl(_t('cooling.siteReturn', null, '回水'))}${inp('siteChwReturnIn', 'air', 'chwReturnC', Ai.chwReturnC)}
+                    <span class="flex gap-1">
+                        <button class="${btn}" onclick="ViewCooling.applySiteAirPreset(22, 32)">22/32</button>
+                        <button class="${btn}" onclick="ViewCooling.applySiteAirPreset(12, 18)">12/18</button>
+                    </span>
+                </div>` : `
+                <div class="text-xs text-slate-600">${_t('cooling.siteUnlinked', null, '全廠水溫連動已關閉：各系統水溫在各自卡片中獨立設定。')}</div>`;
+            return `
+                <div class="bg-white p-4 rounded-2xl shadow-sm border-2 border-sky-200 space-y-3" id="sitePanel">
+                    <div class="flex items-center justify-between flex-wrap gap-2">
+                        <h3 class="text-sm font-black text-slate-900 flex items-center gap-1.5"><i data-lucide="thermometer" class="w-4 h-4 text-sky-600"></i>${_t('cooling.siteTitle', null, '全廠設計條件')}</h3>
+                        <label class="flex items-center gap-1.5 text-xs font-bold text-slate-700">
+                            <input type="checkbox" id="siteLinkChk" ${sc.linkTemps ? 'checked' : ''} onchange="ViewCooling.setTempLink(this.checked)">
+                            ${_t('cooling.siteLink', null, '全廠水溫連動（改一處，所有單元與機房一起改）')}
+                        </label>
+                    </div>
+                    ${liquidRow}
+                    <div class="flex flex-wrap items-center gap-x-3 gap-y-2 pt-2 border-t border-slate-100">
+                        ${lbl(_t('cooling.siteHeadLiq', null, '液冷泵揚程 m'))}<input type="number" id="siteHeadLiqIn" value="${headOf('liquid')}" step="1" class="w-16 text-xs font-bold text-center border border-slate-300 rounded-md py-1 bg-white">
+                        <button class="${btn}" onclick="ViewCooling.applyHeadAll('liquid')">${_t('cooling.applyAll', null, '套用到全部')}</button>
+                        ${lbl(_t('cooling.siteHeadAir', null, '氣冷泵揚程 m'))}<input type="number" id="siteHeadAirIn" value="${headOf('air')}" step="1" class="w-16 text-xs font-bold text-center border border-slate-300 rounded-md py-1 bg-white">
+                        <button class="${btn}" onclick="ViewCooling.applyHeadAll('air')">${_t('cooling.applyAll', null, '套用到全部')}</button>
+                        ${lbl(_t('cooling.siteRedundancy', null, '冗餘等級'))}
+                        <select id="siteRedSel" class="text-xs font-bold border border-slate-300 rounded-md py-1 px-1 bg-white">
+                            ${['N', 'N+1', 'N+2', '2N'].map(r => `<option value="${r}" ${r === 'N+1' ? 'selected' : ''}>${r}</option>`).join('')}
+                        </select>
+                        <button class="${btn}" onclick="ViewCooling.applyRedundancyAll()">${_t('cooling.applyAll', null, '套用到全部')}</button>
+                    </div>
+                    ${overrides.length ? `<div class="text-[11px] text-amber-700">${_t('cooling.siteOverrides', { names: overrides.join('、') }, `獨立設定水溫的單元：${overrides.join('、')}`)}</div>` : ''}
+                </div>`;
+        },
+
+        setSiteTemp(loop, key, value) {
+            window.AppStore.setSiteCoolingTemp(loop, key, value);
+            this.scheduleRender();
+        },
+        setTempLink(on) {
+            window.AppStore.setTempLink(on);
+            this.render(document.getElementById('stepContent'));
+        },
+        applySitePreset(preset) {
+            // 預設值與既有 applyCduPreset 相同（NVIDIA 45/57、案場 41/51，approach 4/5/2）
+            const S = window.AppStore, L = S.getSiteCooling().liquid;
+            if (preset === 'nvidia') Object.assign(L, { secSupplyC: 45.0, secReturnC: 57.0, cduApproachC: 4.0, dryCoolerApproachC: 5.0, pheApproachC: 2.0 });
+            else Object.assign(L, { secSupplyC: 41.0, secReturnC: 51.0, cduApproachC: 4.0, dryCoolerApproachC: 5.0, pheApproachC: 2.0 });
+            S.applySiteCoolingToAll();
+            S.notify();
+            this.render(document.getElementById('stepContent'));
+        },
+        applySiteAirPreset(sup, ret) {
+            const S = window.AppStore;
+            Object.assign(S.getSiteCooling().air, { chwSupplyC: sup, chwReturnC: ret });
+            S.applySiteCoolingToAll();
+            S.notify();
+            this.render(document.getElementById('stepContent'));
+        },
+        applyHeadAll(loop) {
+            const el = document.getElementById(loop === 'liquid' ? 'siteHeadLiqIn' : 'siteHeadAirIn');
+            const v = parseFloat(el?.value);
+            if (!Number.isFinite(v) || v <= 0) return;
+            window.AppStore.applyPumpHeadToAll(loop, v);
+            this.render(document.getElementById('stepContent'));
+        },
+        applyRedundancyAll() {
+            const v = document.getElementById('siteRedSel')?.value;
+            if (!v) return;
+            if (typeof confirm === 'function' && !confirm(_t('cooling.confirmRedAll', { r: v }, `將所有設備的冗餘等級改為 ${v}？`))) return;
+            window.AppStore.applyRedundancyToAll(v);
+            this.render(document.getElementById('stepContent'));
+        },
+
+        // 型號下拉：★常用 → 可行且台數少 → 其他；選項顯示需要台數與餘裕
+        modelOptionsHtml(item) {
+            const prev = item.optionPreview || [];
+            const byModel = new Map(prev.map(p => [p.model, p]));
+            const isPump = window.SizingEngine && window.SizingEngine.isPumpItem && window.SizingEngine.isPumpItem(item);
+            const S = window.AppStore;
+            const fav = (m) => !!(S && S.isFavoriteModel && S.isFavoriteModel(item.key, m));
+            const cats = (item.catalog || []).slice().sort((a, b) => {
+                const pa = byModel.get(a.model), pb = byModel.get(b.model);
+                const ka = [fav(a.model) ? 0 : 1, pa && pa.feasible ? 0 : 1, pa ? pa.units : 9999, a.capKw];
+                const kb = [fav(b.model) ? 0 : 1, pb && pb.feasible ? 0 : 1, pb ? pb.units : 9999, b.capKw];
+                for (let i = 0; i < ka.length; i++) if (ka[i] !== kb[i]) return ka[i] - kb[i];
+                return 0;
+            });
+            return cats.map(c => {
+                const p = byModel.get(c.model);
+                const vendor = c.vendor ? '[' + c.vendor + '] ' : '';
+                const warn = (c._verified === false || !c._source) ? '⚠ ' : '';
+                let tail = ' (' + c.capKw + ' kW)';
+                if (p && item.requiredKw > 0) {
+                    tail = _t('cooling.optTail', { cap: c.capKw, n: p.units, m: p.marginPct == null ? '—' : p.marginPct.toFixed(0) }, `｜${c.capKw} kW｜需 ${p.units} 台｜餘裕 ${p.marginPct == null ? '—' : p.marginPct.toFixed(0)}%`)
+                        + (isPump && p.headOk === false ? _t('cooling.optHeadShort', null, '｜揚程不足') : '');
+                }
+                const label = (fav(c.model) ? '★ ' : '') + warn + vendor + c.model + tail;
+                const safe = String(label).replace(/&/g, '&amp;').replace(/</g, '&lt;');
+                return `<option value="${String(c.model).replace(/"/g, '&quot;')}" ${c.model === item.selectedModel ? 'selected' : ''}>${safe}</option>`;
+            }).join('');
+        },
+
+        // 設備表格（一列一台設備）
+        renderEquipTable(ownerId, sysType, list, qtyIdPrefix) {
+            const SE = window.SizingEngine;
+            const rows = (list || []).map(item => {
+                const isPump = SE && SE.isPumpItem && SE.isPumpItem(item);
+                const red = item.redundancy || 'N+1';
+                const effCap = item.effectiveCapKw !== undefined ? item.effectiveCapKw : (item.selectedQty * item.unitCapKw);
+                const margin = item.requiredKw > 0 ? ((effCap / item.requiredKw) - 1) * 100 : null;
+                const ok = item.requiredKw > 0 ? !!item.passed : true;
+                const marginCls = margin == null ? 'text-slate-400' : (margin < 0 ? 'text-red-600' : (margin < 10 ? 'text-amber-700' : 'text-emerald-700'));
+                const notes = [], infos = [];
+                if (isPump && item.pumpChecks && item.requiredKw > 0) {
+                    const pc = item.pumpChecks;
+                    if (!pc.motorOk) notes.push(_t('cooling.pumpMotorShort', null, '馬達功率不足'));
+                    if (!pc.flowOk) notes.push(_t('cooling.pumpFlowShort', null, '流量不足'));
+                    if (!pc.headOk) notes.push(_t('cooling.pumpHeadShort', null, '揚程不足'));
+                }
+                if (item.key === 'trim_chiller' && item.maxMechanicalKw !== undefined && item.maxMechanicalPassed === false) {
+                    // Trim 冰機本來就不是設計成全機械製冷，Mode 3 不足只是提示，不算不合格
+                    infos.push(_t('cooling.mode3Short', { kw: Number(item.maxMechanicalKw).toFixed(0) }, `Mode 3 全機械製冷 ${Number(item.maxMechanicalKw).toFixed(0)} kW 不足`));
+                }
+                if ((item.selectedQty || 0) > 20) infos.push(_t('cooling.tooManyShort', null, '台數偏多，建議自動選型'));
+                const reqTitle = String(item.requiredText || '').replace(/<[^>]+>/g, '').replace(/"/g, '&quot;');
+                const fav = window.AppStore?.isFavoriteModel ? window.AppStore.isFavoriteModel(item.key, item.selectedModel) : false;
+                const safeModel = String(item.selectedModel || '').replace(/\\/g, '\\\\').replace(/'/g, "\\'").replace(/"/g, '&quot;');
+                const qid = qtyIdPrefix + item.key;
+                const ib = 'w-6 h-6 rounded border border-slate-300 bg-white hover:bg-slate-100 text-xs font-black';
+                return `
+                    <tr class="border-t border-slate-200 ${ok ? '' : 'bg-red-50/60'}">
+                        <td class="py-1.5 px-2 align-top" title="${reqTitle}">
+                            <div class="text-xs font-bold text-slate-900 min-w-[9rem]">${String(item.label || item.key).split(' (')[0]}</div>
+                            <div class="text-[10px] text-slate-500">${_t('cooling.reqShort', { kw: this._num(item.requiredKw, 0) }, `需求 ${this._num(item.requiredKw, 0)} kW`)}${isPump ? ' ' + _t('cooling.motorShaft', null, '(軸功率)') : ''}</div>
+                            ${notes.length ? `<div class="text-[10px] font-bold text-red-600">${notes.join('；')}</div>` : ''}
+                            ${infos.length ? `<div class="text-[10px] text-amber-700">${infos.join('；')}</div>` : ''}
+                        </td>
+                        <td class="py-1.5 px-2 align-top">
+                            <select onchange="ViewCooling.changeModel('${ownerId}', '${sysType}', '${item.key}', this.value)" class="w-full max-w-[22rem] text-[11px] font-bold border border-slate-300 rounded-md p-1 bg-white text-slate-800">${this.modelOptionsHtml(item)}</select>
+                        </td>
+                        <td class="py-1.5 px-2 align-top">
+                            <select onchange="ViewCooling.changeRedundancy('${ownerId}', '${sysType}', '${item.key}', this.value)" class="text-[11px] font-bold border border-slate-300 rounded-md p-1 bg-white">
+                                ${['N', 'N+1', 'N+2', '2N'].map(r => `<option value="${r}" ${r === red ? 'selected' : ''}>${r}</option>`).join('')}
+                            </select>
+                        </td>
+                        <td class="py-1.5 px-2 align-top whitespace-nowrap">
+                            <button id="${qid}_dec" class="${ib}" onclick="ViewCooling.stepQty('${ownerId}', '${sysType}', '${item.key}', -1, this.id)">−</button>
+                            <input type="number" id="${qid}" min="1" max="999" value="${item.selectedQty}" onchange="ViewCooling.changeQty('${ownerId}', '${sysType}', '${item.key}', this.value)" onkeydown="if(event.key==='Enter')this.blur()" class="w-12 text-xs font-black text-center border border-slate-300 rounded-md py-0.5 bg-white">
+                            <button id="${qid}_inc" class="${ib}" onclick="ViewCooling.stepQty('${ownerId}', '${sysType}', '${item.key}', 1, this.id)">+</button>
+                        </td>
+                        <td class="py-1.5 px-2 align-top text-right text-[11px] tabular-nums whitespace-nowrap">${this._num(effCap, 0)} / ${this._num(item.requiredKw, 0)}</td>
+                        <td class="py-1.5 px-2 align-top text-right text-[11px] font-bold tabular-nums ${marginCls}">${margin == null ? '—' : margin.toFixed(1) + '%'}</td>
+                        <td class="py-1.5 px-2 align-top text-center text-sm font-black ${ok ? 'text-emerald-600' : 'text-red-600'}">${ok ? '✓' : '✗'}</td>
+                        <td class="py-1.5 px-2 align-top whitespace-nowrap">
+                            ${isPump ? '' : `<button title="${_t('cooling.autoSelectTitle', null, '從型錄挑選降額後台數最少、容量不過大的型號')}" onclick="ViewCooling.autoSelect('${ownerId}', '${sysType}', '${item.key}')" class="px-1.5 py-0.5 rounded border border-slate-300 bg-white hover:bg-slate-100 text-[10px] font-bold">${_t('cooling.autoShort', null, '自動')}</button>`}
+                            <button title="${_t('cooling.favOff', null, '☆ 設為常用')}" onclick="ViewCooling.toggleFavorite('${item.key}', '${safeModel}')" class="px-1.5 py-0.5 rounded border text-[10px] font-bold ${fav ? 'bg-amber-50 text-amber-700 border-amber-300' : 'bg-white text-slate-400 border-slate-300'}">${fav ? '★' : '☆'}</button>
+                        </td>
+                    </tr>`;
+            }).join('');
+            if (!rows) return '';
+            return `
+                <div class="overflow-x-auto rounded-xl border border-slate-200 bg-white">
+                    <table class="w-full text-left">
+                        <thead class="bg-slate-50 text-[10px] text-slate-500 font-bold">
+                            <tr>
+                                <th class="py-1.5 px-2">${_t('cooling.thEquip', null, '設備')}</th>
+                                <th class="py-1.5 px-2">${_t('cooling.thModel', null, '型號（需要台數／餘裕）')}</th>
+                                <th class="py-1.5 px-2">${_t('cooling.thRed', null, '冗餘')}</th>
+                                <th class="py-1.5 px-2">${_t('cooling.thQty', null, '台數')}</th>
+                                <th class="py-1.5 px-2 text-right">${_t('cooling.thEffReq', null, '有效／需求 kW')}</th>
+                                <th class="py-1.5 px-2 text-right">${_t('cooling.thMargin', null, '餘裕')}</th>
+                                <th class="py-1.5 px-2 text-center">${_t('cooling.thOk', null, '判定')}</th>
+                                <th class="py-1.5 px-2"></th>
+                            </tr>
+                        </thead>
+                        <tbody>${rows}</tbody>
+                    </table>
+                </div>`;
+        },
+
+        stepQty(ownerId, sysType, key, delta, focusId) {
+            const item = window.AppStore._findSizingItem(ownerId, sysType, key);
+            if (!item) return;
+            const q = Math.max(1, Math.min(999, (Number(item.selectedQty) || 0) + delta));
+            window.AppStore.updateSelectedEquipment(ownerId, sysType, key, undefined, q);
+            this.render(document.getElementById('stepContent'));
+            if (focusId) { const b = document.getElementById(focusId); if (b) b.focus(); }
+        },
+
+        // D. 終端設備總表：每個單元一列，CDU 與 CRAH／RDHX 各一組
+        renderTerminalTable(targets) {
+            const SE = window.SizingEngine;
+            const find = (sys, keys) => (sys?.sizing || []).find(s => keys.includes(s.key));
+            const cell = (t, sysType, item, prefix) => {
+                if (!item || !(item.requiredKw > 0)) return `<td class="py-1.5 px-2 text-[11px] text-slate-400" colspan="3">—</td>`;
+                const effCap = item.effectiveCapKw !== undefined ? item.effectiveCapKw : (item.selectedQty * item.unitCapKw);
+                const margin = ((effCap / item.requiredKw) - 1) * 100;
+                const qid = prefix + t.id + '_' + item.key;
+                const ib = 'w-5 h-5 rounded border border-slate-300 bg-white hover:bg-slate-100 text-[11px] font-black';
+                return `
+                    <td class="py-1.5 px-2"><select onchange="ViewCooling.changeModel('${t.id}', '${sysType}', '${item.key}', this.value)" class="w-full max-w-[15rem] text-[11px] font-bold border border-slate-300 rounded-md p-1 bg-white">${this.modelOptionsHtml(item)}</select></td>
+                    <td class="py-1.5 px-2 whitespace-nowrap">
+                        <button id="${qid}_dec" class="${ib}" onclick="ViewCooling.stepQty('${t.id}', '${sysType}', '${item.key}', -1, this.id)">−</button>
+                        <input type="number" id="${qid}" min="1" max="999" value="${item.selectedQty}" onchange="ViewCooling.changeQty('${t.id}', '${sysType}', '${item.key}', this.value)" onkeydown="if(event.key==='Enter')this.blur()" class="w-11 text-xs font-black text-center border border-slate-300 rounded-md py-0.5 bg-white">
+                        <button id="${qid}_inc" class="${ib}" onclick="ViewCooling.stepQty('${t.id}', '${sysType}', '${item.key}', 1, this.id)">+</button>
+                    </td>
+                    <td class="py-1.5 px-2 text-right text-[11px] font-bold tabular-nums ${item.passed ? (margin < 10 ? 'text-amber-700' : 'text-emerald-700') : 'text-red-600'}">${item.passed ? '✓' : '✗'} ${margin.toFixed(1)}%</td>`;
+            };
+            const rows = targets.map(t => {
+                const cdu = find(t.obj.plantDesign.cduSystem, ['cdu_unit']);
+                const air = find(t.obj.plantDesign.fanwallSystem, ['crah_unit', 'rdhx_unit']);
+                const airLoad = (t.summ.airHeatKw || 0) + (t.summ.lossKw || 0);
+                const safe = window.UIKit ? window.UIKit.escapeHTML(t.shortName || t.name) : (t.shortName || t.name);
+                return `
+                    <tr class="border-t border-slate-200">
+                        <td class="py-1.5 px-2 text-xs font-bold text-slate-900 whitespace-nowrap"><button class="hover:underline text-left" onclick="ViewCooling.scrollToUnit('${t.id}')">${safe}</button></td>
+                        <td class="py-1.5 px-2 text-right text-[11px] tabular-nums">${this._num(t.summ.totalItKw, 0)}</td>
+                        <td class="py-1.5 px-2 text-right text-[11px] tabular-nums text-purple-900">${this._num(t.summ.liquidHeatKw, 0)}</td>
+                        ${cell(t, 'cdu', cdu, 'tq_cdu_')}
+                        <td class="py-1.5 px-2 text-right text-[11px] tabular-nums text-indigo-900">${this._num(airLoad, 0)}</td>
+                        ${cell(t, 'fanwall', air, 'tq_fw_')}
+                    </tr>`;
+            }).join('');
+            const dus = targets.filter(t => t.type === 'du');
+            const srcSel = dus.length > 1 ? `
+                <div class="flex items-center gap-2 flex-wrap text-xs">
+                    <span class="text-slate-600">${_t('cooling.applyFrom', null, '把')}</span>
+                    <select id="termSrcSel" class="text-xs font-bold border border-slate-300 rounded-md py-1 px-1 bg-white">${dus.map(t => `<option value="${t.id}">${window.UIKit ? window.UIKit.escapeHTML(t.shortName) : t.shortName}</option>`).join('')}</select>
+                    <span class="text-slate-600">${_t('cooling.applyTo', null, '的 CDU／CRAH 型號與冗餘')}</span>
+                    <button onclick="ViewCooling.applyTerminalToAllDus()" class="px-3 py-1 rounded-lg bg-sky-600 hover:bg-sky-700 text-white text-xs font-bold">${_t('cooling.applyToAllDus', null, '套用到所有 DU')}</button>
+                    <span class="text-[11px] text-slate-500">${_t('cooling.applyNote', null, '台數會依各 DU 自己的負載重新計算')}</span>
+                </div>` : '';
+            return `
+                <div class="bg-white p-4 rounded-2xl shadow-sm border border-slate-200 space-y-3" id="terminalTable">
+                    <h3 class="text-sm font-black text-slate-900 flex items-center gap-1.5"><i data-lucide="table" class="w-4 h-4 text-slate-600"></i>${_t('cooling.terminalTitle', null, '終端設備（CDU、CRAH／RDHX）總表')}</h3>
+                    ${srcSel}
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left">
+                            <thead class="bg-slate-50 text-[10px] text-slate-500 font-bold">
+                                <tr>
+                                    <th class="py-1.5 px-2">${_t('cooling.thUnit', null, '單元')}</th>
+                                    <th class="py-1.5 px-2 text-right">IT kW</th>
+                                    <th class="py-1.5 px-2 text-right">${_t('cooling.thLiqKw', null, '液冷 kW')}</th>
+                                    <th class="py-1.5 px-2">${_t('cooling.thCduModel', null, 'CDU 型號')}</th>
+                                    <th class="py-1.5 px-2">${_t('cooling.thQty', null, '台數')}</th>
+                                    <th class="py-1.5 px-2 text-right">${_t('cooling.thMargin', null, '餘裕')}</th>
+                                    <th class="py-1.5 px-2 text-right">${_t('cooling.thAirKw', null, '氣冷 kW')}</th>
+                                    <th class="py-1.5 px-2">${_t('cooling.thCrahModel', null, 'CRAH／RDHX 型號')}</th>
+                                    <th class="py-1.5 px-2">${_t('cooling.thQty', null, '台數')}</th>
+                                    <th class="py-1.5 px-2 text-right">${_t('cooling.thMargin', null, '餘裕')}</th>
+                                </tr>
+                            </thead>
+                            <tbody>${rows}</tbody>
+                        </table>
+                    </div>
+                </div>`;
+        },
+
+        applyTerminalToAllDus() {
+            const srcId = document.getElementById('termSrcSel')?.value;
+            const S = window.AppStore;
+            const src = this.getTargetObj(srcId);
+            if (!src) return;
+            const cdu = (src.plantDesign.cduSystem.sizing || []).find(s => s.key === 'cdu_unit');
+            const air = (src.plantDesign.fanwallSystem.sizing || []).find(s => s.key === 'crah_unit' || s.key === 'rdhx_unit');
+            const dus = [];
+            (S.state.halls || []).forEach(h => (h.dus || []).forEach(d => { if (d.id !== srcId) dus.push(d.name); }));
+            const msg = _t('cooling.confirmApplyAll', { src: src.name, list: dus.join('、') }, `把 ${src.name} 的 CDU／CRAH 型號與冗餘套用到：${dus.join('、')}？台數會依各 DU 負載重新計算。`);
+            if (typeof confirm === 'function' && !confirm(msg)) return;
+            if (cdu) S.applyToAllUnits('liquid', 'cdu_unit', { model: cdu.selectedModel, redundancy: cdu.redundancy, kind: 'du' });
+            if (air) S.applyToAllUnits('air', air.key, { model: air.selectedModel, redundancy: air.redundancy, kind: 'du' });
             this.render(document.getElementById('stepContent'));
         },
 
