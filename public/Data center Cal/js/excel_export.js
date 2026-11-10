@@ -185,6 +185,10 @@
             const pods = (state.corePods || []).filter(p => p.enabled !== false);
             const plants = (state.coolingPlants || []).filter(p => !p.isEmpty && Array.isArray(p.memberIds) && p.memberIds.length > 0);
             const lossPct = Number(state.facilityElectricalLossPct ?? 0);
+            // V9 Phase 2：熱進入氣冷區的損耗比例、固定輔助負載
+            const lossTot = (typeof appStore.facilityLossTotals === 'function') ? appStore.facilityLossTotals() : { totalPct: lossPct, heatPct: lossPct, auxKw: 0 };
+            const lossHeatPct = Number(lossTot.heatPct ?? lossPct);
+            const auxKwTot = Number(lossTot.auxKw || 0);
             const itKwTotal = Number(overall.totalItKw || 0);
             const designCond = (typeof appStore.designConditions === 'function') ? (appStore.designConditions() || {}) : {};
             const Areg = (typeof window !== 'undefined' && typeof window.A === 'function') ? window.A : (typeof A === 'function' ? A : null);
@@ -213,7 +217,7 @@
                 const crah = Number(h.crahFanKw || 0);
                 const hr = Number(h.heatRejKw || 0);
                 const ch = Number(h.chillerKw || 0);
-                const loss = it * lossPct / 100;
+                const loss = it * lossPct / 100 + auxKwTot;
                 const cool = cdu + crah + hr + ch;
                 const tot = it + loss + cool;
                 return {
@@ -464,6 +468,10 @@
                 const pk = designCond.peakDb || {};
                 REF.loss = X('basis', abs(3, kv(L('配電損耗率', 'Electrical loss ratio'), lossPct, 'input', '%',
                     L('變壓器、UPS、PDU 與輔助負載損耗；以「IT 功率 × 此比例」計入全廠用電，其熱量計入氣冷系統負載。', 'Transformer, UPS, PDU and auxiliary losses; counted as IT power × this ratio, with the heat added to the air-side cooling load.'), FMT.d2)));
+                REF.aux = X('basis', abs(3, kv(L('固定輔助負載', 'Fixed auxiliary load'), auxKwTot, 'input', 'kW',
+                    L('照明、辦公／支援空調、MAU／除濕、其他輔助用電合計；全年定值，計入配電損耗類別，熱量不計入資料中心冷卻負載。', 'Lighting, office/support HVAC, MAU/dehumidification and other auxiliary loads; constant all year, booked under losses; heat not added to the data hall cooling load.'), FMT.d1)));
+                REF.lossHeat = X('basis', abs(3, kv(L('熱進入氣冷區的損耗率', 'Loss ratio with heat to air side'), lossHeatPct, 'input', '%',
+                    L('配電損耗分項中，勾選「熱進入氣冷區」的比例合計。', 'Sum of loss items flagged as heat entering the air-cooled space.'), FMT.d2)));
                 kv(L('IT 負載率', 'IT load factor'), 1, 'input', '-', L('全年 8,760 小時以設計滿載定值計算（未套用負載變動曲線）。', 'Constant design full load for all 8,760 hours (no load profile applied).'), FMT.pct1);
                 REF.hours = X('basis', abs(3, kv(L('模擬時數', 'Simulated hours'), F(`COUNT(${hR('A')})`, 8760), 'link', 'h', L('= 逐時資料筆數', '= number of hourly records'), FMT.int)));
                 kv(L('氣象資料', 'Weather data'), site.stationId || site.stationName || stationLabel, 'input', '-',
@@ -542,7 +550,7 @@
                     const r = HR0 + i;
                     ws.getRow(r).values = [
                         i + 1, x.m, x.d, x.hh, x.db, x.wb, x.lm, x.am, x.it, x.cdu, x.crah, x.hr, x.ch,
-                        F(`I${r}*${lossRef}/100`, x.loss),
+                        F(`I${r}*${lossRef}/100+${REF.aux}`, x.loss),
                         F(`SUM(J${r}:M${r})`, x.cool),
                         F(`I${r}+N${r}+O${r}`, x.tot),
                         F(`IF(I${r}>0,P${r}/I${r},0)`, x.pue),
@@ -648,8 +656,8 @@
                 REF.liqKw = X('it', abs(10, sumRow(L('液冷熱負載', 'Liquid heat load'), L('= Σ IT × 液冷 %', '= Σ IT × liquid %'), F(`K${totRow}`, totLiq), FMT.d1, 'kW')));
                 sumRow(L('氣冷熱負載（IT）', 'Air heat load (IT)'), L('= Σ IT × 氣冷 %', '= Σ IT × air %'), F(`L${totRow}`, totIt - totLiq), FMT.d1, 'kW');
                 sumRow(L('液冷比例', 'Liquid share'), L('= 液冷熱 ÷ IT', '= liquid ÷ IT'), F(`IF(J${totRow}>0,K${totRow}/J${totRow},0)`, totIt > 0 ? totLiq / totIt : 0), FMT.pct1, '-');
-                const lossRow = sumRow(L('配電損耗（熱量計入氣冷負載）', 'Electrical loss (heat added to air load)'), L('= IT × 配電損耗率', '= IT × loss ratio'), F(`J${totRow}*${REF.loss}/100`, totIt * lossPct / 100), FMT.d1, 'kW');
-                sumRow(L('需排除總熱量', 'Total heat to remove'), L('= IT + 配電損耗', '= IT + loss'), F(`J${totRow}+J${lossRow}`, totIt * (1 + lossPct / 100)), FMT.d1, 'kW');
+                const lossRow = sumRow(L('配電損耗（熱量計入氣冷負載）', 'Electrical loss (heat added to air load)'), L('= IT × 熱進入氣冷區的損耗率', '= IT × loss ratio (heat to air)'), F(`J${totRow}*${REF.lossHeat}/100`, totIt * lossHeatPct / 100), FMT.d1, 'kW');
+                sumRow(L('需排除總熱量', 'Total heat to remove'), L('= IT + 配電損耗（熱進入氣冷區）', '= IT + loss (heat to air)'), F(`J${totRow}+J${lossRow}`, totIt * (1 + lossHeatPct / 100)), FMT.d1, 'kW');
                 r = note(ws, r + 1, 12, L('「列別」欄：1 = 設備列、0 = 小計列；全廠合計以 SUMIF 只加總設備列，避免小計重複計入。',
                     '"Row" column: 1 = equipment row, 0 = subtotal row; the facility total uses SUMIF over equipment rows only to avoid double counting subtotals.'));
                 ws.views = [{ state: 'frozen', ySplit: 6, showGridLines: false }];

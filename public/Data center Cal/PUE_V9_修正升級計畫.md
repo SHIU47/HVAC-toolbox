@@ -77,7 +77,15 @@
 - C6：只加 COP 分布統計和警告，不改模型。
 - 驗證：`unit_checks.js` 全過；140 組回歸的 PUE 差異只能來自 C4/C5，其他要一致；兩份專案的 PUE 不變（只改統計和標示）。
 
-### Phase 2：耗電項目與 IT 負載情境（C7、C8）
+### Phase 2：耗電項目與 IT 負載情境（C7、C8）✅
+> 結果：
+> - schema 升為 `v8`，新增 `facilityLoads`（lossItems：transformer／ups／pdu／other，各有 pct 和 heatToAir；auxLoads：lighting／officeHvac／mau／other，單位 kW）和 `itLoadScenario`（enabled、factorPct）。舊欄位 `facilityElectricalLossPct` 保留，數值＝各分項合計；舊程式碼直接改這個欄位時，差額會自動補到 other。
+> - 引擎：損耗分成「熱進入氣冷區」（`lossKw`）和「只計耗電」（`lossNoHeatKw`）兩部分；輔助負載為 8,760 h 定值，計入 `breakdownKwh.loss`，明細在 `breakdownKwh.lossDetail`；熱平衡只算熱進入氣冷區的部分。Excel 的逐時損耗公式改為 `IT × 損耗率 + 輔助負載`，需排除的熱量改用熱進入氣冷區的損耗率。
+> - 部分負載情境：`AnnualRunner.run(..., { itLoadFactor })`，先以 100% 負載 bridge（選型、水力），再縮放負載進行模擬；結果放在 `results.partialLoad`，儀表板「損耗分項、輔助負載與 IT 負載情境」區塊並列顯示。
+> - 驗證：PUE 不變（140 組回歸、兩份專案）；unit_checks 268 passed（新增 V9-P2a～d）。1106 專案：100% 負載 1.167；90% 1.159；70% 1.153；50% 1.160。
+> - ⚠ **待使用者決定**：配電損耗按 IT 比例計算，沒有模擬變壓器空載損失與 UPS 低負載效率曲線，因此部分負載的 PUE 會偏低。是否要在分項加上「固定部分（kW）＋比例部分（%）」，由使用者決定。
+> - 只做固定負載率；24 h 負載曲線需要改寫逐時快取（目前依乾濕球快取），暫不做。
+> - 新增 `tools/pue_regression/ui_preview.js`：載入專案後用 Edge headless 截圖指定步驟（會停用 alert，且不能加 virtual-time-budget）。
 - 電力損耗拆成變壓器、UPS、PDU／配電三項（%，隨 IT 負載變化），另外加固定負載 kW：照明、辦公／支援空調、MAU／除濕、其他（BMS、發電機加熱器等）。
 - **向下相容**：舊專案只有 `facilityElectricalLossPct` 時，全部歸到「其他配電損耗」，結果不變。新欄位預設值維持現況總量，UI 標「⚠ 待確認，請依案場電力設計填入」。
 - 每一項可設定「熱是否進入空調區」（預設維持現況：全部進入氣冷側）。
@@ -125,7 +133,7 @@ node project_check.js "../../public/Data center Cal/projects/PUE_Project_高雄 
 |:--|:--|:--|
 | 0 | ✅ 完成 | 見 git log |
 | 1 | ✅ 完成 | 見 git log |
-| 2 | 待執行 | |
+| 2 | ✅ 完成 | 見 git log |
 | 3 | 待執行 | |
 | 4 | 待執行 | |
 | 5 | 待執行 | |

@@ -58,6 +58,7 @@
             const onHour = helpers.onHour;
             const itKw = loadSumm.totalItKw || 0;
             const lossKw = loadSumm.lossKw || 0;
+            const lossNoHeatKw = loadSumm.lossNoHeatKw || 0; // V9：熱不進入氣冷區的配電損耗（只計耗電）
 
             const kwh = { it: 0, cduPump: 0, crahFan: 0, heatRejection: 0, chiller: 0, loss: 0 };
             const cduKwh = { unit: 0, pump: 0, heatRej: 0, chiller: 0 };
@@ -227,7 +228,7 @@
                 kwh.crahFan += hr.crahFanKw;
                 kwh.heatRejection += hr.heatRejKw;
                 kwh.chiller += hr.chillerKw;
-                kwh.loss += lossKw;
+                kwh.loss += lossKw + lossNoHeatKw;
                 waterM3 += hr.waterM3;
                 heatRemovedKwh += hr.heatRemovedKw;
 
@@ -297,6 +298,7 @@
             const onHour = helpers.onHour;
             const itKw = loadSumm.totalItKw || 0;
             const lossKw = loadSumm.lossKw || 0;
+            const lossNoHeatKw = loadSumm.lossNoHeatKw || 0; // V9：熱不進入氣冷區的配電損耗（只計耗電）
 
             const kwh = { it: 0, cduPump: 0, crahFan: 0, heatRejection: 0, chiller: 0, loss: 0 };
             const cduKwh = { unit: 0, pump: 0, heatRej: 0, chiller: 0 };
@@ -462,7 +464,7 @@
                 kwh.crahFan += hr.crahFanKw;
                 kwh.heatRejection += hr.heatRejKw;
                 kwh.chiller += hr.chillerKw;
-                kwh.loss += lossKw;
+                kwh.loss += lossKw + lossNoHeatKw;
                 waterM3 += hr.waterM3;
                 heatRemovedKwh += hr.heatRemovedKw;
                 allocatedLiqKwh += (hr.hourAllocatedLiq || 0);
@@ -570,7 +572,9 @@
          */
         calculateLedgers(overallKwh, overallTotalKwh, totalLiquidHeatKwh, totalAirHeatKwh, totalHeatRemovedKwh, plantAllocations = []) {
             const hvacTotalKwh = overallKwh.cduPump + overallKwh.crahFan + overallKwh.heatRejection + overallKwh.chiller;
-            const totalGenHeatKwh = overallKwh.it + overallKwh.loss;
+            // V9：只有「熱進入氣冷區」的損耗算入需移除熱量（輔助負載與不進入氣冷區的損耗不算）
+            const lossHeatKwh = (overallKwh.lossHeat !== undefined) ? overallKwh.lossHeat : overallKwh.loss;
+            const totalGenHeatKwh = overallKwh.it + lossHeatKwh;
             const thermalImbalanceKwh = totalGenHeatKwh - totalHeatRemovedKwh;
             const thermalTolKwh = Math.max(1e-3, Math.abs(totalGenHeatKwh) * 1e-6);
             const thermalIsBalanced = Math.abs(thermalImbalanceKwh) < thermalTolKwh;
@@ -597,7 +601,7 @@
 
             const thermalLedger = {
                 it_heat_kwh: overallKwh.it,
-                loss_heat_kwh: overallKwh.loss,
+                loss_heat_kwh: lossHeatKwh,
                 total_heat_generated_kwh: totalGenHeatKwh,
                 liquid_heat_kwh: totalLiquidHeatKwh,
                 air_heat_kwh: totalAirHeatKwh,
@@ -715,8 +719,20 @@
          * @param {Object} helpers - Store callbacks { calcDuSummary, calcCorePodSummary, bridgeDuToPlantModel, calcHourlyEnergy }
          * @returns {Object} Complete results structure conforming to AppStore.state.results contract
          */
-        run(state, hourlyWeather, helpers = {}) {
-            const facilityLossPct = state.facilityElectricalLossPct ?? 0.0;
+        run(state, hourlyWeather, helpers = {}, opts = {}) {
+            // V9 Phase 2：損耗分成「熱進入氣冷區」與「只計耗電」兩部分；輔助負載為固定 kW
+            const facilityLossPct = opts.lossTotalPct ?? state.facilityElectricalLossPct ?? 0.0;
+            const lossHeatPct = opts.lossHeatPct ?? facilityLossPct;
+            const auxKw = Math.max(0, opts.auxKw || 0);
+            const itLoadFactor = (opts.itLoadFactor > 0 && opts.itLoadFactor <= 1) ? opts.itLoadFactor : 1;
+            const scaleSumm = (s) => (itLoadFactor === 1) ? s : Object.assign({}, s, {
+                totalItKw: (s.totalItKw || 0) * itLoadFactor,
+                liquidHeatKw: (s.liquidHeatKw || 0) * itLoadFactor,
+                airHeatKw: (s.airHeatKw || 0) * itLoadFactor,
+                lossKw: (s.lossKw || 0) * itLoadFactor,
+                lossNoHeatKw: (s.lossNoHeatKw || 0) * itLoadFactor
+            });
+            let lossHeatKwhTotal = 0;
             const byDuResults = [];
             let totalAllItKw = 0;
             let totalAllWaterM3 = 0;
@@ -754,7 +770,8 @@
                 const mIdx = hourToMonth(i);
                 const hourCoolingNoPump = hr.crahFanKw + hr.heatRejKw + hr.chillerKw;
                 const hourCooling = hr.cduPumpKw + hourCoolingNoPump;
-                const hourTotal = summ.totalItKw + hourCooling + summ.lossKw;
+                const hourLoss = summ.lossKw + (summ.lossNoHeatKw || 0);
+                const hourTotal = summ.totalItKw + hourCooling + hourLoss;
 
                 monthlyStats[mIdx].totalKwh += hourTotal;
                 monthlyStats[mIdx].itKwh += summ.totalItKw;
@@ -763,7 +780,7 @@
                 monthlyStats[mIdx].crahFanKwh += hr.crahFanKw;
                 monthlyStats[mIdx].heatRejKwh += hr.heatRejKw;
                 monthlyStats[mIdx].chillerKwh += hr.chillerKw;
-                monthlyStats[mIdx].lossKwh += summ.lossKw;
+                monthlyStats[mIdx].lossKwh += hourLoss;
                 monthlyStats[mIdx].waterM3 += (hr.waterM3 || 0);
                 monthlyStats[mIdx].coolNoPumpKwh += hourCoolingNoPump;
 
@@ -813,8 +830,8 @@
                     const u = allUnitsMap.get(id);
                     if (u) {
                         const s = u.sus ? (helpers.calcDuSummary ? helpers.calcDuSummary(u) : u) : (helpers.calcCorePodSummary ? helpers.calcCorePodSummary(u) : u);
-                        const loss = (s.totalItKw || 0) * (facilityLossPct / 100);
-                        qSum += (p.loop === 'liquid' ? (s.liquidHeatKw || 0) : ((s.airHeatKw || 0) + loss));
+                        const loss = (s.totalItKw || 0) * (lossHeatPct / 100);
+                        qSum += (p.loop === 'liquid' ? (s.liquidHeatKw || 0) : ((s.airHeatKw || 0) + loss)) * itLoadFactor;
                     }
                 });
 
@@ -873,14 +890,17 @@
             // 1. Simulate DUs
             (state.halls || []).forEach(hall => {
                 (hall.dus || []).forEach(du => {
-                    const duSumm = helpers.calcDuSummary ? helpers.calcDuSummary(du) : du;
-                    const duLossKw = duSumm.totalItKw * (facilityLossPct / 100);
-                    duSumm.lossKw = duLossKw;
-                    totalAllItKw += duSumm.totalItKw;
+                    const duSummDesign = helpers.calcDuSummary ? helpers.calcDuSummary(du) : du;
+                    duSummDesign.lossKw = duSummDesign.totalItKw * (lossHeatPct / 100);
+                    duSummDesign.lossNoHeatKw = duSummDesign.totalItKw * ((facilityLossPct - lossHeatPct) / 100);
+                    totalAllItKw += duSummDesign.totalItKw;
 
+                    // 選型與水力以 100% 設計負載建立，之後才套用部分負載係數
                     if (helpers.bridgeDuToPlantModel) {
-                        helpers.bridgeDuToPlantModel(du, duSumm);
+                        helpers.bridgeDuToPlantModel(du, duSummDesign);
                     }
+                    const duSumm = scaleSumm(duSummDesign);
+                    lossHeatKwhTotal += duSumm.lossKw * 8760;
 
                     const liqPlant = du.plantDesign?.cduSystem?.plantId ? plantById.get(du.plantDesign.cduSystem.plantId) : null;
                     const airPlant = du.plantDesign?.fanwallSystem?.plantId ? plantById.get(du.plantDesign.fanwallSystem.plantId) : null;
@@ -931,16 +951,18 @@
             let totalCorePodWaterM3 = 0;
 
             (state.corePods || []).filter(p => p.enabled !== false).forEach(pod => {
-                const ps = helpers.calcCorePodSummary ? helpers.calcCorePodSummary(pod) : pod;
-                const podLossKw = ps.totalItKw * (facilityLossPct / 100);
-                ps.lossKw = podLossKw;
+                const psDesign = helpers.calcCorePodSummary ? helpers.calcCorePodSummary(pod) : pod;
+                psDesign.lossKw = psDesign.totalItKw * (lossHeatPct / 100);
+                psDesign.lossNoHeatKw = psDesign.totalItKw * ((facilityLossPct - lossHeatPct) / 100);
 
                 if (helpers.bridgeDuToPlantModel) {
-                    helpers.bridgeDuToPlantModel(pod, ps);
+                    helpers.bridgeDuToPlantModel(pod, psDesign);
                 }
+                const ps = scaleSumm(psDesign);
+                lossHeatKwhTotal += ps.lossKw * 8760;
 
-                totalCorePodItKw += ps.totalItKw;
-                totalAllItKw += ps.totalItKw;
+                totalCorePodItKw += psDesign.totalItKw;
+                totalAllItKw += psDesign.totalItKw;
 
                 const liqPlant = pod.plantDesign?.cduSystem?.plantId ? plantById.get(pod.plantDesign.cduSystem.plantId) : null;
                 const airPlant = pod.plantDesign?.fanwallSystem?.plantId ? plantById.get(pod.plantDesign.fanwallSystem.plantId) : null;
@@ -983,6 +1005,28 @@
                 overallKwh.chiller += sim.kwh.chiller;
                 overallKwh.loss += sim.kwh.loss;
             });
+
+            // V9 Phase 2：固定輔助負載（照明、辦公空調、MAU 等），全年 8,760 h 定值，計入 loss 類別
+            const electricalLossKwh = overallKwh.loss;
+            if (auxKw > 0) {
+                overallKwh.loss += auxKw * 8760;
+                for (let i = 0; i < 8760; i++) {
+                    hourlyFacilityStats[i].totalKw += auxKw;
+                    const mIdx = hourToMonth(i);
+                    monthlyStats[mIdx].totalKwh += auxKw;
+                    monthlyStats[mIdx].lossKwh += auxKw;
+                }
+            }
+            overallKwh.lossHeat = lossHeatKwhTotal;
+            const itKwhForDetail = overallKwh.it;
+            overallKwh.lossDetail = {
+                electricalKwh: electricalLossKwh,
+                heatToAirKwh: lossHeatKwhTotal,
+                auxKwh: auxKw * 8760,
+                items: (opts.facilityLoads?.lossItems || []).map(x => ({ key: x.key, pct: x.pct, heatToAir: x.heatToAir, kwh: itKwhForDetail * x.pct / 100 })),
+                aux: (opts.facilityLoads?.auxLoads || []).map(x => ({ key: x.key, kw: x.kw, kwh: x.kw * 8760 }))
+            };
+            overallKwh.itLoadFactor = itLoadFactor;
 
             overallKwh.cduUnitKwh = Math.round(totalAllCduUnitKwh);
             overallKwh.cduUnit = overallKwh.cduUnitKwh;

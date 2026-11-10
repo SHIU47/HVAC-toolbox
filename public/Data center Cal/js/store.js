@@ -67,6 +67,10 @@
             // 全廠電力系統損失率 (Facility Electrical Loss %, e.g., 0.0% ~ 15.0%)
             // 涵蓋高/低壓變壓器、UPS 雙轉換損耗、PDU、電纜配電阻抗發熱等
             facilityElectricalLossPct: (typeof A === 'function') ? A('electrical_loss_default_pct') : 4.5,
+            // V9 Phase 2：電力損耗分項（%，隨 IT 負載）與固定輔助負載（kW）；未設定時由 getFacilityLoads() 依上方總損耗率建立
+            facilityLoads: null,
+            // V9 Phase 2：IT 部分負載情境（選型與水力維持 100% 設計值，模擬時負載乘以 factorPct）
+            itLoadScenario: { enabled: false, factorPct: 70 },
 
             // Step 2: Hall -> DU -> SU Hierarchy
             halls: [
@@ -229,9 +233,11 @@
         serializeProject() {
             const s = this.state;
             const exportData = {
-                schemaVersion: 'v7',
+                schemaVersion: 'v8',
                 savedAt: new Date().toISOString(),
                 facilityElectricalLossPct: s.facilityElectricalLossPct ?? A('electrical_loss_default_pct'),
+                facilityLoads: this.getFacilityLoads(),
+                itLoadScenario: JSON.parse(JSON.stringify(s.itLoadScenario || { enabled: false, factorPct: 70 })),
                 site: {
                     selectedCity: s.site.selectedCity,
                     stationId: s.site.stationId || null,
@@ -436,7 +442,7 @@
                 });
             }
 
-            stateData.schemaVersion = 'v7';
+            stateData.schemaVersion = 'v8';
             return stateData;
         },
 
@@ -476,6 +482,10 @@
                 this.state.facilityElectricalLossPct = (stateData.facilityElectricalLossPct !== undefined && stateData.facilityElectricalLossPct !== null && Number.isFinite(lossPct))
                     ? Math.max(0, Math.min(50, lossPct))
                     : A('electrical_loss_default_pct');
+                // V9 Phase 2：舊專案沒有分項時，全部歸入「其他配電損耗」，結果不變
+                this.state.facilityLoads = this.normalizeFacilityLoads(stateData.facilityLoads, this.state.facilityElectricalLossPct);
+                this.state.facilityElectricalLossPct = Number(this.state.facilityLoads.lossItems.reduce((s, x) => s + x.pct, 0).toFixed(4));
+                this.state.itLoadScenario = this.normalizeItLoadScenario(stateData.itLoadScenario);
                 if (stateData.site) {
                     if (stateData.site.selectedCity) {
                         this.state.site.selectedCity = stateData.site.selectedCity;
@@ -611,9 +621,10 @@
                 airHeatKw += s.airHeatKw;
             });
             const dlcPct = totalItKw > 0 ? (liquidHeatKw / totalItKw) * 100 : 0;
-            const lossPct = (this.state && this.state.facilityElectricalLossPct) ? this.state.facilityElectricalLossPct : 0;
-            const lossKw = totalItKw * (lossPct / 100);
-            return { totalItKw, liquidHeatKw, airHeatKw, dlcPct, lossKw };
+            const lt = this.facilityLossTotals();
+            const lossKw = totalItKw * (lt.heatPct / 100);
+            const lossNoHeatKw = totalItKw * ((lt.totalPct - lt.heatPct) / 100);
+            return { totalItKw, liquidHeatKw, airHeatKw, dlcPct, lossKw, lossNoHeatKw };
         },
 
         calcHallSummary(hall) {
@@ -625,9 +636,10 @@
                 airHeatKw += d.airHeatKw;
             });
             const dlcPct = totalItKw > 0 ? (liquidHeatKw / totalItKw) * 100 : 0;
-            const lossPct = (this.state && this.state.facilityElectricalLossPct) ? this.state.facilityElectricalLossPct : 0;
-            const lossKw = totalItKw * (lossPct / 100);
-            return { totalItKw, liquidHeatKw, airHeatKw, dlcPct, lossKw };
+            const lt = this.facilityLossTotals();
+            const lossKw = totalItKw * (lt.heatPct / 100);
+            const lossNoHeatKw = totalItKw * ((lt.totalPct - lt.heatPct) / 100);
+            return { totalItKw, liquidHeatKw, airHeatKw, dlcPct, lossKw, lossNoHeatKw };
         },
 
         calcCorePodSummary(pod) {
@@ -642,14 +654,93 @@
                 airHeatKw += air;
             });
             const dlcPct = totalItKw > 0 ? (liquidHeatKw / totalItKw) * 100 : 0;
-            const lossPct = (this.state && this.state.facilityElectricalLossPct) ? this.state.facilityElectricalLossPct : 0;
-            const lossKw = totalItKw * (lossPct / 100);
-            return { totalItKw, liquidHeatKw, airHeatKw, dlcPct, lossKw };
+            const lt = this.facilityLossTotals();
+            const lossKw = totalItKw * (lt.heatPct / 100);
+            const lossNoHeatKw = totalItKw * ((lt.totalPct - lt.heatPct) / 100);
+            return { totalItKw, liquidHeatKw, airHeatKw, dlcPct, lossKw, lossNoHeatKw };
         },
 
         setFacilityElectricalLossPct(pct) {
+            // 舊介面相容：總損耗率扣掉其他分項後放到「其他配電損耗」
             const val = Math.max(0, Math.min(50, parseFloat(pct) || 0.0));
-            this.state.facilityElectricalLossPct = Number(val.toFixed(2));
+            const fl = this.getFacilityLoads();
+            const others = fl.lossItems.filter(x => x.key !== 'other').reduce((s, x) => s + x.pct, 0);
+            const other = fl.lossItems.find(x => x.key === 'other');
+            other.pct = Number(Math.max(0, val - others).toFixed(2));
+            this.state.facilityElectricalLossPct = Number(this.getFacilityLoads().lossItems.reduce((s, x) => s + x.pct, 0).toFixed(4));
+            this.calculate();
+            this.notify();
+        },
+
+        // ===== V9 Phase 2：電力損耗分項與輔助負載 =====
+        FACILITY_LOSS_KEYS: ['transformer', 'ups', 'pdu', 'other'],
+        FACILITY_AUX_KEYS: ['lighting', 'officeHvac', 'mau', 'other'],
+
+        normalizeFacilityLoads(fl, legacyPct) {
+            const num = (v, fb) => (v !== undefined && v !== null && Number.isFinite(Number(v))) ? Number(v) : fb;
+            const legacy = num(legacyPct, (typeof A === 'function') ? A('electrical_loss_default_pct') : 4.5);
+            const hasItems = fl && Array.isArray(fl.lossItems);
+            const lossItems = this.FACILITY_LOSS_KEYS.map(key => {
+                const src = hasItems ? fl.lossItems.find(x => x && x.key === key) : null;
+                const pct = src ? num(src.pct, 0) : ((!hasItems && key === 'other') ? legacy : 0);
+                return { key, pct: Math.max(0, Math.min(50, pct)), heatToAir: src ? src.heatToAir !== false : true };
+            });
+            const auxLoads = this.FACILITY_AUX_KEYS.map(key => {
+                const src = (fl && Array.isArray(fl.auxLoads)) ? fl.auxLoads.find(x => x && x.key === key) : null;
+                return { key, kw: Math.max(0, Math.min(1e6, num(src?.kw, 0))) };
+            });
+            return { lossItems, auxLoads };
+        },
+
+        getFacilityLoads() {
+            if (!this.state.facilityLoads || !Array.isArray(this.state.facilityLoads.lossItems)) {
+                this.state.facilityLoads = this.normalizeFacilityLoads(null, this.state.facilityElectricalLossPct);
+            }
+            return this.state.facilityLoads;
+        },
+
+        facilityLossTotals() {
+            const fl = this.getFacilityLoads();
+            // 舊程式碼若直接改 state.facilityElectricalLossPct，差額補到「其他配電損耗」，維持總量一致
+            const legacy = Number(this.state.facilityElectricalLossPct);
+            const sum0 = fl.lossItems.reduce((s, x) => s + x.pct, 0);
+            if (Number.isFinite(legacy) && Math.abs(legacy - sum0) > 1e-6) {
+                const other = fl.lossItems.find(x => x.key === 'other');
+                if (other) other.pct = Number(Math.max(0, other.pct + (legacy - sum0)).toFixed(4));
+            }
+            const totalPct = Number(fl.lossItems.reduce((s, x) => s + x.pct, 0).toFixed(4));
+            const heatPct = Number(fl.lossItems.filter(x => x.heatToAir).reduce((s, x) => s + x.pct, 0).toFixed(4));
+            const auxKw = fl.auxLoads.reduce((s, x) => s + x.kw, 0);
+            return { totalPct, heatPct, auxKw };
+        },
+
+        setFacilityLossItem(key, field, value) {
+            const fl = this.getFacilityLoads();
+            const it = fl.lossItems.find(x => x.key === key);
+            if (!it) return;
+            if (field === 'pct') it.pct = Number(Math.max(0, Math.min(50, parseFloat(value) || 0)).toFixed(2));
+            if (field === 'heatToAir') it.heatToAir = !!value;
+            this.state.facilityElectricalLossPct = Number(this.getFacilityLoads().lossItems.reduce((s, x) => s + x.pct, 0).toFixed(4));
+            this.calculate();
+            this.notify();
+        },
+
+        setFacilityAuxLoad(key, kw) {
+            const fl = this.getFacilityLoads();
+            const it = fl.auxLoads.find(x => x.key === key);
+            if (!it) return;
+            it.kw = Number(Math.max(0, Math.min(1e6, parseFloat(kw) || 0)).toFixed(1));
+            this.calculate();
+            this.notify();
+        },
+
+        normalizeItLoadScenario(sc) {
+            const f = Number(sc?.factorPct);
+            return { enabled: !!sc?.enabled, factorPct: Number.isFinite(f) ? Math.max(10, Math.min(100, f)) : 70 };
+        },
+
+        setItLoadScenario(patch) {
+            this.state.itLoadScenario = this.normalizeItLoadScenario({ ...(this.state.itLoadScenario || {}), ...(patch || {}) });
             this.calculate();
             this.notify();
         },
@@ -1378,7 +1469,8 @@
             return {
                 coolingPlants: JSON.parse(JSON.stringify(this.state.coolingPlants || [])),
                 unitPlants,
-                facilityElectricalLossPct: this.state.facilityElectricalLossPct ?? 4.5
+                facilityElectricalLossPct: this.state.facilityElectricalLossPct ?? 4.5,
+                facilityLoads: JSON.parse(JSON.stringify(this.getFacilityLoads()))
             };
         },
 
@@ -1407,6 +1499,12 @@
 
             if (snapshot.facilityElectricalLossPct !== undefined) {
                 this.state.facilityElectricalLossPct = snapshot.facilityElectricalLossPct;
+            }
+            if (snapshot.facilityLoads) {
+                this.state.facilityLoads = this.normalizeFacilityLoads(snapshot.facilityLoads, this.state.facilityElectricalLossPct);
+                this.state.facilityElectricalLossPct = Number(this.getFacilityLoads().lossItems.reduce((s, x) => s + x.pct, 0).toFixed(4));
+            } else if (snapshot.facilityElectricalLossPct !== undefined) {
+                this.state.facilityLoads = this.normalizeFacilityLoads(null, snapshot.facilityElectricalLossPct);
             }
         },
 
@@ -2928,7 +3026,7 @@
                 : this.generateFallbackWeather();
 
             if (typeof AnnualRunner !== 'undefined') {
-                this.state.results = AnnualRunner.run(this.state, hourlyWeather, {
+                const runnerHelpers = {
                     calcDuSummary: (du) => this.calcDuSummary(du),
                     calcCorePodSummary: (pod) => this.calcCorePodSummary(pod),
                     bridgeDuToPlantModel: (unit, summ) => this.bridgeDuToPlantModel(unit, summ),
@@ -2937,7 +3035,25 @@
                     calcLiquidLoopHour: (sys, summ, w, pre) => this.calcLiquidLoopHour(sys, summ, w, pre),
                     calcAirLoopHour: (sys, summ, w, pre) => this.calcAirLoopHour(sys, summ, w, pre),
                     resolveEquipment: (arch, sys) => this.resolveEquipment(arch, sys)
-                });
+                };
+                const lt = this.facilityLossTotals();
+                const runOpts = { lossTotalPct: lt.totalPct, lossHeatPct: lt.heatPct, auxKw: lt.auxKw, facilityLoads: this.getFacilityLoads() };
+                // V9 Phase 2：IT 部分負載情境先跑（避免共用機房 _sim 停留在部分負載狀態），再跑 100% 設計值
+                let partialLoad = null;
+                const sc = this.state.itLoadScenario;
+                if (sc && sc.enabled && sc.factorPct > 0 && sc.factorPct < 100) {
+                    const pr = AnnualRunner.run(this.state, hourlyWeather, runnerHelpers, { ...runOpts, itLoadFactor: sc.factorPct / 100 });
+                    const po = pr.overall;
+                    partialLoad = {
+                        factorPct: sc.factorPct,
+                        annualPue: po.annualPue, annualCoolingPpue: po.annualCoolingPpue, peakPue: po.peakPue,
+                        annualWue: po.annualWue, annualTotalMwh: po.annualTotalMwh, annualItMwh: po.annualItMwh,
+                        breakdownKwh: po.breakdownKwh, fcHours: po.fcHours, fcHoursPct: po.fcHoursPct,
+                        monthlyPue: pr.monthlyPue
+                    };
+                }
+                this.state.results = AnnualRunner.run(this.state, hourlyWeather, runnerHelpers, runOpts);
+                this.state.results.partialLoad = partialLoad;
             }
         },
 

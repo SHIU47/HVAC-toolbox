@@ -362,7 +362,7 @@
                             <div class="flex gap-3 p-3 rounded-lg hover:bg-brand-50/50 transition-colors">
                                 ${U.iconBadge('snowflake', 'brand')}
                                 <div class="flex-1">
-                                    <span class="text-[11px] font-medium uppercase tracking-wide text-tertiary">${_t('dash.fcPotential', null, '氣候直冷潛力 (FC Potential)')}</span>
+                                    <span class="text-[11px] font-medium uppercase tracking-wide text-tertiary">${_t('dash.fcPotential', null, '液冷側直冷潛力 (FC Potential)')}</span>
                                     <div class="text-xl font-semibold text-brand-600 mt-0.5 tabular-nums">${fcPot.freeHoursPct}%</div>
                                     <div class="w-full bg-border-subtle rounded-full h-1.5 flex overflow-hidden my-1.5">
                                         <div class="bg-brand-500 h-full" style="width: ${fcPot.freeHoursPct}%"></div>
@@ -427,9 +427,10 @@
                                 <button onclick="window.AppStore.setFacilityElectricalLossPct(6.5); window.ViewDashboard.scheduleRender()" class="px-2 py-0.5 rounded-md text-[11px] font-semibold bg-bg hover:bg-border-subtle text-secondary border border-border transition">${_t('dash.preset65', null, '6.5% (多級降壓/傳統配電)')}</button>
                             </div>
                             <div class="text-[11px] text-tertiary font-mono">
-                                ${_t('dash.pueContribution', { val: ((state.facilityElectricalLossPct || 0) / 100).toFixed(3) }, `當前對 PUE 增量貢獻: <strong class="text-brand-600 font-bold">+${((state.facilityElectricalLossPct || 0) / 100).toFixed(3)}</strong>`)}
+                                ${_t('dash.pueContribution', { val: (((overall.breakdownKwh?.loss || 0) / (overall.breakdownKwh?.it || 1))).toFixed(3) }, `當前對 PUE 增量貢獻: <strong class="text-brand-600 font-bold">+${(((overall.breakdownKwh?.loss || 0) / (overall.breakdownKwh?.it || 1))).toFixed(3)}</strong>`)}
                             </div>
                         </div>
+                        ${this.renderFacilityLoadsDetail(state, overall)}
                     </div>
 
                     <!-- 共用冷卻系統運轉與耗能成果 (Cooling Plants) -->
@@ -1528,6 +1529,71 @@
 
             this.updateHeatmapKpi();
             this.drawCarpetPlot();
+        },
+
+        // V9 Phase 2：電力損耗分項、固定輔助負載、IT 部分負載情境
+        renderFacilityLoadsDetail(state, overall) {
+            const S = window.AppStore;
+            if (!S || typeof S.getFacilityLoads !== 'function') return '';
+            const fl = S.getFacilityLoads();
+            const itKw = overall.totalItKw || 0;
+            const inp = 'w-20 text-right font-mono tabular-nums text-xs bg-surface border border-border focus:border-brand-500 rounded-md py-1 px-1.5';
+            const lossRows = fl.lossItems.map(x => `
+                <tr class="border-t border-border-subtle">
+                    <td class="py-1.5 pr-2 text-secondary">${_t('dash.lossItem.' + x.key, null, x.key)}</td>
+                    <td class="py-1.5 pr-2 text-right"><input type="number" min="0" max="50" step="0.1" value="${x.pct}" class="${inp}"
+                        onchange="window.AppStore.setFacilityLossItem('${x.key}', 'pct', this.value); window.ViewDashboard.scheduleRender()" onkeydown="if(event.key==='Enter')this.blur()"> %</td>
+                    <td class="py-1.5 pr-2 text-right tabular-nums text-tertiary">${(itKw * x.pct / 100).toFixed(1)} kW</td>
+                    <td class="py-1.5 text-center"><input type="checkbox" ${x.heatToAir ? 'checked' : ''}
+                        onchange="window.AppStore.setFacilityLossItem('${x.key}', 'heatToAir', this.checked); window.ViewDashboard.scheduleRender()"></td>
+                </tr>`).join('');
+            const auxRows = fl.auxLoads.map(x => `
+                <tr class="border-t border-border-subtle">
+                    <td class="py-1.5 pr-2 text-secondary">${_t('dash.auxItem.' + x.key, null, x.key)}</td>
+                    <td class="py-1.5 pr-2 text-right"><input type="number" min="0" step="10" value="${x.kw}" class="${inp}"
+                        onchange="window.AppStore.setFacilityAuxLoad('${x.key}', this.value); window.ViewDashboard.scheduleRender()" onkeydown="if(event.key==='Enter')this.blur()"> kW</td>
+                    <td class="py-1.5 text-right tabular-nums text-tertiary">${Math.round(x.kw * 8.76).toLocaleString()} MWh</td>
+                </tr>`).join('');
+            const sc = state.itLoadScenario || { enabled: false, factorPct: 70 };
+            const pl = state.results?.partialLoad;
+            const cmp = (pl && sc.enabled) ? `
+                <table class="w-full text-xs mt-2">
+                    <thead><tr class="text-tertiary"><th class="text-left font-medium py-1">${_t('dash.plCase', null, '情境')}</th><th class="text-right font-medium">PUE</th><th class="text-right font-medium">${_t('dash.plCoolPpue', null, '冷卻 pPUE（含泵）')}</th><th class="text-right font-medium">${_t('dash.plItMwh', null, 'IT MWh/年')}</th><th class="text-right font-medium">${_t('dash.plTotMwh', null, '全廠 MWh/年')}</th></tr></thead>
+                    <tbody>
+                        <tr class="border-t border-border-subtle"><td class="py-1">${_t('dash.plDesign', null, '設計值 100%')}</td><td class="text-right font-mono font-bold text-brand-600">${overall.annualPue}</td><td class="text-right font-mono">${overall.annualCoolingPpue ?? '—'}</td><td class="text-right tabular-nums">${(overall.annualItMwh || 0).toLocaleString()}</td><td class="text-right tabular-nums">${(overall.annualTotalMwh || 0).toLocaleString()}</td></tr>
+                        <tr class="border-t border-border-subtle"><td class="py-1">${_t('dash.plPartial', { pct: pl.factorPct }, `部分負載 ${pl.factorPct}%`)}</td><td class="text-right font-mono font-bold">${pl.annualPue}</td><td class="text-right font-mono">${pl.annualCoolingPpue ?? '—'}</td><td class="text-right tabular-nums">${(pl.annualItMwh || 0).toLocaleString()}</td><td class="text-right tabular-nums">${(pl.annualTotalMwh || 0).toLocaleString()}</td></tr>
+                    </tbody>
+                </table>
+                <p class="text-[11px] text-tertiary mt-1">${_t('dash.plNote', null, '選型與水力維持 100% 設計值，只把模擬時的 IT 與熱負載乘上負載率。配電損耗按 IT 比例計算，沒有模擬變壓器空載損失與 UPS 低負載效率下降；若要反映，請在固定輔助負載加入對應 kW。')}</p>` : '';
+            return `
+                <details class="mt-3 pt-3 border-t border-border-subtle" ${(state._uiOpenFacilityLoads) ? 'open' : ''} ontoggle="window.AppStore.state._uiOpenFacilityLoads = this.open">
+                    <summary class="cursor-pointer text-xs font-semibold text-primary select-none">${_t('dash.flDetailTitle', null, '損耗分項、輔助負載與 IT 負載情境')}</summary>
+                    <div class="grid grid-cols-1 lg:grid-cols-3 gap-4 mt-3">
+                        <div>
+                            <div class="text-[11px] font-semibold text-secondary mb-1">${_t('dash.flLossTitle', null, '配電損耗分項（% of IT，隨 IT 負載）')}</div>
+                            <table class="w-full text-xs">
+                                <thead><tr class="text-tertiary"><th class="text-left font-medium">${_t('dash.flItem', null, '項目')}</th><th class="text-right font-medium">%</th><th class="text-right font-medium">kW</th><th class="text-center font-medium">${_t('dash.flHeatToAir', null, '熱進氣冷區')}</th></tr></thead>
+                                <tbody>${lossRows}</tbody>
+                            </table>
+                            <p class="text-[11px] text-warn-600 mt-1">${_t('dash.flPendingNote', null, '⚠ 待確認：請依案場電力設計（變壓器、UPS 效率）填入。舊專案的總損耗率全部放在「其他」。')}</p>
+                        </div>
+                        <div>
+                            <div class="text-[11px] font-semibold text-secondary mb-1">${_t('dash.flAuxTitle', null, '固定輔助負載（全年定值）')}</div>
+                            <table class="w-full text-xs"><tbody>${auxRows}</tbody></table>
+                            <p class="text-[11px] text-tertiary mt-1">${_t('dash.flAuxNote', null, '計入全廠用電（損耗類別），熱量不計入資料中心冷卻負載；辦公區空調的耗電請直接填在此處。')}</p>
+                        </div>
+                        <div>
+                            <div class="text-[11px] font-semibold text-secondary mb-1">${_t('dash.plTitle', null, 'IT 部分負載情境')}</div>
+                            <label class="flex items-center gap-2 text-xs">
+                                <input type="checkbox" ${sc.enabled ? 'checked' : ''} onchange="window.AppStore.setItLoadScenario({ enabled: this.checked }); window.ViewDashboard.scheduleRender()">
+                                ${_t('dash.plEnable', null, '同時計算部分負載')}
+                                <input type="number" min="10" max="100" step="5" value="${sc.factorPct}" class="${inp}"
+                                    onchange="window.AppStore.setItLoadScenario({ factorPct: Number(this.value) }); window.ViewDashboard.scheduleRender()" onkeydown="if(event.key==='Enter')this.blur()"> %
+                            </label>
+                            ${cmp}
+                        </div>
+                    </div>
+                </details>`;
         },
 
         // V9-C1/C2：合格判定橫幅（容量不足、熱平衡、選型不合格）

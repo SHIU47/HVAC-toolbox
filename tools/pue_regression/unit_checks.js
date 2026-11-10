@@ -820,7 +820,7 @@ function sizeCduToDeratedN1(S) {
   test('C-5 serializeProject produces schemaVersion v7', () => {
     const json = S.serializeProject();
     const parsed = JSON.parse(json);
-    assert.strictEqual(parsed.schemaVersion, 'v7');
+    assert.strictEqual(parsed.schemaVersion, 'v8');
   });
 
   test('C-5 migrateProject resolves legacy aliases, adds redundancy and enabled', () => {
@@ -846,7 +846,7 @@ function sizeCduToDeratedN1(S) {
     };
 
     const migrated = S.migrateProject(v4State);
-    assert.strictEqual(migrated.schemaVersion, 'v7');
+    assert.strictEqual(migrated.schemaVersion, 'v8');
     assert.strictEqual(migrated.corePods[0].enabled, true);
     assert.strictEqual(migrated.halls[0].dus[0].plantDesign.cduSystem.architecture, 'dry_cooler_trim');
     assert.strictEqual(migrated.halls[0].dus[0].plantDesign.fanwallSystem.architecture, 'water_cooled_chiller');
@@ -869,7 +869,7 @@ function sizeCduToDeratedN1(S) {
 
     const savedV7 = S.serializeProject();
     const parsedV7 = JSON.parse(savedV7);
-    assert.strictEqual(parsedV7.schemaVersion, 'v7');
+    assert.strictEqual(parsedV7.schemaVersion, 'v8');
 
     const ok2 = S.deserializeProject(savedV7);
     assert.strictEqual(ok2, true);
@@ -3006,7 +3006,7 @@ function sizeCduToDeratedN1(S) {
     // 1. Serialize project
     const jsonStr = win.AppStore.serializeProject();
     const parsed = JSON.parse(jsonStr);
-    assert.strictEqual(parsed.schemaVersion, 'v7');
+    assert.strictEqual(parsed.schemaVersion, 'v8');
     assert.strictEqual(parsed.site.stationId, 'JPN_TK_Tokyo-Chiyoda.476620_TMYx.2011-2025');
     assert.strictEqual(parsed.site.stationSource, 'catalog');
 
@@ -3037,7 +3037,7 @@ function sizeCduToDeratedN1(S) {
       }
     };
     const migrated = win2.AppStore.migrateProject(v5Data);
-    assert.strictEqual(migrated.schemaVersion, 'v7');
+    assert.strictEqual(migrated.schemaVersion, 'v8');
     assert.strictEqual(migrated.site.stationSource, 'builtin');
     assert.strictEqual(migrated.site.stationId, 'TWN_NOR_Taoyuan.589650_TMYx.2011-2025');
   });
@@ -3257,6 +3257,7 @@ function sizeCduToDeratedN1(S) {
     S.setFacilityElectricalLossPct(0.0);
     const legacy = JSON.parse(S.serializeProject());
     delete legacy.facilityElectricalLossPct;
+    delete legacy.facilityLoads; // V9：真正的舊專案檔也沒有分項欄位
     S.deserializeProject(JSON.stringify(legacy));
     assert(Math.abs(S.state.facilityElectricalLossPct - 4.5) < 1e-6, 'got ' + S.state.facilityElectricalLossPct);
   });
@@ -4208,7 +4209,7 @@ function sizeCduToDeratedN1(S) {
   test('P-1: serializeProject and deserializeProject preserve coolingPlants in schema v7', () => {
     const jsonStr = S.serializeProject();
     const parsed = JSON.parse(jsonStr);
-    assert.strictEqual(parsed.schemaVersion, 'v7');
+    assert.strictEqual(parsed.schemaVersion, 'v8');
     assert(Array.isArray(parsed.coolingPlants), 'serialized coolingPlants must be an array');
 
     const ok = S.deserializeProject(jsonStr);
@@ -4269,7 +4270,7 @@ function sizeCduToDeratedN1(S) {
     };
 
     const migrated = S.migrateProject(v6Data);
-    assert.strictEqual(migrated.schemaVersion, 'v7');
+    assert.strictEqual(migrated.schemaVersion, 'v8');
     assert(Array.isArray(migrated.coolingPlants), 'coolingPlants must be initialized');
     assert.strictEqual(migrated.coolingPlants.length, 0);
     assert.strictEqual(migrated.corePods[0]._showSharedPlantNotice, true, 'cp_1 must have _showSharedPlantNotice');
@@ -5673,6 +5674,64 @@ test('V9-C1 dashboard renders compliance banner (fail) with sizing failure rows'
   assert(banner, 'compliance banner must render for failing project');
   assert(banner.innerHTML.includes('crah_unit'), 'banner must list CRAH sizing failure');
 });
+
+// ===== V9 Phase 2：電力損耗分項、輔助負載、IT 部分負載情境 =====
+{
+  const ctxP2 = freshCtx();
+  const SP2 = ctxP2.AppStore;
+  const fsP2 = require('fs'), pathP2 = require('path');
+  const projP2 = pathP2.resolve(__dirname, '../../public/Data center Cal/projects/PUE_Project_高雄 (Kaohsiung)_20260901.json');
+  SP2.deserializeProject(fsP2.readFileSync(projP2, 'utf8'));
+  const base = JSON.parse(JSON.stringify(SP2.state.results.overall));
+
+  test('V9-P2a legacy project maps whole loss ratio to "other" item; totals unchanged', () => {
+    const fl = SP2.getFacilityLoads();
+    assert.strictEqual(fl.lossItems.find(x => x.key === 'other').pct, 4.5);
+    assert(fl.lossItems.filter(x => x.key !== 'other').every(x => x.pct === 0));
+    assert(fl.auxLoads.every(x => x.kw === 0));
+    assert.strictEqual(SP2.facilityLossTotals().totalPct, 4.5);
+  });
+
+  test('V9-P2b loss item with heatToAir=false keeps energy, removes heat from air load; thermal ledger closes the same way', () => {
+    SP2.setFacilityLossItem('other', 'pct', 2.5);
+    SP2.setFacilityLossItem('ups', 'pct', 2.0);
+    SP2.setFacilityLossItem('ups', 'heatToAir', false);
+    const o = SP2.state.results.overall;
+    const itK = o.breakdownKwh.it;
+    assert(Math.abs(o.breakdownKwh.loss - itK * 0.045) < 1, 'energy loss must stay 4.5% of IT');
+    assert(Math.abs(o.thermalLedger.loss_heat_kwh - itK * 0.025) < 1, 'only heat-to-air part counts as heat');
+    const s = SP2.calcDuSummary(SP2.state.halls[0].dus[0]);
+    assert(Math.abs(s.lossNoHeatKw - s.totalItKw * 0.02) < 1e-6);
+    SP2.setFacilityLossItem('ups', 'pct', 0);
+    SP2.setFacilityLossItem('ups', 'heatToAir', true);
+    SP2.setFacilityLossItem('other', 'pct', 4.5);
+    assert(Math.abs(SP2.state.results.overall.annualPue - base.annualPue) < 1e-9, 'restoring items must restore PUE');
+  });
+
+  test('V9-P2c fixed auxiliary load adds kW × 8,760 h to facility energy', () => {
+    SP2.setFacilityAuxLoad('lighting', 1000);
+    const o = SP2.state.results.overall;
+    const addMwh = o.annualTotalMwh - base.annualTotalMwh;
+    assert(Math.abs(addMwh - 8760) <= 1, `expected +8,760 MWh, got ${addMwh}`);
+    assert(Math.abs(o.breakdownKwh.lossDetail.auxKwh - 8760000) < 1);
+    assert(o.energyLedger.is_balanced, 'energy ledger must balance with aux load');
+    assert.strictEqual(o.thermalLedger.is_balanced, base.thermalLedger.is_balanced, 'aux heat must not enter thermal ledger');
+    SP2.setFacilityAuxLoad('lighting', 0);
+  });
+
+  test('V9-P2d IT partial-load scenario runs alongside design result without changing it', () => {
+    SP2.setItLoadScenario({ enabled: true, factorPct: 70 });
+    const r = SP2.state.results;
+    assert(Math.abs(r.overall.annualPue - base.annualPue) < 1e-9, 'design-load PUE must be unchanged');
+    assert(r.partialLoad && r.partialLoad.factorPct === 70);
+    assert(Math.abs(r.partialLoad.annualItMwh / r.overall.annualItMwh - 0.7) < 0.001);
+    assert(r.partialLoad.annualPue > 1);
+    const dumped = JSON.parse(SP2.serializeProject());
+    assert.deepStrictEqual(dumped.itLoadScenario, { enabled: true, factorPct: 70 });
+    SP2.setItLoadScenario({ enabled: false });
+    assert.strictEqual(SP2.state.results.partialLoad, null);
+  });
+}
 
 console.log(`\n${passCount} passed, ${failCount} failed, ${skipCount} skipped`);
 process.exit(failCount > 0 ? 1 : 0);
