@@ -5791,6 +5791,33 @@ test('V9-C1 dashboard renders compliance banner (fail) with sizing failure rows'
   });
 }
 
+test('V9-P4 Step 6 report renders; PUE derivation and peak-hour hand calc match engine', () => {
+  const { buildWindow } = require('./dom_harness.js');
+  const fsR = require('fs'), pathR = require('path');
+  const win = buildWindow();
+  const projR = pathR.resolve(__dirname, '../../public/Data center Cal/projects/PUE_Project_高雄 (Kaohsiung)_20260901.json');
+  win.AppStore.deserializeProject(fsR.readFileSync(projR, 'utf8'));
+  win.AppStore.calculate();
+  assert(win.ViewReport, 'ViewReport must be loaded');
+  win.ViewReport.render(win.document.getElementById('stepContent'));
+  const html = win.document.getElementById('reportRoot').innerHTML;
+  const o = win.AppStore.state.results.overall;
+  assert(html.includes('PUE = E_DC'), 'section 7 formula present');
+  assert(html.includes(o.annualPue.toFixed(3)), 'annual PUE printed');
+  assert(html.includes('rpt-stamp fail'), 'failing project must show NOT COMPLIANT stamp');
+  ['rpt-basis', 'rpt-design', 'rpt-load', 'rpt-sizing', 'rpt-hyd', 'rpt-energy', 'rpt-pue', 'rpt-checks', 'rpt-example', 'rpt-open', 'rpt-appA', 'rpt-appB']
+    .forEach(id => assert(win.document.getElementById(id), id + ' missing'));
+  // 尖峰小時：IT + 損耗 + 冷卻 = 引擎全廠功率
+  const lt = win.AppStore.facilityLossTotals();
+  const ph = win.ViewReport.peakHour(win.AppStore.state.results.hourlyProfile);
+  const sum = ph.itKw + ph.itKw * lt.totalPct / 100 + lt.auxKw + ph.cduPumpKw + ph.crahFanKw + ph.heatRejKw + ph.chillerKw;
+  assert(Math.abs(sum - ph.totalKw) < 0.05, `hand calc ${sum} vs engine ${ph.totalKw}`);
+  // 封面欄位隨專案儲存
+  win.ViewReport.updateMeta('docNo', 'TEST-001');
+  const dumped = JSON.parse(win.AppStore.serializeProject());
+  assert.strictEqual(dumped.reportMeta.docNo, 'TEST-001');
+});
+
 console.log(`\n${passCount} passed, ${failCount} failed, ${skipCount} skipped`);
 process.exit(failCount > 0 ? 1 : 0);
 

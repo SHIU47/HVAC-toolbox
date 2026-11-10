@@ -23,6 +23,7 @@
     'kpi.designPue': 'Design PUE',
     'kpi.waterWue': 'Water WUE',
     'kpi.itCapacity': 'IT Capacity',
+    'nav.step6': 'Verifiable Report',
     'kpi.freeCooling': 'Free Cooling FC',
     'kpi.freeCoolingTitle': 'Facility free-cooling ratio: hours when both liquid and air loops are in free cooling ÷ 8,760',
 

@@ -9,6 +9,7 @@ const { spawn } = require('child_process');
 const [projPath, step, outPng] = process.argv.slice(2);
 const argVal = (k) => { const i = process.argv.indexOf(k); return i > 0 ? process.argv[i + 1] : null; };
 const extraJs = argVal('--js') || '';
+const afterJs = argVal('--after') || '';
 const height = Number(argVal('--h') || 3000);
 if (!projPath || !step || !outPng) { console.error('用法：node ui_preview.js <project.json> <step> <out.png>'); process.exit(2); }
 
@@ -29,6 +30,7 @@ const bodyInject = `<script>
         ${extraJs}
         window.App.goToStep(${Number(step)});
         document.querySelectorAll('details').forEach(function (d) { d.open = true; });
+        ${afterJs}
       } catch (e) { document.body.insertAdjacentHTML('afterbegin', '<pre style="color:red">' + e.stack + '</pre>'); }
     });
   };

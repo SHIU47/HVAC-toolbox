@@ -38,7 +38,7 @@ const APP_FILES = [
   'views/schematics/schematic_single_loop.js',
   'views/schematics/schematic_series_trim.js',
   'views/schematics/schematic_air_plant.js',
-  'views/view_cooling.js', 'views/view_dashboard.js', 'app.js'
+  'views/view_cooling.js', 'views/view_dashboard.js', 'views/view_report.js', 'app.js'
 ];
 
 const SKELETON_HTML = `<!doctype html>

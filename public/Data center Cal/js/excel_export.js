@@ -472,6 +472,11 @@
                     L('照明、辦公／支援空調、MAU／除濕、其他輔助用電合計；全年定值，計入配電損耗類別，熱量不計入資料中心冷卻負載。', 'Lighting, office/support HVAC, MAU/dehumidification and other auxiliary loads; constant all year, booked under losses; heat not added to the data hall cooling load.'), FMT.d1)));
                 REF.lossHeat = X('basis', abs(3, kv(L('熱進入氣冷區的損耗率', 'Loss ratio with heat to air side'), lossHeatPct, 'input', '%',
                     L('配電損耗分項中，勾選「熱進入氣冷區」的比例合計。', 'Sum of loss items flagged as heat entering the air-cooled space.'), FMT.d2)));
+                // V9 Phase 4：合格判定（容量不足、熱平衡、選型檢核）
+                const compX = overall.compliance || { status: 'pass', sizingFailures: [], deficitHours: 0 };
+                kv(L('合格判定', 'Compliance'), compX.status === 'fail' ? L('不合格', 'NOT COMPLIANT') : (compX.status === 'warn' ? L('選型檢核未通過', 'Sizing checks failed') : L('合格', 'Compliant')), 'input', '-',
+                    L(`容量不足 ${compX.deficitHours || 0} h；熱平衡${compX.thermalBalanced === false ? '未閉合' : '閉合'}；選型不合格 ${(compX.sizingFailures || []).length} 項。不合格時 PUE 可能被低估。`,
+                      `Capacity deficit ${compX.deficitHours || 0} h; thermal balance ${compX.thermalBalanced === false ? 'open' : 'closed'}; ${(compX.sizingFailures || []).length} sizing item(s) failed. PUE may be underestimated if not compliant.`));
                 kv(L('IT 負載率', 'IT load factor'), 1, 'input', '-', L('全年 8,760 小時以設計滿載定值計算（未套用負載變動曲線）。', 'Constant design full load for all 8,760 hours (no load profile applied).'), FMT.pct1);
                 REF.hours = X('basis', abs(3, kv(L('模擬時數', 'Simulated hours'), F(`COUNT(${hR('A')})`, 8760), 'link', 'h', L('= 逐時資料筆數', '= number of hourly records'), FMT.int)));
                 kv(L('氣象資料', 'Weather data'), site.stationId || site.stationName || stationLabel, 'input', '-',

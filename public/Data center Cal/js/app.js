@@ -6,7 +6,7 @@
 
     const App = {
         currentStep: 1,
-        totalSteps: 5,
+        totalSteps: 6,
 
         async init() {
             if (window.CatalogManager && window.CatalogManager.ready) {
@@ -181,6 +181,8 @@
                 window.ViewCooling.render(container);
             } else if (stepNum === 5 && window.ViewDashboard) {
                 window.ViewDashboard.render(container);
+            } else if (stepNum === 6 && window.ViewReport) {
+                window.ViewReport.render(container);
             } else {
                 const errMsg = window.I18N ? window.I18N.t('app.viewLoadError', { step: stepNum }) : ('⚠️ 視圖模組 (Step ' + stepNum + ') 載入異常，請確認相關 JS 檔案是否已正確引入。');
                 container.innerHTML = '<div class="p-8 bg-red-50 border-2 border-red-400 rounded-2xl text-red-900 font-bold text-center">'

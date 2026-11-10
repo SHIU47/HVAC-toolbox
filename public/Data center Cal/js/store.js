@@ -239,6 +239,7 @@
                 facilityLoads: this.getFacilityLoads(),
                 itLoadScenario: JSON.parse(JSON.stringify(s.itLoadScenario || { enabled: false, factorPct: 70 })),
                 equipmentPrefs: JSON.parse(JSON.stringify(this._loadEquipmentPrefs())),
+                reportMeta: JSON.parse(JSON.stringify(s.reportMeta || {})),
                 site: {
                     selectedCity: s.site.selectedCity,
                     stationId: s.site.stationId || null,
@@ -487,6 +488,8 @@
                 this.state.facilityLoads = this.normalizeFacilityLoads(stateData.facilityLoads, this.state.facilityElectricalLossPct);
                 this.state.facilityElectricalLossPct = Number(this.state.facilityLoads.lossItems.reduce((s, x) => s + x.pct, 0).toFixed(4));
                 this.state.itLoadScenario = this.normalizeItLoadScenario(stateData.itLoadScenario);
+                // V9 Phase 4：計算書封面欄位
+                this.state.reportMeta = (stateData.reportMeta && typeof stateData.reportMeta === 'object') ? JSON.parse(JSON.stringify(stateData.reportMeta)) : {};
                 // V9 Phase 3：專案內的常用設備與本機紀錄合併（專案檔優先）
                 if (stateData.equipmentPrefs) {
                     const local = this._loadEquipmentPrefs();

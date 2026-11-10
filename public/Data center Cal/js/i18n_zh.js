@@ -23,6 +23,7 @@
     'kpi.designPue': '設計 PUE',
     'kpi.waterWue': '耗水 WUE',
     'kpi.itCapacity': 'IT 容量',
+    'nav.step6': '可驗證計算書',
     'kpi.freeCooling': '自然冷卻 FC',
     'kpi.freeCoolingTitle': '全廠自然冷卻時數佔比：液冷與氣冷兩側同時為自然冷卻的小時數 ÷ 8,760',
 
