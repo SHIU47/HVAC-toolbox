@@ -171,6 +171,39 @@
             return baseN + 1;
         },
 
+        // V9 Phase 3：非泵設備自動選型。只在新建立的選型項目或使用者按「自動選型」時執行（autoSelectRequested）。
+        //   排序鍵（依序比較）：運轉台數 > 8 排後 → 超量比 > 2 排後 → 上次選型優先 → 常用設備優先 → 運轉台數最少 → 超量比最小
+        //   （上次選型／常用設備只有在台數與超量比都合理時才會被優先採用）
+        //   運轉台數 N = ceil(需求 ÷ (單機容量 × 降額))；超量比 = N × 單機有效容量 ÷ 需求
+        _maybeAutoSelect(s, derateOf) {
+            if (!s || !s.autoSelectRequested || this.isPumpItem(s)) return;
+            const req = Number(s.requiredKw || 0);
+            const cands = (s.catalog || []).filter(c => Number(c.capKw) > 0);
+            if (!(req > 0) || !cands.length) return;
+            s.autoSelectRequested = false;
+            let best = null, bestKey = null;
+            const lexLess = (a, b) => { for (let i = 0; i < a.length; i++) if (a[i] !== b[i]) return a[i] < b[i]; return false; };
+            const store = root.AppStore;
+            const lastModel = (store && store.getLastModel) ? store.getLastModel(s.key) : null;
+            const isFav = (m) => !!(store && store.isFavoriteModel && store.isFavoriteModel(s.key, m));
+            cands.forEach(c => {
+                let d = 1.0;
+                try { d = Number(derateOf(c)) || 1.0; } catch (_) { d = 1.0; }
+                const eff = c.capKw * d;
+                const n = Math.max(1, Math.ceil(req / eff));
+                const over = n * eff / req;
+                const key = [n > 8 ? 1 : 0, over > 2 ? 1 : 0, c.model === lastModel ? 0 : 1, isFav(c.model) ? 0 : 1, n, over];
+                if (!bestKey || lexLess(key, bestKey)) { best = c; bestKey = key; }
+            });
+            if (!best) return;
+            s.fromLastModel = (best.model === lastModel);
+            s.selectedModel = best.model;
+            s.unitCapKw = best.capKw;
+            s.selectedQty = 0;          // 由評估流程補到需求台數
+            s.userEdited = false;
+            s.autoSelected = true;
+        },
+
         // 未經使用者指定型號時，自型錄中挑選「揚程足夠、運轉台數 ≤ 6、總馬達功率最小」的泵
         _autoSelectPump(s) {
             const fl = (c) => Number(c.designFlowM3h || c.design_flow_m3h || 0);
@@ -279,6 +312,8 @@
                 requiredKw: reqKw,
                 requiredUnitsN1: n1,
                 userEdited: false,
+                // V9 Phase 3：新建立的非泵設備在第一次評估時自動選型；有「沿用上次選型」紀錄時直接套用
+                autoSelectRequested: !this.isPumpItem({ role: eq.role, key: eq.key }),
                 redundancy: ctx?.defaultRedundancy || 'N+1',
                 runMode: 'standby'
             };
@@ -293,6 +328,7 @@
             if (typeof eq.extraProps === 'function') {
                 Object.assign(item, eq.extraProps(ctx, cat, reqKw));
             }
+
 
             return item;
         },
@@ -360,11 +396,8 @@
                     s.requiredKw = Math.round(reqCduKw + trimDesignPowerKw);
                 }
 
-                const curItem = (s.catalog && Array.isArray(s.catalog))
-                    ? (s.catalog.find(c => c.model === s.selectedModel) || s.catalog[0] || { capKw: s.unitCapKw || 100 })
-                    : { capKw: s.unitCapKw || 100 };
-                s.unitCapKw = curItem.capKw;
-
+                // V9 Phase 3：降額計算包成函式，供自動選型逐一比較型號
+                const derateOf = (curItem) => {
                 let derateFactor = 1.0;
                 if (s.key === 'cdu_unit' && typeof root.CDUEngine !== 'undefined') {
                     const d = root.CDUEngine.deratedCapacityKW(curItem.capKw, cduSys.fwsSupplyC);
@@ -401,7 +434,14 @@
                     const d = root.CoolingTowerEngine.deratedCapacityKW(spec, designCond.designWb);
                     derateFactor = d.derate_factor;
                 }
-                s.derateFactor = Math.round(derateFactor * 1000) / 1000;
+                return derateFactor;
+                };
+                SizingEngine._maybeAutoSelect(s, derateOf);
+                const curItem = (s.catalog && Array.isArray(s.catalog))
+                    ? (s.catalog.find(c => c.model === s.selectedModel) || s.catalog[0] || { capKw: s.unitCapKw || 100 })
+                    : { capKw: s.unitCapKw || 100 };
+                s.unitCapKw = curItem.capKw;
+                s.derateFactor = Math.round(derateOf(curItem) * 1000) / 1000;
                 const red = s.redundancy || 'N+1';
                 s.redundancy = red;
                 if (!s.runMode) s.runMode = 'standby';
@@ -437,11 +477,8 @@
                 s.requiredKw = reqAirKw;
                 if (s.key === 'cooling_tower') s.requiredKw = reqAirKw * getTowerRejectionFactor(fwSys);
 
-                const curItem = (s.catalog && Array.isArray(s.catalog))
-                    ? (s.catalog.find(c => c.model === s.selectedModel) || s.catalog[0] || { capKw: s.unitCapKw || 100 })
-                    : { capKw: s.unitCapKw || 100 };
-                s.unitCapKw = curItem.capKw;
-
+                // V9 Phase 3：降額計算包成函式，供自動選型逐一比較型號
+                const derateOf = (curItem) => {
                 let derateFactor = 1.0;
                 if (s.key === 'air_cooled_chiller' && typeof root.ChillerEngine !== 'undefined') {
                     const spec = {
@@ -471,7 +508,14 @@
                     const d = root.CoolingTowerEngine.deratedCapacityKW(spec, designCond.designWb);
                     derateFactor = d.derate_factor;
                 }
-                s.derateFactor = Math.round(derateFactor * 1000) / 1000;
+                return derateFactor;
+                };
+                SizingEngine._maybeAutoSelect(s, derateOf);
+                const curItem = (s.catalog && Array.isArray(s.catalog))
+                    ? (s.catalog.find(c => c.model === s.selectedModel) || s.catalog[0] || { capKw: s.unitCapKw || 100 })
+                    : { capKw: s.unitCapKw || 100 };
+                s.unitCapKw = curItem.capKw;
+                s.derateFactor = Math.round(derateOf(curItem) * 1000) / 1000;
                 const red = s.redundancy || 'N+1';
                 s.redundancy = red;
                 if (!s.runMode) s.runMode = 'standby';

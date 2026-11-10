@@ -502,7 +502,7 @@ ${inputsHtml}
                 let modelOptions = '';
                 item.catalog.forEach(cat => {
                     const vendorPrefix = cat.vendor ? '[' + cat.vendor + '] ' : '';
-                    modelOptions += '<option value="' + cat.model + '" ' + (cat.model === item.selectedModel ? 'selected' : '') + '>' + vendorPrefix + cat.model + ' (' + cat.capKw + ' kW)</option>';
+                    modelOptions += '<option value="' + cat.model + '" ' + (cat.model === item.selectedModel ? 'selected' : '') + '>' + ViewCooling.favMark(item.key, cat.model) + vendorPrefix + cat.model + ' (' + cat.capKw + ' kW)</option>';
                 });
 
                 const effCap = item.effectiveCapKw !== undefined ? item.effectiveCapKw : (item.selectedQty * item.unitCapKw);
@@ -561,9 +561,10 @@ ${inputsHtml}
                             </div>
                             <div>
                                 <label class="block text-[9px] text-slate-400 font-bold mb-0.5">${_t('cooling.selectedQty', null, '選定台數 (含備用)')}</label>
-                                <input type="number" min="1" max="50" id="qty_cdu_${targetId}_${item.key}" value="${item.selectedQty}" onchange="ViewCooling.changeQty('${targetId}', 'cdu', '${item.key}', this.value)" class="w-full text-xs font-black border rounded-lg p-1.5 bg-white text-purple-950 text-center">
+                                <input type="number" min="1" max="999" id="qty_cdu_${targetId}_${item.key}" value="${item.selectedQty}" onchange="ViewCooling.changeQty('${targetId}', 'cdu', '${item.key}', this.value)" class="w-full text-xs font-black border rounded-lg p-1.5 bg-white text-purple-950 text-center">
                             </div>
                         </div>
+                        ${ViewCooling.equipToolsHtml(targetId, 'cdu', item)}
                         <div class="text-[10px] flex justify-between text-slate-400 pt-0.5 border-t border-slate-200">
                             <span>${_t('cooling.totalCap', null, '總容量:')} ${(item.selectedQty * item.unitCapKw).toFixed(1)} kW</span>
                             <span>${effCapLabel} <strong class="${item.passed ? 'text-emerald-700 font-bold' : 'text-red-600 font-bold'}">${effCap.toFixed(1)} kW</strong></span>
@@ -595,7 +596,7 @@ ${inputsHtml}
                 let modelOptions = '';
                 item.catalog.forEach(cat => {
                     const vendorPrefix = cat.vendor ? '[' + cat.vendor + '] ' : '';
-                    modelOptions += '<option value="' + cat.model + '" ' + (cat.model === item.selectedModel ? 'selected' : '') + '>' + vendorPrefix + cat.model + ' (' + cat.capKw + ' kW)</option>';
+                    modelOptions += '<option value="' + cat.model + '" ' + (cat.model === item.selectedModel ? 'selected' : '') + '>' + ViewCooling.favMark(item.key, cat.model) + vendorPrefix + cat.model + ' (' + cat.capKw + ' kW)</option>';
                 });
 
                 const effCap = item.effectiveCapKw !== undefined ? item.effectiveCapKw : (item.selectedQty * item.unitCapKw);
@@ -655,9 +656,10 @@ ${inputsHtml}
 
                             <div>
                                 <label class="block text-[9px] text-slate-400 font-bold mb-0.5">${_t('cooling.selectedQty', null, '選定台數 (含備用)')}</label>
-                                <input type="number" min="1" max="50" id="qty_fw_${targetId}_${item.key}" value="${item.selectedQty}" onchange="ViewCooling.changeQty('${targetId}', 'fanwall', '${item.key}', this.value)" class="w-full text-xs font-black border rounded-lg p-1.5 bg-white text-indigo-950 text-center">
+                                <input type="number" min="1" max="999" id="qty_fw_${targetId}_${item.key}" value="${item.selectedQty}" onchange="ViewCooling.changeQty('${targetId}', 'fanwall', '${item.key}', this.value)" class="w-full text-xs font-black border rounded-lg p-1.5 bg-white text-indigo-950 text-center">
                             </div>
                         </div>
+                        ${ViewCooling.equipToolsHtml(targetId, 'fanwall', item)}
                         <div class="text-[10px] flex justify-between text-slate-400 pt-0.5 border-t border-slate-200">
                             <span>${_t('cooling.totalCap', null, '總容量:')} ${(item.selectedQty * item.unitCapKw).toFixed(1)} kW</span>
                             <span>${effCapLabel} <strong class="${item.passed ? 'text-emerald-700 font-bold' : 'text-red-600 font-bold'}">${effCap.toFixed(1)} kW</strong></span>
@@ -771,7 +773,7 @@ ${inputsHtml}
                             </div>
 
                             <!-- 全寬拓樸圖 SVG (獲得完整呼吸空間與極致視覺) -->
-                            ${cduTopoDiagram}
+                            ${ViewCooling.collapsible('schem_cdu_' + targetId, _t('cooling.showSchematic', null, '系統示意圖'), cduTopoDiagram)}
                             `}
 
                             <!-- 下方 2 欄子面板: 水溫設定 (左) + 設備選型清單 (右) -->
@@ -927,7 +929,7 @@ ${inputsHtml}
                             </div>
 
                             <!-- 全寬氣冷拓樸圖 SVG (系統 2 專屬拓樸圖) -->
-                            ${fwTopoDiagram}
+                            ${ViewCooling.collapsible('schem_fw_' + targetId, _t('cooling.showSchematic', null, '系統示意圖'), fwTopoDiagram)}
                             `}
 
                             <!-- 下方 2 欄子面板: 水溫設定 (左) + 設備選型清單 (右) -->
@@ -1210,7 +1212,7 @@ ${inputsHtml}
                 let modelOptions = '';
                 (item.catalog || []).forEach(cat => {
                     const vendorPrefix = cat.vendor ? '[' + cat.vendor + '] ' : '';
-                    modelOptions += '<option value="' + cat.model + '" ' + (cat.model === item.selectedModel ? 'selected' : '') + '>' + vendorPrefix + cat.model + ' (' + cat.capKw + ' kW)</option>';
+                    modelOptions += '<option value="' + cat.model + '" ' + (cat.model === item.selectedModel ? 'selected' : '') + '>' + ViewCooling.favMark(item.key, cat.model) + vendorPrefix + cat.model + ' (' + cat.capKw + ' kW)</option>';
                 });
 
                 const effCap = item.effectiveCapKw !== undefined ? item.effectiveCapKw : (item.selectedQty * item.unitCapKw);
@@ -1268,9 +1270,10 @@ ${inputsHtml}
                             </div>
                             <div>
                                 <label class="block text-[9px] text-slate-400 font-bold mb-0.5">${_t('cooling.selectedQty', null, '選定台數')}</label>
-                                <input type="number" id="qty_plant_${plant.id}_${plant.loop}_${item.key}" min="1" max="50" value="${item.selectedQty}" onchange="ViewCooling.changeQty('${plant.id}', '${plant.loop}', '${item.key}', this.value)" onkeydown="if(event.key==='Enter')this.blur()" class="w-full text-xs font-black border rounded-lg p-1.5 bg-white text-slate-900 text-center">
+                                <input type="number" id="qty_plant_${plant.id}_${plant.loop}_${item.key}" min="1" max="999" value="${item.selectedQty}" onchange="ViewCooling.changeQty('${plant.id}', '${plant.loop}', '${item.key}', this.value)" onkeydown="if(event.key==='Enter')this.blur()" class="w-full text-xs font-black border rounded-lg p-1.5 bg-white text-slate-900 text-center">
                             </div>
                         </div>
+                        ${ViewCooling.equipToolsHtml(plant.id, plant.loop, item)}
                         <div class="text-[10px] flex justify-between text-slate-400 pt-0.5 border-t border-slate-200">
                             <span>${_t('cooling.totalCap', null, '總容量:')} ${(item.selectedQty * item.unitCapKw).toFixed(1)} kW</span>
                             <span>${_t('cooling.effectiveCapRedundancy', { label: standbyLbl }, `有效容量 (${standbyLbl}):`)} <strong class="${item.passed ? 'text-emerald-700 font-bold' : 'text-red-600 font-bold'}">${effCap.toFixed(1)} kW</strong></span>
@@ -1394,8 +1397,11 @@ ${inputsHtml}
                         </select>
                     </div>
 
-                    <!-- 全寬拓樸圖 SVG -->
-                    ${topoDiagram}
+                    <!-- 設備摘要（V9 Phase 3） -->
+                    ${ViewCooling.sizingSummaryHtml(sizingList)}
+
+                    <!-- 全寬拓樸圖 SVG（預設收合） -->
+                    ${ViewCooling.collapsible('schem_plant_' + plant.id, _t('cooling.showSchematic', null, '系統示意圖'), topoDiagram)}
 
                     <!-- 下方 2 欄子面板: 水溫設定 (左) + 主機房設備選型清單 (右) -->
                     <div class="grid grid-cols-1 lg:grid-cols-2 gap-5 pt-1">
@@ -1638,6 +1644,54 @@ ${inputsHtml}
                 }
                 window.AppStore.notify();
             }
+            this.render(document.getElementById('stepContent'));
+        },
+
+        // ===== V9 Phase 3：UX 輔助 =====
+        _openSections: {},
+
+        collapsible(id, label, content) {
+            if (!content) return '';
+            const open = !!this._openSections[id];
+            return `<details class="rounded-xl border border-slate-200 bg-white" ${open ? 'open' : ''} ontoggle="ViewCooling._openSections['${id}'] = this.open">
+                <summary class="cursor-pointer select-none px-3 py-2 text-xs font-bold text-slate-600">${label}</summary>
+                <div class="p-2">${content}</div>
+            </details>`;
+        },
+
+        favMark(equipKey, model) {
+            return (window.AppStore && window.AppStore.isFavoriteModel && window.AppStore.isFavoriteModel(equipKey, model)) ? '★ ' : '';
+        },
+
+        equipToolsHtml(targetId, sysType, item) {
+            if (!item || (window.SizingEngine && window.SizingEngine.isPumpItem && window.SizingEngine.isPumpItem(item))) return '';
+            const fav = window.AppStore?.isFavoriteModel ? window.AppStore.isFavoriteModel(item.key, item.selectedModel) : false;
+            const runQty = (window.SizingEngine && item.redundancy) ? window.SizingEngine.runningQty(item.selectedQty, item.redundancy) : item.selectedQty;
+            const tooMany = (item.selectedQty || 0) > 20;
+            const btn = 'px-2 py-0.5 rounded-md border text-[10px] font-bold transition';
+            return `<div class="flex items-center gap-1.5 flex-wrap">
+                <button onclick="ViewCooling.autoSelect('${targetId}', '${sysType}', '${item.key}')" class="${btn} bg-white hover:bg-slate-100 text-slate-700 border-slate-300" title="${_t('cooling.autoSelectTitle', null, '從型錄挑選降額後台數最少、容量不過大的型號')}">${_t('cooling.autoSelect', null, '自動選型')}</button>
+                <button onclick="ViewCooling.toggleFavorite('${item.key}', '${String(item.selectedModel || '').replace(/'/g, "\\'")}')" class="${btn} ${fav ? 'bg-amber-50 text-amber-700 border-amber-300' : 'bg-white hover:bg-slate-100 text-slate-500 border-slate-300'}">${fav ? _t('cooling.favOn', null, '★ 常用') : _t('cooling.favOff', null, '☆ 設為常用')}</button>
+                ${item.autoSelected ? `<span class="text-[10px] text-slate-500">${_t('cooling.autoSelectedNote', null, '已自動選型')}</span>` : ''}
+                ${item.fromLastModel ? `<span class="text-[10px] text-slate-500">${_t('cooling.lastModelNote', null, '沿用上次選型')}</span>` : ''}
+                ${tooMany ? `<span class="text-[10px] font-bold text-amber-700">${_t('cooling.tooManyUnits', { n: item.selectedQty, run: runQty }, `台數偏多（${item.selectedQty} 台），建議按「自動選型」或改選較大型號`)}</span>` : ''}
+            </div>`;
+        },
+
+        sizingSummaryHtml(sizingList) {
+            if (!Array.isArray(sizingList) || !sizingList.length) return '';
+            const chips = sizingList.map(s => `<span class="inline-flex items-center gap-1 px-2 py-1 rounded-lg border text-[11px] ${s.passed ? 'border-emerald-200 bg-emerald-50 text-emerald-900' : 'border-red-300 bg-red-50 text-red-800'}">
+                <strong>${s.passed ? '✓' : '✗'}</strong> ${String(s.label || s.key).split(' ')[0]}：${s.selectedModel || '—'} × ${s.selectedQty}</span>`).join('');
+            return `<div class="flex flex-wrap gap-1.5">${chips}</div>`;
+        },
+
+        autoSelect(targetId, sysType, equipKey) {
+            window.AppStore.requestAutoSelect(targetId, sysType, equipKey);
+            this.render(document.getElementById('stepContent'));
+        },
+
+        toggleFavorite(equipKey, model) {
+            window.AppStore.toggleFavoriteModel(equipKey, model);
             this.render(document.getElementById('stepContent'));
         },
 

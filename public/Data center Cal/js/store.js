@@ -238,6 +238,7 @@
                 facilityElectricalLossPct: s.facilityElectricalLossPct ?? A('electrical_loss_default_pct'),
                 facilityLoads: this.getFacilityLoads(),
                 itLoadScenario: JSON.parse(JSON.stringify(s.itLoadScenario || { enabled: false, factorPct: 70 })),
+                equipmentPrefs: JSON.parse(JSON.stringify(this._loadEquipmentPrefs())),
                 site: {
                     selectedCity: s.site.selectedCity,
                     stationId: s.site.stationId || null,
@@ -486,6 +487,14 @@
                 this.state.facilityLoads = this.normalizeFacilityLoads(stateData.facilityLoads, this.state.facilityElectricalLossPct);
                 this.state.facilityElectricalLossPct = Number(this.state.facilityLoads.lossItems.reduce((s, x) => s + x.pct, 0).toFixed(4));
                 this.state.itLoadScenario = this.normalizeItLoadScenario(stateData.itLoadScenario);
+                // V9 Phase 3：專案內的常用設備與本機紀錄合併（專案檔優先）
+                if (stateData.equipmentPrefs) {
+                    const local = this._loadEquipmentPrefs();
+                    const fromFile = this._normalizeEquipmentPrefs(stateData.equipmentPrefs);
+                    Object.entries(fromFile.favorites).forEach(([k, v]) => { local.favorites[k] = Array.from(new Set([...(local.favorites[k] || []), ...v])); });
+                    Object.assign(local.lastModel, fromFile.lastModel);
+                    this._saveEquipmentPrefs();
+                }
                 if (stateData.site) {
                     if (stateData.site.selectedCity) {
                         this.state.site.selectedCity = stateData.site.selectedCity;
@@ -2301,7 +2310,74 @@
             return [];
         },
 
+        // ===== V9 Phase 3：自動選型、常用設備、沿用上次選型 =====
+        _findSizingItem(targetId, sysType, equipKey) {
+            let targetObj = null;
+            (this.state.halls || []).forEach(h => { const d = (h.dus || []).find(du => du.id === targetId); if (d) targetObj = d; });
+            if (!targetObj) targetObj = (this.state.corePods || []).find(p => p.id === targetId);
+            if (targetObj) {
+                const sys = (sysType === 'cdu' || sysType === 'liquid') ? targetObj.plantDesign.cduSystem : targetObj.plantDesign.fanwallSystem;
+                return (sys?.sizing || []).find(s => s.key === equipKey) || null;
+            }
+            const plant = (this.state.coolingPlants || []).find(p => p.id === targetId);
+            return plant ? ((plant.system?.sizing || []).find(s => s.key === equipKey) || null) : null;
+        },
+
+        requestAutoSelect(targetId, sysType, equipKey) {
+            const item = this._findSizingItem(targetId, sysType, equipKey);
+            if (!item) return;
+            item.autoSelectRequested = true;
+            item.userEdited = false;
+            this.notify();
+            if (item.selectedModel) this.recordLastModel(equipKey, item.selectedModel);
+        },
+
+        _loadEquipmentPrefs() {
+            if (!this.state.equipmentPrefs) {
+                let p = null;
+                try { if (typeof localStorage !== 'undefined') p = JSON.parse(localStorage.getItem('pue_equipment_prefs') || 'null'); } catch (_) { p = null; }
+                this.state.equipmentPrefs = this._normalizeEquipmentPrefs(p);
+            }
+            return this.state.equipmentPrefs;
+        },
+
+        _normalizeEquipmentPrefs(p) {
+            const out = { favorites: {}, lastModel: {} };
+            if (p && typeof p === 'object') {
+                Object.entries(p.favorites || {}).forEach(([k, v]) => { if (Array.isArray(v)) out.favorites[k] = v.filter(x => typeof x === 'string'); });
+                Object.entries(p.lastModel || {}).forEach(([k, v]) => { if (typeof v === 'string') out.lastModel[k] = v; });
+            }
+            return out;
+        },
+
+        _saveEquipmentPrefs() {
+            try { if (typeof localStorage !== 'undefined') localStorage.setItem('pue_equipment_prefs', JSON.stringify(this.state.equipmentPrefs)); } catch (_) {}
+        },
+
+        getLastModel(equipKey) {
+            return this._loadEquipmentPrefs().lastModel[equipKey] || null;
+        },
+
+        recordLastModel(equipKey, model) {
+            if (!equipKey || !model) return;
+            this._loadEquipmentPrefs().lastModel[equipKey] = model;
+            this._saveEquipmentPrefs();
+        },
+
+        isFavoriteModel(equipKey, model) {
+            return (this._loadEquipmentPrefs().favorites[equipKey] || []).includes(model);
+        },
+
+        toggleFavoriteModel(equipKey, model) {
+            const prefs = this._loadEquipmentPrefs();
+            const list = prefs.favorites[equipKey] || (prefs.favorites[equipKey] = []);
+            const i = list.indexOf(model);
+            if (i >= 0) list.splice(i, 1); else list.push(model);
+            this._saveEquipmentPrefs();
+        },
+
         updateSelectedEquipment(targetId, sysType, equipKey, model, qty, redundancy, runMode) {
+            if (model !== undefined) this.recordLastModel(equipKey, model);
             let targetObj = null;
             this.state.halls.forEach(h => {
                 const d = h.dus.find(du => du.id === targetId);
@@ -3096,7 +3172,7 @@
                     oldSizing.forEach(oldItem => {
                         const newItem = cduSys.sizing.find(s => s.key === oldItem.key);
                         if (newItem) {
-                            if (oldItem.selectedModel) newItem.selectedModel = oldItem.selectedModel;
+                            if (oldItem.selectedModel) { newItem.selectedModel = oldItem.selectedModel; newItem.autoSelectRequested = !!oldItem.autoSelectRequested; }
                             // R8: 型號與台數必須一起還原，否則新台數是依「預設型號」容量算出，換上大型號後台數暴增
                             if (Number.isFinite(oldItem.selectedQty) && oldItem.selectedQty > 0) newItem.selectedQty = oldItem.selectedQty;
                             if (oldItem.redundancy) newItem.redundancy = oldItem.redundancy;
@@ -3113,7 +3189,7 @@
                     oldSizing.forEach(oldItem => {
                         const newItem = cduSys.sizing.find(s => s.key === oldItem.key);
                         if (newItem) {
-                            if (oldItem.selectedModel) newItem.selectedModel = oldItem.selectedModel;
+                            if (oldItem.selectedModel) { newItem.selectedModel = oldItem.selectedModel; newItem.autoSelectRequested = !!oldItem.autoSelectRequested; }
                             // R8: 型號與台數必須一起還原，否則新台數是依「預設型號」容量算出，換上大型號後台數暴增
                             if (Number.isFinite(oldItem.selectedQty) && oldItem.selectedQty > 0) newItem.selectedQty = oldItem.selectedQty;
                             if (oldItem.redundancy) newItem.redundancy = oldItem.redundancy;
@@ -3157,7 +3233,7 @@
                     oldSizing.forEach(oldItem => {
                         const newItem = fwSys.sizing.find(s => s.key === oldItem.key);
                         if (newItem) {
-                            if (oldItem.selectedModel) newItem.selectedModel = oldItem.selectedModel;
+                            if (oldItem.selectedModel) { newItem.selectedModel = oldItem.selectedModel; newItem.autoSelectRequested = !!oldItem.autoSelectRequested; }
                             // R8: 型號與台數必須一起還原，否則新台數是依「預設型號」容量算出，換上大型號後台數暴增
                             if (Number.isFinite(oldItem.selectedQty) && oldItem.selectedQty > 0) newItem.selectedQty = oldItem.selectedQty;
                             if (oldItem.redundancy) newItem.redundancy = oldItem.redundancy;
@@ -3174,7 +3250,7 @@
                     oldSizing.forEach(oldItem => {
                         const newItem = fwSys.sizing.find(s => s.key === oldItem.key);
                         if (newItem) {
-                            if (oldItem.selectedModel) newItem.selectedModel = oldItem.selectedModel;
+                            if (oldItem.selectedModel) { newItem.selectedModel = oldItem.selectedModel; newItem.autoSelectRequested = !!oldItem.autoSelectRequested; }
                             // R8: 型號與台數必須一起還原，否則新台數是依「預設型號」容量算出，換上大型號後台數暴增
                             if (Number.isFinite(oldItem.selectedQty) && oldItem.selectedQty > 0) newItem.selectedQty = oldItem.selectedQty;
                             if (oldItem.redundancy) newItem.redundancy = oldItem.redundancy;
@@ -3299,7 +3375,7 @@
                 if (oldItem.role === 'terminal') return;
                 const newItem = newSizing.find(s => s.key === oldItem.key);
                 if (!newItem) return;
-                if (oldItem.selectedModel) newItem.selectedModel = oldItem.selectedModel;
+                if (oldItem.selectedModel) { newItem.selectedModel = oldItem.selectedModel; newItem.autoSelectRequested = !!oldItem.autoSelectRequested; }
                 if (Number.isFinite(oldItem.selectedQty) && oldItem.selectedQty > 0) newItem.selectedQty = oldItem.selectedQty;
                 if (oldItem.runMode) newItem.runMode = oldItem.runMode;
                 newItem.userEdited = resetEdited ? false : !!oldItem.userEdited;

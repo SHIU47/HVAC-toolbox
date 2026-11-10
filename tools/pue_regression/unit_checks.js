@@ -238,9 +238,10 @@ function sizeCduToDeratedN1(S) {
   test('P1-1 CDU sizing uses 100% nominal capacity at 40C FWS by default (no derate note)', () => {
     assert(cduSizing, 'cdu_unit sizing must exist');
     assert.strictEqual(cduSizing.derateFactor, 1.0);
-    assert.strictEqual(cduSizing.unitCapKw, 100);
+    // V9 Phase 3：預設 CDU 改為自動選型（不再固定 100 kW 機型），改以所選型號容量檢核
+    assert(cduSizing.unitCapKw > 0);
     const running = cduSizing.selectedQty - 1;
-    assert.strictEqual(cduSizing.effectiveCapKw, running * 100);
+    assert.strictEqual(cduSizing.effectiveCapKw, Math.round(running * cduSizing.unitCapKw));
     assert(cduSizing.effectiveCapKw >= cduSizing.requiredKw, 'N+1 effective capacity must cover requirement');
     assert(!cduSizing.requiredText.includes('已依設計工況降額'), 'requiredText must not note derating');
   });
@@ -253,9 +254,10 @@ function sizeCduToDeratedN1(S) {
     S3.calculate();
     const s3 = du3.plantDesign.cduSystem.sizing.find(s => s.key === 'cdu_unit');
     assert.strictEqual(s3.derateFactor, 0.8);
-    // 12 台選用 (N+1 含降額自動選型)，N+1 可用台數 11，標稱 100 kW -> 11 * 100 * 0.8 = 880 kW
-    assert.strictEqual(s3.selectedQty, 12);
-    assert.strictEqual(s3.effectiveCapKw, 880);
+    // V9 Phase 3：型號改為自動選型；台數＝含降額的 N+1 需求台數，有效容量＝(台數−1) × 單機 × 0.8
+    assert.strictEqual(s3.selectedQty, s3.requiredUnits);
+    assert.strictEqual(s3.effectiveCapKw, Math.round((s3.selectedQty - 1) * s3.unitCapKw * 0.8));
+    assert(s3.effectiveCapKw >= s3.requiredKw);
     assert(s3.requiredText.includes('（已依設計工況降額 ×0.80）'), 'requiredText should note derating');
   });
 
@@ -3465,7 +3467,8 @@ function sizeCduToDeratedN1(S) {
   const ctx = freshCtx();
   const { AppStore: S } = ctx;
 
-  test('R7 Benchmark: Default project Kaohsiung 4.5% loss PUE is 1.179 ± 0.005 (R8: CDU 100% nominal)', () => {
+  // V9 Phase 3：預設專案的 CDU 自動選型（100 kW × 11 → 大型機 × 2），CDU 本體耗電下降，基準改為 1.164 / 1.107
+  test('R7 Benchmark: Default project Kaohsiung 4.5% loss PUE is 1.164 ± 0.005 (V9 P3: auto-selected CDU)', () => {
     S.state.site.selectedCity = '高雄 (Kaohsiung)';
     const data = ctx.BUILTIN_WEATHER_DATA['高雄 (Kaohsiung)'];
     S.state.site.hourly = data.hourlyData;
@@ -3475,14 +3478,14 @@ function sizeCduToDeratedN1(S) {
     S.state.facilityElectricalLossPct = 4.5;
     S.calculate();
     const pue = S.state.results.overall.annualPue;
-    assert(Math.abs(pue - 1.179) < 0.005, `Default Kaohsiung 4.5% loss PUE must be ~1.179, got ${pue}`);
+    assert(Math.abs(pue - 1.164) < 0.005, `Default Kaohsiung 4.5% loss PUE must be ~1.164, got ${pue}`);
   });
 
-  test('R7 Benchmark: Default project Kaohsiung 0.0% loss PUE is 1.121 ± 0.005 (R8: CDU 100% nominal)', () => {
+  test('R7 Benchmark: Default project Kaohsiung 0.0% loss PUE is 1.107 ± 0.005 (V9 P3: auto-selected CDU)', () => {
     S.state.facilityElectricalLossPct = 0.0;
     S.calculate();
     const pue = S.state.results.overall.annualPue;
-    assert(Math.abs(pue - 1.121) < 0.005, `Default Kaohsiung 0% loss PUE must be ~1.121, got ${pue}`);
+    assert(Math.abs(pue - 1.107) < 0.005, `Default Kaohsiung 0% loss PUE must be ~1.107, got ${pue}`);
   });
 
   const projPath = path.resolve(__dirname, '../../public/Data center Cal/projects/PUE_Project_高雄 (Kaohsiung)_20260901.json');
@@ -3514,16 +3517,17 @@ function sizeCduToDeratedN1(S) {
     assert.strictEqual(cduItem.userEdited, false, 'default item userEdited should be false');
   });
 
-  test('R7-0a: 使用者手動把 cdu_unit 改成 2 台 (userEdited=true) 後，重新 calculate() 不會被改回', () => {
+  // V9 Phase 3：預設 CDU 自動選型為大型機（2 台即足夠），改用 1 台（N+1 下運轉 0 台）驗證不會被改回
+  test('R7-0a: 使用者手動把 cdu_unit 改成 1 台 (userEdited=true) 後，重新 calculate() 不會被改回', () => {
     const du = S.state.halls[0].dus[0];
-    S.updateSelectedEquipment(du.id, 'cdu', 'cdu_unit', undefined, 2);
+    S.updateSelectedEquipment(du.id, 'cdu', 'cdu_unit', undefined, 1);
     const cduItem = du.plantDesign.cduSystem.sizing.find(s => s.key === 'cdu_unit');
     assert.strictEqual(cduItem.userEdited, true, 'userEdited should be true after updateSelectedEquipment');
-    assert.strictEqual(cduItem.selectedQty, 2, 'selectedQty should be 2');
+    assert.strictEqual(cduItem.selectedQty, 1, 'selectedQty should be 1');
     S.calculate();
     const cduItemAfter = du.plantDesign.cduSystem.sizing.find(s => s.key === 'cdu_unit');
-    assert.strictEqual(cduItemAfter.selectedQty, 2, 'selectedQty must remain 2 after calculate() when userEdited=true');
-    assert.strictEqual(cduItemAfter.passed, false, 'cduItem with 2 units should fail passed check');
+    assert.strictEqual(cduItemAfter.selectedQty, 1, 'selectedQty must remain 1 after calculate() when userEdited=true');
+    assert.strictEqual(cduItemAfter.passed, false, 'cduItem with 1 unit should fail passed check');
   });
 
   test('R7-0a: 載入舊專案（無 userEdited）時台數不被改動', () => {
@@ -5730,6 +5734,60 @@ test('V9-C1 dashboard renders compliance banner (fail) with sizing failure rows'
     assert.deepStrictEqual(dumped.itLoadScenario, { enabled: true, factorPct: 70 });
     SP2.setItLoadScenario({ enabled: false });
     assert.strictEqual(SP2.state.results.partialLoad, null);
+  });
+}
+
+// ===== V9 Phase 3：自動選型、常用設備、沿用上次選型 =====
+{
+  const ctxP3 = freshCtx();
+  const SP3 = ctxP3.AppStore;
+  SP3.calculate();
+  const duP3 = SP3.state.halls[0].dus[0];
+  const SE = ctxP3.SizingEngine;
+
+  test('V9-P3a new sizing items auto-select a model: running units <= 8 and no smaller unit count available', () => {
+    duP3.plantDesign.cduSystem.sizing.filter(s => !SE.isPumpItem(s) && s.requiredKw > 0 && s.autoSelected).forEach(s => {
+      const run = s.selectedQty - SE.standbyUnits(s.selectedQty, s.redundancy);
+      assert(run <= 8, `${s.key} running ${run} > 8`);
+      assert.strictEqual(s.autoSelectRequested, false);
+    });
+    const cdu = duP3.plantDesign.cduSystem.sizing.find(s => s.key === 'cdu_unit');
+    assert(cdu.autoSelected, 'cdu_unit should be auto-selected for a new project');
+    const fewest = Math.min(...cdu.catalog.filter(c => c.capKw > 0).map(c => Math.ceil(cdu.requiredKw / c.capKw)));
+    assert.strictEqual(cdu.selectedQty - 1, Math.max(1, fewest), 'running units must equal the fewest possible');
+  });
+
+  test('V9-P3b existing project items (no autoSelectRequested flag) keep their saved model', () => {
+    const fsP3 = require('fs'), pathP3 = require('path');
+    const projP3 = pathP3.resolve(__dirname, '../../public/Data center Cal/projects/PUE_Project_高雄 (Kaohsiung)_20260901.json');
+    const raw = JSON.parse(fsP3.readFileSync(projP3, 'utf8'));
+    const S4 = freshCtx().AppStore;
+    S4.deserializeProject(JSON.stringify(raw));
+    const before = raw.state ? null : null;
+    const tower = S4.state.halls[0].dus[0].plantDesign.cduSystem.sizing.find(s => s.key === 'adiabatic_tower');
+    assert.strictEqual(tower.selectedModel, 'BAC Series 3000 1000kW (標準)');
+    assert(!tower.autoSelected);
+  });
+
+  test('V9-P3c requestAutoSelect re-selects a too-small manual model and records it as last model', () => {
+    const cdu = duP3.plantDesign.cduSystem.sizing.find(s => s.key === 'cdu_unit');
+    const small = cdu.catalog.filter(c => c.capKw > 0).sort((a, b) => a.capKw - b.capKw)[0];
+    SP3.updateSelectedEquipment(duP3.id, 'cdu', 'cdu_unit', small.model, 30);
+    assert.strictEqual(SP3.getLastModel('cdu_unit'), small.model);
+    SP3.requestAutoSelect(duP3.id, 'cdu', 'cdu_unit');
+    const after = duP3.plantDesign.cduSystem.sizing.find(s => s.key === 'cdu_unit');
+    assert.notStrictEqual(after.selectedModel, small.model);
+    assert(after.passed);
+    assert.strictEqual(SP3.getLastModel('cdu_unit'), after.selectedModel);
+  });
+
+  test('V9-P3d favourites toggle and persist in project file', () => {
+    SP3.toggleFavoriteModel('cdu_unit', 'X-MODEL');
+    assert(SP3.isFavoriteModel('cdu_unit', 'X-MODEL'));
+    const dumped = JSON.parse(SP3.serializeProject());
+    assert(dumped.equipmentPrefs.favorites.cdu_unit.includes('X-MODEL'));
+    SP3.toggleFavoriteModel('cdu_unit', 'X-MODEL');
+    assert(!SP3.isFavoriteModel('cdu_unit', 'X-MODEL'));
   });
 }
 
