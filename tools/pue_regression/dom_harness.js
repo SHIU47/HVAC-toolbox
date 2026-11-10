@@ -30,6 +30,7 @@ const APP_FILES = [
   'cooling/archs/air_district_chw.js',
   'cooling/archs/air_rdhx.js',
   'sizing/sizing_engine.js',
+  'equipment_schedule.js',
   'simulation/annual_runner.js',
   'weather_builtin.js', 'weather_data.js', 'weather_source.js', 'ashrae_design_conditions.js', 'epw_parser.js', 'components/equipment_designer.js',
   'device_catalog_builtin.js', 'catalog_manager.js', 'ui_kit.js', 'store.js', 'vendor/exceljs.min.js', 'excel_export.js',

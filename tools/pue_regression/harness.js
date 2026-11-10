@@ -27,6 +27,7 @@ const FILES = ['assumptions.js','i18n.js','i18n_zh.js','i18n_en.js','engines_cor
   'cooling/archs/air_district_chw.js',
   'cooling/archs/air_rdhx.js',
   'sizing/sizing_engine.js',
+  'equipment_schedule.js',
   'simulation/annual_runner.js',
   'weather_builtin.js',
   'weather_data.js',

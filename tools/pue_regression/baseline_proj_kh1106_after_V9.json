@@ -1,0 +1,129 @@
+{
+  "annualPue": 1.167,
+  "annualP_Pue": 1.055,
+  "peakPue": 1.225,
+  "annualWue": 0,
+  "totalItKw": 57228,
+  "lossPct": 8.5,
+  "mwh": {
+    "it": 501317,
+    "cduPump": 13382,
+    "cduUnit": 7804,
+    "cduPrimaryPump": 4362,
+    "crahFan": 5452,
+    "heatRejection": 7236,
+    "chiller": 14797,
+    "loss": 42612,
+    "total": 584796
+  },
+  "fc": {
+    "overallFcHours": 275,
+    "cdu": {
+      "freeHours": 8748,
+      "freeHoursPct": 99.9,
+      "partialHours": 12,
+      "partialHoursPct": 0.1,
+      "mechHours": 0,
+      "mechHoursPct": 0
+    },
+    "fw": {
+      "freeHours": 275,
+      "freeHoursPct": 3.1,
+      "partialHours": 3165,
+      "partialHoursPct": 36.1,
+      "mechHours": 5320,
+      "mechHoursPct": 60.7
+    },
+    "combined": {
+      "freeHours": 275,
+      "freeHoursPct": 3.1,
+      "partialHours": 8485,
+      "partialHoursPct": 96.9,
+      "mechHours": 0,
+      "mechHoursPct": 0
+    }
+  },
+  "checks": {
+    "capacityDeficitHours": 0,
+    "maxCapacityDeficitKw": 0,
+    "thermalBalanced": true,
+    "thermalImbalanceMwh": 0,
+    "energyBalanced": true,
+    "plantAllocBalanced": true
+  },
+  "plants": [
+    {
+      "name": "全廠共用液冷系統",
+      "loop": "liquid",
+      "members": 5,
+      "modeHours": {
+        "free": 8748,
+        "partial": 12,
+        "mechanical": 0
+      },
+      "mwh": {
+        "chiller": 12,
+        "heatRej": 6389,
+        "pump": 4362
+      },
+      "sizing": [
+        "dry_cooler: Güntner 6000kW Raised-Bed (DSX Standard) ×10 (cap 6000, req 50915, OK)",
+        "cdu_pump: Grundfos NB 150-315/336 AAF1AESBAQEVW3 ×9 (cap 75, req 498, OK)",
+        "trim_chiller: York YT 2500kW Centrifugal Chiller ×7 (cap 2500, req 13747, OK)",
+        "chw_pump: Grundfos NB 150-315/336 AAF1AESBAQEVW3 ×6 (cap 75, req 134, OK)"
+      ]
+    },
+    {
+      "name": "全廠共用氣冷系統",
+      "loop": "air",
+      "members": 5,
+      "modeHours": {
+        "free": 275,
+        "partial": 3165,
+        "mechanical": 5320
+      },
+      "mwh": {
+        "chiller": 14786,
+        "heatRej": 846,
+        "pump": 1217
+      },
+      "sizing": [
+        "air_cooled_chiller: Uniflair XCAF2524A (含自然冷卻盤管) ×6 (cap 2387.7, req 11177, OK)",
+        "fw_pump: Grundfos NB 125-315/290 AAF2AESBAQEQW3 ×6 (cap 22, req 83, OK)",
+        "chw_primary_pump: Grundfos NB 125-315/290 AAF2AESBAQEQW3 ×6 (cap 22, req 56, OK)"
+      ]
+    }
+  ],
+  "units": [
+    {
+      "name": "DU-01 (Vera Rubin NVL72 叢集) (複製)",
+      "fcHours": 275,
+      "deficitHours": 0,
+      "maxDeficitKw": 0
+    },
+    {
+      "name": "DU-02(Vera Rubin NVL72 叢集) (複製) (複製)",
+      "fcHours": 275,
+      "deficitHours": 0,
+      "maxDeficitKw": 0
+    },
+    {
+      "name": "DU-03 (Vera Rubin NVL72 叢集) (複製) (複製) (複製)",
+      "fcHours": 275,
+      "deficitHours": 0,
+      "maxDeficitKw": 0
+    },
+    {
+      "name": "DU-04 (Vera Rubin NVL72 叢集) (複製) (複製) (複製) (複製)",
+      "fcHours": 275,
+      "deficitHours": 0,
+      "maxDeficitKw": 0
+    },
+    {
+      "name": "CorePOD-A (核心網通/集中儲存機房)",
+      "fcHours": 275,
+      "deficitHours": 0,
+      "maxDeficitKw": 0
+    }
+  ]
+}

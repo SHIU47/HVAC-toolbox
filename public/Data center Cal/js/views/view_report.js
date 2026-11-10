@@ -64,6 +64,8 @@
         },
 
         collectSystems(st, units) {
+            // V10：改用 EquipmentSchedule.collectSystems（與設備統整共用同一套邏輯）
+            if (root.EquipmentSchedule) return root.EquipmentSchedule.collectSystems(st);
             const out = [];
             const plants = (st.coolingPlants || []).filter(p => !p.isEmpty && Array.isArray(p.memberIds) && p.memberIds.length > 0);
             plants.forEach(p => out.push({
@@ -152,6 +154,74 @@
             </style>`;
         },
 
+        // ───────────────────── §5 設備規格與數量統整 ─────────────────────
+        renderEquipmentSection(st) {
+            const ES = root.EquipmentSchedule;
+            if (!ES) return '';
+            const eq = ES.build(st);
+            const srcTxt = (r) => r.verified === true ? L('✓ 已驗證', '✓ verified')
+                : (r.source ? L('⚠ 有出處，未驗證', '⚠ source, unverified') : L('⚠ 無出處', '⚠ no source'));
+            const pwrMark = (r) => r.unitPowerBasis === 'cap/cop' ? ' *' : (r.unitPowerBasis === 'motor' ? ' †' : '');
+            const locTxt = (r) => r.locations.map(l => esc(l.name) + ' ×' + l.qty).join('<br>');
+            const mainRows = (cat) => eq.rows.filter(r => r.category === cat).map(r => [
+                esc(r.label), esc(r.model) + (r.vendor ? `<br><span style="color:#666">${esc(r.vendor)}</span>` : ''), num(r.unitCapKw, 0),
+                r.unitPowerKw != null ? num(r.unitPowerKw, 1) + pwrMark(r) : '—',
+                `${r.qtyTotal} (${r.qtyRunning}+${r.qtyStandby})`, num(r.installedCapKw, 0), locTxt(r), srcTxt(r)
+            ]);
+            const head = [L('設備', 'Equipment'), L('型號／廠商', 'Model / vendor'), L('單機容量 kW', 'Unit cap. kW'), L('單機耗電 kW', 'Unit power kW'),
+                L('台數（運轉+備用）', 'Qty (run+stby)'), L('總裝置容量 kW', 'Installed cap. kW'), L('使用位置', 'Location'), L('出處', 'Source')];
+            const plantRows = mainRows('plant'), termRows = mainRows('terminal');
+
+            // 5.2 規格明細：依分組選欄位，整欄都沒有值就不顯示
+            const dims = (sp) => (sp.widthMm || sp.depthMm || sp.heightMm) ? `${num(sp.widthMm)}×${num(sp.depthMm)}×${num(sp.heightMm)}` : null;
+            const COLS = {
+                chiller: [['capKw', L('容量 kW', 'Cap. kW'), 0], ['unitPowerKw', L('輸入功率 kW', 'Input kW'), 1], ['cop', 'COP', 2], ['iplv', 'IPLV', 2], ['refrigerant', L('冷媒', 'Refrigerant')], ['tChwsC', L('出水溫 °C', 'CHWS °C'), 1], ['flowM3h', L('水量 m³/h', 'Water m³/h'), 1], ['airflowM3h', L('風量 m³/h', 'Air m³/h'), 0], ['weightKg', L('重量 kg', 'Weight kg'), 0]],
+                heatRejection: [['capKw', L('排熱量 kW', 'Rejection kW'), 0], ['fanKwDx', L('風扇 kW（乾式）', 'Fan kW (dry)'), 1], ['fanKwFc', L('風扇 kW（自然冷卻）', 'Fan kW (FC)'), 1], ['approachC', L('趨近溫度 °C', 'Approach °C'), 1], ['flowM3h', L('水量 m³/h', 'Water m³/h'), 1], ['weightKg', L('重量 kg', 'Weight kg'), 0]],
+                pump: [['capKw', L('馬達 kW', 'Motor kW'), 1], ['flowM3h', L('流量 m³/h', 'Flow m³/h'), 1], ['headM', L('揚程 m', 'Head m'), 1], ['pumpEta', 'η<sub>p</sub>', 2], ['motorEta', 'η<sub>m</sub>', 2], ['motorClass', L('馬達等級', 'Motor class')]],
+                cdu: [['capKw', L('容量 kW', 'Cap. kW'), 0], ['unitPowerKw', L('耗電 kW', 'Power kW'), 1], ['flowM3h', L('流量 m³/h', 'Flow m³/h'), 1], ['pressureDropBar', L('外部壓降 bar', 'Ext. ΔP bar'), 1], ['pumpType', L('泵配置', 'Pumps')], ['dims', L('尺寸 W×D×H mm', 'W×D×H mm')], ['weightKg', L('重量 kg', 'Weight kg'), 0]],
+                crah: [['capKw', L('容量 kW', 'Cap. kW'), 1], ['sensibleKw', L('顯熱 kW', 'Sensible kW'), 1], ['unitPowerKw', L('風扇 kW', 'Fan kW'), 1], ['airflowM3h', L('風量 m³/h', 'Air m³/h'), 0], ['tChwsC', L('進水溫 °C', 'CHW in °C'), 1], ['chwDtC', 'ΔT K', 1], ['dims', L('尺寸 W×D×H mm', 'W×D×H mm')]]
+            };
+            const GNAME = { chiller: L('冰水主機', 'Chillers'), heatRejection: L('排熱設備', 'Heat rejection'), pump: L('水泵', 'Pumps'), cdu: 'CDU', crah: L('CRAH／風牆／背板', 'CRAH / fan wall / RDHX'), other: L('其他', 'Other') };
+            let specHtml = '';
+            Object.keys(COLS).forEach(g => {
+                // 同一型號用在多個用途時，規格只列一次
+                const seenModel = new Set();
+                const rs = eq.rows.filter(r => r.group === g && !seenModel.has(r.model) && seenModel.add(r.model));
+                if (!rs.length) return;
+                const val = (r, c) => c[0] === 'dims' ? dims(r.spec) : (c[0] === 'unitPowerKw' ? r.unitPowerKw : r.spec[c[0]]);
+                const cols = COLS[g].filter(c => rs.some(r => val(r, c) != null));
+                const rows = rs.map(r => [esc(r.model), ...cols.map(c => {
+                    const v = val(r, c);
+                    if (v == null) return '—';
+                    return (typeof v === 'number') ? num(v, c[2] ?? 1) : esc(v);
+                })]);
+                specHtml += `<h3 class="rpt-h3">${GNAME[g]}</h3>` + this.table([L('型號', 'Model'), ...cols.map(c => c[1])], rows, { alignRight: cols.map((c, i) => i + 1).filter(i => typeof val(rs[0], cols[i - 1]) === 'number') });
+            });
+
+            // 5.3 電力需求彙總
+            const pRows = Object.keys(GNAME).filter(g => eq.totals.byGroup[g] && eq.totals.byGroup[g].qty > 0).map(g => {
+                const x = eq.totals.byGroup[g];
+                return [GNAME[g], String(x.qty), num(x.installedCapKw, 0), num(x.connectedKw, 0), num(x.runningKw, 0)];
+            });
+            pRows.push({ _cls: 'tot', cells: [L('合計', 'Total'), String(eq.rows.reduce((a, r) => a + r.qtyTotal, 0)), '—', num(eq.totals.connectedKw, 0), num(eq.totals.runningKw, 0)] });
+
+            return this.sec('equip', '5', L('設備規格與數量統整', 'Equipment schedule and quantities'), `
+                ${this.note(L('全案相同「設備＋型號」合併為一列；共用機房的成員單元只計終端設備（CDU、CRAH 等），主機房設備計在機房。規格全部取自設備型錄，型錄沒有的欄位以「—」表示。',
+                    'Identical equipment + model rows are merged project-wide; members of shared plants contribute terminal units only. All specs come from the device catalogue; missing fields show "—".'))}
+                <h3 class="rpt-h3">5.1　${L('設備總表', 'Equipment summary')}</h3>
+                <p class="rpt-note"><b>${L('主機房設備', 'Central plant equipment')}</b></p>
+                ${plantRows.length ? this.table(head, plantRows, { alignRight: [2, 3, 5] }) : this.note('—')}
+                <p class="rpt-note"><b>${L('終端設備', 'Terminal equipment')}</b></p>
+                ${termRows.length ? this.table(head, termRows, { alignRight: [2, 3, 5] }) : this.note('—')}
+                ${this.note(L('* 型錄無輸入功率，以「容量 ÷ COP」估算；† 泵為馬達額定功率（非軸功率）。', '* No input power in catalogue; estimated as capacity ÷ COP. † Pumps: rated motor power (not shaft power).'))}
+                <h3 class="rpt-h3">5.2　${L('設備規格明細', 'Equipment specifications')}</h3>
+                ${specHtml || this.note('—')}
+                <h3 class="rpt-h3">5.3　${L('冷卻設備電力需求彙總', 'Cooling equipment electrical demand')}</h3>
+                ${this.table([L('分組', 'Group'), L('台數', 'Qty'), L('裝置容量 kW', 'Installed cap. kW'), L('連接負載 kW', 'Connected kW'), L('運轉負載 kW（不含備用）', 'Running kW (excl. standby)')], pRows, { alignRight: [1, 2, 3, 4] })}
+                ${this.formula([L('連接負載 = Σ 台數 × 單機耗電；運轉負載 = Σ 運轉台數 × 單機耗電（額定值，非逐時模擬值）', 'Connected = Σ qty × unit power; running = Σ running qty × unit power (rated, not hourly simulation)')])}
+                ${this.note(L('電氣容量（變壓器、配電盤、緊急電源）檢討請相關專業另行審查。', 'Electrical capacity (transformers, switchboards, standby power) to be reviewed by the electrical discipline.'), true)}`);
+        },
+
         // ───────────────────────── 主畫面 ─────────────────────────
         render(container) {
             const S = root.AppStore;
@@ -196,7 +266,7 @@
                 <h3 class="rpt-h3" style="margin-top:26px">${L('目錄', 'Contents')}</h3>
                 <ol class="rpt-toc" style="padding-left:20px">
                     <li>${L('計算依據與方法', 'Basis and method')}</li><li>${L('設計條件', 'Design conditions')}</li><li>${L('負載彙總', 'Load summary')}</li>
-                    <li>${L('冷卻系統選型核算', 'Cooling equipment sizing check')}</li><li>${L('水力與泵耗', 'Hydraulics and pump power')}</li>
+                    <li>${L('冷卻系統選型核算', 'Cooling equipment sizing check')}</li><li>${L('設備規格與數量統整', 'Equipment schedule and quantities')}</li><li>${L('水力與泵耗', 'Hydraulics and pump power')}</li>
                     <li>${L('年度能量帳本', 'Annual energy ledger')}</li><li>${L('PUE／WUE 計算', 'PUE / WUE calculation')}</li>
                     <li>${L('平衡與合格檢核', 'Balance and compliance checks')}</li><li>${L('驗算範例（尖峰小時）', 'Worked example (peak hour)')}</li>
                     <li>${L('待確認事項', 'Open items')}</li><li>${L('附錄 A：工程假設值總表', 'Appendix A: Engineering assumptions')}</li><li>${L('附錄 B：逐時資料欄位說明', 'Appendix B: Hourly data columns')}</li>
@@ -286,7 +356,10 @@
                 ])}
                 ${sizingBlocks || this.note(L('無選型資料', 'No sizing data'))}`);
 
-            // ── §5 水力 ──
+            // ── §5 設備規格與數量統整（V10 Phase 6）──
+            const sEq = this.renderEquipmentSection(st);
+
+            // ── §6 水力 ──
             let pumpExample = null;
             const hydBlocks = systems.filter(sy => !sy.terminalOnly).map((sy, i) => {
                 const pumps = sy.sys.hydraulics?.pumps || [];
@@ -295,10 +368,10 @@
                     if (!pumpExample && p.power_kw > 0) pumpExample = p;
                     return [esc(this.pumpLabel(p)), num(p.q_kw, 0), num(p.dt_c, 1), num(p.cp, 2), num(p.flow_lpm, 0), num(p.flow_lpm * 0.06, 1), num(p.head_m, 1), num(p.eta_pump, 2), num(p.eta_motor, 2), num(p.power_kw, 1), p.operation === 'mechanical' ? L('冰機運轉時', 'chiller on') : L('連續', 'always')];
                 });
-                return `<h3 class="rpt-h3">5.${i + 1}　${esc(sy.title)}</h3>${this.table([L('泵組', 'Pump set'), 'Q kW', 'ΔT K', 'cp', 'L/min', 'm³/h', L('揚程 m', 'Head m'), 'η<sub>p</sub>', 'η<sub>m</sub>', L('設計 kW', 'Design kW'), L('運轉', 'Operation')], rows, { alignRight: [1, 2, 3, 4, 5, 6, 7, 8, 9] })}`;
+                return `<h3 class="rpt-h3">6.${i + 1}　${esc(sy.title)}</h3>${this.table([L('泵組', 'Pump set'), 'Q kW', 'ΔT K', 'cp', 'L/min', 'm³/h', L('揚程 m', 'Head m'), 'η<sub>p</sub>', 'η<sub>m</sub>', L('設計 kW', 'Design kW'), L('運轉', 'Operation')], rows, { alignRight: [1, 2, 3, 4, 5, 6, 7, 8, 9] })}`;
             }).join('');
             const ex = pumpExample;
-            const s5 = this.sec('hyd', '5', L('水力與泵耗', 'Hydraulics and pump power'), `
+            const s5 = this.sec('hyd', '6', L('水力與泵耗', 'Hydraulics and pump power'), `
                 ${this.formula([
                     L('流量 V [L/min] = Q [kW] × 60 ÷ (cp [kJ/kg·K] × ΔT [K])（密度取 1 kg/L）', 'Flow V [L/min] = Q [kW] × 60 ÷ (cp × ΔT) (density 1 kg/L)'),
                     L('電功率 P [kW] = V × H [m] × g ÷ (60,000 × η泵 × η馬達)，g = 9.81 m/s²', 'Electric power P [kW] = V × H × g ÷ (60,000 × η_pump × η_motor), g = 9.81 m/s²'),
@@ -322,7 +395,7 @@
             const mRows = (R.monthlyPue || []).map(m => [String(m.month), num(m.itMwh, 0), num(m.coolingMwh, 0), num(m.lossMwh, 0), num(m.totalMwh, 0), num(m.pue, 3), num(m.coolingPpue ?? m.p_pue, 3)]);
             const cs = o.chillerCopStats || {};
             const fc = (x) => x ? `${num(x.freeHours)} / ${num(x.partialHours)} / ${num(x.mechHours)}` : '—';
-            const s6 = this.sec('energy', '6', L('年度能量帳本', 'Annual energy ledger'), `
+            const s6 = this.sec('energy', '7', L('年度能量帳本', 'Annual energy ledger'), `
                 ${this.table([L('項目', 'Item'), 'MWh/yr', '% of IT'], ledRows, { alignRight: [1, 2] })}
                 <h3 class="rpt-h3">${L('月別', 'Monthly')}</h3>
                 ${this.table([L('月', 'Month'), 'IT MWh', L('冷卻 MWh', 'Cooling MWh'), L('損耗 MWh', 'Loss MWh'), L('合計 MWh', 'Total MWh'), 'PUE', L('冷卻 pPUE', 'Cooling pPUE')], mRows, { alignRight: [1, 2, 3, 4, 5, 6] })}
@@ -335,7 +408,7 @@
 
             // ── §7 PUE / WUE ──
             const pl = R.partialLoad;
-            const s7 = this.sec('pue', '7', L('PUE／WUE 計算', 'PUE / WUE calculation'), `
+            const s7 = this.sec('pue', '8', L('PUE／WUE 計算', 'PUE / WUE calculation'), `
                 ${this.formula([
                     `E_IT = ${mwh(itKwh, 1)} MWh`,
                     `E_cool = ${mwh(b.cduPump, 1)} + ${mwh(b.crahFan, 1)} + ${mwh(b.heatRejection, 1)} + ${mwh(b.chiller, 1)} = ${mwh(coolKwh, 1)} MWh`,
@@ -355,7 +428,7 @@
             const el = o.energyLedger || {}, th = o.thermalLedger || {};
             const chk = (ok) => ok ? '✓' : '✗';
             const failRows = (comp.sizingFailures || []).map(f => ({ _cls: 'ng', cells: [esc(f.owner), f.system === 'liquid' ? L('液冷', 'Liquid') : L('氣冷', 'Air'), esc(f.key), esc(f.model) + ' × ' + f.qty, num(f.effectiveCapKw), num(f.requiredKw)] }));
-            const s8 = this.sec('checks', '8', L('平衡與合格檢核', 'Balance and compliance checks'), `
+            const s8 = this.sec('checks', '9', L('平衡與合格檢核', 'Balance and compliance checks'), `
                 ${this.table([L('檢核項目', 'Check'), L('內容', 'Detail'), L('結果', 'Result')], [
                     [L('能量平衡', 'Energy balance'), `E_DC = E_IT + E_cool + E_loss：${mwh(el.facility_total_kwh, 1)} = ${mwh(el.it_kwh, 1)} + ${mwh(el.hvac_kwh, 1)} + ${mwh(el.loss_kwh, 1)} MWh`, chk(el.is_balanced)],
                     [L('熱平衡', 'Thermal balance'), `${L('產生熱', 'Heat generated')} ${mwh(th.total_heat_generated_kwh, 1)} MWh − ${L('移除熱', 'removed')} ${mwh(th.total_heat_removed_kwh, 1)} MWh = ${mwh(th.imbalance_kwh, 1)} MWh`, chk(th.is_balanced)],
@@ -373,7 +446,7 @@
             if (ph) {
                 const lossH = ph.itKw * lt.totalPct / 100 + lt.auxKw;
                 const sumH = ph.itKw + ph.cduPumpKw + ph.crahFanKw + ph.heatRejKw + ph.chillerKw + lossH;
-                s9 = this.sec('example', '9', L('驗算範例（尖峰小時）', 'Worked example (peak hour)'), `
+                s9 = this.sec('example', '10', L('驗算範例（尖峰小時）', 'Worked example (peak hour)'), `
                     ${this.note(L(`第 ${ph.hourIndex + 1} 小時（${ph.month} 月第 ${ph.dayOfYear} 天 ${ph.hourOfDay}:00），DB ${num(ph.db, 1)} °C、WB ${num(ph.wb, 1)} °C；液冷 ${modeTxt(ph.cduMode)}、氣冷 ${modeTxt(ph.fwMode)}。`, `Hour ${ph.hourIndex + 1} (month ${ph.month}, day ${ph.dayOfYear}, ${ph.hourOfDay}:00), DB ${num(ph.db, 1)} °C, WB ${num(ph.wb, 1)} °C; liquid ${modeTxt(ph.cduMode)}, air ${modeTxt(ph.fwMode)}.`))}
                     ${this.formula([
                         `P_IT = ${num(ph.itKw, 1)} kW`,
@@ -383,19 +456,25 @@
                         `PUE(h) = ${num(sumH, 1)} ÷ ${num(ph.itKw, 1)} = ${num(ph.itKw > 0 ? sumH / ph.itKw : 0, 4)}`,
                         ph.chillerKw > 0 ? `COP(h) = ${num(ph.mechLoadKw, 1)} ÷ ${num(ph.chillerKw, 1)} = ${num(ph.mechLoadKw / ph.chillerKw, 2)}` : ''
                     ].filter(Boolean))}
-                    ${this.note(L('審查方可下載逐時 CSV（附錄 B），任選一小時以相同方式重算，再加總 8,760 小時核對第 6、7 節。', 'Reviewers can download the hourly CSV (Appendix B), recompute any hour the same way, and sum 8,760 hours to verify Sections 6–7.'))}`);
+                    ${this.note(L('審查方可下載逐時 CSV（附錄 B），任選一小時以相同方式重算，再加總 8,760 小時核對第 7、8 節。', 'Reviewers can download the hourly CSV (Appendix B), recompute any hour the same way, and sum 8,760 hours to verify Sections 7–8.'))}`);
             }
 
             // ── §10 待確認事項 ──
             const open = [];
             if (!(fl.lossItems || []).some(x => x.key !== 'other' && x.pct > 0)) open.push(L('配電損耗未分項（變壓器、UPS、PDU），請依電力設計填入。', 'Electrical losses not itemised (transformer, UPS, PDU).'));
             if (!(fl.auxLoads || []).some(x => x.kw > 0)) open.push(L('未計入照明、辦公空調、MAU 等輔助負載。', 'Lighting, office HVAC, MAU and other auxiliary loads not entered.'));
-            open.push(L('泵揚程為假設值，未依實際管路壓損計算（第 5 節）。', 'Pump heads are assumed, not from piping loss calculation (Section 5).'));
+            open.push(L('泵揚程為假設值，未依實際管路壓損計算（第 6 節）。', 'Pump heads are assumed, not from piping loss calculation (Section 6).'));
             open.push(L('部分負載未模擬變壓器空載損失與 UPS 低負載效率曲線。', 'Transformer no-load loss and UPS low-load efficiency not modelled.'));
             if (cs.hoursAbove10 > 0) open.push(L('冰機 COP 有超過 10 的時段，需對照型錄。', 'Chiller COP exceeds 10 in some hours; check catalogue.'));
-            if (comp.status !== 'pass') open.push(L('合格檢核未通過，見第 8 節。', 'Compliance checks not passed; see Section 8.'));
-            open.push(L('設備型錄耗電（尤其 CDU）多數未附原廠出處，需以送審型錄核對。', 'Most catalogue power values (esp. CDUs) lack vendor sources; verify with submitted datasheets.'));
-            const s10 = this.sec('open', '10', L('待確認事項', 'Open items'), `<ol class="rpt-ol" style="padding-left:20px">${open.map(x => `<li>⚠ ${x}</li>`).join('')}</ol>`);
+            if (comp.status !== 'pass') open.push(L('合格檢核未通過，見第 9 節。', 'Compliance checks not passed; see Section 9.'));
+            const eqW = (root.EquipmentSchedule ? root.EquipmentSchedule.build(st).warnings : []);
+            const noSrc = eqW.filter(w => w.type === 'noSource').map(w => w.model);
+            const unver = eqW.filter(w => w.type === 'unverified').map(w => w.model);
+            const noPwr = eqW.filter(w => w.type === 'noPower').map(w => w.model);
+            if (noSrc.length) open.push(L('下列設備型錄沒有出處，需以送審型錄核對：', 'No catalogue source for: ') + esc(noSrc.join('、')));
+            if (unver.length) open.push(L('下列設備型錄有出處但未驗證：', 'Catalogue source present but unverified: ') + esc(unver.join('、')));
+            if (noPwr.length) open.push(L('下列設備型錄沒有耗電資料，電力需求彙總未計入：', 'No power data (excluded from power summary): ') + esc(noPwr.join('、')));
+            const s10 = this.sec('open', '11', L('待確認事項', 'Open items'), `<ol class="rpt-ol" style="padding-left:20px">${open.map(x => `<li>⚠ ${x}</li>`).join('')}</ol>`);
 
             // ── 附錄 A：假設值 ──
             const AS = root.ASSUMPTIONS || {};
@@ -412,7 +491,7 @@
             // ── 附錄 B ──
             const sB = this.sec('appB', L('附錄 B', 'Appendix B'), L('逐時資料欄位說明', 'Hourly data columns'), `
                 ${this.note(L('按上方「下載 8,760 h 逐時 CSV」取得資料。欄位：時序、月、日、時、DB、WB、各迴路運轉模式、IT kW、CDU＋泵 kW、CRAH kW、排熱 kW、冰機 kW、機械冷卻負載 kW、冷卻小計 kW、全廠 kW、PUE(h)、耗水 m³。', 'Use "Download 8,760-h CSV" above. Columns: index, month, day, hour, DB, WB, loop modes, IT kW, CDU+pumps kW, CRAH kW, heat rejection kW, chiller kW, mechanical load kW, cooling kW, facility kW, PUE(h), water m³.'))}
-                ${this.formula([L('核對：Σ 全廠 kW × 1 h ÷ 1,000 = 第 7 節 E_DC（MWh）；Σ IT kW × 1 h ÷ 1,000 = E_IT', 'Check: Σ facility kW × 1 h ÷ 1,000 = E_DC in Section 7; Σ IT kW × 1 h ÷ 1,000 = E_IT')])}`);
+                ${this.formula([L('核對：Σ 全廠 kW × 1 h ÷ 1,000 = 第 8 節 E_DC（MWh）；Σ IT kW × 1 h ÷ 1,000 = E_IT', 'Check: Σ facility kW × 1 h ÷ 1,000 = E_DC in Section 8; Σ IT kW × 1 h ÷ 1,000 = E_IT')])}`);
 
             const toolbar = `<div class="no-print flex items-center justify-between gap-2 flex-wrap mb-4 p-3 rounded-xl border border-border bg-surface">
                 <div class="text-xs text-secondary">${L('Step 6：可驗證計算書。封面欄位可直接編輯（隨專案儲存）；列印時選「另存為 PDF」、A4 直式。', 'Step 6: verifiable report. Cover fields are editable (saved with the project); print to PDF, A4 portrait.')}</div>
@@ -422,7 +501,7 @@
                 </div>
             </div>`;
 
-            let body = `<div class="rpt-wrap" id="reportRoot">${cover}<div class="rpt-page">${hdr(L('本文', 'Body'))}${s1}${s2}${s3}${s4}${s5}${s6}${s7}${s8}${s9}${s10}</div><div class="rpt-page">${hdr(L('附錄', 'Appendix'))}${sA}${sB}</div></div>`;
+            let body = `<div class="rpt-wrap" id="reportRoot">${cover}<div class="rpt-page">${hdr(L('本文', 'Body'))}${s1}${s2}${s3}${s4}${sEq}${s5}${s6}${s7}${s8}${s9}${s10}</div><div class="rpt-page">${hdr(L('附錄', 'Appendix'))}${sA}${sB}</div></div>`;
             // 英文模式：把版面用的全形標點換成半形（使用者資料中的全形標點一併轉換，不影響內容）
             if (isEn()) {
                 body = body.replace(/　/g, ' ').replace(/：/g, ': ').replace(/（/g, ' (').replace(/）/g, ')')

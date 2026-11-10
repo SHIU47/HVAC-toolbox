@@ -392,7 +392,8 @@
                 verify: L('9.驗證檢核', '9.Verification Checks'),
                 hottest: L('10.附錄-最熱日24h明細', '10.Appx-Hottest Day 24h'),
                 hourly: L('11.附錄-8760逐時資料', '11.Appx-8760h Hourly Data'),
-                scen: L('12.方案比較', '12.Scenario Comparison')
+                scen: L('12.方案比較', '12.Scenario Comparison'),
+                equip: L('13.設備規格表', '13.Equipment Schedule')
             };
             const qn = (name) => `'${name.replace(/'/g, "''")}'`;
             const X = (key, addr) => `${qn(SN[key])}!${addr}`;
@@ -1534,7 +1535,8 @@
                     ['peak', L('尖峰 PUE 時刻、尖峰需量、容量檢核', 'Peak-PUE hour, peak demand, capacity check')],
                     ['verify', L('Excel 重算 vs 計算引擎的逐項比對', 'Item-by-item Excel vs engine comparison')],
                     ['hottest', L('最熱日 24 小時明細', 'Hottest day, hour by hour')],
-                    ['hourly', L('8,760 小時原始逐時資料（所有彙總的來源）', '8,760-hour source data for every total')]
+                    ['hourly', L('8,760 小時原始逐時資料（所有彙總的來源）', '8,760-hour source data for every total')],
+                    ['equip', L('設備規格與數量統整、冷卻設備電力需求', 'Equipment schedule, quantities and cooling electrical demand')]
                 ];
                 contents.forEach(([k, desc]) => {
                     for (let c = 2; c <= NC; c++) put(ws, r, c, null);
@@ -1628,6 +1630,112 @@
                 note(ws, r + 1, 20, L('方案數值為儲存方案時的計算結果快照；「容量不足」大於 0 的方案，其 PUE 偏低，不宜直接比較。',
                     'Scenario values are snapshots taken when each scenario was saved; scenarios with capacity-deficit hours have an understated PUE and should not be compared directly.'));
                 ws.views = [{ state: 'frozen', ySplit: 4, xSplit: 1, showGridLines: false }];
+            }
+
+            // ═════════════════════════════════════════════════════════
+            // 13. 設備規格表（V10 Phase 6）
+            // ═════════════════════════════════════════════════════════
+            const ESmod = (typeof window !== 'undefined' && window.EquipmentSchedule) ? window.EquipmentSchedule
+                : (typeof EquipmentSchedule !== 'undefined' ? EquipmentSchedule : null);
+            if (ESmod) {
+                const eq = ESmod.build(state);
+                const NCE = 12;
+                const ws = mk('equip', 'FF0E7490', [30, 34, 16, 12, 12, 9, 9, 9, 14, 14, 40, 22]);
+                let r = titleBlock(ws, NCE, L('設備規格與數量統整', 'Equipment Schedule and Quantities'));
+                const srcTxt = (x) => x.verified === true ? L('已驗證', 'Verified')
+                    : (x.source ? L('⚠ 有出處，未驗證', '⚠ Source, unverified') : L('⚠ 無出處', '⚠ No source'));
+                const basisTxt = (x) => x.unitPowerBasis === 'cap/cop' ? L('容量÷COP', 'cap ÷ COP') : (x.unitPowerBasis === 'motor' ? L('馬達額定', 'motor rated') : (x.unitPowerBasis ? L('型錄', 'catalogue') : '—'));
+                const firstRows = {};
+                const block = (cat, title) => {
+                    const list = eq.rows.filter(x => x.category === cat);
+                    r = section(ws, r, NCE, title);
+                    r = header(ws, r, [L('設備', 'Equipment'), L('型號', 'Model'), L('廠商', 'Vendor'), L('單機容量 kW', 'Unit cap. kW'), L('單機耗電 kW', 'Unit power kW'),
+                        L('總台數', 'Total qty'), L('運轉', 'Running'), L('備用', 'Standby'), L('總裝置容量 kW', 'Installed cap. kW'), L('連接負載 kW', 'Connected kW'), L('使用位置', 'Location'), L('出處／耗電依據', 'Source / power basis')]);
+                    const r0 = r;
+                    list.forEach(x => {
+                        put(ws, r, 1, enText(x.label), 'text', undefined, { wrap: true });
+                        put(ws, r, 2, enText(x.model), 'bold', undefined, { wrap: true });
+                        put(ws, r, 3, enText(x.vendor || '—'));
+                        put(ws, r, 4, Number(x.unitCapKw || 0), 'input', FMT.d1);
+                        put(ws, r, 5, x.unitPowerKw != null ? Number(x.unitPowerKw) : NA_TXT, x.unitPowerKw != null ? 'input' : 'muted', FMT.d1);
+                        put(ws, r, 6, x.qtyTotal, 'input', FMT.int);
+                        put(ws, r, 7, x.qtyRunning, 'input', FMT.int);
+                        put(ws, r, 8, F(`F${r}-G${r}`, x.qtyStandby), 'formula', FMT.int);
+                        put(ws, r, 9, F(`D${r}*F${r}`, x.installedCapKw), 'formula', FMT.int);
+                        put(ws, r, 10, x.unitPowerKw != null ? F(`E${r}*F${r}`, x.connectedKw) : NA_TXT, x.unitPowerKw != null ? 'formula' : 'muted', FMT.int);
+                        put(ws, r, 11, enText(x.locations.map(l => `${l.name} ×${l.qty}`).join('; ')), 'text', undefined, { wrap: true });
+                        put(ws, r, 12, `${srcTxt(x)} / ${basisTxt(x)}`, 'muted', undefined, { wrap: true });
+                        ws.getRow(r).height = Math.max(30, Math.ceil(x.locations.length / 2) * 15);
+                        r++;
+                    });
+                    if (list.length) {
+                        put(ws, r, 1, L('小計', 'Subtotal'), 'bold');
+                        for (let c = 2; c <= NCE; c++) put(ws, r, c, null);
+                        put(ws, r, 6, F(`SUM(F${r0}:F${r - 1})`, list.reduce((a, x) => a + x.qtyTotal, 0)), 'formula', FMT.int);
+                        // 總裝置容量不加總：冰機（冷卻 kW）、排熱（排熱 kW）、泵（馬達 kW）單位意義不同
+                        put(ws, r, 10, F(`SUM(J${r0}:J${r - 1})`, list.reduce((a, x) => a + (x.connectedKw || 0), 0)), 'formula', FMT.int);
+                        boldRow(ws, r, 1, NCE);
+                        r++;
+                    }
+                    firstRows[cat] = [r0, r - 2];
+                    r++;
+                };
+                block('plant', L('A. 主機房設備', 'A. Central plant equipment'));
+                block('terminal', L('B. 終端設備（CDU、CRAH／風牆、背板）', 'B. Terminal equipment (CDU, CRAH / fan wall, RDHX)'));
+                r = note(ws, r, NCE, L('全案相同「設備＋型號」合併為一列；共用機房的成員單元只計終端設備。單機耗電：泵為馬達額定功率（非軸功率）；冰機型錄無輸入功率時以容量÷COP 估算。',
+                    'Identical equipment + model merged project-wide; shared-plant members contribute terminal units only. Unit power: pumps = rated motor power (not shaft); chillers without input power estimated as capacity ÷ COP.'));
+                r++;
+
+                // C. 規格明細
+                r = section(ws, r, NCE, L('C. 設備規格明細（取自設備型錄，空白表示型錄沒有該欄位）', 'C. Specifications (from device catalogue; blank = not in catalogue)'));
+                r = header(ws, r, [L('型號', 'Model'), L('設備', 'Equipment'), L('容量 kW', 'Cap. kW'), 'COP', L('冷媒', 'Refrig.'), L('流量 m³/h', 'Flow m³/h'), L('揚程 m', 'Head m'), L('風量 m³/h', 'Air m³/h'), L('水溫 °C', 'Water °C'), L('風扇 kW 乾式/自然冷卻', 'Fan kW dry/FC'), L('尺寸 W×D×H mm', 'W×D×H mm'), L('重量 kg／馬達等級', 'Weight kg / motor class')]);
+                const seen = new Set();
+                eq.rows.forEach(x => {
+                    if (seen.has(x.model)) return;
+                    seen.add(x.model);
+                    const sp = x.spec;
+                    const v = (n) => (n == null ? null : Number(n));
+                    put(ws, r, 1, enText(x.model), 'bold', undefined, { wrap: true });
+                    put(ws, r, 2, enText(x.label), 'text', undefined, { wrap: true });
+                    put(ws, r, 3, v(sp.capKw), 'input', FMT.d1);
+                    put(ws, r, 4, v(sp.cop), 'input', FMT.d2);
+                    put(ws, r, 5, sp.refrigerant || null);
+                    put(ws, r, 6, v(sp.flowM3h), 'input', FMT.d1);
+                    put(ws, r, 7, v(sp.headM), 'input', FMT.d1);
+                    put(ws, r, 8, v(sp.airflowM3h), 'input', FMT.int);
+                    put(ws, r, 9, v(sp.tChwsC), 'input', FMT.temp);
+                    put(ws, r, 10, (sp.fanKwDx != null || sp.fanKwFc != null) ? `${sp.fanKwDx ?? '—'} / ${sp.fanKwFc ?? '—'}` : null);
+                    put(ws, r, 11, (sp.widthMm || sp.depthMm || sp.heightMm) ? `${sp.widthMm ?? '—'}×${sp.depthMm ?? '—'}×${sp.heightMm ?? '—'}` : null);
+                    put(ws, r, 12, [sp.weightKg != null ? `${sp.weightKg} kg` : null, sp.motorClass].filter(Boolean).join(' / ') || null);
+                    ws.getRow(r).height = 30;
+                    r++;
+                });
+                r++;
+
+                // D. 電力需求彙總
+                r = section(ws, r, NCE, L('D. 冷卻設備電力需求彙總（額定值）', 'D. Cooling equipment electrical demand (rated)'));
+                r = header(ws, r, [L('分組', 'Group'), L('台數', 'Qty'), L('裝置容量 kW', 'Installed cap. kW'), L('連接負載 kW', 'Connected kW'), L('運轉負載 kW（不含備用）', 'Running kW (excl. standby)')]);
+                const GN = { chiller: L('冰水主機', 'Chillers'), heatRejection: L('排熱設備', 'Heat rejection'), pump: L('水泵', 'Pumps'), cdu: 'CDU', crah: L('CRAH／風牆／背板', 'CRAH / fan wall / RDHX'), other: L('其他', 'Other') };
+                const d0 = r;
+                Object.keys(GN).forEach(g => {
+                    const x = eq.totals.byGroup[g];
+                    if (!x || !x.qty) return;
+                    put(ws, r, 1, GN[g]);
+                    put(ws, r, 2, x.qty, 'input', FMT.int);
+                    put(ws, r, 3, x.installedCapKw, 'input', FMT.int);
+                    put(ws, r, 4, x.connectedKw, 'input', FMT.int);
+                    put(ws, r, 5, x.runningKw, 'input', FMT.int);
+                    r++;
+                });
+                put(ws, r, 1, L('合計', 'Total'), 'bold');
+                put(ws, r, 2, F(`SUM(B${d0}:B${r - 1})`, eq.rows.reduce((a, x) => a + x.qtyTotal, 0)), 'formula', FMT.int);
+                put(ws, r, 3, null);
+                put(ws, r, 4, F(`SUM(D${d0}:D${r - 1})`, eq.totals.connectedKw), 'formula', FMT.int);
+                put(ws, r, 5, F(`SUM(E${d0}:E${r - 1})`, eq.totals.runningKw), 'formula', FMT.int);
+                boldRow(ws, r, 1, 5);
+                r += 2;
+                note(ws, r, NCE, L('電氣容量（變壓器、配電盤、緊急電源）檢討請相關專業另行審查。', 'Electrical capacity (transformers, switchboards, standby power) to be reviewed by the electrical discipline.'));
+                ws.views = [{ state: 'frozen', ySplit: 3, showGridLines: false }];
             }
 
             return wb;

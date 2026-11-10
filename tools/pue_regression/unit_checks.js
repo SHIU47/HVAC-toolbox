@@ -4094,20 +4094,21 @@ function sizeCduToDeratedN1(S) {
   const wbZh = win.ExcelExport.buildWorkbook('zh-TW');
   const wbEn = win.ExcelExport.buildWorkbook('en');
 
-  test('I-7: Exported workbooks contain 11 sheets with localized names', () => {
-    assert.strictEqual(wbZh.worksheets.length, 11, 'zh-TW workbook must have 11 sheets');
-    assert.strictEqual(wbEn.worksheets.length, 11, 'en workbook must have 11 sheets');
+  // V10 Phase 6：新增 13.設備規格表（無方案時排在第 12 個位置）
+  test('I-7: Exported workbooks contain 12 sheets with localized names', () => {
+    assert.strictEqual(wbZh.worksheets.length, 12, 'zh-TW workbook must have 12 sheets');
+    assert.strictEqual(wbEn.worksheets.length, 12, 'en workbook must have 12 sheets');
     const expectedZh = [
       '1.封面與專案資訊', '2.設計基準與假設', '3.氣象與自由冷卻分析',
       '4.IT負載明細', '5.冷卻系統設計', '6.能耗與PUE-WUE計算',
-      '7.月度趨勢', '8.尖峰工況分析', '9.驗證檢核', '10.附錄-最熱日24h明細', '11.附錄-8760逐時資料'
+      '7.月度趨勢', '8.尖峰工況分析', '9.驗證檢核', '10.附錄-最熱日24h明細', '11.附錄-8760逐時資料', '13.設備規格表'
     ];
     const expectedEn = [
       '1.Cover & Project Info', '2.Design Basis & Assumptions', '3.Weather & Free Cooling',
       '4.IT Load Schedule', '5.Cooling System Design', '6.Energy & PUE-WUE',
-      '7.Monthly Trend', '8.Peak Condition Analysis', '9.Verification Checks', '10.Appx-Hottest Day 24h', '11.Appx-8760h Hourly Data'
+      '7.Monthly Trend', '8.Peak Condition Analysis', '9.Verification Checks', '10.Appx-Hottest Day 24h', '11.Appx-8760h Hourly Data', '13.Equipment Schedule'
     ];
-    for (let i = 0; i < 11; i++) {
+    for (let i = 0; i < 12; i++) {
       assert.strictEqual(wbZh.worksheets[i].name, expectedZh[i], `Sheet ${i + 1} name mismatch in zh-TW`);
       assert.strictEqual(wbEn.worksheets[i].name, expectedEn[i], `Sheet ${i + 1} name mismatch in en`);
     }
@@ -5185,12 +5186,14 @@ function sizeCduToDeratedN1(S) {
 
     // Chinese workbook
     const wbZh = win.ExcelExport.buildWorkbook('zh-TW');
-    assert.strictEqual(wbZh.worksheets.length, 12, 'Should have 12 sheets with scenarios');
+    // V10 Phase 6：方案比較後面多一張 13.設備規格表
+    assert.strictEqual(wbZh.worksheets.length, 13, 'Should have 13 sheets with scenarios');
     assert.strictEqual(wbZh.worksheets[11].name, '12.方案比較');
+    assert.strictEqual(wbZh.worksheets[12].name, '13.設備規格表');
 
     // English workbook
     const wbEn = win.ExcelExport.buildWorkbook('en');
-    assert.strictEqual(wbEn.worksheets.length, 12);
+    assert.strictEqual(wbEn.worksheets.length, 13);
     assert.strictEqual(wbEn.worksheets[11].name, '12.Scenario Comparison');
 
     const whitelist = ['Plan A', 'Plan B', '(標準)'];
@@ -5805,7 +5808,7 @@ test('V9-P4 Step 6 report renders; PUE derivation and peak-hour hand calc match 
   assert(html.includes('PUE = E_DC'), 'section 7 formula present');
   assert(html.includes(o.annualPue.toFixed(3)), 'annual PUE printed');
   assert(html.includes('rpt-stamp fail'), 'failing project must show NOT COMPLIANT stamp');
-  ['rpt-basis', 'rpt-design', 'rpt-load', 'rpt-sizing', 'rpt-hyd', 'rpt-energy', 'rpt-pue', 'rpt-checks', 'rpt-example', 'rpt-open', 'rpt-appA', 'rpt-appB']
+  ['rpt-basis', 'rpt-design', 'rpt-load', 'rpt-sizing', 'rpt-equip', 'rpt-hyd', 'rpt-energy', 'rpt-pue', 'rpt-checks', 'rpt-example', 'rpt-open', 'rpt-appA', 'rpt-appB']
     .forEach(id => assert(win.document.getElementById(id), id + ' missing'));
   // 尖峰小時：IT + 損耗 + 冷卻 = 引擎全廠功率
   const lt = win.AppStore.facilityLossTotals();
@@ -5817,6 +5820,59 @@ test('V9-P4 Step 6 report renders; PUE derivation and peak-hour hand calc match 
   const dumped = JSON.parse(win.AppStore.serializeProject());
   assert.strictEqual(dumped.reportMeta.docNo, 'TEST-001');
 });
+
+// ===== V10 Phase 6：設備規格與數量統整 =====
+{
+  const ctxE = freshCtx();
+  const SE6 = ctxE.AppStore;
+  SE6.applySiteSharedConfig();
+  SE6.calculate();
+  const ES = ctxE.EquipmentSchedule;
+
+  test('V10-P6a equipment schedule quantities equal direct sizing walk (shared plant + terminal units)', () => {
+    const eq = ES.build(SE6.state);
+    const expect = {};
+    const add = (s) => { if ((s.requiredKw || 0) > 0 && (s.selectedQty || 0) > 0) { const k = s.key + '||' + s.selectedModel; expect[k] = (expect[k] || 0) + s.selectedQty; } };
+    (SE6.state.coolingPlants || []).filter(p => p.memberIds && p.memberIds.length).forEach(p => (p.system.sizing || []).forEach(add));
+    const units = [...SE6.state.halls.flatMap(h => h.dus), ...SE6.state.corePods.filter(p => p.enabled !== false)];
+    units.forEach(u => ['cduSystem', 'fanwallSystem'].forEach(k => {
+      const sys = u.plantDesign[k];
+      (sys.sizing || []).forEach(s => { if (!sys.plantId || ES.isTerminal(s)) add(s); });
+    }));
+    const got = {};
+    eq.rows.forEach(r => { got[r.key + '||' + r.model] = r.qtyTotal; });
+    assert.deepStrictEqual(got, expect);
+    eq.rows.forEach(r => assert.strictEqual(r.qtyRunning + r.qtyStandby, r.qtyTotal, r.key + ' running+standby'));
+  });
+
+  test('V10-P6b connected / running kW totals equal Σ qty × unit power', () => {
+    const eq = ES.build(SE6.state);
+    const conn = eq.rows.reduce((a, r) => a + (r.unitPowerKw != null ? r.qtyTotal * r.unitPowerKw : 0), 0);
+    const run = eq.rows.reduce((a, r) => a + (r.unitPowerKw != null ? r.qtyRunning * r.unitPowerKw : 0), 0);
+    assert(Math.abs(eq.totals.connectedKw - conn) < 1e-6);
+    assert(Math.abs(eq.totals.runningKw - run) < 1e-6);
+    const pump = eq.rows.find(r => r.group === 'pump');
+    if (pump) assert.strictEqual(pump.unitPowerBasis, 'motor');
+  });
+
+  test('V10-P6c report section 5 and Excel sheet 13 render; English Excel sheet has 0 CJK', () => {
+    const { buildWindow } = require('./dom_harness.js');
+    const win = buildWindow();
+    win.AppStore.applySiteSharedConfig();
+    win.AppStore.calculate();
+    win.ViewReport.render(win.document.getElementById('stepContent'));
+    const sec = win.document.getElementById('rpt-equip');
+    assert(sec && sec.innerHTML.includes('5.1') && sec.innerHTML.includes('5.3'), 'section 5 must render');
+    const wbZh = win.ExcelExport.buildWorkbook('zh-TW');
+    assert(wbZh.getWorksheet('13.設備規格表'), 'zh sheet 13 missing');
+    const wbEn = win.ExcelExport.buildWorkbook('en');
+    const ws = wbEn.getWorksheet('13.Equipment Schedule');
+    assert(ws, 'en sheet 13 missing');
+    let cjk = 0;
+    ws.eachRow(row => row.eachCell(c => { const v = c.value; const t = (v && typeof v === 'object') ? (v.formula ? '' : (v.text || JSON.stringify(v))) : String(v ?? ''); if (/[一-鿿]/.test(t)) cjk++; }));
+    assert.strictEqual(cjk, 0, 'CJK cells in English sheet 13: ' + cjk);
+  });
+}
 
 console.log(`\n${passCount} passed, ${failCount} failed, ${skipCount} skipped`);
 process.exit(failCount > 0 ? 1 : 0);
