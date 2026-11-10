@@ -71,6 +71,8 @@
             facilityLoads: null,
             // V9 Phase 2：IT 部分負載情境（選型與水力維持 100% 設計值，模擬時負載乘以 factorPct）
             itLoadScenario: { enabled: false, factorPct: 70 },
+            // V10 Phase 7：全廠冷卻設計條件（水溫連動）；未設定時由 getSiteCooling() 依現有單元推導
+            siteCooling: null,
 
             // Step 2: Hall -> DU -> SU Hierarchy
             halls: [
@@ -233,13 +235,14 @@
         serializeProject() {
             const s = this.state;
             const exportData = {
-                schemaVersion: 'v8',
+                schemaVersion: 'v9',
                 savedAt: new Date().toISOString(),
                 facilityElectricalLossPct: s.facilityElectricalLossPct ?? A('electrical_loss_default_pct'),
                 facilityLoads: this.getFacilityLoads(),
                 itLoadScenario: JSON.parse(JSON.stringify(s.itLoadScenario || { enabled: false, factorPct: 70 })),
                 equipmentPrefs: JSON.parse(JSON.stringify(this._loadEquipmentPrefs())),
                 reportMeta: JSON.parse(JSON.stringify(s.reportMeta || {})),
+                siteCooling: JSON.parse(JSON.stringify(this.getSiteCooling())),
                 site: {
                     selectedCity: s.site.selectedCity,
                     stationId: s.site.stationId || null,
@@ -444,7 +447,7 @@
                 });
             }
 
-            stateData.schemaVersion = 'v8';
+            stateData.schemaVersion = 'v9';
             return stateData;
         },
 
@@ -490,6 +493,11 @@
                 this.state.itLoadScenario = this.normalizeItLoadScenario(stateData.itLoadScenario);
                 // V9 Phase 4：計算書封面欄位
                 this.state.reportMeta = (stateData.reportMeta && typeof stateData.reportMeta === 'object') ? JSON.parse(JSON.stringify(stateData.reportMeta)) : {};
+                // V10 Phase 7：全廠水溫。舊專案沒有時依現況推導（全部一致才開連動），不改動任何單元
+                this.state.siteCooling = null;
+                if (stateData.siteCooling && typeof stateData.siteCooling === 'object') {
+                    this.state.siteCooling = this._normalizeSiteCooling(stateData.siteCooling);
+                }
                 // V9 Phase 3：專案內的常用設備與本機紀錄合併（專案檔優先）
                 if (stateData.equipmentPrefs) {
                     const local = this._loadEquipmentPrefs();
@@ -754,6 +762,184 @@
         setItLoadScenario(patch) {
             this.state.itLoadScenario = this.normalizeItLoadScenario({ ...(this.state.itLoadScenario || {}), ...(patch || {}) });
             this.calculate();
+            this.notify();
+        },
+
+        // ===== V10 Phase 7：全廠冷卻設計條件與水溫連動 =====
+        // 水溫鏈：FWS 供水 = 晶片供水 − CDU approach；FWS 回水 = 晶片回水 − CDU approach（FWS 不單獨儲存）
+        SITE_LIQUID_KEYS: ['secSupplyC', 'secReturnC', 'cduApproachC', 'dryCoolerApproachC', 'pheApproachC'],
+        SITE_AIR_KEYS: ['chwSupplyC', 'chwReturnC'],
+        SITE_TEMP_TOL: 0.05,
+
+        _allCoolingUnits() {
+            const out = [];
+            (this.state.halls || []).forEach(h => (h.dus || []).forEach(d => out.push(d)));
+            (this.state.corePods || []).forEach(p => out.push(p));
+            return out;
+        },
+
+        _normalizeSiteCooling(sc) {
+            const n = (v, d) => (v !== undefined && v !== null && Number.isFinite(Number(v))) ? Number(v) : d;
+            const L = sc?.liquid || {}, Ai = sc?.air || {};
+            return {
+                linkTemps: sc?.linkTemps !== false,
+                liquid: {
+                    secSupplyC: n(L.secSupplyC, 45.0), secReturnC: n(L.secReturnC, 57.0), cduApproachC: n(L.cduApproachC, 3.0),
+                    dryCoolerApproachC: n(L.dryCoolerApproachC, 5.0), pheApproachC: n(L.pheApproachC, 2.0)
+                },
+                air: { chwSupplyC: n(Ai.chwSupplyC, 12.0), chwReturnC: n(Ai.chwReturnC, 18.0) }
+            };
+        },
+
+        // 依現況推導：液冷、氣冷各自全部一致（含 FWS 是否等於晶片供水 − approach）才開連動；取 IT 最大單元的值
+        _deriveSiteCooling() {
+            const units = this._allCoolingUnits();
+            const tol = this.SITE_TEMP_TOL;
+            const summ = (u) => (u.sus ? this.calcDuSummary(u) : this.calcCorePodSummary(u)) || { totalItKw: 0 };
+            let ref = units[0] || null, refIt = -1;
+            units.forEach(u => { const it = summ(u).totalItKw || 0; if (it > refIt) { refIt = it; ref = u; } });
+            const c0 = ref?.plantDesign?.cduSystem || {};
+            const f0 = ref?.plantDesign?.fanwallSystem || {};
+            const sc = this._normalizeSiteCooling({
+                liquid: { secSupplyC: c0.secSupplyC, secReturnC: c0.secReturnC, cduApproachC: c0.cduApproachC, dryCoolerApproachC: c0.dryCoolerApproachC, pheApproachC: c0.pheApproachC },
+                air: { chwSupplyC: f0.chwSupplyC, chwReturnC: f0.chwReturnC }
+            });
+            const same = (a, b) => (a === undefined || a === null || b === undefined || b === null) ? (a === b || a == null || b == null) : Math.abs(Number(a) - Number(b)) <= tol;
+            const fwsOf = (o) => ({ s: o.secSupplyC - o.cduApproachC, r: o.secReturnC - o.cduApproachC });
+            let liqOk = true, airOk = true;
+            const refFws = fwsOf(sc.liquid);
+            units.forEach(u => {
+                const c = u.plantDesign?.cduSystem || {}, fw = u.plantDesign?.fanwallSystem || {};
+                this.SITE_LIQUID_KEYS.forEach(k => { if (!same(c[k], sc.liquid[k])) liqOk = false; });
+                if (c.fwsSupplyC !== undefined && !same(c.fwsSupplyC, refFws.s)) liqOk = false;
+                if (c.fwsReturnC !== undefined && !same(c.fwsReturnC, refFws.r)) liqOk = false;
+                this.SITE_AIR_KEYS.forEach(k => { if (!same(fw[k], sc.air[k])) airOk = false; });
+            });
+            (this.state.coolingPlants || []).forEach(p => {
+                const ps = p.system || {};
+                if (p.loop === 'liquid') {
+                    if (ps.fwsSupplyC !== undefined && !same(ps.fwsSupplyC, refFws.s)) liqOk = false;
+                    if (ps.fwsReturnC !== undefined && !same(ps.fwsReturnC, refFws.r)) liqOk = false;
+                } else {
+                    this.SITE_AIR_KEYS.forEach(k => { if (ps[k] !== undefined && !same(ps[k], sc.air[k])) airOk = false; });
+                }
+            });
+            sc.linkTemps = liqOk && airOk;
+            return sc;
+        },
+
+        getSiteCooling() {
+            if (!this.state.siteCooling || typeof this.state.siteCooling !== 'object') {
+                this.state.siteCooling = this._deriveSiteCooling();
+            }
+            return this.state.siteCooling;
+        },
+
+        siteFws() {
+            const L = this.getSiteCooling().liquid;
+            return { supplyC: Number((L.secSupplyC - L.cduApproachC).toFixed(2)), returnC: Number((L.secReturnC - L.cduApproachC).toFixed(2)) };
+        },
+
+        // 修改全廠水溫（規則見計畫 D5）：改供水時保持 ΔT；改 approach 時晶片供水不動、FWS 跟著動
+        setSiteCoolingTemp(loop, key, value) {
+            const v = Number(value);
+            if (!Number.isFinite(v)) return;
+            const sc = this.getSiteCooling();
+            if (loop === 'liquid') {
+                const L = sc.liquid;
+                const dt = L.secReturnC - L.secSupplyC;
+                if (key === 'secSupplyC') { L.secSupplyC = v; L.secReturnC = Number((v + dt).toFixed(2)); }
+                else if (key === 'secReturnC') { L.secReturnC = v; }
+                else if (key === 'fwsSupplyC') { L.secSupplyC = Number((v + L.cduApproachC).toFixed(2)); L.secReturnC = Number((L.secSupplyC + dt).toFixed(2)); }
+                else if (key === 'fwsReturnC') { L.secReturnC = Number((v + L.cduApproachC).toFixed(2)); }
+                else if (['cduApproachC', 'dryCoolerApproachC', 'pheApproachC'].includes(key)) { L[key] = v; }
+                else return;
+            } else if (loop === 'air') {
+                const A2 = sc.air;
+                const dt = A2.chwReturnC - A2.chwSupplyC;
+                if (key === 'chwSupplyC') { A2.chwSupplyC = v; A2.chwReturnC = Number((v + dt).toFixed(2)); }
+                else if (key === 'chwReturnC') { A2.chwReturnC = v; }
+                else return;
+            } else return;
+            this.applySiteCoolingToAll();
+            this.notify();
+        },
+
+        setTempLink(on) {
+            const sc = this.getSiteCooling();
+            sc.linkTemps = !!on;
+            if (sc.linkTemps) this.applySiteCoolingToAll();
+            this.notify();
+        },
+
+        setUnitTempOverride(unitId, loop, on) {
+            const u = this._allCoolingUnits().find(x => x.id === unitId);
+            if (!u) return;
+            const sys = loop === 'liquid' ? u.plantDesign?.cduSystem : u.plantDesign?.fanwallSystem;
+            if (!sys) return;
+            sys.tempOverride = !!on;
+            if (!on) this.applySiteCoolingToAll();
+            this.notify();
+        },
+
+        // 把全廠水溫寫到所有受連動的機房與單元；回傳是否有任何數值改變
+        applySiteCoolingToAll() {
+            const sc = this.getSiteCooling();
+            if (!sc.linkTemps) return false;
+            let changed = false;
+            const put = (obj, k, v) => {
+                if (!obj) return;
+                if (obj[k] === undefined || Math.abs(Number(obj[k]) - v) > 1e-9) { obj[k] = v; changed = true; }
+            };
+            const L = sc.liquid, fws = this.siteFws();
+            (this.state.coolingPlants || []).forEach(p => {
+                if (!p.system) return;
+                if (p.loop === 'liquid') {
+                    put(p.system, 'fwsSupplyC', fws.supplyC); put(p.system, 'fwsReturnC', fws.returnC);
+                    this.SITE_LIQUID_KEYS.forEach(k => put(p.system, k, L[k]));
+                } else {
+                    this.SITE_AIR_KEYS.forEach(k => put(p.system, k, sc.air[k]));
+                }
+            });
+            this._allCoolingUnits().forEach(u => {
+                const c = u.plantDesign?.cduSystem, fw = u.plantDesign?.fanwallSystem;
+                if (c && !c.tempOverride) {
+                    this.SITE_LIQUID_KEYS.forEach(k => put(c, k, L[k]));
+                    put(c, 'fwsSupplyC', fws.supplyC); put(c, 'fwsReturnC', fws.returnC);
+                }
+                if (fw && !fw.tempOverride) this.SITE_AIR_KEYS.forEach(k => put(fw, k, sc.air[k]));
+            });
+            return changed;
+        },
+
+        // 套用到全部單元（V10 Phase 8 用）：終端設備型號／冗餘一致，台數由各單元負載重新計算
+        applyToAllUnits(loop, equipKey, opts = {}) {
+            const kind = opts.kind || null; // 'du' | 'pod' | null(全部)
+            this._allCoolingUnits().forEach(u => {
+                if (kind === 'du' && !u.sus) return;
+                if (kind === 'pod' && u.sus) return;
+                const sys = loop === 'liquid' ? u.plantDesign?.cduSystem : u.plantDesign?.fanwallSystem;
+                const item = (sys?.sizing || []).find(x => x.key === equipKey);
+                if (!item || !((item.requiredKw || 0) > 0)) return;
+                if (opts.model && (item.catalog || []).some(c => c.model === opts.model)) item.selectedModel = opts.model;
+                if (opts.redundancy) { item.redundancy = opts.redundancy; item.userRedundancyEdited = true; }
+                item.selectedQty = 0;          // 由選型引擎依各單元負載補到需求台數
+                item.userEdited = false;
+                item.autoSelectRequested = false;
+            });
+            if (opts.model) this.recordLastModel(equipKey, opts.model);
+            this.notify();
+        },
+
+        // 泵揚程套用到全部系統（V10 Phase 8 用）
+        applyPumpHeadToAll(loop, headM) {
+            const v = Number(headM);
+            if (!Number.isFinite(v) || v <= 0) return;
+            (this.state.coolingPlants || []).filter(p => p.loop === loop && p.system).forEach(p => { p.system.pumpHeadM = v; });
+            this._allCoolingUnits().forEach(u => {
+                const sys = loop === 'liquid' ? u.plantDesign?.cduSystem : u.plantDesign?.fanwallSystem;
+                if (sys) sys.pumpHeadM = v;
+            });
             this.notify();
         },
 
@@ -1327,6 +1513,11 @@
             if (loop === 'liquid') {
                 if (pSys.fwsSupplyC !== undefined) sys.fwsSupplyC = pSys.fwsSupplyC;
                 if (pSys.fwsReturnC !== undefined) sys.fwsReturnC = pSys.fwsReturnC;
+                // V10 Phase 7：同一條 FWS 管路，成員的晶片供回水 = 機房 FWS + 自己的 CDU approach（獨立設定的單元除外）
+                if (!sys.tempOverride && Number.isFinite(Number(sys.cduApproachC))) {
+                    if (pSys.fwsSupplyC !== undefined) sys.secSupplyC = Number((Number(pSys.fwsSupplyC) + Number(sys.cduApproachC)).toFixed(2));
+                    if (pSys.fwsReturnC !== undefined) sys.secReturnC = Number((Number(pSys.fwsReturnC) + Number(sys.cduApproachC)).toFixed(2));
+                }
                 if (pSys.dryCoolerApproachC !== undefined) sys.dryCoolerApproachC = pSys.dryCoolerApproachC;
                 if (pSys.pheApproachC !== undefined) sys.pheApproachC = pSys.pheApproachC;
                 if (pSys.hasPhe !== undefined) sys.hasPhe = pSys.hasPhe;
@@ -3511,6 +3702,20 @@
             return arr;
         }
     };
+
+    // V10 Phase 7：新增／複製單元、建立機房、加入成員、套用範本後，套用全廠水溫（連動開啟時）
+    ['addCorePod', 'copyCorePod', 'addDU', 'copyDU', 'addCoolingPlant', 'addPlantMember',
+        'applySiteSharedConfig', 'applyHallGroupedConfig', 'applyTemplateToDu', 'applyTemplateToCorePod'].forEach(name => {
+        const orig = AppStore[name];
+        if (typeof orig !== 'function') return;
+        AppStore[name] = function (...args) {
+            const ret = orig.apply(this, args);
+            try {
+                if (this.applySiteCoolingToAll()) this.notify();
+            } catch (e) { console.warn('[siteCooling] apply failed after ' + name, e); }
+            return ret;
+        };
+    });
 
     window.AppStore = AppStore;
 })(window);

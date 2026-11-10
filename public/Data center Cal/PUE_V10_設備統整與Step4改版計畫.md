@@ -264,6 +264,13 @@ applyPumpHeadToAll(loop, headM)        // D9
 
 commit：`V10 Phase 7: 全廠設計條件與水溫連動（資料層、舊專案遷移）`
 
+> ✅ 結果與偏離：
+> - 「新增／複製單元、建立機房、加入成員、套用範本」改用**包裝函式**（`store.js` 檔尾，執行後呼叫 `applySiteCoolingToAll()`，有變動才 `notify()`），沒有逐一修改各函式本體。**不在 `calculate()` 裡強制套用**：既有測試會直接改單元水溫再計算，強制套用會把它們改回去。
+> - 氣冷 CHW 也比照液冷：改供水時保持 ΔT。
+> - `applyToAllUnits`、`applyPumpHeadToAll` 已先在 store 實作（Phase 8 畫面要用）。
+> - 1106 專案載入後 `linkTemps = true`（液冷 45/55、approach 4、FWS 41/51；冰水 20/30）。第一次套用只清掉機房殘留的 `secReturnC` 57→55，PUE 不變。把晶片供水改成 43 °C → 5 個單元＋機房全部 43/39，PUE 1.167→1.169，沒有溫度不相容。
+> - 測試 V10-P7a～g 共 7 項；unit_checks 283 passed；140 組回歸 0 差異；1106 與基準一致。
+
 ---
 
 ## 5. Phase 8：Step 4 介面改版
@@ -396,7 +403,7 @@ commit：每項一個，或合併成 `V10 Phase 9: 完整性補強（…）`。
 | Phase | 內容 | 狀態 | commit |
 |:--|:--|:--|:--|
 | 6 | 設備統整 | ✅ 完成 | 見 git log |
-| 7 | 水溫連動（資料層） | 待執行 | |
+| 7 | 水溫連動（資料層） | ✅ 完成 | 見 git log |
 | 8 | Step 4 改版 | 待執行 | |
 | 9 | 完整性補強 | 待執行 | |
 | 10 | 總驗證與報告 | 待執行 | |

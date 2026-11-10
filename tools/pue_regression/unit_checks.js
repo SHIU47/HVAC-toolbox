@@ -822,7 +822,7 @@ function sizeCduToDeratedN1(S) {
   test('C-5 serializeProject produces schemaVersion v7', () => {
     const json = S.serializeProject();
     const parsed = JSON.parse(json);
-    assert.strictEqual(parsed.schemaVersion, 'v8');
+    assert.strictEqual(parsed.schemaVersion, 'v9');
   });
 
   test('C-5 migrateProject resolves legacy aliases, adds redundancy and enabled', () => {
@@ -848,7 +848,7 @@ function sizeCduToDeratedN1(S) {
     };
 
     const migrated = S.migrateProject(v4State);
-    assert.strictEqual(migrated.schemaVersion, 'v8');
+    assert.strictEqual(migrated.schemaVersion, 'v9');
     assert.strictEqual(migrated.corePods[0].enabled, true);
     assert.strictEqual(migrated.halls[0].dus[0].plantDesign.cduSystem.architecture, 'dry_cooler_trim');
     assert.strictEqual(migrated.halls[0].dus[0].plantDesign.fanwallSystem.architecture, 'water_cooled_chiller');
@@ -871,7 +871,7 @@ function sizeCduToDeratedN1(S) {
 
     const savedV7 = S.serializeProject();
     const parsedV7 = JSON.parse(savedV7);
-    assert.strictEqual(parsedV7.schemaVersion, 'v8');
+    assert.strictEqual(parsedV7.schemaVersion, 'v9');
 
     const ok2 = S.deserializeProject(savedV7);
     assert.strictEqual(ok2, true);
@@ -3008,7 +3008,7 @@ function sizeCduToDeratedN1(S) {
     // 1. Serialize project
     const jsonStr = win.AppStore.serializeProject();
     const parsed = JSON.parse(jsonStr);
-    assert.strictEqual(parsed.schemaVersion, 'v8');
+    assert.strictEqual(parsed.schemaVersion, 'v9');
     assert.strictEqual(parsed.site.stationId, 'JPN_TK_Tokyo-Chiyoda.476620_TMYx.2011-2025');
     assert.strictEqual(parsed.site.stationSource, 'catalog');
 
@@ -3039,7 +3039,7 @@ function sizeCduToDeratedN1(S) {
       }
     };
     const migrated = win2.AppStore.migrateProject(v5Data);
-    assert.strictEqual(migrated.schemaVersion, 'v8');
+    assert.strictEqual(migrated.schemaVersion, 'v9');
     assert.strictEqual(migrated.site.stationSource, 'builtin');
     assert.strictEqual(migrated.site.stationId, 'TWN_NOR_Taoyuan.589650_TMYx.2011-2025');
   });
@@ -4214,7 +4214,7 @@ function sizeCduToDeratedN1(S) {
   test('P-1: serializeProject and deserializeProject preserve coolingPlants in schema v7', () => {
     const jsonStr = S.serializeProject();
     const parsed = JSON.parse(jsonStr);
-    assert.strictEqual(parsed.schemaVersion, 'v8');
+    assert.strictEqual(parsed.schemaVersion, 'v9');
     assert(Array.isArray(parsed.coolingPlants), 'serialized coolingPlants must be an array');
 
     const ok = S.deserializeProject(jsonStr);
@@ -4275,7 +4275,7 @@ function sizeCduToDeratedN1(S) {
     };
 
     const migrated = S.migrateProject(v6Data);
-    assert.strictEqual(migrated.schemaVersion, 'v8');
+    assert.strictEqual(migrated.schemaVersion, 'v9');
     assert(Array.isArray(migrated.coolingPlants), 'coolingPlants must be initialized');
     assert.strictEqual(migrated.coolingPlants.length, 0);
     assert.strictEqual(migrated.corePods[0]._showSharedPlantNotice, true, 'cp_1 must have _showSharedPlantNotice');
@@ -5871,6 +5871,132 @@ test('V9-P4 Step 6 report renders; PUE derivation and peak-hour hand calc match 
     let cjk = 0;
     ws.eachRow(row => row.eachCell(c => { const v = c.value; const t = (v && typeof v === 'object') ? (v.formula ? '' : (v.text || JSON.stringify(v))) : String(v ?? ''); if (/[一-鿿]/.test(t)) cjk++; }));
     assert.strictEqual(cjk, 0, 'CJK cells in English sheet 13: ' + cjk);
+  });
+}
+
+// ===== V10 Phase 7：全廠冷卻設計條件與水溫連動 =====
+{
+  const unitsOf = (S) => [...S.state.halls.flatMap(h => h.dus), ...S.state.corePods];
+
+  test('V10-P7a default project derives linked site cooling without changing results', () => {
+    const S = freshCtx().AppStore;
+    S.calculate();
+    const pue0 = S.state.results.overall.annualPue;
+    const sc = S.getSiteCooling();
+    assert.strictEqual(sc.linkTemps, true);
+    assert.strictEqual(S.applySiteCoolingToAll(), false, 'consistent project: applying site temps must be a no-op');
+    S.calculate();
+    assert.strictEqual(S.state.results.overall.annualPue, pue0);
+  });
+
+  test('V10-P7b linked: change chip supply on one unit → all units and shared plant follow, no temp incompatibility', () => {
+    const { buildWindow } = require('./dom_harness.js');
+    const win = buildWindow();
+    const S = win.AppStore;
+    S.applySiteSharedConfig();
+    S.calculate();
+    const app = S.getSiteCooling().liquid.cduApproachC;
+    const du = S.state.halls[0].dus[0];
+    win.ViewCooling.render(win.document.getElementById('stepContent'));
+    const el = win.document.getElementById('cduSecSupplyIn_' + du.id);
+    if (el) {
+      el.value = '43';
+      win.ViewCooling.updateCduParams(du.id);
+    } else {
+      S.setSiteCoolingTemp('liquid', 'secSupplyC', 43);
+    }
+    unitsOf(S).forEach(u => {
+      assert.strictEqual(u.plantDesign.cduSystem.secSupplyC, 43, u.name + ' secSupplyC');
+      assert(Math.abs(u.plantDesign.cduSystem.fwsSupplyC - (43 - app)) < 1e-9, u.name + ' fwsSupplyC');
+    });
+    S.state.coolingPlants.filter(p => p.loop === 'liquid').forEach(p => assert(Math.abs(p.system.fwsSupplyC - (43 - app)) < 1e-9, 'plant FWS'));
+    const chk = S.canProceedStep4();
+    assert(!chk.failedItems.some(x => /°C/.test(String(x.reqText))), 'no temperature incompatibility');
+  });
+
+  test('V10-P7c FWS virtual key keeps approach; approach change keeps chip supply; ΔT preserved', () => {
+    const S = freshCtx().AppStore;
+    S.calculate();
+    const L = S.getSiteCooling().liquid;
+    const app = L.cduApproachC, dt = L.secReturnC - L.secSupplyC;
+    S.setSiteCoolingTemp('liquid', 'fwsSupplyC', 37);
+    assert.strictEqual(L.cduApproachC, app);
+    assert(Math.abs(L.secSupplyC - (37 + app)) < 1e-9);
+    assert(Math.abs((L.secReturnC - L.secSupplyC) - dt) < 1e-9, 'ΔT preserved');
+    const sup = L.secSupplyC;
+    S.setSiteCoolingTemp('liquid', 'cduApproachC', app + 1);
+    assert.strictEqual(L.secSupplyC, sup, 'chip supply unchanged when approach changes');
+    unitsOf(S).forEach(u => assert(Math.abs(u.plantDesign.cduSystem.fwsSupplyC - (sup - app - 1)) < 1e-9, 'FWS follows approach'));
+  });
+
+  test('V10-P7d air loop CHW linked across units and plant', () => {
+    const S = freshCtx().AppStore;
+    S.applySiteSharedConfig();
+    S.calculate();
+    S.setSiteCoolingTemp('air', 'chwSupplyC', 20);
+    const A2 = S.getSiteCooling().air;
+    unitsOf(S).forEach(u => { assert.strictEqual(u.plantDesign.fanwallSystem.chwSupplyC, 20); assert.strictEqual(u.plantDesign.fanwallSystem.chwReturnC, A2.chwReturnC); });
+    S.state.coolingPlants.filter(p => p.loop === 'air').forEach(p => assert.strictEqual(p.system.chwSupplyC, 20));
+  });
+
+  test('V10-P7e unit override: site change skips it; its own change does not affect others', () => {
+    const { buildWindow } = require('./dom_harness.js');
+    const win = buildWindow();
+    const S = win.AppStore;
+    S.applyDedicatedConfig();
+    S.calculate();
+    const pod = S.state.corePods[0], du = S.state.halls[0].dus[0];
+    S.setUnitTempOverride(pod.id, 'liquid', true);
+    const podSup = pod.plantDesign.cduSystem.secSupplyC;
+    S.setSiteCoolingTemp('liquid', 'secSupplyC', podSup - 2);
+    assert.strictEqual(pod.plantDesign.cduSystem.secSupplyC, podSup, 'override unit unchanged');
+    assert.strictEqual(du.plantDesign.cduSystem.secSupplyC, podSup - 2);
+    win.ViewCooling.render(win.document.getElementById('stepContent'));
+    const el = win.document.getElementById('cduSecSupplyIn_' + pod.id);
+    if (el) {
+      el.value = String(podSup + 1);
+      win.ViewCooling.updateCduParams(pod.id);
+      assert.strictEqual(pod.plantDesign.cduSystem.secSupplyC, podSup + 1);
+      assert.strictEqual(du.plantDesign.cduSystem.secSupplyC, podSup - 2, 'other unit unaffected');
+    }
+  });
+
+  test('V10-P7f link off: changing plant FWS updates members FWS and chip supply; non-members unchanged', () => {
+    const S = freshCtx().AppStore;
+    S.applySiteSharedConfig();
+    S.calculate();
+    S.setTempLink(false);
+    const plant = S.state.coolingPlants.find(p => p.loop === 'liquid');
+    plant.system.fwsSupplyC = 38;
+    S.syncAllUnitsFromPlants();
+    unitsOf(S).filter(u => u.plantDesign.cduSystem.plantId === plant.id).forEach(u => {
+      const c = u.plantDesign.cduSystem;
+      assert.strictEqual(c.fwsSupplyC, 38);
+      assert(Math.abs(c.secSupplyC - (38 + c.cduApproachC)) < 1e-9, 'member chip supply follows plant FWS');
+    });
+  });
+
+  test('V10-P7g migration: consistent legacy → linked & unchanged; inconsistent → unlinked & unchanged; round-trip keeps flags', () => {
+    const S = freshCtx().AppStore;
+    S.calculate();
+    const dump = JSON.parse(S.serializeProject());
+    delete dump.siteCooling;
+    const S2 = freshCtx().AppStore;
+    S2.deserializeProject(JSON.stringify(dump));
+    assert.strictEqual(S2.getSiteCooling().linkTemps, true);
+    // 不一致：改 CorePOD 的冰水溫度
+    const bad = JSON.parse(JSON.stringify(dump));
+    bad.corePods[0].plantDesign.fanwallSystem.chwSupplyC = 15;
+    const S3 = freshCtx().AppStore;
+    S3.deserializeProject(JSON.stringify(bad));
+    assert.strictEqual(S3.getSiteCooling().linkTemps, false);
+    assert.strictEqual(S3.state.corePods[0].plantDesign.fanwallSystem.chwSupplyC, 15, 'migration must not change unit values');
+    // 往返
+    S3.setUnitTempOverride(S3.state.corePods[0].id, 'air', true);
+    const S4 = freshCtx().AppStore;
+    S4.deserializeProject(S3.serializeProject());
+    assert.strictEqual(S4.getSiteCooling().linkTemps, false);
+    assert.strictEqual(S4.state.corePods[0].plantDesign.fanwallSystem.tempOverride, true);
   });
 }
 

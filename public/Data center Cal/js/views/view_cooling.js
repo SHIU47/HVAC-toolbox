@@ -1572,6 +1572,37 @@ ${inputsHtml}
             const plant = window.AppStore.getCoolingPlant(plantId);
             if (!plant || !plant.system) return;
             const sys = plant.system;
+            // V10 Phase 7：全廠水溫連動時，機房的水溫改為修改全廠設定
+            const S = window.AppStore;
+            const linked = S.getSiteCooling && S.getSiteCooling().linkTemps;
+            if (linked) {
+                if (plant.loop === 'liquid') {
+                    const fwsS = num('plantFwsSupplyIn_' + plantId, sys.fwsSupplyC);
+                    const fwsR = num('plantFwsReturnIn_' + plantId, sys.fwsReturnC);
+                    if (Math.abs(fwsS - sys.fwsSupplyC) > 1e-9) S.setSiteCoolingTemp('liquid', 'fwsSupplyC', fwsS);
+                    else if (Math.abs(fwsR - sys.fwsReturnC) > 1e-9) S.setSiteCoolingTemp('liquid', 'fwsReturnC', fwsR);
+                    const dc = num('plantDcAppIn_' + plantId, sys.dryCoolerApproachC);
+                    if (Math.abs(dc - (sys.dryCoolerApproachC ?? dc)) > 1e-9) S.setSiteCoolingTemp('liquid', 'dryCoolerApproachC', dc);
+                    if (document.getElementById('plantPheAppIn_' + plantId)) {
+                        const ph = num('plantPheAppIn_' + plantId, sys.pheApproachC);
+                        if (Math.abs(ph - (sys.pheApproachC ?? ph)) > 1e-9) S.setSiteCoolingTemp('liquid', 'pheApproachC', ph);
+                    }
+                } else {
+                    const cs = num('plantChwSupplyIn_' + plantId, sys.chwSupplyC);
+                    const cr = num('plantChwReturnIn_' + plantId, sys.chwReturnC);
+                    if (Math.abs(cs - sys.chwSupplyC) > 1e-9) S.setSiteCoolingTemp('air', 'chwSupplyC', cs);
+                    else if (Math.abs(cr - sys.chwReturnC) > 1e-9) S.setSiteCoolingTemp('air', 'chwReturnC', cr);
+                }
+                const headEl0 = document.getElementById('plantHeadIn_' + plantId);
+                if (headEl0) {
+                    const v = parseFloat(headEl0.value);
+                    if (Number.isFinite(v)) sys.pumpHeadM = v;
+                }
+                S.syncAllUnitsFromPlants();
+                S.notify();
+                this.scheduleRender();
+                return;
+            }
             if (plant.loop === 'liquid') {
                 sys.fwsSupplyC = num('plantFwsSupplyIn_' + plantId, 42.0);
                 sys.fwsReturnC = num('plantFwsReturnIn_' + plantId, 54.0);
@@ -1717,6 +1748,17 @@ ${inputsHtml}
 
         applyCduPreset(targetId, preset) {
             const target = this.getTargetObj(targetId);
+            // V10 Phase 7：連動開啟且該單元未獨立設定時，預設值套用到全廠
+            const S0 = window.AppStore;
+            if (target && S0.getSiteCooling && S0.getSiteCooling().linkTemps && !target.plantDesign.cduSystem.tempOverride) {
+                const L0 = S0.getSiteCooling().liquid;
+                if (preset === 'nvidia') Object.assign(L0, { secSupplyC: 45.0, secReturnC: 57.0, cduApproachC: 4.0, dryCoolerApproachC: 5.0, pheApproachC: 2.0 });
+                else Object.assign(L0, { secSupplyC: 41.0, secReturnC: 51.0, cduApproachC: 4.0, dryCoolerApproachC: 5.0, pheApproachC: 2.0 });
+                S0.applySiteCoolingToAll();
+                S0.notify();
+                this.render(document.getElementById('stepContent'));
+                return;
+            }
             if (target) {
                 const c = target.plantDesign.cduSystem;
                 if (preset === 'nvidia') {
@@ -1733,6 +1775,14 @@ ${inputsHtml}
 
         applyFwTemps(targetId, sup, ret) {
             const target = this.getTargetObj(targetId);
+            const S0 = window.AppStore;
+            if (target && S0.getSiteCooling && S0.getSiteCooling().linkTemps && !target.plantDesign.fanwallSystem.tempOverride) {
+                Object.assign(S0.getSiteCooling().air, { chwSupplyC: sup, chwReturnC: ret });
+                S0.applySiteCoolingToAll();
+                S0.notify();
+                this.render(document.getElementById('stepContent'));
+                return;
+            }
             if (target) {
                 target.plantDesign.fanwallSystem.chwSupplyC = sup;
                 target.plantDesign.fanwallSystem.chwReturnC = ret;
@@ -1764,6 +1814,19 @@ ${inputsHtml}
             const target = this.getTargetObj(targetId);
             if (target) {
                 const cdu = target.plantDesign.cduSystem;
+                const S0 = window.AppStore;
+                const linked = S0.getSiteCooling && S0.getSiteCooling().linkTemps && !cdu.tempOverride;
+                if (linked) {
+                    // V10 Phase 7：連動開啟 → 有變動的溫度欄位改寫全廠設定（套用到所有單元與機房）
+                    const L0 = S0.getSiteCooling().liquid;
+                    const diff = (a, b) => Math.abs(Number(a) - Number(b)) > 1e-9;
+                    if (diff(secSup, L0.secSupplyC)) L0.secSupplyC = secSup;
+                    if (diff(secRet, L0.secReturnC)) L0.secReturnC = secRet;
+                    if (diff(cduApp, L0.cduApproachC)) L0.cduApproachC = cduApp;
+                    if (diff(outdoorApp, L0.dryCoolerApproachC)) L0.dryCoolerApproachC = outdoorApp;
+                    if (pheEl && diff(pheApp, L0.pheApproachC)) L0.pheApproachC = pheApp;
+                    S0.applySiteCoolingToAll();
+                } else {
                 cdu.secSupplyC = secSup;
                 cdu.secReturnC = secRet;
                 cdu.cduApproachC = cduApp;
@@ -1772,6 +1835,7 @@ ${inputsHtml}
                 cdu.dryCoolerApproachC = outdoorApp;
                 if (pheEl) {
                     cdu.pheApproachC = pheApp;
+                }
                 }
 
                 const cduHeadEl = document.getElementById('cduPumpHeadIn_' + targetId);
@@ -1832,8 +1896,17 @@ ${inputsHtml}
             const target = this.getTargetObj(targetId);
             if (target) {
                 const fw = target.plantDesign.fanwallSystem;
-                fw.chwSupplyC = sup;
-                fw.chwReturnC = ret;
+                const S0 = window.AppStore;
+                if (S0.getSiteCooling && S0.getSiteCooling().linkTemps && !fw.tempOverride) {
+                    // V10 Phase 7：連動開啟 → 改全廠冰水溫度
+                    const A0 = S0.getSiteCooling().air;
+                    A0.chwSupplyC = sup;
+                    A0.chwReturnC = ret;
+                    S0.applySiteCoolingToAll();
+                } else {
+                    fw.chwSupplyC = sup;
+                    fw.chwReturnC = ret;
+                }
 
                 const fwHeadEl = document.getElementById('fwPumpHeadIn_' + targetId);
                 if (fwHeadEl) {
