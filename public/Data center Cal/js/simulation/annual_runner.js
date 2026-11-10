@@ -1063,6 +1063,75 @@
             const cduFreeHours = profileResult.cduFreeHours;
             const cduPartialHours = profileResult.cduPartialHours;
             const cduMechHours = profileResult.cduMechHours;
+            // V9-C3：全廠自然冷卻統計改用「液冷＋氣冷兩側同時 free」的 combined 定義（原本只取液冷側，會誤報 100%）
+            const comb = profileResult.combinedFcStats || { freeHours: cduFreeHours, partialHours: cduPartialHours, mechHours: cduMechHours };
+
+            // V9-C4：冷卻 pPUE（含 CDU 與全部泵）= (IT + 全部冷卻耗電) / IT；原 annualP_Pue（不含泵）保留供對照
+            const coolingAllKwh = overallKwh.cduPump + overallKwh.crahFan + overallKwh.heatRejection + overallKwh.chiller;
+            const overallCoolingPpue = overallKwh.it > 0 ? parseFloat(((overallKwh.it + coolingAllKwh) / overallKwh.it).toFixed(3)) : 1.0;
+            let maxCoolingPpue = 1.0;
+            for (let i = 0; i < 8760; i++) {
+                const hs = hourlyFacilityStats[i];
+                if (hs.itKw > 0) {
+                    const v = (hs.itKw + hs.coolingNoPumpKw + hs.cduPumpKw) / hs.itKw;
+                    if (v > maxCoolingPpue) maxCoolingPpue = v;
+                }
+            }
+
+            // V9-C6：冰機逐時 COP 統計（COP_h = 機械冷卻負載 ÷ 冰機耗電），供審查判斷是否偏樂觀
+            let copLoadKwh = 0, copPowerKwh = 0, copHours = 0, copHighHours = 0, copMax = 0, copMin = Infinity;
+            for (let i = 0; i < 8760; i++) {
+                const hs = hourlyFacilityStats[i];
+                if (hs.chillerKw > 0.01 && hs.mechLoadKw > 0) {
+                    const cop = hs.mechLoadKw / hs.chillerKw;
+                    copLoadKwh += hs.mechLoadKw; copPowerKwh += hs.chillerKw; copHours++;
+                    if (cop > 10) copHighHours++;
+                    if (cop > copMax) copMax = cop;
+                    if (cop < copMin) copMin = cop;
+                }
+            }
+            const chillerCopStats = {
+                runHours: copHours,
+                seasonalCop: copPowerKwh > 0 ? parseFloat((copLoadKwh / copPowerKwh).toFixed(2)) : null,
+                minCop: copHours ? parseFloat(copMin.toFixed(2)) : null,
+                maxCop: copHours ? parseFloat(copMax.toFixed(2)) : null,
+                hoursAbove10: copHighHours
+            };
+
+            // V9-C1/C2：合格判定（容量不足、熱平衡、選型不合格）
+            const sizingFailures = [];
+            const collectFail = (ownerName, sysLabel, sys) => {
+                (sys?.sizing || []).forEach(s => {
+                    if (s.passed === false && (s.requiredKw || 0) > 0) {
+                        sizingFailures.push({
+                            owner: ownerName, system: sysLabel, key: s.key, model: s.selectedModel || '',
+                            qty: s.selectedQty, requiredKw: Math.round(s.requiredKw || 0), effectiveCapKw: Math.round(s.effectiveCapKw || 0)
+                        });
+                    }
+                });
+            };
+            (state.halls || []).forEach(h => (h.dus || []).forEach(d => {
+                collectFail(d.name, 'liquid', d.plantDesign?.cduSystem);
+                collectFail(d.name, 'air', d.plantDesign?.fanwallSystem);
+            }));
+            (state.corePods || []).filter(p => p.enabled !== false).forEach(p => {
+                collectFail(p.name, 'liquid', p.plantDesign?.cduSystem);
+                collectFail(p.name, 'air', p.plantDesign?.fanwallSystem);
+            });
+            activePlants.forEach(p => collectFail(p.name, p.loop, p.system));
+            const plantDeficitHours = activePlants.reduce((m, p) => Math.max(m, p._sim?.deficitHours || 0), 0);
+            const complianceDeficitHours = Math.max(overallDeficitHours, plantDeficitHours);
+            const thermalImbalanceMwh = Math.abs(thermalLedger?.imbalance_kwh || 0) / 1000;
+            const compliance = {
+                deficitHours: complianceDeficitHours,
+                maxDeficitKw: Math.round(overallMaxDeficitKw),
+                thermalBalanced: !!thermalLedger?.is_balanced,
+                thermalImbalanceMwh: Math.round(thermalImbalanceMwh),
+                energyBalanced: !!energyLedger?.is_balanced,
+                sizingFailures,
+                // fail：有容量不足時數或熱平衡未閉合（PUE 可能低估）；warn：僅選型檢核未過
+                status: (complianceDeficitHours > 0 || !thermalLedger?.is_balanced) ? 'fail' : (sizingFailures.length > 0 ? 'warn' : 'pass')
+            };
 
             return {
                 cduFcStats: profileResult.cduFcStats,
@@ -1080,11 +1149,19 @@
                     totalItKw: totalAllItKw,
                     annualTotalMwh: Math.round(overallTotalKwh / 1000),
                     annualItMwh: Math.round(overallKwh.it / 1000),
-                    fcHours: cduFreeHours,
-                    fcHoursPct: parseFloat(((cduFreeHours / 8760) * 100).toFixed(1)),
-                    freeModeHours: cduFreeHours,
-                    partialModeHours: cduPartialHours,
-                    mechModeHours: cduMechHours,
+                    annualCoolingPpue: overallCoolingPpue,
+                    peakCoolingPpue: parseFloat(maxCoolingPpue.toFixed(3)),
+                    fcHours: comb.freeHours,
+                    fcHoursPct: parseFloat(((comb.freeHours / 8760) * 100).toFixed(1)),
+                    fcBasis: 'combined',
+                    freeModeHours: comb.freeHours,
+                    partialModeHours: comb.partialHours,
+                    mechModeHours: comb.mechHours,
+                    cduFreeModeHours: cduFreeHours,
+                    cduPartialModeHours: cduPartialHours,
+                    cduMechModeHours: cduMechHours,
+                    compliance,
+                    chillerCopStats,
                     capacityDeficitHours: overallDeficitHours,
                     maxCapacityDeficitKw: overallMaxDeficitKw,
                     chillerEnvelopeHours: overallChillerEnvelopeHours,
@@ -1117,6 +1194,7 @@
                     month: idx + 1,
                     pue: parseFloat((m.totalKwh / (m.itKwh || 1)).toFixed(3)),
                     p_pue: parseFloat(((m.itKwh + m.coolNoPumpKwh) / (m.itKwh || 1)).toFixed(3)),
+                    coolingPpue: parseFloat(((m.itKwh + m.coolKwh) / (m.itKwh || 1)).toFixed(3)),
                     totalMwh: Math.round(m.totalKwh / 1000),
                     itMwh: Math.round(m.itKwh / 1000),
                     coolingMwh: Math.round(m.coolKwh / 1000),

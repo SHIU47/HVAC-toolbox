@@ -233,8 +233,8 @@
                                 ${formatDelta(summ?.annualPue, baseSummary?.annualPue, 3)}
                             </td>
                             <td class="py-3 px-4 text-right font-mono text-secondary tabular-nums">
-                                ${summ?.annualP_Pue ?? '—'}
-                                ${formatDelta(summ?.annualP_Pue, baseSummary?.annualP_Pue, 3)}
+                                ${summ?.annualCoolingPpue ?? summ?.annualP_Pue ?? '—'}
+                                ${formatDelta(summ?.annualCoolingPpue ?? summ?.annualP_Pue, baseSummary?.annualCoolingPpue ?? baseSummary?.annualP_Pue, 3)}
                             </td>
                             <td class="py-3 px-4 text-right font-mono text-secondary tabular-nums">
                                 ${summ?.peakPue ?? '—'}
@@ -313,22 +313,7 @@
                         </div>
                     </div>
 
-                    ${overall.capacityDeficitHours > 0 ? `
-                    <!-- v32 Phase 9-3: 設備容量不足警示 — 8760h中有任一小時 ChillerEngine 偵測到
-                         PLR>1.02 (需求超過已選設備扣除N+1備援後的可用容量)，代表下方 PUE 可能被低估，
-                         不能悄悄放行成一個看起來正常的數字。 -->
-                    <div class="${U.cardClass('p-4 bg-danger-50 border-danger-500')}">
-                        <div class="flex items-start gap-3">
-                            ${U.iconBadge('triangle-alert', 'danger', 'w-9 h-9')}
-                            <div class="flex-1">
-                                <div class="text-sm font-bold text-danger-600">${_t('dash.deficitWarnTitle', null, '設備容量不足警示 — 此 PUE 結果可能被低估')}</div>
-                                <div class="text-xs text-danger-600 mt-1">
-                                    ${_t('dash.deficitWarnBody', { hours: overall.capacityDeficitHours.toLocaleString(), kw: overall.maxCapacityDeficitKw.toLocaleString() }, `全年 8,760 小時中，有 <strong>${overall.capacityDeficitHours.toLocaleString()}</strong> 小時偵測到冰機容量不足（需求超過已選型號扣除 N+1 備援後的可用容量），尖峰缺口約 <strong>${overall.maxCapacityDeficitKw.toLocaleString()} kW</strong>。這些小時的耗電量已被引擎依可用容量封頂計算，並不代表冷量真的有被完全供應，此結果<strong>不應直接用於設備比較或最終 PUE 認證</strong>，請回到 Step 4 增加設備台數或選用更大容量型號。`)}
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    ` : ''}
+                    ${this.renderComplianceBanner(overall)}
 
                     <!-- 核心指標: 年度PUE 為視覺主角，淺色漸層底突顯層次，其餘指標降階 -->
                     <div class="${U.cardClass('p-6 bg-gradient-to-br from-brand-50/60 via-surface to-surface')}">
@@ -1545,6 +1530,35 @@
             this.drawCarpetPlot();
         },
 
+        // V9-C1/C2：合格判定橫幅（容量不足、熱平衡、選型不合格）
+        renderComplianceBanner(overall) {
+            const U = window.UIKit;
+            const c = overall.compliance;
+            if (!c || c.status === 'pass') return '';
+            const isFail = c.status === 'fail';
+            const esc = (v) => (U && U.escapeHTML) ? U.escapeHTML(String(v)) : String(v);
+            const items = [];
+            if (c.deficitHours > 0) items.push(_t('dash.compDeficit', { hours: c.deficitHours.toLocaleString(), kw: (c.maxDeficitKw || 0).toLocaleString() }, `容量不足：全年 ${c.deficitHours.toLocaleString()} 小時，尖峰缺口 ${(c.maxDeficitKw || 0).toLocaleString()} kW（這些小時的耗電依可用容量封頂計算）`));
+            if (!c.thermalBalanced) items.push(_t('dash.compThermal', { mwh: (c.thermalImbalanceMwh || 0).toLocaleString() }, `熱平衡未閉合：有 ${(c.thermalImbalanceMwh || 0).toLocaleString()} MWh 的熱沒有被冷卻系統移除，也沒有對應的冷卻耗電`));
+            const failRows = (c.sizingFailures || []).map(f => `<tr><td class="pr-3">${esc(f.owner)}</td><td class="pr-3">${f.system === 'liquid' ? _t('dash.compLiquid', null, '液冷') : _t('dash.compAir', null, '氣冷')}</td><td class="pr-3">${esc(f.key)}</td><td class="pr-3">${esc(f.model)} × ${f.qty}</td><td class="text-right tabular-nums">${f.effectiveCapKw.toLocaleString()} / ${f.requiredKw.toLocaleString()}</td></tr>`).join('');
+            const title = isFail
+                ? _t('dash.compFailTitle', null, '不合格 — 此 PUE 可能被低估，不可作為最終結果')
+                : _t('dash.compWarnTitle', null, '選型檢核未通過 — 請確認下列設備');
+            return `
+                    <div class="${U.cardClass('p-4 ' + (isFail ? 'bg-danger-50 border-danger-500' : 'bg-warn-50 border-warn-500'))}" id="complianceBanner">
+                        <div class="flex items-start gap-3">
+                            ${U.iconBadge('triangle-alert', isFail ? 'danger' : 'warn', 'w-9 h-9')}
+                            <div class="flex-1 text-xs ${isFail ? 'text-danger-600' : 'text-warn-600'}">
+                                <div class="text-sm font-bold">${title}</div>
+                                ${items.length ? `<ul class="list-disc pl-5 mt-1 space-y-0.5">${items.map(i => `<li>${i}</li>`).join('')}</ul>` : ''}
+                                ${failRows ? `<div class="mt-2 font-semibold">${_t('dash.compSizingTitle', { n: c.sizingFailures.length }, `選型不合格 ${c.sizingFailures.length} 項（有效容量 / 需求，kW；泵為 kW 軸功率）`)}</div>
+                                <table class="mt-1 text-[11px]"><tbody>${failRows}</tbody></table>` : ''}
+                                <div class="mt-2">${_t('dash.compAction', null, '請回到 Step 4 調整台數或型號。')}</div>
+                            </div>
+                        </div>
+                    </div>`;
+        },
+
         updateHeatmapKpi() {
             const container = document.getElementById('heatmapKpiContainer');
             if (!container) return;
@@ -2309,10 +2323,12 @@
             csv += '=== PUE & WUE 8760h 動力學模擬評估報告 ===\n';
             csv += '專案案場,' + (state.site.selectedCity || 'Site') + ',評估時數,8760 小時\n';
             csv += '全廠設計 PUE (年均),' + overall.annualPue + ',全廠尖峰 PUE (最劣),' + (overall.peakPue || overall.annualPue) + '\n';
+            csv += '全廠 Cooling pPUE 含 CDU 與泵 (年均),' + (overall.annualCoolingPpue ?? '') + ',全廠尖峰 Cooling pPUE 含 CDU 與泵 (最劣),' + (overall.peakCoolingPpue ?? '') + '\n';
             csv += '全廠 Cooling pPUE 不含泵浦耗電 (年均),' + overall.annualP_Pue + ',全廠尖峰 Cooling pPUE 不含泵浦耗電 (最劣),' + (overall.peakP_Pue || overall.annualP_Pue) + ' (發生於 ' + (overall.peakMonth || 7) + ' 月)\n';
             csv += '全廠耗水 WUE (L/kWh),' + overall.annualWue + ',全廠年總耗水量 (m³),' + overall.annualWaterM3 + '\n';
             csv += '全廠 IT 總容量 (kW),' + overall.totalItKw.toFixed(1) + ',全廠年總耗電 (MWh),' + overall.annualTotalMwh + '\n';
-            csv += '自由冷卻 (FC) 潛力時數,直冷 ' + (fcPot.freeHours||0) + 'h (' + (fcPot.freeHoursPct||0) + '%),輔助 ' + (fcPot.trimHours||0) + 'h (' + (fcPot.trimHoursPct||0) + '%),冰機 ' + (fcPot.mechanicalHours||0) + 'h (' + (fcPot.mechanicalHoursPct||0) + '%)\n\n';
+            csv += '全廠自然冷卻 (液冷＋氣冷同時直冷) 時數,' + (overall.fcHours || 0) + 'h (' + (overall.fcHoursPct || 0) + '%)\n';
+            csv += '液冷側自由冷卻 (FC) 潛力時數,直冷 ' + (fcPot.freeHours||0) + 'h (' + (fcPot.freeHoursPct||0) + '%),輔助 ' + (fcPot.trimHours||0) + 'h (' + (fcPot.trimHoursPct||0) + '%),冰機 ' + (fcPot.mechanicalHours||0) + 'h (' + (fcPot.mechanicalHoursPct||0) + '%)\n\n';
 
             csv += '=== 逐 DU (冷卻單元) 評估明細 ===\n';
             csv += 'DU 名稱,機房 Hall,CDU 液冷架構,CDU 供/回水溫(°C),CDU 液冷能耗(MWh),Fanwall 氣冷架構,Fanwall 冰水溫(°C),Fanwall 氣冷能耗(MWh),IT 容量(kW),DLC (%),設計 PUE,耗水 WUE (L/kWh),年總耗電(MWh)\n';

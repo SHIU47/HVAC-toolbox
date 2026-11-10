@@ -5621,6 +5621,59 @@ function sizeCduToDeratedN1(S) {
   });
 })();
 
+// ===== V9 Phase 1：統計與合格判定 =====
+{
+  const ctxV9 = freshCtx();
+  const SV9 = ctxV9.AppStore;
+  const fsV9 = require('fs'), pathV9 = require('path');
+  const projV9 = pathV9.resolve(__dirname, '../../public/Data center Cal/projects/PUE_Project_高雄 (Kaohsiung)_20260901.json');
+  SV9.deserializeProject(fsV9.readFileSync(projV9, 'utf8'));
+  const rV9 = SV9.state.results, oV9 = rV9.overall;
+
+  test('V9-C3 overall FC hours use combined basis (both loops free), not liquid-only', () => {
+    assert.strictEqual(oV9.fcBasis, 'combined');
+    assert.strictEqual(oV9.fcHours, rV9.combinedFcStats.freeHours);
+    assert(oV9.fcHours <= rV9.cduFcStats.freeHours && oV9.fcHours <= rV9.fwFcStats.freeHours, 'combined free hours must not exceed either loop');
+    assert.strictEqual(oV9.cduFreeModeHours, rV9.cduFcStats.freeHours);
+  });
+
+  test('V9-C4 cooling pPUE includes CDU and pumps; >= pPUE excl. pumps', () => {
+    const b = oV9.breakdownKwh;
+    const expect = (b.it + b.cduPump + b.crahFan + b.heatRejection + b.chiller) / b.it;
+    assert(Math.abs(oV9.annualCoolingPpue - expect) < 0.0006, `got ${oV9.annualCoolingPpue}, expect ${expect}`);
+    assert(oV9.annualCoolingPpue >= oV9.annualP_Pue);
+    assert(oV9.peakCoolingPpue >= oV9.annualCoolingPpue);
+  });
+
+  test('V9-C1/C2 compliance flags deficit / sizing failures on 0901 Kaohsiung project', () => {
+    const c = oV9.compliance;
+    assert(c, 'compliance object missing');
+    assert.strictEqual(c.status, 'fail');
+    assert(c.deficitHours > 0);
+    assert(c.sizingFailures.some(f => f.key === 'crah_unit'), 'CRAH under-sizing must be listed');
+    assert.strictEqual(c.thermalBalanced, false);
+  });
+
+  test('V9-C6 chiller COP stats are consistent (seasonal between min and max)', () => {
+    const s = oV9.chillerCopStats;
+    assert(s && s.runHours > 0);
+    assert(s.seasonalCop >= s.minCop && s.seasonalCop <= s.maxCop);
+  });
+}
+
+test('V9-C1 dashboard renders compliance banner (fail) with sizing failure rows', () => {
+  const { buildWindow } = require('./dom_harness.js');
+  const fsD = require('fs'), pathD = require('path');
+  const win = buildWindow();
+  const projD = pathD.resolve(__dirname, '../../public/Data center Cal/projects/PUE_Project_高雄 (Kaohsiung)_20260901.json');
+  win.AppStore.deserializeProject(fsD.readFileSync(projD, 'utf8'));
+  win.AppStore.calculate();
+  win.ViewDashboard.render(win.document.getElementById('stepContent'));
+  const banner = win.document.getElementById('complianceBanner');
+  assert(banner, 'compliance banner must render for failing project');
+  assert(banner.innerHTML.includes('crah_unit'), 'banner must list CRAH sizing failure');
+});
+
 console.log(`\n${passCount} passed, ${failCount} failed, ${skipCount} skipped`);
 process.exit(failCount > 0 ? 1 : 0);
 

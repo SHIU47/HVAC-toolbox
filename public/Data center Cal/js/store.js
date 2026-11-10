@@ -1651,6 +1651,7 @@
                 inputHash: currentHash,
                 annualPue: overall.annualPue,
                 annualP_Pue: overall.annualP_Pue,
+                annualCoolingPpue: overall.annualCoolingPpue,
                 peakPue: overall.peakPue,
                 annualWue: overall.annualWue,
                 annualTotalMwh: overall.annualTotalMwh,

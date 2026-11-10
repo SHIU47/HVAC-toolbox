@@ -24,7 +24,7 @@
     'kpi.waterWue': '耗水 WUE',
     'kpi.itCapacity': 'IT 容量',
     'kpi.freeCooling': '自然冷卻 FC',
-    'kpi.freeCoolingTitle': 'CDU 液冷自然冷卻時數佔比 (Free Cooling Ratio)',
+    'kpi.freeCoolingTitle': '全廠自然冷卻時數佔比：液冷與氣冷兩側同時為自然冷卻的小時數 ÷ 8,760',
 
     // Steps Navigation
     'nav.step1': '案場 8760h 氣象',
@@ -796,6 +796,14 @@
     'dash.navStep4': 'Step 4: 雙冷卻選型',
     'dash.exportCsv': '匯出完整評估報告 (CSV)',
     'dash.exportExcel': '匯出 Excel 空調計算書 (公式連動)',
+    'dash.compDeficit': '容量不足：全年 {hours} 小時，尖峰缺口 {kw} kW（這些小時的耗電依可用容量封頂計算）',
+    'dash.compThermal': '熱平衡未閉合：有 {mwh} MWh 的熱沒有被冷卻系統移除，也沒有對應的冷卻耗電',
+    'dash.compLiquid': '液冷',
+    'dash.compAir': '氣冷',
+    'dash.compFailTitle': '不合格 — 此 PUE 可能被低估，不可作為最終結果',
+    'dash.compWarnTitle': '選型檢核未通過 — 請確認下列設備',
+    'dash.compSizingTitle': '選型不合格 {n} 項（有效容量 / 需求，kW；泵為 kW 軸功率）',
+    'dash.compAction': '請回到 Step 4 調整台數或型號。',
     'dash.deficitWarnTitle': '⚠ 設備容量不足警示 — 此 PUE 結果可能被低估',
     'dash.deficitWarnBody': '全年 8,760 小時中，有 <strong>{hours}</strong> 小時偵測到冰機容量不足（需求超過已選型號扣除 N+1 備援後的可用容量），尖峰缺口約 <strong>{kw} kW</strong>。這些小時的耗電量已被引擎依可用容量封頂計算，並不代表冷量真的有被完全供應，此結果<strong>不應直接用於設備比較或最終 PUE 認證</strong>，請回到 Step 4 增加設備台數或選用更大容量型號。',
     'dash.annualAvgPue': '全廠設計 PUE (年度均值)',

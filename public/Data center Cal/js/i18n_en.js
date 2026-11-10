@@ -24,7 +24,7 @@
     'kpi.waterWue': 'Water WUE',
     'kpi.itCapacity': 'IT Capacity',
     'kpi.freeCooling': 'Free Cooling FC',
-    'kpi.freeCoolingTitle': 'CDU Liquid Cooling Free Cooling Hours Ratio',
+    'kpi.freeCoolingTitle': 'Facility free-cooling ratio: hours when both liquid and air loops are in free cooling ÷ 8,760',
 
     // Steps Navigation
     'nav.step1': 'Site 8760h Weather',
@@ -796,6 +796,14 @@
     'dash.navStep4': 'Step 4: Cooling Sizing',
     'dash.exportCsv': 'Export Full Evaluation Report (CSV)',
     'dash.exportExcel': 'Export Excel Calculation Workbook (Formulas Linked)',
+    'dash.compDeficit': 'Capacity deficit: {hours} h/yr, peak shortfall {kw} kW (power in those hours is capped at available capacity)',
+    'dash.compThermal': 'Thermal balance not closed: {mwh} MWh of heat was not removed and has no matching cooling power',
+    'dash.compLiquid': 'Liquid',
+    'dash.compAir': 'Air',
+    'dash.compFailTitle': 'NOT COMPLIANT — this PUE may be underestimated and must not be used as a final result',
+    'dash.compWarnTitle': 'Sizing checks failed — please review the equipment below',
+    'dash.compSizingTitle': '{n} sizing item(s) failed (effective capacity / required, kW; pumps in shaft kW)',
+    'dash.compAction': 'Return to Step 4 to adjust quantity or model.',
     'dash.deficitWarnTitle': '⚠ Equipment Capacity Deficit Warning — This PUE result may be underestimated',
     'dash.deficitWarnBody': 'Chiller capacity deficit detected in <strong>{hours}</strong> of 8,760 annual hours (cooling demand exceeds available capacity excluding N+1 standby), with peak deficit of ~<strong>{kw} kW</strong>. Power consumption in these hours was capped by available capacity and does not reflect actual cooling delivered. This result <strong>should not be used for equipment comparison or final PUE certification</strong>. Please return to Step 4 to increase unit count or select higher capacity models.',
     'dash.annualAvgPue': 'Facility Design PUE (Annual Mean)',

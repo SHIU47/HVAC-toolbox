@@ -50,8 +50,8 @@
 | C2 | 熱平衡沒閉合時畫面沒有警告 | 同上 `thermalLedger` | 同上 | 1 |
 | C3 | `overall.fcHours` 只取液冷側；頂部 KPI 顯示的 FC% 是錯的 | `annual_runner.js:1083` 附近 | 誤導 | 1 |
 | C4 | pPUE 沒算泵和 CDU 的耗電，跟一般定義（全部冷卻耗電）不同 | `annual_runner.js:983`、`:1003`、`:1119` | 誤導 | 1 |
-| C5 | Round 7 報告的方案比較：共用機房的泵耗電從 7,879 跳到 60,670 MWh，疑似重複計算 | 共用機房 / scenario | 共用方案被高估 | 1（先重現，再決定是否修） |
-| C6 | 冰機 COP 上限 20；1106 版氣冷冰機全年平均 COP ≈ 6.6（14,786 MWh 對 97,914 MWh 熱），偏高，要驗證 | `engines_chiller.js:30` | ⚠ 待驗證 | 1（在計算書列出 COP 分布，不先改模型） |
+| C5 | Round 7 報告的方案比較：共用機房的泵耗電從 7,879 跳到 60,670 MWh，疑似重複計算 | 共用機房 / scenario | — | 1：**已無法重現**。用 0901 專案重建三種配置，CDU＋泵耗電都在 4,795～4,915 MWh（R8 修泵時已解決），不改程式 |
+| C6 | 冰機 COP 上限 20，要驗證是否偏樂觀 | `engines_chiller.js:30` | ⚠ 待驗證 | 1：新增 `overall.chillerCopStats`。1106 版：季節 COP 5.48，最低 4.31，最高 10.75，COP > 10 共 161 h；型錄額定 COP 4.07（XCAF2524A），但尖峰時段最低值 4.31 仍高於額定，⚠ 待使用者對照型錄部分負載資料。模型不改 |
 | C7 | IT 全年固定 100%，沒有部分負載情境 | `annual_runner.js:59` | 年 PUE 偏低 | 2 |
 | C8 | 電力損耗只有一個比例，非 IT 輔助負載（照明、辦公空調、MAU 等）沒有獨立項目 | `assumptions.js:399`、`store.js` | 偏低 | 2 |
 | C9 | 水力帳本未實作（`no_flow_head_model_yet`），揚程用預設值 | `annual_runner.js`、`sizing_engine.js` | 沒有依據 | 4（計算書列出流量、揚程、效率和出處） |
@@ -68,7 +68,8 @@
 - 新增 `tools/pue_regression/project_check.js`：載入專案檔 → 印出分項耗電、FC 統計、容量／熱平衡檢核，可用 `--save` / `--compare`。
 - 存修正前基準（見 §3.1）。
 
-### Phase 1：計算與統計修正（C1～C6）
+### Phase 1：計算與統計修正（C1～C6）✅
+> 結果：PUE 數值不變（140 組回歸和兩份專案都一致），只有全廠 FC 時數改成正確值（1106：8,748 → 275 h；0901：8,760 → 0 h）。新增 `overall.compliance`、`annualCoolingPpue`／`peakCoolingPpue`、`chillerCopStats`、`fcBasis`、`cdu*ModeHours`。儀表板加上合格判定橫幅（取代原本只看冰機的容量不足警示）。Excel 的合格判定移到 Phase 4 與計算書一起做。
 - C3：`overall` 改為同時提供液冷、氣冷、全廠三組 FC 統計；頂部 KPI 和儀表板顯示全廠值，並標明定義（全自然冷卻＝兩側同時為 free）。
 - C4：pPUE 改為 (IT + 全部冷卻耗電，含 CDU 與泵) / IT；舊的「不含泵」值改名保留，方便對照。
 - C1/C2：結果物件新增 `compliance`（容量不足時數、最大缺口、熱平衡差、是否合格）；儀表板、Excel、計算書顯示「不合格」橫幅，PUE 旁加註。
@@ -123,7 +124,7 @@ node project_check.js "../../public/Data center Cal/projects/PUE_Project_高雄 
 | Phase | 狀態 | commit |
 |:--|:--|:--|
 | 0 | ✅ 完成 | 見 git log |
-| 1 | 待執行 | |
+| 1 | ✅ 完成 | 見 git log |
 | 2 | 待執行 | |
 | 3 | 待執行 | |
 | 4 | 待執行 | |
