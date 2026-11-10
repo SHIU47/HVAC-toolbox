@@ -209,7 +209,7 @@
                     [L('PUE 定義', 'PUE definition'), 'ISO/IEC 30134-2：PUE = E<sub>DC</sub> ÷ E<sub>IT</sub>（' + L('年度能量比', 'annual energy ratio') + '）'],
                     [L('WUE 定義', 'WUE definition'), 'ISO/IEC 30134-9：WUE = W<sub>site</sub> [L] ÷ E<sub>IT</sub> [kWh]'],
                     [L('IT 進風環境', 'IT inlet environment'), 'ASHRAE TC 9.9 Thermal Guidelines, 5th ed.'],
-                    [L('冰機性能', 'Chiller performance'), 'AHRI 550/590；ASHRAE 90.1 性能曲線（CapFT／EIRFT／EIRFPLR）'],
+                    [L('冰機性能', 'Chiller performance'), L('AHRI 550/590；ASHRAE 90.1 性能曲線（CapFT／EIRFT／EIRFPLR）', 'AHRI 550/590; ASHRAE 90.1 performance curves (CapFT / EIRFT / EIRFPLR)')],
                     [L('冷卻水塔', 'Cooling towers'), 'CTI STD-201 / ATC-105'],
                     [L('設計氣象', 'Design weather'), 'ASHRAE Handbook—Fundamentals ' + L('氣候資料（0.4%、n 年極值）', 'climatic data (0.4%, n-year extremes)')],
                     [L('能源標準', 'Energy standard'), 'ASHRAE 90.4']
@@ -422,7 +422,13 @@
                 </div>
             </div>`;
 
-            container.innerHTML = this.styles() + toolbar + `<div class="rpt-wrap" id="reportRoot">${cover}<div class="rpt-page">${hdr(L('本文', 'Body'))}${s1}${s2}${s3}${s4}${s5}${s6}${s7}${s8}${s9}${s10}</div><div class="rpt-page">${hdr(L('附錄', 'Appendix'))}${sA}${sB}</div></div>`;
+            let body = `<div class="rpt-wrap" id="reportRoot">${cover}<div class="rpt-page">${hdr(L('本文', 'Body'))}${s1}${s2}${s3}${s4}${s5}${s6}${s7}${s8}${s9}${s10}</div><div class="rpt-page">${hdr(L('附錄', 'Appendix'))}${sA}${sB}</div></div>`;
+            // 英文模式：把版面用的全形標點換成半形（使用者資料中的全形標點一併轉換，不影響內容）
+            if (isEn()) {
+                body = body.replace(/　/g, ' ').replace(/：/g, ': ').replace(/（/g, ' (').replace(/）/g, ')')
+                    .replace(/、/g, ', ').replace(/，/g, ', ').replace(/；/g, '; ').replace(/／/g, '/');
+            }
+            container.innerHTML = this.styles() + toolbar + body;
         }
     };
 

@@ -1,6 +1,6 @@
 # PUE 計算工具 V9 修正升級計畫
 
-> 建立：2026-11-10｜狀態：**執行中**（進度見 §6）
+> 建立：2026-11-10｜狀態：**全部完成（2026-11-10）**，待使用者確認 pue_v9_report.md §5（進度見 §6）
 > 接手的 AI 請先讀本檔與 `git log`，再讀 `pue_round7_report.md` 了解前一輪架構。
 
 ## 1. 目標
@@ -146,7 +146,7 @@ node project_check.js "../../public/Data center Cal/projects/PUE_Project_高雄 
 | 2 | ✅ 完成 | 見 git log |
 | 3 | ✅ 完成 | 見 git log |
 | 4 | ✅ 完成 | 見 git log |
-| 5 | 待執行 | |
+| 5 | ✅ 完成 | 見 git log；報告 pue_v9_report.md |
 
 ## 7. 注意事項
 - 不要動 `dist/`，不要執行 `build.js`（部署由使用者決定）。push 前要先問使用者。
