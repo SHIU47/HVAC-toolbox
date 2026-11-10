@@ -18,6 +18,18 @@
     }
 
     // A-5 fix: 正確月份時數對照表（非閏年）
+    // V10：新專案預設設計水溫（集中於 assumptions.js）
+    const DT = (key, fb) => (typeof A === 'function') ? A(key) : fb;
+    const defaultLiquidTemps = () => {
+        const sup = DT('design_tcs_supply_c', 45.0), ret = DT('design_tcs_return_c', 55.0), app = DT('design_cdu_approach_c', 4.0);
+        return {
+            secSupplyC: sup, secReturnC: ret, cduApproachC: app,
+            fwsSupplyC: Number((sup - app).toFixed(2)), fwsReturnC: Number((ret - app).toFixed(2)),
+            dryCoolerApproachC: DT('design_rej_approach_c', 5.0), pheApproachC: DT('design_phe_approach_c', 2.0)
+        };
+    };
+    const defaultAirTemps = () => ({ chwSupplyC: DT('design_chw_supply_c', 22.0), chwReturnC: DT('design_chw_return_c', 32.0) });
+
     const MONTH_HOURS = [744, 672, 744, 720, 744, 720, 744, 744, 720, 744, 720, 744]; // 合計 8760
     const MONTH_START = [];
     { let acc = 0; for (let m = 0; m < 12; m++) { MONTH_START.push(acc); acc += MONTH_HOURS[m]; } }
@@ -122,13 +134,7 @@
                             plantDesign: {
                                 cduSystem: {
                                     architecture: 'dry_cooler_hx', // 'dry_cooler_hx' | 'adiabatic_tower' | 'cooling_tower_hx' | 'water_chiller'
-                                    secSupplyC: 45.0,              // 二次側 (晶片側) 供水溫
-                                    secReturnC: 57.0,              // 二次側 (晶片側) 回水溫
-                                    cduApproachC: 3.0,             // CDU 熱交換 Approach
-                                    fwsSupplyC: 42.0,              // 一次側 (設施側) 供水溫 (45 - 3)
-                                    fwsReturnC: 54.0,              // 一次側 (設施側) 回水溫 (57 - 3)
-                                    dryCoolerApproachC: 5.0,       // 排熱端 (乾冷器/水塔) Approach
-                                    pheApproachC: 2.0,
+                                    ...defaultLiquidTemps(),       // V10：晶片供回水、CDU approach、FWS、排熱／PHE approach（assumptions.js design_*）
                                     adiabaticSaturationEfficiencyPct: 85.0,
                                     blowdownLossPct: 15.0,
                                     cyclesOfConcentration: 5,
@@ -139,8 +145,7 @@
                                 },
                                 fanwallSystem: {
                                     architecture: 'air_cooled_chiller', // 'air_cooled_chiller' | 'water_cooled_chiller' | 'chilled_water_plant'
-                                    chwSupplyC: 12.0,
-                                    chwReturnC: 18.0,
+                                    ...defaultAirTemps(),
                                     airSideEconomizerThresholdC: 18.0,
                                     designBasis: {},
                                     sizing: [],
@@ -171,14 +176,13 @@
                     plantDesign: {
                         cduSystem: {
                             architecture: 'dry_cooler_hx',
-                            secSupplyC: 45.0, secReturnC: 57.0, cduApproachC: 3.0,
-                            fwsSupplyC: 42.0, fwsReturnC: 54.0, dryCoolerApproachC: 5.0, pheApproachC: 2.0,
+                            ...defaultLiquidTemps(),
                             adiabaticSaturationEfficiencyPct: 85.0, blowdownLossPct: 15.0, cyclesOfConcentration: 5,
                             designBasis: {}, sizing: [], hydraulics: {}, validation: { ok: true, checks: [] }
                         },
                         fanwallSystem: {
                             architecture: 'air_cooled_chiller',
-                            chwSupplyC: 12.0, chwReturnC: 18.0, airSideEconomizerThresholdC: 18.0,
+                            ...defaultAirTemps(), airSideEconomizerThresholdC: 18.0,
                             designBasis: {}, sizing: [], hydraulics: {}, validation: { ok: true, checks: [] }
                         }
                     }
@@ -325,9 +329,11 @@
 
             const backfillCdu = (cdu) => {
                 if (!cdu) return;
-                if (cdu.secSupplyC === undefined) cdu.secSupplyC = 45.0;
-                if (cdu.secReturnC === undefined) cdu.secReturnC = 57.0;
-                if (cdu.cduApproachC === undefined) cdu.cduApproachC = 3.0;
+                // V10：缺欄位時補預設設計水溫（assumptions.js design_*）
+                const dl = defaultLiquidTemps();
+                if (cdu.secSupplyC === undefined) cdu.secSupplyC = dl.secSupplyC;
+                if (cdu.secReturnC === undefined) cdu.secReturnC = dl.secReturnC;
+                if (cdu.cduApproachC === undefined) cdu.cduApproachC = dl.cduApproachC;
                 if (cdu.fwsSupplyC === undefined) cdu.fwsSupplyC = Number((cdu.secSupplyC - cdu.cduApproachC).toFixed(1));
                 if (cdu.fwsReturnC === undefined) cdu.fwsReturnC = Number((cdu.secReturnC - cdu.cduApproachC).toFixed(1));
                 if (cdu.dryCoolerApproachC === undefined) cdu.dryCoolerApproachC = 5.0;
@@ -784,10 +790,10 @@
             return {
                 linkTemps: sc?.linkTemps !== false,
                 liquid: {
-                    secSupplyC: n(L.secSupplyC, 45.0), secReturnC: n(L.secReturnC, 57.0), cduApproachC: n(L.cduApproachC, 3.0),
-                    dryCoolerApproachC: n(L.dryCoolerApproachC, 5.0), pheApproachC: n(L.pheApproachC, 2.0)
+                    secSupplyC: n(L.secSupplyC, DT('design_tcs_supply_c', 45.0)), secReturnC: n(L.secReturnC, DT('design_tcs_return_c', 55.0)), cduApproachC: n(L.cduApproachC, DT('design_cdu_approach_c', 4.0)),
+                    dryCoolerApproachC: n(L.dryCoolerApproachC, DT('design_rej_approach_c', 5.0)), pheApproachC: n(L.pheApproachC, DT('design_phe_approach_c', 2.0))
                 },
-                air: { chwSupplyC: n(Ai.chwSupplyC, 12.0), chwReturnC: n(Ai.chwReturnC, 18.0) }
+                air: { chwSupplyC: n(Ai.chwSupplyC, DT('design_chw_supply_c', 22.0)), chwReturnC: n(Ai.chwReturnC, DT('design_chw_return_c', 32.0)) }
             };
         },
 
@@ -1052,9 +1058,7 @@
 
         // P1-10: 產生標準 CDU 系統設定，確保 sec、approach、fws 衍生關係一致
         defaultCduSystem(arch = 'dry_cooler_hx') {
-            const secSupplyC = 45.0;
-            const secReturnC = 57.0;
-            const cduApproachC = 3.0;
+            const { secSupplyC, secReturnC, cduApproachC } = defaultLiquidTemps();
             const archDesc = (typeof CoolingArchRegistry !== 'undefined') ? CoolingArchRegistry.get(arch) : null;
             const def = archDesc?.params?.find(p => p.key === 'hasPhe')?.default;
             const hasPheDefault = (def !== undefined) ? def : (archDesc?.flags?.isTrim ? true : false);
@@ -1104,8 +1108,7 @@
                     cduSystem: this.defaultCduSystem('dry_cooler_hx'),
                     fanwallSystem: {
                         architecture: 'air_cooled_chiller',
-                        chwSupplyC: 12.0,
-                        chwReturnC: 18.0,
+                        ...defaultAirTemps(),
                         sizing: []
                     }
                 }
@@ -1239,8 +1242,7 @@
                     cduSystem: this.defaultCduSystem('dry_cooler_hx'),
                     fanwallSystem: {
                         architecture: 'air_cooled_chiller',
-                        chwSupplyC: 12.0,
-                        chwReturnC: 18.0,
+                        ...defaultAirTemps(),
                         sizing: []
                     }
                 }
@@ -1411,15 +1413,14 @@
             } else if (loop === 'liquid') {
                 system = {
                     architecture: options.architecture || 'dry_cooler_trim',
-                    secSupplyC: 45.0, secReturnC: 57.0, cduApproachC: 3.0,
-                    fwsSupplyC: 42.0, fwsReturnC: 54.0, dryCoolerApproachC: 5.0, pheApproachC: 2.0,
+                    ...defaultLiquidTemps(),
                     adiabaticSaturationEfficiencyPct: 85.0, blowdownLossPct: 15.0, cyclesOfConcentration: 5,
                     designBasis: {}, sizing: [], hydraulics: {}, validation: { ok: true, checks: [] }
                 };
             } else {
                 system = {
                     architecture: options.architecture || 'water_cooled_chiller',
-                    chwSupplyC: 12.0, chwReturnC: 18.0, airSideEconomizerThresholdC: 18.0,
+                    ...defaultAirTemps(), airSideEconomizerThresholdC: 18.0,
                     designBasis: {}, sizing: [], hydraulics: {}, validation: { ok: true, checks: [] }
                 };
             }
@@ -2278,8 +2279,7 @@
                         cduSystem: this.defaultCduSystem('dry_cooler_hx'),
                         fanwallSystem: {
                             architecture: 'air_cooled_chiller',
-                            chwSupplyC: 12.0,
-                            chwReturnC: 18.0,
+                            ...defaultAirTemps(),
                             sizing: []
                         }
                     }

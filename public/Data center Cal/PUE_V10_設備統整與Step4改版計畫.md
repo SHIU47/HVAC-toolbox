@@ -376,6 +376,14 @@ commit：`V10 Phase 8: Step 4 改版（全廠設計條件列、設備表格化�
 
 ---
 
+## 5d. Phase 8d：預設水溫與 Step 4 清楚化（使用者回饋，2026-11-10）✅
+
+> 使用者回饋「實際操作不知道什麼在哪裡、要選什麼」，並指定一般設計值：晶片 45/55、CDU approach 4、排熱 approach 5、PHE approach 2、冰水 22/32。
+> - 預設水溫集中到 `assumptions.js`（`design_tcs_supply_c` 等 7 項，ref 註明使用者指定），`store.js` 新專案、新增 DU／CorePOD／機房、舊檔缺欄位補值、`siteCooling` 正規化全部改讀這裡。
+> - Step 4 分成 ①～⑤ 編號步驟，每步一句說明＋狀態；全廠設計條件改成水溫鏈圖（白框輸入、灰框算出、PHE 只在有板換時顯示）；預設值按鈕直接寫數值（「一般設計」＝上述數值、「NVIDIA 參考 45/57」，移除「案場慣用值 41/51」）；機房成員收成一行；設備表加圖例與表頭說明，不合格列排最前。
+> - 影響：預設專案 PUE 1.164→1.156（0% 損耗 1.107→1.101）；140 組回歸 129 組下降，最多 −0.025（冰水 22/32 自然冷卻增加）；容量不足組合 16→20，新增的 4 組都是「桃園＋純乾冷器」各 3 h（FWS 42→41，門檻降 1 °C，無冰機備援）。新基準 `baseline_after_V10_defaults.json`。1106 專案不受影響（存檔水溫不變）。
+> - 測試：P1-7 明確指定 12/18 冰水以保留原測試意圖；P1-10 預設值斷言改新數值。unit_checks 286 passed。
+
 ## 6. Phase 9：完整性補強（小項，各自獨立）
 
 | # | 項目 | 做法 | 備註 |
@@ -416,6 +424,7 @@ commit：每項一個，或合併成 `V10 Phase 9: 完整性補強（…）`。
 | 6 | 設備統整 | ✅ 完成 | 見 git log |
 | 7 | 水溫連動（資料層） | ✅ 完成 | 見 git log |
 | 8 | Step 4 改版 | ✅ 完成（待使用者看截圖確認） | 見 git log |
+| 8d | 預設水溫＋Step 4 清楚化（使用者回饋） | ✅ 完成 | 見 git log |
 | 9 | 完整性補強 | 待執行 | |
 | 10 | 總驗證與報告 | 待執行 | |
 
@@ -435,7 +444,7 @@ commit：每項一個，或合併成 `V10 Phase 9: 完整性補強（…）`。
 ```bash
 cd "/c/Users/30468/Desktop/計算工具/repo_hvac/tools/pue_regression"
 node unit_checks.js                                   # 目前 273 passed，只能增加
-node run.js --compare baseline_after_V9_P3.json       # 預期 0 差異；有差異要逐項解釋並存新基準
+node run.js --compare baseline_after_V10_defaults.json   # 預期 0 差異；有差異要逐項解釋並存新基準（2026-11-10 起改用此基準）
 node project_check.js "C:\\Users\\30468\\Desktop\\PUE_Project_高雄 (Kaohsiung)_20261106.json" --compare baseline_proj_kh1106_after_V9.json
 ```
 

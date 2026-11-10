@@ -395,6 +395,50 @@ const ASSUMPTIONS = {
     ref: '低溫供水/高揚程典型保守值'
   },
 
+  // ── [V10] 新專案預設設計水溫（使用者指定之一般設計值，2026-11-10） ─────────────
+  design_tcs_supply_c: {
+    val: 45.0, unit: '°C',
+    label: '預設晶片側（TCS）供水溫度',
+    label_en: 'Default chip-side (TCS) supply temperature',
+    ref: '使用者指定一般設計值（2026-11-10）；ASHRAE TC 9.9 液冷 W45 等級'
+  },
+  design_tcs_return_c: {
+    val: 55.0, unit: '°C',
+    label: '預設晶片側（TCS）回水溫度',
+    label_en: 'Default chip-side (TCS) return temperature',
+    ref: '使用者指定一般設計值（2026-11-10）'
+  },
+  design_cdu_approach_c: {
+    val: 4.0, unit: '°C',
+    label: '預設 CDU 熱交換 approach（FWS 供水 = 晶片供水 − approach）',
+    label_en: 'Default CDU heat-exchanger approach (FWS supply = chip supply − approach)',
+    ref: '使用者指定一般設計值（2026-11-10）'
+  },
+  design_rej_approach_c: {
+    val: 5.0, unit: '°C',
+    label: '預設排熱設備 approach（乾冷器／水塔）',
+    label_en: 'Default heat-rejection approach (dry cooler / tower)',
+    ref: '使用者指定一般設計值（2026-11-10）'
+  },
+  design_phe_approach_c: {
+    val: 2.0, unit: '°C',
+    label: '預設板式熱交換器 approach（有 PHE 的架構）',
+    label_en: 'Default plate heat exchanger approach (architectures with PHE)',
+    ref: '使用者指定一般設計值（2026-11-10）'
+  },
+  design_chw_supply_c: {
+    val: 22.0, unit: '°C',
+    label: '預設氣冷側冰水供水溫度',
+    label_en: 'Default air-side chilled water supply temperature',
+    ref: '使用者指定一般設計值（2026-11-10）'
+  },
+  design_chw_return_c: {
+    val: 32.0, unit: '°C',
+    label: '預設氣冷側冰水回水溫度',
+    label_en: 'Default air-side chilled water return temperature',
+    ref: '使用者指定一般設計值（2026-11-10）'
+  },
+
   // ── [Round 6] 全廠電力損耗 (P0-E1) ───────────────────────────────────────
   electrical_loss_default_pct: {
     val: 4.5, unit: '%',

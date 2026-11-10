@@ -361,6 +361,9 @@ function sizeCduToDeratedN1(S) {
   pd.cduSystem.architecture = 'dry_cooler_trim';
   pd.fanwallSystem.architecture = 'air_cooled_chiller';
   pd.fanwallSystem.hasFcCoil = true; // R6 P0-C1
+  // V10：預設冰水改為 22/32 °C；本測試的「CDU free、FW partial」情境依 12/18 °C 冰水設計，明確指定
+  pd.fanwallSystem.chwSupplyC = 12.0;
+  pd.fanwallSystem.chwReturnC = 18.0;
   const duSumm = S.calcDuSummary(du);
 
   // Case 1: 冬季外氣低溫 (DB 5°C, WB 3°C) -> CDU free, FW free -> isFreeHour is true
@@ -434,11 +437,12 @@ function sizeCduToDeratedN1(S) {
 
   test('P1-10 defaultCduSystem returns consistent thermodynamic temperatures', () => {
     const cdu = S.defaultCduSystem('dry_cooler_hx');
+    // V10：預設設計水溫改為 45/55、CDU approach 4 → FWS 41/51（assumptions.js design_*）
     assert.strictEqual(cdu.secSupplyC, 45.0);
-    assert.strictEqual(cdu.secReturnC, 57.0);
-    assert.strictEqual(cdu.cduApproachC, 3.0);
-    assert.strictEqual(cdu.fwsSupplyC, 42.0);
-    assert.strictEqual(cdu.fwsReturnC, 54.0);
+    assert.strictEqual(cdu.secReturnC, 55.0);
+    assert.strictEqual(cdu.cduApproachC, 4.0);
+    assert.strictEqual(cdu.fwsSupplyC, 41.0);
+    assert.strictEqual(cdu.fwsReturnC, 51.0);
     assert.strictEqual(cdu.pheApproachC, 2.0);
     assert.strictEqual(cdu.dryCoolerApproachC, 5.0);
   });
@@ -449,9 +453,9 @@ function sizeCduToDeratedN1(S) {
     assert(du && du.plantDesign && du.plantDesign.cduSystem);
     const cdu = du.plantDesign.cduSystem;
     assert.strictEqual(cdu.secSupplyC, 45.0);
-    assert.strictEqual(cdu.cduApproachC, 3.0);
-    assert.strictEqual(cdu.fwsSupplyC, 42.0);
-    assert.strictEqual(cdu.fwsReturnC, 54.0);
+    assert.strictEqual(cdu.cduApproachC, 4.0);
+    assert.strictEqual(cdu.fwsSupplyC, 41.0);
+    assert.strictEqual(cdu.fwsReturnC, 51.0);
   });
 
   test('P1-10 addCorePod uses defaultCduSystem with FWS derived from sec and approach', () => {
@@ -459,9 +463,9 @@ function sizeCduToDeratedN1(S) {
     assert(pod && pod.plantDesign && pod.plantDesign.cduSystem);
     const cdu = pod.plantDesign.cduSystem;
     assert.strictEqual(cdu.secSupplyC, 45.0);
-    assert.strictEqual(cdu.cduApproachC, 3.0);
-    assert.strictEqual(cdu.fwsSupplyC, 42.0);
-    assert.strictEqual(cdu.fwsReturnC, 54.0);
+    assert.strictEqual(cdu.cduApproachC, 4.0);
+    assert.strictEqual(cdu.fwsSupplyC, 41.0);
+    assert.strictEqual(cdu.fwsReturnC, 51.0);
   });
 
   test('P1-10 deserializeProject backfills missing CDU parameters', () => {
@@ -489,11 +493,12 @@ function sizeCduToDeratedN1(S) {
     };
     S.deserializeProject(dummyProject);
     const cdu = S.state.halls[0].dus[0].plantDesign.cduSystem;
+    // V10：預設設計水溫改為 45/55、CDU approach 4 → FWS 41/51（assumptions.js design_*）
     assert.strictEqual(cdu.secSupplyC, 45.0);
-    assert.strictEqual(cdu.secReturnC, 57.0);
-    assert.strictEqual(cdu.cduApproachC, 3.0);
-    assert.strictEqual(cdu.fwsSupplyC, 42.0);
-    assert.strictEqual(cdu.fwsReturnC, 54.0);
+    assert.strictEqual(cdu.secReturnC, 55.0);
+    assert.strictEqual(cdu.cduApproachC, 4.0);
+    assert.strictEqual(cdu.fwsSupplyC, 41.0);
+    assert.strictEqual(cdu.fwsReturnC, 51.0);
   });
 
   test('P1-1 deserializeProject clears site.design cache', () => {
@@ -3468,7 +3473,8 @@ function sizeCduToDeratedN1(S) {
   const { AppStore: S } = ctx;
 
   // V9 Phase 3：預設專案的 CDU 自動選型（100 kW × 11 → 大型機 × 2），CDU 本體耗電下降，基準改為 1.164 / 1.107
-  test('R7 Benchmark: Default project Kaohsiung 4.5% loss PUE is 1.164 ± 0.005 (V9 P3: auto-selected CDU)', () => {
+  // V10：預設設計水溫改為晶片 45/55、approach 4（FWS 41/51）、冰水 22/32，基準改為 1.156 / 1.101
+  test('R7 Benchmark: Default project Kaohsiung 4.5% loss PUE is 1.156 ± 0.005 (V10: default design temps)', () => {
     S.state.site.selectedCity = '高雄 (Kaohsiung)';
     const data = ctx.BUILTIN_WEATHER_DATA['高雄 (Kaohsiung)'];
     S.state.site.hourly = data.hourlyData;
@@ -3478,14 +3484,14 @@ function sizeCduToDeratedN1(S) {
     S.state.facilityElectricalLossPct = 4.5;
     S.calculate();
     const pue = S.state.results.overall.annualPue;
-    assert(Math.abs(pue - 1.164) < 0.005, `Default Kaohsiung 4.5% loss PUE must be ~1.164, got ${pue}`);
+    assert(Math.abs(pue - 1.156) < 0.005, `Default Kaohsiung 4.5% loss PUE must be ~1.156, got ${pue}`);
   });
 
-  test('R7 Benchmark: Default project Kaohsiung 0.0% loss PUE is 1.107 ± 0.005 (V9 P3: auto-selected CDU)', () => {
+  test('R7 Benchmark: Default project Kaohsiung 0.0% loss PUE is 1.101 ± 0.005 (V10: default design temps)', () => {
     S.state.facilityElectricalLossPct = 0.0;
     S.calculate();
     const pue = S.state.results.overall.annualPue;
-    assert(Math.abs(pue - 1.107) < 0.005, `Default Kaohsiung 0% loss PUE must be ~1.107, got ${pue}`);
+    assert(Math.abs(pue - 1.101) < 0.005, `Default Kaohsiung 0% loss PUE must be ~1.101, got ${pue}`);
   });
 
   const projPath = path.resolve(__dirname, '../../public/Data center Cal/projects/PUE_Project_高雄 (Kaohsiung)_20260901.json');
