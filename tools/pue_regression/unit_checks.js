@@ -6069,6 +6069,24 @@ test('V10-P8c Step 5 is no longer blocked when sizing fails', () => {
   assert(win.document.getElementById('complianceBanner'), 'compliance banner must be shown');
 });
 
+test('V10-P8e shared liquid plant schematic uses members chip temps, not stale plant copy (45/55, ΔT 10)', () => {
+  const { buildWindow } = require('./dom_harness.js');
+  const win = buildWindow();
+  const S = win.AppStore;
+  S.applySiteSharedConfig();
+  S.setTempLink(false);               // 連動關閉時也要正確
+  const plant = S.state.coolingPlants.find(p => p.loop === 'liquid');
+  plant.system.secReturnC = 57;       // 模擬建立機房時殘留的舊值
+  S.calculate();
+  const unit = S.state.halls[0].dus[0].plantDesign.cduSystem;
+  assert.strictEqual(plant.system.secReturnC, unit.secReturnC, 'plant chip return must follow members');
+  assert.strictEqual(unit.secReturnC - unit.secSupplyC, 10, 'default chip ΔT is 10 K (45/55)');
+  win.ViewCooling.render(win.document.getElementById('stepContent'));
+  const card = win.document.getElementById('plant_' + plant.id);
+  assert(card, 'plant card must render');
+  assert(!/⇄\s*57/.test(card.innerHTML), 'schematic must not show stale 57 °C');
+});
+
 console.log(`\n${passCount} passed, ${failCount} failed, ${skipCount} skipped`);
 process.exit(failCount > 0 ? 1 : 0);
 

@@ -79,13 +79,13 @@
             const cduFcThresh = (op?.thresholds?.full !== undefined && op?.thresholds?.full !== null) ? Number(op.thresholds.full).toFixed(1) : '—';
 
             const liqLoadKw = (cduSys.designBasis?.liq_load_kw || t.summ?.liquidHeatKw || 0);
-            const dtSec = Math.max(0.5, (cduSys.secReturnC || 57) - (cduSys.secSupplyC || 45));
+            const dtSec = Math.max(0.5, (cduSys.secReturnC || ((typeof A === 'function') ? A('design_tcs_return_c') : 55)) - (cduSys.secSupplyC || ((typeof A === 'function') ? A('design_tcs_supply_c') : 45)));
             const dtPrim = Math.max(0.5, fwsReturnC - fwsSupplyC);
             const flowSecLpm = Math.round((liqLoadKw * 14.33) / dtSec);
             const flowPrimLpm = Math.round((liqLoadKw * 14.33) / dtPrim);
             const cduUnitQty = (cduSys.sizing || []).find(s => s.key === 'cdu_unit')?.selectedQty || 3;
-            const secSupplyC = cduSys.secSupplyC || 45;
-            const secReturnC = cduSys.secReturnC || 57;
+            const secSupplyC = cduSys.secSupplyC || ((typeof A === 'function') ? A('design_tcs_supply_c') : 45);
+            const secReturnC = cduSys.secReturnC || ((typeof A === 'function') ? A('design_tcs_return_c') : 55);
 
             // 設計工況 (0.4% DB) 狀態判斷
             const isDesignMode1 = op?.mode ? (op.mode === 'free') : ((designCond.designDb != null && op?.thresholds?.full != null) ? designCond.designDb <= op.thresholds.full : true);

@@ -490,9 +490,9 @@ ${inputsHtml}
             const deficitHours = unitRes?.deficitHours;
 
             // P1-10: 唯讀存取，預設值已在 store.js / defaultCduSystem 補齊，不在此改寫 state
-            const secSupplyC = cduSys.secSupplyC ?? 45.0;
-            const secReturnC = cduSys.secReturnC ?? 57.0;
-            const cduApproachC = cduSys.cduApproachC ?? 3.0;
+            const secSupplyC = cduSys.secSupplyC ?? ((typeof A === 'function') ? A('design_tcs_supply_c') : 45);
+            const secReturnC = cduSys.secReturnC ?? ((typeof A === 'function') ? A('design_tcs_return_c') : 55);
+            const cduApproachC = cduSys.cduApproachC ?? ((typeof A === 'function') ? A('design_cdu_approach_c') : 4);
 
             const cduArchDesc = window.CoolingArchRegistry ? window.CoolingArchRegistry.get(arch) : null;
             const dcApproach = cduSys.dryCoolerApproachC ?? 5.0;

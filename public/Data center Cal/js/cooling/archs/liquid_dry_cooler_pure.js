@@ -129,7 +129,7 @@
                     title: 'Compute Data Hall',
                     lines: [
                         t('topo.coldPlateLiq', null, 'Cold Plate 晶片液冷'),
-                        t('topo.chipWaterTemp', { sup: sys?.secSupplyC ?? 45, ret: sys?.secReturnC ?? 57 }, `晶片水溫: ${sys?.secSupplyC ?? 45} ⇄ ${sys?.secReturnC ?? 57}°C`)
+                        t('topo.chipWaterTemp', { sup: sys?.secSupplyC ?? ((typeof A === 'function') ? A('design_tcs_supply_c') : 45), ret: sys?.secReturnC ?? ((typeof A === 'function') ? A('design_tcs_return_c') : 55) }, `晶片水溫: ${sys?.secSupplyC ?? ((typeof A === 'function') ? A('design_tcs_supply_c') : 45)} ⇄ ${sys?.secReturnC ?? ((typeof A === 'function') ? A('design_tcs_return_c') : 55)}°C`)
                     ]
                 },
                 {

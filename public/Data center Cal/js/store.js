@@ -1548,6 +1548,15 @@
                 this.syncUnitFromPlant(u, 'liquid');
                 this.syncUnitFromPlant(u, 'air');
             });
+            // 機房 system 裡的晶片側水溫是建立機房時複製的舊值，之後不會更新，示意圖會顯示錯的回水溫度。
+            // 改成每次同步都取第一個未獨立設定的成員單元（成員的晶片水溫已依機房 FWS ＋ 自己的 approach 算出）。
+            this.state.coolingPlants.forEach(p => {
+                if (p.loop !== 'liquid' || !p.system) return;
+                const m = allUnits.find(u => (p.memberIds || []).includes(u.id) && !u.plantDesign?.cduSystem?.tempOverride);
+                const c = m?.plantDesign?.cduSystem;
+                if (!c) return;
+                ['secSupplyC', 'secReturnC', 'cduApproachC'].forEach(k => { if (Number.isFinite(Number(c[k]))) p.system[k] = c[k]; });
+            });
         },
 
         // P-4: 快速配置預設 (Quick Config Presets)

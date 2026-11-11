@@ -1338,8 +1338,8 @@
                             <div class="grid grid-cols-2 gap-2 text-xs">
                                 <div class="p-2.5 bg-bg rounded-lg">
                                     <span class="text-[10px] text-tertiary block">${_t('dash.secChipLoop', null, '二次側 (晶片迴路)')}</span>
-                                    <span class="font-mono font-bold text-primary text-sm">${cduSys.secSupplyC || 45}°C ⇄ ${cduSys.secReturnC || 57}°C</span>
-                                    <span class="text-[10px] text-emerald-700 block mt-0.5">ΔT = ${((cduSys.secReturnC || 57) - (cduSys.secSupplyC || 45)).toFixed(1)}°C (DLC ${dlcSharePct}%)</span>
+                                    <span class="font-mono font-bold text-primary text-sm">${cduSys.secSupplyC || ((typeof A === 'function') ? A('design_tcs_supply_c') : 45)}°C ⇄ ${cduSys.secReturnC || ((typeof A === 'function') ? A('design_tcs_return_c') : 55)}°C</span>
+                                    <span class="text-[10px] text-emerald-700 block mt-0.5">ΔT = ${((cduSys.secReturnC || ((typeof A === 'function') ? A('design_tcs_return_c') : 55)) - (cduSys.secSupplyC || ((typeof A === 'function') ? A('design_tcs_supply_c') : 45))).toFixed(1)}°C (DLC ${dlcSharePct}%)</span>
                                 </div>
                                 <div class="p-2.5 bg-bg rounded-lg">
                                     <span class="text-[10px] text-tertiary block">${_t('dash.priFacLoop', null, '一次側 (設施水路)')}</span>
