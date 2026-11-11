@@ -863,7 +863,7 @@ function sizeCduToDeratedN1(S) {
   });
 
   test('C-5 round-trip migration test with sample project file', () => {
-    const samplePath = path.resolve(__dirname, '../../public/Data center Cal/projects/PUE_Project_高雄 (Kaohsiung)_20260901.json');
+    const samplePath = path.resolve(__dirname, 'fixtures/PUE_Project_高雄 (Kaohsiung)_20260901.json');
     if (!fs.existsSync(samplePath)) {
       console.warn('Sample project file not found, skipping round-trip test');
       return;
@@ -3494,7 +3494,7 @@ function sizeCduToDeratedN1(S) {
     assert(Math.abs(pue - 1.101) < 0.005, `Default Kaohsiung 0% loss PUE must be ~1.101, got ${pue}`);
   });
 
-  const projPath = path.resolve(__dirname, '../../public/Data center Cal/projects/PUE_Project_高雄 (Kaohsiung)_20260901.json');
+  const projPath = path.resolve(__dirname, 'fixtures/PUE_Project_高雄 (Kaohsiung)_20260901.json');
   if (fs.existsSync(projPath)) {
     test('R6 Benchmark: 17.95 MW Kaohsiung project 4.5% loss PUE is 1.158 ± 0.005 and DU-01 is 1.121 ± 0.005 (R8: CDU 100% nominal)', () => {
       const projRaw = fs.readFileSync(projPath, 'utf8');
@@ -5640,7 +5640,7 @@ function sizeCduToDeratedN1(S) {
   const ctxV9 = freshCtx();
   const SV9 = ctxV9.AppStore;
   const fsV9 = require('fs'), pathV9 = require('path');
-  const projV9 = pathV9.resolve(__dirname, '../../public/Data center Cal/projects/PUE_Project_高雄 (Kaohsiung)_20260901.json');
+  const projV9 = pathV9.resolve(__dirname, 'fixtures/PUE_Project_高雄 (Kaohsiung)_20260901.json');
   SV9.deserializeProject(fsV9.readFileSync(projV9, 'utf8'));
   const rV9 = SV9.state.results, oV9 = rV9.overall;
 
@@ -5679,7 +5679,7 @@ test('V9-C1 dashboard renders compliance banner (fail) with sizing failure rows'
   const { buildWindow } = require('./dom_harness.js');
   const fsD = require('fs'), pathD = require('path');
   const win = buildWindow();
-  const projD = pathD.resolve(__dirname, '../../public/Data center Cal/projects/PUE_Project_高雄 (Kaohsiung)_20260901.json');
+  const projD = pathD.resolve(__dirname, 'fixtures/PUE_Project_高雄 (Kaohsiung)_20260901.json');
   win.AppStore.deserializeProject(fsD.readFileSync(projD, 'utf8'));
   win.AppStore.calculate();
   win.ViewDashboard.render(win.document.getElementById('stepContent'));
@@ -5693,7 +5693,7 @@ test('V9-C1 dashboard renders compliance banner (fail) with sizing failure rows'
   const ctxP2 = freshCtx();
   const SP2 = ctxP2.AppStore;
   const fsP2 = require('fs'), pathP2 = require('path');
-  const projP2 = pathP2.resolve(__dirname, '../../public/Data center Cal/projects/PUE_Project_高雄 (Kaohsiung)_20260901.json');
+  const projP2 = pathP2.resolve(__dirname, 'fixtures/PUE_Project_高雄 (Kaohsiung)_20260901.json');
   SP2.deserializeProject(fsP2.readFileSync(projP2, 'utf8'));
   const base = JSON.parse(JSON.stringify(SP2.state.results.overall));
 
@@ -5768,7 +5768,7 @@ test('V9-C1 dashboard renders compliance banner (fail) with sizing failure rows'
 
   test('V9-P3b existing project items (no autoSelectRequested flag) keep their saved model', () => {
     const fsP3 = require('fs'), pathP3 = require('path');
-    const projP3 = pathP3.resolve(__dirname, '../../public/Data center Cal/projects/PUE_Project_高雄 (Kaohsiung)_20260901.json');
+    const projP3 = pathP3.resolve(__dirname, 'fixtures/PUE_Project_高雄 (Kaohsiung)_20260901.json');
     const raw = JSON.parse(fsP3.readFileSync(projP3, 'utf8'));
     const S4 = freshCtx().AppStore;
     S4.deserializeProject(JSON.stringify(raw));
@@ -5804,7 +5804,7 @@ test('V9-P4 Step 6 report renders; PUE derivation and peak-hour hand calc match 
   const { buildWindow } = require('./dom_harness.js');
   const fsR = require('fs'), pathR = require('path');
   const win = buildWindow();
-  const projR = pathR.resolve(__dirname, '../../public/Data center Cal/projects/PUE_Project_高雄 (Kaohsiung)_20260901.json');
+  const projR = pathR.resolve(__dirname, 'fixtures/PUE_Project_高雄 (Kaohsiung)_20260901.json');
   win.AppStore.deserializeProject(fsR.readFileSync(projR, 'utf8'));
   win.AppStore.calculate();
   assert(win.ViewReport, 'ViewReport must be loaded');
