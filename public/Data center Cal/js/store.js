@@ -542,6 +542,9 @@
                             this.state.site.lon = data.stationInfo?.lon;
                             this.state.site.elev = data.stationInfo?.elev;
                             this.state.site.designConditions = data.designConditions || null;
+                        } else if (stationId && this._loadCatalogWeather(stationId)) {
+                            // V10-A1：內建 7 站找不到時，改到 165 站資料庫找同代號測站
+                            return true;
                         } else if (cityName) {
                             console.warn('[deserializeProject] 找不到「' + cityName + '」的內建氣象資料 (可能是使用者自行上傳的EPW，匯出檔未保存原始逐時資料)，本次計算將使用溫和的合成氣候近似值，結果不代表真實案場氣候，請重新於 Step1 上傳/選擇氣象資料。');
                         }
@@ -576,6 +579,8 @@
                             });
                         }
                     } else {
+                        // V10-A1：使用者上傳 EPW 的專案，專案檔沒有保存逐時資料；若測站資料庫有同代號測站，改從資料庫載入
+                        if (stationId && this._loadCatalogWeather(stationId)) return true;
                         if (cityName) {
                             console.warn('[deserializeProject] 找不到「' + cityName + '」的內建氣象資料 (可能是使用者自行上傳的EPW，匯出檔未保存原始逐時資料)，本次計算將使用溫和的合成氣候近似值，結果不代表真實案場氣候，請重新於 Step1 上傳/選擇氣象資料。');
                         }
@@ -590,6 +595,41 @@
                 console.error('Failed to parse project JSON:', e);
                 return false;
             }
+        },
+
+        // V10-A1：從 165 站測站資料庫非同步載入逐時氣象；沒有載入器時回傳 null
+        _loadCatalogWeather(stationId) {
+            const ws = (typeof window !== 'undefined' && window.WeatherSource) ? window.WeatherSource : ((typeof WeatherSource !== 'undefined') ? WeatherSource : null);
+            if (!ws || !stationId) return null;
+            this.state.site.isWeatherLoading = true;
+            this.state.site.design = null;
+            this.weatherLoadingPromise = ws.loadStation(stationId).then(stationData => {
+                this.state.site.isWeatherLoading = false;
+                this.state.site.hourly = stationData.hourlyData;
+                this.state.site.monthlyStats = stationData.monthlyStats;
+                if (stationData.stats) this.state.site.stats = stationData.stats;
+                this.state.site.isRealEpw = true;
+                this.state.site.stationSource = (stationData.source === 'builtin') ? 'builtin' : 'catalog';
+                this.state.site.stationName = stationData.stationInfo?.location;
+                this.state.site.country = stationData.stationInfo?.country;
+                this.state.site.lat = stationData.stationInfo?.lat;
+                this.state.site.lon = stationData.stationInfo?.lon;
+                this.state.site.elev = stationData.stationInfo?.elev;
+                if (stationData.designConditions) this.state.site.designConditions = stationData.designConditions;
+                this.state.site.design = null;
+                this.calculate();
+                this.notify();
+                return stationData;
+            }).catch(err => {
+                // 找不到或 file:// 無法讀取：改用合成氣候計算，並由合格判定標示（不可當成正式結果）
+                this.state.site.isWeatherLoading = false;
+                console.warn('[deserializeProject] 測站資料庫載入失敗，改用合成氣候：', err && err.message);
+                this.state.site.design = null;
+                this.calculate();
+                this.notify();
+                return null;
+            });
+            return this.weatherLoadingPromise;
         },
 
         autoSave() {
@@ -773,7 +813,7 @@
 
         // ===== V10 Phase 7：全廠冷卻設計條件與水溫連動 =====
         // 水溫鏈：FWS 供水 = 晶片供水 − CDU approach；FWS 回水 = 晶片回水 − CDU approach（FWS 不單獨儲存）
-        SITE_LIQUID_KEYS: ['secSupplyC', 'secReturnC', 'cduApproachC', 'dryCoolerApproachC', 'pheApproachC'],
+        SITE_LIQUID_KEYS: ['secSupplyC', 'secReturnC', 'cduApproachC', 'dryCoolerApproachC', 'pheApproachC', 'ctApproachC'],
         SITE_AIR_KEYS: ['chwSupplyC', 'chwReturnC'],
         SITE_TEMP_TOL: 0.05,
 
@@ -791,7 +831,13 @@
                 linkTemps: sc?.linkTemps !== false,
                 liquid: {
                     secSupplyC: n(L.secSupplyC, DT('design_tcs_supply_c', 45.0)), secReturnC: n(L.secReturnC, DT('design_tcs_return_c', 55.0)), cduApproachC: n(L.cduApproachC, DT('design_cdu_approach_c', 4.0)),
-                    dryCoolerApproachC: n(L.dryCoolerApproachC, DT('design_rej_approach_c', 5.0)), pheApproachC: n(L.pheApproachC, DT('design_phe_approach_c', 2.0))
+                    dryCoolerApproachC: n(L.dryCoolerApproachC, DT('design_rej_approach_c', 5.0)), pheApproachC: n(L.pheApproachC, DT('design_phe_approach_c', 2.0)),
+                    // V10-A4：密閉式水塔用的 approach（與乾冷器 approach 分開）；預設取架構參數預設值
+                    ctApproachC: n(L.ctApproachC, (() => {
+                        const reg = (typeof CoolingArchRegistry !== 'undefined') ? CoolingArchRegistry : (typeof window !== 'undefined' ? window.CoolingArchRegistry : null);
+                        const p = reg?.get('cooling_tower_hx')?.params?.find(x => x.key === 'ctApproachC');
+                        return (p && Number.isFinite(Number(p.default))) ? Number(p.default) : 6.0;
+                    })())
                 },
                 air: { chwSupplyC: n(Ai.chwSupplyC, DT('design_chw_supply_c', 22.0)), chwReturnC: n(Ai.chwReturnC, DT('design_chw_return_c', 32.0)) }
             };
@@ -810,6 +856,10 @@
                 liquid: { secSupplyC: c0.secSupplyC, secReturnC: c0.secReturnC, cduApproachC: c0.cduApproachC, dryCoolerApproachC: c0.dryCoolerApproachC, pheApproachC: c0.pheApproachC },
                 air: { chwSupplyC: f0.chwSupplyC, chwReturnC: f0.chwReturnC }
             });
+            // ctApproachC：取第一個有設定的液冷系統（單元或機房）
+            const ctSrc = [...units.map(u => u.plantDesign?.cduSystem), ...(this.state.coolingPlants || []).filter(p => p.loop === 'liquid').map(p => p.system)]
+                .find(x => x && Number.isFinite(Number(x.ctApproachC)));
+            if (ctSrc) sc.liquid.ctApproachC = Number(ctSrc.ctApproachC);
             const same = (a, b) => (a === undefined || a === null || b === undefined || b === null) ? (a === b || a == null || b == null) : Math.abs(Number(a) - Number(b)) <= tol;
             const fwsOf = (o) => ({ s: o.secSupplyC - o.cduApproachC, r: o.secReturnC - o.cduApproachC });
             let liqOk = true, airOk = true;
@@ -858,7 +908,7 @@
                 else if (key === 'secReturnC') { L.secReturnC = v; }
                 else if (key === 'fwsSupplyC') { L.secSupplyC = Number((v + L.cduApproachC).toFixed(2)); L.secReturnC = Number((L.secSupplyC + dt).toFixed(2)); }
                 else if (key === 'fwsReturnC') { L.secReturnC = Number((v + L.cduApproachC).toFixed(2)); }
-                else if (['cduApproachC', 'dryCoolerApproachC', 'pheApproachC'].includes(key)) { L[key] = v; }
+                else if (['cduApproachC', 'dryCoolerApproachC', 'pheApproachC', 'ctApproachC'].includes(key)) { L[key] = v; }
                 else return;
             } else if (loop === 'air') {
                 const A2 = sc.air;
@@ -902,7 +952,7 @@
                 if (!p.system) return;
                 if (p.loop === 'liquid') {
                     put(p.system, 'fwsSupplyC', fws.supplyC); put(p.system, 'fwsReturnC', fws.returnC);
-                    this.SITE_LIQUID_KEYS.forEach(k => put(p.system, k, L[k]));
+                    this.SITE_LIQUID_KEYS.forEach(k => { if (k !== 'ctApproachC' || p.system.architecture === 'cooling_tower_hx' || p.system.ctApproachC !== undefined) put(p.system, k, L[k]); });
                 } else {
                     this.SITE_AIR_KEYS.forEach(k => put(p.system, k, sc.air[k]));
                 }
@@ -910,7 +960,7 @@
             this._allCoolingUnits().forEach(u => {
                 const c = u.plantDesign?.cduSystem, fw = u.plantDesign?.fanwallSystem;
                 if (c && !c.tempOverride) {
-                    this.SITE_LIQUID_KEYS.forEach(k => put(c, k, L[k]));
+                    this.SITE_LIQUID_KEYS.forEach(k => { if (k !== 'ctApproachC' || c.architecture === 'cooling_tower_hx' || c.ctApproachC !== undefined) put(c, k, L[k]); });
                     put(c, 'fwsSupplyC', fws.supplyC); put(c, 'fwsReturnC', fws.returnC);
                 }
                 if (fw && !fw.tempOverride) this.SITE_AIR_KEYS.forEach(k => put(fw, k, sc.air[k]));
@@ -3342,6 +3392,16 @@
                 }
                 this.state.results = AnnualRunner.run(this.state, hourlyWeather, runnerHelpers, runOpts);
                 this.state.results.partialLoad = partialLoad;
+                // V10-A1：沒有真實 8,760 h 氣象時使用合成氣候，結果不代表案場，合格判定一律標為不合格
+                const synthetic = !(this.state.site.hourly && this.state.site.hourly.length >= 8760);
+                const ov = this.state.results.overall;
+                if (ov) {
+                    ov.weatherSynthetic = synthetic;
+                    if (ov.compliance) {
+                        ov.compliance.weatherSynthetic = synthetic;
+                        if (synthetic) ov.compliance.status = 'fail';
+                    }
+                }
             }
         },
 

@@ -301,7 +301,8 @@
                     [L('極端乾球（尖峰選型）', 'Extreme DB (peak sizing)'), num(dc.peakDb?.value, 1) + ' °C', esc(dc.peakDb?.basis || '—')],
                     [L('TMY 最高乾球', 'TMY max DB'), num(dc.maxDb, 1) + ' °C', 'TMY'],
                     [L('年平均乾球／濕球', 'Annual mean DB / WB'), num(site.stats?.avgDB, 1) + ' / ' + num(site.stats?.avgWB, 1) + ' °C', 'TMY']
-                ], { alignRight: [1] }) + (dc.dataQualityWarning ? this.note('⚠ ' + esc(dc.dataQualityWarning), true) : ''));
+                ], { alignRight: [1] }) + (dc.dataQualityWarning ? this.note('⚠ ' + esc(dc.dataQualityWarning), true) : '')
+                + ((st.results?.overall?.weatherSynthetic) ? this.note(L('⚠ 本次沒有真實 8,760 h 氣象資料，使用合成氣候計算，結果不代表案場，不可作為正式結果。', '⚠ No real 8,760-h weather; a synthetic climate was used. Results do not represent the site and must not be used as final.'), true) : ''));
 
             // ── §3 負載 ──
             let tIt = 0, tLiq = 0, tAir = 0;

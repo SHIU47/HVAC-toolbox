@@ -6087,6 +6087,72 @@ test('V10-P8e shared liquid plant schematic uses members chip temps, not stale p
   assert(!/⇄\s*57/.test(card.innerHTML), 'schematic must not show stale 57 °C');
 });
 
+// ===== V10-A：氣象來源、密閉式水塔型錄、自然冷卻門檻（DB／WB） =====
+test('V10-A1a EPW-sourced project tries the station catalog instead of synthetic weather', () => {
+  const ctxA = freshCtx();
+  const SA = ctxA.AppStore;
+  let asked = null;
+  ctxA.WeatherSource.loadStation = (id) => { asked = id; return new Promise(() => {}); }; // 保持載入中
+  SA.calculate();
+  const dump = JSON.parse(SA.serializeProject());
+  dump.site.stationSource = 'epw';
+  dump.site.stationId = 'THA_ERG_Chon.Buri.Sattahip.484590_TMYx.2011-2025';
+  SA.deserializeProject(JSON.stringify(dump));
+  assert.strictEqual(asked, dump.site.stationId, 'must request the station from the catalog');
+  assert.strictEqual(SA.state.site.isWeatherLoading, true);
+});
+
+test('V10-A1b synthetic weather is flagged and makes compliance fail', () => {
+  const SB = freshCtx().AppStore;
+  SB.state.site.hourly = [];
+  SB.calculate();
+  const o = SB.state.results.overall;
+  assert.strictEqual(o.weatherSynthetic, true);
+  assert.strictEqual(o.compliance.status, 'fail');
+  assert.strictEqual(o.compliance.weatherSynthetic, true);
+});
+
+test('V10-A2 closed-circuit tower lists closed models only and replaces an open-tower model', () => {
+  const ctxC = freshCtx();
+  const SC = ctxC.AppStore;
+  SC.applySiteSharedConfig();
+  const plant = SC.state.coolingPlants.find(p => p.loop === 'liquid');
+  SC.updatePlantArch ? SC.updatePlantArch(plant.id, 'cooling_tower_hx') : (plant.system.architecture = 'cooling_tower_hx');
+  plant.system.architecture = 'cooling_tower_hx';
+  SC.calculate();
+  const t = plant.system.sizing.find(s => s.key === 'cooling_tower');
+  assert(t, 'cooling tower item must exist');
+  assert(t.catalog.length > 0 && t.catalog.every(c => c.tower_type ? c.tower_type === 'closed_tower' : /closed|FXV|CXV/i.test(c.model)), 'only closed-circuit models');
+  t.selectedModel = 'BAC Series 3000 1000kW (標準)';
+  t.catalog = ctxC.CatalogManager.getCatalog('cooling_tower');
+  SC.calculate();
+  const t2 = plant.system.sizing.find(s => s.key === 'cooling_tower');
+  assert.notStrictEqual(t2.selectedModel, 'BAC Series 3000 1000kW (標準)');
+  assert(/closed|FXV|CXV/i.test(t2.selectedModel), 'replaced by a closed-circuit model');
+  assert.strictEqual(t2.replacedModel, 'BAC Series 3000 1000kW (標準)');
+});
+
+test('V10-A3/A4 threshold basis follows architecture (closed tower = WB with tower approach)', () => {
+  const { buildWindow } = require('./dom_harness.js');
+  const win = buildWindow();
+  const S = win.AppStore;
+  S.applySiteSharedConfig();
+  const plant = S.state.coolingPlants.find(p => p.loop === 'liquid');
+  plant.system.architecture = 'cooling_tower_hx';
+  S.calculate();
+  const fi = win.ViewCooling.fcThreshInfo(plant.system);
+  assert.strictEqual(fi.basis, 'wb');
+  assert.strictEqual(fi.appKey, 'ctApproachC');
+  assert(Math.abs(fi.full - (plant.system.fwsSupplyC - (plant.system.ctApproachC ?? 6))) < 1e-9, 'WB threshold = FWS − tower approach');
+  win.ViewCooling.render(win.document.getElementById('stepContent'));
+  assert(win.document.getElementById('siteCtAppIn'), 'site panel must show tower approach input');
+  assert(/WB ≤/.test(win.document.getElementById('sitePanel').innerHTML), 'site panel threshold must say WB');
+  S.setSiteCoolingTemp('liquid', 'ctApproachC', 5);
+  assert.strictEqual(plant.system.ctApproachC, 5, 'tower approach applied to closed-tower plant');
+  const dc = win.ViewCooling.fcThreshInfo({ architecture: 'dry_cooler_trim', fwsSupplyC: 41, fwsReturnC: 51, dryCoolerApproachC: 5, pheApproachC: 2 });
+  assert.strictEqual(dc.basis, 'db');
+});
+
 console.log(`\n${passCount} passed, ${failCount} failed, ${skipCount} skipped`);
 process.exit(failCount > 0 ? 1 : 0);
 

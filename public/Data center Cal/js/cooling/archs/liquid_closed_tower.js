@@ -58,9 +58,11 @@
                 get label() { return t('equip.closed_tower', null, 'Closed-Circuit Cooling Tower 密閉式冷卻水塔'); },
                 category: 'CoolingTower',
                 catalog: 'cooling_tower',
+                // V10-A2：密閉式架構只列密閉式（閉式盤管）型號；型錄有 tower_type 的以它為準，舊通用型號依名稱判斷
+                catalogFilter: (c) => c && (c.tower_type ? c.tower_type === 'closed_tower' : /closed|FXV|CXV/i.test(String(c.model || ''))),
                 role: 'heat_rejection',
                 resolver: 'tower',
-                defaultModelIndex: 1,
+                defaultModelIndex: 0,
                 defaultUnitCapKw: 1000,
                 requiredKw: (ctx) => ctx.reqKw,
                 calcQty: (reqKw, cap) => {

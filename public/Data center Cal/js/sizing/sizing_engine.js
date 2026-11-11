@@ -204,6 +204,24 @@
             s.autoSelected = true;
         },
 
+        // V10-A2：依架構定義篩選型錄；已存的型號不在篩選後的型錄內（例如密閉式架構選到開放式水塔）時，
+        //   改為自動選型並記錄被替換的型號，畫面顯示提示
+        _applyArchCatalogFilter(sys, s) {
+            const reg = root.CoolingArchRegistry;
+            const arch = reg && sys ? reg.get(sys.architecture) : null;
+            const eqDef = arch && Array.isArray(arch.equipment) ? arch.equipment.find(e => e.key === s.key) : null;
+            if (!eqDef || typeof eqDef.catalogFilter !== 'function' || !Array.isArray(s.catalog)) return;
+            const filtered = s.catalog.filter(eqDef.catalogFilter);
+            if (!filtered.length) return;
+            s.catalog = filtered;
+            if (s.selectedModel && !filtered.some(c => c.model === s.selectedModel)) {
+                s.replacedModel = s.selectedModel;
+                s.autoSelectRequested = true;
+                s.userEdited = false;
+                s.selectedQty = 0;
+            }
+        },
+
         // V10 Phase 8：型號下拉預覽。每個型錄型號在目前需求下「需要幾台、有效容量、餘裕」，
         //   與評估流程用同一個降額函式與冗餘規則；畫面只讀 s.optionPreview，不自行計算。
         _buildPreview(s, derateOf) {
@@ -302,7 +320,9 @@
         },
 
         _createSizingItem(eq, ctx) {
-            const cat = getCatalog(eq.catalog);
+            const catAll = getCatalog(eq.catalog);
+            const catF = (typeof eq.catalogFilter === 'function') ? catAll.filter(eq.catalogFilter) : catAll;
+            const cat = catF.length ? catF : catAll;
             const reqKw = (typeof eq.requiredKw === 'function') ? eq.requiredKw(ctx) : ctx.reqKw;
 
             let selectedModel = '';
@@ -405,6 +425,7 @@
 
         evaluateCduSizing(cduSys, reqCduKw, designCond, helpers = {}) {
             cduSys.sizing.forEach(s => {
+                SizingEngine._applyArchCatalogFilter(cduSys, s);
                 s.requiredKw = reqCduKw;
                 if (s.key === 'cooling_tower') s.requiredKw = reqCduKw * getTowerRejectionFactor(cduSys);
 
@@ -507,6 +528,7 @@
 
         evaluateFwSizing(fwSys, reqAirKw, designCond) {
             fwSys.sizing.forEach(s => {
+                SizingEngine._applyArchCatalogFilter(fwSys, s);
                 s.requiredKw = reqAirKw;
                 if (s.key === 'cooling_tower') s.requiredKw = reqAirKw * getTowerRejectionFactor(fwSys);
 

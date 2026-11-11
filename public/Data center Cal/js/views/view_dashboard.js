@@ -1604,6 +1604,7 @@
             const isFail = c.status === 'fail';
             const esc = (v) => (U && U.escapeHTML) ? U.escapeHTML(String(v)) : String(v);
             const items = [];
+            if (c.weatherSynthetic) items.push(_t('dash.compWeather', null, '沒有真實的 8,760 小時氣象資料，本次使用「合成氣候」計算，結果不代表案場。請到 Step 1 重新選擇測站或上傳 EPW。'));
             if (c.deficitHours > 0) items.push(_t('dash.compDeficit', { hours: c.deficitHours.toLocaleString(), kw: (c.maxDeficitKw || 0).toLocaleString() }, `容量不足：全年 ${c.deficitHours.toLocaleString()} 小時，尖峰缺口 ${(c.maxDeficitKw || 0).toLocaleString()} kW（這些小時的耗電依可用容量封頂計算）`));
             if (!c.thermalBalanced) items.push(_t('dash.compThermal', { mwh: (c.thermalImbalanceMwh || 0).toLocaleString() }, `熱平衡未閉合：有 ${(c.thermalImbalanceMwh || 0).toLocaleString()} MWh 的熱沒有被冷卻系統移除，也沒有對應的冷卻耗電`));
             const failRows = (c.sizingFailures || []).map(f => `<tr><td class="pr-3">${esc(f.owner)}</td><td class="pr-3">${f.system === 'liquid' ? _t('dash.compLiquid', null, '液冷') : _t('dash.compAir', null, '氣冷')}</td><td class="pr-3">${esc(f.key)}</td><td class="pr-3">${esc(f.model)} × ${f.qty}</td><td class="text-right tabular-nums">${f.effectiveCapKw.toLocaleString()} / ${f.requiredKw.toLocaleString()}</td></tr>`).join('');

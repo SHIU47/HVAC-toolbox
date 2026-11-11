@@ -384,6 +384,16 @@ commit：`V10 Phase 8: Step 4 改版（全廠設計條件列、設備表格化�
 > - 影響：預設專案 PUE 1.164→1.156（0% 損耗 1.107→1.101）；140 組回歸 129 組下降，最多 −0.025（冰水 22/32 自然冷卻增加）；容量不足組合 16→20，新增的 4 組都是「桃園＋純乾冷器」各 3 h（FWS 42→41，門檻降 1 °C，無冰機備援）。新基準 `baseline_after_V10_defaults.json`。1106 專案不受影響（存檔水溫不變）。
 > - 測試：P1-7 明確指定 12/18 冰水以保留原測試意圖；P1-10 預設值斷言改新數值。unit_checks 286 passed。
 
+## 5e. 修正 A（2026-11-11，檢查泰國春武里兩案後）✅
+
+> - A1：專案檔不存逐時氣象。來源記為 EPW 的專案重開時原本直接改用「合成氣候」；現在先到 165 站資料庫找同代號測站。仍找不到（例如雙擊 index.html 的 file:// 模式讀不到資料庫）時，`overall.weatherSynthetic = true`、合格判定為不合格，儀表板與計算書顯示紅色說明。合成氣候會讓 PUE 偏低約 0.02（乾冷器 1.118 對真實 1.137；密閉式 1.140 對 1.161）。
+> - A2：密閉式水塔架構（`cooling_tower_hx`）的型錄只列密閉式型號（`catalogFilter`）；已存的型號不在清單內時改為自動選型，並在設備列提示原型號。春武里密閉式案由「BAC Series 3000 1000kW（開放式通用型號）× 43」改為「BAC FXV3 XE 6000kW × 8」，排熱耗電 9,434→3,580 MWh、PUE 1.176→1.161。⚠ FXV3 型錄風扇 30 kW／噴淋泵 22 kW（每 6 MW）偏低，待原廠選型報告確認（B 項）。
+> - A3：Step 4 機房卡片與單元卡片的自然冷卻門檻改讀各架構 `operatingPoint().thresholds`：密閉式顯示 WB（FWS − 水塔 approach），乾冷器顯示 DB；排熱 approach 欄位依架構寫入 `ctApproachC` 或 `dryCoolerApproachC`。
+> - A4：全廠設計條件依實際使用的架構顯示「乾冷器 approach」或「水塔 approach（對濕球）」與 DB／WB 門檻；`siteCooling.liquid` 新增 `ctApproachC`。也修正乾冷器＋Trim 門檻原本顯示 36（漏扣 PHE），計算實際用 34。
+> - 設備表不再顯示需求為 0 的項目。0901 測試檔移到 `tools/pue_regression/fixtures/`。
+> - 回歸：只有 28 組「密閉式水塔」組合改變（PUE +0.016～+0.023，預設 1 MW 專案改用真正密閉式型號），新基準 `baseline_after_V10_A.json`。unit_checks 291 passed。
+> - ⚠ 1106 專案檔已不在桌面，本次無法比對。
+
 ## 6. Phase 9：完整性補強（小項，各自獨立）
 
 | # | 項目 | 做法 | 備註 |
@@ -425,6 +435,7 @@ commit：每項一個，或合併成 `V10 Phase 9: 完整性補強（…）`。
 | 7 | 水溫連動（資料層） | ✅ 完成 | 見 git log |
 | 8 | Step 4 改版 | ✅ 完成（待使用者看截圖確認） | 見 git log |
 | 8d | 預設水溫＋Step 4 清楚化（使用者回饋） | ✅ 完成 | 見 git log |
+| A | 泰國兩案檢查後的修正（氣象、密閉式水塔、DB/WB 門檻） | ✅ 完成 | 見 git log |
 | 9 | 完整性補強 | 待執行 | |
 | 10 | 總驗證與報告 | 待執行 | |
 
@@ -444,7 +455,7 @@ commit：每項一個，或合併成 `V10 Phase 9: 完整性補強（…）`。
 ```bash
 cd "/c/Users/30468/Desktop/計算工具/repo_hvac/tools/pue_regression"
 node unit_checks.js                                   # 目前 273 passed，只能增加
-node run.js --compare baseline_after_V10_defaults.json   # 預期 0 差異；有差異要逐項解釋並存新基準（2026-11-10 起改用此基準）
+node run.js --compare baseline_after_V10_A.json          # 預期 0 差異；有差異要逐項解釋並存新基準（2026-11-11 起改用此基準）
 node project_check.js "C:\\Users\\30468\\Desktop\\PUE_Project_高雄 (Kaohsiung)_20261106.json" --compare baseline_proj_kh1106_after_V9.json
 ```
 

@@ -879,7 +879,7 @@ ${inputsHtml}
                                         <div>
                                             <span class="font-bold text-[11px]">${_t('cooling.fcThreshFormula', null, 'Free Cooling 門檻 (以本頁水溫與 Approach 物理動態推算):')}</span>
                                             <div class="text-[10px] text-emerald-700">
-                                                T_fc = ${cduSys.fwsSupplyC}°C (FWS) − ${dcApproach}°C (${_t('cooling.dryCoolerAbbr', null, '乾冷器')}) ${pheApproach > 0 ? ('− ' + pheApproach + '°C (' + _t('cooling.pheAbbr', null, '板換') + ')') : ''} = <strong class="text-xs font-black text-emerald-900">${cduFcThresh}°C DB</strong>
+                                                ${ViewCooling.fcThreshHtml(cduSys)}
                                             </div>
                                         </div>
                                         <span class="px-1.5 py-0.5 bg-white text-emerald-900 border border-emerald-300 rounded font-black text-[9px]">${_t('cooling.physicsLinked', null, '物理連動')}</span>
@@ -1302,7 +1302,8 @@ ${inputsHtml}
             // 參數面板
             let paramsPanelHtml = '';
             if (isLiquid) {
-                const dcApproach = sys.dryCoolerApproachC ?? 5.0;
+                // V10-A3：排熱端 approach 依架構對應欄位（密閉式水塔＝ctApproachC，其他＝dryCoolerApproachC）
+                const dcApproach = sys[ViewCooling.rejApproachKey(sys)] ?? (ViewCooling.rejApproachKey(sys) === 'ctApproachC' ? 6.0 : 5.0);
                 const pheApproach = sys.pheApproachC ?? 2.0;
                 const fwsSupplyC = sys.fwsSupplyC ?? 42.0;
                 const cduFcThresh = (fwsSupplyC - dcApproach - pheApproach).toFixed(1);
@@ -1332,7 +1333,7 @@ ${inputsHtml}
                         <div class="p-2.5 bg-emerald-50 rounded-lg border border-emerald-200 text-xs text-emerald-950 flex justify-between items-center">
                             <div>
                                 <span class="font-bold text-[11px]">${_t('cooling.fcThreshFormula', null, 'Free Cooling 門檻:')}</span>
-                                <div class="text-[10px] text-emerald-700">T_fc = ${fwsSupplyC}°C − ${dcApproach}°C − ${pheApproach}°C = <strong class="text-xs font-black text-emerald-900">${cduFcThresh}°C DB</strong></div>
+                                <div class="text-[10px] text-emerald-700">${ViewCooling.fcThreshHtml(sys)}</div>
                             </div>
                             <span class="px-1.5 py-0.5 bg-white text-emerald-900 border border-emerald-300 rounded font-black text-[9px]">${_t('cooling.physicsLinked', null, '物理連動')}</span>
                         </div>
@@ -1625,7 +1626,7 @@ ${inputsHtml}
             if (plant.loop === 'liquid') {
                 sys.fwsSupplyC = num('plantFwsSupplyIn_' + plantId, 42.0);
                 sys.fwsReturnC = num('plantFwsReturnIn_' + plantId, 54.0);
-                sys.dryCoolerApproachC = num('plantDcAppIn_' + plantId, 5.0);
+                sys[this.rejApproachKey(sys)] = num('plantDcAppIn_' + plantId, sys[this.rejApproachKey(sys)] ?? 5.0);
                 const pheEl = document.getElementById('plantPheAppIn_' + plantId);
                 if (pheEl) sys.pheApproachC = num('plantPheAppIn_' + plantId, 2.0);
                 const headEl = document.getElementById('plantHeadIn_' + plantId);
@@ -1697,6 +1698,35 @@ ${inputsHtml}
             this.render(document.getElementById('stepContent'));
         },
 
+        // ===== V10-A3：自然冷卻門檻依架構（乾球 DB／濕球 WB／等效乾球）=====
+        // 門檻值取自架構的 operatingPoint().thresholds（與計算引擎同一套公式），畫面不自行推算
+        rejApproachKey(sys) {
+            return (sys && sys.architecture === 'cooling_tower_hx') ? 'ctApproachC' : 'dryCoolerApproachC';
+        },
+        fcThreshInfo(sys) {
+            const reg = window.CoolingArchRegistry;
+            const arch = reg && sys ? reg.get(sys.architecture) : null;
+            if (!arch || typeof arch.operatingPoint !== 'function') return null;
+            let op = null;
+            try { op = arch.operatingPoint(sys, { db: 0, wb: 0 }, {}); } catch (_) { op = null; }
+            const th = op && op.thresholds;
+            if (!th || th.basis === 'none' || !Number.isFinite(Number(th.full))) return { basis: 'none' };
+            const fws = Number(sys.fwsSupplyC);
+            const appKey = this.rejApproachKey(sys);
+            const app = Number(sys[appKey] ?? (appKey === 'ctApproachC' ? 6.0 : 5.0));
+            const phe = Math.max(0, Number((fws - app - Number(th.full)).toFixed(2)));
+            const unit = th.basis === 'wb' ? 'WB' : (th.basis === 'db_eff' ? _t('cooling.dbEff', null, '等效 DB') : 'DB');
+            const appLabel = appKey === 'ctApproachC' ? _t('cooling.towerAbbr', null, '水塔') : _t('cooling.dryCoolerAbbr', null, '乾冷器');
+            const formula = `T_fc = ${fws}°C (FWS) − ${app}°C (${appLabel})${phe > 0.01 ? ' − ' + phe + '°C (' + _t('cooling.pheAbbr', null, '板換') + ')' : ''} = `;
+            return { basis: th.basis, full: Number(th.full), unit, formula, appKey, app, phe };
+        },
+        fcThreshHtml(sys) {
+            const fi = this.fcThreshInfo(sys);
+            if (!fi || fi.basis === 'none') return `<span class="text-slate-500">${_t('cooling.fcNone', null, '本架構全年以冰機製冷，沒有自然冷卻門檻')}</span>`;
+            const note = fi.basis === 'wb' ? _t('cooling.fcWbNote', null, '（蒸發式排熱，以濕球溫度判斷）') : (fi.basis === 'db_eff' ? _t('cooling.fcDbEffNote', null, '（絕熱預冷後的等效乾球）') : _t('cooling.fcDbNote', null, '（乾式排熱，以乾球溫度判斷）'));
+            return `${fi.formula}<strong class="text-xs font-black text-emerald-900">${fi.full.toFixed(1)}°C ${fi.unit}</strong> <span class="text-emerald-700">${note}</span>`;
+        },
+
         // ===== V10 Phase 8：Step 4 改版 =====
         sectionHeader(no, title, desc, statusHtml) {
             return `<div class="flex items-start justify-between gap-3 pt-2 px-1" id="step4sec${no}">
@@ -1745,8 +1775,20 @@ ${inputsHtml}
             const L = sc.liquid, Ai = sc.air, fws = S.siteFws();
             const units = S._allCoolingUnits();
             const plants = (S.state.coolingPlants || []);
-            const anyPhe = [...units.map(u => u.plantDesign?.cduSystem), ...plants.filter(p => p.loop === 'liquid').map(p => p.system)].some(x => x && x.hasPhe);
-            const fcThresh = fws.supplyC - L.dryCoolerApproachC - (anyPhe ? L.pheApproachC : 0);
+            // V10-A4：依實際使用的液冷架構（共用機房＋非成員單元）決定要顯示哪些 approach 與門檻（DB／WB），門檻取自架構本身的計算
+            const liqSystems = [...plants.filter(p => p.loop === 'liquid' && (p.memberIds || []).length).map(p => p.system),
+                ...units.map(u => u.plantDesign?.cduSystem).filter(c => c && !c.plantId)].filter(Boolean);
+            const archSeen = new Map();
+            liqSystems.forEach(sys => { if (!archSeen.has(sys.architecture)) archSeen.set(sys.architecture, sys); });
+            const thInfos = [...archSeen.values()].map(sys => ({ sys, fi: this.fcThreshInfo(sys) }));
+            const usesDc = thInfos.some(x => x.fi && x.fi.basis !== 'none' && x.fi.appKey === 'dryCoolerApproachC');
+            const usesCt = thInfos.some(x => x.fi && x.fi.appKey === 'ctApproachC');
+            const anyPhe = thInfos.some(x => x.fi && x.fi.phe > 0.01);
+            const archName = (id) => { const a = window.CoolingArchRegistry ? window.CoolingArchRegistry.get(id) : null; return (a && (a.cardLabel || a.dashboardLabel)) || id; };
+            const threshChips = thInfos.map(x => {
+                if (!x.fi || x.fi.basis === 'none') return `<span class="px-2 py-1 rounded-md bg-slate-50 border border-slate-200 text-[11px] text-slate-600">${archName(x.sys.architecture)}：${_t('cooling.fcNoneShort', null, '全年冰機')}</span>`;
+                return `<span class="px-2 py-1 rounded-md bg-emerald-50 border border-emerald-200 text-xs font-black text-emerald-800" title="${archName(x.sys.architecture)}">${x.fi.unit} ≤ ${this._num(x.fi.full, 1)} °C</span>`;
+            }).join(' ');
             const inp = (id, loop, key, val, step = 0.5) => `<input type="number" id="${id}" value="${val}" step="${step}" onchange="ViewCooling.setSiteTemp('${loop}', '${key}', this.value)" onkeydown="if(event.key==='Enter')this.blur()" class="w-16 text-xs font-bold text-center border border-slate-400 rounded-md py-1 bg-white">`;
             // 算出來的值（仍可修改）：灰底
             const der = (id, loop, key, val, step = 0.5) => `<input type="number" id="${id}" value="${val}" step="${step}" title="${_t('cooling.derivedTip', null, '自動算出的值；修改時會反推上游數值')}" onchange="ViewCooling.setSiteTemp('${loop}', '${key}', this.value)" onkeydown="if(event.key==='Enter')this.blur()" class="w-16 text-xs font-bold text-center border border-slate-200 rounded-md py-1 bg-slate-100 text-slate-600">`;
@@ -1769,8 +1811,9 @@ ${inputsHtml}
                         ${link(_t('cooling.linkCdu', null, 'CDU approach'), inp('siteCduAppIn', 'liquid', 'cduApproachC', L.cduApproachC))}
                         ${node(_t('cooling.nodeFws', null, '設施水 FWS 供 / 回 °C'), der('siteFwsSupplyIn', 'liquid', 'fwsSupplyC', fws.supplyC) + '<span class="text-slate-400">/</span>' + der('siteFwsReturnIn', 'liquid', 'fwsReturnC', fws.returnC), 'border-slate-200 bg-slate-50 text-slate-700')}
                         ${anyPhe ? link(_t('cooling.linkPhe', null, 'PHE approach'), inp('sitePheAppIn', 'liquid', 'pheApproachC', L.pheApproachC)) : ''}
-                        ${link(_t('cooling.linkRej', null, '排熱 approach'), inp('siteDcAppIn', 'liquid', 'dryCoolerApproachC', L.dryCoolerApproachC))}
-                        ${node(_t('cooling.nodeOutdoor', null, '外氣全自然冷卻門檻'), `<span class="px-2 py-1 rounded-md bg-emerald-50 border border-emerald-200 text-xs font-black text-emerald-800">DB ≤ ${this._num(fcThresh, 1)} °C</span>`, 'border-emerald-200 bg-white text-emerald-800')}
+                        ${(usesDc || !usesCt) ? link(_t('cooling.linkRej', null, '乾冷器 approach'), inp('siteDcAppIn', 'liquid', 'dryCoolerApproachC', L.dryCoolerApproachC)) : ''}
+                        ${usesCt ? link(_t('cooling.linkCt', null, '水塔 approach（對濕球）'), inp('siteCtAppIn', 'liquid', 'ctApproachC', L.ctApproachC)) : ''}
+                        ${node(_t('cooling.nodeOutdoor', null, '外氣全自然冷卻門檻'), threshChips || '—', 'border-emerald-200 bg-white text-emerald-800')}
                     </div>
                     <div class="flex flex-wrap items-center gap-1.5 text-[11px] text-slate-500">
                         <span>${_t('cooling.presetLabel', null, '快速套用：')}</span>
@@ -1900,7 +1943,8 @@ ${inputsHtml}
         renderEquipTable(ownerId, sysType, list, qtyIdPrefix) {
             const SE = window.SizingEngine;
             // V10：不合格的列排到最前面
-            const sorted = (list || []).slice().sort((a, b) => ((a.requiredKw > 0 && a.passed === false) ? 0 : 1) - ((b.requiredKw > 0 && b.passed === false) ? 0 : 1));
+            // V10-A：需求為 0 的項目（例如機房內殘留的終端設備、無板換時的排熱側泵）不顯示
+            const sorted = (list || []).filter(it => (it.requiredKw || 0) > 0).sort((a, b) => ((a.requiredKw > 0 && a.passed === false) ? 0 : 1) - ((b.requiredKw > 0 && b.passed === false) ? 0 : 1));
             const rows = sorted.map(item => {
                 const isPump = SE && SE.isPumpItem && SE.isPumpItem(item);
                 const red = item.redundancy || 'N+1';
@@ -1920,6 +1964,7 @@ ${inputsHtml}
                     infos.push(_t('cooling.mode3Short', { kw: Number(item.maxMechanicalKw).toFixed(0) }, `Mode 3 全機械製冷 ${Number(item.maxMechanicalKw).toFixed(0)} kW 不足`));
                 }
                 if ((item.selectedQty || 0) > 20) infos.push(_t('cooling.tooManyShort', null, '台數偏多，建議自動選型'));
+                if (item.replacedModel) infos.push(_t('cooling.modelReplaced', { m: item.replacedModel }, `原型號「${item.replacedModel}」不適用本架構，已改為自動選型`));
                 const reqTitle = String(item.requiredText || '').replace(/<[^>]+>/g, '').replace(/"/g, '&quot;');
                 const fav = window.AppStore?.isFavoriteModel ? window.AppStore.isFavoriteModel(item.key, item.selectedModel) : false;
                 const safeModel = String(item.selectedModel || '').replace(/\\/g, '\\\\').replace(/'/g, "\\'").replace(/"/g, '&quot;');
