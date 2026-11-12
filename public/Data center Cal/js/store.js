@@ -2965,8 +2965,14 @@
             const fanKwDx = catEntry?.fanKwDx;
             if (!fanKwDx) return [];
             const nRunning = this.runningQtyFromItem(item, true);
+            // V11-B1：設計點設備負載率 = 設計排熱需求 ÷ 運轉中（扣備用）設備的有效容量（含降額）。
+            //   原本風扇轉速只依「實際負載 ÷ 設計負載」，選了較大的設備時仍以接近額定轉速計算，耗電高估。
+            //   ⚠ 轉速與排熱量以線性近似（沿用既有模型），未計入盤管傳熱與風量的非線性關係。
+            const req = Number(item.requiredKw) || 0, eff = Number(item.effectiveCapKw) || 0;
+            const designPlr = (req > 0 && eff > 0) ? Math.min(1, req / eff) : 1;
             return [{
                 model: item.selectedModel,
+                design_plr: designPlr,
                 fan_kw_dx: fanKwDx,
                 fan_kw_fc: catEntry?.fanKwFc ?? fanKwDx,
                 qty_running: nRunning,

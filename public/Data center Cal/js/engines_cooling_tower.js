@@ -65,7 +65,10 @@ const CoolingTowerEngine = {
       const fw = d[fan_key] ?? 0;
       const ctrl = d.fan_control ?? 'vfd';
 
-      let effPlr = plr_ct;
+      // V11-B1：傳入的 plr_ct 是「相對設計負載」的比例；乘上設計點設備負載率（design_plr ≤ 1），
+      //   換算成相對「運轉中設備容量」的比例，設備選得越大，風扇轉速越低
+      const dPlr = (typeof d.design_plr === 'number' && d.design_plr > 0) ? Math.min(1, d.design_plr) : 1;
+      let effPlr = plr_ct * dPlr;
       if (d.run_mode === 'share' && d.qty_total && d.qty_running && d.qty_running === d.qty_total) {
         const sizingEng = (typeof window !== 'undefined' && window.SizingEngine) || (typeof global !== 'undefined' && global.SizingEngine) || (typeof SizingEngine !== 'undefined' ? SizingEngine : null);
         const designRunning = sizingEng ? sizingEng.runningQty(d.qty_total, d.redundancy || 'N+1') : Math.max(1, d.qty_total - 1);

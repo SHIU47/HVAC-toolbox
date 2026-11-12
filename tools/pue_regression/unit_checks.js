@@ -3476,7 +3476,9 @@ function sizeCduToDeratedN1(S) {
   // V10：預設設計水溫改為晶片 45/55、approach 4（FWS 41/51）、冰水 22/32，基準改為 1.156 / 1.101
   // V11 Phase 3：自動選型改用已核對且工況相符的型號；機房 CRAH 由舊型錄 Stulz 60kW（80 W/kW，CHW 7°C 額定）
   //   改為 Uniflair FWCV36L1（原廠資料 CHW 20/30、RA 37°C，53 W/kW），CRAH 風扇年耗電 142→81 MWh，基準改為 1.150 / 1.097
-  test('R7 Benchmark: Default project Kaohsiung 4.5% loss PUE is 1.150 ± 0.005 (V11: verified catalogue auto-select)', () => {
+  // V11-B1：排熱風扇轉速改依「設計排熱 ÷ 運轉中設備有效容量」折算（乾冷器 1200 kW 帶 863 kW，design_plr 0.72），
+  //   排熱風扇年耗電 162→77 MWh，基準改為 1.141 / 1.088
+  test('R7 Benchmark: Default project Kaohsiung 4.5% loss PUE is 1.141 ± 0.005 (V11-B1: fan speed vs installed capacity)', () => {
     S.state.site.selectedCity = '高雄 (Kaohsiung)';
     const data = ctx.BUILTIN_WEATHER_DATA['高雄 (Kaohsiung)'];
     S.state.site.hourly = data.hourlyData;
@@ -3486,14 +3488,14 @@ function sizeCduToDeratedN1(S) {
     S.state.facilityElectricalLossPct = 4.5;
     S.calculate();
     const pue = S.state.results.overall.annualPue;
-    assert(Math.abs(pue - 1.150) < 0.005, `Default Kaohsiung 4.5% loss PUE must be ~1.150, got ${pue}`);
+    assert(Math.abs(pue - 1.141) < 0.005, `Default Kaohsiung 4.5% loss PUE must be ~1.141, got ${pue}`);
   });
 
-  test('R7 Benchmark: Default project Kaohsiung 0.0% loss PUE is 1.097 ± 0.005 (V11: verified catalogue auto-select)', () => {
+  test('R7 Benchmark: Default project Kaohsiung 0.0% loss PUE is 1.088 ± 0.005 (V11-B1: fan speed vs installed capacity)', () => {
     S.state.facilityElectricalLossPct = 0.0;
     S.calculate();
     const pue = S.state.results.overall.annualPue;
-    assert(Math.abs(pue - 1.097) < 0.005, `Default Kaohsiung 0% loss PUE must be ~1.097, got ${pue}`);
+    assert(Math.abs(pue - 1.088) < 0.005, `Default Kaohsiung 0% loss PUE must be ~1.088, got ${pue}`);
   });
 
   const projPath = path.resolve(__dirname, 'fixtures/PUE_Project_高雄 (Kaohsiung)_20260901.json');
@@ -6233,6 +6235,20 @@ test('V11-6 report §5 marks vendor selection data and lists rating mismatches a
   S.calculate();
   const eq2 = ctxV.EquipmentSchedule.build(S.state);
   assert(eq2.warnings.some(w => w.type === 'ratingMismatch'), 'rating mismatch warning expected');
+});
+
+test('V11-B1 heat-rejection fan speed scales with design load / running capacity', () => {
+  const ctxB = freshCtx();
+  const S = ctxB.AppStore, CT = ctxB.CoolingTowerEngine;
+  const item = { key: 'dry_cooler', selectedModel: 'Güntner 1200kW V-Bank Dry Cooler', selectedQty: 2, redundancy: 'N+1', requiredKw: 600, effectiveCapKw: 1200,
+    catalog: ctxB.CatalogManager.getCatalog('dry_cooler') };
+  const d = S.resolveTowerFromSizing(item)[0];
+  assert(Math.abs(d.design_plr - 0.5) < 1e-9, 'design_plr = 600 / 1200');
+  const fan = (plr) => CT.calcFanPower([{ ...d, design_plr: plr }], 1.0, false, 0.2);
+  assert(Math.abs(fan(1) - d.fan_kw_dx) < 1e-9, 'right-sized unit at design → full fan power');
+  assert(Math.abs(fan(0.5) - d.fan_kw_dx * (0.10 + 0.90 * 0.125)) < 1e-9, 'half-loaded unit → cube law');
+  item.effectiveCapKw = 500;
+  assert.strictEqual(S.resolveTowerFromSizing(item)[0].design_plr, 1, 'undersized equipment capped at 1');
 });
 
 console.log(`\n${passCount} passed, ${failCount} failed, ${skipCount} skipped`);
