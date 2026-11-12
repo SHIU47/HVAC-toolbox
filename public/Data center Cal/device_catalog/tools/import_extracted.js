@@ -122,6 +122,16 @@ function skip(file, m, reason, toUnmapped = true) {
 function count(cat) { report.imported[cat] = (report.imported[cat] || 0) + 1; }
 
 // ───────── 冰水主機 ─────────
+// 曲線對照（同 device_catalog/chiller/*.json 舊型錄的用法）：
+//   氣冷 磁浮／離心 → air_cooled_vfd_centrifugal（vertiv、schneider.json）；氣冷 螺旋／渦卷 → air_cooled_screw
+//   水冷 磁浮 → centrifugal_higheff（trane Turbocor）；水冷 離心 → centrifugal_standard；水冷 螺旋／渦卷 → screw_standard
+function curvePreset(isAir, comp) {
+    const c = String(comp || '');
+    if (isAir) return /magnetic|centrifugal/.test(c) ? 'air_cooled_vfd_centrifugal' : 'air_cooled_screw';
+    if (/magnetic/.test(c)) return 'centrifugal_higheff';
+    if (/centrifugal/.test(c)) return 'centrifugal_standard';
+    return 'screw_standard';
+}
 const COMPRESSOR_LABEL = {
     magnetic_bearing: 'Magnetic Bearing Centrifugal',
     centrifugal: 'Centrifugal',
@@ -155,7 +165,8 @@ for (const m of load('02_chiller')) {
         t_chwr_c: num(r.chwr_c),
         t_cewt_design_c: tCond,
         glycol_pct: num(r.glycol_pct),
-        cop_curve: { type: 'fixed' },   // 依壓縮機型式套用 AHRI 曲線，並以本機額定點歸一化
+        // 與舊型錄同型式機種用同一條 AHRI 曲線（含部分負載 EIR_FPLR），引擎以本機額定點歸一化
+        cop_curve: { type: 'ahri_biquadratic', preset: curvePreset(isAir, v.compressor) },
         refrigerant: v.refrigerant,
         has_free_cooling_coil: v.has_free_cooling_coil,
         seer: num(v.seer), sepr: num(v.sepr), iplv: num(v.iplv), nplv: num(v.nplv),

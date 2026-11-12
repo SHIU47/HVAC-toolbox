@@ -4,7 +4,7 @@
  * 用途：當頁面以 file:// 協議開啟（直接雙擊 index.html）時，CatalogManager
  * 無法用 fetch() 讀取 device_catalog/ 底下的 JSON 檔案（瀏覽器 CORS 限制），
  * 此檔案把相同內容內嵌為 JS 物件，改用 <script> 標籤載入即可繞過限制。
- * 產生時間：2026-11-12T03:47:41.070Z
+ * 產生時間：2026-11-12T03:59:43.412Z
  * 若修改了 device_catalog/*.json，請重新執行：node device_catalog/build_builtin.js
  */
 window.DEVICE_CATALOG_BUILTIN_RAW = {
@@ -824,7 +824,8 @@ window.DEVICE_CATALOG_BUILTIN_RAW = {
         "t_cewt_design_c": 40,
         "glycol_pct": 0,
         "cop_curve": {
-          "type": "fixed"
+          "type": "ahri_biquadratic",
+          "preset": "air_cooled_screw"
         },
         "refrigerant": "R1234ze",
         "has_free_cooling_coil": true,
@@ -869,7 +870,8 @@ window.DEVICE_CATALOG_BUILTIN_RAW = {
         "t_cewt_design_c": 35,
         "glycol_pct": 0,
         "cop_curve": {
-          "type": "fixed"
+          "type": "ahri_biquadratic",
+          "preset": "air_cooled_screw"
         },
         "refrigerant": "R1234ze",
         "has_free_cooling_coil": false,
@@ -914,7 +916,8 @@ window.DEVICE_CATALOG_BUILTIN_RAW = {
         "t_cewt_design_c": 35,
         "glycol_pct": 0,
         "cop_curve": {
-          "type": "fixed"
+          "type": "ahri_biquadratic",
+          "preset": "air_cooled_screw"
         },
         "refrigerant": "R1234ze",
         "has_free_cooling_coil": false,
@@ -959,7 +962,8 @@ window.DEVICE_CATALOG_BUILTIN_RAW = {
         "t_cewt_design_c": 35,
         "glycol_pct": 0,
         "cop_curve": {
-          "type": "fixed"
+          "type": "ahri_biquadratic",
+          "preset": "air_cooled_screw"
         },
         "refrigerant": "R1234ze",
         "has_free_cooling_coil": false,
@@ -1004,7 +1008,8 @@ window.DEVICE_CATALOG_BUILTIN_RAW = {
         "t_cewt_design_c": 35,
         "glycol_pct": 0,
         "cop_curve": {
-          "type": "fixed"
+          "type": "ahri_biquadratic",
+          "preset": "air_cooled_screw"
         },
         "refrigerant": "R513A",
         "has_free_cooling_coil": false,
@@ -1049,7 +1054,8 @@ window.DEVICE_CATALOG_BUILTIN_RAW = {
         "t_cewt_design_c": 35,
         "glycol_pct": 0,
         "cop_curve": {
-          "type": "fixed"
+          "type": "ahri_biquadratic",
+          "preset": "air_cooled_screw"
         },
         "refrigerant": "R513A",
         "has_free_cooling_coil": false,
@@ -1094,7 +1100,8 @@ window.DEVICE_CATALOG_BUILTIN_RAW = {
         "t_cewt_design_c": 35,
         "glycol_pct": 0,
         "cop_curve": {
-          "type": "fixed"
+          "type": "ahri_biquadratic",
+          "preset": "air_cooled_screw"
         },
         "refrigerant": "R513A",
         "has_free_cooling_coil": false,
@@ -1139,7 +1146,8 @@ window.DEVICE_CATALOG_BUILTIN_RAW = {
         "t_cewt_design_c": 35,
         "glycol_pct": 0,
         "cop_curve": {
-          "type": "fixed"
+          "type": "ahri_biquadratic",
+          "preset": "air_cooled_screw"
         },
         "refrigerant": "R513A",
         "has_free_cooling_coil": false,
@@ -1184,7 +1192,8 @@ window.DEVICE_CATALOG_BUILTIN_RAW = {
         "t_cewt_design_c": 35,
         "glycol_pct": 0,
         "cop_curve": {
-          "type": "fixed"
+          "type": "ahri_biquadratic",
+          "preset": "air_cooled_screw"
         },
         "refrigerant": "R513A",
         "has_free_cooling_coil": false,
@@ -1229,7 +1238,8 @@ window.DEVICE_CATALOG_BUILTIN_RAW = {
         "t_cewt_design_c": 35,
         "glycol_pct": 0,
         "cop_curve": {
-          "type": "fixed"
+          "type": "ahri_biquadratic",
+          "preset": "air_cooled_screw"
         },
         "refrigerant": "R513A",
         "has_free_cooling_coil": false,
@@ -1274,7 +1284,8 @@ window.DEVICE_CATALOG_BUILTIN_RAW = {
         "t_cewt_design_c": 35,
         "glycol_pct": 0,
         "cop_curve": {
-          "type": "fixed"
+          "type": "ahri_biquadratic",
+          "preset": "air_cooled_screw"
         },
         "refrigerant": "R454B",
         "has_free_cooling_coil": false,
@@ -1319,7 +1330,8 @@ window.DEVICE_CATALOG_BUILTIN_RAW = {
         "t_cewt_design_c": 35,
         "glycol_pct": 0,
         "cop_curve": {
-          "type": "fixed"
+          "type": "ahri_biquadratic",
+          "preset": "air_cooled_screw"
         },
         "refrigerant": "R454B",
         "has_free_cooling_coil": false,
@@ -1364,7 +1376,8 @@ window.DEVICE_CATALOG_BUILTIN_RAW = {
         "t_cewt_design_c": 35,
         "glycol_pct": 0,
         "cop_curve": {
-          "type": "fixed"
+          "type": "ahri_biquadratic",
+          "preset": "air_cooled_screw"
         },
         "refrigerant": "R454B",
         "has_free_cooling_coil": false,
@@ -1409,7 +1422,8 @@ window.DEVICE_CATALOG_BUILTIN_RAW = {
         "t_cewt_design_c": 35,
         "glycol_pct": 0,
         "cop_curve": {
-          "type": "fixed"
+          "type": "ahri_biquadratic",
+          "preset": "air_cooled_screw"
         },
         "refrigerant": "R410A",
         "has_free_cooling_coil": false,
@@ -1454,7 +1468,8 @@ window.DEVICE_CATALOG_BUILTIN_RAW = {
         "t_cewt_design_c": 35,
         "glycol_pct": 0,
         "cop_curve": {
-          "type": "fixed"
+          "type": "ahri_biquadratic",
+          "preset": "air_cooled_screw"
         },
         "refrigerant": "R410A",
         "has_free_cooling_coil": false,
@@ -1499,7 +1514,8 @@ window.DEVICE_CATALOG_BUILTIN_RAW = {
         "t_cewt_design_c": 35,
         "glycol_pct": 0,
         "cop_curve": {
-          "type": "fixed"
+          "type": "ahri_biquadratic",
+          "preset": "air_cooled_screw"
         },
         "refrigerant": "R410A",
         "has_free_cooling_coil": false,
@@ -1544,7 +1560,8 @@ window.DEVICE_CATALOG_BUILTIN_RAW = {
         "t_cewt_design_c": 35,
         "glycol_pct": 0,
         "cop_curve": {
-          "type": "fixed"
+          "type": "ahri_biquadratic",
+          "preset": "air_cooled_screw"
         },
         "refrigerant": "R410A",
         "has_free_cooling_coil": false,
@@ -1589,7 +1606,8 @@ window.DEVICE_CATALOG_BUILTIN_RAW = {
         "t_cewt_design_c": 35,
         "glycol_pct": 0,
         "cop_curve": {
-          "type": "fixed"
+          "type": "ahri_biquadratic",
+          "preset": "air_cooled_screw"
         },
         "refrigerant": "R410A",
         "has_free_cooling_coil": true,
@@ -1634,7 +1652,8 @@ window.DEVICE_CATALOG_BUILTIN_RAW = {
         "t_cewt_design_c": 35,
         "glycol_pct": 0,
         "cop_curve": {
-          "type": "fixed"
+          "type": "ahri_biquadratic",
+          "preset": "air_cooled_screw"
         },
         "refrigerant": "R410A",
         "has_free_cooling_coil": true,
@@ -1679,7 +1698,8 @@ window.DEVICE_CATALOG_BUILTIN_RAW = {
         "t_cewt_design_c": 35,
         "glycol_pct": 0,
         "cop_curve": {
-          "type": "fixed"
+          "type": "ahri_biquadratic",
+          "preset": "air_cooled_screw"
         },
         "refrigerant": "R513A",
         "has_free_cooling_coil": false,
@@ -1724,7 +1744,8 @@ window.DEVICE_CATALOG_BUILTIN_RAW = {
         "t_cewt_design_c": 35,
         "glycol_pct": 0,
         "cop_curve": {
-          "type": "fixed"
+          "type": "ahri_biquadratic",
+          "preset": "air_cooled_screw"
         },
         "refrigerant": "R513A",
         "has_free_cooling_coil": false,
@@ -1769,7 +1790,8 @@ window.DEVICE_CATALOG_BUILTIN_RAW = {
         "t_cewt_design_c": 35,
         "glycol_pct": 0,
         "cop_curve": {
-          "type": "fixed"
+          "type": "ahri_biquadratic",
+          "preset": "air_cooled_screw"
         },
         "refrigerant": "R513A",
         "has_free_cooling_coil": false,
@@ -1814,7 +1836,8 @@ window.DEVICE_CATALOG_BUILTIN_RAW = {
         "t_cewt_design_c": 35,
         "glycol_pct": 0,
         "cop_curve": {
-          "type": "fixed"
+          "type": "ahri_biquadratic",
+          "preset": "air_cooled_screw"
         },
         "refrigerant": "R513A",
         "has_free_cooling_coil": true,
@@ -1859,7 +1882,8 @@ window.DEVICE_CATALOG_BUILTIN_RAW = {
         "t_cewt_design_c": 35,
         "glycol_pct": 0,
         "cop_curve": {
-          "type": "fixed"
+          "type": "ahri_biquadratic",
+          "preset": "air_cooled_screw"
         },
         "refrigerant": "R513A",
         "has_free_cooling_coil": true,
@@ -1904,7 +1928,8 @@ window.DEVICE_CATALOG_BUILTIN_RAW = {
         "t_cewt_design_c": 35,
         "glycol_pct": 0,
         "cop_curve": {
-          "type": "fixed"
+          "type": "ahri_biquadratic",
+          "preset": "air_cooled_screw"
         },
         "refrigerant": "R513A",
         "has_free_cooling_coil": true,
@@ -1949,7 +1974,8 @@ window.DEVICE_CATALOG_BUILTIN_RAW = {
         "t_cewt_design_c": 35,
         "glycol_pct": 0,
         "cop_curve": {
-          "type": "fixed"
+          "type": "ahri_biquadratic",
+          "preset": "air_cooled_vfd_centrifugal"
         },
         "refrigerant": "R134a",
         "has_free_cooling_coil": false,
@@ -1995,7 +2021,8 @@ window.DEVICE_CATALOG_BUILTIN_RAW = {
         "t_cewt_design_c": 35,
         "glycol_pct": 0,
         "cop_curve": {
-          "type": "fixed"
+          "type": "ahri_biquadratic",
+          "preset": "air_cooled_vfd_centrifugal"
         },
         "refrigerant": "R134a",
         "has_free_cooling_coil": false,
@@ -2041,7 +2068,8 @@ window.DEVICE_CATALOG_BUILTIN_RAW = {
         "t_cewt_design_c": 35,
         "glycol_pct": 0,
         "cop_curve": {
-          "type": "fixed"
+          "type": "ahri_biquadratic",
+          "preset": "air_cooled_vfd_centrifugal"
         },
         "refrigerant": "R134a",
         "has_free_cooling_coil": false,
@@ -2087,7 +2115,8 @@ window.DEVICE_CATALOG_BUILTIN_RAW = {
         "t_cewt_design_c": 35,
         "glycol_pct": 0,
         "cop_curve": {
-          "type": "fixed"
+          "type": "ahri_biquadratic",
+          "preset": "air_cooled_vfd_centrifugal"
         },
         "refrigerant": "R134a",
         "has_free_cooling_coil": false,
@@ -2133,7 +2162,8 @@ window.DEVICE_CATALOG_BUILTIN_RAW = {
         "t_cewt_design_c": 35,
         "glycol_pct": 0,
         "cop_curve": {
-          "type": "fixed"
+          "type": "ahri_biquadratic",
+          "preset": "air_cooled_vfd_centrifugal"
         },
         "refrigerant": "R134a",
         "has_free_cooling_coil": false,
@@ -2179,7 +2209,8 @@ window.DEVICE_CATALOG_BUILTIN_RAW = {
         "t_cewt_design_c": 35,
         "glycol_pct": 0,
         "cop_curve": {
-          "type": "fixed"
+          "type": "ahri_biquadratic",
+          "preset": "air_cooled_vfd_centrifugal"
         },
         "refrigerant": "R134a",
         "has_free_cooling_coil": false,
@@ -2225,7 +2256,8 @@ window.DEVICE_CATALOG_BUILTIN_RAW = {
         "t_cewt_design_c": 31.5,
         "glycol_pct": 0,
         "cop_curve": {
-          "type": "fixed"
+          "type": "ahri_biquadratic",
+          "preset": "air_cooled_screw"
         },
         "refrigerant": "R-410A",
         "has_free_cooling_coil": false,
@@ -2271,7 +2303,8 @@ window.DEVICE_CATALOG_BUILTIN_RAW = {
         "t_cewt_design_c": null,
         "glycol_pct": 0,
         "cop_curve": {
-          "type": "fixed"
+          "type": "ahri_biquadratic",
+          "preset": "centrifugal_higheff"
         },
         "refrigerant": "R513A",
         "has_free_cooling_coil": false,
@@ -2316,7 +2349,8 @@ window.DEVICE_CATALOG_BUILTIN_RAW = {
         "t_cewt_design_c": null,
         "glycol_pct": 0,
         "cop_curve": {
-          "type": "fixed"
+          "type": "ahri_biquadratic",
+          "preset": "centrifugal_higheff"
         },
         "refrigerant": "R513A",
         "has_free_cooling_coil": false,
@@ -2361,7 +2395,8 @@ window.DEVICE_CATALOG_BUILTIN_RAW = {
         "t_cewt_design_c": null,
         "glycol_pct": 0,
         "cop_curve": {
-          "type": "fixed"
+          "type": "ahri_biquadratic",
+          "preset": "centrifugal_higheff"
         },
         "refrigerant": "R513A",
         "has_free_cooling_coil": false,
@@ -2406,7 +2441,8 @@ window.DEVICE_CATALOG_BUILTIN_RAW = {
         "t_cewt_design_c": null,
         "glycol_pct": 0,
         "cop_curve": {
-          "type": "fixed"
+          "type": "ahri_biquadratic",
+          "preset": "centrifugal_higheff"
         },
         "refrigerant": "R513A",
         "has_free_cooling_coil": false,
@@ -2451,7 +2487,8 @@ window.DEVICE_CATALOG_BUILTIN_RAW = {
         "t_cewt_design_c": null,
         "glycol_pct": 0,
         "cop_curve": {
-          "type": "fixed"
+          "type": "ahri_biquadratic",
+          "preset": "centrifugal_higheff"
         },
         "refrigerant": "R513A",
         "has_free_cooling_coil": false,
@@ -2496,7 +2533,8 @@ window.DEVICE_CATALOG_BUILTIN_RAW = {
         "t_cewt_design_c": 30,
         "glycol_pct": 0,
         "cop_curve": {
-          "type": "fixed"
+          "type": "ahri_biquadratic",
+          "preset": "centrifugal_higheff"
         },
         "refrigerant": "R513A",
         "has_free_cooling_coil": false,
@@ -2541,7 +2579,8 @@ window.DEVICE_CATALOG_BUILTIN_RAW = {
         "t_cewt_design_c": 30,
         "glycol_pct": 0,
         "cop_curve": {
-          "type": "fixed"
+          "type": "ahri_biquadratic",
+          "preset": "centrifugal_higheff"
         },
         "refrigerant": "R513A",
         "has_free_cooling_coil": false,
@@ -2586,7 +2625,8 @@ window.DEVICE_CATALOG_BUILTIN_RAW = {
         "t_cewt_design_c": 30,
         "glycol_pct": 0,
         "cop_curve": {
-          "type": "fixed"
+          "type": "ahri_biquadratic",
+          "preset": "centrifugal_higheff"
         },
         "refrigerant": "R513A",
         "has_free_cooling_coil": false,
@@ -2631,7 +2671,8 @@ window.DEVICE_CATALOG_BUILTIN_RAW = {
         "t_cewt_design_c": 30,
         "glycol_pct": 0,
         "cop_curve": {
-          "type": "fixed"
+          "type": "ahri_biquadratic",
+          "preset": "centrifugal_higheff"
         },
         "refrigerant": "R513A",
         "has_free_cooling_coil": false,
@@ -2676,7 +2717,8 @@ window.DEVICE_CATALOG_BUILTIN_RAW = {
         "t_cewt_design_c": 30,
         "glycol_pct": 0,
         "cop_curve": {
-          "type": "fixed"
+          "type": "ahri_biquadratic",
+          "preset": "centrifugal_higheff"
         },
         "refrigerant": "R513A",
         "has_free_cooling_coil": false,
@@ -2721,7 +2763,8 @@ window.DEVICE_CATALOG_BUILTIN_RAW = {
         "t_cewt_design_c": 30,
         "glycol_pct": 0,
         "cop_curve": {
-          "type": "fixed"
+          "type": "ahri_biquadratic",
+          "preset": "centrifugal_higheff"
         },
         "refrigerant": "R513A",
         "has_free_cooling_coil": false,
@@ -2766,7 +2809,8 @@ window.DEVICE_CATALOG_BUILTIN_RAW = {
         "t_cewt_design_c": 30,
         "glycol_pct": 0,
         "cop_curve": {
-          "type": "fixed"
+          "type": "ahri_biquadratic",
+          "preset": "centrifugal_higheff"
         },
         "refrigerant": "R513A",
         "has_free_cooling_coil": false,
@@ -2811,7 +2855,8 @@ window.DEVICE_CATALOG_BUILTIN_RAW = {
         "t_cewt_design_c": 30,
         "glycol_pct": 0,
         "cop_curve": {
-          "type": "fixed"
+          "type": "ahri_biquadratic",
+          "preset": "centrifugal_higheff"
         },
         "refrigerant": "R513A",
         "has_free_cooling_coil": false,
@@ -2856,7 +2901,8 @@ window.DEVICE_CATALOG_BUILTIN_RAW = {
         "t_cewt_design_c": 30,
         "glycol_pct": 0,
         "cop_curve": {
-          "type": "fixed"
+          "type": "ahri_biquadratic",
+          "preset": "centrifugal_higheff"
         },
         "refrigerant": "R513A",
         "has_free_cooling_coil": false,
@@ -2901,7 +2947,8 @@ window.DEVICE_CATALOG_BUILTIN_RAW = {
         "t_cewt_design_c": 30,
         "glycol_pct": 0,
         "cop_curve": {
-          "type": "fixed"
+          "type": "ahri_biquadratic",
+          "preset": "centrifugal_higheff"
         },
         "refrigerant": "R513A",
         "has_free_cooling_coil": false,
@@ -2946,7 +2993,8 @@ window.DEVICE_CATALOG_BUILTIN_RAW = {
         "t_cewt_design_c": 35,
         "glycol_pct": 20,
         "cop_curve": {
-          "type": "fixed"
+          "type": "ahri_biquadratic",
+          "preset": "air_cooled_vfd_centrifugal"
         },
         "refrigerant": "R1234ze",
         "has_free_cooling_coil": true,
@@ -2991,7 +3039,8 @@ window.DEVICE_CATALOG_BUILTIN_RAW = {
         "t_cewt_design_c": 35,
         "glycol_pct": 0,
         "cop_curve": {
-          "type": "fixed"
+          "type": "ahri_biquadratic",
+          "preset": "air_cooled_vfd_centrifugal"
         },
         "refrigerant": "R1234ze",
         "has_free_cooling_coil": false,
@@ -3036,7 +3085,8 @@ window.DEVICE_CATALOG_BUILTIN_RAW = {
         "t_cewt_design_c": 35,
         "glycol_pct": 0,
         "cop_curve": {
-          "type": "fixed"
+          "type": "ahri_biquadratic",
+          "preset": "air_cooled_vfd_centrifugal"
         },
         "refrigerant": "R1234ze",
         "has_free_cooling_coil": false,
@@ -3081,7 +3131,8 @@ window.DEVICE_CATALOG_BUILTIN_RAW = {
         "t_cewt_design_c": 35,
         "glycol_pct": 0,
         "cop_curve": {
-          "type": "fixed"
+          "type": "ahri_biquadratic",
+          "preset": "air_cooled_vfd_centrifugal"
         },
         "refrigerant": "R1234ze",
         "has_free_cooling_coil": false,
@@ -3126,7 +3177,8 @@ window.DEVICE_CATALOG_BUILTIN_RAW = {
         "t_cewt_design_c": 35,
         "glycol_pct": 0,
         "cop_curve": {
-          "type": "fixed"
+          "type": "ahri_biquadratic",
+          "preset": "air_cooled_vfd_centrifugal"
         },
         "refrigerant": "R1234ze",
         "has_free_cooling_coil": false,
@@ -3171,7 +3223,8 @@ window.DEVICE_CATALOG_BUILTIN_RAW = {
         "t_cewt_design_c": 35,
         "glycol_pct": 0,
         "cop_curve": {
-          "type": "fixed"
+          "type": "ahri_biquadratic",
+          "preset": "air_cooled_vfd_centrifugal"
         },
         "refrigerant": "R1234ze",
         "has_free_cooling_coil": false,
@@ -3216,7 +3269,8 @@ window.DEVICE_CATALOG_BUILTIN_RAW = {
         "t_cewt_design_c": 35,
         "glycol_pct": 0,
         "cop_curve": {
-          "type": "fixed"
+          "type": "ahri_biquadratic",
+          "preset": "air_cooled_vfd_centrifugal"
         },
         "refrigerant": "R1234ze",
         "has_free_cooling_coil": false,
@@ -3261,7 +3315,8 @@ window.DEVICE_CATALOG_BUILTIN_RAW = {
         "t_cewt_design_c": 35,
         "glycol_pct": 20,
         "cop_curve": {
-          "type": "fixed"
+          "type": "ahri_biquadratic",
+          "preset": "air_cooled_vfd_centrifugal"
         },
         "refrigerant": "R1234ze",
         "has_free_cooling_coil": true,
@@ -3306,7 +3361,8 @@ window.DEVICE_CATALOG_BUILTIN_RAW = {
         "t_cewt_design_c": 35,
         "glycol_pct": 20,
         "cop_curve": {
-          "type": "fixed"
+          "type": "ahri_biquadratic",
+          "preset": "air_cooled_vfd_centrifugal"
         },
         "refrigerant": "R1234ze",
         "has_free_cooling_coil": true,
@@ -3351,7 +3407,8 @@ window.DEVICE_CATALOG_BUILTIN_RAW = {
         "t_cewt_design_c": 35,
         "glycol_pct": 20,
         "cop_curve": {
-          "type": "fixed"
+          "type": "ahri_biquadratic",
+          "preset": "air_cooled_vfd_centrifugal"
         },
         "refrigerant": "R1234ze",
         "has_free_cooling_coil": true,
@@ -3396,7 +3453,8 @@ window.DEVICE_CATALOG_BUILTIN_RAW = {
         "t_cewt_design_c": 35,
         "glycol_pct": 20,
         "cop_curve": {
-          "type": "fixed"
+          "type": "ahri_biquadratic",
+          "preset": "air_cooled_vfd_centrifugal"
         },
         "refrigerant": "R1234ze",
         "has_free_cooling_coil": true,
@@ -3441,7 +3499,8 @@ window.DEVICE_CATALOG_BUILTIN_RAW = {
         "t_cewt_design_c": 35,
         "glycol_pct": 20,
         "cop_curve": {
-          "type": "fixed"
+          "type": "ahri_biquadratic",
+          "preset": "air_cooled_vfd_centrifugal"
         },
         "refrigerant": "R1234ze",
         "has_free_cooling_coil": true,
@@ -3486,7 +3545,8 @@ window.DEVICE_CATALOG_BUILTIN_RAW = {
         "t_cewt_design_c": 35,
         "glycol_pct": 20,
         "cop_curve": {
-          "type": "fixed"
+          "type": "ahri_biquadratic",
+          "preset": "air_cooled_vfd_centrifugal"
         },
         "refrigerant": "R1234ze",
         "has_free_cooling_coil": true,
@@ -3531,7 +3591,8 @@ window.DEVICE_CATALOG_BUILTIN_RAW = {
         "t_cewt_design_c": 35,
         "glycol_pct": 0,
         "cop_curve": {
-          "type": "fixed"
+          "type": "ahri_biquadratic",
+          "preset": "air_cooled_vfd_centrifugal"
         },
         "refrigerant": "R1234ze",
         "has_free_cooling_coil": false,
@@ -3576,7 +3637,8 @@ window.DEVICE_CATALOG_BUILTIN_RAW = {
         "t_cewt_design_c": 35,
         "glycol_pct": 0,
         "cop_curve": {
-          "type": "fixed"
+          "type": "ahri_biquadratic",
+          "preset": "air_cooled_vfd_centrifugal"
         },
         "refrigerant": "R1234ze",
         "has_free_cooling_coil": false,
@@ -3621,7 +3683,8 @@ window.DEVICE_CATALOG_BUILTIN_RAW = {
         "t_cewt_design_c": 35,
         "glycol_pct": 0,
         "cop_curve": {
-          "type": "fixed"
+          "type": "ahri_biquadratic",
+          "preset": "air_cooled_vfd_centrifugal"
         },
         "refrigerant": "R1234ze",
         "has_free_cooling_coil": false,
@@ -3666,7 +3729,8 @@ window.DEVICE_CATALOG_BUILTIN_RAW = {
         "t_cewt_design_c": 35,
         "glycol_pct": 0,
         "cop_curve": {
-          "type": "fixed"
+          "type": "ahri_biquadratic",
+          "preset": "air_cooled_vfd_centrifugal"
         },
         "refrigerant": "R1234ze",
         "has_free_cooling_coil": false,
@@ -3711,7 +3775,8 @@ window.DEVICE_CATALOG_BUILTIN_RAW = {
         "t_cewt_design_c": 35,
         "glycol_pct": 0,
         "cop_curve": {
-          "type": "fixed"
+          "type": "ahri_biquadratic",
+          "preset": "air_cooled_vfd_centrifugal"
         },
         "refrigerant": "R1234ze",
         "has_free_cooling_coil": false,
@@ -3756,7 +3821,8 @@ window.DEVICE_CATALOG_BUILTIN_RAW = {
         "t_cewt_design_c": 35,
         "glycol_pct": 0,
         "cop_curve": {
-          "type": "fixed"
+          "type": "ahri_biquadratic",
+          "preset": "air_cooled_vfd_centrifugal"
         },
         "refrigerant": "R1234ze",
         "has_free_cooling_coil": false,
@@ -3801,7 +3867,8 @@ window.DEVICE_CATALOG_BUILTIN_RAW = {
         "t_cewt_design_c": 35,
         "glycol_pct": 20,
         "cop_curve": {
-          "type": "fixed"
+          "type": "ahri_biquadratic",
+          "preset": "air_cooled_vfd_centrifugal"
         },
         "refrigerant": "R1234ze",
         "has_free_cooling_coil": true,
@@ -3846,7 +3913,8 @@ window.DEVICE_CATALOG_BUILTIN_RAW = {
         "t_cewt_design_c": 35,
         "glycol_pct": 20,
         "cop_curve": {
-          "type": "fixed"
+          "type": "ahri_biquadratic",
+          "preset": "air_cooled_vfd_centrifugal"
         },
         "refrigerant": "R1234ze",
         "has_free_cooling_coil": true,
@@ -3891,7 +3959,8 @@ window.DEVICE_CATALOG_BUILTIN_RAW = {
         "t_cewt_design_c": 35,
         "glycol_pct": 20,
         "cop_curve": {
-          "type": "fixed"
+          "type": "ahri_biquadratic",
+          "preset": "air_cooled_vfd_centrifugal"
         },
         "refrigerant": "R1234ze",
         "has_free_cooling_coil": true,
@@ -3936,7 +4005,8 @@ window.DEVICE_CATALOG_BUILTIN_RAW = {
         "t_cewt_design_c": 35,
         "glycol_pct": 20,
         "cop_curve": {
-          "type": "fixed"
+          "type": "ahri_biquadratic",
+          "preset": "air_cooled_vfd_centrifugal"
         },
         "refrigerant": "R1234ze",
         "has_free_cooling_coil": true,
@@ -3981,7 +4051,8 @@ window.DEVICE_CATALOG_BUILTIN_RAW = {
         "t_cewt_design_c": 35,
         "glycol_pct": 20,
         "cop_curve": {
-          "type": "fixed"
+          "type": "ahri_biquadratic",
+          "preset": "air_cooled_vfd_centrifugal"
         },
         "refrigerant": "R1234ze",
         "has_free_cooling_coil": true,
@@ -4026,7 +4097,8 @@ window.DEVICE_CATALOG_BUILTIN_RAW = {
         "t_cewt_design_c": 35,
         "glycol_pct": 20,
         "cop_curve": {
-          "type": "fixed"
+          "type": "ahri_biquadratic",
+          "preset": "air_cooled_vfd_centrifugal"
         },
         "refrigerant": "R1234ze",
         "has_free_cooling_coil": true,
