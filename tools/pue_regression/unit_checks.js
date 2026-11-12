@@ -3474,7 +3474,9 @@ function sizeCduToDeratedN1(S) {
 
   // V9 Phase 3：預設專案的 CDU 自動選型（100 kW × 11 → 大型機 × 2），CDU 本體耗電下降，基準改為 1.164 / 1.107
   // V10：預設設計水溫改為晶片 45/55、approach 4（FWS 41/51）、冰水 22/32，基準改為 1.156 / 1.101
-  test('R7 Benchmark: Default project Kaohsiung 4.5% loss PUE is 1.156 ± 0.005 (V10: default design temps)', () => {
+  // V11 Phase 3：自動選型改用已核對且工況相符的型號；機房 CRAH 由舊型錄 Stulz 60kW（80 W/kW，CHW 7°C 額定）
+  //   改為 Uniflair FWCV36L1（原廠資料 CHW 20/30、RA 37°C，53 W/kW），CRAH 風扇年耗電 142→81 MWh，基準改為 1.150 / 1.097
+  test('R7 Benchmark: Default project Kaohsiung 4.5% loss PUE is 1.150 ± 0.005 (V11: verified catalogue auto-select)', () => {
     S.state.site.selectedCity = '高雄 (Kaohsiung)';
     const data = ctx.BUILTIN_WEATHER_DATA['高雄 (Kaohsiung)'];
     S.state.site.hourly = data.hourlyData;
@@ -3484,14 +3486,14 @@ function sizeCduToDeratedN1(S) {
     S.state.facilityElectricalLossPct = 4.5;
     S.calculate();
     const pue = S.state.results.overall.annualPue;
-    assert(Math.abs(pue - 1.156) < 0.005, `Default Kaohsiung 4.5% loss PUE must be ~1.156, got ${pue}`);
+    assert(Math.abs(pue - 1.150) < 0.005, `Default Kaohsiung 4.5% loss PUE must be ~1.150, got ${pue}`);
   });
 
-  test('R7 Benchmark: Default project Kaohsiung 0.0% loss PUE is 1.101 ± 0.005 (V10: default design temps)', () => {
+  test('R7 Benchmark: Default project Kaohsiung 0.0% loss PUE is 1.097 ± 0.005 (V11: verified catalogue auto-select)', () => {
     S.state.facilityElectricalLossPct = 0.0;
     S.calculate();
     const pue = S.state.results.overall.annualPue;
-    assert(Math.abs(pue - 1.101) < 0.005, `Default Kaohsiung 0% loss PUE must be ~1.101, got ${pue}`);
+    assert(Math.abs(pue - 1.097) < 0.005, `Default Kaohsiung 0% loss PUE must be ~1.097, got ${pue}`);
   });
 
   const projPath = path.resolve(__dirname, 'fixtures/PUE_Project_高雄 (Kaohsiung)_20260901.json');
@@ -6128,7 +6130,7 @@ test('V10-A2 closed-circuit tower lists closed models only and replaces an open-
   SC.calculate();
   const t2 = plant.system.sizing.find(s => s.key === 'cooling_tower');
   assert.notStrictEqual(t2.selectedModel, 'BAC Series 3000 1000kW (標準)');
-  assert(/closed|FXV|CXV/i.test(t2.selectedModel), 'replaced by a closed-circuit model');
+  assert(t2.catalog.find(c => c.model === t2.selectedModel)?.tower_type === 'closed_tower' || /closed|FXV|CXV/i.test(t2.selectedModel), 'replaced by a closed-circuit model');
   assert.strictEqual(t2.replacedModel, 'BAC Series 3000 1000kW (標準)');
 });
 
@@ -6151,6 +6153,86 @@ test('V10-A3/A4 threshold basis follows architecture (closed tower = WB with tow
   assert.strictEqual(plant.system.ctApproachC, 5, 'tower approach applied to closed-tower plant');
   const dc = win.ViewCooling.fcThreshInfo({ architecture: 'dry_cooler_trim', fwsSupplyC: 41, fwsReturnC: 51, dryCoolerApproachC: 5, pheApproachC: 2 });
   assert.strictEqual(dc.basis, 'db');
+});
+
+// ===== V11：已核對型錄（device_catalog/verified）工況比對、自動選型、降額、畫面與報告 =====
+test('V11-1 verified catalogue is loaded with sources; legacy entries kept', () => {
+  const ctxV = freshCtx();
+  const CM = ctxV.CatalogManager;
+  const ver = (cat) => CM.getCatalog(cat).filter(c => c._extracted_from);
+  for (const cat of ['chiller_water', 'chiller_air', 'cooling_tower', 'dry_cooler', 'cdu', 'crah', 'rdhx']) {
+    assert(ver(cat).length > 0, `verified models expected in ${cat}`);
+    assert(ver(cat).every(c => c._verified === true && c._source), `${cat}: verified models need _source`);
+  }
+  assert(CM.getCatalog('dry_cooler').some(c => c.model === 'Güntner 1200kW V-Bank Dry Cooler'), 'legacy model must remain');
+  const all = [].concat(...['chiller_water', 'chiller_air', 'cooling_tower', 'dry_cooler', 'cdu', 'crah', 'rdhx'].map(ver));
+  assert(all.every(c => !/[　-鿿]/.test(c.model)), 'verified model names must be ASCII-tagged (English mode)');
+});
+
+test('V11-2 ratingIssues: dry cooler rated at DB 16°C / 32→20°C mismatches FWS 41°C; BAC TDFS1238N matches', () => {
+  const ctxV = freshCtx();
+  const SE = ctxV.SizingEngine, CM = ctxV.CatalogManager;
+  const dc = CM.getCatalog('dry_cooler');
+  const bad = dc.find(c => /DSAF1000A \(Dry\)/.test(c.model));
+  const good = dc.find(c => /TDFS1238N/.test(c.model) && c._extracted_from);
+  const sys = { fwsSupplyC: 41, secSupplyC: 45, cduApproachC: 4 };
+  const dcond = { designDb: 34, designWb: 28 };
+  assert(SE.ratingIssues(bad, 'dry_cooler', sys, dcond, true).length >= 2, 'outlet temp and DB must both be flagged');
+  assert.strictEqual(SE.ratingIssues(good, 'dry_cooler', sys, dcond, true).length, 0);
+  const legacy = dc.find(c => !c._extracted_from);
+  assert.strictEqual(SE.ratingIssues(legacy, 'dry_cooler', sys, dcond, true).length, 0, 'legacy models are not checked');
+  const ch = CM.getCatalog('chiller_air').find(c => /XCAF1212A \[CHW 20\/30/.test(c.model));
+  assert(SE.ratingIssues(ch, 'air_cooled_chiller', { chwSupplyC: 22 }, dcond, false).some(x => /20%/.test(x)), 'glycol-rated chiller flagged');
+});
+
+test('V11-3 auto-select skips verified models that are oversized (>2x) and falls back to legacy', () => {
+  const ctxV = freshCtx();
+  const SE = ctxV.SizingEngine, CM = ctxV.CatalogManager;
+  const s = { key: 'dry_cooler', requiredKw: 863, autoSelectRequested: true, catalog: CM.getCatalog('dry_cooler') };
+  SE._maybeAutoSelect(s, () => 1.0, { sys: { fwsSupplyC: 41 }, designCond: { designDb: 34, designWb: 28 }, liquid: true });
+  const sel = s.catalog.find(c => c.model === s.selectedModel);
+  assert(sel && !sel._extracted_from, `expected legacy fallback, got ${s.selectedModel}`);
+  const s2 = { key: 'dry_cooler', requiredKw: 3000, autoSelectRequested: true, catalog: CM.getCatalog('dry_cooler') };
+  SE._maybeAutoSelect(s2, () => 1.0, { sys: { fwsSupplyC: 41 }, designCond: { designDb: 34, designWb: 28 }, liquid: true });
+  assert(/TDFS1238N/.test(s2.selectedModel), `3 MW load should pick the matching verified unit, got ${s2.selectedModel}`);
+});
+
+test('V11-4 tower derate uses the model rated WB when present', () => {
+  const ctxV = freshCtx();
+  const CT = ctxV.CoolingTowerEngine;
+  assert.strictEqual(CT.deratedCapacityKW({ heat_rejection_kw: 1000, rated_wb_c: 29 }, 28).derate_factor, 1, 'rated above design WB → no derate');
+  assert(CT.deratedCapacityKW({ heat_rejection_kw: 1000, rated_wb_c: 27 }, 29).derate_factor < 1, 'rated below design WB → derate');
+  assert(CT.deratedCapacityKW({ heat_rejection_kw: 1000 }, 28).derate_factor < 1, 'legacy (CTI 25.6°C) behaviour unchanged');
+});
+
+test('V11-5 Step 4 dropdown groups verified / mismatched / legacy models', () => {
+  const { buildWindow } = require('./dom_harness.js');
+  const win = buildWindow();
+  const S = win.AppStore;
+  S.applySiteSharedConfig();
+  S.calculate();
+  win.ViewCooling.render(win.document.getElementById('stepContent'));
+  const html = win.document.getElementById('stepContent').innerHTML;
+  assert(/<optgroup label="✔/.test(html), 'dropdown must contain verified optgroup');
+  assert(/未核對/.test(html), 'legacy group label must be shown');
+});
+
+test('V11-6 report §5 marks vendor selection data and lists rating mismatches as open items', () => {
+  const ctxV = freshCtx();
+  const S = ctxV.AppStore;
+  S.applySiteSharedConfig();
+  S.calculate();
+  const eq = ctxV.EquipmentSchedule.build(S.state);
+  const crah = eq.rows.find(r => r.key === 'crah_unit');
+  assert(crah && crah.fromVendorData, 'default CRAH should be a verified vendor model');
+  // 手動選一台工況不符的乾冷器 → 設備表與待確認事項要列出
+  const plant = S.state.coolingPlants.find(p => p.loop === 'liquid');
+  const dcItem = plant.system.sizing.find(x => x.key === 'dry_cooler');
+  dcItem.selectedModel = dcItem.catalog.find(c => /DSAF1000A \(Dry\)/.test(c.model)).model;
+  dcItem.userEdited = true;
+  S.calculate();
+  const eq2 = ctxV.EquipmentSchedule.build(S.state);
+  assert(eq2.warnings.some(w => w.type === 'ratingMismatch'), 'rating mismatch warning expected');
 });
 
 console.log(`\n${passCount} passed, ${failCount} failed, ${skipCount} skipped`);

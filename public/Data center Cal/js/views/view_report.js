@@ -159,8 +159,12 @@
             const ES = root.EquipmentSchedule;
             if (!ES) return '';
             const eq = ES.build(st);
-            const srcTxt = (r) => r.verified === true ? L('✓ 已驗證', '✓ verified')
-                : (r.source ? L('⚠ 有出處，未驗證', '⚠ source, unverified') : L('⚠ 無出處', '⚠ no source'));
+            // V11：來自原廠選型報告者附檔名；額定工況與設計不符者另標
+            const srcTxt = (r) => (r.fromVendorData
+                ? L('✓ 原廠選型資料', '✓ vendor selection data') + (r.source ? `<br><span style="color:#666;font-size:10px">${esc(r.source)}</span>` : '')
+                : (r.verified === true ? L('✓ 已驗證', '✓ verified')
+                    : (r.source ? L('⚠ 有出處，未驗證', '⚠ source, unverified') : L('⚠ 無出處', '⚠ no source'))))
+                + (r.ratingIssues && r.ratingIssues.length ? `<br><span style="color:#b45309">⚠ ${L('額定工況不符', 'rating mismatch')}</span>` : '');
             const pwrMark = (r) => r.unitPowerBasis === 'cap/cop' ? ' *' : (r.unitPowerBasis === 'motor' ? ' †' : '');
             const locTxt = (r) => r.locations.map(l => esc(l.name) + ' ×' + l.qty).join('<br>');
             const mainRows = (cat) => eq.rows.filter(r => r.category === cat).map(r => [
@@ -472,8 +476,10 @@
             const noSrc = eqW.filter(w => w.type === 'noSource').map(w => w.model);
             const unver = eqW.filter(w => w.type === 'unverified').map(w => w.model);
             const noPwr = eqW.filter(w => w.type === 'noPower').map(w => w.model);
+            const misRate = eqW.filter(w => w.type === 'ratingMismatch').map(w => w.model + L('（', ' (') + (w.issues || []).join(L('；', '; ')) + L('）', ')'));
             if (noSrc.length) open.push(L('下列設備型錄沒有出處，需以送審型錄核對：', 'No catalogue source for: ') + esc(noSrc.join('、')));
             if (unver.length) open.push(L('下列設備型錄有出處但未驗證：', 'Catalogue source present but unverified: ') + esc(unver.join('、')));
+            if (misRate.length) open.push(L('下列設備的型錄額定工況與本案設計工況不符，型錄容量不宜直接套用，請向廠商取得本案工況選型：', 'Catalogue rating conditions differ from design; obtain vendor selection at project conditions: ') + esc(misRate.join('、')));
             if (noPwr.length) open.push(L('下列設備型錄沒有耗電資料，電力需求彙總未計入：', 'No power data (excluded from power summary): ') + esc(noPwr.join('、')));
             const s10 = this.sec('open', '11', L('待確認事項', 'Open items'), `<ol class="rpt-ol" style="padding-left:20px">${open.map(x => `<li>⚠ ${x}</li>`).join('')}</ol>`);
 

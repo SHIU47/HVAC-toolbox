@@ -4,7 +4,7 @@
  * 用途：當頁面以 file:// 協議開啟（直接雙擊 index.html）時，CatalogManager
  * 無法用 fetch() 讀取 device_catalog/ 底下的 JSON 檔案（瀏覽器 CORS 限制），
  * 此檔案把相同內容內嵌為 JS 物件，改用 <script> 標籤載入即可繞過限制。
- * 產生時間：2026-11-12T03:37:24.974Z
+ * 產生時間：2026-11-12T03:47:41.070Z
  * 若修改了 device_catalog/*.json，請重新執行：node device_catalog/build_builtin.js
  */
 window.DEVICE_CATALOG_BUILTIN_RAW = {
@@ -811,8 +811,8 @@ window.DEVICE_CATALOG_BUILTIN_RAW = {
         "generated_at": "2026-11-12",
         "note": "自動產生，勿手改；修正請改 _extracted 抽取檔後重跑腳本。所有記錄 _verified=true，出處見 _source。"
       },
-      "Mitsubishi Electric i-FR2-FC G04-Z/T+/S 1372 [CHW 37/47°C, 外氣 40°C]": {
-        "model": "Mitsubishi Electric i-FR2-FC G04-Z/T+/S 1372 [CHW 37/47°C, 外氣 40°C]",
+      "Mitsubishi Electric i-FR2-FC G04-Z/T+/S 1372 [CHW 37/47°C, OA 40°C]": {
+        "model": "Mitsubishi Electric i-FR2-FC G04-Z/T+/S 1372 [CHW 37/47°C, OA 40°C]",
         "vendor": "Mitsubishi Electric",
         "chiller_type": "air_cooled",
         "category": "Screw (Air-Cooled)",
@@ -856,8 +856,8 @@ window.DEVICE_CATALOG_BUILTIN_RAW = {
           "選型編號 20029665。檔名標註 1992kW，選型報告第 2 頁性能 Gross Cooling Capacity 為 1927.5 kW，總輸入功率 343.6 kW (含壓縮機 299.0 kW 與風扇 44.63 kW)，EER 5.61。冰水進出水 47.0/37.0 °C，水流量 46.53 l/s = 167.508 m³/h，Q_calc = 1.163 × 167.508 × 10 = 1948.12 kW (diff +1.07%)。全自然冷卻額定溫度 19.5 °C (Total free-cooling temperature)。外形長度 A mm 為 9500 + 1300 = 10800 mm，寬度 B mm 2260 mm，高度 H mm 2500 mm。報告第 4 頁 Operating weight 載明為『-』(未提供)，依鐵則填 null。"
         ]
       },
-      "Mitsubishi Electric MECH-iF-G04 0351 [CHW 7/12°C, 外氣 35°C]": {
-        "model": "Mitsubishi Electric MECH-iF-G04 0351 [CHW 7/12°C, 外氣 35°C]",
+      "Mitsubishi Electric MECH-iF-G04 0351 [CHW 7/12°C, OA 35°C]": {
+        "model": "Mitsubishi Electric MECH-iF-G04 0351 [CHW 7/12°C, OA 35°C]",
         "vendor": "Mitsubishi Electric",
         "chiller_type": "air_cooled",
         "category": "Screw (Air-Cooled)",
@@ -901,8 +901,8 @@ window.DEVICE_CATALOG_BUILTIN_RAW = {
           "標準版本（Standard Version (-)）。工況為 EN 14511 / Eurovent 額定：冰水 12/7 °C (ΔT=5 K)，外氣 35 °C。原始水流量 16.5 l/s = 59.4 m³/h。"
         ]
       },
-      "Mitsubishi Electric MECH-iF-G04 0702 [CHW 7/12°C, 外氣 35°C]": {
-        "model": "Mitsubishi Electric MECH-iF-G04 0702 [CHW 7/12°C, 外氣 35°C]",
+      "Mitsubishi Electric MECH-iF-G04 0702 [CHW 7/12°C, OA 35°C]": {
+        "model": "Mitsubishi Electric MECH-iF-G04 0702 [CHW 7/12°C, OA 35°C]",
         "vendor": "Mitsubishi Electric",
         "chiller_type": "air_cooled",
         "category": "Screw (Air-Cooled)",
@@ -946,8 +946,8 @@ window.DEVICE_CATALOG_BUILTIN_RAW = {
           "標準版本（Standard Version (-)）。工況為 EN 14511 / Eurovent 額定：冰水 12/7 °C (ΔT=5 K)，外氣 35 °C。原始水流量 33.6 l/s = 120.96 m³/h。"
         ]
       },
-      "Mitsubishi Electric MECH-iF-G04 0802 [CHW 7/12°C, 外氣 35°C]": {
-        "model": "Mitsubishi Electric MECH-iF-G04 0802 [CHW 7/12°C, 外氣 35°C]",
+      "Mitsubishi Electric MECH-iF-G04 0802 [CHW 7/12°C, OA 35°C]": {
+        "model": "Mitsubishi Electric MECH-iF-G04 0802 [CHW 7/12°C, OA 35°C]",
         "vendor": "Mitsubishi Electric",
         "chiller_type": "air_cooled",
         "category": "Screw (Air-Cooled)",
@@ -991,8 +991,8 @@ window.DEVICE_CATALOG_BUILTIN_RAW = {
           "標準版本（Standard Version (-)）。工況為 EN 14511 / Eurovent 額定：冰水 12/7 °C (ΔT=5 K)，外氣 35 °C。原始水流量 39.6 l/s = 142.56 m³/h。"
         ]
       },
-      "Mitsubishi Electric MECH-iF-G05 0411 [CHW 7/12°C, 外氣 35°C]": {
-        "model": "Mitsubishi Electric MECH-iF-G05 0411 [CHW 7/12°C, 外氣 35°C]",
+      "Mitsubishi Electric MECH-iF-G05 0411 [CHW 7/12°C, OA 35°C]": {
+        "model": "Mitsubishi Electric MECH-iF-G05 0411 [CHW 7/12°C, OA 35°C]",
         "vendor": "Mitsubishi Electric",
         "chiller_type": "air_cooled",
         "category": "Screw (Air-Cooled)",
@@ -1036,8 +1036,8 @@ window.DEVICE_CATALOG_BUILTIN_RAW = {
           "標準版本（Standard Version (-)）。工況為 EN 14511 / Eurovent 額定：冰水 12/7 °C (ΔT=5 K)，外氣 35 °C。原始水流量 19.6 l/s = 70.56 m³/h。"
         ]
       },
-      "Mitsubishi Electric MECH-iF-G05 0802 [CHW 7/12°C, 外氣 35°C]": {
-        "model": "Mitsubishi Electric MECH-iF-G05 0802 [CHW 7/12°C, 外氣 35°C]",
+      "Mitsubishi Electric MECH-iF-G05 0802 [CHW 7/12°C, OA 35°C]": {
+        "model": "Mitsubishi Electric MECH-iF-G05 0802 [CHW 7/12°C, OA 35°C]",
         "vendor": "Mitsubishi Electric",
         "chiller_type": "air_cooled",
         "category": "Screw (Air-Cooled)",
@@ -1081,8 +1081,8 @@ window.DEVICE_CATALOG_BUILTIN_RAW = {
           "標準版本（Standard Version (-)）。工況為 EN 14511 / Eurovent 額定：冰水 12/7 °C (ΔT=5 K)，外氣 35 °C。原始水流量 38.2 l/s = 137.52 m³/h。"
         ]
       },
-      "Mitsubishi Electric MECH-iF-G05 0902 [CHW 7/12°C, 外氣 35°C]": {
-        "model": "Mitsubishi Electric MECH-iF-G05 0902 [CHW 7/12°C, 外氣 35°C]",
+      "Mitsubishi Electric MECH-iF-G05 0902 [CHW 7/12°C, OA 35°C]": {
+        "model": "Mitsubishi Electric MECH-iF-G05 0902 [CHW 7/12°C, OA 35°C]",
         "vendor": "Mitsubishi Electric",
         "chiller_type": "air_cooled",
         "category": "Screw (Air-Cooled)",
@@ -1126,8 +1126,8 @@ window.DEVICE_CATALOG_BUILTIN_RAW = {
           "標準版本（Standard Version (-)）。工況為 EN 14511 / Eurovent 額定：冰水 12/7 °C (ΔT=5 K)，外氣 35 °C。原始水流量 43.1 l/s = 155.16 m³/h。"
         ]
       },
-      "Mitsubishi Electric i-FR-G05-Z/K 2202 [CHW 7/12°C, 外氣 35°C]": {
-        "model": "Mitsubishi Electric i-FR-G05-Z/K 2202 [CHW 7/12°C, 外氣 35°C]",
+      "Mitsubishi Electric i-FR-G05-Z/K 2202 [CHW 7/12°C, OA 35°C]": {
+        "model": "Mitsubishi Electric i-FR-G05-Z/K 2202 [CHW 7/12°C, OA 35°C]",
         "vendor": "Mitsubishi Electric",
         "chiller_type": "air_cooled",
         "category": "Screw (Air-Cooled)",
@@ -1171,8 +1171,8 @@ window.DEVICE_CATALOG_BUILTIN_RAW = {
           "技術手冊第 25 頁 i-FR-G05-Z/K 標準型。性能為 Gross Value，工況依 Eurovent 額定：冰水 12/7 °C，外氣 35 °C。原始水流量 22.89 l/s = 82.4 m³/h。"
         ]
       },
-      "Mitsubishi Electric i-FR-G05-Z/K 3152 [CHW 7/12°C, 外氣 35°C]": {
-        "model": "Mitsubishi Electric i-FR-G05-Z/K 3152 [CHW 7/12°C, 外氣 35°C]",
+      "Mitsubishi Electric i-FR-G05-Z/K 3152 [CHW 7/12°C, OA 35°C]": {
+        "model": "Mitsubishi Electric i-FR-G05-Z/K 3152 [CHW 7/12°C, OA 35°C]",
         "vendor": "Mitsubishi Electric",
         "chiller_type": "air_cooled",
         "category": "Screw (Air-Cooled)",
@@ -1216,8 +1216,8 @@ window.DEVICE_CATALOG_BUILTIN_RAW = {
           "技術手冊第 25 頁 i-FR-G05-Z/K 標準型。性能為 Gross Value，工況依 Eurovent 額定：冰水 12/7 °C，外氣 35 °C。原始水流量 34.47 l/s = 124.09 m³/h。"
         ]
       },
-      "Mitsubishi Electric i-FR-G05-Z/K 4502 [CHW 7/12°C, 外氣 35°C]": {
-        "model": "Mitsubishi Electric i-FR-G05-Z/K 4502 [CHW 7/12°C, 外氣 35°C]",
+      "Mitsubishi Electric i-FR-G05-Z/K 4502 [CHW 7/12°C, OA 35°C]": {
+        "model": "Mitsubishi Electric i-FR-G05-Z/K 4502 [CHW 7/12°C, OA 35°C]",
         "vendor": "Mitsubishi Electric",
         "chiller_type": "air_cooled",
         "category": "Screw (Air-Cooled)",
@@ -1261,8 +1261,8 @@ window.DEVICE_CATALOG_BUILTIN_RAW = {
           "技術手冊第 25 頁 i-FR-G05-Z/K 標準型。性能為 Gross Value，工況依 Eurovent 額定：冰水 12/7 °C，外氣 35 °C。原始水流量 47.36 l/s = 170.5 m³/h。"
         ]
       },
-      "Mitsubishi Electric NR2-G06-Z/K 0404 [CHW 20/28°C, 外氣 35°C]": {
-        "model": "Mitsubishi Electric NR2-G06-Z/K 0404 [CHW 20/28°C, 外氣 35°C]",
+      "Mitsubishi Electric NR2-G06-Z/K 0404 [CHW 20/28°C, OA 35°C]": {
+        "model": "Mitsubishi Electric NR2-G06-Z/K 0404 [CHW 20/28°C, OA 35°C]",
         "vendor": "Mitsubishi Electric",
         "chiller_type": "air_cooled",
         "category": "Scroll (Air-Cooled)",
@@ -1306,8 +1306,8 @@ window.DEVICE_CATALOG_BUILTIN_RAW = {
           "技術手冊第 24-25 頁 NR2-G06-Z/K。採用資料中心高溫出水工況（Plant side water 28.00/20.00 °C，外氣 35.0 °C），Gross Cooling Capacity。冷媒為環保 R454B。原始水流量 15.37 l/s = 55.33 m³/h。"
         ]
       },
-      "Mitsubishi Electric NR2-G06-Z/K 0656 [CHW 20/28°C, 外氣 35°C]": {
-        "model": "Mitsubishi Electric NR2-G06-Z/K 0656 [CHW 20/28°C, 外氣 35°C]",
+      "Mitsubishi Electric NR2-G06-Z/K 0656 [CHW 20/28°C, OA 35°C]": {
+        "model": "Mitsubishi Electric NR2-G06-Z/K 0656 [CHW 20/28°C, OA 35°C]",
         "vendor": "Mitsubishi Electric",
         "chiller_type": "air_cooled",
         "category": "Scroll (Air-Cooled)",
@@ -1351,8 +1351,8 @@ window.DEVICE_CATALOG_BUILTIN_RAW = {
           "技術手冊第 24-25 頁 NR2-G06-Z/K。採用資料中心高溫出水工況（Plant side water 28.00/20.00 °C，外氣 35.0 °C），Gross Cooling Capacity。冷媒為環保 R454B。原始水流量 25.36 l/s = 91.3 m³/h。"
         ]
       },
-      "Mitsubishi Electric NR2-G06-Z/K 0928 [CHW 20/28°C, 外氣 35°C]": {
-        "model": "Mitsubishi Electric NR2-G06-Z/K 0928 [CHW 20/28°C, 外氣 35°C]",
+      "Mitsubishi Electric NR2-G06-Z/K 0928 [CHW 20/28°C, OA 35°C]": {
+        "model": "Mitsubishi Electric NR2-G06-Z/K 0928 [CHW 20/28°C, OA 35°C]",
         "vendor": "Mitsubishi Electric",
         "chiller_type": "air_cooled",
         "category": "Scroll (Air-Cooled)",
@@ -1396,8 +1396,8 @@ window.DEVICE_CATALOG_BUILTIN_RAW = {
           "技術手冊第 24-25 頁 NR2-G06-Z/K。採用資料中心高溫出水工況（Plant side water 28.00/20.00 °C，外氣 35.0 °C），Gross Cooling Capacity。冷媒為環保 R454B。原始水流量 36.05 l/s = 129.78 m³/h。"
         ]
       },
-      "STULZ WPA 060 (Standard) [CHW 7/12°C, 外氣 35°C]": {
-        "model": "STULZ WPA 060 (Standard) [CHW 7/12°C, 外氣 35°C]",
+      "STULZ WPA 060 (Standard) [CHW 7/12°C, OA 35°C]": {
+        "model": "STULZ WPA 060 (Standard) [CHW 7/12°C, OA 35°C]",
         "vendor": "STULZ",
         "chiller_type": "air_cooled",
         "category": "Scroll (Air-Cooled)",
@@ -1441,8 +1441,8 @@ window.DEVICE_CATALOG_BUILTIN_RAW = {
           "型錄第 22 頁規格表。工況：外氣 35 °C，冰水進出水 12/7 °C。表格未分列單機流量與水壓降。ESEER 為 ISO14511 數值。"
         ]
       },
-      "STULZ WPA 110 (Standard) [CHW 7/12°C, 外氣 35°C]": {
-        "model": "STULZ WPA 110 (Standard) [CHW 7/12°C, 外氣 35°C]",
+      "STULZ WPA 110 (Standard) [CHW 7/12°C, OA 35°C]": {
+        "model": "STULZ WPA 110 (Standard) [CHW 7/12°C, OA 35°C]",
         "vendor": "STULZ",
         "chiller_type": "air_cooled",
         "category": "Scroll (Air-Cooled)",
@@ -1486,8 +1486,8 @@ window.DEVICE_CATALOG_BUILTIN_RAW = {
           "型錄第 22 頁規格表。工況：外氣 35 °C，冰水進出水 12/7 °C。表格未分列單機流量與水壓降。ESEER 為 ISO14511 數值。"
         ]
       },
-      "STULZ WPA 160 (Standard) [CHW 7/12°C, 外氣 35°C]": {
-        "model": "STULZ WPA 160 (Standard) [CHW 7/12°C, 外氣 35°C]",
+      "STULZ WPA 160 (Standard) [CHW 7/12°C, OA 35°C]": {
+        "model": "STULZ WPA 160 (Standard) [CHW 7/12°C, OA 35°C]",
         "vendor": "STULZ",
         "chiller_type": "air_cooled",
         "category": "Scroll (Air-Cooled)",
@@ -1531,8 +1531,8 @@ window.DEVICE_CATALOG_BUILTIN_RAW = {
           "型錄第 22 頁規格表。工況：外氣 35 °C，冰水進出水 12/7 °C。表格未分列單機流量與水壓降。ESEER 為 ISO14511 數值。"
         ]
       },
-      "STULZ WPA 200 (Standard) [CHW 7/12°C, 外氣 35°C]": {
-        "model": "STULZ WPA 200 (Standard) [CHW 7/12°C, 外氣 35°C]",
+      "STULZ WPA 200 (Standard) [CHW 7/12°C, OA 35°C]": {
+        "model": "STULZ WPA 200 (Standard) [CHW 7/12°C, OA 35°C]",
         "vendor": "STULZ",
         "chiller_type": "air_cooled",
         "category": "Scroll (Air-Cooled)",
@@ -1576,8 +1576,8 @@ window.DEVICE_CATALOG_BUILTIN_RAW = {
           "型錄第 22 頁規格表。工況：外氣 35 °C，冰水進出水 12/7 °C。表格未分列單機流量與水壓降。ESEER 為 ISO14511 數值。"
         ]
       },
-      "STULZ WPA 060 (Free Cooling) [CHW 7/12°C, 外氣 35°C]": {
-        "model": "STULZ WPA 060 (Free Cooling) [CHW 7/12°C, 外氣 35°C]",
+      "STULZ WPA 060 (Free Cooling) [CHW 7/12°C, OA 35°C]": {
+        "model": "STULZ WPA 060 (Free Cooling) [CHW 7/12°C, OA 35°C]",
         "vendor": "STULZ",
         "chiller_type": "air_cooled",
         "category": "Scroll (Air-Cooled)",
@@ -1621,8 +1621,8 @@ window.DEVICE_CATALOG_BUILTIN_RAW = {
           "型錄第 22 頁規格表。工況：外氣 35 °C，冰水進出水 12/7 °C。表格未分列單機流量與水壓降。ESEER 為 ISO14511 數值。"
         ]
       },
-      "STULZ WPA 110 (Free Cooling) [CHW 7/12°C, 外氣 35°C]": {
-        "model": "STULZ WPA 110 (Free Cooling) [CHW 7/12°C, 外氣 35°C]",
+      "STULZ WPA 110 (Free Cooling) [CHW 7/12°C, OA 35°C]": {
+        "model": "STULZ WPA 110 (Free Cooling) [CHW 7/12°C, OA 35°C]",
         "vendor": "STULZ",
         "chiller_type": "air_cooled",
         "category": "Scroll (Air-Cooled)",
@@ -1666,8 +1666,8 @@ window.DEVICE_CATALOG_BUILTIN_RAW = {
           "型錄第 22 頁規格表。工況：外氣 35 °C，冰水進出水 12/7 °C。表格未分列單機流量與水壓降。ESEER 為 ISO14511 數值。"
         ]
       },
-      "STULZ CyberCool Explorer WSC 090 [CHW 20/30°C, 外氣 35°C]": {
-        "model": "STULZ CyberCool Explorer WSC 090 [CHW 20/30°C, 外氣 35°C]",
+      "STULZ CyberCool Explorer WSC 090 [CHW 20/30°C, OA 35°C]": {
+        "model": "STULZ CyberCool Explorer WSC 090 [CHW 20/30°C, OA 35°C]",
         "vendor": "STULZ",
         "chiller_type": "air_cooled",
         "category": "Screw (Air-Cooled)",
@@ -1711,8 +1711,8 @@ window.DEVICE_CATALOG_BUILTIN_RAW = {
           "型錄第18頁。檔名標註水冷，實際為風冷螺桿冰水主機（Air-cooled screw chillers）。工況為 HT 資料中心高溫應用：冰水 30/20 °C，外氣 35 °C。SEPR HT 依 EU 2016/2281 標準。"
         ]
       },
-      "STULZ CyberCool Explorer WSC 280 [CHW 20/30°C, 外氣 35°C]": {
-        "model": "STULZ CyberCool Explorer WSC 280 [CHW 20/30°C, 外氣 35°C]",
+      "STULZ CyberCool Explorer WSC 280 [CHW 20/30°C, OA 35°C]": {
+        "model": "STULZ CyberCool Explorer WSC 280 [CHW 20/30°C, OA 35°C]",
         "vendor": "STULZ",
         "chiller_type": "air_cooled",
         "category": "Screw (Air-Cooled)",
@@ -1756,8 +1756,8 @@ window.DEVICE_CATALOG_BUILTIN_RAW = {
           "型錄第18頁。檔名標註水冷，實際為風冷螺桿冰水主機（Air-cooled screw chillers）。工況為 HT 資料中心高溫應用：冰水 30/20 °C，外氣 35 °C。SEPR HT 依 EU 2016/2281 標準。"
         ]
       },
-      "STULZ CyberCool Explorer WSC 700 [CHW 20/30°C, 外氣 35°C]": {
-        "model": "STULZ CyberCool Explorer WSC 700 [CHW 20/30°C, 外氣 35°C]",
+      "STULZ CyberCool Explorer WSC 700 [CHW 20/30°C, OA 35°C]": {
+        "model": "STULZ CyberCool Explorer WSC 700 [CHW 20/30°C, OA 35°C]",
         "vendor": "STULZ",
         "chiller_type": "air_cooled",
         "category": "Screw (Air-Cooled)",
@@ -1801,8 +1801,8 @@ window.DEVICE_CATALOG_BUILTIN_RAW = {
           "型錄第18頁。檔名標註水冷，實際為風冷螺桿冰水主機（Air-cooled screw chillers）。工況為 HT 資料中心高溫應用：冰水 30/20 °C，外氣 35 °C。SEPR HT 依 EU 2016/2281 標準。"
         ]
       },
-      "STULZ CyberCool Explorer WSF 090 [CHW 20/30°C, 外氣 35°C]": {
-        "model": "STULZ CyberCool Explorer WSF 090 [CHW 20/30°C, 外氣 35°C]",
+      "STULZ CyberCool Explorer WSF 090 [CHW 20/30°C, OA 35°C]": {
+        "model": "STULZ CyberCool Explorer WSF 090 [CHW 20/30°C, OA 35°C]",
         "vendor": "STULZ",
         "chiller_type": "air_cooled",
         "category": "Screw (Air-Cooled)",
@@ -1846,8 +1846,8 @@ window.DEVICE_CATALOG_BUILTIN_RAW = {
           "型錄第19頁。檔名標註水冷，實際為風冷螺桿冰水主機（Air-cooled screw chillers）。工況為 HT 資料中心高溫應用：冰水 30/20 °C，外氣 35 °C。SEPR HT 依 EU 2016/2281 標準。100% 自然冷卻外氣溫度為 10.2 °C。"
         ]
       },
-      "STULZ CyberCool Explorer WSF 280 [CHW 20/30°C, 外氣 35°C]": {
-        "model": "STULZ CyberCool Explorer WSF 280 [CHW 20/30°C, 外氣 35°C]",
+      "STULZ CyberCool Explorer WSF 280 [CHW 20/30°C, OA 35°C]": {
+        "model": "STULZ CyberCool Explorer WSF 280 [CHW 20/30°C, OA 35°C]",
         "vendor": "STULZ",
         "chiller_type": "air_cooled",
         "category": "Screw (Air-Cooled)",
@@ -1891,8 +1891,8 @@ window.DEVICE_CATALOG_BUILTIN_RAW = {
           "型錄第19頁。檔名標註水冷，實際為風冷螺桿冰水主機（Air-cooled screw chillers）。工況為 HT 資料中心高溫應用：冰水 30/20 °C，外氣 35 °C。SEPR HT 依 EU 2016/2281 標準。100% 自然冷卻外氣溫度為 11 °C。"
         ]
       },
-      "STULZ CyberCool Explorer WSF 560 [CHW 20/30°C, 外氣 35°C]": {
-        "model": "STULZ CyberCool Explorer WSF 560 [CHW 20/30°C, 外氣 35°C]",
+      "STULZ CyberCool Explorer WSF 560 [CHW 20/30°C, OA 35°C]": {
+        "model": "STULZ CyberCool Explorer WSF 560 [CHW 20/30°C, OA 35°C]",
         "vendor": "STULZ",
         "chiller_type": "air_cooled",
         "category": "Screw (Air-Cooled)",
@@ -1936,8 +1936,8 @@ window.DEVICE_CATALOG_BUILTIN_RAW = {
           "型錄第19頁。檔名標註水冷，實際為風冷螺桿冰水主機（Air-cooled screw chillers）。工況為 HT 資料中心高溫應用：冰水 30/20 °C，外氣 35 °C。SEPR HT 依 EU 2016/2281 標準。100% 自然冷卻外氣溫度為 9.9 °C。"
         ]
       },
-      "Vertiv CM4035SGHC003 [CHW 15/21°C, 外氣 35°C]": {
-        "model": "Vertiv CM4035SGHC003 [CHW 15/21°C, 外氣 35°C]",
+      "Vertiv CM4035SGHC003 [CHW 15/21°C, OA 35°C]": {
+        "model": "Vertiv CM4035SGHC003 [CHW 15/21°C, OA 35°C]",
         "vendor": "Vertiv",
         "chiller_type": "air_cooled",
         "category": "Magnetic Bearing Centrifugal (Air-Cooled)",
@@ -1982,8 +1982,8 @@ window.DEVICE_CATALOG_BUILTIN_RAW = {
           "依據 GB/T 18430.1-2024 數據中心專用工況：出水 15 °C，水流量 = 0.144 × 製冷量 (m³/h)/kW（推算溫差約 5.97 K，進水約 21 °C），外氣乾球 35 °C。功率數值為「機組最大運行功率（kW）」，非額定輸入功率，故 cop 欄位填 null，cop_calc 僅供最大負載參考。重量為運輸重量。"
         ]
       },
-      "Vertiv CM4045SGHC003 [CHW 15/21°C, 外氣 35°C]": {
-        "model": "Vertiv CM4045SGHC003 [CHW 15/21°C, 外氣 35°C]",
+      "Vertiv CM4045SGHC003 [CHW 15/21°C, OA 35°C]": {
+        "model": "Vertiv CM4045SGHC003 [CHW 15/21°C, OA 35°C]",
         "vendor": "Vertiv",
         "chiller_type": "air_cooled",
         "category": "Magnetic Bearing Centrifugal (Air-Cooled)",
@@ -2028,8 +2028,8 @@ window.DEVICE_CATALOG_BUILTIN_RAW = {
           "依據 GB/T 18430.1-2024 數據中心專用工況：出水 15 °C，水流量 = 0.144 × 製冷量 (m³/h)/kW（推算溫差約 5.97 K，進水約 21 °C），外氣乾球 35 °C。功率數值為「機組最大運行功率（kW）」，非額定輸入功率，故 cop 欄位填 null，cop_calc 僅供最大負載參考。重量為運輸重量。"
         ]
       },
-      "Vertiv CM4070SGHC003 [CHW 15/21°C, 外氣 35°C]": {
-        "model": "Vertiv CM4070SGHC003 [CHW 15/21°C, 外氣 35°C]",
+      "Vertiv CM4070SGHC003 [CHW 15/21°C, OA 35°C]": {
+        "model": "Vertiv CM4070SGHC003 [CHW 15/21°C, OA 35°C]",
         "vendor": "Vertiv",
         "chiller_type": "air_cooled",
         "category": "Magnetic Bearing Centrifugal (Air-Cooled)",
@@ -2074,8 +2074,8 @@ window.DEVICE_CATALOG_BUILTIN_RAW = {
           "依據 GB/T 18430.1-2024 數據中心專用工況：出水 15 °C，水流量 = 0.144 × 製冷量 (m³/h)/kW（推算溫差約 5.97 K，進水約 21 °C），外氣乾球 35 °C。功率數值為「機組最大運行功率（kW）」，非額定輸入功率，故 cop 欄位填 null，cop_calc 僅供最大負載參考。重量為運輸重量。"
         ]
       },
-      "Vertiv CM4100SGHC003 [CHW 15/21°C, 外氣 35°C]": {
-        "model": "Vertiv CM4100SGHC003 [CHW 15/21°C, 外氣 35°C]",
+      "Vertiv CM4100SGHC003 [CHW 15/21°C, OA 35°C]": {
+        "model": "Vertiv CM4100SGHC003 [CHW 15/21°C, OA 35°C]",
         "vendor": "Vertiv",
         "chiller_type": "air_cooled",
         "category": "Magnetic Bearing Centrifugal (Air-Cooled)",
@@ -2120,8 +2120,8 @@ window.DEVICE_CATALOG_BUILTIN_RAW = {
           "依據 GB/T 18430.1-2024 數據中心專用工況：出水 15 °C，水流量 = 0.144 × 製冷量 (m³/h)/kW（推算溫差約 5.97 K，進水約 21 °C），外氣乾球 35 °C。功率數值為「機組最大運行功率（kW）」，非額定輸入功率，故 cop 欄位填 null，cop_calc 僅供最大負載參考。重量為運輸重量。"
         ]
       },
-      "Vertiv CM4150SGHC003 [CHW 15/21°C, 外氣 35°C]": {
-        "model": "Vertiv CM4150SGHC003 [CHW 15/21°C, 外氣 35°C]",
+      "Vertiv CM4150SGHC003 [CHW 15/21°C, OA 35°C]": {
+        "model": "Vertiv CM4150SGHC003 [CHW 15/21°C, OA 35°C]",
         "vendor": "Vertiv",
         "chiller_type": "air_cooled",
         "category": "Magnetic Bearing Centrifugal (Air-Cooled)",
@@ -2166,8 +2166,8 @@ window.DEVICE_CATALOG_BUILTIN_RAW = {
           "依據 GB/T 18430.1-2024 數據中心專用工況：出水 15 °C，水流量 = 0.144 × 製冷量 (m³/h)/kW（推算溫差約 5.97 K，進水約 21 °C），外氣乾球 35 °C。功率數值為「機組最大運行功率（kW）」，非額定輸入功率，故 cop 欄位填 null，cop_calc 僅供最大負載參考。重量為運輸重量。"
         ]
       },
-      "Vertiv CM4200SGHC003 [CHW 15/21°C, 外氣 35°C]": {
-        "model": "Vertiv CM4200SGHC003 [CHW 15/21°C, 外氣 35°C]",
+      "Vertiv CM4200SGHC003 [CHW 15/21°C, OA 35°C]": {
+        "model": "Vertiv CM4200SGHC003 [CHW 15/21°C, OA 35°C]",
         "vendor": "Vertiv",
         "chiller_type": "air_cooled",
         "category": "Magnetic Bearing Centrifugal (Air-Cooled)",
@@ -2212,8 +2212,8 @@ window.DEVICE_CATALOG_BUILTIN_RAW = {
           "依據 GB/T 18430.1-2024 數據中心專用工況：出水 15 °C，水流量 = 0.144 × 製冷量 (m³/h)/kW（推算溫差約 5.97 K，進水約 21 °C），外氣乾球 35 °C。功率數值為「機組最大運行功率（kW）」，非額定輸入功率，故 cop 欄位填 null，cop_calc 僅供最大負載參考。重量為運輸重量。"
         ]
       },
-      "King Sun KHAW-160F [CHW 10/15°C, 外氣 31.5°C]": {
-        "model": "King Sun KHAW-160F [CHW 10/15°C, 外氣 31.5°C]",
+      "King Sun KHAW-160F [CHW 10/15°C, OA 31.5°C]": {
+        "model": "King Sun KHAW-160F [CHW 10/15°C, OA 31.5°C]",
         "vendor": "King Sun",
         "chiller_type": "air_cooled",
         "category": "Scroll (Air-Cooled)",
@@ -2258,8 +2258,8 @@ window.DEVICE_CATALOG_BUILTIN_RAW = {
           "圖號 K9-0459205 C，日期 2025.10.08。檔名標題寫『磁懸浮離心式冰水機組』，但圖面右側規範表標明壓縮機為『全密閉渦卷式X4 (Hermetic Scroll x4)』。耗電量 147.1 kW 標註含內置水泵 (15 HP = 11.19 kW)。工況：冰水進出 15/10 °C，外氣 31.5 °C。水側熱平衡 Q_calc = 1.163 × 81.5 × 5 = 473.92 kW (diff 0.016%)。貨櫃外觀尺寸 6058×2438×2591 mm (20-ft FR)。"
         ]
       },
-      "Schneider Electric BCWC 0301A (Basic) [CHW 20/30°C, 冷卻水 ?]": {
-        "model": "Schneider Electric BCWC 0301A (Basic) [CHW 20/30°C, 冷卻水 ?]",
+      "Schneider Electric BCWC 0301A (Basic) [CHW 20/30°C, CW ?]": {
+        "model": "Schneider Electric BCWC 0301A (Basic) [CHW 20/30°C, CW ?]",
         "vendor": "Schneider Electric",
         "chiller_type": "water_cooled",
         "category": "Magnetic Bearing Centrifugal (Water-Cooled)",
@@ -2303,8 +2303,8 @@ window.DEVICE_CATALOG_BUILTIN_RAW = {
           "型錄第 7 頁 R513A Basic Version。工況：蒸發器水溫 30/20 °C，冷凝器出水 35 °C。SEPR HT 依據歐盟 Regulation EU 2016/2281。注意與技術規格書 P.60 同工況數值存在微小差異（例如 0301A 型錄載 364.9 kW / 45.8 kW，規格書載 366 kW / 46.2 kW）。"
         ]
       },
-      "Schneider Electric BCWC 0602A (Basic) [CHW 20/30°C, 冷卻水 ?]": {
-        "model": "Schneider Electric BCWC 0602A (Basic) [CHW 20/30°C, 冷卻水 ?]",
+      "Schneider Electric BCWC 0602A (Basic) [CHW 20/30°C, CW ?]": {
+        "model": "Schneider Electric BCWC 0602A (Basic) [CHW 20/30°C, CW ?]",
         "vendor": "Schneider Electric",
         "chiller_type": "water_cooled",
         "category": "Magnetic Bearing Centrifugal (Water-Cooled)",
@@ -2348,8 +2348,8 @@ window.DEVICE_CATALOG_BUILTIN_RAW = {
           "型錄第 7 頁 R513A Basic Version。工況：蒸發器水溫 30/20 °C，冷凝器出水 35 °C。SEPR HT 依據歐盟 Regulation EU 2016/2281。注意與技術規格書 P.60 同工況數值存在微小差異（例如 0301A 型錄載 364.9 kW / 45.8 kW，規格書載 366 kW / 46.2 kW）。"
         ]
       },
-      "Schneider Electric BCWC 0903A (Basic) [CHW 20/30°C, 冷卻水 ?]": {
-        "model": "Schneider Electric BCWC 0903A (Basic) [CHW 20/30°C, 冷卻水 ?]",
+      "Schneider Electric BCWC 0903A (Basic) [CHW 20/30°C, CW ?]": {
+        "model": "Schneider Electric BCWC 0903A (Basic) [CHW 20/30°C, CW ?]",
         "vendor": "Schneider Electric",
         "chiller_type": "water_cooled",
         "category": "Magnetic Bearing Centrifugal (Water-Cooled)",
@@ -2393,8 +2393,8 @@ window.DEVICE_CATALOG_BUILTIN_RAW = {
           "型錄第 7 頁 R513A Basic Version。工況：蒸發器水溫 30/20 °C，冷凝器出水 35 °C。SEPR HT 依據歐盟 Regulation EU 2016/2281。注意與技術規格書 P.60 同工況數值存在微小差異（例如 0301A 型錄載 364.9 kW / 45.8 kW，規格書載 366 kW / 46.2 kW）。"
         ]
       },
-      "Schneider Electric BCWC 1203A (Basic) [CHW 20/30°C, 冷卻水 ?]": {
-        "model": "Schneider Electric BCWC 1203A (Basic) [CHW 20/30°C, 冷卻水 ?]",
+      "Schneider Electric BCWC 1203A (Basic) [CHW 20/30°C, CW ?]": {
+        "model": "Schneider Electric BCWC 1203A (Basic) [CHW 20/30°C, CW ?]",
         "vendor": "Schneider Electric",
         "chiller_type": "water_cooled",
         "category": "Magnetic Bearing Centrifugal (Water-Cooled)",
@@ -2438,8 +2438,8 @@ window.DEVICE_CATALOG_BUILTIN_RAW = {
           "型錄第 7 頁 R513A Basic Version。工況：蒸發器水溫 30/20 °C，冷凝器出水 35 °C。SEPR HT 依據歐盟 Regulation EU 2016/2281。注意與技術規格書 P.60 同工況數值存在微小差異（例如 0301A 型錄載 364.9 kW / 45.8 kW，規格書載 366 kW / 46.2 kW）。"
         ]
       },
-      "Schneider Electric BCWC 1604A (Basic) [CHW 20/30°C, 冷卻水 ?]": {
-        "model": "Schneider Electric BCWC 1604A (Basic) [CHW 20/30°C, 冷卻水 ?]",
+      "Schneider Electric BCWC 1604A (Basic) [CHW 20/30°C, CW ?]": {
+        "model": "Schneider Electric BCWC 1604A (Basic) [CHW 20/30°C, CW ?]",
         "vendor": "Schneider Electric",
         "chiller_type": "water_cooled",
         "category": "Magnetic Bearing Centrifugal (Water-Cooled)",
@@ -2483,8 +2483,8 @@ window.DEVICE_CATALOG_BUILTIN_RAW = {
           "型錄第 7 頁 R513A Basic Version。工況：蒸發器水溫 30/20 °C，冷凝器出水 35 °C。SEPR HT 依據歐盟 Regulation EU 2016/2281。注意與技術規格書 P.60 同工況數值存在微小差異（例如 0301A 型錄載 364.9 kW / 45.8 kW，規格書載 366 kW / 46.2 kW）。"
         ]
       },
-      "Schneider Electric BCWC0301A [CHW 7/12°C, 冷卻水 30°C]": {
-        "model": "Schneider Electric BCWC0301A [CHW 7/12°C, 冷卻水 30°C]",
+      "Schneider Electric BCWC0301A [CHW 7/12°C, CW 30°C]": {
+        "model": "Schneider Electric BCWC0301A [CHW 7/12°C, CW 30°C]",
         "vendor": "Schneider Electric",
         "chiller_type": "water_cooled",
         "category": "Magnetic Bearing Centrifugal (Water-Cooled)",
@@ -2528,8 +2528,8 @@ window.DEVICE_CATALOG_BUILTIN_RAW = {
           "技術規格書第 60 頁標準工況：冰水 12/7 °C (ΔT=5 K)，冷卻水 30/35 °C。原始冰水流量 46638 l/h = 46.638 m³/h，冷凝器水流量 58223 l/h = 58.223 m³/h。"
         ]
       },
-      "Schneider Electric BCWC0602A [CHW 7/12°C, 冷卻水 30°C]": {
-        "model": "Schneider Electric BCWC0602A [CHW 7/12°C, 冷卻水 30°C]",
+      "Schneider Electric BCWC0602A [CHW 7/12°C, CW 30°C]": {
+        "model": "Schneider Electric BCWC0602A [CHW 7/12°C, CW 30°C]",
         "vendor": "Schneider Electric",
         "chiller_type": "water_cooled",
         "category": "Magnetic Bearing Centrifugal (Water-Cooled)",
@@ -2573,8 +2573,8 @@ window.DEVICE_CATALOG_BUILTIN_RAW = {
           "技術規格書第 60 頁標準工況：冰水 12/7 °C (ΔT=5 K)，冷卻水 30/35 °C。原始冰水流量 93359 l/h = 93.359 m³/h，冷凝器水流量 117501 l/h = 117.501 m³/h。"
         ]
       },
-      "Schneider Electric BCWC0903A [CHW 7/12°C, 冷卻水 30°C]": {
-        "model": "Schneider Electric BCWC0903A [CHW 7/12°C, 冷卻水 30°C]",
+      "Schneider Electric BCWC0903A [CHW 7/12°C, CW 30°C]": {
+        "model": "Schneider Electric BCWC0903A [CHW 7/12°C, CW 30°C]",
         "vendor": "Schneider Electric",
         "chiller_type": "water_cooled",
         "category": "Magnetic Bearing Centrifugal (Water-Cooled)",
@@ -2618,8 +2618,8 @@ window.DEVICE_CATALOG_BUILTIN_RAW = {
           "技術規格書第 60 頁標準工況：冰水 12/7 °C (ΔT=5 K)，冷卻水 30/35 °C。原始冰水流量 140593 l/h = 140.593 m³/h，冷凝器水流量 176531 l/h = 176.531 m³/h。"
         ]
       },
-      "Schneider Electric BCWC1203A [CHW 7/12°C, 冷卻水 30°C]": {
-        "model": "Schneider Electric BCWC1203A [CHW 7/12°C, 冷卻水 30°C]",
+      "Schneider Electric BCWC1203A [CHW 7/12°C, CW 30°C]": {
+        "model": "Schneider Electric BCWC1203A [CHW 7/12°C, CW 30°C]",
         "vendor": "Schneider Electric",
         "chiller_type": "water_cooled",
         "category": "Magnetic Bearing Centrifugal (Water-Cooled)",
@@ -2663,8 +2663,8 @@ window.DEVICE_CATALOG_BUILTIN_RAW = {
           "技術規格書第 60 頁標準工況：冰水 12/7 °C (ΔT=5 K)，冷卻水 30/35 °C。原始冰水流量 200640 l/h = 200.64 m³/h，冷凝器水流量 252180 l/h = 252.18 m³/h。"
         ]
       },
-      "Schneider Electric BCWC1604A [CHW 7/12°C, 冷卻水 30°C]": {
-        "model": "Schneider Electric BCWC1604A [CHW 7/12°C, 冷卻水 30°C]",
+      "Schneider Electric BCWC1604A [CHW 7/12°C, CW 30°C]": {
+        "model": "Schneider Electric BCWC1604A [CHW 7/12°C, CW 30°C]",
         "vendor": "Schneider Electric",
         "chiller_type": "water_cooled",
         "category": "Magnetic Bearing Centrifugal (Water-Cooled)",
@@ -2708,8 +2708,8 @@ window.DEVICE_CATALOG_BUILTIN_RAW = {
           "技術規格書第 60 頁標準工況：冰水 12/7 °C (ΔT=5 K)，冷卻水 30/35 °C。原始冰水流量 266484 l/h = 266.484 m³/h，冷凝器水流量 332082 l/h = 332.082 m³/h。"
         ]
       },
-      "Schneider Electric BCWC0301A (HT) [CHW 20/30°C, 冷卻水 30°C]": {
-        "model": "Schneider Electric BCWC0301A (HT) [CHW 20/30°C, 冷卻水 30°C]",
+      "Schneider Electric BCWC0301A (HT) [CHW 20/30°C, CW 30°C]": {
+        "model": "Schneider Electric BCWC0301A (HT) [CHW 20/30°C, CW 30°C]",
         "vendor": "Schneider Electric",
         "chiller_type": "water_cooled",
         "category": "Magnetic Bearing Centrifugal (Water-Cooled)",
@@ -2753,8 +2753,8 @@ window.DEVICE_CATALOG_BUILTIN_RAW = {
           "技術規格書第 60 頁 IT 高溫工況：冰水 30/20 °C，冷卻水 30/35 °C。此組數值與型錄第 7 頁 Basic Version 性能互相對照保留。"
         ]
       },
-      "Schneider Electric BCWC0602A (HT) [CHW 20/30°C, 冷卻水 30°C]": {
-        "model": "Schneider Electric BCWC0602A (HT) [CHW 20/30°C, 冷卻水 30°C]",
+      "Schneider Electric BCWC0602A (HT) [CHW 20/30°C, CW 30°C]": {
+        "model": "Schneider Electric BCWC0602A (HT) [CHW 20/30°C, CW 30°C]",
         "vendor": "Schneider Electric",
         "chiller_type": "water_cooled",
         "category": "Magnetic Bearing Centrifugal (Water-Cooled)",
@@ -2798,8 +2798,8 @@ window.DEVICE_CATALOG_BUILTIN_RAW = {
           "技術規格書第 60 頁 IT 高溫工況：冰水 30/20 °C，冷卻水 30/35 °C。此組數值與型錄第 7 頁 Basic Version 性能互相對照保留。"
         ]
       },
-      "Schneider Electric BCWC0903A (HT) [CHW 20/30°C, 冷卻水 30°C]": {
-        "model": "Schneider Electric BCWC0903A (HT) [CHW 20/30°C, 冷卻水 30°C]",
+      "Schneider Electric BCWC0903A (HT) [CHW 20/30°C, CW 30°C]": {
+        "model": "Schneider Electric BCWC0903A (HT) [CHW 20/30°C, CW 30°C]",
         "vendor": "Schneider Electric",
         "chiller_type": "water_cooled",
         "category": "Magnetic Bearing Centrifugal (Water-Cooled)",
@@ -2843,8 +2843,8 @@ window.DEVICE_CATALOG_BUILTIN_RAW = {
           "技術規格書第 60 頁 IT 高溫工況：冰水 30/20 °C，冷卻水 30/35 °C。此組數值與型錄第 7 頁 Basic Version 性能互相對照保留。"
         ]
       },
-      "Schneider Electric BCWC1203A (HT) [CHW 20/30°C, 冷卻水 30°C]": {
-        "model": "Schneider Electric BCWC1203A (HT) [CHW 20/30°C, 冷卻水 30°C]",
+      "Schneider Electric BCWC1203A (HT) [CHW 20/30°C, CW 30°C]": {
+        "model": "Schneider Electric BCWC1203A (HT) [CHW 20/30°C, CW 30°C]",
         "vendor": "Schneider Electric",
         "chiller_type": "water_cooled",
         "category": "Magnetic Bearing Centrifugal (Water-Cooled)",
@@ -2888,8 +2888,8 @@ window.DEVICE_CATALOG_BUILTIN_RAW = {
           "技術規格書第 60 頁 IT 高溫工況：冰水 30/20 °C，冷卻水 30/35 °C。此組數值與型錄第 7 頁 Basic Version 性能互相對照保留。"
         ]
       },
-      "Schneider Electric BCWC1604A (HT) [CHW 20/30°C, 冷卻水 30°C]": {
-        "model": "Schneider Electric BCWC1604A (HT) [CHW 20/30°C, 冷卻水 30°C]",
+      "Schneider Electric BCWC1604A (HT) [CHW 20/30°C, CW 30°C]": {
+        "model": "Schneider Electric BCWC1604A (HT) [CHW 20/30°C, CW 30°C]",
         "vendor": "Schneider Electric",
         "chiller_type": "water_cooled",
         "category": "Magnetic Bearing Centrifugal (Water-Cooled)",
@@ -2933,8 +2933,8 @@ window.DEVICE_CATALOG_BUILTIN_RAW = {
           "技術規格書第 60 頁 IT 高溫工況：冰水 30/20 °C，冷卻水 30/35 °C。此組數值與型錄第 7 頁 Basic Version 性能互相對照保留。"
         ]
       },
-      "Schneider Electric XCAF1913A (PEP) [CHW 20/30°C, 外氣 35°C]": {
-        "model": "Schneider Electric XCAF1913A (PEP) [CHW 20/30°C, 外氣 35°C]",
+      "Schneider Electric XCAF1913A (PEP) [CHW 20/30°C, OA 35°C]": {
+        "model": "Schneider Electric XCAF1913A (PEP) [CHW 20/30°C, OA 35°C]",
         "vendor": "Schneider Electric",
         "chiller_type": "air_cooled",
         "category": "Magnetic Bearing Centrifugal (Air-Cooled)",
@@ -2978,8 +2978,8 @@ window.DEVICE_CATALOG_BUILTIN_RAW = {
           "檔名標註送風單元，實為Uniflair氣冷自然冷卻磁懸浮離心冰水機組之PEP ecopassport環境宣告書。典型使用場景工況30/20°C，Annual EER（記錄於 annual_eer_pep 欄位）為23.9 kW/kW，額定滿載計算COP為4.0736。計算條件依PEP文件（第3、6、9頁）：依EN 14825標準使用場景與UNICALC軟體計算，典型場景冰水供回水20/30°C（含20%乙二醇），全年連續運轉24小時/天保證1805 kW製冷量，年耗電量661029 kWh/年（Annual EER = 1805 × 8760 / 661029 ≈ 23.9 kW/kW）；特定氣象站與負載分佈細節文件未說明。"
         ]
       },
-      "Schneider Electric XCAC1212A [CHW 20/30°C, 外氣 35°C]": {
-        "model": "Schneider Electric XCAC1212A [CHW 20/30°C, 外氣 35°C]",
+      "Schneider Electric XCAC1212A [CHW 20/30°C, OA 35°C]": {
+        "model": "Schneider Electric XCAC1212A [CHW 20/30°C, OA 35°C]",
         "vendor": "Schneider Electric",
         "chiller_type": "air_cooled",
         "category": "Magnetic Bearing Centrifugal (Air-Cooled)",
@@ -3023,8 +3023,8 @@ window.DEVICE_CATALOG_BUILTIN_RAW = {
           "檔名標註送風單元，實為Uniflair氣冷磁懸浮離心式冰水機組（純氣冷XCAC，無經濟器，標準噪音版）。進出水30/20°C，外氣乾球35°C。流體純水0%乙二醇，Q_calc驗算通過。總吸入功率含壓縮機與風扇，壓縮機額定FLI 132 kW/台，風扇FLI 3.3 kW/顆。"
         ]
       },
-      "Schneider Electric XCAC1913A [CHW 20/30°C, 外氣 35°C]": {
-        "model": "Schneider Electric XCAC1913A [CHW 20/30°C, 外氣 35°C]",
+      "Schneider Electric XCAC1913A [CHW 20/30°C, OA 35°C]": {
+        "model": "Schneider Electric XCAC1913A [CHW 20/30°C, OA 35°C]",
         "vendor": "Schneider Electric",
         "chiller_type": "air_cooled",
         "category": "Magnetic Bearing Centrifugal (Air-Cooled)",
@@ -3068,8 +3068,8 @@ window.DEVICE_CATALOG_BUILTIN_RAW = {
           "檔名標註送風單元，實為Uniflair氣冷磁懸浮離心式冰水機組（純氣冷XCAC，無經濟器，標準噪音版）。進出水30/20°C，外氣乾球35°C。流體純水0%乙二醇，Q_calc驗算通過。總吸入功率含壓縮機與風扇，壓縮機額定FLI 132 kW/台，風扇FLI 3.3 kW/顆。"
         ]
       },
-      "Schneider Electric XCAC2524A [CHW 20/30°C, 外氣 35°C]": {
-        "model": "Schneider Electric XCAC2524A [CHW 20/30°C, 外氣 35°C]",
+      "Schneider Electric XCAC2524A [CHW 20/30°C, OA 35°C]": {
+        "model": "Schneider Electric XCAC2524A [CHW 20/30°C, OA 35°C]",
         "vendor": "Schneider Electric",
         "chiller_type": "air_cooled",
         "category": "Magnetic Bearing Centrifugal (Air-Cooled)",
@@ -3113,8 +3113,8 @@ window.DEVICE_CATALOG_BUILTIN_RAW = {
           "檔名標註送風單元，實為Uniflair氣冷磁懸浮離心式冰水機組（純氣冷XCAC，無經濟器，標準噪音版）。進出水30/20°C，外氣乾球35°C。流體純水0%乙二醇，Q_calc驗算通過。總吸入功率含壓縮機與風扇，壓縮機額定FLI 132 kW/台，風扇FLI 3.3 kW/顆。"
         ]
       },
-      "Schneider Electric XCAC1212A (Economizer) [CHW 20/30°C, 外氣 35°C]": {
-        "model": "Schneider Electric XCAC1212A (Economizer) [CHW 20/30°C, 外氣 35°C]",
+      "Schneider Electric XCAC1212A (Economizer) [CHW 20/30°C, OA 35°C]": {
+        "model": "Schneider Electric XCAC1212A (Economizer) [CHW 20/30°C, OA 35°C]",
         "vendor": "Schneider Electric",
         "chiller_type": "air_cooled",
         "category": "Magnetic Bearing Centrifugal (Air-Cooled)",
@@ -3158,8 +3158,8 @@ window.DEVICE_CATALOG_BUILTIN_RAW = {
           "檔名標註送風單元，實為Uniflair氣冷磁懸浮離心式冰水機組（純氣冷XCAC，含經濟器Economizer，標準噪音版）。進出水30/20°C，外氣乾球35°C。流體純水0%乙二醇，Q_calc驗算通過。總吸入功率含壓縮機與風扇，壓縮機額定FLI 132 kW/台，風扇FLI 3.3 kW/顆。"
         ]
       },
-      "Schneider Electric XCAC1913A (Economizer) [CHW 20/30°C, 外氣 35°C]": {
-        "model": "Schneider Electric XCAC1913A (Economizer) [CHW 20/30°C, 外氣 35°C]",
+      "Schneider Electric XCAC1913A (Economizer) [CHW 20/30°C, OA 35°C]": {
+        "model": "Schneider Electric XCAC1913A (Economizer) [CHW 20/30°C, OA 35°C]",
         "vendor": "Schneider Electric",
         "chiller_type": "air_cooled",
         "category": "Magnetic Bearing Centrifugal (Air-Cooled)",
@@ -3203,8 +3203,8 @@ window.DEVICE_CATALOG_BUILTIN_RAW = {
           "檔名標註送風單元，實為Uniflair氣冷磁懸浮離心式冰水機組（純氣冷XCAC，含經濟器Economizer，標準噪音版）。進出水30/20°C，外氣乾球35°C。流體純水0%乙二醇，Q_calc驗算通過。總吸入功率含壓縮機與風扇，壓縮機額定FLI 132 kW/台，風扇FLI 3.3 kW/顆。"
         ]
       },
-      "Schneider Electric XCAC2524A (Economizer) [CHW 20/30°C, 外氣 35°C]": {
-        "model": "Schneider Electric XCAC2524A (Economizer) [CHW 20/30°C, 外氣 35°C]",
+      "Schneider Electric XCAC2524A (Economizer) [CHW 20/30°C, OA 35°C]": {
+        "model": "Schneider Electric XCAC2524A (Economizer) [CHW 20/30°C, OA 35°C]",
         "vendor": "Schneider Electric",
         "chiller_type": "air_cooled",
         "category": "Magnetic Bearing Centrifugal (Air-Cooled)",
@@ -3248,8 +3248,8 @@ window.DEVICE_CATALOG_BUILTIN_RAW = {
           "檔名標註送風單元，實為Uniflair氣冷磁懸浮離心式冰水機組（純氣冷XCAC，含經濟器Economizer，標準噪音版）。進出水30/20°C，外氣乾球35°C。流體純水0%乙二醇，Q_calc驗算通過。總吸入功率含壓縮機與風扇，壓縮機額定FLI 132 kW/台，風扇FLI 3.3 kW/顆。"
         ]
       },
-      "Schneider Electric XCAF1212A [CHW 20/30°C, 外氣 35°C]": {
-        "model": "Schneider Electric XCAF1212A [CHW 20/30°C, 外氣 35°C]",
+      "Schneider Electric XCAF1212A [CHW 20/30°C, OA 35°C]": {
+        "model": "Schneider Electric XCAF1212A [CHW 20/30°C, OA 35°C]",
         "vendor": "Schneider Electric",
         "chiller_type": "air_cooled",
         "category": "Magnetic Bearing Centrifugal (Air-Cooled)",
@@ -3293,8 +3293,8 @@ window.DEVICE_CATALOG_BUILTIN_RAW = {
           "檔名標註送風單元，實為Uniflair氣冷磁懸浮離心式冰水機組（含自然冷卻盤管XCAF，無經濟器，標準噪音版）。進出水30/20°C，外氣乾球35°C。流體20%乙二醇溶液，依鐵則check填null。總吸入功率含壓縮機與風扇，壓縮機額定FLI 132 kW/台，風扇FLI 3.3 kW/顆。"
         ]
       },
-      "Schneider Electric XCAF1913A [CHW 20/30°C, 外氣 35°C]": {
-        "model": "Schneider Electric XCAF1913A [CHW 20/30°C, 外氣 35°C]",
+      "Schneider Electric XCAF1913A [CHW 20/30°C, OA 35°C]": {
+        "model": "Schneider Electric XCAF1913A [CHW 20/30°C, OA 35°C]",
         "vendor": "Schneider Electric",
         "chiller_type": "air_cooled",
         "category": "Magnetic Bearing Centrifugal (Air-Cooled)",
@@ -3338,8 +3338,8 @@ window.DEVICE_CATALOG_BUILTIN_RAW = {
           "檔名標註送風單元，實為Uniflair氣冷磁懸浮離心式冰水機組（含自然冷卻盤管XCAF，無經濟器，標準噪音版）。進出水30/20°C，外氣乾球35°C。流體20%乙二醇溶液，依鐵則check填null。總吸入功率含壓縮機與風扇，壓縮機額定FLI 132 kW/台，風扇FLI 3.3 kW/顆。"
         ]
       },
-      "Schneider Electric XCAF2524A [CHW 20/30°C, 外氣 35°C]": {
-        "model": "Schneider Electric XCAF2524A [CHW 20/30°C, 外氣 35°C]",
+      "Schneider Electric XCAF2524A [CHW 20/30°C, OA 35°C]": {
+        "model": "Schneider Electric XCAF2524A [CHW 20/30°C, OA 35°C]",
         "vendor": "Schneider Electric",
         "chiller_type": "air_cooled",
         "category": "Magnetic Bearing Centrifugal (Air-Cooled)",
@@ -3383,8 +3383,8 @@ window.DEVICE_CATALOG_BUILTIN_RAW = {
           "檔名標註送風單元，實為Uniflair氣冷磁懸浮離心式冰水機組（含自然冷卻盤管XCAF，無經濟器，標準噪音版）。進出水30/20°C，外氣乾球35°C。流體20%乙二醇溶液，依鐵則check填null。總吸入功率含壓縮機與風扇，壓縮機額定FLI 132 kW/台，風扇FLI 3.3 kW/顆。"
         ]
       },
-      "Schneider Electric XCAF1212A (Economizer) [CHW 20/30°C, 外氣 35°C]": {
-        "model": "Schneider Electric XCAF1212A (Economizer) [CHW 20/30°C, 外氣 35°C]",
+      "Schneider Electric XCAF1212A (Economizer) [CHW 20/30°C, OA 35°C]": {
+        "model": "Schneider Electric XCAF1212A (Economizer) [CHW 20/30°C, OA 35°C]",
         "vendor": "Schneider Electric",
         "chiller_type": "air_cooled",
         "category": "Magnetic Bearing Centrifugal (Air-Cooled)",
@@ -3428,8 +3428,8 @@ window.DEVICE_CATALOG_BUILTIN_RAW = {
           "檔名標註送風單元，實為Uniflair氣冷磁懸浮離心式冰水機組（含自然冷卻盤管XCAF，含經濟器Economizer，標準噪音版）。進出水30/20°C，外氣乾球35°C。流體20%乙二醇溶液，依鐵則check填null。總吸入功率含壓縮機與風扇，壓縮機額定FLI 132 kW/台，風扇FLI 3.3 kW/顆。"
         ]
       },
-      "Schneider Electric XCAF1913A (Economizer) [CHW 20/30°C, 外氣 35°C]": {
-        "model": "Schneider Electric XCAF1913A (Economizer) [CHW 20/30°C, 外氣 35°C]",
+      "Schneider Electric XCAF1913A (Economizer) [CHW 20/30°C, OA 35°C]": {
+        "model": "Schneider Electric XCAF1913A (Economizer) [CHW 20/30°C, OA 35°C]",
         "vendor": "Schneider Electric",
         "chiller_type": "air_cooled",
         "category": "Magnetic Bearing Centrifugal (Air-Cooled)",
@@ -3473,8 +3473,8 @@ window.DEVICE_CATALOG_BUILTIN_RAW = {
           "檔名標註送風單元，實為Uniflair氣冷磁懸浮離心式冰水機組（含自然冷卻盤管XCAF，含經濟器Economizer，標準噪音版）。進出水30/20°C，外氣乾球35°C。流體20%乙二醇溶液，依鐵則check填null。總吸入功率含壓縮機與風扇，壓縮機額定FLI 132 kW/台，風扇FLI 3.3 kW/顆。"
         ]
       },
-      "Schneider Electric XCAF2524A (Economizer) [CHW 20/30°C, 外氣 35°C]": {
-        "model": "Schneider Electric XCAF2524A (Economizer) [CHW 20/30°C, 外氣 35°C]",
+      "Schneider Electric XCAF2524A (Economizer) [CHW 20/30°C, OA 35°C]": {
+        "model": "Schneider Electric XCAF2524A (Economizer) [CHW 20/30°C, OA 35°C]",
         "vendor": "Schneider Electric",
         "chiller_type": "air_cooled",
         "category": "Magnetic Bearing Centrifugal (Air-Cooled)",
@@ -3518,8 +3518,8 @@ window.DEVICE_CATALOG_BUILTIN_RAW = {
           "檔名標註送風單元，實為Uniflair氣冷磁懸浮離心式冰水機組（含自然冷卻盤管XCAF，含經濟器Economizer，標準噪音版）。進出水30/20°C，外氣乾球35°C。流體20%乙二醇溶液，依鐵則check填null。總吸入功率含壓縮機與風扇，壓縮機額定FLI 132 kW/台，風扇FLI 3.3 kW/顆。"
         ]
       },
-      "Schneider Electric XCAC1212A (UltraLow Noise) [CHW 20/30°C, 外氣 35°C]": {
-        "model": "Schneider Electric XCAC1212A (UltraLow Noise) [CHW 20/30°C, 外氣 35°C]",
+      "Schneider Electric XCAC1212A (UltraLow Noise) [CHW 20/30°C, OA 35°C]": {
+        "model": "Schneider Electric XCAC1212A (UltraLow Noise) [CHW 20/30°C, OA 35°C]",
         "vendor": "Schneider Electric",
         "chiller_type": "air_cooled",
         "category": "Magnetic Bearing Centrifugal (Air-Cooled)",
@@ -3563,8 +3563,8 @@ window.DEVICE_CATALOG_BUILTIN_RAW = {
           "檔名標註送風單元，實為Uniflair氣冷磁懸浮離心式冰水機組（純氣冷XCAC，無經濟器，超低噪音UltraLow版）。進出水30/20°C，外氣乾球35°C。流體純水0%乙二醇，Q_calc驗算通過。總吸入功率含壓縮機與風扇，壓縮機額定FLI 132 kW/台，風扇FLI 3.3 kW/顆。"
         ]
       },
-      "Schneider Electric XCAC1913A (UltraLow Noise) [CHW 20/30°C, 外氣 35°C]": {
-        "model": "Schneider Electric XCAC1913A (UltraLow Noise) [CHW 20/30°C, 外氣 35°C]",
+      "Schneider Electric XCAC1913A (UltraLow Noise) [CHW 20/30°C, OA 35°C]": {
+        "model": "Schneider Electric XCAC1913A (UltraLow Noise) [CHW 20/30°C, OA 35°C]",
         "vendor": "Schneider Electric",
         "chiller_type": "air_cooled",
         "category": "Magnetic Bearing Centrifugal (Air-Cooled)",
@@ -3608,8 +3608,8 @@ window.DEVICE_CATALOG_BUILTIN_RAW = {
           "檔名標註送風單元，實為Uniflair氣冷磁懸浮離心式冰水機組（純氣冷XCAC，無經濟器，超低噪音UltraLow版）。進出水30/20°C，外氣乾球35°C。流體純水0%乙二醇，Q_calc驗算通過。總吸入功率含壓縮機與風扇，壓縮機額定FLI 132 kW/台，風扇FLI 3.3 kW/顆。"
         ]
       },
-      "Schneider Electric XCAC2524A (UltraLow Noise) [CHW 20/30°C, 外氣 35°C]": {
-        "model": "Schneider Electric XCAC2524A (UltraLow Noise) [CHW 20/30°C, 外氣 35°C]",
+      "Schneider Electric XCAC2524A (UltraLow Noise) [CHW 20/30°C, OA 35°C]": {
+        "model": "Schneider Electric XCAC2524A (UltraLow Noise) [CHW 20/30°C, OA 35°C]",
         "vendor": "Schneider Electric",
         "chiller_type": "air_cooled",
         "category": "Magnetic Bearing Centrifugal (Air-Cooled)",
@@ -3653,8 +3653,8 @@ window.DEVICE_CATALOG_BUILTIN_RAW = {
           "檔名標註送風單元，實為Uniflair氣冷磁懸浮離心式冰水機組（純氣冷XCAC，無經濟器，超低噪音UltraLow版）。進出水30/20°C，外氣乾球35°C。流體純水0%乙二醇，Q_calc驗算通過。總吸入功率含壓縮機與風扇，壓縮機額定FLI 132 kW/台，風扇FLI 3.3 kW/顆。"
         ]
       },
-      "Schneider Electric XCAC1212A (UltraLow Noise Economizer) [CHW 20/30°C, 外氣 35°C]": {
-        "model": "Schneider Electric XCAC1212A (UltraLow Noise Economizer) [CHW 20/30°C, 外氣 35°C]",
+      "Schneider Electric XCAC1212A (UltraLow Noise Economizer) [CHW 20/30°C, OA 35°C]": {
+        "model": "Schneider Electric XCAC1212A (UltraLow Noise Economizer) [CHW 20/30°C, OA 35°C]",
         "vendor": "Schneider Electric",
         "chiller_type": "air_cooled",
         "category": "Magnetic Bearing Centrifugal (Air-Cooled)",
@@ -3698,8 +3698,8 @@ window.DEVICE_CATALOG_BUILTIN_RAW = {
           "檔名標註送風單元，實為Uniflair氣冷磁懸浮離心式冰水機組（純氣冷XCAC，含經濟器Economizer，超低噪音UltraLow版）。進出水30/20°C，外氣乾球35°C。流體純水0%乙二醇，Q_calc驗算通過。總吸入功率含壓縮機與風扇，壓縮機額定FLI 132 kW/台，風扇FLI 3.3 kW/顆。"
         ]
       },
-      "Schneider Electric XCAC1913A (UltraLow Noise Economizer) [CHW 20/30°C, 外氣 35°C]": {
-        "model": "Schneider Electric XCAC1913A (UltraLow Noise Economizer) [CHW 20/30°C, 外氣 35°C]",
+      "Schneider Electric XCAC1913A (UltraLow Noise Economizer) [CHW 20/30°C, OA 35°C]": {
+        "model": "Schneider Electric XCAC1913A (UltraLow Noise Economizer) [CHW 20/30°C, OA 35°C]",
         "vendor": "Schneider Electric",
         "chiller_type": "air_cooled",
         "category": "Magnetic Bearing Centrifugal (Air-Cooled)",
@@ -3743,8 +3743,8 @@ window.DEVICE_CATALOG_BUILTIN_RAW = {
           "檔名標註送風單元，實為Uniflair氣冷磁懸浮離心式冰水機組（純氣冷XCAC，含經濟器Economizer，超低噪音UltraLow版）。進出水30/20°C，外氣乾球35°C。流體純水0%乙二醇，Q_calc驗算通過。總吸入功率含壓縮機與風扇，壓縮機額定FLI 132 kW/台，風扇FLI 3.3 kW/顆。"
         ]
       },
-      "Schneider Electric XCAC2524A (UltraLow Noise Economizer) [CHW 20/30°C, 外氣 35°C]": {
-        "model": "Schneider Electric XCAC2524A (UltraLow Noise Economizer) [CHW 20/30°C, 外氣 35°C]",
+      "Schneider Electric XCAC2524A (UltraLow Noise Economizer) [CHW 20/30°C, OA 35°C]": {
+        "model": "Schneider Electric XCAC2524A (UltraLow Noise Economizer) [CHW 20/30°C, OA 35°C]",
         "vendor": "Schneider Electric",
         "chiller_type": "air_cooled",
         "category": "Magnetic Bearing Centrifugal (Air-Cooled)",
@@ -3788,8 +3788,8 @@ window.DEVICE_CATALOG_BUILTIN_RAW = {
           "檔名標註送風單元，實為Uniflair氣冷磁懸浮離心式冰水機組（純氣冷XCAC，含經濟器Economizer，超低噪音UltraLow版）。進出水30/20°C，外氣乾球35°C。流體純水0%乙二醇，Q_calc驗算通過。總吸入功率含壓縮機與風扇，壓縮機額定FLI 132 kW/台，風扇FLI 3.3 kW/顆。"
         ]
       },
-      "Schneider Electric XCAF1212A (UltraLow Noise) [CHW 20/30°C, 外氣 35°C]": {
-        "model": "Schneider Electric XCAF1212A (UltraLow Noise) [CHW 20/30°C, 外氣 35°C]",
+      "Schneider Electric XCAF1212A (UltraLow Noise) [CHW 20/30°C, OA 35°C]": {
+        "model": "Schneider Electric XCAF1212A (UltraLow Noise) [CHW 20/30°C, OA 35°C]",
         "vendor": "Schneider Electric",
         "chiller_type": "air_cooled",
         "category": "Magnetic Bearing Centrifugal (Air-Cooled)",
@@ -3833,8 +3833,8 @@ window.DEVICE_CATALOG_BUILTIN_RAW = {
           "檔名標註送風單元，實為Uniflair氣冷磁懸浮離心式冰水機組（含自然冷卻盤管XCAF，無經濟器，超低噪音UltraLow版）。進出水30/20°C，外氣乾球35°C。流體20%乙二醇溶液，依鐵則check填null。總吸入功率含壓縮機與風扇，壓縮機額定FLI 132 kW/台，風扇FLI 3.3 kW/顆。"
         ]
       },
-      "Schneider Electric XCAF1913A (UltraLow Noise) [CHW 20/30°C, 外氣 35°C]": {
-        "model": "Schneider Electric XCAF1913A (UltraLow Noise) [CHW 20/30°C, 外氣 35°C]",
+      "Schneider Electric XCAF1913A (UltraLow Noise) [CHW 20/30°C, OA 35°C]": {
+        "model": "Schneider Electric XCAF1913A (UltraLow Noise) [CHW 20/30°C, OA 35°C]",
         "vendor": "Schneider Electric",
         "chiller_type": "air_cooled",
         "category": "Magnetic Bearing Centrifugal (Air-Cooled)",
@@ -3878,8 +3878,8 @@ window.DEVICE_CATALOG_BUILTIN_RAW = {
           "檔名標註送風單元，實為Uniflair氣冷磁懸浮離心式冰水機組（含自然冷卻盤管XCAF，無經濟器，超低噪音UltraLow版）。進出水30/20°C，外氣乾球35°C。流體20%乙二醇溶液，依鐵則check填null。總吸入功率含壓縮機與風扇，壓縮機額定FLI 132 kW/台，風扇FLI 3.3 kW/顆。"
         ]
       },
-      "Schneider Electric XCAF2524A (UltraLow Noise) [CHW 20/30°C, 外氣 35°C]": {
-        "model": "Schneider Electric XCAF2524A (UltraLow Noise) [CHW 20/30°C, 外氣 35°C]",
+      "Schneider Electric XCAF2524A (UltraLow Noise) [CHW 20/30°C, OA 35°C]": {
+        "model": "Schneider Electric XCAF2524A (UltraLow Noise) [CHW 20/30°C, OA 35°C]",
         "vendor": "Schneider Electric",
         "chiller_type": "air_cooled",
         "category": "Magnetic Bearing Centrifugal (Air-Cooled)",
@@ -3923,8 +3923,8 @@ window.DEVICE_CATALOG_BUILTIN_RAW = {
           "檔名標註送風單元，實為Uniflair氣冷磁懸浮離心式冰水機組（含自然冷卻盤管XCAF，無經濟器，超低噪音UltraLow版）。進出水30/20°C，外氣乾球35°C。流體20%乙二醇溶液，依鐵則check填null。總吸入功率含壓縮機與風扇，壓縮機額定FLI 132 kW/台，風扇FLI 3.3 kW/顆。"
         ]
       },
-      "Schneider Electric XCAF1212A (UltraLow Noise Economizer) [CHW 20/30°C, 外氣 35°C]": {
-        "model": "Schneider Electric XCAF1212A (UltraLow Noise Economizer) [CHW 20/30°C, 外氣 35°C]",
+      "Schneider Electric XCAF1212A (UltraLow Noise Economizer) [CHW 20/30°C, OA 35°C]": {
+        "model": "Schneider Electric XCAF1212A (UltraLow Noise Economizer) [CHW 20/30°C, OA 35°C]",
         "vendor": "Schneider Electric",
         "chiller_type": "air_cooled",
         "category": "Magnetic Bearing Centrifugal (Air-Cooled)",
@@ -3968,8 +3968,8 @@ window.DEVICE_CATALOG_BUILTIN_RAW = {
           "檔名標註送風單元，實為Uniflair氣冷磁懸浮離心式冰水機組（含自然冷卻盤管XCAF，含經濟器Economizer，超低噪音UltraLow版）。進出水30/20°C，外氣乾球35°C。流體20%乙二醇溶液，依鐵則check填null。總吸入功率含壓縮機與風扇，壓縮機額定FLI 132 kW/台，風扇FLI 3.3 kW/顆。"
         ]
       },
-      "Schneider Electric XCAF1913A (UltraLow Noise Economizer) [CHW 20/30°C, 外氣 35°C]": {
-        "model": "Schneider Electric XCAF1913A (UltraLow Noise Economizer) [CHW 20/30°C, 外氣 35°C]",
+      "Schneider Electric XCAF1913A (UltraLow Noise Economizer) [CHW 20/30°C, OA 35°C]": {
+        "model": "Schneider Electric XCAF1913A (UltraLow Noise Economizer) [CHW 20/30°C, OA 35°C]",
         "vendor": "Schneider Electric",
         "chiller_type": "air_cooled",
         "category": "Magnetic Bearing Centrifugal (Air-Cooled)",
@@ -4013,8 +4013,8 @@ window.DEVICE_CATALOG_BUILTIN_RAW = {
           "檔名標註送風單元，實為Uniflair氣冷磁懸浮離心式冰水機組（含自然冷卻盤管XCAF，含經濟器Economizer，超低噪音UltraLow版）。進出水30/20°C，外氣乾球35°C。流體20%乙二醇溶液，依鐵則check填null。總吸入功率含壓縮機與風扇，壓縮機額定FLI 132 kW/台，風扇FLI 3.3 kW/顆。"
         ]
       },
-      "Schneider Electric XCAF2524A (UltraLow Noise Economizer) [CHW 20/30°C, 外氣 35°C]": {
-        "model": "Schneider Electric XCAF2524A (UltraLow Noise Economizer) [CHW 20/30°C, 外氣 35°C]",
+      "Schneider Electric XCAF2524A (UltraLow Noise Economizer) [CHW 20/30°C, OA 35°C]": {
+        "model": "Schneider Electric XCAF2524A (UltraLow Noise Economizer) [CHW 20/30°C, OA 35°C]",
         "vendor": "Schneider Electric",
         "chiller_type": "air_cooled",
         "category": "Magnetic Bearing Centrifugal (Air-Cooled)",
@@ -6162,9 +6162,9 @@ window.DEVICE_CATALOG_BUILTIN_RAW = {
           "專案資訊略，報價號略，日期 2026/8/25。Operating mode: Dry（純乾式運行）。乾球 45.0 °C。純水流量 47.78 l/s = 172.008 m³/h，進出水 60.0/50.0 °C (ΔT=10 K)。散熱量 2,000 kW。風扇功率 (20) 3.21 = 64.20 kW/Unit (BHP 63.4 kW)。水壓降 408.80 kPa。運轉重 13,130 kg。純水驗算 Q_calc = 1.163 × 172.008 × 10 = 2000.45 kW (diff +0.023%)。"
         ]
       },
-      "Schneider Electric DSAF1200A [50→35°C, DB 30°C, 乙二醇 20%]": {
+      "Schneider Electric DSAF1200A [50→35°C, DB 30°C, glycol 20%]": {
         "category": "dry_cooler",
-        "model": "Schneider Electric DSAF1200A [50→35°C, DB 30°C, 乙二醇 20%]",
+        "model": "Schneider Electric DSAF1200A [50→35°C, DB 30°C, glycol 20%]",
         "vendor": "Schneider Electric",
         "heat_rejection_kw": 1773.4,
         "fan_kw_dx": 28.7,
@@ -6203,9 +6203,9 @@ window.DEVICE_CATALOG_BUILTIN_RAW = {
           "UNICALC vers. 11.1.11 選型計算書，日期 2026/8/7。工況：進出水 50.0/35.0 °C (ΔT=15 K)，含乙二醇 20.0%，外氣乾球 30.0 °C，相對濕度 50.0%。純乾式運行（Dry Cooler Only），絕熱狀態 OFF。製冷散熱量 1,773.4 kW，風機耗電 28.7 kW（轉速 83.1%），EER 61.77 kW/kW。因含乙二醇 20%，依鐵則 7 不以純水公式驗算，check 填 null。長 13380 mm，寬 2140 mm，高 2690 mm，重量 8,570 kg。"
         ]
       },
-      "Schneider Electric DSAF0800A (Dry) [32→20°C, DB 16°C, 乙二醇 20%]": {
+      "Schneider Electric DSAF0800A (Dry) [32→20°C, DB 16°C, glycol 20%]": {
         "category": "dry_cooler",
-        "model": "Schneider Electric DSAF0800A (Dry) [32→20°C, DB 16°C, 乙二醇 20%]",
+        "model": "Schneider Electric DSAF0800A (Dry) [32→20°C, DB 16°C, glycol 20%]",
         "vendor": "Schneider Electric",
         "heat_rejection_kw": 779,
         "fan_kw_dx": 23.9,
@@ -6244,9 +6244,9 @@ window.DEVICE_CATALOG_BUILTIN_RAW = {
           "技術規格書第 54 頁標準額定工況：進出水 32.0/20.0 °C (ΔT=12 K)，20% 乙二醇，外氣乾球 16.0 °C，相對濕度 50%。無絕熱系統純乾式運行（Basic Noise Version with Extra Fan Power Enabled）。EER 32.6。因含乙二醇 20%，依鐵則 7 不以純水公式驗算，check 填 null。"
         ]
       },
-      "Schneider Electric DSAF1000A (Dry) [32→20°C, DB 16°C, 乙二醇 20%]": {
+      "Schneider Electric DSAF1000A (Dry) [32→20°C, DB 16°C, glycol 20%]": {
         "category": "dry_cooler",
-        "model": "Schneider Electric DSAF1000A (Dry) [32→20°C, DB 16°C, 乙二醇 20%]",
+        "model": "Schneider Electric DSAF1000A (Dry) [32→20°C, DB 16°C, glycol 20%]",
         "vendor": "Schneider Electric",
         "heat_rejection_kw": 1021,
         "fan_kw_dx": 32.3,
@@ -6285,9 +6285,9 @@ window.DEVICE_CATALOG_BUILTIN_RAW = {
           "技術規格書第 54 頁標準額定工況：進出水 32.0/20.0 °C (ΔT=12 K)，20% 乙二醇，外氣乾球 16.0 °C，相對濕度 50%。無絕熱系統純乾式運行（Basic Noise Version with Extra Fan Power Enabled）。EER 31.61。因含乙二醇 20%，依鐵則 7 不以純水公式驗算，check 填 null。"
         ]
       },
-      "Schneider Electric DSAF1200A (Dry) [32→20°C, DB 16°C, 乙二醇 20%]": {
+      "Schneider Electric DSAF1200A (Dry) [32→20°C, DB 16°C, glycol 20%]": {
         "category": "dry_cooler",
-        "model": "Schneider Electric DSAF1200A (Dry) [32→20°C, DB 16°C, 乙二醇 20%]",
+        "model": "Schneider Electric DSAF1200A (Dry) [32→20°C, DB 16°C, glycol 20%]",
         "vendor": "Schneider Electric",
         "heat_rejection_kw": 1561,
         "fan_kw_dx": 47.8,
@@ -8434,9 +8434,9 @@ window.DEVICE_CATALOG_BUILTIN_RAW = {
         "generated_at": "2026-11-12",
         "note": "自動產生，勿手改；修正請改 _extracted 抽取檔後重跑腳本。所有記錄 _verified=true，出處見 _source。"
       },
-      "Motivair (Schneider) ChilledDoor M4 [CHW 12.78°C, 室溫 23.89°C]": {
+      "Motivair (Schneider) ChilledDoor M4 [CHW 12.78°C, room 23.89°C]": {
         "category": "RDHX",
-        "model": "Motivair (Schneider) ChilledDoor M4 [CHW 12.78°C, 室溫 23.89°C]",
+        "model": "Motivair (Schneider) ChilledDoor M4 [CHW 12.78°C, room 23.89°C]",
         "vendor": "Motivair (Schneider)",
         "unit_type": "rdhx_active",
         "cooling_capacity_kw": 12,
@@ -8470,9 +8470,9 @@ window.DEVICE_CATALOG_BUILTIN_RAW = {
           "因型錄水流量為 0-23 GPM 範圍值且未給出特定溫升數值，check.q_calc_kw 填 null。"
         ]
       },
-      "Motivair (Schneider) ChilledDoor M8 [CHW 12.78°C, 室溫 23.89°C]": {
+      "Motivair (Schneider) ChilledDoor M8 [CHW 12.78°C, room 23.89°C]": {
         "category": "RDHX",
-        "model": "Motivair (Schneider) ChilledDoor M8 [CHW 12.78°C, 室溫 23.89°C]",
+        "model": "Motivair (Schneider) ChilledDoor M8 [CHW 12.78°C, room 23.89°C]",
         "vendor": "Motivair (Schneider)",
         "unit_type": "rdhx_active",
         "cooling_capacity_kw": 30,
@@ -8506,9 +8506,9 @@ window.DEVICE_CATALOG_BUILTIN_RAW = {
           "因型錄水流量為 0-23 GPM 範圍值且未給出特定溫升數值，check.q_calc_kw 填 null。"
         ]
       },
-      "Motivair (Schneider) ChilledDoor M12 [CHW 12.78°C, 室溫 23.89°C]": {
+      "Motivair (Schneider) ChilledDoor M12 [CHW 12.78°C, room 23.89°C]": {
         "category": "RDHX",
-        "model": "Motivair (Schneider) ChilledDoor M12 [CHW 12.78°C, 室溫 23.89°C]",
+        "model": "Motivair (Schneider) ChilledDoor M12 [CHW 12.78°C, room 23.89°C]",
         "vendor": "Motivair (Schneider)",
         "unit_type": "rdhx_active",
         "cooling_capacity_kw": 45,
@@ -8542,9 +8542,9 @@ window.DEVICE_CATALOG_BUILTIN_RAW = {
           "因型錄水流量為 0-23 GPM 範圍值且未給出特定溫升數值，check.q_calc_kw 填 null。"
         ]
       },
-      "Motivair (Schneider) ChilledDoor M12-F [CHW 12.78°C, 室溫 23.89°C]": {
+      "Motivair (Schneider) ChilledDoor M12-F [CHW 12.78°C, room 23.89°C]": {
         "category": "RDHX",
-        "model": "Motivair (Schneider) ChilledDoor M12-F [CHW 12.78°C, 室溫 23.89°C]",
+        "model": "Motivair (Schneider) ChilledDoor M12-F [CHW 12.78°C, room 23.89°C]",
         "vendor": "Motivair (Schneider)",
         "unit_type": "rdhx_active",
         "cooling_capacity_kw": 55,
@@ -8578,9 +8578,9 @@ window.DEVICE_CATALOG_BUILTIN_RAW = {
           "因型錄水流量為 0-23 GPM 範圍值且未給出特定溫升數值，check.q_calc_kw 填 null。"
         ]
       },
-      "Motivair (Schneider) ChilledDoor M14 [CHW 12.78°C, 室溫 23.89°C]": {
+      "Motivair (Schneider) ChilledDoor M14 [CHW 12.78°C, room 23.89°C]": {
         "category": "RDHX",
-        "model": "Motivair (Schneider) ChilledDoor M14 [CHW 12.78°C, 室溫 23.89°C]",
+        "model": "Motivair (Schneider) ChilledDoor M14 [CHW 12.78°C, room 23.89°C]",
         "vendor": "Motivair (Schneider)",
         "unit_type": "rdhx_active",
         "cooling_capacity_kw": 65,
@@ -8614,9 +8614,9 @@ window.DEVICE_CATALOG_BUILTIN_RAW = {
           "因型錄水流量為 0-23 GPM 範圍值且未給出特定溫升數值，check.q_calc_kw 填 null。"
         ]
       },
-      "Motivair (Schneider) ChilledDoor M14-6 [CHW 12.78°C, 室溫 23.89°C]": {
+      "Motivair (Schneider) ChilledDoor M14-6 [CHW 12.78°C, room 23.89°C]": {
         "category": "RDHX",
-        "model": "Motivair (Schneider) ChilledDoor M14-6 [CHW 12.78°C, 室溫 23.89°C]",
+        "model": "Motivair (Schneider) ChilledDoor M14-6 [CHW 12.78°C, room 23.89°C]",
         "vendor": "Motivair (Schneider)",
         "unit_type": "rdhx_active",
         "cooling_capacity_kw": 70,
@@ -8650,9 +8650,9 @@ window.DEVICE_CATALOG_BUILTIN_RAW = {
           "因型錄水流量為 0-23 GPM 範圍值且未給出特定溫升數值，check.q_calc_kw 填 null。"
         ]
       },
-      "Motivair (Schneider) ChilledDoor M15 [CHW 12.78°C, 室溫 23.89°C]": {
+      "Motivair (Schneider) ChilledDoor M15 [CHW 12.78°C, room 23.89°C]": {
         "category": "RDHX",
-        "model": "Motivair (Schneider) ChilledDoor M15 [CHW 12.78°C, 室溫 23.89°C]",
+        "model": "Motivair (Schneider) ChilledDoor M15 [CHW 12.78°C, room 23.89°C]",
         "vendor": "Motivair (Schneider)",
         "unit_type": "rdhx_active",
         "cooling_capacity_kw": 70,
@@ -8686,9 +8686,9 @@ window.DEVICE_CATALOG_BUILTIN_RAW = {
           "因型錄水流量為 0-23 GPM 範圍值且未給出特定溫升數值，check.q_calc_kw 填 null。"
         ]
       },
-      "Motivair (Schneider) ChilledDoor M15-E [CHW 12.78°C, 室溫 23.89°C]": {
+      "Motivair (Schneider) ChilledDoor M15-E [CHW 12.78°C, room 23.89°C]": {
         "category": "RDHX",
-        "model": "Motivair (Schneider) ChilledDoor M15-E [CHW 12.78°C, 室溫 23.89°C]",
+        "model": "Motivair (Schneider) ChilledDoor M15-E [CHW 12.78°C, room 23.89°C]",
         "vendor": "Motivair (Schneider)",
         "unit_type": "rdhx_active",
         "cooling_capacity_kw": 70,
@@ -8722,9 +8722,9 @@ window.DEVICE_CATALOG_BUILTIN_RAW = {
           "因型錄水流量為 0-23 GPM 範圍值且未給出特定溫升數值，check.q_calc_kw 填 null。"
         ]
       },
-      "Motivair (Schneider) ChilledDoor M16 [CHW 12.78°C, 室溫 23.89°C]": {
+      "Motivair (Schneider) ChilledDoor M16 [CHW 12.78°C, room 23.89°C]": {
         "category": "RDHX",
-        "model": "Motivair (Schneider) ChilledDoor M16 [CHW 12.78°C, 室溫 23.89°C]",
+        "model": "Motivair (Schneider) ChilledDoor M16 [CHW 12.78°C, room 23.89°C]",
         "vendor": "Motivair (Schneider)",
         "unit_type": "rdhx_active",
         "cooling_capacity_kw": 75,

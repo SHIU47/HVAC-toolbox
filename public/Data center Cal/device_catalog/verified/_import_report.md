@@ -33,13 +33,13 @@
 ## 3. 換算值與 ⚠ 標記
 
 - 含換算值（`_derived`）：39 筆
-  - Vertiv CM4035SGHC003 [CHW 15/21°C, 外氣 35°C]：cop = 冷量 350 / 耗電 107.2（文件未直接列 COP）
-  - Vertiv CM4045SGHC003 [CHW 15/21°C, 外氣 35°C]：cop = 冷量 450 / 耗電 153.3（文件未直接列 COP）
-  - Vertiv CM4070SGHC003 [CHW 15/21°C, 外氣 35°C]：cop = 冷量 700 / 耗電 214.3（文件未直接列 COP）
-  - Vertiv CM4100SGHC003 [CHW 15/21°C, 外氣 35°C]：cop = 冷量 1000 / 耗電 317.6（文件未直接列 COP）
-  - Vertiv CM4150SGHC003 [CHW 15/21°C, 外氣 35°C]：cop = 冷量 1500 / 耗電 459.9（文件未直接列 COP）
-  - Vertiv CM4200SGHC003 [CHW 15/21°C, 外氣 35°C]：cop = 冷量 2000 / 耗電 607.7（文件未直接列 COP）
-  - King Sun KHAW-160F [CHW 10/15°C, 外氣 31.5°C]：cop = 冷量 474 / 耗電 147.1（文件未直接列 COP）
+  - Vertiv CM4035SGHC003 [CHW 15/21°C, OA 35°C]：cop = 冷量 350 / 耗電 107.2（文件未直接列 COP）
+  - Vertiv CM4045SGHC003 [CHW 15/21°C, OA 35°C]：cop = 冷量 450 / 耗電 153.3（文件未直接列 COP）
+  - Vertiv CM4070SGHC003 [CHW 15/21°C, OA 35°C]：cop = 冷量 700 / 耗電 214.3（文件未直接列 COP）
+  - Vertiv CM4100SGHC003 [CHW 15/21°C, OA 35°C]：cop = 冷量 1000 / 耗電 317.6（文件未直接列 COP）
+  - Vertiv CM4150SGHC003 [CHW 15/21°C, OA 35°C]：cop = 冷量 1500 / 耗電 459.9（文件未直接列 COP）
+  - Vertiv CM4200SGHC003 [CHW 15/21°C, OA 35°C]：cop = 冷量 2000 / 耗電 607.7（文件未直接列 COP）
+  - King Sun KHAW-160F [CHW 10/15°C, OA 31.5°C]：cop = 冷量 474 / 耗電 147.1（文件未直接列 COP）
   - Liang Chi LCC-S-50 [37→32°C, WB 27°C]：單台排熱 = 1.163 × 流量 39 m³/h × ΔT 5 K（型錄只列流量）
   - Liang Chi LCC-S-50-C2 [37→32°C, WB 27°C]：單台排熱 = 1.163 × 流量 78 m³/h × ΔT 5 K（型錄只列流量）
   - Liang Chi LCC-S-60 [37→32°C, WB 27°C]：單台排熱 = 1.163 × 流量 46.8 m³/h × ΔT 5 K（型錄只列流量）
@@ -81,43 +81,43 @@
 
 | 類別 | 新（已核對） | 容量 kW | COP | 耗電/風扇 kW | 既有型號（檔案） | 容量 kW | COP | 耗電/風扇 kW |
 |:--|:--|--:|--:|--:|:--|--:|--:|--:|
-| 冰水主機 | Vertiv CM4035SGHC003 [CHW 15/21°C, 外氣 35°C] | 350 | 3.26 | 107.2 | Vertiv CoolLoop CM4035SGHC003 350kW（chiller/vertiv.json） | 350 | 3.26 | 107.2 |
-| 冰水主機 | Vertiv CM4045SGHC003 [CHW 15/21°C, 外氣 35°C] | 450 | 2.94 | 153.3 | Vertiv CoolLoop CM4045SGHC003 450kW（chiller/vertiv.json） | 450 | 2.94 | 153.3 |
-| 冰水主機 | Vertiv CM4070SGHC003 [CHW 15/21°C, 外氣 35°C] | 700 | 3.27 | 214.3 | Vertiv CoolLoop CM4070SGHC003 700kW（chiller/vertiv.json） | 700 | 3.27 | 214.3 |
-| 冰水主機 | Vertiv CM4100SGHC003 [CHW 15/21°C, 外氣 35°C] | 1000 | 3.15 | 317.6 | Vertiv CoolLoop CM4100SGHC003 1000kW（chiller/vertiv.json） | 1000 | 3.15 | 317.6 |
-| 冰水主機 | Vertiv CM4150SGHC003 [CHW 15/21°C, 外氣 35°C] | 1500 | 3.26 | 459.9 | Vertiv CoolLoop CM4150SGHC003 1500kW（chiller/vertiv.json） | 1500 | 3.26 | 459.9 |
-| 冰水主機 | Vertiv CM4200SGHC003 [CHW 15/21°C, 外氣 35°C] | 2000 | 3.29 | 607.7 | Vertiv CoolLoop CM4200SGHC003 2000kW（chiller/vertiv.json） | 2000 | 3.29 | 607.7 |
-| 冰水主機 | Schneider Electric XCAF1913A (PEP) [CHW 20/30°C, 外氣 35°C] | 1805 | 4.07 | 443.1 | Uniflair XCAF1913A (含自然冷卻盤管)（chiller/schneider.json） | 1805.67 | 4.09 | 441.74 |
-| 冰水主機 | Schneider Electric XCAC1212A [CHW 20/30°C, 外氣 35°C] | 1295.97 | 4.38 | 295.91 | Uniflair XCAC1212A（chiller/schneider.json） | 1295.97 | 4.38 | 295.91 |
-| 冰水主機 | Schneider Electric XCAC1913A [CHW 20/30°C, 外氣 35°C] | 1872.27 | 4.29 | 436.59 | Uniflair XCAC1913A（chiller/schneider.json） | 1872.27 | 4.29 | 436.59 |
-| 冰水主機 | Schneider Electric XCAC2524A [CHW 20/30°C, 外氣 35°C] | 2482.2 | 4.24 | 585.2 | Uniflair XCAC2524A（chiller/schneider.json） | 2482.2 | 4.24 | 585.2 |
-| 冰水主機 | Schneider Electric XCAC1212A (Economizer) [CHW 20/30°C, 外氣 35°C] | 1313.37 | 4.45 | 295.08 | Uniflair XCAC1212A（chiller/schneider.json） | 1295.97 | 4.38 | 295.91 |
-| 冰水主機 | Schneider Electric XCAC1913A (Economizer) [CHW 20/30°C, 外氣 35°C] | 1912.36 | 4.41 | 434.09 | Uniflair XCAC1913A（chiller/schneider.json） | 1872.27 | 4.29 | 436.59 |
-| 冰水主機 | Schneider Electric XCAC2524A (Economizer) [CHW 20/30°C, 外氣 35°C] | 2656.5 | 4.53 | 585.94 | Uniflair XCAC2524A（chiller/schneider.json） | 2482.2 | 4.24 | 585.2 |
-| 冰水主機 | Schneider Electric XCAF1212A [CHW 20/30°C, 外氣 35°C] | 1256.83 | 4.18 | 300.55 | Uniflair XCAF1212A (含自然冷卻盤管)（chiller/schneider.json） | 1256.83 | 4.18 | 300.55 |
-| 冰水主機 | Schneider Electric XCAF1913A [CHW 20/30°C, 外氣 35°C] | 1805.67 | 4.09 | 441.74 | Uniflair XCAF1913A (含自然冷卻盤管)（chiller/schneider.json） | 1805.67 | 4.09 | 441.74 |
-| 冰水主機 | Schneider Electric XCAF2524A [CHW 20/30°C, 外氣 35°C] | 2387.7 | 4.07 | 587.11 | Uniflair XCAF2524A (含自然冷卻盤管)（chiller/schneider.json） | 2387.7 | 4.07 | 587.11 |
-| 冰水主機 | Schneider Electric XCAF1212A (Economizer) [CHW 20/30°C, 外氣 35°C] | 1284.59 | 4.31 | 297.8 | Uniflair XCAF1212A (含自然冷卻盤管)（chiller/schneider.json） | 1256.83 | 4.18 | 300.55 |
-| 冰水主機 | Schneider Electric XCAF1913A (Economizer) [CHW 20/30°C, 外氣 35°C] | 1867.13 | 4.22 | 442.1 | Uniflair XCAF1913A (含自然冷卻盤管)（chiller/schneider.json） | 1805.67 | 4.09 | 441.74 |
-| 冰水主機 | Schneider Electric XCAF2524A (Economizer) [CHW 20/30°C, 外氣 35°C] | 2562 | 4.35 | 588.35 | Uniflair XCAF2524A (含自然冷卻盤管)（chiller/schneider.json） | 2387.7 | 4.07 | 587.11 |
-| 冰水主機 | Schneider Electric XCAC1212A (UltraLow Noise) [CHW 20/30°C, 外氣 35°C] | 1242.12 | 4.45 | 279.17 | Uniflair XCAC1212A（chiller/schneider.json） | 1295.97 | 4.38 | 295.91 |
-| 冰水主機 | Schneider Electric XCAC1913A (UltraLow Noise) [CHW 20/30°C, 外氣 35°C] | 1776.63 | 4.29 | 414.25 | Uniflair XCAC1913A（chiller/schneider.json） | 1872.27 | 4.29 | 436.59 |
-| 冰水主機 | Schneider Electric XCAC2524A (UltraLow Noise) [CHW 20/30°C, 外氣 35°C] | 2341.5 | 4.24 | 552.89 | Uniflair XCAC2524A（chiller/schneider.json） | 2482.2 | 4.24 | 585.2 |
-| 冰水主機 | Schneider Electric XCAC1212A (UltraLow Noise Economizer) [CHW 20/30°C, 外氣 35°C] | 1279.47 | 4.6 | 278.14 | Uniflair XCAC1212A（chiller/schneider.json） | 1295.97 | 4.38 | 295.91 |
-| 冰水主機 | Schneider Electric XCAC1913A (UltraLow Noise Economizer) [CHW 20/30°C, 外氣 35°C] | 1851.09 | 4.44 | 417.36 | Uniflair XCAC1913A（chiller/schneider.json） | 1872.27 | 4.29 | 436.59 |
-| 冰水主機 | Schneider Electric XCAC2524A (UltraLow Noise Economizer) [CHW 20/30°C, 外氣 35°C] | 2478 | 4.6 | 538.73 | Uniflair XCAC2524A（chiller/schneider.json） | 2482.2 | 4.24 | 585.2 |
-| 冰水主機 | Schneider Electric XCAF1212A (UltraLow Noise) [CHW 20/30°C, 外氣 35°C] | 1193.04 | 4.25 | 280.96 | Uniflair XCAF1212A (含自然冷卻盤管)（chiller/schneider.json） | 1256.83 | 4.18 | 300.55 |
-| 冰水主機 | Schneider Electric XCAF1913A (UltraLow Noise) [CHW 20/30°C, 外氣 35°C] | 1698.02 | 4.07 | 417.58 | Uniflair XCAF1913A (含自然冷卻盤管)（chiller/schneider.json） | 1805.67 | 4.09 | 441.74 |
-| 冰水主機 | Schneider Electric XCAF2524A (UltraLow Noise) [CHW 20/30°C, 外氣 35°C] | 2194.5 | 4.08 | 537.98 | Uniflair XCAF2524A (含自然冷卻盤管)（chiller/schneider.json） | 2387.7 | 4.07 | 587.11 |
-| 冰水主機 | Schneider Electric XCAF1212A (UltraLow Noise Economizer) [CHW 20/30°C, 外氣 35°C] | 1244.46 | 4.41 | 282.33 | Uniflair XCAF1212A (含自然冷卻盤管)（chiller/schneider.json） | 1256.83 | 4.18 | 300.55 |
-| 冰水主機 | Schneider Electric XCAF1913A (UltraLow Noise Economizer) [CHW 20/30°C, 外氣 35°C] | 1790.24 | 4.26 | 419.91 | Uniflair XCAF1913A (含自然冷卻盤管)（chiller/schneider.json） | 1805.67 | 4.09 | 441.74 |
-| 冰水主機 | Schneider Electric XCAF2524A (UltraLow Noise Economizer) [CHW 20/30°C, 外氣 35°C] | 2284.8 | 4.49 | 509.11 | Uniflair XCAF2524A (含自然冷卻盤管)（chiller/schneider.json） | 2387.7 | 4.07 | 587.11 |
+| 冰水主機 | Vertiv CM4035SGHC003 [CHW 15/21°C, OA 35°C] | 350 | 3.26 | 107.2 | Vertiv CoolLoop CM4035SGHC003 350kW（chiller/vertiv.json） | 350 | 3.26 | 107.2 |
+| 冰水主機 | Vertiv CM4045SGHC003 [CHW 15/21°C, OA 35°C] | 450 | 2.94 | 153.3 | Vertiv CoolLoop CM4045SGHC003 450kW（chiller/vertiv.json） | 450 | 2.94 | 153.3 |
+| 冰水主機 | Vertiv CM4070SGHC003 [CHW 15/21°C, OA 35°C] | 700 | 3.27 | 214.3 | Vertiv CoolLoop CM4070SGHC003 700kW（chiller/vertiv.json） | 700 | 3.27 | 214.3 |
+| 冰水主機 | Vertiv CM4100SGHC003 [CHW 15/21°C, OA 35°C] | 1000 | 3.15 | 317.6 | Vertiv CoolLoop CM4100SGHC003 1000kW（chiller/vertiv.json） | 1000 | 3.15 | 317.6 |
+| 冰水主機 | Vertiv CM4150SGHC003 [CHW 15/21°C, OA 35°C] | 1500 | 3.26 | 459.9 | Vertiv CoolLoop CM4150SGHC003 1500kW（chiller/vertiv.json） | 1500 | 3.26 | 459.9 |
+| 冰水主機 | Vertiv CM4200SGHC003 [CHW 15/21°C, OA 35°C] | 2000 | 3.29 | 607.7 | Vertiv CoolLoop CM4200SGHC003 2000kW（chiller/vertiv.json） | 2000 | 3.29 | 607.7 |
+| 冰水主機 | Schneider Electric XCAF1913A (PEP) [CHW 20/30°C, OA 35°C] | 1805 | 4.07 | 443.1 | Uniflair XCAF1913A (含自然冷卻盤管)（chiller/schneider.json） | 1805.67 | 4.09 | 441.74 |
+| 冰水主機 | Schneider Electric XCAC1212A [CHW 20/30°C, OA 35°C] | 1295.97 | 4.38 | 295.91 | Uniflair XCAC1212A（chiller/schneider.json） | 1295.97 | 4.38 | 295.91 |
+| 冰水主機 | Schneider Electric XCAC1913A [CHW 20/30°C, OA 35°C] | 1872.27 | 4.29 | 436.59 | Uniflair XCAC1913A（chiller/schneider.json） | 1872.27 | 4.29 | 436.59 |
+| 冰水主機 | Schneider Electric XCAC2524A [CHW 20/30°C, OA 35°C] | 2482.2 | 4.24 | 585.2 | Uniflair XCAC2524A（chiller/schneider.json） | 2482.2 | 4.24 | 585.2 |
+| 冰水主機 | Schneider Electric XCAC1212A (Economizer) [CHW 20/30°C, OA 35°C] | 1313.37 | 4.45 | 295.08 | Uniflair XCAC1212A（chiller/schneider.json） | 1295.97 | 4.38 | 295.91 |
+| 冰水主機 | Schneider Electric XCAC1913A (Economizer) [CHW 20/30°C, OA 35°C] | 1912.36 | 4.41 | 434.09 | Uniflair XCAC1913A（chiller/schneider.json） | 1872.27 | 4.29 | 436.59 |
+| 冰水主機 | Schneider Electric XCAC2524A (Economizer) [CHW 20/30°C, OA 35°C] | 2656.5 | 4.53 | 585.94 | Uniflair XCAC2524A（chiller/schneider.json） | 2482.2 | 4.24 | 585.2 |
+| 冰水主機 | Schneider Electric XCAF1212A [CHW 20/30°C, OA 35°C] | 1256.83 | 4.18 | 300.55 | Uniflair XCAF1212A (含自然冷卻盤管)（chiller/schneider.json） | 1256.83 | 4.18 | 300.55 |
+| 冰水主機 | Schneider Electric XCAF1913A [CHW 20/30°C, OA 35°C] | 1805.67 | 4.09 | 441.74 | Uniflair XCAF1913A (含自然冷卻盤管)（chiller/schneider.json） | 1805.67 | 4.09 | 441.74 |
+| 冰水主機 | Schneider Electric XCAF2524A [CHW 20/30°C, OA 35°C] | 2387.7 | 4.07 | 587.11 | Uniflair XCAF2524A (含自然冷卻盤管)（chiller/schneider.json） | 2387.7 | 4.07 | 587.11 |
+| 冰水主機 | Schneider Electric XCAF1212A (Economizer) [CHW 20/30°C, OA 35°C] | 1284.59 | 4.31 | 297.8 | Uniflair XCAF1212A (含自然冷卻盤管)（chiller/schneider.json） | 1256.83 | 4.18 | 300.55 |
+| 冰水主機 | Schneider Electric XCAF1913A (Economizer) [CHW 20/30°C, OA 35°C] | 1867.13 | 4.22 | 442.1 | Uniflair XCAF1913A (含自然冷卻盤管)（chiller/schneider.json） | 1805.67 | 4.09 | 441.74 |
+| 冰水主機 | Schneider Electric XCAF2524A (Economizer) [CHW 20/30°C, OA 35°C] | 2562 | 4.35 | 588.35 | Uniflair XCAF2524A (含自然冷卻盤管)（chiller/schneider.json） | 2387.7 | 4.07 | 587.11 |
+| 冰水主機 | Schneider Electric XCAC1212A (UltraLow Noise) [CHW 20/30°C, OA 35°C] | 1242.12 | 4.45 | 279.17 | Uniflair XCAC1212A（chiller/schneider.json） | 1295.97 | 4.38 | 295.91 |
+| 冰水主機 | Schneider Electric XCAC1913A (UltraLow Noise) [CHW 20/30°C, OA 35°C] | 1776.63 | 4.29 | 414.25 | Uniflair XCAC1913A（chiller/schneider.json） | 1872.27 | 4.29 | 436.59 |
+| 冰水主機 | Schneider Electric XCAC2524A (UltraLow Noise) [CHW 20/30°C, OA 35°C] | 2341.5 | 4.24 | 552.89 | Uniflair XCAC2524A（chiller/schneider.json） | 2482.2 | 4.24 | 585.2 |
+| 冰水主機 | Schneider Electric XCAC1212A (UltraLow Noise Economizer) [CHW 20/30°C, OA 35°C] | 1279.47 | 4.6 | 278.14 | Uniflair XCAC1212A（chiller/schneider.json） | 1295.97 | 4.38 | 295.91 |
+| 冰水主機 | Schneider Electric XCAC1913A (UltraLow Noise Economizer) [CHW 20/30°C, OA 35°C] | 1851.09 | 4.44 | 417.36 | Uniflair XCAC1913A（chiller/schneider.json） | 1872.27 | 4.29 | 436.59 |
+| 冰水主機 | Schneider Electric XCAC2524A (UltraLow Noise Economizer) [CHW 20/30°C, OA 35°C] | 2478 | 4.6 | 538.73 | Uniflair XCAC2524A（chiller/schneider.json） | 2482.2 | 4.24 | 585.2 |
+| 冰水主機 | Schneider Electric XCAF1212A (UltraLow Noise) [CHW 20/30°C, OA 35°C] | 1193.04 | 4.25 | 280.96 | Uniflair XCAF1212A (含自然冷卻盤管)（chiller/schneider.json） | 1256.83 | 4.18 | 300.55 |
+| 冰水主機 | Schneider Electric XCAF1913A (UltraLow Noise) [CHW 20/30°C, OA 35°C] | 1698.02 | 4.07 | 417.58 | Uniflair XCAF1913A (含自然冷卻盤管)（chiller/schneider.json） | 1805.67 | 4.09 | 441.74 |
+| 冰水主機 | Schneider Electric XCAF2524A (UltraLow Noise) [CHW 20/30°C, OA 35°C] | 2194.5 | 4.08 | 537.98 | Uniflair XCAF2524A (含自然冷卻盤管)（chiller/schneider.json） | 2387.7 | 4.07 | 587.11 |
+| 冰水主機 | Schneider Electric XCAF1212A (UltraLow Noise Economizer) [CHW 20/30°C, OA 35°C] | 1244.46 | 4.41 | 282.33 | Uniflair XCAF1212A (含自然冷卻盤管)（chiller/schneider.json） | 1256.83 | 4.18 | 300.55 |
+| 冰水主機 | Schneider Electric XCAF1913A (UltraLow Noise Economizer) [CHW 20/30°C, OA 35°C] | 1790.24 | 4.26 | 419.91 | Uniflair XCAF1913A (含自然冷卻盤管)（chiller/schneider.json） | 1805.67 | 4.09 | 441.74 |
+| 冰水主機 | Schneider Electric XCAF2524A (UltraLow Noise Economizer) [CHW 20/30°C, OA 35°C] | 2284.8 | 4.49 | 509.11 | Uniflair XCAF2524A (含自然冷卻盤管)（chiller/schneider.json） | 2387.7 | 4.07 | 587.11 |
 | 冷卻水塔 | BAC FXV3-1426-24D-20 XE [45→35°C, WB 29.6°C] | 3002 | — | 15 | BAC FXV3-1426-24D-20 XE 6000kW (雙聯/2-Unit)（cooling_tower/bac.json） | 6004 | — | 30 |
 | 冷卻水塔 | BAC FXV3-1426-24D-20 XE [45→35°C, WB 29.6°C] | 3002 | — | 15 | BAC FXV3-1426-24D-20 XE 3000kW (單格/1-Unit)（cooling_tower/bac.json） | 3002 | — | 15 |
 | 冷卻水塔 | BAC FXV3-1426-28D-40 [50→32°C, WB 29°C] | 2888 | — | 30 | BAC FXV3-1426-28D-40（cooling_tower/bac.json） | 2888 | — | 11.3 |
 | 乾冷器 | BAC TDFS1238N-C60ET30B [50→40°C, DB 36.2°C] | 2514.5 | — | 89.48 | BAC TrilliumSeries TDFS1238N-C60ET30B（dry_cooler.json） | 2514.5 | — | 89.48 |
-| 乾冷器 | Schneider Electric DSAF1200A [50→35°C, DB 30°C, 乙二醇 20%] | 1773.4 | — | 28.7 | Schneider Uniflair DSAF1200A（dry_cooler.json） | 1773.4 | — | 46.6 |
-| 乾冷器 | Schneider Electric DSAF1200A (Dry) [32→20°C, DB 16°C, 乙二醇 20%] | 1561 | — | 47.8 | Schneider Uniflair DSAF1200A（dry_cooler.json） | 1773.4 | — | 46.6 |
+| 乾冷器 | Schneider Electric DSAF1200A [50→35°C, DB 30°C, glycol 20%] | 1773.4 | — | 28.7 | Schneider Uniflair DSAF1200A（dry_cooler.json） | 1773.4 | — | 46.6 |
+| 乾冷器 | Schneider Electric DSAF1200A (Dry) [32→20°C, DB 16°C, glycol 20%] | 1561 | — | 47.8 | Schneider Uniflair DSAF1200A（dry_cooler.json） | 1773.4 | — | 46.6 |
 | CDU | Vertiv CoolChip CDU2300 | 2300 | — | 47.8 | Vertiv CoolChip CDU2300（cdu_xdu.json） | 2300 | — | 47.8 |
 | 風牆/InRow | Schneider Electric Uniflair FWCV36L1* (Fan Type A, Glycol 0%, EU4) [CHW 20/30°C, RA 37°C] | 192.5 | — | 10.2 | Uniflair FWCV36L1A（crac_crah/schneider.json） | 202.7 | — | 10.2 |
 | 風牆/InRow | Schneider Electric Uniflair FWCV36L1* (Fan Type B, Glycol 0%, EU4) [CHW 20/30°C, RA 37°C] | 192.5 | — | 9.7 | Uniflair FWCV36L1A（crac_crah/schneider.json） | 202.7 | — | 10.2 |

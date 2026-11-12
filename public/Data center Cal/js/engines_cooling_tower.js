@@ -92,7 +92,9 @@ const CoolingTowerEngine = {
   deratedCapacityKW(spec, wb_design) {
     const nominal_kw = spec?.heat_rejection_kw ?? 0;
     if (nominal_kw <= 0) return { derated_kw: 0, nominal_kw: 0, derate_factor: 1.0 };
-    const std_wb    = A('ct_standard_rating_wb_c');
+    // V11 Phase 3：已核對型號帶有選型報告的額定濕球溫（spec.rated_wb_c），以其為降額基準；
+    //   舊型錄沒有此欄位，沿用 CTI 標準額定 WB。
+    const std_wb    = (typeof spec?.rated_wb_c === 'number' && isFinite(spec.rated_wb_c)) ? spec.rated_wb_c : A('ct_standard_rating_wb_c');
     const pct_per_c = A('ct_rerate_pct_per_c_above_std');
     const factor = Math.max(0.5, 1 - (pct_per_c / 100) * Math.max(0, (wb_design ?? std_wb) - std_wb));
     return { derated_kw: nominal_kw * factor, nominal_kw, derate_factor: factor };

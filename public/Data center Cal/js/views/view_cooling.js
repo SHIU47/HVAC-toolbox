@@ -1924,18 +1924,37 @@ ${inputsHtml}
                 for (let i = 0; i < ka.length; i++) if (ka[i] !== kb[i]) return ka[i] - kb[i];
                 return 0;
             });
-            return cats.map(c => {
+            // V11 Phase 3：已核對型號（device_catalog/verified）分組：工況相符 → 工況不符 → 未核對（舊型錄）
+            const SE = window.SizingEngine;
+            const isVer = (c) => !!(SE && SE.isVerifiedModel && SE.isVerifiedModel(c));
+            const anyVerified = cats.some(isVer);
+            const issuesOf = (c) => (byModel.get(c.model)?.issues) || [];
+            const group = (c) => !isVer(c) ? 2 : (issuesOf(c).length ? 1 : 0);
+            const optHtml = (c) => {
                 const p = byModel.get(c.model);
-                const vendor = c.vendor ? '[' + c.vendor + '] ' : '';
-                const warn = (c._verified === false || !c._source) ? '⚠ ' : '';
+                const vendor = c.vendor && !String(c.model).startsWith(String(c.vendor).split(' ')[0]) ? '[' + c.vendor + '] ' : '';
+                const ver = isVer(c);
+                const warn = ver ? _t('cooling.optVerified', null, '✔ ')
+                    : ((c._verified === false || !c._source) ? '⚠ ' : '');
                 let tail = ' (' + c.capKw + ' kW)';
                 if (p && item.requiredKw > 0) {
                     tail = _t('cooling.optTail', { cap: c.capKw, n: p.units, m: p.marginPct == null ? '—' : p.marginPct.toFixed(0) }, `｜${c.capKw} kW｜需 ${p.units} 台｜餘裕 ${p.marginPct == null ? '—' : p.marginPct.toFixed(0)}%`)
                         + (isPump && p.headOk === false ? _t('cooling.optHeadShort', null, '｜揚程不足') : '');
                 }
+                if (ver && issuesOf(c).length) tail += _t('cooling.optMismatch', null, '｜⚠ 工況不符');
+                if (anyVerified && !ver) tail += _t('cooling.optUnverified', null, '（未核對）');
                 const label = (fav(c.model) ? '★ ' : '') + warn + vendor + c.model + tail;
                 const safe = String(label).replace(/&/g, '&amp;').replace(/</g, '&lt;');
-                return `<option value="${String(c.model).replace(/"/g, '&quot;')}" ${c.model === item.selectedModel ? 'selected' : ''}>${safe}</option>`;
+                const tip = ver ? (issuesOf(c).join('；') || c._source || '') : '';
+                const title = tip ? ` title="${String(tip).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;')}"` : '';
+                return `<option value="${String(c.model).replace(/"/g, '&quot;')}"${title} ${c.model === item.selectedModel ? 'selected' : ''}>${safe}</option>`;
+            };
+            if (!anyVerified) return cats.map(optHtml).join('');
+            const labels = [_t('cooling.grpVerified', null, '✔ 已核對（額定工況相符）'), _t('cooling.grpMismatch', null, '✔ 已核對，但額定工況與設計不符'), _t('cooling.grpLegacy', null, '未核對（舊型錄）')];
+            return [0, 1, 2].map(g => {
+                const list = cats.filter(c => group(c) === g);
+                if (!list.length) return '';
+                return `<optgroup label="${labels[g].replace(/"/g, '&quot;')}">${list.map(optHtml).join('')}</optgroup>`;
             }).join('');
         },
 
@@ -1958,6 +1977,9 @@ ${inputsHtml}
                     if (!pc.motorOk) notes.push(_t('cooling.pumpMotorShort', null, '馬達功率不足'));
                     if (!pc.flowOk) notes.push(_t('cooling.pumpFlowShort', null, '流量不足'));
                     if (!pc.headOk) notes.push(_t('cooling.pumpHeadShort', null, '揚程不足'));
+                }
+                if (Array.isArray(item.ratingIssues) && item.ratingIssues.length && item.requiredKw > 0) {
+                    infos.push(_t('cooling.ratingMismatchInfo', { list: item.ratingIssues.join('；') }, `額定工況不符：${item.ratingIssues.join('；')}，型錄容量不宜直接套用`));
                 }
                 if (item.key === 'trim_chiller' && item.maxMechanicalKw !== undefined && item.maxMechanicalPassed === false) {
                     // Trim 冰機本來就不是設計成全機械製冷，Mode 3 不足只是提示，不算不合格

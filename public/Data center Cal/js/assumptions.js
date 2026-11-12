@@ -143,6 +143,20 @@ const ASSUMPTIONS = {
     label_en: 'Cooling tower CTI standard rating wet bulb temperature (78°F)',
     ref: 'CTI ATC-105 標準額定條件'
   },
+  // V11 Phase 3：已核對型號（型錄選型報告，各有額定工況）與專案設計工況的比對容許差。
+  //   超出者不參與自動選型，選單標「工況不符」，仍可手動選。屬工程判斷值，非標準條文。
+  verified_rating_temp_tol_k: {
+    val: 3.0, unit: 'K',
+    label: '已核對型號額定水溫與專案設計水溫的容許差（出水溫／冰水供水溫）',
+    label_en: 'Allowed difference between a verified model\'s rated water temperature and the design value',
+    ref: '⚠ 工程判斷值（AI 擬定、使用者授權，2026-11-12）：型錄容量隨水溫變化，差距超過約 3 K 時額定容量不宜直接套用'
+  },
+  verified_rating_ambient_tol_k: {
+    val: 2.0, unit: 'K',
+    label: '已核對型號額定外氣（DB/WB）可低於案場設計外氣的容許差',
+    label_en: 'Allowed amount a verified model\'s rated ambient (DB/WB) may be below the site design value',
+    ref: '⚠ 工程判斷值（AI 擬定、使用者授權，2026-11-12）：額定外氣低於設計外氣時，設計日實際容量低於型錄值'
+  },
   design_wb_fallback_c: {
     val: 28.0, unit: '°C',
     label: '無氣象逐時資料可查時的設計濕球溫度後備值（設備選型降額用）',

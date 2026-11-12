@@ -140,7 +140,7 @@ for (const m of load('02_chiller')) {
     const units = num(r.units_in_selection) || 1;
     const isAir = v.chiller_type === 'air_cooled';
     const tCond = isAir ? num(r.ambient_c) : num(r.cond_in_c);
-    const cond = isAir ? (tCond != null ? `外氣 ${tCond}°C` : '外氣 ?') : (tCond != null ? `冷卻水 ${tCond}°C` : '冷卻水 ?');
+    const cond = isAir ? (tCond != null ? `OA ${tCond}°C` : 'OA ?') : (tCond != null ? `CW ${tCond}°C` : 'CW ?');
     const tag = `CHW ${r.chws_c ?? '?'}/${r.chwr_c ?? '?'}°C, ${cond}`;
     const name = uniqueName(`${displayName(m)} [${tag}]`);
     out.chiller[name] = {
@@ -217,7 +217,7 @@ for (const m of load('04_dry_cooler')) {
     const q = num(v.heat_rejection_kw_per_unit) ?? (num(v.heat_rejection_kw_total) != null ? v.heat_rejection_kw_total / units : null);
     const fan = num(v.fan_kw);
     if (!q || !fan) { skip(F, m, '缺排熱量或風扇功率'); continue; }
-    const tag = `${r.fluid_in_c}→${r.fluid_out_c}°C, DB ${r.design_db_c}°C${r.glycol_pct ? ', 乙二醇 ' + r.glycol_pct + '%' : ''}`;
+    const tag = `${r.fluid_in_c}→${r.fluid_out_c}°C, DB ${r.design_db_c}°C${r.glycol_pct ? ', glycol ' + r.glycol_pct + '%' : ''}`;
     const name = uniqueName(`${displayName(m)} [${tag}]`);
     out.dry_cooler[name] = {
         category: 'dry_cooler',
@@ -312,7 +312,7 @@ for (const m of load('07_08_inrow_rdhx')) {
     if (t === 'rdhx_active' || t === 'rdhx_passive') {
         const cap = num(v.total_cooling_kw), fan = num(v.fan_power_kw);
         if (!cap || fan == null) { skip(F, m, '缺冷量或風扇功率'); continue; }
-        const name = uniqueName(`${displayName(m)} [CHW ${r.chw_in_c ?? '?'}°C, 室溫 ${r.return_air_db_c ?? '?'}°C]`);
+        const name = uniqueName(`${displayName(m)} [CHW ${r.chw_in_c ?? '?'}°C, room ${r.return_air_db_c ?? '?'}°C]`);
         out.rdhx[name] = {
             category: 'RDHX',
             model: name,

@@ -175,14 +175,89 @@
         //   排序鍵（依序比較）：運轉台數 > 8 排後 → 超量比 > 2 排後 → 上次選型優先 → 常用設備優先 → 運轉台數最少 → 超量比最小
         //   （上次選型／常用設備只有在台數與超量比都合理時才會被優先採用）
         //   運轉台數 N = ceil(需求 ÷ (單機容量 × 降額))；超量比 = N × 單機有效容量 ÷ 需求
-        _maybeAutoSelect(s, derateOf) {
+        // V11 Phase 3：已核對型號（device_catalog/verified，來自原廠選型報告）各有自己的額定工況。
+        //   與專案設計工況比對，回傳不相符的項目（空陣列＝相符）。資料缺漏的條件不判定。
+        //   舊型錄（未核對、無額定工況欄位）不檢查，回傳 []。
+        isVerifiedModel(c) { return !!(c && c._extracted_from); },
+        ratingIssues(c, key, sys, designCond, liquid) {
+            if (!this.isVerifiedModel(c)) return [];
+            const A = (k, fb) => (typeof root.A === 'function' ? (Number(root.A(k)) || fb) : fb);
+            const tolT = A('verified_rating_temp_tol_k', 3.0), tolAmb = A('verified_rating_ambient_tol_k', 2.0);
+            const sy = sys || {}, dc = designCond || {};
+            const num = (v) => (typeof v === 'number' && isFinite(v)) ? v : null;
+            const out = [];
+            const f1 = (v) => Number(v).toFixed(1).replace(/\.0$/, '');
+            const waterCheck = (rated, design, label) => {
+                if (num(rated) == null || num(design) == null) return;
+                if (Math.abs(rated - design) > tolT) out.push(t('sizing.ratingWater', { what: label, r: f1(rated), d: f1(design) }, `${label} 額定 ${f1(rated)}°C／設計 ${f1(design)}°C`));
+            };
+            const ambCheck = (rated, design, label) => {
+                if (num(rated) == null || num(design) == null) return;
+                if (rated < design - tolAmb) out.push(t('sizing.ratingAmbient', { what: label, r: f1(rated), d: f1(design) }, `額定 ${label} ${f1(rated)}°C 低於設計 ${f1(design)}°C`));
+            };
+            const glycolCheck = () => {
+                const g = num(c.glycol_pct);
+                if (g != null && g > 0) out.push(t('sizing.ratingGlycol', { g }, `額定含乙二醇 ${g}%（專案以清水計）`));
+            };
+            const isLiquid = (typeof liquid === 'boolean') ? liquid : (num(sy.fwsSupplyC) != null);
+            switch (key) {
+                case 'cdu_unit':
+                    if (num(c.approach_c) != null && num(sy.cduApproachC) != null && c.approach_c > sy.cduApproachC + 0.5)
+                        out.push(t('sizing.ratingApproach', { r: f1(c.approach_c), d: f1(sy.cduApproachC) }, `額定 approach ${f1(c.approach_c)} K 大於設計 ${f1(sy.cduApproachC)} K`));
+                    waterCheck(c.secondary_supply_c, sy.secSupplyC, t('sizing.ratingSecSup', null, '二次側供水'));
+                    waterCheck(c.primary_supply_c, sy.fwsSupplyC, t('sizing.ratingPriSup', null, '一次側供水'));
+                    glycolCheck();
+                    break;
+                case 'cooling_tower':
+                case 'adiabatic_tower':
+                    if (isLiquid) waterCheck(c.fluid_temp_out_c, sy.fwsSupplyC, t('sizing.ratingOutlet', null, '出水溫'));
+                    ambCheck(c.wet_bulb_design_c, dc.designWb, 'WB');
+                    glycolCheck();
+                    break;
+                case 'dry_cooler':
+                    waterCheck(c.fluid_temp_out_c, sy.fwsSupplyC, t('sizing.ratingOutlet', null, '出水溫'));
+                    ambCheck(c.design_db_c, dc.designDb, 'DB');
+                    glycolCheck();
+                    break;
+                case 'trim_chiller':
+                case 'water_cooled_chiller':
+                case 'air_cooled_chiller':
+                    waterCheck(c.t_chws_c, isLiquid ? sy.fwsSupplyC : sy.chwSupplyC, t('sizing.ratingChws', null, '冰水出水溫'));
+                    if (c.chiller_type === 'air_cooled') ambCheck(c.t_cewt_design_c, dc.designDb, 'DB');
+                    else if (num(c.t_cewt_design_c) == null) out.push(t('sizing.ratingNoCond', null, '額定冷卻水溫未載明'));
+                    glycolCheck();
+                    break;
+                case 'crah_unit':
+                    waterCheck(c.chwInletTempC, sy.chwSupplyC, t('sizing.ratingChwIn', null, '冰水進水溫'));
+                    break;
+                case 'rdhx_unit':
+                    waterCheck(c.chw_supply_temp_c, sy.chwSupplyC, t('sizing.ratingChwIn', null, '冰水進水溫'));
+                    break;
+                default: break;
+            }
+            return out;
+        },
+
+        _maybeAutoSelect(s, derateOf, rctx) {
             if (!s || !s.autoSelectRequested || this.isPumpItem(s)) return;
             const req = Number(s.requiredKw || 0);
-            // V11 Phase 2：已核對型錄（_extracted_from）各有自己的額定工況，自動選型的工況比對規則尚未定案，
-            //   暫不納入自動選型（仍可手動選）；沒有其他候選時才使用。
+            // V11 Phase 3：自動選型優先從「已核對且額定工況相符」的型號選；沒有相符者才用舊型錄（未核對）。
+            //   工況不符的已核對型號不參與自動選型（仍可手動選）。
             const all = (s.catalog || []).filter(c => Number(c.capKw) > 0);
-            const legacy = all.filter(c => !c._extracted_from);
-            const cands = legacy.length ? legacy : all;
+            const r = rctx || {};
+            //   已核對型號還須「尺寸合理」（運轉台數 ≤ 8、超量比 ≤ 2，與下方排序鍵同一門檻），
+            //   否則（例如只有一款 2.9 倍大的相符機型）改用舊型錄，避免為了「已核對」選到過大設備。
+            const fitOk = (c) => {
+                let d = 1.0;
+                try { d = Number(derateOf(c)) || 1.0; } catch (_) { d = 1.0; }
+                const eff = c.capKw * d;
+                if (!(eff > 0) || !(req > 0)) return false;
+                const n = Math.max(1, Math.ceil(req / eff));
+                return n <= 8 && (n * eff / req) <= 2;
+            };
+            const verifiedOk = all.filter(c => this.isVerifiedModel(c) && this.ratingIssues(c, s.key, r.sys, r.designCond, r.liquid).length === 0 && fitOk(c));
+            const legacy = all.filter(c => !this.isVerifiedModel(c));
+            const cands = verifiedOk.length ? verifiedOk : (legacy.length ? legacy : all);
             if (!(req > 0) || !cands.length) return;
             s.autoSelectRequested = false;
             let best = null, bestKey = null;
@@ -228,18 +303,23 @@
 
         // V10 Phase 8：型號下拉預覽。每個型錄型號在目前需求下「需要幾台、有效容量、餘裕」，
         //   與評估流程用同一個降額函式與冗餘規則；畫面只讀 s.optionPreview，不自行計算。
-        _buildPreview(s, derateOf) {
+        _buildPreview(s, derateOf, rctx) {
             const req = Number(s.requiredKw || 0);
             const red = s.redundancy || 'N+1';
+            const r = rctx || {};
             s.optionPreview = (s.catalog || []).filter(c => Number(c.capKw) > 0).map(c => {
                 let d = 1.0;
                 try { d = Number(derateOf(c)) || 1.0; } catch (_) { d = 1.0; }
-                if (!(req > 0)) return { model: c.model, capKw: c.capKw, derate: d, units: 0, effCapKw: 0, marginPct: null, feasible: true };
+                const verified = this.isVerifiedModel(c);
+                const issues = this.ratingIssues(c, s.key, r.sys, r.designCond, r.liquid);
+                if (!(req > 0)) return { model: c.model, capKw: c.capKw, derate: d, units: 0, effCapKw: 0, marginPct: null, feasible: true, verified, issues };
                 const units = this.requiredQty(req, c.capKw, d, red);
                 const run = Math.max(0, units - this.standbyUnits(units, red));
                 const eff = run * c.capKw * d;
-                return { model: c.model, capKw: c.capKw, derate: d, units, effCapKw: eff, marginPct: (eff / req - 1) * 100, feasible: eff >= req };
+                return { model: c.model, capKw: c.capKw, derate: d, units, effCapKw: eff, marginPct: (eff / req - 1) * 100, feasible: eff >= req, verified, issues };
             });
+            const sel = (s.catalog || []).find(c => c.model === s.selectedModel);
+            s.ratingIssues = sel ? this.ratingIssues(sel, s.key, r.sys, r.designCond, r.liquid) : [];
         },
 
         _buildPumpPreview(s, red) {
@@ -487,19 +567,19 @@
                     const d = root.ChillerEngine.deratedCapacityKW(spec, cduSys.fwsSupplyC || 40.0, T_cewt, designCond.designDb);
                     derateFactor = d.derate_factor;
                 } else if ((s.key === 'cooling_tower' || s.key === 'closed_tower' || s.key === 'adiabatic_tower') && typeof root.CoolingTowerEngine !== 'undefined') {
-                    const spec = { heat_rejection_kw: curItem.capKw || curItem.heat_rejection_kw };
+                    const spec = { heat_rejection_kw: curItem.capKw || curItem.heat_rejection_kw, rated_wb_c: curItem.wet_bulb_design_c };
                     const d = root.CoolingTowerEngine.deratedCapacityKW(spec, designCond.designWb);
                     derateFactor = d.derate_factor;
                 }
                 return derateFactor;
                 };
-                SizingEngine._maybeAutoSelect(s, derateOf);
+                SizingEngine._maybeAutoSelect(s, derateOf, { sys: cduSys, designCond, liquid: true });
                 const curItem = (s.catalog && Array.isArray(s.catalog))
                     ? (s.catalog.find(c => c.model === s.selectedModel) || s.catalog[0] || { capKw: s.unitCapKw || 100 })
                     : { capKw: s.unitCapKw || 100 };
                 s.unitCapKw = curItem.capKw;
                 s.derateFactor = Math.round(derateOf(curItem) * 1000) / 1000;
-                SizingEngine._buildPreview(s, derateOf);
+                SizingEngine._buildPreview(s, derateOf, { sys: cduSys, designCond, liquid: true });
                 const red = s.redundancy || 'N+1';
                 s.redundancy = red;
                 if (!s.runMode) s.runMode = 'standby';
@@ -563,19 +643,19 @@
                     const d = root.ChillerEngine.deratedCapacityKW(spec, fwSys.chwSupplyC || 12.0, T_cewt, designCond.designDb);
                     derateFactor = d.derate_factor;
                 } else if (s.key === 'cooling_tower' && typeof root.CoolingTowerEngine !== 'undefined') {
-                    const spec = { heat_rejection_kw: curItem.capKw || curItem.heat_rejection_kw };
+                    const spec = { heat_rejection_kw: curItem.capKw || curItem.heat_rejection_kw, rated_wb_c: curItem.wet_bulb_design_c };
                     const d = root.CoolingTowerEngine.deratedCapacityKW(spec, designCond.designWb);
                     derateFactor = d.derate_factor;
                 }
                 return derateFactor;
                 };
-                SizingEngine._maybeAutoSelect(s, derateOf);
+                SizingEngine._maybeAutoSelect(s, derateOf, { sys: fwSys, designCond, liquid: false });
                 const curItem = (s.catalog && Array.isArray(s.catalog))
                     ? (s.catalog.find(c => c.model === s.selectedModel) || s.catalog[0] || { capKw: s.unitCapKw || 100 })
                     : { capKw: s.unitCapKw || 100 };
                 s.unitCapKw = curItem.capKw;
                 s.derateFactor = Math.round(derateOf(curItem) * 1000) / 1000;
-                SizingEngine._buildPreview(s, derateOf);
+                SizingEngine._buildPreview(s, derateOf, { sys: fwSys, designCond, liquid: false });
                 const red = s.redundancy || 'N+1';
                 s.redundancy = red;
                 if (!s.runMode) s.runMode = 'standby';

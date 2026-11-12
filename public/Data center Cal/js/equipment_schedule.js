@@ -162,10 +162,13 @@
                             spec,
                             source: (c && c._source) || null,
                             verified: c ? (c._verified === true ? true : (c._verified === false ? false : null)) : null,
-                            aiConfidence: (c && Number.isFinite(Number(c._ai_confidence))) ? Number(c._ai_confidence) : null
+                            aiConfidence: (c && Number.isFinite(Number(c._ai_confidence))) ? Number(c._ai_confidence) : null,
+                            fromVendorData: !!(c && c._extracted_from),   // V11：來自原廠選型報告（device_catalog/verified）
+                            ratingIssues: []
                         };
                         map.set(key, row);
                     }
+                    (Array.isArray(s.ratingIssues) ? s.ratingIssues : []).forEach(x => { if (!row.ratingIssues.includes(x)) row.ratingIssues.push(x); });
                     row.qtyTotal += qty;
                     row.qtyRunning += running;
                     row.qtyStandby += standby;
@@ -180,6 +183,7 @@
                 if (!r.source) warnings.push({ type: 'noSource', label: r.label, model: r.model });
                 else if (r.verified === false) warnings.push({ type: 'unverified', label: r.label, model: r.model });
                 if (r.unitPowerKw == null) warnings.push({ type: 'noPower', label: r.label, model: r.model });
+                if (r.ratingIssues.length) warnings.push({ type: 'ratingMismatch', label: r.label, model: r.model, issues: r.ratingIssues });
                 return r;
             });
             // 排序：主機房 → 終端；同區依分組、key

@@ -98,7 +98,7 @@
                 },
                 derate: (curItem, ctx) => {
                     if (typeof root.CoolingTowerEngine === 'undefined') return 1.0;
-                    const spec = { heat_rejection_kw: curItem.capKw || curItem.heat_rejection_kw };
+                    const spec = { heat_rejection_kw: curItem.capKw || curItem.heat_rejection_kw, rated_wb_c: curItem.wet_bulb_design_c };
                     return root.CoolingTowerEngine.deratedCapacityKW(spec, ctx.designCond.designWb)?.derate_factor ?? 1.0;
                 }
             },
