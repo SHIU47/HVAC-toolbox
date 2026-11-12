@@ -88,7 +88,7 @@
 | Phase | 狀態 | commit |
 |:--|:--|:--|
 | 1 | ✅ 完成（2026-11-12） | 見 git log `V11 Phase 1` |
-| 2 | 未開始 | |
+| 2 | ✅ 完成（2026-11-12） | 見 git log `V11 Phase 2` |
 | 3 | 未開始 | |
 | 4 | 未開始 | |
 
@@ -116,3 +116,15 @@
 1. `js/store.js` 的 `resolveChillerFromSizing()` 沒有把型錄的 `t_cewt_design_c` 傳給 ChillerEngine，引擎一律用預設值（氣冷 35 °C、水冷 30 °C）當額定冷凝溫度。已核對資料中，額定外氣不是 35 °C 的機型（Mitsubishi i-FR2 40 °C、King Sun 31.5 °C）會受影響。建議在 Phase 2 一併修正（只影響選用這些新型號的專案，舊型錄沒有填這個欄位）。
 2. 密閉式水塔噴淋泵耗電用的是假設比例 `closed_tower_spray_pump_kw_per_kw`（約 5.5 W/kW），沒有讀型錄值。型錄實際值：BAC FXV3-1426-28D-40 為 11/2888 = 3.8 W/kW，良機 LCC-S-50 為 1.49/227 = 6.6 W/kW。改用型錄值屬於 B 項，之後另外處理。
 3. 抽取檔中有 25 筆風牆（STULZ CyberWall 等）缺風扇功率，32 筆 Motivair MCDU 缺耗電，都沒有匯入。要補的話，需要找原廠更完整的資料。
+
+## 9. Phase 2 結果（2026-11-12）
+
+- `catalog_index.json` 六個類別各加一筆 `verified/*.json`（排在既有檔案之後，既有選單順序不變）；已重建 `js/device_catalog_builtin.js`。
+- `js/store.js` `resolveChillerFromSizing()` 改為傳入 `t_cewt_design_c`（修正 8.2-1）。既有型錄的值都等於引擎預設 30/35 °C，所以結果不變。
+- **暫時措施**：`js/sizing/sizing_engine.js` `_maybeAutoSelect()` 先排除已核對型號（`_extracted_from`），只能手動選。原因：接入後實測，預設新專案（FWS 41/51 °C、高雄）的乾冷器會被自動選成 DSAF1000A [32→20 °C, DB 16 °C]，額定工況跟設計日差很多，容量不能直接套用。自動選型要怎麼比對工況，待使用者決定（見 §10）。
+- 驗證：unit_checks 291/291；`run.js --compare baseline_after_V10_A.json` 140 組無差異；泰國兩案 PUE 1.137／1.161 不變。
+
+## 10. 待決定：已核對型號的額定工況比對
+已核對型號各有自己的額定工況（水溫、DB/WB、乙二醇）。引擎目前把 capKw 當成在任何工況下都成立。
+- (a) **建議**：自動選型只挑「工況相符」的已核對型號：出水溫與專案供水溫差 ≤ 3 K、額定 DB/WB ≥ 案場設計 DB/WB − 2 K、乙二醇濃度相同；沒有相符的型號就沿用舊型錄。下拉選單中工況不符的型號標「⚠ 工況不符」，但仍可手動選。
+- (b) 依工況換算容量（例如乾冷器按 ITD 比例縮放）。牽涉工程換算模型，需另外確認方法和出處。

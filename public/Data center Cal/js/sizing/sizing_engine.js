@@ -178,7 +178,11 @@
         _maybeAutoSelect(s, derateOf) {
             if (!s || !s.autoSelectRequested || this.isPumpItem(s)) return;
             const req = Number(s.requiredKw || 0);
-            const cands = (s.catalog || []).filter(c => Number(c.capKw) > 0);
+            // V11 Phase 2：已核對型錄（_extracted_from）各有自己的額定工況，自動選型的工況比對規則尚未定案，
+            //   暫不納入自動選型（仍可手動選）；沒有其他候選時才使用。
+            const all = (s.catalog || []).filter(c => Number(c.capKw) > 0);
+            const legacy = all.filter(c => !c._extracted_from);
+            const cands = legacy.length ? legacy : all;
             if (!(req > 0) || !cands.length) return;
             s.autoSelectRequested = false;
             let best = null, bestKey = null;

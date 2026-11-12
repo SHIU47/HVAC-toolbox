@@ -2875,6 +2875,9 @@
                 cooling_capacity_kw: capKw,
                 cop_design: cop,
                 t_chws_design: catEntry?.t_chws_c ?? 7.0,
+                // V11 Phase 2：額定冷凝溫度（水冷＝冷卻水進水、氣冷＝外氣 DB）。原本沒傳，引擎一律用 30/35 °C；
+                // 既有型錄填的值都等於這兩個預設，舊專案結果不變。
+                t_cewt_design_c: (typeof catEntry?.t_cewt_design_c === 'number') ? catEntry.t_cewt_design_c : undefined,
                 cop_curve: catEntry?.cop_curve, // 有真實 AHRI 曲線資料時 ChillerEngine 會自動採用，否則退回 flat COP
                 qty_running: nRunning,
                 qty_total: item.selectedQty,
